@@ -1,24 +1,70 @@
 #include <random>
-#include "Common.h"
+#include <Common.h>
+#include <secp256k1.h>
 #include "RLP.h"
-#include "PatriciaTree.h"
+#include "Trie.h"
 #include "VirtualMachine.h"
 using namespace std;
 using namespace eth;
 
-std::string randomWord()
-{
-	static std::mt19937_64 s_eng(0);
-	std::string ret(uniform_int_distribution<int>(4, 10)(s_eng), ' ');
-	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
-	uniform_int_distribution<int> d(0, sizeof(n) - 2);
-	for (char& c: ret)
-		c = n[d(s_eng)];
-	return ret;
-}
-
 int main()
 {
+	bytes tx = fromUserHex("88005401010101010101010101010101010101010101011f0de0b6b3a76400001ce8d4a5100080181c373130a009ba1f10285d4e659568bfcfec85067855c5a3c150100815dad4ef98fd37cf0593828c89db94bd6c64e210a32ef8956eaa81ea9307194996a3b879441f5d");
+	cout << "TX: " << RLP(tx) << endl;
+
+	Transaction t(tx);
+	cout << "SENDER: " << hex << t.sender() << endl;
+
+	bytes sig64 = toBigEndian(t.vrs.r) + toBigEndian(t.vrs.s);
+	cout << "SIG: " << sig64.size() << " " << asHex(sig64) << " " << t.vrs.v << endl;
+
+	auto msg = t.rlp(false);
+	cout << "TX w/o SIG: " << RLP(msg) << endl;
+	cout << "RLP(TX w/o SIG): " << asHex(t.rlpString(false)) << endl;
+	std::string hmsg = sha256(t.rlpString(false), false);
+	cout << "SHA256(RLP(TX w/o SIG)): 0x" << asHex(hmsg) << endl;
+
+	bytes privkey = sha256Bytes("123");
+
+	secp256k1_start();
+
+	{
+		bytes pubkey(65);
+		int pubkeylen = 65;
+
+		int ret = secp256k1_ecdsa_seckey_verify(privkey.data());
+		cout << "SEC: " << dec << ret << " " << asHex(privkey) << endl;
+
+		ret = secp256k1_ecdsa_pubkey_create(pubkey.data(), &pubkeylen, privkey.data(), 1);
+		pubkey.resize(pubkeylen);
+		int good = secp256k1_ecdsa_pubkey_verify(pubkey.data(), pubkey.size());
+		cout << "PUB: " << dec << ret << " " << pubkeylen << " " << asHex(pubkey) << (good ? " GOOD" : " BAD") << endl;
+	}
+
+	// Test roundtrip...
+	{
+		bytes sig(64);
+		u256 nonce = 0;
+		int v = 0;
+		int ret = secp256k1_ecdsa_sign_compact((byte const*)hmsg.data(), hmsg.size(), sig.data(), privkey.data(), (byte const*)&nonce, &v);
+		cout << "MYSIG: " << dec << ret << " " << sig.size() << " " << asHex(sig) << " " << v << endl;
+
+		bytes pubkey(65);
+		int pubkeylen = 65;
+		ret = secp256k1_ecdsa_recover_compact((byte const*)hmsg.data(), hmsg.size(), (byte const*)sig.data(), pubkey.data(), &pubkeylen, 0, v);
+		pubkey.resize(pubkeylen);
+		cout << "MYREC: " << dec << ret << " " << pubkeylen << " " << asHex(pubkey) << endl;
+	}
+
+	{
+		bytes pubkey(65);
+		int pubkeylen = 65;
+		int ret = secp256k1_ecdsa_recover_compact((byte const*)hmsg.data(), hmsg.size(), (byte const*)sig64.data(), pubkey.data(), &pubkeylen, 0, (int)t.vrs.v - 27);
+		pubkey.resize(pubkeylen);
+		cout << "RECPUB: " << dec << ret << " " << pubkeylen << " " << asHex(pubkey) << endl;
+		cout << "SENDER: " << hex << low160(eth::sha256(bytesConstRef(&pubkey).cropped(1))) << endl;
+	}
+
 	{
 		Trie t;
 		t.insert("dog", "puppy");
@@ -85,7 +131,9 @@ int main()
 
 	// 2-item list
 	RLP twoItemList("\x82\x0f\x43""dog");
-	assert(twoItemList.itemCount() == 2 && twoItemList[0] == 15 && twoItemList[1] == "dog");
+	assert(twoItemList.itemCount() == 2);
+	assert(twoItemList[0] == 15);
+	assert(twoItemList[1] == "dog");
 	assert(rlpList(15, "dog") == "\x82\x0f\x43""dog");
 
 	// 1-byte (8-bit) int
