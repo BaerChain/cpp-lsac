@@ -69,13 +69,12 @@ void State::addBalance(Address _id, u256 _amount)
 		it->second.balance() += _amount;
 }
 
-bool State::subBalance(Address _id, bigint _amount)
+void State::subBalance(Address _id, bigint _amount)
 {
 	auto it = m_current.find(_id);
 	if (it == m_current.end() || (bigint)it->second.balance() < _amount)
-		return false;
+		throw NotEnoughCash();
 	it->second.balance() = (u256)((bigint)it->second.balance() - _amount);
-	return true;
 }
 
 u256 State::transactionsFrom(Address _address) const
@@ -119,7 +118,7 @@ void State::execute(Transaction const& _t, Address _sender)
 
 	if (_t.receiveAddress)
 	{
-		assert(subBalance(_sender, _t.value + _t.fee));
+		subBalance(_sender, _t.value + _t.fee);
 		addBalance(_t.receiveAddress, _t.value);
 		addBalance(m_minerAddress, _t.fee);
 
@@ -142,7 +141,7 @@ void State::execute(Transaction const& _t, Address _sender)
 		auto& mem = m_current[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
 			mem[i] = _t.data[i];
-		assert(subBalance(_sender, _t.value + _t.fee));
+		subBalance(_sender, _t.value + _t.fee);
 		addBalance(newAddress, _t.value);
 		addBalance(m_minerAddress, _t.fee);
 	}
