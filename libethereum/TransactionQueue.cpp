@@ -14,48 +14,11 @@
 	You should have received a copy of the GNU General Public License
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerNetwork.cpp
+/** @file TransactionQueue.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
-#include "PeerNetwork.h"
+#include "TransactionQueue.h"
 using namespace std;
 using namespace eth;
-
-PeerNetwork::PeerNetwork()
-{
-}
-
-PeerNetwork::~PeerNetwork()
-{
-}
-
-void PeerNetwork::process()
-{
-}
-
-void PeerNetwork::sync(BlockChain& _bc, TransactionQueue const& _tq)
-{
-/*
-	while (incomingBlock())
-	{
-		// import new block
-		bytes const& block = net.incomingBlock();
-		_bc.import(block);
-		net.popIncomingBlock();
-
-		// check block chain and make longest given all available blocks.
-		bc.rejig();
-	}
-
-	while (incomingTransaction())
-	{
-		bytes const& tx = net.incomingTransaction();
-		_tq.import(tx);
-		net.popIncomingTransaction();
-	}
-*/
-}
-

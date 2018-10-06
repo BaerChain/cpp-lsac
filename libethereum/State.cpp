@@ -22,6 +22,7 @@
 #include <secp256k1.h>
 #include <random>
 #include "Trie.h"
+#include "BlockChain.h"
 #include "Instruction.h"
 #include "Exceptions.h"
 #include "sha256.h"
@@ -40,6 +41,53 @@ u256 const State::c_txFee = 0;
 State::State(Address _minerAddress): m_minerAddress(_minerAddress)
 {
 	secp256k1_start();
+	m_previousBlock = BlockInfo::genesis();
+	m_currentBlock.number = 1;
+}
+
+void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
+{
+	BlockInfo bi;
+	try
+	{
+		bi.verify(_bc.lastBlock(), _bc.lastBlockNumber());
+	}
+	catch (...)
+	{
+		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+		exit(1);
+	}
+
+	if (bi == m_currentBlock)
+	{
+		// We mined the last block.
+		// Our state is good - we just need to move on to next.
+		m_previousBlock = m_currentBlock;
+		m_current.clear();
+		m_transactions.clear();
+		m_currentBlock = BlockInfo();
+		m_currentBlock.number = m_previousBlock.number + 1;
+	}
+	else if (bi == m_previousBlock)
+	{
+		// No change since last sync.
+		// Carry on as we were.
+	}
+	else
+	{
+		// New blocks available, or we've switched to a different branch. All change.
+		// TODO: Find most recent state dump and replay what's left.
+		// (Most recent state dump might end up being genesis.)
+	}
+}
+
+bool State::mine(uint _msTimeout) const
+{
+	// TODO: update timestamp according to clock.
+	// TODO: update difficulty according to timestamp.
+	// TODO: look for a nonce that makes a good hash.
+	// ...but don't take longer than _msTimeout ms.
+	return false;
 }
 
 bool State::isNormalAddress(Address _address) const
@@ -97,7 +145,7 @@ bool State::verify(bytes const& _block, uint _number)
 	BlockInfo bi;
 	try
 	{
-		bi.populateAndVerify(bytesConstRef((bytes*)&_block), _number);
+		bi.verify(bytesConstRef((bytes*)&_block), _number);
 	}
 	catch (...)
 	{
@@ -110,9 +158,14 @@ void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
 
+	// Ignore invalid transactions.
 	if (_t.nonce != transactionsFrom(_sender))
 		throw InvalidNonce();
 
+	// Add to the transactions in
+	m_transactions.push_back(_t);
+
+	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
 
@@ -150,11 +203,14 @@ void State::execute(Transaction const& _t, Address _sender)
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
+
+	// Find our memory.
 	auto m = m_current.find(_myAddress);
 	if (m == m_current.end())
 		throw NoSuchContract();
 	auto& myMemory = m->second.memory();
 
+	// Set up some local functions.
 	auto require = [&](u256 _n)
 	{
 		if (stack.size() < _n)

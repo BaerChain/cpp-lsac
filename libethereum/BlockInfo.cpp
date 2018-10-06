@@ -27,7 +27,30 @@
 using namespace std;
 using namespace eth;
 
-void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
+BlockInfo* BlockInfo::s_genesis = nullptr;
+
+BlockInfo::BlockInfo()
+{
+	number = Invalid256;
+}
+
+bytes BlockInfo::createGenesisBlock()
+{
+	RLPStream block(3);
+	auto sha256EmptyList = sha256(RLPEmptyList);
+	block.appendList(7) << (uint)0 << sha256EmptyList << (uint)0 << sha256EmptyList << (uint)0 << (uint)0 << (uint)0;
+	block.appendRaw(RLPEmptyList);
+	block.appendRaw(RLPEmptyList);
+	return block.out();
+}
+
+void BlockInfo::populateGenesis()
+{
+	bytes genesisBlock = createGenesisBlock();
+	populate(&genesisBlock, 0);
+}
+
+void BlockInfo::populate(bytesConstRef _block, u256 _number)
 {
 	number = _number;
 
@@ -48,6 +71,15 @@ void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
 	{
 		throw InvalidBlockFormat();
 	}
+}
+
+void BlockInfo::verify(bytesConstRef _block, u256 _number, u256 _parentHash)
+{
+	populate(_block, _number);
+
+	RLP root(_block);
+	if (root[0][0].toInt<u256>() != _parentHash)
+		throw InvalidParentHash();
 
 	if (sha256Transactions != sha256(root[1].data()))
 		throw InvalidTransactionsHash();
@@ -55,9 +87,11 @@ void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
 	if (sha256Uncles != sha256(root[2].data()))
 		throw InvalidUnclesHash();
 
-	// TODO: check timestamp.
+	// TODO: check timestamp after previous timestamp.
+	// TODO: check parent's hash
+
 	// TODO: check difficulty against timestamp.
 	// TODO: check proof of work.
 
-	// TODO: check each transaction.
+	// TODO: check each transaction - allow coinbaseAddress for the miner fees, but everything else must be exactly how we would do it.
 }
