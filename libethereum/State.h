@@ -31,7 +31,8 @@
 #include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "Trie.h"
+#include "TrieDB.h"
+#include "Dagger.h"
 
 namespace eth
 {
@@ -42,41 +43,62 @@ class BlockChain;
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
  * Should maintain ledger as of last N blocks, also, in case we end up on the wrong branch.
- * TODO: Block database I/O class.
  */
 class State
 {
 public:
-	/// Construct null state object.
-//	State() {}
-
 	/// Construct state object.
-	explicit State(Address _coinbaseAddress);
+	State(Address _coinbaseAddress, Overlay const& _db);
 
-	/// Compiles uncles and transactions list, and puts hashes into the current block header.
-	void prepareToMine(BlockChain const& _bc);
+	/// Set the coinbase address for any transactions we do.
+	/// This causes a complete reset of current block.
+	void setAddress(Address _coinbaseAddress) { m_ourAddress = _coinbaseAddress; resetCurrent(); }
+	Address address() const { return m_ourAddress; }
+
+	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
+	static Overlay openDB(std::string _path, bool _killExisting = false);
+	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+
+	/// @returns the set containing all addresses currently in use in Ethereum.
+	std::map<Address, u256> addresses() const;
+
+	/// Cancels transactions and rolls back the state to the end of the previous block.
+	/// @warning This will only work for on any transactions after you called the last commitToMine().
+	/// It's one or the other.
+	void rollback() { m_cache.clear(); }
+
+	/// Prepares the current state for mining.
+	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
+	/// rewards and populates the current block header with the appropriate hashes.
+	/// The only thing left to do after this is to actually mine().
+	///
+	/// This may be called multiple times and without issue, however, until the current state is cleared,
+	/// calls after the first are ignored.
+	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns true if it got lucky.
-	bool mine(uint _msTimeout = 1000);
+	/// @returns a non-empty byte array containing the block if it got lucky. In this case, call blockData()
+	/// to get the block if you need it later.
+	MineInfo mine(uint _msTimeout = 1000);
 
 	/// Get the complete current block, including valid nonce.
+	/// Only valid after mine() returns true.
 	bytes const& blockData() const { return m_currentBytes; }
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	void sync(BlockChain const& _bc);
+	bool sync(BlockChain const& _bc);
 
-	/// Sync with the block chain, but rather than synching to the latest block sync to the given block.
-	void sync(BlockChain const& _bc, h256 _blockHash);
+	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
+	bool sync(BlockChain const& _bc, h256 _blockHash);
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	void sync(TransactionQueue& _tq);
+	bool sync(TransactionQueue& _tq);
 
 	/// Execute a given transaction.
-	bool execute(bytes const& _rlp) { return execute(&_rlp); }
-	bool execute(bytesConstRef _rlp);
+	void execute(bytes const& _rlp) { return execute(&_rlp); }
+	void execute(bytesConstRef _rlp);
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
@@ -102,12 +124,6 @@ public:
 	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
 
-	/// Set the value of a memory position of a contract.
-	void setContractMemory(Address _contract, u256 _memory, u256 _value);
-
-	/// Get the full memory of a contract.
-//	std::map<u256, u256> contractMemory(Address _contract) const;
-
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 
@@ -125,7 +141,7 @@ public:
 	/// @returns the additional total difficulty.
 	/// If the _grandParent is passed, it will check the validity of each of the uncles.
 	/// This might throw.
-	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent);
+	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
 private:
 	/// Fee-adder on destruction RAII class.
@@ -136,17 +152,26 @@ private:
 		u256 fee;
 	};
 
+	/// Retrieve all information about a given address into the cache.
+	/// If _requireMemory is true, grab the full memory should it be a contract item.
+	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
+	/// exist in the DB.
+	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
+
+	/// Commit all changes waiting in the address cache.
+	void commit();
+
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
-	u256 playback(bytesConstRef _block);
+	u256 playback(bytesConstRef _block, bool _fullCommit);
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent);
+	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
 
 	/// Execute a decoded transaction object, given a sender.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	void execute(Transaction const& _t, Address _sender);
+	void executeBare(Transaction const& _t, Address _sender);
 
 	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
@@ -154,17 +179,11 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
-	/// Commit all pending state modifications for archival. This cannot be undone.
-	void commit() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); }
-
-	/// Rollback all pending state modifictions.
-	void rollback() { m_over.clear(); }
-
-	ldb::DB* m_db;								///< The DB, holding all of our Tries' backend data.
-	ldb::WriteOptions m_writeOptions;
-	std::map<h256, std::string> m_over;			///< The current overlay onto the state DB.
-	TrieDB<Address> m_state;					///< Our state tree.
+	Overlay m_db;								///< Our overlay for the state tree.
+	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+
+	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
@@ -176,6 +195,8 @@ private:
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
+	Dagger m_dagger;
+	
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;
 	static const u256 c_dataFee;
@@ -185,7 +206,34 @@ private:
 	static const u256 c_newContractFee;
 	static const u256 c_txFee;
 	static const u256 c_blockReward;
+
+	static std::string c_defaultPath;
+
+	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
+
+inline std::ostream& operator<<(std::ostream& _out, State const& _s)
+{
+	_out << "--- " << _s.rootHash() << std::endl;
+	std::set<Address> d;
+	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.m_currentBlock.stateRoot))
+	{
+		auto it = _s.m_cache.find(i.first);
+		if (it == _s.m_cache.end())
+		{
+			RLP r(i.second);
+			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>() << std::endl;
+		}
+		else
+			d.insert(i.first);
+	}
+	for (auto i: _s.m_cache)
+		if (i.second.type() == AddressType::Dead)
+			_out << "[XXX " << i.first << std::endl;
+		else
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
+	return _out;
+}
 
 }
 

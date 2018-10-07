@@ -42,7 +42,7 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(9) << (uint)0 << sha3EmptyList << (uint)0 << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0 << (uint)0;
+	block.appendList(9) << h256() << sha3EmptyList << h160() << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 32) << (uint)0 << string() << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -82,7 +82,7 @@ void BlockInfo::populate(bytesConstRef _block)
 		sha3Transactions = header[4].toHash<h256>();
 		difficulty = header[5].toInt<u256>();
 		timestamp = header[6].toInt<u256>();
-		extraData = header[7].toHash<h256>();
+		extraData = header[7].toBytes();
 		nonce = header[8].toInt<u256>();
 	}
 	catch (RLP::BadCast)
@@ -90,9 +90,8 @@ void BlockInfo::populate(bytesConstRef _block)
 		throw InvalidBlockFormat();
 	}
 
-	// check it hashes according to proof of work.
-	Dagger d(headerHashWithoutNonce());
-	if (d.eval(nonce) >= difficulty)
+	// check it hashes according to proof of work or that it's the genesis block.
+	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
 		throw InvalidNonce();
 }
 
@@ -110,7 +109,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return (u256)1 << 36;
+		return (u256)1 << 32;
 	else
 		return timestamp >= _parent.timestamp + 42 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
 }
@@ -122,6 +121,6 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		throw InvalidDifficulty();
 
 	// Check timestamp is after previous timestamp.
-	if (parentHash && _parent.timestamp <= _parent.timestamp)
+	if (parentHash && _parent.timestamp >= timestamp)
 		throw InvalidTimestamp();
 }

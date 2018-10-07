@@ -14,31 +14,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file TrieDB.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Main test functions.
  */
 
-// TODO: utilise the shared testdata.
+#include "Common.h"
+#include "TrieDB.h"
+using namespace std;
+using namespace eth;
 
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
-
-int main(int argc, char** argv)
+namespace eth
 {
-//	hexPrefixTest();
-//	rlpTest();
-	trieTest();
-//	daggerTest();
-//	cryptoTest();
-//	stateTest();
-	peerTest(argc, argv);
-	return 0;
 }
-

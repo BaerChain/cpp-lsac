@@ -18,8 +18,18 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
-
+#if WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#else
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+#include <secp256k1.h>
 #include <sha3.h>
+#if WIN32
+#pragma warning(pop)
+#else
+#endif
 #include <random>
 #include "Common.h"
 #include "Exceptions.h"
@@ -79,7 +89,7 @@ bytes eth::fromUserHex(std::string const& _s)
 	std::vector<uint8_t> ret;
 	ret.reserve((_s.size() - s) / 2);
 	for (uint i = s; i < _s.size(); i += 2)
-		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
+		ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 	return ret;
 }
 
@@ -131,5 +141,42 @@ h256 eth::sha3(bytesConstRef _input)
 {
 	h256 ret;
 	sha3(_input, bytesRef(&ret[0], 32));
+	return ret;
+}
+
+Address eth::toAddress(Secret _private)
+{
+	secp256k1_start();
+
+	byte pubkey[65];
+	int pubkeylen = 65;
+	int ok = secp256k1_ecdsa_seckey_verify(_private.data());
+	if (!ok)
+		return Address();
+	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _private.data(), 0);
+	assert(pubkeylen == 65);
+	if (!ok)
+		return Address();
+	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
+	if (!ok)
+		return Address();
+	auto ret = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+#if ETH_ADDRESS_DEBUG
+	cout << "---- ADDRESS -------------------------------" << endl;
+	cout << "SEC: " << _private << endl;
+	cout << "PUB: " << asHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+	cout << "ADR: " << ret << endl;
+#endif
+	return ret;
+}
+
+KeyPair KeyPair::create()
+{
+	static std::mt19937_64 s_eng(time(0));
+	std::uniform_int_distribution<byte> d(0, 255);
+	KeyPair ret;
+	for (uint i = 0; i < 32; ++i)
+		ret.m_secret[i] = d(s_eng);
+	ret.m_address = toAddress(ret.m_secret);
 	return ret;
 }

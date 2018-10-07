@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <vector>
+#include <array>
 #include <exception>
 #include <iostream>
 #include <iomanip>
@@ -158,19 +160,23 @@ public:
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
-	explicit operator uint() const { return toSlimInt(); }
-	explicit operator u256() const { return toFatInt(); }
-	explicit operator bigint() const { return toBigInt(); }
-	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<_N>(); }
+	explicit operator byte() const { return toInt<byte>(); }
+	explicit operator uint() const { return toInt<uint>(); }
+	explicit operator u256() const { return toInt<u256>(); }
+	explicit operator bigint() const { return toInt<bigint>(); }
+	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytes toBytes() const { if (!isString()) return bytes(); bytes(payload().data(), payload().data() + items()); }
+	bytes toBytes() const { if (!isString()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
 	/// Converts to bytearray. @returns the empty byte array if not a string.
 	bytesConstRef toBytesConstRef() const { if (!isString()) return bytesConstRef(); payload().cropped(0, items()); }
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
 	std::string toStringStrict() const { if (!isString()) throw BadCast(); return payload().cropped(0, items()).toString(); }
+
+	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
+	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
 	enum
@@ -215,7 +221,7 @@ public:
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
-		if (!isString() || (items() >= _N::size && (_flags & FailIfTooBig)))
+		if (!isString() || (items() > _N::size && (_flags & FailIfTooBig)))
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else
@@ -223,7 +229,7 @@ public:
 		else{}
 
 		_N ret;
-		unsigned s = std::min<unsigned>(_N::size, items());
+		size_t s = std::min((size_t)_N::size, (size_t)items());
 		memcpy(ret.data() + _N::size - s, payload().data(), s);
 		return ret;
 	}
@@ -239,6 +245,9 @@ public:
 
 	/// Converts to RLPs collection object. Useful if you need random access to sub items or will iterate over multiple times.
 	RLPs toList() const;
+
+	/// @returns the data payload. Valid for all types.
+	bytesConstRef payload() const { auto n = (m_data[0] & 0x3f); return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37))); }
 
 private:
 	/// Direct value integer.
@@ -269,9 +278,6 @@ private:
 	/// @returns the number of data items (bytes in the case of strings & ints, items in the case of lists). Valid for all types.
 	uint items() const;
 
-	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { auto n = (m_data[0] & 0x3f); return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37))); }
-
 	/// Our byte data.
 	bytesConstRef m_data;
 
@@ -297,8 +303,8 @@ public:
 	RLPStream& append(uint _s);
 	RLPStream& append(u160 _s);
 	RLPStream& append(u256 _s);
-	RLPStream& append(h160 _s, bool _compact = false) { return appendFixed(_s, _compact); }
-	RLPStream& append(h256 _s, bool _compact = false) { return appendFixed(_s, _compact); }
+	RLPStream& append(h160 _s, bool _compact = true) { return appendFixed(_s, _compact); }
+	RLPStream& append(h256 _s, bool _compact = true) { return appendFixed(_s, _compact); }
 	RLPStream& append(bigint _s);
 	RLPStream& appendList(uint _count);
 	RLPStream& appendString(bytesConstRef _s);
@@ -319,6 +325,9 @@ public:
 	RLPStream& operator<<(std::string const& _s) { return appendString(_s); }
 	RLPStream& operator<<(RLP const& _i) { return appendRaw(_i); }
 	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T, size_t S> RLPStream& operator<<(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+
+	void clear() { m_out.clear(); }
 
 	/// Read the byte stream.
 	bytes const& out() const { return m_out; }
@@ -348,7 +357,7 @@ private:
 			for (unsigned i = 0; i < _N && !*d; ++i, --s, ++d) {}
 
 		if (s < 0x38)
-			m_out.push_back(s | 0x40);
+			m_out.push_back((byte)(s | 0x40));
 		else
 			pushCount(s, 0x40);
 		uint os = m_out.size();
@@ -391,7 +400,7 @@ extern bytes RLPNull;
 /// The empty list in RLP format.
 extern bytes RLPEmptyList;
 
-}
-
 /// Human readable version of RLP.
-std::ostream& operator<<(std::ostream& _out, eth::RLP _d);
+std::ostream& operator<<(std::ostream& _out, eth::RLP const& _d);
+
+}

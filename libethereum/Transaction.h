@@ -30,8 +30,8 @@ namespace eth
 struct Signature
 {
 	byte v;
-	h256 r;
-	h256 s;
+	u256 r;
+	u256 s;
 };
 
 // [ nonce, receiving_address, value, fee, [ data item 0, data item 1 ... data item n ], v, r, s ]
@@ -49,13 +49,13 @@ struct Transaction
 	Signature vrs;
 
 	Address sender() const;
-	void sign(PrivateKey _priv);
+	void sign(Secret _priv);
 
 	static h256 kFromMessage(h256 _msg, h256 _priv);
 
 	void fillStream(RLPStream& _s, bool _sig = true) const;
 	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
-	std::string rlpString(bool _sig = true) const { return asString(rlp()); }
+	std::string rlpString(bool _sig = true) const { return asString(rlp(_sig)); }
 	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
 	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
 };

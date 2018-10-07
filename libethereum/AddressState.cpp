@@ -19,13 +19,7 @@
  * @date 2014
  */
 
-#include "Trie.h"
 #include "AddressState.h"
 using namespace std;
 using namespace eth;
-
-h256 AddressState::memoryHash() const
-{
-	return hash256(m_memory);
-}
 

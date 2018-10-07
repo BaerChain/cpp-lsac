@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <boost/filesystem.hpp>
 #include "Common.h"
 #include "RLP.h"
 #include "Exceptions.h"
@@ -29,84 +30,175 @@
 using namespace std;
 using namespace eth;
 
-BlockChain::BlockChain()
+std::string Defaults::s_dbPath = string(getenv("HOME")) + "/.ethereum";
+
+namespace eth
 {
+std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
+{
+	string cmp = toBigEndianString(_bc.m_lastBlockHash);
+	auto it = _bc.m_detailsDB->NewIterator(_bc.m_readOptions);
+	for (it->SeekToFirst(); it->Valid(); it->Next())
+		if (it->key().ToString() != "best")
+		{
+			BlockDetails d(RLP(it->value().ToString()));
+			_out << asHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+		}
+	delete it;
+	return _out;
+}
+}
+
+BlockDetails::BlockDetails(RLP const& _r)
+{
+	number = _r[0].toInt<uint>();
+	totalDifficulty = _r[1].toInt<u256>();
+	parent = _r[2].toHash<h256>();
+	children = _r[3].toVector<h256>();
+}
+
+bytes BlockDetails::rlp() const
+{
+	return rlpList(number, totalDifficulty, parent, children);
+}
+
+BlockChain::BlockChain(std::string _path, bool _killExisting)
+{
+	if (_path.empty())
+		_path = Defaults::s_dbPath;
+	boost::filesystem::create_directory(_path);
+	if (_killExisting)
+	{
+		boost::filesystem::remove_all(_path + "/blocks");
+		boost::filesystem::remove_all(_path + "/details");
+	}
+
 	ldb::Options o;
-	auto s = ldb::DB::Open(o, "blockchain", &m_db);
+	o.create_if_missing = true;
+	auto s = ldb::DB::Open(o, _path + "/blocks", &m_db);
+	s = ldb::DB::Open(o, _path + "/details", &m_detailsDB);
 
 	// Initialise with the genesis as the last block on the longest chain.
-	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
+	m_genesisHash = BlockInfo::genesis().hash;
 	m_genesisBlock = BlockInfo::createGenesisBlock();
 
-	// Insert details of genesis block.
-	m_details[m_genesisHash] = { 0, (u256)1 << 36, h256(), {} };
+	if (!details(m_genesisHash))
+	{
+		// Insert details of genesis block.
+		m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 32, h256(), {});
+		auto r = m_details[m_genesisHash].rlp();
+		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
+	}
+
+	checkConsistency();
+
+	// TODO: Implement ability to rebuild details map from DB.
+	std::string l;
+	m_detailsDB->Get(m_readOptions, ldb::Slice("best"), &l);
+	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 }
 
 BlockChain::~BlockChain()
 {
 }
 
-h256s BlockChain::blockChain(h256Set const& _earlyExit) const
+template <class T, class V>
+bool contains(T const& _t, V const& _v)
 {
-	// Return the current valid block chain from most recent to genesis.
-	// Arguments for specifying a set of early-ends
-	h256s ret;
-	ret.reserve(m_details[m_lastBlockHash].number + 1);
-	auto i = m_lastBlockHash;
-	for (; i != m_genesisHash && !_earlyExit.count(i); i = m_details[i].parent)
-		ret.push_back(i);
-	ret.push_back(i);
-	return ret;
+	for (auto const& i: _t)
+		if (i == _v)
+			return true;
+	return false;
 }
 
-void BlockChain::import(bytes const& _block)
+void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
-	try
+	// VERIFY: populates from the block and checks the block is internally coherent.
+	BlockInfo bi(&_block);
+	bi.verifyInternals(&_block);
+
+	auto newHash = eth::sha3(_block);
+
+	// Check block doesn't already exist first!
+	if (details(newHash))
 	{
-		// VERIFY: populates from the block and checks the block is internally coherent.
-		BlockInfo bi(&_block);
-		bi.verifyInternals(&_block);
-
-		auto newHash = eth::sha3(_block);
-
-		// Check block doesn't already exist first!
-		if (m_details.count(newHash))
-			return;
-
-		// Work out its number as the parent's number + 1
-		auto it = m_details.find(bi.parentHash);
-		if (it == m_details.end())
-			// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
-			return;
-
-		// Check family:
-		BlockInfo biParent(block(bi.parentHash));
-		bi.verifyParent(biParent);
-
-		// Check transactions are valid and that they result in a state equivalent to our state_root.
-		State s(bi.coinbaseAddress);
-		s.sync(*this, bi.parentHash);
-
-		// Get total difficulty increase and update state, checking it.
-		BlockInfo biGrandParent;
-		if (it->second.number)
-			biGrandParent.populate(block(it->second.parent));
-		u256 td = it->second.totalDifficulty + s.playback(&_block, bi, biParent, biGrandParent);
-
-		// All ok - insert into DB
-		m_details[newHash] = BlockDetails{(uint)it->second.number + 1, bi.parentHash, td};
-		m_details[bi.parentHash].children.push_back(newHash);
-		m_db->Put(m_writeOptions, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
-
-		// This might be the new last block...
-		if (td > m_details[m_lastBlockHash].totalDifficulty)
-			m_lastBlockHash = newHash;
+//		cout << "   Not new." << endl;
+		throw AlreadyHaveBlock();
 	}
-	catch (...)
+
+	cout << "Attempting import of " << newHash << "..." << endl;
+
+	// Work out its number as the parent's number + 1
+	auto pd = details(bi.parentHash);
+	if (!pd)
 	{
-		// Exit silently on exception(?)
-		return;
+		cout << "   Unknown parent " << bi.parentHash << endl;
+		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		throw UnknownParent();
 	}
+
+	// Check family:
+	BlockInfo biParent(block(bi.parentHash));
+	bi.verifyParent(biParent);
+
+	// Check transactions are valid and that they result in a state equivalent to our state_root.
+	State s(bi.coinbaseAddress, _db);
+	s.sync(*this, bi.parentHash);
+
+	// Get total difficulty increase and update state, checking it.
+	BlockInfo biGrandParent;
+	if (pd.number)
+		biGrandParent.populate(block(pd.parent));
+	auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
+	u256 td = pd.totalDifficulty + tdIncrease;
+
+	checkConsistency();
+
+	// All ok - insert into DB
+	m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
+	m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
+
+	m_details[bi.parentHash].children.push_back(newHash);
+	m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
+
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
+
+	checkConsistency();
+
+//	cout << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
+
+	// This might be the new last block...
+	if (td > m_details[m_lastBlockHash].totalDifficulty)
+	{
+		m_lastBlockHash = newHash;
+		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
+		cout << "   Imported and best." << endl;
+	}
+	else
+	{
+		cout << "   Imported." << endl;
+//		cerr << "*** WARNING: Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")" << endl;
+	}
+}
+
+void BlockChain::checkConsistency()
+{
+	m_details.clear();
+	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
+	for (it->SeekToFirst(); it->Valid(); it->Next())
+		if (it->key().size() == 32)
+		{
+			h256 h((byte const*)it->key().data());
+			auto dh = details(h);
+			auto p = dh.parent;
+			if (p != h256())
+			{
+				auto dp = details(p);
+				assert(contains(dp.children, h));
+				assert(dp.number == dh.number - 1);
+			}
+		}
+	delete it;
 }
 
 bytesConstRef BlockChain::block(h256 _hash) const
@@ -114,7 +206,7 @@ bytesConstRef BlockChain::block(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return &m_genesisBlock;
 
-	m_db->Get(m_readOptions, ldb::Slice(toBigEndianString(_hash)), &m_cache[_hash]);
+	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &m_cache[_hash]);
 	return bytesConstRef(&m_cache[_hash]);
 }
 
@@ -122,6 +214,16 @@ BlockDetails const& BlockChain::details(h256 _h) const
 {
 	auto it = m_details.find(_h);
 	if (it == m_details.end())
-		return NullBlockDetails;
+	{
+		std::string s;
+		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
+		if (s.empty())
+		{
+//			cout << "Not found in DB: " << _h << endl;
+			return NullBlockDetails;
+		}
+		bool ok;
+		tie(it, ok) = m_details.insert(make_pair(_h, BlockDetails(RLP(s))));
+	}
 	return it->second;
 }

@@ -23,6 +23,11 @@
 
 #pragma once
 
+// way to many uint to size_t warnings in 32 bit build
+#ifdef _M_IX86
+#pragma warning(disable:4244)
+#endif
+
 #include <array>
 #include <map>
 #include <set>
@@ -56,19 +61,21 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
-template <class _T, class _Out> inline void toBigEndian(_T _val, _Out& o_out);
-template <class _T, class _In> inline _T fromBigEndian(_In const& _bytes);
+template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
+template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
-template <unsigned _N>
+template <unsigned N>
 class FixedHash
 {
-	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<_N * 8, _N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 
 public:
-	enum { size = _N };
+	enum { size = N };
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
+	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
+	explicit FixedHash(byte const* _bs) { memcpy(m_data.data(), _bs, N); }
 
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
@@ -78,15 +85,36 @@ public:
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
 
+	FixedHash& operator^=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
+	FixedHash operator^(FixedHash const& _c) const { return FixedHash(*this) ^= _c; }
+	FixedHash& operator|=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] |= _c.m_data[i]; return *this; }
+	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
+	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
+	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
+	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
 
 	byte* data() { return m_data.data(); }
 	byte const* data() const { return m_data.data(); }
 
+	bytes asBytes() const { return bytes(data(), data() + N); }
+	std::array<byte, N>& asArray() { return m_data; }
+	std::array<byte, N> const& asArray() const { return m_data; }
+
 private:
-	std::array<byte, _N> m_data;
+	std::array<byte, N> m_data;
 };
+
+template <unsigned N>
+inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
+{
+	_out << std::noshowbase << std::hex << std::setfill('0');
+	for (unsigned i = 0; i < N; ++i)
+		_out << std::setw(2) << (int)_h[i];
+	return _out;
+}
 
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
@@ -95,7 +123,7 @@ using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
 
-using PrivateKey = h256;
+using Secret = h256;
 using Address = h160;
 using Addresses = h160s;
 
@@ -298,5 +326,26 @@ inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::strin
 inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
 h256 sha3(bytesConstRef _input);
 inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
+
+/// Convert a private key into the public key equivalent.
+/// @returns 0 if it's not a valid private key.
+Address toAddress(h256 _private);
+
+class KeyPair
+{
+public:
+	KeyPair() {}
+	KeyPair(Secret _k): m_secret(_k), m_address(toAddress(_k)) {}
+
+	static KeyPair create();
+
+	Secret secret() const { return m_secret; }
+	Address address() const { return m_address; }
+
+private:
+	Secret m_secret;
+	Address m_address;
+};
 
 }
