@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
+	the Free Software Foundation, either version 2 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -30,8 +30,17 @@ int stateTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
+#include <BlockInfo.h>
+using namespace eth;
+
 int main(int argc, char** argv)
 {
+	/*RLPStream s;
+	BlockInfo::genesis().fillStream(s, false);
+	std::cout << RLP(s.out()) << std::endl;
+	std::cout << asHex(s.out()) << std::endl;
+	std::cout << sha3(s.out()) << std::endl;*/
+
 //	hexPrefixTest();
 //	rlpTest();
 	trieTest();

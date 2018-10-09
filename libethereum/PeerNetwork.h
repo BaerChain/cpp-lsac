@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
+	the Free Software Foundation, either version 2 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -131,8 +131,8 @@ public:
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
-	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
-	bool connect(bi::tcp::endpoint _ep);
+	void connect(std::string const& _addr, uint _port = 30303) { connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port)); }
+	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
@@ -156,7 +156,7 @@ public:
 	void pingAll();
 
 	/// Get the port we're listening on currently.
-	short listenPort() const { return m_acceptor.local_endpoint().port(); }
+	short listenPort() const { return m_public.port(); }
 
 private:
 	void seal(bytes& _b);

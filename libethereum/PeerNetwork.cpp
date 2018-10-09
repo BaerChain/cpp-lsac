@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
+	the Free Software Foundation, either version 2 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -75,10 +75,10 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r.itemCount() > 4 ? _r[4].toInt<uint>() : 0x07;
-		m_listenPort = _r.itemCount() > 5 ? _r[5].toInt<short>() : -1;
+		m_listenPort = _r.itemCount() > 5 ? _r[5].toInt<short>() : 0;
 
 		if (m_server->m_verbosity >= 2)
-			cout << std::setw(2) << m_socket.native_handle() << " | Hello: " << clientVersion << showbase << hex << m_caps << dec << endl;
+			cout << std::setw(2) << m_socket.native_handle() << " | Hello: " << clientVersion << " " << showbase << hex << m_caps << dec << " " << m_listenPort << endl;
 
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
@@ -160,13 +160,19 @@ bool PeerSession::interpret(RLP const& _r)
 			if (m_server->m_verbosity >= 6)
 				cout << "Checking: " << ep << endl;
 			// check that we're not already connected to addr:
+			if (!ep.port())
+				goto CONTINUE;
 			for (auto i: m_server->m_addresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
 			for (auto i: m_server->m_peers)
 				if (shared_ptr<PeerSession> p = i.lock())
+				{
+					if (m_server->m_verbosity >= 6)
+						cout << "   ...against " << p->endpoint() << endl;
 					if (p->m_socket.is_open() && p->endpoint() == ep)
 						goto CONTINUE;
+				}
 			for (auto i: m_server->m_incomingPeers)
 				if (i == ep)
 					goto CONTINUE;
@@ -451,7 +457,9 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port();
+	s.appendList(m_server->m_public.port() ? 6 : 5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0);
+	if (m_server->m_public.port())
+		s << m_server->m_public.port();
 	sealAndSend(s);
 
 	ping();
@@ -547,13 +555,20 @@ struct UPnP
 			printf("UPnP device :\n"
 				   " desc: %s\n st: %s\n",
 				   dev->descURL, dev->st);
-
+#if MINIUPNPC_API_VERSION >= 9
+			descXML = (char*)miniwget(dev->descURL, &descXMLsize, 0);
+#else
 			descXML = (char*)miniwget(dev->descURL, &descXMLsize);
+#endif
 			if (descXML)
 			{
 				parserootdesc (descXML, descXMLsize, &data);
 				free (descXML); descXML = 0;
+#if MINIUPNPC_API_VERSION >= 9
+				GetUPNPUrls (&urls, &data, dev->descURL, 0);
+#else
 				GetUPNPUrls (&urls, &data, dev->descURL);
+#endif
 				ok = true;
 			}
 			freeUPNPDevlist(devlist);
@@ -629,7 +644,7 @@ struct UPnP
 			}
 			cerr << "ERROR: Mapped port not found." << endl;
 		}
-		return -1;
+		return 0;
 	}
 
 	void removeRedirect(int port)
@@ -707,7 +722,7 @@ void PeerServer::determinePublic(string const& _publicAddress)
 		bi::tcp::resolver r(m_ioService);
 		cout << "external addr: " << m_upnp->externalIP() << endl;
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
-		if (p == -1)
+		if (!p)
 		{
 			// couldn't map
 			cerr << "*** WARNING: Couldn't punch through NAT (or no NAT in place). Using " << m_listenPort << endl;
@@ -771,7 +786,11 @@ std::vector<bi::tcp::endpoint> PeerServer::potentialPeers()
 		ret.push_back(m_public);
 	for (auto i: m_peers)
 		if (auto j = i.lock())
-			ret.push_back(j->endpoint());
+		{
+			auto ep = j->endpoint();
+			if (ep.port())
+				ret.push_back(ep);
+		}
 	return ret;
 }
 
@@ -782,7 +801,7 @@ void PeerServer::ensureAccepting()
 		if (m_verbosity >= 1)
 			cout << "Listening on local port " << m_listenPort << " (public: " << m_public << ")" << endl;
 		m_accepting = true;
-		m_acceptor.async_accept(m_socket, [&](boost::system::error_code ec)
+		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
 		{
 			if (!ec)
 				try
@@ -808,52 +827,28 @@ void PeerServer::ensureAccepting()
 	}
 }
 
-bool PeerServer::connect(string const& _addr, uint _port)
+void PeerServer::connect(bi::tcp::endpoint const& _ep)
 {
-	bi::tcp::resolver resolver(m_ioService);
-	if (m_verbosity >= 1)
-		cout << "Attempting connection to " << _addr << ":" << dec << _port << endl;
-	try
-	{
-		bi::tcp::socket s(m_ioService);
-		boost::asio::connect(s, resolver.resolve({ _addr, toString(_port) }));
-		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
-		m_peers.push_back(p);
-		if (m_verbosity >= 1)
-			cout << "Connected." << endl;
-		p->start();
-		return true;
-	}
-	catch (exception& _e)
-	{
-		if (m_verbosity >= 1)
-			cout << "Connection refused (" << _e.what() << ")" << endl;
-		return false;
-	}
-}
-
-bool PeerServer::connect(bi::tcp::endpoint _ep)
-{
-	bi::tcp::resolver resolver(m_ioService);
 	if (m_verbosity >= 1)
 		cout << "Attempting connection to " << _ep << endl;
-	try
+	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
-		bi::tcp::socket s(m_ioService);
-		boost::asio::connect(s, resolver.resolve(_ep));
-		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
-		m_peers.push_back(p);
-		if (m_verbosity >= 1)
-			cout << "Connected." << endl;
-		p->start();
-		return true;
-	}
-	catch (exception& _e)
-	{
-		if (m_verbosity >= 1)
-			cout << "Connection refused (" << _e.what() << ")" << endl;
-		return false;
-	}
+		if (ec)
+		{
+			if (m_verbosity >= 1)
+				cout << "Connection refused to " << _ep << " (" << ec.message() << ")" << endl;
+		}
+		else
+		{
+			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId);
+			m_peers.push_back(p);
+			if (m_verbosity >= 1)
+				cout << "Connected to " << p->endpoint() << endl;
+			p->start();
+		}
+		delete s;
+	});
 }
 
 bool PeerServer::process(BlockChain& _bc)
