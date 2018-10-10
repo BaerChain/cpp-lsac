@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -18,6 +18,8 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
+
+#include "State.h"
 
 #include <secp256k1.h>
 #include <boost/filesystem.hpp>
@@ -40,7 +42,7 @@
 #include "Instruction.h"
 #include "Exceptions.h"
 #include "Dagger.h"
-#include "State.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 
@@ -65,7 +67,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromUserHex("812413ae7e515a3bcaf7b3444116527bce958c02"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("07598a40bfaa73256b60764c1bf40675a99083ef"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("80c01a26338f0d905e295fccb71fa9ea849ffa12"))] = AddressState(u256(1) << 200, 0);
@@ -76,7 +78,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
-		_path = Defaults::s_dbPath;
+		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
 	if (_killExisting)
 		boost::filesystem::remove_all(_path + "/state");
@@ -95,17 +97,10 @@ State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
-	cout << "State::State: state root initialised to " << m_state.root() << endl;
+	cnote << "State root: " << m_state.root();
 
 	m_previousBlock = BlockInfo::genesis();
 	cnote << "Genesis hash:" << m_previousBlock.hash;
-	{
-		RLPStream s;
-		m_previousBlock.fillStream(s, true);
-		cnote << RLP(s.out());
-		cnote << asHex(s.out());
-		cnote << sha3(s.out());
-	}
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
