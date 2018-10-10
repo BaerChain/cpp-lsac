@@ -36,6 +36,17 @@ static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChai
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
 static const eth::uint c_maxBlocksAsk = 2048;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
+// Addresses we will skip during network interface discovery
+// Use a vector as the list is small
+// Why this and not names?
+// Under MacOSX loopback (127.0.0.1) can be named lo0 and br0 are bridges (0.0.0.0)
+static const vector<bi::address> c_rejectAddresses = {
+	{bi::address_v4::from_string("127.0.0.1")},
+	{bi::address_v6::from_string("::1")},
+	{bi::address_v4::from_string("0.0.0.0")},
+	{bi::address_v6::from_string("::")}
+};
+
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_server(_s),
 	m_socket(std::move(_socket)),
@@ -588,8 +599,10 @@ struct UPnP
 	string externalIP()
 	{
 		char addr[16];
-		UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr);
-		return addr;
+		if (!UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr))
+			return addr;
+		else
+			return "0.0.0.0";
 	}
 
 	int addRedirect(char const* addr, int port)
@@ -677,7 +690,7 @@ struct UPnP
 
 class NoNetworking: public std::exception {};
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -687,7 +700,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	m_requiredNetworkId(_networkId)
 {
 	populateAddresses();
-	determinePublic(_publicAddress);
+	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
 	if (m_verbosity)
 		cout << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full") << endl;
@@ -714,12 +727,14 @@ PeerServer::~PeerServer()
 	delete m_upnp;
 }
 
-void PeerServer::determinePublic(string const& _publicAddress)
+void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 {
-	m_upnp = new UPnP;
-	if (m_upnp->isValid() && m_peerAddresses.size())
+	if (_upnp)
+		m_upnp = new UPnP;
+
+	bi::tcp::resolver r(m_ioService);
+	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
-		bi::tcp::resolver r(m_ioService);
 		cout << "external addr: " << m_upnp->externalIP() << endl;
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
 		if (!p)
@@ -729,7 +744,8 @@ void PeerServer::determinePublic(string const& _publicAddress)
 			p = m_listenPort;
 		}
 
-		if (m_upnp->externalIP() == string("0.0.0.0") && _publicAddress.empty())
+		auto eip = m_upnp->externalIP();
+		if (eip == string("0.0.0.0") && _publicAddress.empty())
 			m_public = bi::tcp::endpoint(bi::address(), p);
 		else
 		{
@@ -738,15 +754,17 @@ void PeerServer::determinePublic(string const& _publicAddress)
 			m_addresses.push_back(m_public.address().to_v4());
 		}
 	}
-/*	int er;
-	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
-	for (UPNPDev* d = dlist; d; d = dlist->pNext)
+	else
 	{
-		IGDdatas data;
-		parserootdesc(d->descURL, 0, &data);
-		data.presentationurl()
+		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
+		if (_publicAddress.size())
+			m_public = r.resolve({_publicAddress, toString(m_listenPort)})->endpoint();
+		else if (m_peerAddresses.size())
+			m_public = r.resolve({m_peerAddresses[0].to_string(), toString(m_listenPort)})->endpoint();
+		else
+			m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
+		m_addresses.push_back(m_public.address().to_v4());
 	}
-	freeUPNPDevlist(dlist);*/
 }
 
 void PeerServer::populateAddresses()
@@ -768,11 +786,13 @@ void PeerServer::populateAddresses()
 				continue;
 			auto it = r.resolve({host, "30303"});
 			bi::tcp::endpoint ep = it->endpoint();
-			m_addresses.push_back(ep.address().to_v4());
-			if (ifa->ifa_name != string("lo"))
-				m_peerAddresses.push_back(ep.address().to_v4());
+			bi::address ad = ep.address();
+			m_addresses.push_back(ad.to_v4());
+			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+			if (!isLocal)
+				m_peerAddresses.push_back(ad.to_v4());
 			if (m_verbosity >= 1)
-				cout << "Address: " << host << " = " << m_addresses.back() << (ifa->ifa_name != string("lo") ? " [PEER]" : " [LOCAL]") << endl;
+				cout << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]") << endl;
 		}
 	}
 
