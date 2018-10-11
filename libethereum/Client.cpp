@@ -41,7 +41,22 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_s.sync(m_tq);
 	m_changed = true;
 
-	m_work = new thread([&](){ setThreadName("eth"); while (m_workState != Deleting) work(); m_workState = Deleted; });
+	static std::string thread_name = "eth";
+
+#if defined(__APPLE__)
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		m_work = dispatch_queue_create(thread_name.c_str(), DISPATCH_QUEUE_SERIAL);
+	});
+
+	dispatch_async(m_work, ^{
+#else
+	m_work = new thread([&](){
+		setThreadName(thread_name);
+#endif
+
+		while (m_workState != Deleting) work(); m_workState = Deleted;
+	});
 }
 
 Client::~Client()
@@ -49,7 +64,7 @@ Client::~Client()
 	if (m_workState == Active)
 		m_workState = Deleting;
 	while (m_workState != Deleted)
-		usleep(10000);
+		std::this_thread::sleep_for(std::chrono::microseconds(10000));
 }
 
 void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
@@ -143,7 +158,7 @@ void Client::work()
 		}
 	}
 	else
-		usleep(100000);
+		std::this_thread::sleep_for(std::chrono::microseconds(100000));
 }
 
 void Client::lock()
