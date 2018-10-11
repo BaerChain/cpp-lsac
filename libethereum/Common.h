@@ -41,11 +41,6 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include "vector_ref.h"
 
-// OSX likes GCD whichs runs threads within queues
-#if defined(__APPLE__)
-#include <dispatch/dispatch.h>
-#endif
-
 namespace eth
 {
 
@@ -156,11 +151,9 @@ public:
 };
 
 extern std::map<std::type_info const*, bool> g_logOverride;
-
-#if !defined(__APPLE__)
 extern thread_local std::string t_logThreadName;
+
 inline void setThreadName(std::string const& _n) { t_logThreadName = _n; }
-#endif
 
 struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
 struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
@@ -187,13 +180,7 @@ public:
 			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			char buf[9];
 			strftime(buf, 9, "%X", localtime(&rawTime));
-
-#if defined(__APPLE__)
-			const char *threadName = dispatch_queue_get_label(dispatch_get_current_queue());
-			sstr << Id::name << " [ " << buf << " | " << dispatch_queue_get_label(dispatch_get_current_queue()) << (_term ? " ] " : "");
-#else
 			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
-#endif
 		}
 	}
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
