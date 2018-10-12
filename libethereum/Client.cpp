@@ -21,8 +21,6 @@
 
 #include "Client.h"
 
-#include <chrono>
-#include <thread>
 #include "Common.h"
 #include "Defaults.h"
 using namespace std;
@@ -32,8 +30,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_clientVersion(_clientVersion),
 	m_bc(_dbPath),
 	m_stateDB(State::openDB(_dbPath)),
-	m_s(_us, m_stateDB),
-	m_mined(_us, m_stateDB)
+	m_s(_us, m_stateDB)
 {
 	Defaults::setDBPath(_dbPath);
 
@@ -44,18 +41,18 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_s.sync(m_tq);
 	m_changed = true;
 
-	static const char* c_threadName = "eth";
+	static std::string thread_name = "eth";
 
 #if defined(__APPLE__)
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		m_work = dispatch_queue_create(c_threadName, DISPATCH_QUEUE_SERIAL);
+		m_work = dispatch_queue_create(thread_name.c_str(), DISPATCH_QUEUE_SERIAL);
 	});
 
 	dispatch_async(m_work, ^{
 #else
 	m_work = new thread([&](){
-		setThreadName(c_threadName);
+		setThreadName(thread_name);
 #endif
 
 		while (m_workState != Deleting) work(); m_workState = Deleted;
@@ -67,7 +64,7 @@ Client::~Client()
 	if (m_workState == Active)
 		m_workState = Deleting;
 	while (m_workState != Deleted)
-		this_thread::sleep_for(chrono::milliseconds(10));
+		usleep(10000);
 }
 
 void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
@@ -96,7 +93,6 @@ void Client::stopNetwork()
 void Client::startMining()
 {
 	m_doMine = true;
-	m_miningStarted = true;
 }
 
 void Client::stopMining()
@@ -104,13 +100,14 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
+void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data)
 {
 	m_lock.lock();
 	Transaction t;
 	t.nonce = m_s.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _amount;
+	t.fee = _fee;
 	t.data = _data;
 	t.sign(_secret);
 	m_tq.attemptImport(t.rlp());
@@ -121,14 +118,12 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 void Client::work()
 {
 	m_lock.lock();
-	bool changed = false;
-
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
 		if (m_net->process(m_bc, m_tq, m_stateDB))
-			changed = true;
+			m_changed = true;
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -138,25 +133,16 @@ void Client::work()
 	//   all blocks.
 	 // Resynchronise state with block chain & trans
 	if (m_s.sync(m_bc))
-	{
-		changed = true;
-		m_mined = m_s;
-	}
+		m_changed = true;
+	if (m_s.sync(m_tq))
+		m_changed = true;
 
 	m_lock.unlock();
 	if (m_doMine)
 	{
-		if (m_miningStarted)
-		{
-			m_mined = m_s;
-			m_mined.sync(m_tq);
-			m_mined.commitToMine(m_bc);
-		}
-
-		m_miningStarted = false;
-
 		// Mine for a while.
-		MineInfo mineInfo = m_mined.mine(100);
+		m_s.commitToMine(m_bc);
+		MineInfo mineInfo = m_s.mine(100);
 		m_mineProgress.best = max(m_mineProgress.best, mineInfo.best);
 		m_mineProgress.current = mineInfo.best;
 		m_mineProgress.requirement = mineInfo.requirement;
@@ -165,17 +151,14 @@ void Client::work()
 		{
 			// Import block.
 			m_lock.lock();
-			m_bc.attemptImport(m_mined.blockData(), m_stateDB);
+			m_bc.attemptImport(m_s.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
 			m_lock.unlock();
 			m_changed = true;
-			m_miningStarted = true;	// need to re-commit to mine.
 		}
 	}
 	else
-		this_thread::sleep_for(chrono::milliseconds(100));
-
-	m_changed = m_changed || changed;
+		usleep(100000);
 }
 
 void Client::lock()

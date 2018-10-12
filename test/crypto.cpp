@@ -41,6 +41,7 @@ int cryptoTest()
 
 	Transaction t;
 	t.nonce = 0;
+	t.fee = 0;
 	t.value = 1;			// 1 wei.
 	t.receiveAddress = toAddress(sha3("123"));
 

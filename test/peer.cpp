@@ -20,8 +20,6 @@
  * Peer Network test functions.
  */
 
-#include <chrono>
-#include <thread>
 #include <BlockChain.h>
 #include <PeerNetwork.h>
 using namespace std;
@@ -55,7 +53,7 @@ int peerTest(int argc, char** argv)
 
 	for (int i = 0; ; ++i)
 	{
-		this_thread::sleep_for(chrono::milliseconds(100));
+		usleep(100000);
 		pn.process(ch);
 		if (!(i % 10))
 			pn.pingAll();
