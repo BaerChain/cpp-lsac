@@ -127,62 +127,73 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-//		cout << "   Not new." << endl;
+		clog(BlockChainChat) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
-
-	cnote << "Attempting import of " << newHash << "...";
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		cwarn << "   Unknown parent " << bi.parentHash;
+		clog(BlockChainChat) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
 	}
 
-	// Check family:
-	BlockInfo biParent(block(bi.parentHash));
-	bi.verifyParent(biParent);
+	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
 
-	// Check transactions are valid and that they result in a state equivalent to our state_root.
-	State s(bi.coinbaseAddress, _db);
-	s.sync(*this, bi.parentHash);
+	u256 td;
+	try
+	{
+		// Check family:
+		BlockInfo biParent(block(bi.parentHash));
+		bi.verifyParent(biParent);
 
-	// Get total difficulty increase and update state, checking it.
-	BlockInfo biGrandParent;
-	if (pd.number)
-		biGrandParent.populate(block(pd.parent));
-	auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
-	u256 td = pd.totalDifficulty + tdIncrease;
+		// Check transactions are valid and that they result in a state equivalent to our state_root.
+		State s(bi.coinbaseAddress, _db);
+		s.sync(*this, bi.parentHash);
 
-	checkConsistency();
+		// Get total difficulty increase and update state, checking it.
+		BlockInfo biGrandParent;
+		if (pd.number)
+			biGrandParent.populate(block(pd.parent));
+		auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
+		td = pd.totalDifficulty + tdIncrease;
 
-	// All ok - insert into DB
-	m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
-	m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
+#if !NDEBUG
+		checkConsistency();
+#endif
+		// All ok - insert into DB
+		m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
+		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
 
-	m_details[bi.parentHash].children.push_back(newHash);
-	m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
+		m_details[bi.parentHash].children.push_back(newHash);
+		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
 
-	m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
+		m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
 
-	checkConsistency();
+#if !NDEBUG
+		checkConsistency();
+#endif
+	}
+	catch (...)
+	{
+		clog(BlockChainNote) << "   Malformed block.";
+		throw;
+	}
 
-//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
+//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
 	// This might be the new last block...
 	if (td > m_details[m_lastBlockHash].totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		cnote << "   Imported and best.";
+		clog(BlockChainNote) << "   Imported and best. Has" << details(bi.parentHash).children.size() << "siblings.";
 	}
 	else
 	{
-		cnote << "   Imported.";
-//		cwarn << "Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << m_details[m_lastBlockHash].totalDifficulty << ", TD:" << td << ")";
 	}
 }
 
