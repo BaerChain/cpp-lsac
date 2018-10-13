@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Transaction.h
  * @author Gav Wood <i@gavwood.com>
@@ -47,6 +47,7 @@ struct Transaction
 	u256s data;
 	Signature vrs;
 
+	Address safeSender() const noexcept;
 	Address sender() const;
 	void sign(Secret _priv);
 
@@ -60,6 +61,25 @@ struct Transaction
 };
 
 using Transactions = std::vector<Transaction>;
+
+inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
+{
+	_out << "{";
+	if (_t.receiveAddress)
+		_out << _t.receiveAddress.abridged();
+	else
+		_out << "[CREATE]";
+
+	_out << "/" << _t.nonce << "*" << _t.value;
+	Address s;
+	try
+	{
+		_out << "<-" << _t.sender().abridged();
+	}
+	catch (...) {}
+	_out << "}";
+	return _out;
+}
 
 }
 

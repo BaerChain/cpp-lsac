@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file RLP.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -94,15 +94,17 @@ eth::uint RLP::actualSize() const
 
 bool RLP::isInt() const
 {
+	if (isNull())
+		return false;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return !!n;
 	else if (n == c_rlpDataImmLenStart)
 		return true;
 	else if (n <= c_rlpDataIndLenZero)
-		return m_data[1];
+		return m_data[1] != 0;
 	else if (n < c_rlpListStart)
-		return m_data[1 + n - c_rlpDataIndLenZero];
+		return m_data[1 + n - c_rlpDataIndLenZero] != 0;
 	else
 		return false;
 	return false;
@@ -110,6 +112,8 @@ bool RLP::isInt() const
 
 eth::uint RLP::length() const
 {
+	if (isNull())
+		return 0;
 	uint ret = 0;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
@@ -172,10 +176,10 @@ void RLPStream::noteAppended(uint _itemCount)
 			m_out.resize(os + encodeSize);
 			memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
 			if (s < c_rlpListImmLenCount)
-				m_out[p] = c_rlpListStart + s;
+				m_out[p] = (byte)(c_rlpListStart + s);
 			else
 			{
-				m_out[p] = c_rlpListIndLenZero + brs;
+				m_out[p] = (byte)(c_rlpListIndLenZero + brs);
 				byte* b = &(m_out[p + brs]);
 				for (; s; s >>= 8)
 					*(b--) = (byte)s;
@@ -185,7 +189,7 @@ void RLPStream::noteAppended(uint _itemCount)
 	}
 }
 
-RLPStream& RLPStream::appendList(unsigned _items)
+RLPStream& RLPStream::appendList(uint _items)
 {
 //	cdebug << "appendList(" << _items << ")";
 	if (_items)

@@ -6,13 +6,13 @@
         the Free Software Foundation, either version 3 of the License, or
         (at your option) any later version.
 
-        Foobar is distributed in the hope that it will be useful,
+        cpp-ethereum is distributed in the hope that it will be useful,
         but WITHOUT ANY WARRANTY; without even the implied warranty of
         MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
         GNU General Public License for more details.
 
         You should have received a copy of the GNU General Public License
-        along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+        along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file FileSystem.cpp
  * @authors
@@ -39,7 +39,9 @@ std::string eth::getDataDir()
 		return (boost::filesystem::path(path) / "Ethereum").string();
 	else
 	{
+	#ifndef _MSC_VER // todo?
 		cwarn << "getDataDir(): SHGetSpecialFolderPathA() failed.";
+	#endif
 		throw std::runtime_error("getDataDir() - SHGetSpecialFolderPathA() failed.");
 	}
 #else

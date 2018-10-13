@@ -15,10 +15,12 @@ public:
 
 class BadHexCharacter: public Exception {};
 class NotEnoughCash: public Exception {};
-class BadInstruction: public Exception {};
-class StackTooSmall: public Exception { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
-class OperandOutOfRange: public Exception { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
-class ExecutionException: public Exception {};
+
+class VMException: public Exception {};
+class BadInstruction: public VMException {};
+class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
+
 class NoSuchContract: public Exception {};
 class ContractAddressCollision: public Exception {};
 class FeeTooSmall: public Exception {};
@@ -29,7 +31,7 @@ class InvalidBlockHeaderFormat: public Exception { public: InvalidBlockHeaderFor
 class InvalidUnclesHash: public Exception {};
 class InvalidUncle: public Exception {};
 class InvalidStateRoot: public Exception {};
-class InvalidTransactionsHash: public Exception {};
+class InvalidTransactionsHash: public Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual std::string description() const { return "Invalid transactions hash:  header says: " + asHex(m_head.ref()) + " block is:" + asHex(m_real.ref()); } };
 class InvalidTransaction: public Exception {};
 class InvalidDifficulty: public Exception {};
 class InvalidTimestamp: public Exception {};

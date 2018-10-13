@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file State.h
  * @author Gav Wood <i@gavwood.com>
@@ -39,7 +39,7 @@ namespace eth
 
 class BlockChain;
 
-extern const u256 c_genesisDifficulty;
+extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
 #define ETH_SENDER_PAYS_SETUP 1
@@ -48,6 +48,7 @@ struct FeeStructure
 {
 	/// The fee structure. Values yet to be agreed on...
 	void setMultiplier(u256 _x);				///< The current block multiplier.
+	u256 multiplier() const;
 	u256 m_stepFee;
 	u256 m_dataFee;
 	u256 m_memoryFee;
@@ -57,6 +58,8 @@ struct FeeStructure
 	u256 m_txFee;
 };
 
+template <unsigned T> class UnitTest {};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -64,6 +67,7 @@ struct FeeStructure
  */
 class State
 {
+	template <unsigned T> friend class UnitTest;
 public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
@@ -119,6 +123,8 @@ public:
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
 	bool sync(TransactionQueue& _tq);
+	/// Like sync but only operate on _tq, killing the invalid/old ones.
+	bool cull(TransactionQueue& _tq) const;
 
 	/// Execute a given transaction.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
@@ -158,8 +164,8 @@ public:
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
 
-	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
+	/// Get the list of pending transactions.
+	std::map<h256, Transaction> const& pending() const { return m_transactions; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -209,6 +215,12 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
+	/// Finalise the block, applying the earned rewards.
+	void applyRewards(Addresses const& _uncleAddresses);
+
+	/// Unfinalise the block, unapplying the earned rewards.
+	void unapplyRewards(Addresses const& _uncleAddresses);
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
@@ -239,13 +251,26 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
-	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.m_currentBlock.stateRoot))
+	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash()))
 	{
 		auto it = _s.m_cache.find(i.first);
 		if (it == _s.m_cache.end())
 		{
 			RLP r(i.second);
-			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>() << std::endl;
+			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
+			if (r.itemCount() == 3)
+			{
+				_out << " *" << r[2].toHash<h256>();
+				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+				std::map<u256, u256> mem;
+				for (auto const& j: memdb)
+				{
+					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+					mem[j.first] = RLP(j.second).toInt<u256>();
+				}
+				_out << std::endl << mem;
+			}
+			_out << std::endl;
 		}
 		else
 			d.insert(i.first);
@@ -254,7 +279,29 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		if (i.second.type() == AddressType::Dead)
 			_out << "[XXX " << i.first << std::endl;
 		else
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
+		{
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
+			if (i.second.type() == AddressType::Contract)
+			{
+				if (i.second.haveMemory())
+				{
+					_out << std::endl << i.second.memory();
+				}
+				else
+				{
+					_out << " *" << i.second.oldRoot();
+					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
+					std::map<u256, u256> mem;
+					for (auto const& j: memdb)
+					{
+						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+						mem[j.first] = RLP(j.second).toInt<u256>();
+					}
+					_out << std::endl << mem;
+				}
+			}
+			_out << std::endl;
+		}
 	return _out;
 }
 
@@ -272,7 +319,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				if (i.second.haveMemory())
 				{
-					TrieDB<u256, DB> memdb(&_db);
+					TrieDB<h256, DB> memdb(&_db);
 					memdb.init();
 					for (auto const& j: i.second.memory())
 						if (j.second)

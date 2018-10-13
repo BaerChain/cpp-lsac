@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Common.h
  * @author Gav Wood <i@gavwood.com>
@@ -28,10 +28,19 @@
 #pragma warning(disable:4244)
 #endif
 
+#ifdef _MSC_VER
+#define _ALLOW_KEYWORD_MACROS
+#define noexcept throw()
+#endif
+
 #include <ctime>
 #include <chrono>
 #include <array>
 #include <map>
+#include <unordered_map>
+#include <set>
+#include <array>
+#include <list>
 #include <set>
 #include <string>
 #include <cassert>
@@ -39,18 +48,16 @@
 #include <cstdint>
 #include <type_traits>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/thread.hpp>
 #include "vector_ref.h"
 
-// OSX likes GCD whichs runs threads within queues
-#if defined(__APPLE__)
-#include <dispatch/dispatch.h>
-#endif
+// CryptoPP defines byte in the global namespace, so so must we.
+using byte = uint8_t;
 
 namespace eth
 {
 
 // Binary data types.
-using byte = uint8_t;
 using bytes = std::vector<byte>;
 using bytesRef = vector_ref<byte>;
 using bytesConstRef = vector_ref<byte const>;
@@ -71,6 +78,18 @@ using u160Set = std::set<u160>;
 template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
 template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
+/// Convert a series of bytes to the corresponding string of hex duplets.
+/// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
+/// @example asHex("A\x69") == "4169"
+template <class _T>
+std::string asHex(_T const& _data, int _w = 2)
+{
+	std::ostringstream ret;
+	for (auto i: _data)
+		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
+	return ret.str();
+}
+
 template <unsigned N>
 class FixedHash
 {
@@ -78,11 +97,12 @@ class FixedHash
 
 public:
 	enum { size = N };
+	enum ConstructFromPointerType { ConstructFromPointer };
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
-	explicit FixedHash(byte const* _bs) { memcpy(m_data.data(), _bs, N); }
+	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
@@ -99,6 +119,8 @@ public:
 	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
+	std::string abridged() const { return asHex(ref().cropped(0, 4)) + ".."; }
 
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
@@ -159,17 +181,21 @@ public:
 
 extern std::map<std::type_info const*, bool> g_logOverride;
 
-#if !defined(__APPLE__)
-extern thread_local char const* t_logThreadName;
-inline void setThreadName(char const* _n) { t_logThreadName = _n; }
-#endif
+struct ThreadLocalLogName
+{
+	ThreadLocalLogName(std::string _name) { m_name.reset(new std::string(_name)); };
+	boost::thread_specific_ptr<std::string> m_name;
+};
 
-struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
-struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
-struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
-struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
-struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
-struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 7; };
+extern ThreadLocalLogName t_logThreadName;
+inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
+
+struct LogChannel { static const char* name() { return "   "; } static const int verbosity = 1; };
+struct LeftChannel: public LogChannel  { static const char* name() { return "<<<"; } };
+struct RightChannel: public LogChannel { static const char* name() { return ">>>"; } };
+struct WarnChannel: public LogChannel  { static const char* name() { return "!!!"; } static const int verbosity = 0; };
+struct NoteChannel: public LogChannel  { static const char* name() { return "***"; } };
+struct DebugChannel: public LogChannel { static const char* name() { return "---"; } static const int verbosity = 0; };
 
 extern int g_logVerbosity;
 extern std::function<void(std::string const&, char const*)> g_logPost;
@@ -187,17 +213,13 @@ public:
 		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
 		{
 			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			char buf[9];
-			strftime(buf, 9, "%X", localtime(&rawTime));
-
-#if defined(__APPLE__)
-			sstr << Id::name << " [ " << buf << " | " << dispatch_queue_get_label(dispatch_get_current_queue()) << (_term ? " ] " : "");
-#else
-			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
-#endif
+			char buf[24];
+			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0) 
+				buf[0] = '\0'; // empty if case strftime fails  
+			sstr << Id::name << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
 		}
 	}
-	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
+	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name()); }
 	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; } return *this; }
 	std::stringstream sstr;
 };
@@ -253,18 +275,6 @@ inline std::string asString(bytes const& _b)
 inline bytes asBytes(std::string const& _b)
 {
 	return bytes((byte const*)_b.data(), (byte const*)(_b.data() + _b.size()));
-}
-
-/// Convert a series of bytes to the corresponding string of hex duplets.
-/// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
-/// @example asHex("A\x69") == "4169"
-template <class _T>
-std::string asHex(_T const& _data, int _w = 2)
-{
-	std::ostringstream ret;
-	for (auto i: _data)
-		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
-	return ret.str();
 }
 
 /// Trims a given number of elements from the front of a collection.
@@ -366,7 +376,7 @@ uint commonPrefix(_T const& _t, _U const& _u)
 inline h160 right160(h256 const& _t)
 {
 	h160 ret;
-	memcpy(ret.data(), _t.data() + 10, 20);
+	memcpy(ret.data(), _t.data() + 12, 20);
 	return ret;
 }
 
@@ -451,5 +461,181 @@ private:
 	Public m_public;
 	Address m_address;
 };
+
+
+static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Vether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Dether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Nether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Yether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Zether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Eether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Pether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Tether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Gether = (u256(1000000000) * 1000000000) * 1000000000;
+static const u256 Mether = (u256(1000000000) * 1000000000) * 1000000;
+static const u256 Kether = (u256(1000000000) * 1000000000) * 1000;
+static const u256 ether = u256(1000000000) * 1000000000;
+static const u256 finney = u256(1000000000) * 1000000;
+static const u256 szabo = u256(1000000000) * 1000;
+static const u256 Gwei = u256(1000000000);
+static const u256 Mwei = u256(1000000);
+static const u256 Kwei = u256(1000);
+static const u256 wei = u256(1);
+
+
+// Stream IO
+
+
+
+template <class S, class T> struct StreamOut { static S& bypass(S& _out, T const& _t) { _out << _t; return _out; } };
+template <class S> struct StreamOut<S, uint8_t> { static S& bypass(S& _out, uint8_t const& _t) { _out << (int)_t; return _out; } };
+
+template <class S, class T>
+inline S& streamout(S& _out, std::vector<T> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		for (auto i = ++_e.begin(); i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::vector<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, unsigned Z>
+inline S& streamout(S& _out, std::array<T, Z> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		auto i = _e.begin();
+		for (++i; i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+template <class T, unsigned Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, unsigned long Z>
+inline S& streamout(S& _out, std::array<T, Z> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		auto i = _e.begin();
+		for (++i; i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+template <class T, unsigned long Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+inline S& streamout(S& _out, std::list<T> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		_out << _e.front();
+		for (auto i = ++_e.begin(); i != _e.end(); ++i)
+			_out << "," << *i;
+	}
+	_out << "]";
+	return _out;
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::list<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+inline S& streamout(S& _out, std::pair<T, U> const& _e)
+{
+	_out << "(" << _e.first << "," << _e.second << ")";
+	return _out;
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::pair<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T1, class T2, class T3>
+inline S& streamout(S& _out, std::tuple<T1, T2, T3> const& _t)
+{
+	_out << "(" << std::get<0>(_t) << "," << std::get<1>(_t) << "," << std::get<2>(_t) << ")";
+	return _out;
+}
+template <class T1, class T2, class T3> inline std::ostream& operator<<(std::ostream& _out, std::tuple<T1, T2, T3> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::map<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : "; ") << p.first << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::map<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::unordered_map<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : "; ") << p.first << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::unordered_map<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+S& streamout(S& _out, std::set<T> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : ", ") << p;
+	return _out << " }";
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::set<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+S& streamout(S& _out, std::multiset<T> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : ", ") << p;
+	return _out << " }";
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::multiset<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::multimap<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	T l;
+	int i = 0;
+	for (auto p: _v)
+		if (!(i++))
+			_out << "{ " << (l = p.first) << " => " << p.second;
+		else if (l == p.first)
+			_out << ", " << p.second;
+		else
+			_out << "; " << (l = p.first) << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p) { if (_p) _out << "@" << (*_p); else _out << "nullptr"; return _out; }
 
 }

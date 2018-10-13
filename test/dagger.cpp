@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file dagger.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -30,19 +30,17 @@ int daggerTest()
 {
 	// Test dagger
 	{
-		Dagger d;
 		auto s = steady_clock::now();
-		cout << hex << d.eval((h256)1, (h256)0);
+		cout << hex << Dagger().eval((h256)1, (h256)0);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
-		cout << hex << d.eval((h256)1, (h256)1);
+		cout << hex << Dagger().eval((h256)1, (h256)1);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
 	}
 	{
-		Dagger d;
 		auto s = steady_clock::now();
-		cout << hex << d.eval((h256)1, (h256)0);
+		cout << hex << Dagger().eval((h256)1, (h256)0);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
-		cout << hex << d.eval((h256)1, (h256)1);
+		cout << hex << Dagger().eval((h256)1, (h256)1);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
 	}
 	return 0;

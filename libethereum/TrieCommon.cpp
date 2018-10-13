@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file TrieCommon.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -110,14 +110,14 @@ std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint
 	return ret;
 }
 
-byte uniqueInUse(RLP const& _orig, byte _except)
+byte uniqueInUse(RLP const& _orig, byte except)
 {
 	byte used = 255;
 	for (unsigned i = 0; i < 17; ++i)
-		if (i != _except && !_orig[i].isEmpty())
+		if (i != except && !_orig[i].isEmpty())
 		{
 			if (used == 255)
-				used = i;
+				used = (byte)i;
 			else
 				return 255;
 		}

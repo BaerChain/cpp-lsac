@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file TrieCommon.h
  * @author Gav Wood <i@gavwood.com>
@@ -66,7 +66,7 @@ inline bool isLeaf(RLP const& _twoItem)
 {
 	assert(_twoItem.isList() && _twoItem.itemCount() == 2);
 	auto pl = _twoItem[0].payload();
-	return (pl[0] & 0x20);
+	return (pl[0] & 0x20) != 0;
 }
 
 inline NibbleSlice keyOf(bytesConstRef _hpe)
@@ -84,7 +84,7 @@ inline NibbleSlice keyOf(RLP const& _twoItem)
 	return keyOf(_twoItem[0].payload());
 }
 
-byte uniqueInUse(RLP const& _orig, byte _except);
+byte uniqueInUse(RLP const& _orig, byte except);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf = false, int _begin = 0, int _end = -1);
 std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, uint _offset);
 std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _leaf);

@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -38,14 +38,13 @@
 using namespace std;
 using namespace eth;
 
+//#define ETH_ADDRESS_DEBUG 1
+
 // Logging
 int eth::g_logVerbosity = 8;
 map<type_info const*, bool> eth::g_logOverride;
 
-#if !defined(__APPLE__)
-thread_local char const* eth::t_logThreadName = "???";
-static char const* g_mainThreadName = (eth::t_logThreadName = "main");
-#endif
+ThreadLocalLogName eth::t_logThreadName("main");
 
 void eth::simpleDebugOut(std::string const& _s, char const*)
 {
@@ -192,13 +191,13 @@ KeyPair KeyPair::create()
 {
 	secp256k1_start();
 	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<byte> d(0, 255);
+	std::uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
 		h256 sec;
-		for (uint i = 0; i < 32; ++i)
-			sec[i] = d(s_eng);
+		for (unsigned i = 0; i < 32; ++i)
+			sec[i] = (byte)d(s_eng);
 
 		KeyPair ret(sec);
 		if (ret.address())

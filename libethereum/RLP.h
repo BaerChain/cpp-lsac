@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file RLP.h
  * @author Gav Wood <i@gavwood.com>
@@ -175,7 +175,7 @@ public:
 	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
-	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
+	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
 	enum
@@ -229,13 +229,13 @@ public:
 	/// @returns the data payload. Valid for all types.
 	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize()); }
 
+	/// @returns the theoretical size of this item.
+	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
+	uint actualSize() const;
+
 private:
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
-
-	/// @returns the theoretical size of this item; if it's a list, will require a deep traversal which could take a while.
-	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
-	uint actualSize() const;
 
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
 	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
@@ -288,7 +288,7 @@ public:
 	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Appends a list.
-	RLPStream& appendList(unsigned _items);
+	RLPStream& appendList(uint _items);
 	RLPStream& appendList(bytesConstRef _rlp);
 	RLPStream& appendList(bytes const& _rlp) { return appendList(&_rlp); }
 	RLPStream& appendList(RLPStream const& _s) { return appendList(&_s.out()); }

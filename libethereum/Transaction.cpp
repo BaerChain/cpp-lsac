@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Transaction.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -26,6 +26,8 @@
 using namespace std;
 using namespace eth;
 
+#define ETH_ADDRESS_DEBUG 0
+
 Transaction::Transaction(bytesConstRef _rlpData)
 {
 	RLP rlp(_rlpData);
@@ -36,6 +38,18 @@ Transaction::Transaction(bytesConstRef _rlpData)
 	for (auto const& i: rlp[3])
 		data.push_back(i.toInt<u256>());
 	vrs = Signature{ rlp[4].toInt<byte>(), rlp[5].toInt<u256>(), rlp[6].toInt<u256>() };
+}
+
+Address Transaction::safeSender() const noexcept
+{
+	try
+	{
+		return sender();
+	}
+	catch (...)
+	{
+		return Address();
+	}
 }
 
 Address Transaction::sender() const
