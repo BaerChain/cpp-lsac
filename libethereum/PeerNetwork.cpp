@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 5;
+static const int c_protocolVersion = 7;
 
 static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -768,6 +768,7 @@ void PeerServer::populateAddresses()
 			char host[NI_MAXHOST];
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
+			// TODO: Make exception safe when no internet.
 			auto it = r.resolve({host, "30303"});
 			bi::tcp::endpoint ep = it->endpoint();
 			bi::address ad = ep.address();
@@ -924,6 +925,9 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 		m_incomingTransactions.clear();
 
+		auto h = _bc.currentHash();
+		bool resendAll = (h != m_latestBlockSent);
+
 		// Send any new transactions.
 		for (auto j: m_peers)
 			if (auto p = j.second.lock())
@@ -931,7 +935,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				bytes b;
 				uint n = 0;
 				for (auto const& i: _tq.transactions())
-					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
 					{
 						b += i.second;
 						++n;
@@ -951,7 +955,6 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 
 		// Send any new blocks.
-		auto h = _bc.currentHash();
 		if (h != m_latestBlockSent)
 		{
 			// TODO: find where they diverge and send complete new branch.

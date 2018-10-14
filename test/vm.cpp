@@ -20,81 +20,352 @@
  * State test functions.
  */
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <secp256k1.h>
-#include <BlockChain.h>
-#include <State.h>
-#include <Defaults.h>
+#include <fstream>
+#include "../json_spirit/json_spirit_reader_template.h"
+#include "../json_spirit/json_spirit_writer_template.h"
+#include <ExtVMFace.h>
+#include <Transaction.h>
+#include <VM.h>
 #include <Instruction.h>
 using namespace std;
+using namespace json_spirit;
 using namespace eth;
 
 namespace eth
 {
+
+class FakeExtVM: public ExtVMFace
+{
+public:
+	FakeExtVM()
+	{}
+	FakeExtVM(FeeStructure const& _fees, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+		ExtVMFace(Address(), Address(), 0, u256s(), _fees, _previousBlock, _currentBlock, _currentNumber)
+	{}
+
+	u256 store(u256 _n) { return get<3>(addresses[myAddress])[_n]; }
+	void setStore(u256 _n, u256 _v) { get<3>(addresses[myAddress])[_n] = _v; }
+	void mktx(Transaction& _t)
+	{
+		if (get<0>(addresses[myAddress]) >= _t.value)
+		{
+			get<0>(addresses[myAddress]) -= _t.value;
+			get<1>(addresses[myAddress])++;
+//			get<0>(addresses[_t.receiveAddress]) += _t.value;
+			txs.push_back(_t);
+		}
+	}
+	u256 balance(Address _a) { return get<0>(addresses[_a]); }
+	void payFee(bigint _fee) { get<0>(addresses[myAddress]) = (u256)(get<0>(addresses[myAddress]) - _fee); }
+	u256 txCount(Address _a) { return get<1>(addresses[_a]); }
+	u256 extro(Address _a, u256 _pos) { return get<3>(addresses[_a])[_pos]; }
+	u256 extroPrice(Address _a) { return get<2>(addresses[_a]); }
+	void suicide(Address _a)
+	{
+		for (auto const& i: get<3>(addresses[myAddress]))
+			if (i.second)
+				get<0>(addresses[_a]) += fees.m_memoryFee;
+		get<0>(addresses[_a]) += get<0>(addresses[myAddress]);
+		addresses.erase(myAddress);
+	}
+
+	void setTransaction(Address _txSender, u256 _txValue, u256s const& _txData)
+	{
+		txSender = _txSender;
+		txValue = _txValue;
+		txData = _txData;
+	}
+	void setContract(Address _myAddress, u256 _myBalance, u256 _myNonce, u256s _myData)
+	{
+		myAddress = _myAddress;
+		set(myAddress, _myBalance, _myNonce, _myData);
+	}
+	void set(Address _a, u256 _myBalance, u256 _myNonce, u256s _myData)
+	{
+		get<0>(addresses[_a]) = _myBalance;
+		get<1>(addresses[_a]) = _myNonce;
+		get<2>(addresses[_a]) = 0;
+		for (unsigned i = 0; i < _myData.size(); ++i)
+			get<3>(addresses[_a])[i] = _myData[i];
+	}
+
+	mObject exportEnv()
+	{
+		mObject ret;
+		ret["previousHash"] = toString(previousBlock.hash);
+		ret["previousNonce"] = toString(previousBlock.nonce);
+		push(ret, "currentDifficulty", currentBlock.difficulty);
+		push(ret, "currentTimestamp", currentBlock.timestamp);
+		ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress);
+		push(ret, "feeMultiplier", fees.multiplier());
+		return ret;
+	}
+
+	void importEnv(mObject& _o)
+	{
+		previousBlock.hash = h256(_o["previousHash"].get_str());
+		previousBlock.nonce = h256(_o["previousNonce"].get_str());
+		currentBlock.difficulty = toInt(_o["currentDifficulty"]);
+		currentBlock.timestamp = toInt(_o["currentTimestamp"]);
+		currentBlock.coinbaseAddress = Address(_o["currentCoinbase"].get_str());
+		fees.setMultiplier(toInt(_o["feeMultiplier"]));
+	}
+
+	static u256 toInt(mValue const& _v)
+	{
+		switch (_v.type())
+		{
+		case str_type: return u256(_v.get_str());
+		case int_type: return (u256)_v.get_uint64();
+		case bool_type: return (u256)(uint64_t)_v.get_bool();
+		case real_type: return (u256)(uint64_t)_v.get_real();
+		default: cwarn << "Bad type for scalar: " << _v.type();
+		}
+		return 0;
+	}
+
+	static void push(mObject& o, string const& _n, u256 _v)
+	{
+		if (_v < (u256)1 << 64)
+			o[_n] = (uint64_t)_v;
+		else
+			o[_n] = toString(_v);
+	}
+
+	static void push(mArray& a, u256 _v)
+	{
+		if (_v < (u256)1 << 64)
+			a.push_back((uint64_t)_v);
+		else
+			a.push_back(toString(_v));
+	}
+
+	mObject exportState()
+	{
+		mObject ret;
+		for (auto const& a: addresses)
+		{
+			mObject o;
+			push(o, "balance", get<0>(a.second));
+			push(o, "nonce", get<1>(a.second));
+			push(o, "extroPrice", get<2>(a.second));
+
+			mObject store;
+			string curKey;
+			u256 li = 0;
+			mArray curVal;
+			for (auto const& s: get<3>(a.second))
+			{
+				if (!li || s.first > li + 8)
+				{
+					if (li)
+						store[curKey] = curVal;
+					li = s.first;
+					curKey = toString(li);
+					curVal = mArray();
+				}
+				else
+					for (; li != s.first; ++li)
+						curVal.push_back(0);
+				push(curVal, s.second);
+				++li;
+			}
+			if (li)
+			{
+				store[curKey] = curVal;
+				o["store"] = store;
+			}
+			ret[toString(a.first)] = o;
+		}
+		return ret;
+	}
+
+	void importState(mObject& _o)
+	{
+		for (auto const& i: _o)
+		{
+			mObject o = i.second.get_obj();
+			auto& a = addresses[Address(i.first)];
+			get<0>(a) = toInt(o["balance"]);
+			get<1>(a) = toInt(o["nonce"]);
+			get<2>(a) = toInt(o["extroPrice"]);
+			if (o.count("store"))
+				for (auto const& j: o["store"].get_obj())
+				{
+					u256 adr(j.first);
+					for (auto const& k: j.second.get_array())
+						get<3>(a)[adr++] = toInt(k);
+				}
+			if (o.count("code"))
+			{
+				u256s d = compileLisp(o["code"].get_str());
+				for (unsigned i = 0; i < d.size(); ++i)
+					get<3>(a)[(u256)i] = d[i];
+			}
+		}
+	}
+
+	mObject exportExec()
+	{
+		mObject ret;
+		ret["address"] = toString(myAddress);
+		ret["sender"] = toString(txSender);
+		push(ret, "value", txValue);
+		mArray d;
+		for (auto const& i: txData)
+			push(d, i);
+		ret["data"] = d;
+		return ret;
+	}
+
+	void importExec(mObject& _o)
+	{
+		myAddress = Address(_o["address"].get_str());
+		txSender = Address(_o["sender"].get_str());
+		txValue = toInt(_o["value"]);
+		for (auto const& j: _o["data"].get_array())
+			txData.push_back(toInt(j));
+	}
+
+	mArray exportTxs()
+	{
+		mArray ret;
+		for (Transaction const& tx: txs)
+		{
+			mObject o;
+			o["destination"] = toString(tx.receiveAddress);
+			push(o, "value", tx.value);
+			mArray d;
+			for (auto const& i: tx.data)
+				push(d, i);
+			o["data"] = d;
+			ret.push_back(o);
+		}
+		return ret;
+	}
+
+	void importTxs(mArray& _txs)
+	{
+		for (mValue& v: _txs)
+		{
+			auto tx = v.get_obj();
+			Transaction t;
+			t.receiveAddress = Address(tx["destination"].get_str());
+			t.value = toInt(tx["value"]);
+			for (auto const& j: tx["data"].get_array())
+				t.data.push_back(toInt(j));
+			txs.push_back(t);
+		}
+	}
+
+	void reset(u256 _myBalance, u256 _myNonce, u256s _myData)
+	{
+		txs.clear();
+		addresses.clear();
+		set(myAddress, _myBalance, _myNonce, _myData);
+	}
+
+	map<Address, tuple<u256, u256, u256, map<u256, u256>>> addresses;
+	Transactions txs;
+};
+
 template <> class UnitTest<1>
 {
 public:
 	int operator()()
 	{
-		c_genesisDifficulty = (u256)1;
+		json_spirit::mValue v;
+		string s = asString(contents("/home/gav/Projects/cpp-ethereum/test/vmtests.json"));
+		cout << s << endl;
+		json_spirit::read_string(s, v);
 
-		string tmpDir = (boost::filesystem::temp_directory_path() / "vmTest").string();
-		KeyPair p = KeyPair::create();
-		Overlay o(State::openDB(tmpDir, true));
-		State s(p.address(), o);
-		BlockChain bc(tmpDir, true);
+		doTests(v, true);
 
-		cout << s;
+		cout << json_spirit::write_string(v, true) << endl;
 
-		s.commitToMine(bc);
-		s.mine(1000000);
-		bc.attemptImport(s.blockData(), o);
-		s.sync(bc);
+		bool passed = doTests(v, false);
 
-		cout << s;
+		return passed ? 0 : 1;
+	}
 
-		Transaction c;
+	bool doTests(json_spirit::mValue& v, bool _fillin)
+	{
+		bool passed = true;
+		for (auto& i: v.get_obj())
+		{
+			cnote << i.first;
+			mObject& o = i.second.get_obj();
 
-		c.receiveAddress = Address();
-		c.nonce = 0;
-		c.data = assemble("txsender sload txvalue add txsender sstore stop");
-		// (sstore (add (txvalue (sload txsender))))
-		c.value = ether;
-		c.sign(p.secret());
-		s.execute(c.rlp());
-		Address ca = right160(c.sha3());
+			VM vm;
+			FakeExtVM fev;
+			fev.importEnv(o["env"].get_obj());
+			fev.importState(o["pre"].get_obj());
 
-		cout << s;
+			if (_fillin)
+				o["pre"] = mValue(fev.exportState());
 
-		s.commitToMine(bc);
-		s.mine(1000000);
-		bc.attemptImport(s.blockData(), o);
-		s.sync(bc);
+			for (auto i: o["exec"].get_array())
+			{
+				fev.importExec(i.get_obj());
+				vm.go(fev);
+			}
+			if (_fillin)
+			{
+				o["post"] = mValue(fev.exportState());
+				o["txs"] = fev.exportTxs();
+			}
+			else
+			{
+				FakeExtVM test;
+				test.importState(o["post"].get_obj());
+				test.importTxs(o["txs"].get_array());
+				if (test.addresses != fev.addresses)
+				{
+					cwarn << "Test failed: state different.";
+					passed = false;
+				}
+				if (test.txs != fev.txs)
+				{
+					cwarn << "Test failed: tx list different:";
+					cwarn << test.txs;
+					cwarn << fev.txs;
+					passed = false;
+				}
+			}
+		}
+		return passed;
+	}
 
-		cout << s;
+	string makeTestCase()
+	{
+		json_spirit::mObject o;
 
-//		cout << s.m_db;
+		VM vm;
+		BlockInfo pb;
+		pb.hash = sha3("previousHash");
+		pb.nonce = sha3("previousNonce");
+		BlockInfo cb = pb;
+		cb.difficulty = 256;
+		cb.timestamp = 1;
+		cb.coinbaseAddress = toAddress(sha3("coinbase"));
+		FeeStructure fees;
+		fees.setMultiplier(1);
+		FakeExtVM fev(fees, pb, cb, 0);
+		fev.setContract(toAddress(sha3("contract")), ether, 0, compileLisp("(suicide (txsender))"));
+		o["env"] = fev.exportEnv();
+		o["pre"] = fev.exportState();
+		fev.setTransaction(toAddress(sha3("sender")), ether, u256s());
+		mArray execs;
+		execs.push_back(fev.exportExec());
+		o["exec"] = execs;
+		vm.go(fev);
+		o["post"] = fev.exportState();
+		o["txs"] = fev.exportTxs();
 
-		c.receiveAddress = ca;
-		c.nonce = 1;
-		c.data = {};
-		c.value = 69 * wei;
-		c.sign(p.secret());
-		s.execute(c.rlp());
-
-		cout << s;
-
-		s.commitToMine(bc);
-		s.mine();
-		bc.attemptImport(s.blockData(), o);
-		s.sync(bc);
-
-		cout << s;
-
-		return 0;
+		return json_spirit::write_string(json_spirit::mValue(o), true);
 	}
 };
+
 }
 
 int vmTest()

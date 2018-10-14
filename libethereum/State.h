@@ -32,7 +32,9 @@
 #include "AddressState.h"
 #include "Transaction.h"
 #include "TrieDB.h"
+#include "FeeStructure.h"
 #include "Dagger.h"
+#include "ExtVMFace.h"
 
 namespace eth
 {
@@ -44,23 +46,9 @@ std::map<Address, AddressState> const& genesisState();
 
 #define ETH_SENDER_PAYS_SETUP 1
 
-struct FeeStructure
-{
-	/// The fee structure. Values yet to be agreed on...
-	void setMultiplier(u256 _x);				///< The current block multiplier.
-	u256 multiplier() const;
-	u256 m_stepFee;
-	u256 m_dataFee;
-	u256 m_memoryFee;
-	u256 m_extroFee;
-	u256 m_cryptoFee;
-	u256 m_newContractFee;
-	u256 m_txFee;
-};
-
-template <unsigned T> class UnitTest {};
-
 static const std::map<u256, u256> EmptyMapU256U256;
+
+class ExtVM;
 
 /**
  * @brief Model of the current state of the ledger.
@@ -70,6 +58,8 @@ static const std::map<u256, u256> EmptyMapU256U256;
 class State
 {
 	template <unsigned T> friend class UnitTest;
+	friend class ExtVM;
+
 public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
@@ -171,7 +161,7 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_transactions; }
+	Transactions const& pending() const { return m_transactions; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -229,7 +219,8 @@ private:
 
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
-	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
@@ -253,6 +244,66 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
+class ExtVM: public ExtVMFace
+{
+public:
+	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData):
+		ExtVMFace(_myAddress, _txSender, _txValue, _txData, _s.m_fees, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s)
+	{
+		m_s.ensureCached(_myAddress, true, true);
+		m_store = &(m_s.m_cache[_myAddress].memory());
+	}
+
+	u256 store(u256 _n)
+	{
+		auto i = m_store->find(_n);
+		return i == m_store->end() ? 0 : i->second;
+	}
+	void setStore(u256 _n, u256 _v)
+	{
+		if (_v)
+		{
+#ifdef __clang__
+			auto it = m_store->find(_n);
+			if (it == m_store->end())
+				m_store->insert(make_pair(_n, _v));
+			else
+				m_store->at(_n) = _v;
+#else
+			(*m_store)[_n] = _v;
+#endif
+		}
+		else
+			m_store->erase(_n);
+	}
+
+	void payFee(bigint _f)
+	{
+		if (_f > m_s.balance(myAddress))
+			throw NotEnoughCash();
+		m_s.subBalance(myAddress, _f);
+	}
+
+	void mktx(Transaction& _t)
+	{
+		_t.nonce = m_s.transactionsFrom(myAddress);
+		m_s.executeBare(_t, myAddress);
+	}
+	u256 balance(Address _a) { return m_s.balance(_a); }
+	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
+	u256 extro(Address _a, u256 _pos) { return m_s.contractMemory(_a, _pos); }
+	u256 extroPrice(Address _a) { return 0; }
+	void suicide(Address _a)
+	{
+		m_s.addBalance(_a, m_s.balance(myAddress) + m_store->size() * fees.m_memoryFee);
+		m_s.m_cache[myAddress].kill();
+	}
+
+private:
+	State& m_s;
+	std::map<u256, u256>* m_store;
+};
+
 inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
@@ -272,7 +323,15 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 				for (auto const& j: memdb)
 				{
 					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
+					auto mFinder = mem.find(j.first);
+					if (mFinder == mem.end())
+						mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
+					else
+						mFinder->second = RLP(j.second).toInt<u256>();
+#else
 					mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
 				}
 				_out << std::endl << mem;
 			}
@@ -301,7 +360,15 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 					for (auto const& j: memdb)
 					{
 						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
+						auto mFinder = mem.find(j.first);
+						if (mFinder == mem.end())
+							mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
+						else
+							mFinder->second = RLP(j.second).toInt<u256>();
+#else
 						mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
 					}
 					_out << std::endl << mem;
 				}
