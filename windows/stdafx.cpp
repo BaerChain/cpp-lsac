@@ -14,42 +14,8 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file stdafx.cpp
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
- * Main test functions.
  */
-
-// TODO: utilise the shared testdata.
-
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int vmTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
-
-#include <BlockInfo.h>
-using namespace eth;
-
-int main(int, char**)
-{
-/*	RLPStream s;
-	BlockInfo::genesis().fillStream(s, false);
-	std::cout << RLP(s.out()) << std::endl;
-	std::cout << asHex(s.out()) << std::endl;
-	std::cout << sha3(s.out()) << std::endl;*/
-
-	hexPrefixTest();
-	rlpTest();
-	trieTest();
-	daggerTest();
-	cryptoTest();
-	vmTest();
-//	stateTest();
-//	peerTest(argc, argv);
-	return 0;
-}
 

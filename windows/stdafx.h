@@ -14,42 +14,29 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file stdafx.h
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
- * Main test functions.
  */
 
-// TODO: utilise the shared testdata.
+#pragma once
 
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int vmTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
-
-#include <BlockInfo.h>
-using namespace eth;
-
-int main(int, char**)
-{
-/*	RLPStream s;
-	BlockInfo::genesis().fillStream(s, false);
-	std::cout << RLP(s.out()) << std::endl;
-	std::cout << asHex(s.out()) << std::endl;
-	std::cout << sha3(s.out()) << std::endl;*/
-
-	hexPrefixTest();
-	rlpTest();
-	trieTest();
-	daggerTest();
-	cryptoTest();
-	vmTest();
-//	stateTest();
-//	peerTest(argc, argv);
-	return 0;
-}
-
+#include <ctime>
+#include <chrono>
+#include <array>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <set>
+#include <array>
+#include <list>
+#include <set>
+#include <string>
+#include <cassert>
+#include <sstream>
+#include <cstdint>
+#include <type_traits>
+#include <assert.h>
+#include <boost/filesystem.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/thread.hpp>
