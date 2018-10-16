@@ -24,7 +24,7 @@
 #pragma once
 
 // define version
-#define ETH_VERSION 0.3.7
+#define ETH_VERSION 0.4.0
 
 // way to many uint to size_t warnings in 32 bit build
 #ifdef _M_IX86
@@ -56,6 +56,9 @@
 
 // CryptoPP defines byte in the global namespace, so so must we.
 using byte = uint8_t;
+
+#define ETH_QUOTED_HELPER(s) #s
+#define ETH_QUOTED(s) ETH_QUOTED_HELPER(s)
 
 namespace eth
 {
@@ -145,9 +148,41 @@ public:
 	std::array<byte, N>& asArray() { return m_data; }
 	std::array<byte, N> const& asArray() const { return m_data; }
 
+	// generic std::hash compatible function object
+	struct hash
+	{
+		size_t operator()(FixedHash const& value) const
+		{
+			size_t h = 0;
+			for (auto i: value.m_data)
+				h = (h << 5 - h) + i;
+			return h;
+		}
+	};
+
 private:
 	std::array<byte, N> m_data;
 };
+
+
+// fast equality for h256
+template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
+{
+	const uint64_t* hash1 = (const uint64_t*)this->data();
+	const uint64_t* hash2 = (const uint64_t*)_other.data();
+	return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
+}
+
+// fast std::hash compatible hash function object for h256
+template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
+{
+	const uint64_t*data = (const uint64_t*)value.data();
+	uint64_t hash = data[0];
+	hash ^= data[1];
+	hash ^= data[2];
+	hash ^= data[3];
+	return (size_t)hash;
+}
 
 template <unsigned N>
 inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
@@ -180,26 +215,6 @@ using HexMap = std::map<bytes, std::string>;
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
-
-// This is the helper class for the std::unordered_map lookup; it converts the input 256bit hash into a size_t sized hash value
-// and does an exact comparison of two hash entries.
-class H256Hash
-{
-public:
-	static const size_t bucket_size = 4;
-	static const size_t min_buckets = 8;
-
-	// Compute the size_t hash of this hash
-	size_t operator()(const h256 &index) const
-	{
-		const uint64_t *data = (const uint64_t *)index.data();
-		uint64_t hash = data[0];
-		hash ^= data[1];
-		hash ^= data[2];
-		hash ^= data[3];
-		return (size_t)hash;
-	}
-};
 
 /// Logging
 class NullOutputStream
@@ -666,4 +681,10 @@ template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const
 bytes contents(std::string const& _file);
 void writeFile(std::string const& _file, bytes const& _data);
 
+}
+
+namespace std
+{
+	// forward std::hash<eth::h256> to eth::h256::hash
+	template<> struct hash<eth::h256>: eth::h256::hash {};
 }

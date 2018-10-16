@@ -16,6 +16,10 @@ public:
 class BadHexCharacter: public Exception {};
 class NotEnoughCash: public Exception {};
 
+class RLPException: public Exception {};
+class BadCast: public RLPException {};
+class BadRLP: public RLPException {};
+
 class VMException: public Exception {};
 class StepsDone: public VMException {};
 class BreakPointHit: public VMException {};
@@ -27,7 +31,7 @@ class NoSuchContract: public Exception {};
 class ContractAddressCollision: public Exception {};
 class FeeTooSmall: public Exception {};
 class InvalidSignature: public Exception {};
-class InvalidTransactionFormat: public Exception {};
+class InvalidTransactionFormat: public Exception { public: InvalidTransactionFormat(int _f, bytesConstRef _d): m_f(_f), m_d(_d.toBytes()) {} int m_f; bytes m_d; virtual std::string description() const { return "Invalid transaction format: Bad field " + toString(m_f) + " (" + asHex(m_d) + ")"; } };
 class InvalidBlockFormat: public Exception { public: InvalidBlockFormat(int _f, bytesConstRef _d): m_f(_f), m_d(_d.toBytes()) {} int m_f; bytes m_d; virtual std::string description() const { return "Invalid block format: Bad field " + toString(m_f) + " (" + asHex(m_d) + ")"; } };
 class InvalidBlockHeaderFormat: public Exception { public: InvalidBlockHeaderFormat(int _f, bytesConstRef _d): m_f(_f), m_d(_d.toBytes()) {} int m_f; bytes m_d; virtual std::string description() const { return "Invalid block header format: Bad field " + toString(m_f) + " (" + asHex(m_d) + ")"; } };
 class InvalidUnclesHash: public Exception {};
