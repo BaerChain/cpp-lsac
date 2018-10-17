@@ -22,20 +22,7 @@
 #pragma once
 
 #include <unordered_map>
-#include <secp256k1.h>
-#if WIN32
-#pragma warning(push)
-#pragma warning(disable:4244)
-#else
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#if WIN32
-#pragma warning(pop)
-#else
-#endif
+#include "CryptoHeaders.h"
 #include "Common.h"
 #include "Exceptions.h"
 #include "FeeStructure.h"
@@ -162,21 +149,29 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::DIV:
 			require(2);
+			if (!m_stack[m_stack.size() - 2])
+				return;
 			m_stack[m_stack.size() - 2] = m_stack.back() / m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::SDIV:
 			require(2);
+			if (!m_stack[m_stack.size() - 2])
+				return;
 			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
 			require(2);
+			if (!m_stack[m_stack.size() - 2])
+				return;
 			m_stack[m_stack.size() - 2] = m_stack.back() % m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::SMOD:
 			require(2);
+			if (!m_stack[m_stack.size() - 2])
+				return;
 			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;

@@ -62,7 +62,7 @@ public:
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	/// Explicitly construct, copying from a  string.
-	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex): FixedHash(_t == FromHex ? fromHex(_s) : asBytes(_s)) {}
+	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex): FixedHash(_t == FromHex ? fromHex(_s) : eth::asBytes(_s)) {}
 
 	/// Convert to arithmetic type.
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
@@ -121,7 +121,7 @@ public:
 		{
 			size_t h = 0;
 			for (auto i: value.m_data)
-				h = (h << 5 - h) + i;
+				h = (h << (5 - h)) + i;
 			return h;
 		}
 	};
