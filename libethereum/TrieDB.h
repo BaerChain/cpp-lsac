@@ -23,6 +23,7 @@
 
 #include <map>
 #include <memory>
+#include <leveldb/db.h>
 #include "Exceptions.h"
 #include "CommonEth.h"
 #include "Log.h"
@@ -82,6 +83,11 @@ private:
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
 };
+
+#if WIN32
+#pragma warning(push)
+#pragma warning(disable:4100) // disable warnings so it compiles
+#endif
 
 extern const h256 c_shaNull;
 
@@ -332,6 +338,10 @@ std::ostream& operator<<(std::ostream& _out, GenericTrieDB<DB> const& _db)
 		_out << escaped(i.first.toString(), false) << ": " << escaped(i.second.toString(), false) << std::endl;
 	return _out;
 }
+
+#if WIN32
+#pragma warning(pop)
+#endif
 
 template <class KeyType, class DB>
 class TrieDB: public GenericTrieDB<DB>

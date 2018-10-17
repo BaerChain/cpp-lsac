@@ -21,7 +21,8 @@
  */
 
 #include <fstream>
-#include "JsonSpiritHeaders.h"
+#include "../json_spirit/json_spirit_reader_template.h"
+#include "../json_spirit/json_spirit_writer_template.h"
 #include <Log.h>
 #include <RLP.h>
 using namespace std;
