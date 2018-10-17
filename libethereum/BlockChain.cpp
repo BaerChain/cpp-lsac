@@ -221,7 +221,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
-	// This might be the new best block...
+	// This might be the new last block...
 	if (td > details(m_lastBlockHash).totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
