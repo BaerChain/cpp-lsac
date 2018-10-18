@@ -41,45 +41,45 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "EXP", Instruction::EXP },
 	{ "NEG", Instruction::NEG },
 	{ "LT", Instruction::LT },
-	{ "LE", Instruction::LE },
 	{ "GT", Instruction::GT },
-	{ "GE", Instruction::GE },
 	{ "EQ", Instruction::EQ },
 	{ "NOT", Instruction::NOT },
-	{ "MYADDRESS", Instruction::MYADDRESS },
-	{ "TXSENDER", Instruction::TXSENDER },
-	{ "TXVALUE", Instruction::TXVALUE },
-	{ "TXDATAN", Instruction::TXDATAN },
-	{ "TXDATA", Instruction::TXDATA },
-	{ "BLK_PREVHASH", Instruction::BLK_PREVHASH },
-	{ "BLK_COINBASE", Instruction::BLK_COINBASE },
-	{ "BLK_TIMESTAMP", Instruction::BLK_TIMESTAMP },
-	{ "BLK_NUMBER", Instruction::BLK_NUMBER },
-	{ "BLK_DIFFICULTY", Instruction::BLK_DIFFICULTY },
-	{ "BLK_NONCE", Instruction::BLK_NONCE },
-	{ "BASEFEE", Instruction::BASEFEE },
-	{ "SHA256", Instruction::SHA256 },
-	{ "RIPEMD160", Instruction::RIPEMD160 },
-	{ "ECMUL", Instruction::ECMUL },
-	{ "ECADD", Instruction::ECADD },
-	{ "ECSIGN", Instruction::ECSIGN },
-	{ "ECRECOVER", Instruction::ECRECOVER },
-	{ "ECVALID", Instruction::ECVALID },
+	{ "AND", Instruction::AND },
+	{ "OR", Instruction::OR },
+	{ "XOR", Instruction::XOR },
+	{ "BYTE", Instruction::BYTE },
 	{ "SHA3", Instruction::SHA3 },
+	{ "ADDRESS", Instruction::ADDRESS },
+	{ "BALANCE", Instruction::BALANCE },
+	{ "ORIGIN", Instruction::ORIGIN },
+	{ "CALLER", Instruction::CALLER },
+	{ "CALLVALUE", Instruction::CALLVALUE },
+	{ "CALLDATALOAD", Instruction::CALLDATALOAD },
+	{ "CALLDATASIZE", Instruction::CALLDATASIZE },
+	{ "BASEFEE", Instruction::GASPRICE },
+	{ "PREVHASH", Instruction::PREVHASH },
+	{ "COINBASE", Instruction::COINBASE },
+	{ "TIMESTAMP", Instruction::TIMESTAMP },
+	{ "NUMBER", Instruction::NUMBER },
+	{ "DIFFICULTY", Instruction::DIFFICULTY },
+	{ "GASLIMIT", Instruction::GASLIMIT },
 	{ "PUSH", Instruction::PUSH },
 	{ "POP", Instruction::POP },
 	{ "DUP", Instruction::DUP },
 	{ "SWAP", Instruction::SWAP },
 	{ "MLOAD", Instruction::MLOAD },
 	{ "MSTORE", Instruction::MSTORE },
+	{ "MSTORE8", Instruction::MSTORE8 },
 	{ "SLOAD", Instruction::SLOAD },
 	{ "SSTORE", Instruction::SSTORE },
-	{ "JMP", Instruction::JMP },
-	{ "JMPI", Instruction::JMPI },
-	{ "IND", Instruction::IND },
-	{ "EXTRO", Instruction::EXTRO },
-	{ "BALANCE", Instruction::BALANCE },
-	{ "MKTX", Instruction::MKTX },
+	{ "JUMP", Instruction::JUMP },
+	{ "JUMPI", Instruction::JUMPI },
+	{ "PC", Instruction::PC },
+	{ "MEMSIZE", Instruction::MEMSIZE },
+	{ "GAS", Instruction::GAS },
+	{ "CREATE", Instruction::CREATE },
+	{ "CALL", Instruction::CALL },
+	{ "RETURN", Instruction::RETURN },
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
@@ -96,45 +96,45 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::EXP, { "EXP", 0, 2, 1 } },
 	{ Instruction::NEG, { "NEG", 0, 1, 1 } },
 	{ Instruction::LT, { "LT", 0, 2, 1 } },
-	{ Instruction::LE, { "LE", 0, 2, 1 } },
 	{ Instruction::GT, { "GT", 0, 2, 1 } },
-	{ Instruction::GE, { "GE", 0, 2, 1 } },
 	{ Instruction::EQ, { "EQ", 0, 2, 1 } },
 	{ Instruction::NOT, { "NOT", 0, 1, 1 } },
-	{ Instruction::MYADDRESS, { "MYADDRESS", 0, 0, 1 } },
-	{ Instruction::TXSENDER, { "TXSENDER", 0, 0, 1 } },
-	{ Instruction::TXVALUE, { "TXVALUE", 0, 0, 1 } },
-	{ Instruction::TXDATAN, { "TXDATAN", 0, 0, 1 } },
-	{ Instruction::TXDATA, { "TXDATA", 0, 1, 1 } },
-	{ Instruction::BLK_PREVHASH, { "BLK_PREVHASH", 0, 0, 1 } },
-	{ Instruction::BLK_COINBASE, { "BLK_COINBASE", 0, 0, 1 } },
-	{ Instruction::BLK_TIMESTAMP, { "BLK_TIMESTAMP", 0, 0, 1 } },
-	{ Instruction::BLK_NUMBER, { "BLK_NUMBER", 0, 0, 1 } },
-	{ Instruction::BLK_DIFFICULTY, { "BLK_DIFFICULTY", 0, 0, 1 } },
-	{ Instruction::BLK_NONCE, { "BLK_NONCE", 0, 0, 1 } },
-	{ Instruction::BASEFEE, { "BASEFEE", 0, 0, 1 } },
-	{ Instruction::SHA256, { "SHA256", 0, -1, 1 } },
-	{ Instruction::RIPEMD160, { "RIPEMD160", 0, -1, 1 } },
-	{ Instruction::ECMUL, { "ECMUL", 0, 3, 2 } },
-	{ Instruction::ECADD, { "ECADD", 0, 4, 2 } },
-	{ Instruction::ECSIGN, { "ECSIGN", 0, 2, 3 } },
-	{ Instruction::ECRECOVER, { "ECRECOVER", 0, 4, 2 } },
-	{ Instruction::ECVALID, { "ECVALID", 0, 2, 1 } },
-	{ Instruction::SHA3, { "SHA3", 0, -1, 1 } },
+	{ Instruction::ADD, { "ADD", 0, 2, 1 } },
+	{ Instruction::OR, { "OR", 0, 2, 1 } },
+	{ Instruction::XOR, { "XOR", 0, 2, 1 } },
+	{ Instruction::BYTE, { "BYTE", 0, 2, 1 } },
+	{ Instruction::SHA3, { "SHA3", 0, 2, 1 } },
+	{ Instruction::ADDRESS, { "ADDRESS", 0, 0, 1 } },
+	{ Instruction::BALANCE, { "BALANCE", 0, 1, 1 } },
+	{ Instruction::ORIGIN, { "ORIGIN", 0, 1, 1 } },
+	{ Instruction::CALLER, { "CALLER", 0, 0, 1 } },
+	{ Instruction::CALLVALUE, { "CALLVALUE", 0, 0, 1 } },
+	{ Instruction::CALLDATALOAD, { "CALLDATALOAD", 0, 1, 1 } },
+	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 1, 1 } },
+	{ Instruction::GASPRICE, { "BASEFEE", 0, 0, 1 } },
+	{ Instruction::PREVHASH, { "PREVHASH", 0, 0, 1 } },
+	{ Instruction::COINBASE, { "COINBASE", 0, 0, 1 } },
+	{ Instruction::TIMESTAMP, { "TIMESTAMP", 0, 0, 1 } },
+	{ Instruction::NUMBER, { "NUMBER", 0, 0, 1 } },
+	{ Instruction::DIFFICULTY, { "DIFFICULTY", 0, 0, 1 } },
+	{ Instruction::GASLIMIT, { "GASLIMIT", 0, 0, 1 } },
 	{ Instruction::PUSH, { "PUSH", 1, 0, 1 } },
 	{ Instruction::POP, { "POP", 0, 1, 0 } },
 	{ Instruction::DUP, { "DUP", 0, 1, 2 } },
 	{ Instruction::SWAP, { "SWAP", 0, 2, 2 } },
 	{ Instruction::MLOAD, { "MLOAD", 0, 1, 1 } },
 	{ Instruction::MSTORE, { "MSTORE", 0, 2, 0 } },
+	{ Instruction::MSTORE8, { "MSTORE8", 0, 2, 0 } },
 	{ Instruction::SLOAD, { "SLOAD", 0, 1, 1 } },
 	{ Instruction::SSTORE, { "SSTORE", 0, 2, 0 } },
-	{ Instruction::JMP, { "JMP", 0, 1, 0 } },
-	{ Instruction::JMPI, { "JMPI", 0, 2, 0 } },
-	{ Instruction::IND, { "IND", 0, 0, 1 } },
-	{ Instruction::EXTRO, { "EXTRO", 0, 2, 1 } },
-	{ Instruction::BALANCE, { "BALANCE", 0, 1, 1 } },
-	{ Instruction::MKTX, { "MKTX", 0, -3, 0 } },
+	{ Instruction::JUMP, { "JUMP", 0, 1, 0 } },
+	{ Instruction::JUMPI, { "JUMPI", 0, 2, 0 } },
+	{ Instruction::PC, { "PC", 0, 0, 1 } },
+	{ Instruction::MEMSIZE, { "MEMSIZE", 0, 0, 1 } },
+	{ Instruction::GAS, { "GAS", 0, 0, 1 } },
+	{ Instruction::CREATE, { "CREATE", 0, 3, 1 } },
+	{ Instruction::CALL, { "CALL", 0, 7, 1 } },
+	{ Instruction::RETURN, { "RETURN", 0, 2, 0 } },
 	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
 };
 
@@ -251,7 +251,7 @@ static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vec
 static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s& o_code, vector<unsigned>& o_locs)
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
-	std::map<std::string, Instruction> const c_binary = { { "<", Instruction::LT }, { "<=", Instruction::LE }, { ">", Instruction::GT }, { ">=", Instruction::GE }, { "=", Instruction::EQ }, { "!=", Instruction::NOT } };
+	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
 
@@ -356,17 +356,17 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					if (compileLispFragment(d, e, _quiet, codes[3], locs[3]) != -1)
 						return false;
 
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
 					unsigned posLocation = (unsigned)o_code.size();
 					o_locs.push_back(posLocation);
 					o_code.push_back(0);
 
-					// First fragment - predicate
-					appendCode(o_code, o_locs, codes[0], locs[0]);
-
-					// Jump to positive if true.
-					o_code.push_back(Instruction::JMPI);
+					// Jump to negative if false.
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[2], locs[2]);
@@ -376,7 +376,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					unsigned endLocation = (unsigned)o_code.size();
 					o_locs.push_back(endLocation);
 					o_code.push_back(0);
-					o_code.push_back(Instruction::JMP);
+					o_code.push_back(Instruction::JUMP);
 
 					// Third fragment - positive.
 					o_code[posLocation] = o_code.size();
@@ -403,19 +403,19 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]) != -1)
 						return false;
 
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
 					unsigned endLocation = (unsigned)o_code.size();
 					o_locs.push_back(endLocation);
 					o_code.push_back(0);
 
-					// First fragment - predicate
-					appendCode(o_code, o_locs, codes[0], locs[0]);
-
 					// Jump to end...
 					if (t == "WHEN")
 						o_code.push_back(Instruction::NOT);
-					o_code.push_back(Instruction::JMPI);
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[1], locs[1]);
@@ -443,18 +443,18 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 
 					unsigned startLocation = (unsigned)o_code.size();
 
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
 					unsigned endInsertion = (unsigned)o_code.size();
 					o_locs.push_back(endInsertion);
 					o_code.push_back(0);
 
-					// First fragment - predicate
-					appendCode(o_code, o_locs, codes[0], locs[0]);
-
 					// Jump to positive if true.
 					o_code.push_back(Instruction::NOT);
-					o_code.push_back(Instruction::JMPI);
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[1], locs[1]);
@@ -463,7 +463,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					o_code.push_back(Instruction::PUSH);
 					o_locs.push_back((unsigned)o_code.size());
 					o_code.push_back(startLocation);
-					o_code.push_back(Instruction::JMP);
+					o_code.push_back(Instruction::JUMP);
 
 					// At end now.
 					o_code[endInsertion] = o_code.size();
@@ -518,7 +518,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 								o_code.push_back(datan);
 							}
 						}
-						o_code.push_back(Instruction::MKTX);
+						o_code.push_back(Instruction::CALL);
 						outs = 0;
 					}
 				}
@@ -572,18 +572,18 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 
 						for (unsigned i = 1; i < codes.size(); ++i)
 						{
+							// Check if true - predicate
+							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+
 							// Push the false location.
 							o_code.push_back(Instruction::PUSH);
 							ends.push_back((unsigned)o_code.size());
 							o_locs.push_back(ends.back());
 							o_code.push_back(0);
 
-							// Check if true - predicate
-							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
-
 							// Jump to end...
 							o_code.push_back(Instruction::NOT);
-							o_code.push_back(Instruction::JMPI);
+							o_code.push_back(Instruction::JUMPI);
 						}
 						o_code.push_back(Instruction::POP);
 					}
@@ -626,17 +626,17 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 
 						for (unsigned i = 1; i < codes.size(); ++i)
 						{
+							// Check if true - predicate
+							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+
 							// Push the false location.
 							o_code.push_back(Instruction::PUSH);
 							ends.push_back((unsigned)o_code.size());
 							o_locs.push_back(ends.back());
 							o_code.push_back(0);
 
-							// Check if true - predicate
-							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
-
 							// Jump to end...
-							o_code.push_back(Instruction::JMPI);
+							o_code.push_back(Instruction::JUMPI);
 						}
 						o_code.push_back(Instruction::POP);
 					}
@@ -733,11 +733,11 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 									cwarn << "Expected two arguments to binary operator" << t << "; got" << totalArgs << ".";
 									break;
 								}
-								for (auto it = codes.rbegin(); it != codes.rend(); ++it)
-									appendCode(o_code, o_locs, it->first, it->second);
-								if (it->second == Instruction::NOT)
+								for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
+									appendCode(o_code, o_locs, jt->first, jt->second);
+								if (it->second.second)
 									o_code.push_back(Instruction::EQ);
-								o_code.push_back((u256)it->second);
+								o_code.push_back((u256)it->second.first);
 							}
 							else
 							{

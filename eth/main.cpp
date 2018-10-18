@@ -20,9 +20,12 @@
  * Ethereum client.
  */
 
+#include <ncurses.h>
+#undef OK
 #include <thread>
 #include <chrono>
 #include <fstream>
+#include <iostream>
 #include "Defaults.h"
 #include "Client.h"
 #include "PeerNetwork.h"
@@ -84,7 +87,6 @@ void interactiveHelp()
         << "    secret  Gives the current secret" << endl
         << "    block  Gives the current block height." << endl
         << "    balance  Gives the current balance." << endl
-        << "    peers  List the peers that are connected" << endl
         << "    transact <secret> <dest> <amount>  Executes a given transaction." << endl
         << "    send <dest> <amount>  Executes a given transaction with current secret." << endl
         << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
@@ -97,6 +99,125 @@ void version()
 	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
+
+namespace nc
+{
+
+class nc_window_streambuf: public std::streambuf
+{
+public:
+	nc_window_streambuf(WINDOW* p, std::ostream& os, unsigned long cursesAttr = 0);
+	nc_window_streambuf(WINDOW* p, unsigned long _cursesAttr = 0);
+	nc_window_streambuf(nc_window_streambuf const& _rhs);
+	virtual ~nc_window_streambuf();
+
+	nc_window_streambuf& operator=(nc_window_streambuf const& _rhs);
+
+	virtual int overflow(int c);
+	virtual int sync();
+
+private:
+	void copy(nc_window_streambuf const& _rhs);
+
+	WINDOW* m_pnl;
+	unsigned long m_flags;
+	std::ostream* m_os;
+	std::streambuf* m_old;
+};
+
+nc_window_streambuf::nc_window_streambuf(WINDOW * p, unsigned long _cursesAttr):
+	m_pnl(p),
+	m_flags(_cursesAttr),
+	m_os(0),
+	m_old(0)
+{
+	// Tell parent class that we want to call overflow() for each
+	// input char:
+	setp(0, 0);
+	setg(0, 0, 0);
+	scrollok(p, true);
+	mvwinch(p, 0, 0);
+}
+
+nc_window_streambuf::nc_window_streambuf(WINDOW* _p, std::ostream& _os, unsigned long _cursesAttr):
+	m_pnl(_p),
+	m_flags(_cursesAttr),
+	m_os(&_os),
+	m_old(_os.rdbuf())
+{
+	setp(0, 0);
+	setg(0, 0, 0);
+	_os.rdbuf(this);
+	scrollok(_p, true);
+	mvwinch(_p, 0, 0);
+}
+
+void nc_window_streambuf::copy(nc_window_streambuf const& _rhs)
+{
+	if (this != &_rhs)
+	{
+		m_pnl = _rhs.m_pnl;
+		m_flags = _rhs.m_flags;
+		m_os = _rhs.m_os;
+		m_old = _rhs.m_old;
+	}
+}
+
+nc_window_streambuf::nc_window_streambuf(nc_window_streambuf const& _rhs):
+	std::streambuf()
+{
+	copy(_rhs);
+}
+
+nc_window_streambuf& nc_window_streambuf::operator=(nc_window_streambuf const& _rhs)
+{
+	copy(_rhs);
+	return *this;
+}
+
+nc_window_streambuf::~nc_window_streambuf()
+{
+	if (m_os)
+		m_os->rdbuf(m_old);
+}
+
+int nc_window_streambuf::overflow( int c )
+{
+	int ret = c;
+	if (c != EOF)
+	{
+		int x = 0;
+		int y = 0;
+		getyx(m_pnl, y, x);
+		if (y < 1)
+			y = 1;
+		if (x < 2)
+			x = 2;
+		if (m_flags)
+		{
+			wattron(m_pnl, m_flags);
+			if (mvwaddch(m_pnl, y, x++, (chtype)c) == ERR)
+				ret = EOF;
+			wattroff(m_pnl, m_flags);
+		}
+		else if (mvwaddch(m_pnl, y, x++, (chtype)c) == ERR)
+			ret = EOF;
+	}
+	if (c == EOF) // || std::isspace(c)
+		if (sync() == EOF)
+			ret = EOF;
+	return ret;
+}
+
+int nc_window_streambuf::sync()
+{
+	if (stdscr && m_pnl)
+		return (wrefresh(m_pnl) == ERR) ? EOF : 0;
+	return EOF;
+}
+
+}
+
 
 int main(int argc, char** argv)
 {
@@ -214,159 +335,361 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
-		cout << "Ethereum (++)" << endl;
+		g_logPost = std::function<void(std::string const&, char const*)>();
+/*		cout << "Ethereum (++)" << endl;
 		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
 		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
+*/
+		/*  Initialize ncurses  */
+		const char* chr;
+		char* str = new char[255];
+		int termwidth, termheight;
+		std::string cmd;
+		WINDOW * mainwin, * consolewin, * logwin, * blockswin, * pendingwin, * contractswin, * peerswin;
+
+		if (!(mainwin = initscr()))
+		{
+			cerr << "Error initialising ncurses.";
+			return -1;
+		}
+
+		getmaxyx(mainwin, termheight, termwidth);
+		int width = termwidth, height = termheight;
+
+		nonl();
+		nocbreak();
+		timeout(30000);
+		echo();
+		keypad(mainwin, true);
+
+		logwin = newwin(height * 2 / 5 - 2, width, height * 3 / 5, 0);
+		nc::nc_window_streambuf outbuf( logwin, std::cout );
+		// nc::nc_window_streambuf errbuf( logwin, std::cerr );
+		g_logVerbosity = 1; // Force verbosity level for now
+
+		consolewin   = newwin(height * 3 / 5, width / 4, 0, 0);
+		blockswin    = newwin(height * 3 / 5, width / 4, 0, width / 4);
+		pendingwin   = newwin(height * 1 / 5, width / 4, 0, width * 2 / 4);
+		peerswin     = newwin(height * 2 / 5, width / 4, height * 1 / 5, width * 2 / 4);
+		contractswin = newwin(height * 3 / 5, width / 4, 0, width * 3 / 4);
+
+		wsetscrreg(consolewin, 1, height * 3 / 5 - 2);
+		wsetscrreg(blockswin, 1, height * 3 / 5 - 2);
+		wsetscrreg(pendingwin, 1, height * 1 / 5 - 2);
+		wsetscrreg(peerswin, 1, height * 2 / 5 - 2);
+		wsetscrreg(contractswin, 1, height * 3 / 5 - 2);
+
+		mvwaddnstr(consolewin, 4, 2, "Ethereum (++) " ETH_QUOTED(ETH_VERSION) "\n", width / 4 - 4);
+		mvwaddnstr(consolewin, 5, 2, "  Code by Gav Wood, (c) 2013, 2014.\n", width / 4 - 4);
+		mvwaddnstr(consolewin, 6, 2, "  Based on a design by Vitalik Buterin.\n", width / 4 - 4);
+
+		mvwaddnstr(consolewin, 7, 2, "Type 'netstart 30303' to start networking", width / 4 - 4);
+		mvwaddnstr(consolewin, 8, 2, "Type 'connect 54.201.28.117 30303' to connect", width / 4 - 4);
+		mvwaddnstr(consolewin, 9, 2, "Type 'exit' to quit", width / 4 - 4);
+
+		mvwprintw(mainwin, 1, 2, "> ");
+
+		wresize(mainwin, 3, width);
+		mvwin(mainwin, height - 3, 0);
+
+		wmove(mainwin, 1, 4);
 
 		if (!remoteHost.empty())
 			c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 
 		while (true)
 		{
-			cout << "> " << flush;
-			std::string cmd;
-			cin >> cmd;
+			int y = 0;
+
+			wclrtobot(pendingwin);
+			wclrtobot(peerswin);
+			wclrtobot(contractswin);
+
+			box(mainwin, 0, 0);
+			box(blockswin, 0, 0);
+			box(pendingwin, 0, 0);
+			box(peerswin, 0, 0);
+			box(consolewin, 0, 0);
+			box(contractswin, 0, 0);
+
+			mvwprintw(blockswin, 0, 2, "Blocks");
+			mvwprintw(pendingwin, 0, 2, "Pending");
+			mvwprintw(contractswin, 0, 2, "Contracts");
+
+			// Block
+			mvwprintw(consolewin, 0, 2, "Block # ");
+			eth::uint n = c.blockChain().details().number;
+			chr = toString(n).c_str();
+			mvwprintw(consolewin, 0, 10, chr);
+
+			// Address
+			mvwprintw(consolewin, 1, 2, "Address: ");
+			chr = toHex(us.address().asArray()).c_str();
+			mvwprintw(consolewin, 2, 2, chr);
+
+			// Balance
+			mvwprintw(consolewin, height * 3 / 5 - 1, 2, "Balance: ");
+			u256 balance = c.state().balance(us.address());
+			chr = toString(balance).c_str();
+			mvwprintw(consolewin, height * 3 / 5 - 1, 11, chr);
+
+			// Peers
+			mvwprintw(peerswin, 0, 2, "Peers: ");
+			chr = toString(c.peers().size()).c_str();
+			mvwprintw(peerswin, 0, 9, chr);
+
+			// Prompt
+			wmove(mainwin, 1, 4);
+			getstr(str);
+
+			string s(str);
+			istringstream iss(s);
+			iss >> cmd;
+
+			mvwprintw(mainwin, 1, 2, "> ");
+			clrtoeol();
+
+			if (s.length() > 1)
+			{
+				mvwaddstr(consolewin, height * 3 / 5 - 3, 2, "> ");
+				wclrtoeol(consolewin);
+				mvwaddnstr(consolewin, height * 3 / 5 - 3, 4, str, width - 6);
+				mvwaddch(consolewin, height * 3 / 5 - 3, width / 4 - 1, ACS_VLINE);
+			}
+
 			if (cmd == "netstart")
 			{
 				eth::uint port;
-				cin >> port;
+				iss >> port;
 				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				eth::uint port;
-				cin >> addr >> port;
+				iss >> addr >> port;
 				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
-			{
 				c.stopNetwork();
-			}
 			else if (cmd == "minestart")
-			{
 				c.startMining();
-			}
 			else if (cmd == "minestop")
-			{
 				c.stopMining();
-			}
 			else if (cmd == "address")
 			{
-				cout << endl;
-				cout << "Current address: " + toHex(us.address().asArray()) << endl;
-				cout << "===" << endl;
+				mvwaddstr(consolewin, height * 3 / 5 - 3, 2, "Current address:\n");
+				mvwaddch(consolewin, height * 3 / 5 - 3, width / 4 - 1, ACS_VLINE);
+				const char* addchr = toHex(us.address().asArray()).c_str();
+				mvwaddstr(consolewin, height * 3 / 5 - 2, 2, addchr);
 			}
 			else if (cmd == "secret")
 			{
-				cout << endl;
-				cout << "Current secret: " + toHex(us.secret().asArray()) << endl;
-				cout << "===" << endl;
+				mvwaddstr(consolewin, height * 3 / 5 - 4, 2, "Current secret:\n");
+				mvwaddch(consolewin, height * 3 / 5 - 3, width / 4 - 1, ACS_VLINE);
+				const char* addchr = toHex(us.secret().asArray()).c_str();
+				mvwaddstr(consolewin, height * 3 / 5 - 3, 2, addchr);
 			}
 			else if (cmd == "block")
 			{
 				eth::uint n = c.blockChain().details().number;
-				cout << endl;
-				cout << "Current block # " << n << endl;
-				cout << "===" << endl;
-			}
-			else if (cmd == "peers")
-			{
-				for(auto it : c.peers())
-					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
-						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
-						<< endl;
+				mvwaddstr(consolewin, height * 3 / 5 - 1, 2, "Current block # ");
+				const char* addchr = toString(n).c_str();
+				waddstr(consolewin, addchr);
 			}
 			else if (cmd == "balance")
 			{
 				u256 balance = c.state().balance(us.address());
-				cout << endl;
-				cout << "Current balance: ";
-				cout << balance << endl;
-				cout << "===" << endl;
+				mvwaddstr(consolewin, height * 3 / 5 - 1, 2, "Current balance: ");
+				const char* addchr = toString(balance).c_str();
+				waddstr(consolewin, addchr);
 			}	
 			else if (cmd == "transact")
 			{
 				string sechex;
 				string rechex;
 				u256 amount;
-				cin >> sechex >> rechex >> amount;
+				u256 gasPrice;
+				u256 gas;
+				cin >> sechex >> rechex >> amount >> gasPrice >> gas;
 				Secret secret = h256(fromHex(sechex));
 				Address dest = h160(fromHex(rechex));
-				c.transact(secret, dest, amount);
+				bytes data;
+				c.transact(secret, amount, gasPrice, dest, gas, data);
 			}
 			else if (cmd == "send")
 			{
 				string rechex;
 				u256 amount;
-				cin >> rechex >> amount;
+				u256 gasPrice;
+				u256 gas;
+				cin >> rechex >> amount >> gasPrice >> gas;
 				Address dest = h160(fromHex(rechex));
-				c.transact(us.secret(), dest, amount);
+
+				c.transact(us.secret(), amount, gasPrice, dest, gas, bytes());
 			}
 			else if (cmd == "inspect")
 			{
 				string rechex;
-				cin >> rechex;
+				iss >> rechex;
 
-				c.lock();
-				auto h = h160(fromHex(rechex));
-
-				stringstream s;
-				auto mem = c.state().contractMemory(h);
-				u256 next = 0;
-				unsigned numerics = 0;
-				bool unexpectedNumeric = false;
-				for (auto i: mem)
+				if (rechex.length() != 40)
+					cout << "Invalid address length" << endl;
+				else
 				{
-					if (next < i.first)
+					c.lock();
+					auto h = h160(fromHex(rechex));
+
+					stringstream s;
+					auto mem = c.state().contractMemory(h);
+					u256 next = 0;
+					unsigned numerics = 0;
+					bool unexpectedNumeric = false;
+					for (auto const& i: mem)
 					{
-						unsigned j;
-						for (j = 0; j <= numerics && next + j < i.first; ++j)
-							s << (j < numerics || unexpectedNumeric ? " 0" : " STOP");
-						unexpectedNumeric = false;
-						numerics -= min(numerics, j);
-						if (next + j < i.first)
-							s << "\n@" << showbase << hex << i.first << "    ";
-					}
-					else if (!next)
-					{
-						s << "@" << showbase << hex << i.first << "    ";
-					}
-					auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
-					if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
-					{
-						if (numerics)
-							numerics--;
+						if (next < i.first)
+						{
+							unsigned j;
+							for (j = 0; j <= numerics && next + j < i.first; ++j)
+								s << (j < numerics || unexpectedNumeric ? " 0" : " STOP");
+							unexpectedNumeric = false;
+							numerics -= min(numerics, j);
+							if (next + j < i.first)
+								s << "\n@" << showbase << hex << i.first << "    ";
+						}
+						else if (!next)
+							s << "@" << showbase << hex << i.first << "    ";
+						auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
+						if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
+						{
+							if (numerics)
+								numerics--;
+							else
+								unexpectedNumeric = true;
+							s << " " << showbase << hex << i.second;
+						}
 						else
-							unexpectedNumeric = true;
-						s << " " << showbase << hex << i.second;
+						{
+							auto const& ii = iit->second;
+							s << " " << ii.name;
+							numerics = ii.additional;
+						}
+						next = i.first + 1;
 					}
-					else
-					{
-						auto const& ii = iit->second;
-						s << " " << ii.name;
-						numerics = ii.additional;
-					}
-					next = i.first + 1;
+
+					string outFile = getDataDir() + "/" + rechex + ".evm";
+					ofstream ofs;
+					ofs.open(outFile, ofstream::binary);
+					ofs.write(s.str().c_str(), s.str().length());
+					ofs.close();
+
+					c.unlock();
 				}
-
-				string outFile = getDataDir() + "/" + rechex + ".evm";
-				ofstream ofs;
-				ofs.open(outFile, ofstream::binary);
-				ofs.write(s.str().c_str(), s.str().length());
-				ofs.close();
-
-				c.unlock();
 			}
 			else if (cmd == "help")
-			{
 				interactiveHelp();
-			}
 			else if (cmd == "exit")
-			{
 				break;
+
+			// Clear cmd at each pass
+			cmd = "";
+
+
+			// Blocks
+			auto const& st = c.state();
+			auto const& bc = c.blockChain();
+			y = 0;
+			for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
+			{
+				auto d = bc.details(h);
+				std::string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
+				y += 1;
+				mvwaddnstr(blockswin, y, 2, s.c_str(), width / 4 - 4);
+
+				for (auto const& i: RLP(bc.block(h))[1])
+				{
+					Transaction t(i.data());
+					std::string ss;
+					ss = t.receiveAddress ?
+						"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
+						"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
+					y += 1;
+					mvwaddnstr(blockswin, y, 2, ss.c_str(), width / 4 - 6);
+					if (y > height * 3 / 5 - 4)
+						break;
+				}
+				if (y > height * 3 / 5 - 3)
+					break;
 			}
+
+
+			// Pending
+			y = 0;
+			for (Transaction const& t: c.pending())
+			{
+				std::string ss;
+				if (t.receiveAddress)
+					ss = toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
+				else
+					ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
+				y += 1;
+				mvwaddnstr(pendingwin, y, 2, ss.c_str(), width / 4 - 6);
+				if (y > height * 3 / 5 - 4)
+					break;
+			}
+
+
+			// Contracts
+			auto acs = st.addresses();
+			y = 0;
+			for (auto n = 0; n < 2; ++n)
+				for (auto const& i: acs)
+				{
+					auto r = i.first;
+
+					if (st.isContractAddress(r))
+					{
+						std::string ss;
+						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						y += 1;
+						mvwaddnstr(contractswin, y, 2, ss.c_str(), width / 4 - 5);
+						if (y > height * 3 / 5 - 4)
+							break;
+					}
+				}
+
+			// Peers
+			y = 0;
+			std::string psc;
+			std::string pss;
+			auto cp = c.peers();
+			psc = toString(cp.size()) + " peer(s)";
+			for (PeerInfo const& i: cp)
+			{
+				pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
+				y += 1;
+				mvwaddnstr(peerswin, y, 2, pss.c_str(), width / 4 - 5);
+				if (y > height * 2 / 5 - 4)
+					break;
+			}
+
+			wrefresh(consolewin);
+			wrefresh(blockswin);
+			wrefresh(pendingwin);
+			wrefresh(peerswin);
+			wrefresh(contractswin);
+			wrefresh(mainwin);
 		}
+
+		delwin(contractswin);
+		delwin(peerswin);
+		delwin(pendingwin);
+		delwin(blockswin);
+		delwin(consolewin);
+		delwin(logwin);
+		delwin(mainwin);
+		endwin();
+		refresh();
 	}
 	else
 	{

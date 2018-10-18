@@ -42,46 +42,52 @@ enum class Instruction: uint8_t
 	EXP,
 	NEG,
 	LT,
-	LE,
 	GT,
-	GE,
 	EQ,
 	NOT,
-	MYADDRESS,			///< pushes the transaction sender
-	TXSENDER,			///< pushes the transaction sender
-	TXVALUE	,			///< pushes the transaction value
-	TXDATAN,			///< pushes the number of data items
-	TXDATA,				///< pops one item and pushes data item S[-1], or zero if index out of range
-	BLK_PREVHASH,		///< pushes the hash of the previous block (NOT the current one since that's impossible!)
-	BLK_COINBASE,		///< pushes the coinbase of the current block
-	BLK_TIMESTAMP,		///< pushes the timestamp of the current block
-	BLK_NUMBER,			///< pushes the current block number
-	BLK_DIFFICULTY,		///< pushes the difficulty of the current block
-	BLK_NONCE,
-	BASEFEE,
-	SHA256 = 0x20,
-	RIPEMD160,
-	ECMUL,
-	ECADD,
-	ECSIGN,
-	ECRECOVER,
-	ECVALID,
-	SHA3,
-	PUSH = 0x30,
+
+	AND = 0x10,
+	OR,
+	XOR,
+	BYTE,
+
+	SHA3 = 0x20,
+
+	ADDRESS = 0x30,
+	BALANCE,
+	ORIGIN,
+	CALLER,
+	CALLVALUE,
+	CALLDATALOAD,
+	CALLDATASIZE,
+	GASPRICE,
+
+	PREVHASH = 0x40,
+	COINBASE,
+	TIMESTAMP,
+	NUMBER,
+	DIFFICULTY,
+	GASLIMIT,
+
+	PUSH = 0x50,
 	POP,
 	DUP,
 	SWAP,
 	MLOAD,
 	MSTORE,
+	MSTORE8,
 	SLOAD,
 	SSTORE,
-	JMP,
-	JMPI,
-	IND,
-	EXTRO,
-	BALANCE,
-	MKTX,
-	SUICIDE = 0x3f
+	JUMP,
+	JUMPI,
+	PC,
+	MEMSIZE,
+	GAS,
+
+	CREATE = 0x60,
+	CALL,
+	RETURN,
+	SUICIDE = 0x7f
 };
 
 /// Information structure for a particular instruction.
