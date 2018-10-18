@@ -41,12 +41,14 @@ public:
 		currentNumber(_currentNumber)
 	{}
 
-	ExtVMFace(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
 		myAddress(_myAddress),
-		txSender(_txSender),
-		txValue(_txValue),
+		caller(_caller),
+		origin(_origin),
+		value(_value),
 		gasPrice(_gasPrice),
-		txData(_txData),
+		data(_data),
+		code(_code),
 		previousBlock(_previousBlock),
 		currentBlock(_currentBlock),
 		currentNumber(_currentNumber)
@@ -57,23 +59,26 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-    u256 store(u256 _n) { return 0; }
-    void setStore(u256 _n, u256 _v) {}
+	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
+	u256 store(u256 _n) { return 0; }
+	void setStore(u256 _n, u256 _v) {}
 	u256 balance(Address _a) { return 0; }
 	void subBalance(u256 _a) {}
 	u256 txCount(Address _a) { return 0; }
 	void suicide(Address _a) {}
-	h160 create(u256 _endowment, vector_ref<h256 const> _storage) { return h160(); }
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init) { return h160(); }
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _tx) { return false; }
 
 #pragma GCC diagnostic pop
 #pragma warning(pop)
 
 	Address myAddress;
-	Address txSender;
-	u256 txValue;
+	Address caller;
+	Address origin;
+	u256 value;
 	u256 gasPrice;
-	bytesConstRef txData;
+	bytesConstRef data;
+	bytesConstRef code;
 	BlockInfo previousBlock;					///< The current block's information.
 	BlockInfo currentBlock;						///< The current block's information.
 	uint currentNumber;

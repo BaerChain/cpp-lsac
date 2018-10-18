@@ -62,11 +62,6 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-
-	// Synchronise the state according to the head of the block chain.
-	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	m_preMine.sync(m_bc);
-	m_postMine = m_preMine;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -76,6 +71,11 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 		while (m_workState.load(std::memory_order_acquire) != Deleting)
 			work();
 		m_workState.store(Deleted, std::memory_order_release);
+
+		// Synchronise the state according to the head of the block chain.
+		// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+		m_preMine.sync(m_bc);
+		m_postMine = m_preMine;
 	}));
 }
 
@@ -140,16 +140,15 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest, u256 _gas, bytes _data)
+void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
-	t.isCreation = false;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
-	t.receiveAddress = _dest;
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
+	t.receiveAddress = _dest;
 	t.data = _data;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
@@ -157,19 +156,22 @@ void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest
 	m_changed = true;
 }
 
-void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _storage)
+Address Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
-	t.isCreation = true;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
-	t.storage = _storage;
+	t.gas = _gas;
+	t.receiveAddress = Address();
+	t.data = _code;
+	t.init = _init;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 	m_changed = true;
+	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
 void Client::work()

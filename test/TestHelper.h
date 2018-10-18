@@ -14,20 +14,17 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AddressState.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file TestHelper.h
+ * @author Marko Simovic <markobarko@gmail.com>
  * @date 2014
  */
 
-#include "AddressState.h"
-#include "CommonEth.h"
-using namespace std;
-using namespace eth;
+#pragma once
 
-AddressState::AddressState(u256 _balance, u256 _nonce, bytesConstRef _code):
-	m_type(AddressType::Contract),
-	m_balance(_balance),
-	m_nonce(_nonce),
-	m_isComplete(true),
-	m_code(_code.toBytes())
-{}
+namespace eth
+{
+
+void mine(Client& c, int numBlocks);
+void connectClients(Client& c1, Client& c2);
+
+}

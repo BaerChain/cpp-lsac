@@ -25,17 +25,33 @@
 #include <Client.h>
 #include <BlockChain.h>
 #include <PeerServer.h>
+#include "TestHelper.h"
 using namespace std;
 using namespace eth;
 
-void mine(Client &c, int numBlocks)
+BOOST_AUTO_TEST_CASE(mine_local_simple_tx)
 {
-	auto startBlock = c.blockChain().details().number;
+	KeyPair kp1 = KeyPair::create();
+	KeyPair kp2 = KeyPair::create();
 
-	c.startMining();
-	while(c.blockChain().details().number < startBlock + numBlocks)
-		this_thread::sleep_for(chrono::milliseconds(1000));
-	c.stopMining();
+	Client c1("TestClient1", kp1.address(), (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string());
+
+	//mine some blocks so that client 1 has a balance
+	mine(c1, 1);
+	auto c1bal = c1.state().balance(kp1.address());
+	BOOST_REQUIRE(c1bal > 0);
+
+	//send c2 some eth from c1
+	auto txAmount = c1bal / 2u;
+	auto gasPrice = 10 * szabo;
+	auto gas = eth::c_callGas;
+	c1.transact(kp1.secret(), txAmount, kp2.address(), bytes(), gas, gasPrice);
+
+	//mine some more to include the transaction on chain
+	mine(c1, 1);
+	auto c2bal = c1.state().balance(kp2.address());
+	BOOST_REQUIRE(c2bal > 0);
+	BOOST_REQUIRE(c2bal == txAmount);
 }
 
 BOOST_AUTO_TEST_CASE(mine_and_send_to_peer)
@@ -43,33 +59,59 @@ BOOST_AUTO_TEST_CASE(mine_and_send_to_peer)
 	KeyPair kp1 = KeyPair::create();
 	KeyPair kp2 = KeyPair::create();
 
-	string c1DataDir = (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string();
-	string c2DataDir = (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string();
+	Client c1("TestClient1", kp1.address(), (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string());
+	Client c2("TestClient2", kp2.address(), (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string());
 
-	Client c1("TestClient1", kp1.address(), c1DataDir);
-	Client c2("TestClient2", kp2.address(), c2DataDir);
-
-	short c1Port = 20000;
-	short c2Port = 21000;
-
-	//connect the two clients up
-	c1.startNetwork(c1Port);
-	c2.startNetwork(c2Port);
-	c2.connect("127.0.0.1", c1Port);
+	connectClients(c1, c2);
 
 	//mine some blocks so that client 1 has a balance
 	mine(c1, 1);
 	auto c1bal = c1.state().balance(kp1.address());
 	BOOST_REQUIRE(c1bal > 0);
-//	BOOST_REQUIRE(c1bal > c1.state().fee());
 
 	//send c2 some eth from c1
-//	auto txAmount = c1bal - c1.state().fee();
-//	c1.transact(kp1.secret(), c2.address(), txAmount);
+	auto txAmount = c1bal / 2u;
+	auto gasPrice = 10 * szabo;
+	auto gas = eth::c_callGas;
+	c1.transact(kp1.secret(), txAmount, kp2.address(), bytes(), gas, gasPrice);
 
 	//mine some more to include the transaction on chain
 	mine(c1, 1);
 	auto c2bal = c2.state().balance(kp2.address());
 	BOOST_REQUIRE(c2bal > 0);
-//	BOOST_REQUIRE(c2bal == txAmount);
+	BOOST_REQUIRE(c2bal == txAmount);
+}
+
+BOOST_AUTO_TEST_CASE(mine_and_send_to_peer_fee_check)
+{
+	KeyPair kp1 = KeyPair::create();
+	KeyPair kp2 = KeyPair::create();
+
+	Client c1("TestClient1", kp1.address(), (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string());
+	Client c2("TestClient2", kp2.address(), (boost::filesystem::temp_directory_path() / boost::filesystem::unique_path()).string());
+
+	connectClients(c1, c2);
+
+	//mine some blocks so that client 1 has a balance
+	mine(c1, 1);
+
+	auto c1StartBalance = c1.state().balance(kp1.address());
+	auto c2StartBalance = c2.state().balance(kp2.address());
+	BOOST_REQUIRE(c1StartBalance > 0);
+	BOOST_REQUIRE(c2StartBalance == 0);
+
+	//send c2 some eth from c1
+	auto txAmount = c1StartBalance / 2u;
+	auto gasPrice = 10 * szabo;
+	auto gas = eth::c_callGas;
+	c1.transact(kp1.secret(), txAmount, c2.address(), bytes(), gas, gasPrice);
+
+	//mine some more, this time with second client (so he can get fees from first client's tx)
+	mine(c2, 1);
+
+	auto c1EndBalance = c1.state().balance(kp1.address());
+	auto c2EndBalance = c2.state().balance(kp2.address());
+	BOOST_REQUIRE(c1EndBalance > 0);
+	BOOST_REQUIRE(c1EndBalance == c1StartBalance - txAmount - gasPrice * gas);
+	BOOST_REQUIRE(c2EndBalance > 0);
 }

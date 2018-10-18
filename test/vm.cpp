@@ -40,7 +40,7 @@ public:
 	FakeExtVM()
 	{}
 	FakeExtVM(BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
-		ExtVMFace(Address(), Address(), 0, 1, bytesConstRef(), _previousBlock, _currentBlock, _currentNumber)
+		ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytesConstRef(), _previousBlock, _currentBlock, _currentNumber)
 	{}
 
 	u256 store(u256 _n)
@@ -69,52 +69,57 @@ public:
 			txs.push_back(_t);
 		}
 	}
-	h160 create(u256 _endowment, vector_ref<h256 const> _storage)
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 	{
 		Transaction t;
 		t.value = _endowment;
-		t.isCreation = true;
-		t.storage.reserve(_storage.size());
-		for (auto i: _storage)
-			t.storage.push_back(i);
 		t.gasPrice = gasPrice;
+		t.gas = *_gas;
+		t.data = _code.toBytes();
+		t.init = _init.toBytes();
 		txs.push_back(t);
 		return right160(t.sha3(false));
 	}
 
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _txOut)
+	bool call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out)
 	{
 		Transaction t;
-		t.isCreation = false;
-		t.value = _txValue;
-		t.data = _txData.toVector();
-		t.gas = *_gas;
+		t.value = _value;
 		t.gasPrice = gasPrice;
+		t.gas = *_gas;
+		t.data = _data.toVector();
 		t.receiveAddress = _receiveAddress;
 		txs.push_back(t);
-		(void)_txOut;
+		(void)_out;
 		return true;
 	}
 
-	void setTransaction(Address _txSender, u256 _txValue, u256 _gasPrice, bytes const& _txData)
+	void setTransaction(Address _caller, u256 _value, u256 _gasPrice, bytes const& _data)
 	{
-		txSender = _txSender;
-		txValue = _txValue;
-		txData = &_txData;
+		caller = origin = _caller;
+		value = _value;
+		data = &_data;
 		gasPrice = _gasPrice;
 	}
-	void setContract(Address _myAddress, u256 _myBalance, u256 _myNonce, u256s const& _storage)
+	void setContract(Address _myAddress, u256 _myBalance, u256 _myNonce, bytes const& _code, map<u256, u256> const& _storage)
 	{
 		myAddress = _myAddress;
-		set(myAddress, _myBalance, _myNonce, _storage);
+		set(myAddress, _myBalance, _myNonce, _code, _storage);
 	}
-	void set(Address _a, u256 _myBalance, u256 _myNonce, u256s const& _storage)
+	void set(Address _a, u256 _myBalance, u256 _myNonce, bytes const& _code, map<u256, u256> const& _storage)
 	{
 		get<0>(addresses[_a]) = _myBalance;
 		get<1>(addresses[_a]) = _myNonce;
 		get<2>(addresses[_a]) = 0;
-		for (unsigned i = 0; i < _storage.size(); ++i)
-			get<3>(addresses[_a])[i] = _storage[i];
+		get<3>(addresses[_a]) = _storage;
+		get<4>(addresses[_a]) = _code;
+	}
+
+	void reset(u256 _myBalance, u256 _myNonce, map<u256, u256> const& _storage)
+	{
+		txs.clear();
+		addresses.clear();
+		set(myAddress, _myBalance, _myNonce, get<4>(addresses[myAddress]), _storage);
 	}
 
 	mObject exportEnv()
@@ -235,9 +240,9 @@ public:
 				}
 			if (o.count("code"))
 			{
-				u256s d = compileLisp(o["code"].get_str());
-				for (unsigned i = 0; i < d.size(); ++i)
-					get<3>(a)[(u256)i] = d[i];
+				bytes e;
+				bytes d = compileLisp(o["code"].get_str(), false, e);
+				get<4>(a) = d;
 			}
 		}
 	}
@@ -246,11 +251,12 @@ public:
 	{
 		mObject ret;
 		ret["address"] = toString(myAddress);
-		ret["sender"] = toString(txSender);
-		push(ret, "value", txValue);
+		ret["caller"] = toString(caller);
+		ret["origin"] = toString(origin);
+		push(ret, "value", value);
 		push(ret, "gasPrice", gasPrice);
 		mArray d;
-		for (auto const& i: txData)
+		for (auto const& i: data)
 			push(d, i);
 		ret["data"] = d;
 		return ret;
@@ -259,13 +265,14 @@ public:
 	void importExec(mObject& _o)
 	{
 		myAddress = Address(_o["address"].get_str());
-		txSender = Address(_o["sender"].get_str());
-		txValue = toInt(_o["value"]);
+		caller = Address(_o["caller"].get_str());
+		origin = Address(_o["origin"].get_str());
+		value = toInt(_o["value"]);
 		gasPrice = toInt(_o["gasPrice"]);
 		thisTxData.clear();
 		for (auto const& j: _o["data"].get_array())
 			thisTxData.push_back(toByte(j));
-		txData = &thisTxData;
+		data = &thisTxData;
 	}
 
 	mArray exportTxs()
@@ -299,14 +306,7 @@ public:
 		}
 	}
 
-	void reset(u256 _myBalance, u256 _myNonce, u256s _myData)
-	{
-		txs.clear();
-		addresses.clear();
-		set(myAddress, _myBalance, _myNonce, _myData);
-	}
-
-	map<Address, tuple<u256, u256, u256, map<u256, u256>>> addresses;
+	map<Address, tuple<u256, u256, u256, map<u256, u256>, bytes>> addresses;
 	Transactions txs;
 	bytes thisTxData;
 };
@@ -409,7 +409,8 @@ public:
 		cb.timestamp = 1;
 		cb.coinbaseAddress = toAddress(sha3("coinbase"));
 		FakeExtVM fev(pb, cb, 0);
-		fev.setContract(toAddress(sha3("contract")), ether, 0, compileLisp("(suicide (txsender))"));
+		bytes init;
+		fev.setContract(toAddress(sha3("contract")), ether, 0, compileLisp("(suicide (txsender))", false, init), map<u256, u256>());
 		o["env"] = fev.exportEnv();
 		o["pre"] = fev.exportState();
 		fev.setTransaction(toAddress(sha3("sender")), ether, finney, bytes());
