@@ -29,9 +29,12 @@
 #include "BlockChain.h"
 #include "State.h"
 #include "FileSystem.h"
+#include "Instruction.h"
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
+using eth::Instruction;
+using eth::c_instructionInfo;
 
 bool isTrue(std::string const& _m)
 {
@@ -81,8 +84,10 @@ void interactiveHelp()
         << "    secret  Gives the current secret" << endl
         << "    block  Gives the current block height." << endl
         << "    balance  Gives the current balance." << endl
+        << "    peers  List the peers that are connected" << endl
         << "    transact <secret> <dest> <amount>  Executes a given transaction." << endl
         << "    send <dest> <amount>  Executes a given transaction with current secret." << endl
+        << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
         << "    exit  Exits the application." << endl;
 }
 
@@ -213,6 +218,9 @@ int main(int argc, char** argv)
 		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
 		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
 
+		if (!remoteHost.empty())
+			c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+
 		while (true)
 		{
 			cout << "> " << flush;
@@ -262,6 +270,13 @@ int main(int argc, char** argv)
 				cout << "Current block # " << n << endl;
 				cout << "===" << endl;
 			}
+			else if (cmd == "peers")
+			{
+				for(auto it : c.peers())
+					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
+						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
+						<< endl;
+			}
 			else if (cmd == "balance")
 			{
 				u256 balance = c.state().balance(us.address());
@@ -287,6 +302,61 @@ int main(int argc, char** argv)
 				cin >> rechex >> amount;
 				Address dest = h160(fromHex(rechex));
 				c.transact(us.secret(), dest, amount);
+			}
+			else if (cmd == "inspect")
+			{
+				string rechex;
+				cin >> rechex;
+
+				c.lock();
+				auto h = h160(fromHex(rechex));
+
+				stringstream s;
+				auto mem = c.state().contractMemory(h);
+				u256 next = 0;
+				unsigned numerics = 0;
+				bool unexpectedNumeric = false;
+				for (auto i: mem)
+				{
+					if (next < i.first)
+					{
+						unsigned j;
+						for (j = 0; j <= numerics && next + j < i.first; ++j)
+							s << (j < numerics || unexpectedNumeric ? " 0" : " STOP");
+						unexpectedNumeric = false;
+						numerics -= min(numerics, j);
+						if (next + j < i.first)
+							s << "\n@" << showbase << hex << i.first << "    ";
+					}
+					else if (!next)
+					{
+						s << "@" << showbase << hex << i.first << "    ";
+					}
+					auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
+					if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
+					{
+						if (numerics)
+							numerics--;
+						else
+							unexpectedNumeric = true;
+						s << " " << showbase << hex << i.second;
+					}
+					else
+					{
+						auto const& ii = iit->second;
+						s << " " << ii.name;
+						numerics = ii.additional;
+					}
+					next = i.first + 1;
+				}
+
+				string outFile = getDataDir() + "/" + rechex + ".evm";
+				ofstream ofs;
+				ofs.open(outFile, ofstream::binary);
+				ofs.write(s.str().c_str(), s.str().length());
+				ofs.close();
+
+				c.unlock();
 			}
 			else if (cmd == "help")
 			{
