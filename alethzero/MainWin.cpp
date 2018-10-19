@@ -1,8 +1,3 @@
-#include <fstream>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <boost/process.hpp>
-#pragma GCC diagnostic pop
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -14,7 +9,6 @@
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
-#include <libethereum/VM.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -37,7 +31,6 @@ using eth::PeerInfo;
 using eth::RLP;
 using eth::Secret;
 using eth::Transaction;
-using eth::Executive;
 
 // functions
 using eth::toHex;
@@ -59,10 +52,6 @@ using eth::g_logPost;
 using eth::g_logVerbosity;
 using eth::c_instructionInfo;
 
-// Horrible global for the mainwindow. Needed for the QEthereums to find the Main window which acts as multiplexer for now.
-// Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
-Main* g_main = nullptr;
-
 static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
@@ -72,7 +61,7 @@ static void initUnits(QComboBox* _b)
 string htmlDump(bytes const& _b, unsigned _w = 8)
 {
 	stringstream ret;
-	ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
+	ret << "<pre>";
 	for (unsigned i = 0; i < _b.size(); i += _w)
 	{
 		ret << hex << setw(4) << setfill('0') << i << " ";
@@ -92,57 +81,12 @@ string htmlDump(bytes const& _b, unsigned _w = 8)
 	return ret.str();
 }
 
-Address c_config = Address("5620133321fcac7f15a5c570016f6cb6dc263f9d");
-
-using namespace boost::process;
-
-string findSerpent()
-{
-	string ret;
-	vector<string> paths = { ".", "..", "../cpp-ethereum", "../../cpp-ethereum", "/usr/local/bin", "/usr/bin/" };
-	for (auto i: paths)
-		if (!ifstream(i + "/serpent_cli.py").fail())
-		{
-			ret = i + "/serpent_cli.py";
-			break;
-		}
-	if (ret.empty())
-		cwarn << "Serpent compiler not found. Please install into the same path as this executable.";
-	return ret;
-}
-
-bytes compileSerpent(string const& _code)
-{
-	static const string exec = findSerpent();
-	if (exec.empty())
-		return bytes();
-
-	vector<string> args = vector<string>({"serpent_cli.py", "-b", "compile"});
-	context ctx;
-	ctx.environment = self::get_environment();
-	ctx.stdin_behavior = capture_stream();
-	ctx.stdout_behavior = capture_stream();
-	child c = launch(exec, args, ctx);
-	postream& os = c.get_stdin();
-	pistream& is = c.get_stdout();
-
-	os << _code;
-	os.close();
-
-	string hex;
-	int i;
-	while ((i = is.get()) != -1 && i != '\n')
-		hex.push_back(i);
-
-	return fromHex(hex);
-}
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
-	g_main = this;
-
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
@@ -165,8 +109,6 @@ Main::Main(QWidget *parent) :
 		m_servers.push_back("54.201.28.117:30303");
 	else if (pocnumber == 4)
 		m_servers.push_back("54.72.31.55:30303");
-	else if (pocnumber == 5)
-		m_servers.push_back("54.201.28.117:30303");
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
@@ -188,29 +130,11 @@ Main::Main(QWidget *parent) :
 	ui->valueUnits->setCurrentIndex(6);
 	ui->gasPriceUnits->setCurrentIndex(4);
 	ui->gasPrice->setValue(10);
-	on_destination_currentTextChanged();
+	on_destination_textChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockCount);
-
-	connect(ui->webView, &QWebView::titleChanged, [=]()
-	{
-		ui->tabWidget->setTabText(0, ui->webView->title());
-	});
-
-	connect(ui->webView, &QWebView::loadFinished, [=]()
-	{
-		this->changed();
-	});
-
-	QWebFrame* f = ui->webView->page()->currentFrame();
-	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
-		f->addToJavaScriptWindowObject("eth", new QEthereum(this, m_client.get(), owned()), QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
-	});
 
 	readSettings();
 	refresh();
@@ -261,9 +185,6 @@ QString Main::render(eth::Address _a) const
 
 Address Main::fromString(QString const& _a) const
 {
-	if (_a == "(Create Contract)")
-		return Address();
-
 	string sn = _a.toStdString();
 	if (sn.size() > 32)
 		sn.resize(32);
@@ -348,13 +269,6 @@ void Main::readSettings()
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("NameReg", "").toString());
-	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
-	on_urlEdit_editingFinished();
-}
-
-void Main::on_urlEdit_editingFinished()
-{
-	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::on_nameReg_textChanged()
@@ -392,8 +306,6 @@ void Main::refresh(bool _override)
 	bool c = m_client->changed();
 	if (c || _override)
 	{
-		changed();
-
 		auto d = m_client->blockChain().details();
 		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
@@ -412,20 +324,8 @@ void Main::refresh(bool _override)
 					if (st.isContractAddress(i.first))
 						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
 							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-
-					if (r.contains('('))
-					{
-						// A namereg address
-						QString s = pretty(i.first);
-						if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
-							ui->destination->addItem(s);
-					}
 				}
 			}
-
-		for (int i = 0; i < ui->destination->count(); ++i)
-			if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
-				ui->destination->removeItem(i--);
 
 		ui->transactionQueue->clear();
 		for (Transaction const& t: m_client->pending())
@@ -482,7 +382,7 @@ void Main::refresh(bool _override)
 		ui->ourAccounts->clear();
 		u256 totalBalance = 0;
 		u256 totalGavCoinBalance = 0;
-		Address gavCoin = fromString("GavCoin");
+		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
 		for (auto i: m_myKeys)
 		{
 			u256 b = st.balance(i.address());
@@ -500,7 +400,7 @@ void Main::refresh(bool _override)
 
 void Main::ourAccountsRowsMoved()
 {
-	QList<KeyPair> myKeys;
+	QVector<KeyPair> myKeys;
 	for (int i = 0; i < ui->ourAccounts->count(); ++i)
 	{
 		auto hba = ui->ourAccounts->item(i)->data(Qt::UserRole).toByteArray();
@@ -592,8 +492,8 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto storage = state().contractStorage(h);
-		for (auto const& i: storage)
+		auto mem = state().contractStorage(h);
+		for (auto const& i: mem)
 			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
 		s << "<h4>Body Code</h4>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
@@ -633,10 +533,10 @@ void Main::on_contracts_doubleClicked()
 	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
-void Main::on_destination_currentTextChanged()
+void Main::on_destination_textChanged()
 {
-	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
-		if (Address a = fromString(ui->destination->currentText()))
+	if (ui->destination->text().size())
+		if (Address a = fromString(ui->destination->text()))
 			ui->calculatedName->setText(render(a));
 		else
 			ui->calculatedName->setText("Unknown Address");
@@ -650,20 +550,9 @@ void Main::on_data_textChanged()
 {
 	if (isCreation())
 	{
-		QString code = ui->data->toPlainText();
+		string code = ui->data->toPlainText().toStdString();
 		m_init.clear();
-		auto init = code.indexOf("init:");
-		auto body = code.indexOf("body:");
-		if (body == -1 && init == -1)
-			m_data = compileLisp(code.toStdString(), true, m_init);
-		else
-		{
-			init = (init == -1 ? 0 : (init + 5));
-			int initSize = (body == -1 ? code.size() : (body - init));
-			body = (body == -1 ? code.size() : (body + 5));
-			m_init = compileSerpent(code.mid(init, initSize).trimmed().toStdString());
-			m_data = compileSerpent(code.mid(body).trimmed().toStdString());
-		}
+		m_data = compileLisp(code, true, m_init);
 		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
 		if (!ui->gas->isEnabled())
@@ -676,34 +565,34 @@ void Main::on_data_textChanged()
 		QString s = ui->data->toPlainText();
 		while (s.size())
 		{
-			QRegExp r("(@|\\$)?\"(.*)\"(.*)");
-			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(.*)");
+			QRegExp r("@?\"(.*)\"(.*)");
+			QRegExp h("@?(0x)?(([a-fA-F0-9][a-fA-F0-9])+)(.*)");
 			if (r.exactMatch(s))
 			{
-				for (auto i: r.cap(2))
+				for (auto i: r.cap(1))
 					m_data.push_back((byte)i.toLatin1());
-				if (r.cap(1) != "$")
-					for (int i = r.cap(2).size(); i < 32; ++i)
+				if (s[0] == '@')
+					for (int i = r.cap(1).size(); i < 32; ++i)
 						m_data.push_back(0);
 				else
 					m_data.push_back(0);
-				s = r.cap(3);
+				s = r.cap(2);
 			}
 			else if (h.exactMatch(s))
 			{
-				bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
-				if (h.cap(1) != "$")
+				bytes bs = fromHex(h.cap(2).toStdString());
+				if (s[0] == '@')
 					for (auto i = bs.size(); i < 32; ++i)
 						m_data.push_back(0);
 				for (auto b: bs)
 					m_data.push_back(b);
-				s = h.cap(5);
+				s = h.cap(4);
 			}
 			else
 				s = s.mid(1);
 		}
 		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
-		if (m_client->postState().isContractAddress(fromString(ui->destination->currentText())))
+		if (m_client->postState().isContractAddress(fromString(ui->destination->text())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
@@ -723,7 +612,7 @@ void Main::on_data_textChanged()
 
 bool Main::isCreation() const
 {
-	return ui->destination->currentText().isEmpty() || ui->destination->currentText() == "(Create Contract)";
+	return ui->destination->text().isEmpty()/* || !ui->destination->text().toInt()*/;
 }
 
 u256 Main::fee() const
@@ -823,7 +712,6 @@ void Main::on_mine_triggered()
 
 void Main::on_send_clicked()
 {
-	debugFinished();
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
@@ -834,59 +722,8 @@ void Main::on_send_clicked()
 			if (isCreation())
 				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
 			else
-				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+				m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
 			refresh();
-			return;
-		}
-	m_client->unlock();
-	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
-}
-
-void Main::on_debug_clicked()
-{
-	debugFinished();
-	u256 totalReq = value() + fee();
-	m_client->lock();
-	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
-		{
-			m_client->unlock();
-			Secret s = i.secret();
-			m_client->lock();
-			m_executiveState = state();
-			m_client->unlock();
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-			Transaction t;
-			t.nonce = m_executiveState.transactionsFrom(toAddress(s));
-			t.value = value();
-			t.gasPrice = gasPrice();
-			t.gas = ui->gas->value();
-			t.data = m_data;
-			if (isCreation())
-			{
-				t.receiveAddress = Address();
-				t.init = m_init;
-			}
-			else
-			{
-				t.receiveAddress = fromString(ui->destination->currentText());
-				t.data = m_data;
-			}
-			t.sign(s);
-			auto r = t.rlp();
-			m_currentExecution->setup(&r);
-
-			m_pcWarp.clear();
-			m_history.clear();
-			bool ok = true;
-			while (ok)
-			{
-				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress)}));
-				ok = !m_currentExecution->go(1);
-			}
-			initDebugger();
-			m_currentExecution.reset();
-			updateDebugger();
 			return;
 		}
 	m_client->unlock();
@@ -897,84 +734,6 @@ void Main::on_create_triggered()
 {
 	m_myKeys.append(KeyPair::create());
 	m_keysChanged = true;
-}
-
-void Main::on_debugStep_triggered()
-{
-	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
-}
-
-void Main::debugFinished()
-{
-	m_pcWarp.clear();
-	m_history.clear();
-	ui->debugCode->clear();
-	ui->debugStack->clear();
-	ui->debugMemory->setHtml("");
-	ui->debugStorage->setHtml("");
-	ui->debugStateInfo->setText("");
-	ui->send->setEnabled(true);
-	ui->debugStep->setEnabled(false);
-	ui->debugPanel->setEnabled(false);
-}
-
-void Main::initDebugger()
-{
-	ui->send->setEnabled(false);
-	ui->debugStep->setEnabled(true);
-	ui->debugPanel->setEnabled(true);
-	ui->debugCode->setEnabled(false);
-	ui->debugTimeline->setMinimum(0);
-	ui->debugTimeline->setMaximum(m_history.size() - 1);
-	ui->debugTimeline->setValue(0);
-
-	QListWidget* dc = ui->debugCode;
-	dc->clear();
-	if (m_currentExecution)
-	{
-		for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
-		{
-			byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
-			QString s = c_instructionInfo.at((Instruction)b).name;
-			m_pcWarp[i] = dc->count();
-			ostringstream out;
-			out << hex << setw(4) << setfill('0') << i;
-			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
-			{
-				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
-				i += bc;
-			}
-			dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-		}
-
-	}
-}
-
-void Main::on_debugTimeline_valueChanged()
-{
-	updateDebugger();
-}
-
-void Main::updateDebugger()
-{
-	QListWidget* ds = ui->debugStack;
-	ds->clear();
-
-	WorldState const& ws = m_history[ui->debugTimeline->value()];
-
-	for (auto i: ws.stack)
-		ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
-	ui->debugMemory->setHtml(QString::fromStdString(htmlDump(ws.memory, 16)));
-	ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
-	ostringstream ss;
-	ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
-	ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
-
-	stringstream s;
-	for (auto const& i: ws.storage)
-		s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-	ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 }
 
 // extra bits needed to link on VS
