@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "FixedHash.h"
+#include <libethcore/Common.h>
+#include <libethcore/FixedHash.h>
 
 namespace eth
 {
@@ -101,37 +101,13 @@ public:
 	/// Retrieve the associated address of the public key.
 	Address const& address() const { return m_address; }
 
+	bool operator==(KeyPair const& _c) const { return m_secret == _c.m_secret; }
+	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
+
 private:
 	Secret m_secret;
 	Public m_public;
 	Address m_address;
 };
-
-
-// SHA-3 convenience routines.
-
-/// Calculate SHA3-256 hash of the given input and load it into the given output.
-void sha3(bytesConstRef _input, bytesRef _output);
-
-/// Calculate SHA3-256 hash of the given input, possibly interpreting it as nibbles, and return the hash as a string filled with binary data.
-std::string sha3(std::string const& _input, bool _isNibbles);
-
-/// Calculate SHA3-256 hash of the given input, returning as a byte array.
-bytes sha3Bytes(bytesConstRef _input);
-
-/// Calculate SHA3-256 hash of the given input (presented as a binary string), returning as a byte array.
-inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::string*)&_input); }
-
-/// Calculate SHA3-256 hash of the given input, returning as a byte array.
-inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
-
-/// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
-h256 sha3(bytesConstRef _input);
-
-/// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
-inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
-
-/// Calculate SHA3-256 hash of the given input (presented as a binary-filled string), returning as a 256-bit hash.
-inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
 
 }

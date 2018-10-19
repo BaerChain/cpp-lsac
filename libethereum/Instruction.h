@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "Common.h"
+#include <libethcore/Common.h>
 
 namespace eth
 {
@@ -60,6 +60,9 @@ enum class Instruction: uint8_t
 	CALLVALUE,
 	CALLDATALOAD,
 	CALLDATASIZE,
+	CALLDATACOPY,
+	CODESIZE,
+	CODECOPY,
 	GASPRICE,
 
 	PREVHASH = 0x40,
@@ -145,5 +148,7 @@ std::string disassemble(bytes const& _mem);
 
 /// Compile a Low-level Lisp-like Language program into EVM-code.
 bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
+
+unsigned pushLiteral(bytes& o_code, u256 _literalValue);
 
 }

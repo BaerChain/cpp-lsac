@@ -22,8 +22,8 @@
 #pragma once
 
 #include <mutex>
+#include <libethcore/Log.h>
 #include "CommonEth.h"
-#include "Log.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
 
@@ -58,6 +58,7 @@ class Overlay;
 
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
+class FutureTime: public std::exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };

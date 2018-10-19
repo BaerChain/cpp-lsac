@@ -64,17 +64,17 @@ public:
 
 	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-	u256 runFee() const { return m_runFee; }
 	u256 gas() const { return m_gas; }
+	u256 curPC() const { return m_curPC; }
+
+	bytes const& memory() const { return m_temp; }
+	u256s const& stack() const { return m_stack; }
 
 private:
 	u256 m_gas = 0;
 	u256 m_curPC = 0;
-	u256 m_nextPC = 1;
-	uint64_t m_stepCount = 0;
 	bytes m_temp;
-	std::vector<u256> m_stack;
-	u256 m_runFee = 0;
+	u256s m_stack;
 };
 
 }
@@ -82,10 +82,9 @@ private:
 // INLINE:
 template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 {
-	for (bool stopped = false; !stopped && _steps--; m_curPC = m_nextPC, m_nextPC = m_curPC + 1)
+	u256 nextPC = m_curPC + 1;
+	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
 	{
-		m_stepCount++;
-
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
@@ -134,6 +133,14 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			runGas = c_sha3Gas;
 			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 2];
 			break;
+		case Instruction::CALLDATACOPY:
+			require(3);
+			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			break;
+		case Instruction::CODECOPY:
+			require(3);
+			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			break;
 
 		case Instruction::BALANCE:
 			runGas = c_balanceGas;
@@ -148,19 +155,10 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::CREATE:
 		{
 			require(3);
-
-			u256 gas = (unsigned)m_stack[m_stack.size() - 1];
 			unsigned inOff = (unsigned)m_stack[m_stack.size() - 2];
 			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
-
-			unsigned wc = std::min(inSize / 32 * 32 + inOff, (unsigned)m_temp.size());
-			unsigned nonZero = 0;
-			for (unsigned i = inOff; i < wc; i += 32)
-				if (!!*(h256*)(m_temp.data() + inOff))
-					nonZero++;
-
-			runGas += c_createGas + nonZero * c_sstoreGas + gas;
+			runGas += c_createGas;
 			break;
 		}
 
@@ -206,41 +204,34 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::DIV:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			m_stack[m_stack.size() - 2] = m_stack.back() / m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() / m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SDIV:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2];
+			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			m_stack[m_stack.size() - 2] = m_stack.back() % m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() % m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SMOD:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2];
+			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
 		{
 			// TODO: better implementation?
 			require(2);
-			auto n = m_stack.back();
+			auto base = m_stack.back();
 			auto x = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
+			u256 n = 1;
 			for (u256 i = 0; i < x; ++i)
-				n *= n;
+				n = (u256) n * base;
 			m_stack.back() = n;
 			break;
 		}
@@ -318,7 +309,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::CALLDATALOAD:
 		{
 			require(1);
-			if ((unsigned)m_stack.back() + 32 < _ext.data.size())
+			if ((unsigned)m_stack.back() + 31 < _ext.data.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (unsigned)m_stack.back());
 			else
 			{
@@ -332,6 +323,37 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::CALLDATASIZE:
 			m_stack.push_back(_ext.data.size());
 			break;
+		case Instruction::CALLDATACOPY:
+		{
+			require(3);
+			unsigned mf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned cf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned l = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned el = cf + l > _ext.data.size() ? _ext.data.size() - cf : l;
+			memcpy(m_temp.data() + mf, _ext.data.data() + cf, el);
+			memset(m_temp.data() + mf + el, 0, l - el);
+			break;
+		}
+		case Instruction::CODESIZE:
+			m_stack.push_back(_ext.code.size());
+			break;
+		case Instruction::CODECOPY:
+		{
+			require(3);
+			unsigned mf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned cf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned l = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() - cf : l;
+			memcpy(m_temp.data() + mf, _ext.code.data() + cf, el);
+			memset(m_temp.data() + mf + el, 0, l - el);
+			break;
+		}
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
 			break;
@@ -345,7 +367,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(_ext.currentBlock.timestamp);
 			break;
 		case Instruction::NUMBER:
-			m_stack.push_back(_ext.currentNumber);
+			m_stack.push_back(_ext.currentBlock.number);
 			break;
 		case Instruction::DIFFICULTY:
 			m_stack.push_back(_ext.currentBlock.difficulty);
@@ -387,10 +409,10 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::PUSH32:
 		{
 			int i = (int)inst - (int)Instruction::PUSH1 + 1;
-			m_nextPC = m_curPC + 1;
+			nextPC = m_curPC + 1;
 			m_stack.push_back(0);
-			for (; i--; m_nextPC++)
-				m_stack.back() = (m_stack.back() << 8) | _ext.getCode(m_nextPC);
+			for (; i--; nextPC++)
+				m_stack.back() = (m_stack.back() << 8) | _ext.getCode(nextPC);
 			break;
 		}
 		case Instruction::POP:
@@ -464,13 +486,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::JUMP:
 			require(1);
-			m_nextPC = m_stack.back();
+			nextPC = m_stack.back();
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
 			require(2);
 			if (m_stack[m_stack.size() - 2])
-				m_nextPC = m_stack.back();
+				nextPC = m_stack.back();
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
@@ -485,13 +507,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::CREATE:
 		{
-			require(5);
+			require(3);
 
 			u256 endowment = m_stack.back();
-			m_stack.pop_back();
-			unsigned codeOff = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned codeSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned initOff = (unsigned)m_stack.back();
 			m_stack.pop_back();
@@ -501,7 +519,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
 				_ext.subBalance(endowment);
-				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + codeOff, codeSize), bytesConstRef(m_temp.data() + initOff, initSize)));
+				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize)));
 			}
 			else
 				m_stack.push_back(0);
@@ -565,7 +583,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			throw BadInstruction();
 		}
 	}
-	if (_steps == (unsigned)-1)
+	if (_steps == (uint64_t)-1)
 		throw StepsDone();
 	return bytesConstRef();
 }

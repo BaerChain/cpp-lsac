@@ -24,17 +24,18 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include "Common.h"
-#include "RLP.h"
+#include <libethcore/Common.h>
+#include <libethcore/RLP.h>
+#include <libethcore/TrieDB.h>
 #include "TransactionQueue.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "TrieDB.h"
 #include "FeeStructure.h"
 #include "Dagger.h"
 #include "ExtVMFace.h"
+#include "Executive.h"
 
 namespace eth
 {
@@ -44,13 +45,23 @@ class BlockChain;
 extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
-static const std::map<u256, u256> EmptyMapU256U256;
-
-static const bytes EmptyBytes;
-
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
-class ExtVM;
+struct TransactionReceipt
+{
+	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed): transaction(_t), stateRoot(_root), gasUsed(_gasUsed) {}
+
+	void fillStream(RLPStream& _s) const
+	{
+		_s.appendList(3);
+		transaction.fillStream(_s);
+		_s << stateRoot << gasUsed;
+	}
+
+	Transaction transaction;
+	h256 stateRoot;
+	u256 gasUsed;
+};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -61,10 +72,11 @@ class State
 {
 	template <unsigned T> friend class UnitTest;
 	friend class ExtVM;
+	friend class Executive;
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress, Overlay const& _db);
+	State(Address _coinbaseAddress = Address(), Overlay const& _db = Overlay());
 
 	/// Copy state object.
 	State(State const& _s);
@@ -122,14 +134,14 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	void execute(bytes const& _rlp) { return execute(&_rlp); }
-	void execute(bytesConstRef _rlp);
+	u256 execute(bytes const& _rlp) { return execute(&_rlp); }
+	u256 execute(bytesConstRef _rlp);
 
-	/// Check if the address is a valid normal (non-contract) account address.
-	bool isNormalAddress(Address _address) const;
+	/// Check if the address is in use.
+	bool addressInUse(Address _address) const;
 
-	/// Check if the address is a valid contract's address.
-	bool isContractAddress(Address _address) const;
+	/// Check if the address contains executable code.
+	bool addressHasCode(Address _address) const;
 
 	/// Get an account's balance.
 	/// @returns 0 if the address has never been used.
@@ -145,17 +157,21 @@ public:
 	 */
 	void subBalance(Address _id, bigint _value);
 
-	/// Get the value of a memory position of a contract.
+	/// Get the value of a storage position of an account.
 	/// @returns 0 if no contract exists at that address.
-	u256 contractStorage(Address _contract, u256 _memory) const;
+	u256 storage(Address _contract, u256 _memory) const;
 
-	/// Get the memory of a contract.
+	/// Set the value of a storage position of an account.
+	void setStorage(Address _contract, u256 _location, u256 _value) { m_cache[_contract].setStorage(_location, _value); }
+
+	/// Get the storage of an account.
+	/// @note This is expensive. Don't use it unless you need to.
 	/// @returns std::map<u256, u256> if no contract exists at that address.
-	std::map<u256, u256> const& contractStorage(Address _contract) const;
+	std::map<u256, u256> storage(Address _contract) const;
 
-	/// Get the code of a contract.
+	/// Get the code of an account.
 	/// @returns bytes() if no contract exists at that address.
-	bytes const& contractCode(Address _contract) const;
+	bytes const& code(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
@@ -168,7 +184,7 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	Transactions const& pending() const { return m_transactions; }
+	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -187,27 +203,27 @@ private:
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
 	/// exist in the DB.
-	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
+	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireMemory, bool _forceCreate) const;
+	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
 
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
-	u256 playback(bytesConstRef _block, bool _fullCommit);
+	u256 trustedPlayback(bytesConstRef _block, bool _fullCommit);
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
+	u256 playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
 
 	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init, Address _originAddress = Address());
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address());
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
@@ -220,20 +236,24 @@ private:
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);
 
+	void refreshManifest(RLPStream* _txs = nullptr);
+
 	/// Unfinalise the block, unapplying the earned rewards.
 	void unapplyRewards(Addresses const& _uncleAddresses);
 
+	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
-	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
+	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
-	uint m_currentNumber;
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;
@@ -249,62 +269,8 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
-class ExtVM: public ExtVMFace
-{
-public:
-	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
-	{
-		m_s.ensureCached(_myAddress, true, true);
-		m_store = &(m_s.m_cache[_myAddress].memory());
-	}
-
-	u256 store(u256 _n)
-	{
-		auto i = m_store->find(_n);
-		return i == m_store->end() ? 0 : i->second;
-	}
-	void setStore(u256 _n, u256 _v)
-	{
-		if (_v)
-			(*m_store)[_n] = _v;
-		else
-			m_store->erase(_n);
-	}
-
-	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
-	{
-		// Increment associated nonce for sender.
-		m_s.noteSending(myAddress);
-
-		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init, origin);
-	}
-
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
-	{
-		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin);
-	}
-
-	u256 balance(Address _a) { return m_s.balance(_a); }
-	void subBalance(u256 _a) { m_s.subBalance(myAddress, _a); }
-	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
-	void suicide(Address _a)
-	{
-		m_s.addBalance(_a, m_s.balance(myAddress));
-		m_s.m_cache[myAddress].kill();
-	}
-
-	void revert()
-	{
-		m_s.m_cache = m_origCache;
-	}
-
-private:
-	State& m_s;
-	std::map<Address, AddressState> m_origCache;
-	std::map<u256, u256>* m_store;
-};
-
+// TODO: Update for latest AddressState/StateTrie changes.
+// trie should always be used as base. AddressState just contains overlay.
 inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
@@ -315,8 +281,8 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		if (it == _s.m_cache.end())
 		{
 			RLP r(i.second);
-			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
-			if (r.itemCount() == 3)
+			_out << "[    ]" << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
+			if (r.itemCount() == 4)
 			{
 				_out << " *" << r[2].toHash<h256>();
 				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
@@ -334,29 +300,22 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			d.insert(i.first);
 	}
 	for (auto i: _s.m_cache)
-		if (i.second.type() == AddressType::Dead)
+		if (!i.second.isAlive())
 			_out << "[XXX " << i.first << std::endl;
 		else
 		{
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.type() == AddressType::Contract)
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
+			if (i.second.codeHash() != EmptySHA3)
 			{
-				if (i.second.isComplete())
+				_out << " *" << i.second.oldRoot();
+				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
+				std::map<u256, u256> mem;
+				for (auto const& j: memdb)
 				{
-					_out << std::endl << i.second.memory();
+					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
+					mem[j.first] = RLP(j.second).toInt<u256>();
 				}
-				else
-				{
-					_out << " *" << i.second.oldRoot();
-					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
-					std::map<u256, u256> mem;
-					for (auto const& j: memdb)
-					{
-						_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-						mem[j.first] = RLP(j.second).toInt<u256>();
-					}
-					_out << std::endl << mem;
-				}
+				_out << std::endl << mem;
 			}
 			_out << std::endl;
 		}
@@ -367,34 +326,35 @@ template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
-		if (i.second.type() == AddressType::Dead)
+		if (!i.second.isAlive())
 			_state.remove(i.first);
 		else
 		{
-			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
+			RLPStream s(4);
 			s << i.second.balance() << i.second.nonce();
-			if (i.second.type() == AddressType::Contract)
+
+			if (i.second.storage().empty())
+				s << i.second.oldRoot();
+			else
 			{
-				if (i.second.isComplete())
-				{
-					TrieDB<h256, DB> memdb(&_db);
-					memdb.init();
-					for (auto const& j: i.second.memory())
-						if (j.second)
-							memdb.insert(j.first, rlp(j.second));
-					s << memdb.root();
-					if (i.second.freshCode())
-					{
-						h256 ch = sha3(i.second.code());
-						_db.insert(ch, &i.second.code());
-						s << ch;
-					}
+				TrieDB<h256, DB> storageDB(&_db, i.second.oldRoot());
+				for (auto const& j: i.second.storage())
+					if (j.second)
+						storageDB.insert(j.first, rlp(j.second));
 					else
-						s << i.second.codeHash();
-				}
-				else
-					s << i.second.oldRoot() << i.second.codeHash();
+						storageDB.remove(j.first);
+				s << storageDB.root();
 			}
+
+			if (i.second.isFreshCode())
+			{
+				h256 ch = sha3(i.second.code());
+				_db.insert(ch, &i.second.code());
+				s << ch;
+			}
+			else
+				s << i.second.codeHash();
+
 			_state.insert(i.first, &s.out());
 		}
 }

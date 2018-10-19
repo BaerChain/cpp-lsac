@@ -24,7 +24,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include "Common.h"
+#include <libethcore/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -88,7 +88,7 @@ public:
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	Address transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Makes the given call. Nothing is recorded into the state. TODO
 //	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
@@ -125,7 +125,7 @@ public:
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
 	/// Get a map containing each of the pending transactions.
-	Transactions const& pending() const { return m_postMine.pending(); }
+	Transactions pending() const { return m_postMine.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 

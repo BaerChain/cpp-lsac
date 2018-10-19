@@ -22,13 +22,13 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include "Common.h"
-#include "RLP.h"
+#include <libethcore/Common.h>
+#include <libethcore/RLP.h>
+#include <libethcore/FileSystem.h>
 #include "Exceptions.h"
 #include "Dagger.h"
 #include "BlockInfo.h"
 #include "State.h"
-#include "FileSystem.h"
 #include "Defaults.h"
 using namespace std;
 using namespace eth;
@@ -139,11 +139,13 @@ bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
 void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
-	BlockInfo bi(&_block);
+	BlockInfo bi;
+
 #if ETH_CATCH
 	try
 #endif
 	{
+		bi.populate(&_block);
 		bi.verifyInternals(&_block);
 	}
 #if ETH_CATCH
@@ -158,7 +160,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-		clog(BlockChainChat) << newHash << ": Not new.";
+		clog(BlockChainNote) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
 
@@ -166,9 +168,17 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		clog(BlockChainChat) << newHash << ": Unknown parent " << bi.parentHash;
+		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
+	}
+
+	// Check it's not crazy
+	if (bi.timestamp > (u256)time(0))
+	{
+		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
+		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		throw FutureTime();
 	}
 
 	clog(BlockChainNote) << "Attempting import of " << newHash << "...";

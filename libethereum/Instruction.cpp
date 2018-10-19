@@ -22,8 +22,8 @@
 #include "Instruction.h"
 
 #include <boost/algorithm/string.hpp>
+#include <libethcore/Log.h>
 #include "CommonEth.h"
-#include "Log.h"
 using namespace std;
 using namespace eth;
 
@@ -56,7 +56,10 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CALLVALUE", Instruction::CALLVALUE },
 	{ "CALLDATALOAD", Instruction::CALLDATALOAD },
 	{ "CALLDATASIZE", Instruction::CALLDATASIZE },
-	{ "BASEFEE", Instruction::GASPRICE },
+	{ "CALLDATACOPY", Instruction::CALLDATACOPY },
+	{ "CODESIZE", Instruction::CODESIZE },
+	{ "CODECOPY", Instruction::CODECOPY },
+	{ "GASPRICE", Instruction::GASPRICE },
 	{ "PREVHASH", Instruction::PREVHASH },
 	{ "COINBASE", Instruction::COINBASE },
 	{ "TIMESTAMP", Instruction::TIMESTAMP },
@@ -115,89 +118,92 @@ const std::map<std::string, Instruction> eth::c_instructions =
 };
 
 const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
-{
-	{ Instruction::STOP, { "STOP", 0, 0, 0 } },
-	{ Instruction::ADD, { "ADD", 0, 2, 1 } },
-	{ Instruction::SUB, { "SUB", 0, 2, 1 } },
-	{ Instruction::MUL, { "MUL", 0, 2, 1 } },
-	{ Instruction::DIV, { "DIV", 0, 2, 1 } },
-	{ Instruction::SDIV, { "SDIV", 0, 2, 1 } },
-	{ Instruction::MOD, { "MOD", 0, 2, 1 } },
-	{ Instruction::SMOD, { "SMOD", 0, 2, 1 } },
-	{ Instruction::EXP, { "EXP", 0, 2, 1 } },
-	{ Instruction::NEG, { "NEG", 0, 1, 1 } },
-	{ Instruction::LT, { "LT", 0, 2, 1 } },
-	{ Instruction::GT, { "GT", 0, 2, 1 } },
-	{ Instruction::EQ, { "EQ", 0, 2, 1 } },
-	{ Instruction::NOT, { "NOT", 0, 1, 1 } },
-	{ Instruction::ADD, { "ADD", 0, 2, 1 } },
-	{ Instruction::OR, { "OR", 0, 2, 1 } },
-	{ Instruction::XOR, { "XOR", 0, 2, 1 } },
-	{ Instruction::BYTE, { "BYTE", 0, 2, 1 } },
-	{ Instruction::SHA3, { "SHA3", 0, 2, 1 } },
-	{ Instruction::ADDRESS, { "ADDRESS", 0, 0, 1 } },
-	{ Instruction::BALANCE, { "BALANCE", 0, 1, 1 } },
-	{ Instruction::ORIGIN, { "ORIGIN", 0, 1, 1 } },
-	{ Instruction::CALLER, { "CALLER", 0, 0, 1 } },
-	{ Instruction::CALLVALUE, { "CALLVALUE", 0, 0, 1 } },
+{ //                                           Add, Args, Ret
+	{ Instruction::STOP,         { "STOP",         0, 0, 0 } },
+	{ Instruction::ADD,          { "ADD",          0, 2, 1 } },
+	{ Instruction::SUB,          { "SUB",          0, 2, 1 } },
+	{ Instruction::MUL,          { "MUL",          0, 2, 1 } },
+	{ Instruction::DIV,          { "DIV",          0, 2, 1 } },
+	{ Instruction::SDIV,         { "SDIV",         0, 2, 1 } },
+	{ Instruction::MOD,          { "MOD",          0, 2, 1 } },
+	{ Instruction::SMOD,         { "SMOD",         0, 2, 1 } },
+	{ Instruction::EXP,          { "EXP",          0, 2, 1 } },
+	{ Instruction::NEG,          { "NEG",          0, 1, 1 } },
+	{ Instruction::LT,           { "LT",           0, 2, 1 } },
+	{ Instruction::GT,           { "GT",           0, 2, 1 } },
+	{ Instruction::EQ,           { "EQ",           0, 2, 1 } },
+	{ Instruction::NOT,          { "NOT",          0, 1, 1 } },
+	{ Instruction::AND,          { "AND",          0, 2, 1 } },
+	{ Instruction::OR,           { "OR",           0, 2, 1 } },
+	{ Instruction::XOR,          { "XOR",          0, 2, 1 } },
+	{ Instruction::BYTE,         { "BYTE",         0, 2, 1 } },
+	{ Instruction::SHA3,         { "SHA3",         0, 2, 1 } },
+	{ Instruction::ADDRESS,      { "ADDRESS",      0, 0, 1 } },
+	{ Instruction::BALANCE,      { "BALANCE",      0, 1, 1 } },
+	{ Instruction::ORIGIN,       { "ORIGIN",       0, 0, 1 } },
+	{ Instruction::CALLER,       { "CALLER",       0, 0, 1 } },
+	{ Instruction::CALLVALUE,    { "CALLVALUE",    0, 0, 1 } },
 	{ Instruction::CALLDATALOAD, { "CALLDATALOAD", 0, 1, 1 } },
 	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 0, 1 } },
-	{ Instruction::GASPRICE, { "BASEFEE", 0, 0, 1 } },
-	{ Instruction::PREVHASH, { "PREVHASH", 0, 0, 1 } },
-	{ Instruction::COINBASE, { "COINBASE", 0, 0, 1 } },
-	{ Instruction::TIMESTAMP, { "TIMESTAMP", 0, 0, 1 } },
-	{ Instruction::NUMBER, { "NUMBER", 0, 0, 1 } },
-	{ Instruction::DIFFICULTY, { "DIFFICULTY", 0, 0, 1 } },
-	{ Instruction::GASLIMIT, { "GASLIMIT", 0, 0, 1 } },
-	{ Instruction::POP, { "POP", 0, 1, 0 } },
-	{ Instruction::DUP, { "DUP", 0, 1, 2 } },
-	{ Instruction::SWAP, { "SWAP", 0, 2, 2 } },
-	{ Instruction::MLOAD, { "MLOAD", 0, 1, 1 } },
-	{ Instruction::MSTORE, { "MSTORE", 0, 2, 0 } },
-	{ Instruction::MSTORE8, { "MSTORE8", 0, 2, 0 } },
-	{ Instruction::SLOAD, { "SLOAD", 0, 1, 1 } },
-	{ Instruction::SSTORE, { "SSTORE", 0, 2, 0 } },
-	{ Instruction::JUMP, { "JUMP", 0, 1, 0 } },
-	{ Instruction::JUMPI, { "JUMPI", 0, 2, 0 } },
-	{ Instruction::PC, { "PC", 0, 0, 1 } },
-	{ Instruction::MEMSIZE, { "MEMSIZE", 0, 0, 1 } },
-	{ Instruction::GAS, { "GAS", 0, 0, 1 } },
-	{ Instruction::PUSH1, { "PUSH1", 1, 0, 1 } },
-	{ Instruction::PUSH2, { "PUSH2", 2, 0, 1 } },
-	{ Instruction::PUSH3, { "PUSH3", 3, 0, 1 } },
-	{ Instruction::PUSH4, { "PUSH4", 4, 0, 1 } },
-	{ Instruction::PUSH5, { "PUSH5", 5, 0, 1 } },
-	{ Instruction::PUSH6, { "PUSH6", 6, 0, 1 } },
-	{ Instruction::PUSH7, { "PUSH7", 7, 0, 1 } },
-	{ Instruction::PUSH8, { "PUSH8", 8, 0, 1 } },
-	{ Instruction::PUSH9, { "PUSH9", 9, 0, 1 } },
-	{ Instruction::PUSH10, { "PUSH10", 10, 0, 1 } },
-	{ Instruction::PUSH11, { "PUSH11", 11, 0, 1 } },
-	{ Instruction::PUSH12, { "PUSH12", 12, 0, 1 } },
-	{ Instruction::PUSH13, { "PUSH13", 13, 0, 1 } },
-	{ Instruction::PUSH14, { "PUSH14", 14, 0, 1 } },
-	{ Instruction::PUSH15, { "PUSH15", 15, 0, 1 } },
-	{ Instruction::PUSH16, { "PUSH16", 16, 0, 1 } },
-	{ Instruction::PUSH17, { "PUSH17", 17, 0, 1 } },
-	{ Instruction::PUSH18, { "PUSH18", 18, 0, 1 } },
-	{ Instruction::PUSH19, { "PUSH19", 19, 0, 1 } },
-	{ Instruction::PUSH20, { "PUSH20", 20, 0, 1 } },
-	{ Instruction::PUSH21, { "PUSH21", 21, 0, 1 } },
-	{ Instruction::PUSH22, { "PUSH22", 22, 0, 1 } },
-	{ Instruction::PUSH23, { "PUSH23", 23, 0, 1 } },
-	{ Instruction::PUSH24, { "PUSH24", 24, 0, 1 } },
-	{ Instruction::PUSH25, { "PUSH25", 25, 0, 1 } },
-	{ Instruction::PUSH26, { "PUSH26", 26, 0, 1 } },
-	{ Instruction::PUSH27, { "PUSH27", 27, 0, 1 } },
-	{ Instruction::PUSH28, { "PUSH28", 28, 0, 1 } },
-	{ Instruction::PUSH29, { "PUSH29", 29, 0, 1 } },
-	{ Instruction::PUSH30, { "PUSH30", 30, 0, 1 } },
-	{ Instruction::PUSH31, { "PUSH31", 31, 0, 1 } },
-	{ Instruction::PUSH32, { "PUSH32", 32, 0, 1 } },
-	{ Instruction::CREATE, { "CREATE", 0, 3, 1 } },
-	{ Instruction::CALL, { "CALL", 0, 7, 1 } },
-	{ Instruction::RETURN, { "RETURN", 0, 2, 0 } },
-	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
+	{ Instruction::CALLDATACOPY, { "CALLDATACOPY", 0, 3, 0 } },
+	{ Instruction::CODESIZE,     { "CODESIZE",     0, 0, 1 } },
+	{ Instruction::CODECOPY,     { "CODECOPY",     0, 3, 0 } },
+	{ Instruction::GASPRICE,     { "GASPRICE",     0, 0, 1 } },
+	{ Instruction::PREVHASH,     { "PREVHASH",     0, 0, 1 } },
+	{ Instruction::COINBASE,     { "COINBASE",     0, 0, 1 } },
+	{ Instruction::TIMESTAMP,    { "TIMESTAMP",    0, 0, 1 } },
+	{ Instruction::NUMBER,       { "NUMBER",       0, 0, 1 } },
+	{ Instruction::DIFFICULTY,   { "DIFFICULTY",   0, 0, 1 } },
+	{ Instruction::GASLIMIT,     { "GASLIMIT",     0, 0, 1 } },
+	{ Instruction::POP,          { "POP",          0, 1, 0 } },
+	{ Instruction::DUP,          { "DUP",          0, 1, 2 } },
+	{ Instruction::SWAP,         { "SWAP",         0, 2, 2 } },
+	{ Instruction::MLOAD,        { "MLOAD",        0, 1, 1 } },
+	{ Instruction::MSTORE,       { "MSTORE",       0, 2, 0 } },
+	{ Instruction::MSTORE8,      { "MSTORE8",      0, 2, 0 } },
+	{ Instruction::SLOAD,        { "SLOAD",        0, 1, 1 } },
+	{ Instruction::SSTORE,       { "SSTORE",       0, 2, 0 } },
+	{ Instruction::JUMP,         { "JUMP",         0, 1, 0 } },
+	{ Instruction::JUMPI,        { "JUMPI",        0, 2, 0 } },
+	{ Instruction::PC,           { "PC",           0, 0, 1 } },
+	{ Instruction::MEMSIZE,      { "MEMSIZE",      0, 0, 1 } },
+	{ Instruction::GAS,          { "GAS",          0, 0, 1 } },
+	{ Instruction::PUSH1,        { "PUSH1",        1, 0, 1 } },
+	{ Instruction::PUSH2,        { "PUSH2",        2, 0, 1 } },
+	{ Instruction::PUSH3,        { "PUSH3",        3, 0, 1 } },
+	{ Instruction::PUSH4,        { "PUSH4",        4, 0, 1 } },
+	{ Instruction::PUSH5,        { "PUSH5",        5, 0, 1 } },
+	{ Instruction::PUSH6,        { "PUSH6",        6, 0, 1 } },
+	{ Instruction::PUSH7,        { "PUSH7",        7, 0, 1 } },
+	{ Instruction::PUSH8,        { "PUSH8",        8, 0, 1 } },
+	{ Instruction::PUSH9,        { "PUSH9",        9, 0, 1 } },
+	{ Instruction::PUSH10,       { "PUSH10",       10, 0, 1 } },
+	{ Instruction::PUSH11,       { "PUSH11",       11, 0, 1 } },
+	{ Instruction::PUSH12,       { "PUSH12",       12, 0, 1 } },
+	{ Instruction::PUSH13,       { "PUSH13",       13, 0, 1 } },
+	{ Instruction::PUSH14,       { "PUSH14",       14, 0, 1 } },
+	{ Instruction::PUSH15,       { "PUSH15",       15, 0, 1 } },
+	{ Instruction::PUSH16,       { "PUSH16",       16, 0, 1 } },
+	{ Instruction::PUSH17,       { "PUSH17",       17, 0, 1 } },
+	{ Instruction::PUSH18,       { "PUSH18",       18, 0, 1 } },
+	{ Instruction::PUSH19,       { "PUSH19",       19, 0, 1 } },
+	{ Instruction::PUSH20,       { "PUSH20",       20, 0, 1 } },
+	{ Instruction::PUSH21,       { "PUSH21",       21, 0, 1 } },
+	{ Instruction::PUSH22,       { "PUSH22",       22, 0, 1 } },
+	{ Instruction::PUSH23,       { "PUSH23",       23, 0, 1 } },
+	{ Instruction::PUSH24,       { "PUSH24",       24, 0, 1 } },
+	{ Instruction::PUSH25,       { "PUSH25",       25, 0, 1 } },
+	{ Instruction::PUSH26,       { "PUSH26",       26, 0, 1 } },
+	{ Instruction::PUSH27,       { "PUSH27",       27, 0, 1 } },
+	{ Instruction::PUSH28,       { "PUSH28",       28, 0, 1 } },
+	{ Instruction::PUSH29,       { "PUSH29",       29, 0, 1 } },
+	{ Instruction::PUSH30,       { "PUSH30",       30, 0, 1 } },
+	{ Instruction::PUSH31,       { "PUSH31",       31, 0, 1 } },
+	{ Instruction::PUSH32,       { "PUSH32",       32, 0, 1 } },
+	{ Instruction::CREATE,       { "CREATE",       0, 3, 1 } },
+	{ Instruction::CALL,         { "CALL",         0, 7, 1 } },
+	{ Instruction::RETURN,       { "RETURN",       0, 2, 0 } },
+	{ Instruction::SUICIDE,      { "SUICIDE",      0, 1, 0} }
 };
 
 static string readQuoted(char const*& o_d, char const* _e)
@@ -313,7 +319,7 @@ static void pushLocation(bytes& o_code, uint32_t _locationValue)
 	toBigEndian(_locationValue, r);
 }
 
-static unsigned pushLiteral(bytes& o_code, u256 _literalValue)
+unsigned eth::pushLiteral(bytes& o_code, u256 _literalValue)
 {
 	unsigned br = max<unsigned>(1, bytesRequired(_literalValue));
 	o_code.push_back((byte)Instruction::PUSH1 + br - 1);
@@ -341,10 +347,10 @@ static void appendCode(bytes& o_code, vector<unsigned>& o_locs, bytes _code, vec
 
 static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs, map<string, unsigned>& _vars)
 {
-	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
+	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
 	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
-	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
+	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '~' };
 
 	bool exec = false;
 	int outs = 0;
@@ -353,7 +359,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '_' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
@@ -674,10 +680,10 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					o_code.push_back((byte)Instruction::JUMPI);
 
 					// Second fragment - negative.
-					appendCode(o_code, o_locs, codes[1], locs[1]);
+					appendCode(o_code, o_locs, codes[2], locs[2]);
 
 					// Third fragment - incrementor.
-					appendCode(o_code, o_locs, codes[2], locs[2]);
+					appendCode(o_code, o_locs, codes[1], locs[1]);
 
 					// Jump to beginning afterwards.
 					o_locs.push_back((unsigned)o_code.size());
@@ -749,7 +755,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							break;
 					}
 				}
-				else if (t == "AND")
+				else if (t == "&&")
 				{
 					vector<bytes> codes;
 					vector<vector<unsigned>> locs;
@@ -757,13 +763,11 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					{
 						codes.resize(codes.size() + 1);
 						locs.resize(locs.size() + 1);
-						{
-							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
-							if (o != 1)
-								return false;
-						}
-						if (compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars) != -1)
+						int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
+						if (o == -1)
 							break;
+						if (o != 1)
+							return false;
 					}
 
 					// last one is empty.
@@ -783,6 +787,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						{
 							// Check if true - predicate
 							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+							o_code.push_back((byte)Instruction::NOT);
 
 							// Push the false location.
 							ends.push_back((unsigned)o_code.size());
@@ -790,7 +795,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							pushLocation(o_code, 0);
 
 							// Jump to end...
-							o_code.push_back((byte)Instruction::NOT);
 							o_code.push_back((byte)Instruction::JUMPI);
 						}
 						o_code.push_back((byte)Instruction::POP);
@@ -804,7 +808,22 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						increaseLocation(o_code, i, o_code.size());
 					outs = 1;
 				}
-				else if (t == "OR")
+				else if (t == "~")
+				{
+					if (compileLispFragment(d, e, _quiet, o_code, o_locs, _vars) == 1)
+					{
+						bytes codes;
+						vector<unsigned> locs;
+						if (compileLispFragment(d, e, _quiet, codes, locs, _vars) != -1)
+							return false;
+						pushLiteral(o_code, 1);
+						pushLiteral(o_code, 0);
+						o_code.push_back((byte)Instruction::SUB);
+						o_code.push_back((byte)Instruction::SUB);
+						outs = 1;
+					}
+				}
+				else if (t == "||")
 				{
 					vector<bytes> codes;
 					vector<vector<unsigned>> locs;
@@ -814,6 +833,8 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						locs.resize(locs.size() + 1);
 						{
 							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
+							if (o == -1)
+								break;
 							if (o != 1)
 								return false;
 						}
@@ -942,9 +963,9 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 								}
 								for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
 									appendCode(o_code, o_locs, jt->first, jt->second);
+								o_code.push_back((byte)it->second.first);
 								if (it->second.second)
 									o_code.push_back((byte)Instruction::NOT);
-								o_code.push_back((byte)it->second.first);
 								outs = 1;
 							}
 							else
