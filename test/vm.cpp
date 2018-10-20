@@ -22,11 +22,12 @@
 
 #include <fstream>
 #include <cstdint>
-#include <libethcore/Log.h>
-#include <libethereum/ExtVMFace.h>
+#include <libethsupport/Log.h>
+#include <libethcore/Instruction.h>
+#include <libevm/ExtVMFace.h>
+#include <libevm/VM.h>
+#include <liblll/Compiler.h>
 #include <libethereum/Transaction.h>
-#include <libethereum/VM.h>
-#include <libethereum/Instruction.h>
 #include "JsonSpiritHeaders.h"
 #include <boost/test/unit_test.hpp>
 
@@ -162,7 +163,7 @@ public:
 
 		thisTxCode.clear();
 		if (_o["code"].type() == str_type)
-			compileLisp(_o["code"].get_str(), false, thisTxCode);
+			thisTxCode = compileLLL(_o["code"].get_str(), nullptr);
 		else
 			for (auto const& j: _o["code"].get_array())
 				thisTxCode.push_back(toByte(j));
@@ -277,7 +278,7 @@ public:
 					get<2>(a)[adr++] = toInt(k);
 			}
 			if (o["code"].type() == str_type)
-				compileLisp(o["code"].get_str(), false, get<3>(a));
+				get<3>(a) = compileLLL(o["code"].get_str(), nullptr);
 			else
 			{
 				get<3>(a).clear();
@@ -472,11 +473,11 @@ BOOST_AUTO_TEST_CASE(vm_tests)
 	{
 		cnote << "Populating VM tests...";
 		json_spirit::mValue v;
-		string s = asString(contents("../../cpp-ethereum/test/vmtests.json"));
+		string s = asString(contents("../../../cpp-ethereum/test/vmtests.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty.");
 		json_spirit::read_string(s, v);
 		eth::test::doTests(v, true);
-		writeFile("../../tests/vmtests.json", asBytes(json_spirit::write_string(v, true)));
+		writeFile("../../../tests/vmtests.json", asBytes(json_spirit::write_string(v, true)));
 	}
 	catch( std::exception& e)
 	{
@@ -488,7 +489,7 @@ BOOST_AUTO_TEST_CASE(vm_tests)
 	{
 		cnote << "Testing VM...";
 		json_spirit::mValue v;
-		string s = asString(contents("../../tests/vmtests.json"));
+		string s = asString(contents("../../../tests/vmtests.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty. Have you cloned the 'tests' repo branch develop?");
 		json_spirit::read_string(s, v);
 		eth::test::doTests(v, false);

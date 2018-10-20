@@ -22,8 +22,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-// TODO: utilise the shared testdata.
-
 int trieTest();
 int rlpTest();
 int daggerTest();
@@ -33,11 +31,15 @@ int vmTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
-#include <libethereum/BlockInfo.h>
+#include <libethsupport/Log.h>
+#include <libethcore/BlockInfo.h>
+using namespace std;
 using namespace eth;
 
 BOOST_AUTO_TEST_CASE(basic_tests)
 {
+	cnote << "Hello";
+
 /*	RLPStream s;
 	BlockInfo::genesis().fillStream(s, false);
 	std::cout << RLP(s.out()) << std::endl;

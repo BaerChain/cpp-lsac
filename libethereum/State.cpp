@@ -21,35 +21,21 @@
 
 #include "State.h"
 
-#include <secp256k1/secp256k1.h>
 #include <boost/filesystem.hpp>
 #include <time.h>
 #include <random>
+#include <secp256k1/secp256k1.h>
+#include <libethcore/Instruction.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/Dagger.h>
+#include <libevm/VM.h>
 #include "BlockChain.h"
-#include "Instruction.h"
-#include "Exceptions.h"
-#include "Dagger.h"
 #include "Defaults.h"
 #include "ExtVM.h"
-#include "VM.h"
 using namespace std;
 using namespace eth;
 
-u256 eth::c_genesisDifficulty = (u256)1 << 22;
-
-std::map<Address, AddressState> const& eth::genesisState()
-{
-	static std::map<Address, AddressState> s_ret;
-	if (s_ret.empty())
-	{
-		// Initialise.
-		s_ret[Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-	}
-	return s_ret;
-}
+#define ctrace clog(StateTrace)
 
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
@@ -82,10 +68,8 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
-//	cnote << "State root: " << m_state.root();
 
-	m_previousBlock = BlockInfo::genesis();
-//	cnote << "Genesis hash:" << m_previousBlock.hash;
+	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
@@ -312,7 +296,7 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 		// (Most recent state dump might end up being genesis.)
 
 		std::vector<h256> chain;
-		while (bi.stateRoot != BlockInfo::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
+		while (bi.stateRoot != BlockChain::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
 			chain.push_back(bi.hash);				// push back for later replay.
 			bi.populate(_bc.block(bi.parentHash));	// move to parent.
@@ -484,7 +468,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 //		cnote << m_state.root() << m_state;
 //		cnote << *this;
 		execute(tr[0].data());
-		if (tr[1].toInt<u256>() != m_state.root())
+		if (tr[1].toHash<h256>() != m_state.root())
 		{
 			// Invalid state root
 			cnote << m_state.root() << "\n" << m_state;
@@ -545,8 +529,20 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 	{
+		if (!isTrieGood())
+		{
+			cwarn << "INVALID TRIE prior to database commit!";
+			throw InvalidTrie();
+		}
+
 		// Commit the new trie to disk.
 		m_db.commit();
+
+		if (!isTrieGood())
+		{
+			cwarn << "INVALID TRIE immediately after database commit!";
+			throw InvalidTrie();
+		}
 
 		m_previousBlock = m_currentBlock;
 	}
@@ -621,7 +617,7 @@ void State::commitToMine(BlockChain const& _bc)
 	RLPStream uncles;
 	Addresses uncleAddresses;
 
-	if (m_previousBlock != BlockInfo::genesis())
+	if (m_previousBlock != BlockChain::genesis())
 	{
 		// Find uncles if we're not a direct child of the genesis.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
@@ -842,10 +838,59 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+bool State::isTrieGood()
+{
+	{
+		EnforceRefs r(m_db, false);
+		for (auto const& i: m_state)
+		{
+			RLP r(i.second);
+			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
+			try
+			{
+				for (auto const& j: storageDB) { (void)j; }
+			}
+			catch (InvalidTrie)
+			{
+				cwarn << "BAD TRIE [unenforced refs]";
+				return false;
+			}
+			if (r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+				return false;
+		}
+	}
+	{
+		EnforceRefs r(m_db, true);
+		for (auto const& i: m_state)
+		{
+			RLP r(i.second);
+			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
+			try
+			{
+				for (auto const& j: storageDB) { (void)j; }
+			}
+			catch (InvalidTrie)
+			{
+				cwarn << "BAD TRIE [enforced refs]";
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 u256 State::execute(bytesConstRef _rlp)
 {
 #ifndef RELEASE
 	commit();	// get an updated hash
+#endif
+
+#if ETH_PARANOIA
+	if (!isTrieGood())
+	{
+		cwarn << "BAD TRIE before execution begins.";
+		throw InvalidTrie();
+	}
 #endif
 
 	State old(*this);
@@ -854,7 +899,10 @@ u256 State::execute(bytesConstRef _rlp)
 	Executive e(*this);
 	e.setup(_rlp);
 
-	cnote << "Executing " << e.t() << "on" << h;
+#if ETH_PARANOIA
+	ctrace << "Executing" << e.t() << "on" << h;
+	ctrace << toHex(e.t().rlp(true));
+#endif
 
 	u256 startGasUsed = gasUsed();
 	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
@@ -863,13 +911,31 @@ u256 State::execute(bytesConstRef _rlp)
 	e.go();
 	e.finalize();
 
+#if ETH_PARANOIA
+	ctrace << "Ready for commit;";
+	ctrace << old.diff(*this);
+#endif
+
 	commit();
 
+#if ETH_PARANOIA
 	if (e.t().receiveAddress)
-		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress), true).size());
+	{
+		EnforceRefs r(m_db, true);
+		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress)).size());
+	}
 
-	cnote << "Executed; now" << rootHash();
-	cnote << old.diff(*this);
+	ctrace << "Executed; now" << rootHash();
+	ctrace << old.diff(*this);
+
+	if (!isTrieGood())
+	{
+		cwarn << "BAD TRIE immediately after execution.";
+		throw InvalidTrie();
+	}
+#endif
+
+	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed()));

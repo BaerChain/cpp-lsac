@@ -24,17 +24,17 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <libethcore/Common.h>
-#include <libethcore/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libethsupport/Common.h>
+#include <libethsupport/RLP.h>
+#include <libethsupport/TrieDB.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/BlockInfo.h>
+#include <libethcore/Dagger.h>
+#include <libevm/FeeStructure.h>
+#include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
-#include "Exceptions.h"
-#include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "FeeStructure.h"
-#include "Dagger.h"
-#include "ExtVMFace.h"
 #include "Executive.h"
 
 namespace eth
@@ -42,10 +42,8 @@ namespace eth
 
 class BlockChain;
 
-extern u256 c_genesisDifficulty;
-std::map<Address, AddressState> const& genesisState();
-
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
+struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 
 struct TransactionReceipt
 {
@@ -55,7 +53,7 @@ struct TransactionReceipt
 	{
 		_s.appendList(3);
 		transaction.fillStream(_s);
-		_s << stateRoot << gasUsed;
+		_s.append(stateRoot, false, true) << gasUsed;
 	}
 
 	Transaction transaction;
@@ -299,6 +297,8 @@ private:
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
+	bool isTrieGood();
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
@@ -341,7 +341,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.balance() << i.second.nonce();
 
 			if (i.second.storage().empty())
-				s << i.second.oldRoot();
+				s.append(i.second.oldRoot(), false, true);
 			else
 			{
 				TrieDB<h256, DB> storageDB(&_db, i.second.oldRoot());
@@ -350,7 +350,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						storageDB.insert(j.first, rlp(j.second));
 					else
 						storageDB.remove(j.first);
-				s << storageDB.root();
+				s.append(storageDB.root(), false, true);
 			}
 
 			if (i.second.isFreshCode())

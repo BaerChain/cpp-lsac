@@ -26,6 +26,8 @@ build_xc
 *.user.*
 *~
 
+build/
+
 *.pyc
 
 .DS_Store

@@ -6,8 +6,8 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethcore/RLP.h>
-#include <libethereum/CommonEth.h>
+#include <libethsupport/RLP.h>
+#include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
 
@@ -77,6 +77,9 @@ private slots:
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
 	void on_killBlockchain_triggered();
+	void on_importKey_triggered();
+	void on_exportKey_triggered();
+	void on_inject_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();

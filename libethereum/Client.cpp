@@ -24,7 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethcore/Common.h>
+#include <libethsupport/Common.h>
 #include "Defaults.h"
 #include "PeerServer.h"
 using namespace std;
@@ -172,6 +172,13 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 	m_tq.attemptImport(t.rlp());
 	m_changed = true;
 	return right160(sha3(rlpList(t.sender(), t.nonce)));
+}
+
+void Client::inject(bytesConstRef _rlp)
+{
+	lock_guard<recursive_mutex> l(m_lock);
+	m_tq.attemptImport(_rlp);
+	m_changed = true;
 }
 
 void Client::work()

@@ -40,7 +40,7 @@ public:
 	virtual std::string balanceAt(std::string const& _a);
 	virtual Json::Value check(Json::Value const& _as);
 	virtual std::string coinbase();
-	virtual Json::Value create(const std::string& bCode, const std::string& sec, const std::string& xEndowment, const std::string& xGas, const std::string& xGasPrice);
+	virtual std::string create(const std::string& bCode, const std::string& sec, const std::string& xEndowment, const std::string& xGas, const std::string& xGasPrice);
 	virtual std::string gasPrice();
 	virtual bool isContractAt(const std::string& a);
 	virtual bool isListening();
@@ -53,6 +53,7 @@ public:
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
 	virtual Json::Value lastBlock();
+	virtual std::string lll(const std::string& s);
 	virtual Json::Value block(const std::string&);
 	void setKeys(std::vector<eth::KeyPair> _keys) { m_keys = _keys; }
 private:

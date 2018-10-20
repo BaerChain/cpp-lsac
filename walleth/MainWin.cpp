@@ -7,10 +7,10 @@
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <libethcore/FileSystem.h>
-#include <libethereum/Dagger.h>
+#include <libethsupport/FileSystem.h>
+#include <libethcore/Dagger.h>
+#include <libethcore/Instruction.h>
 #include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
@@ -38,8 +38,6 @@ using eth::Transaction;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;

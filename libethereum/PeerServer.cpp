@@ -34,11 +34,10 @@
 #include <set>
 #include <chrono>
 #include <thread>
-#include <libethcore/Common.h>
-#include <libethcore/UPnP.h>
-#include "Exceptions.h"
+#include <libethsupport/Common.h>
+#include <libethsupport/UPnP.h>
+#include <libethcore/Exceptions.h>
 #include "BlockChain.h"
-#include "BlockInfo.h"
 #include "TransactionQueue.h"
 #include "PeerSession.h"
 using namespace std;
@@ -363,7 +362,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	if (m_mode == NodeMode::Full)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-			if (_tq.import(*it))
+			if (_tq.import(&*it))
 			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
 			else
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.

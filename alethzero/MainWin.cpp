@@ -13,12 +13,14 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <libethereum/Dagger.h>
-#include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
-#include <libethereum/PeerServer.h>
-#include <libethereum/VM.h>
+#include <libethcore/Dagger.h>
+#include <liblll/Compiler.h>
+#include <liblll/CodeFragment.h>
+#include <libevm/VM.h>
+#include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
+#include <libethereum/Client.h>
+#include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -37,6 +39,7 @@ using eth::Client;
 using eth::Instruction;
 using eth::KeyPair;
 using eth::NodeMode;
+using eth::BlockChain;
 using eth::PeerInfo;
 using eth::RLP;
 using eth::Secret;
@@ -45,9 +48,7 @@ using eth::Executive;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::pushLiteral;
-using eth::compileLisp;
+using eth::compileLLL;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -198,6 +199,9 @@ Main::Main(QWidget *parent) :
 		srand(time(0));
 	}
 #endif
+
+	cerr << "State root: " << BlockChain::genesis().stateRoot << endl << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
 
 	ui->configDock->close();
 
@@ -381,6 +385,35 @@ void Main::readSettings()
 	ui->nameReg->setText(s.value("NameReg", "").toString());
 	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
 	on_urlEdit_returnPressed();
+}
+
+void Main::on_importKey_triggered()
+{
+	QString s = QInputDialog::getText(this, "Import Account Key", "Enter account's secret key");
+	bytes b = fromHex(s.toStdString());
+	if (b.size() == 32)
+	{
+		auto k = KeyPair(h256(b));
+		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+		{
+			m_myKeys.append(k);
+			m_keysChanged = true;
+			update();
+		}
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	else
+		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
+}
+
+void Main::on_exportKey_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	{
+		auto k = m_myKeys[ui->ourAccounts->currentRow()];
+		QMessageBox::information(this, "Export Account Key", "Secret key to account " + render(k.address()) + " is:\n" + QString::fromStdString(toHex(k.sec().ref())));
+	}
 }
 
 void Main::on_urlEdit_returnPressed()
@@ -641,6 +674,14 @@ void Main::ourAccountsRowsMoved()
 	m_myKeys = myKeys;
 }
 
+void Main::on_inject_triggered()
+{
+	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
+	bytes b = fromHex(s.toStdString());
+	m_client->inject(&b);
+	refresh();
+}
+
 void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
@@ -695,6 +736,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas << "</b>";
+			s << "<br/>V: <b>" << hex << (int)tx.vrs.v << "</b>";
+			s << "<br/>R: <b>" << hex << tx.vrs.r << "</b>";
+			s << "<br/>S: <b>" << hex << tx.vrs.s << "</b>";
+			s << "<br/>Msg: <b>" << tx.sha3(false) << "</b>";
 			if (tx.isCreation())
 			{
 				if (tx.data.size())
@@ -715,7 +760,7 @@ void Main::on_blocks_currentItemChanged()
 void Main::on_contracts_currentItemChanged()
 {
 	ui->contractInfo->clear();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	if (auto item = ui->contracts->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -723,13 +768,19 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto storage = state().storage(h);
-		for (auto const& i: storage)
-			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		s << "<h4>Body Code</h4>" << disassemble(state().code(h));
-		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
+		try
+		{
+			auto storage = state().storage(h);
+			for (auto const& i: storage)
+				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+			s << "<h4>Body Code</h4>" << disassemble(state().code(h));
+			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
+		}
+		catch (eth::InvalidTrie)
+		{
+			ui->contractInfo->appendHtml("Corrupted trie.");
+		}
 	}
-	m_client->unlock();
 }
 
 void Main::on_idealPeers_valueChanged()
@@ -791,7 +842,10 @@ void Main::on_data_textChanged()
 
 		if (body == -1 && init == -1)
 		{
-			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
+			vector<string> errors;
+			initBytes = compileLLL(code.toStdString(), &errors);
+			for (auto const& i: errors)
+				cwarn << i;
 		}
 		else
 		{
@@ -815,18 +869,20 @@ void Main::on_data_textChanged()
 			m_data = initBytes;
 		if (bodyBytes.size())
 		{
+			eth::CodeFragment c(bodyBytes);
+
 			unsigned s = bodyBytes.size();
-			auto ss = pushLiteral(m_data, s);
+			unsigned ss = c.appendPush(s);
 			unsigned p = m_data.size() + 4 + 2 + 1 + ss + 2 + 1;
-			pushLiteral(m_data, p);
-			pushLiteral(m_data, 0);
-			m_data.push_back((byte)Instruction::CODECOPY);
-			pushLiteral(m_data, s);
-			pushLiteral(m_data, 0);
-			m_data.push_back((byte)Instruction::RETURN);
-			while (m_data.size() < p)
-				m_data.push_back(0);
-			for (auto b: bodyBytes)
+			c.appendPush(p);
+			c.appendPush(0);
+			c.appendInstruction(Instruction::CODECOPY);
+			c.appendPush(s);
+			c.appendPush(0);
+			c.appendInstruction(Instruction::RETURN);
+			while (c.size() < p)
+				c.appendInstruction(Instruction::STOP);
+			for (auto b: c.code())
 				m_data.push_back(b);
 		}
 
@@ -1001,9 +1057,9 @@ void Main::on_send_clicked()
 {
 	debugFinished();
 	u256 totalReq = value() + fee();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
+		if (m_client->postState().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
@@ -1014,7 +1070,6 @@ void Main::on_send_clicked()
 			refresh();
 			return;
 		}
-	m_client->unlock();
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 }
 
@@ -1022,7 +1077,7 @@ void Main::on_debug_clicked()
 {
 	debugFinished();
 	u256 totalReq = value() + fee();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
 		if (m_client->state().balance(i.address()) >= totalReq)
 		{
@@ -1056,7 +1111,6 @@ void Main::on_debug_clicked()
 			updateDebugger();
 			return;
 		}
-	m_client->unlock();
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 }
 

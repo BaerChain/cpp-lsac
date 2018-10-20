@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <libethcore/RLP.h>
-#include "CommonEth.h"
+#include <libethsupport/RLP.h>
+#include <libethcore/CommonEth.h>
 
 namespace eth
 {
@@ -34,9 +34,6 @@ struct Signature
 	u256 s;
 };
 
-// [ nonce, value, receiveAddress, gasPrice, gasDeposit, data, v, r, s ]
-// or
-// [ nonce, endowment, 0, gasPrice, gasDeposit (for init), body, init, v, r, s ]
 struct Transaction
 {
 	Transaction() {}

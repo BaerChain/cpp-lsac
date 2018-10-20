@@ -1,10 +1,11 @@
 #include <QtQml/QtQml>
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
-#include <libethcore/FileSystem.h>
-#include <libethereum/Dagger.h>
+#include <libethsupport/FileSystem.h>
+#include <libethcore/Dagger.h>
+#include <libethcore/Instruction.h>
+#include <liblll/Compiler.h>
 #include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
 #include "QEthereum.h"
 using namespace std;
@@ -30,8 +31,6 @@ using eth::Transaction;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -203,7 +202,7 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 		b.insert(b.begin(), 0);
 	while (b.size() < _r)
 		b.push_back(0);
-	return QString::fromStdString(eth::asString(b).substr(b.size() - max(_l, _r)));
+	return asQString(eth::asBytes(eth::asString(b).substr(b.size() - max(_l, _r))));
 }
 
 //"0xff".bin().unbin()
@@ -249,13 +248,14 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);*/
 	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
 	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
-	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { eth.doCreate(s, v, c, g, p); if (f) f() }");
+	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
 	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
 	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
 	_e->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }");
+	_e->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }");
 }
 
 void QEthereum::teardown(QWebFrame*)
@@ -267,9 +267,24 @@ Client* QEthereum::client() const
 	return m_client;
 }
 
+QString QEthereum::lll(QString _s) const
+{
+	return asQString(eth::compileLLL(_s.toStdString()));
+}
+
+QString QEthereum::sha3(QString _s) const
+{
+	return toQJS(eth::sha3(asBytes(_s)));
+}
+
 QString QEthereum::coinbase() const
 {
 	return toQJS(client()->address());
+}
+
+QString QEthereum::number() const
+{
+	return QString::number(client()->blockChain().number() + 1);
 }
 
 QString QEthereum::account() const
