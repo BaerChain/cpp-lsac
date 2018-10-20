@@ -63,6 +63,44 @@ struct TransactionReceipt
 	u256 gasUsed;
 };
 
+enum class ExistDiff { Same, New, Dead };
+template <class T>
+class Diff
+{
+public:
+	Diff() {}
+	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
+
+	T const& from() const { return m_from; }
+	T const& to() const { return m_to; }
+
+	explicit operator bool() const { return m_from != m_to; }
+
+private:
+	T m_from;
+	T m_to;
+};
+
+enum class AccountChange { None, Creation, Deletion, Intrinsic, CodeStorage, All };
+
+struct AccountDiff
+{
+	inline bool changed() const { return storage.size() || code || nonce || balance || exist; }
+	char const* lead() const;
+	AccountChange changeType() const;
+
+	Diff<bool> exist;
+	Diff<u256> balance;
+	Diff<u256> nonce;
+	std::map<u256, Diff<u256>> storage;
+	Diff<bytes> code;
+};
+
+struct StateDiff
+{
+	std::map<Address, AccountDiff> accounts;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -96,18 +134,17 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
-	/// Cancels transactions and rolls back the state to the end of the previous block.
-	/// @warning This will only work for on any transactions after you called the last commitToMine().
-	/// It's one or the other.
-	void rollback() { m_cache.clear(); }
+	/// @brief Checks that mining the current object will result in a valid block.
+	/// Effectively attempts to import the serialised block.
+	/// @returns true if all is ok. If it's false, worry.
+	bool amIJustParanoid(BlockChain const& _bc);
 
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
 	/// The only thing left to do after this is to actually mine().
 	///
-	/// This may be called multiple times and without issue, however, until the current state is cleared,
-	/// calls after the first are ignored.
+	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
@@ -127,8 +164,12 @@ public:
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
 	bool sync(BlockChain const& _bc, h256 _blockHash);
 
+	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	bool sync(TransactionQueue& _tq);
+	/// @returns true if we uncommitted from mining during the operation.
+	/// @a o_changed boolean pointer, the value of which will be set to true if the state changed and the pointer
+	/// is non-null
+	bool sync(TransactionQueue& _tq, bool* o_changed = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
@@ -186,19 +227,33 @@ public:
 	/// Get the list of pending transactions.
 	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
 
+	/// Get the State immediately after the given number of pending transactions have been applied.
+	/// If (_i == 0) returns the initial state of the block.
+	/// If (_i == pending().size()) returns the final state of the block, prior to rewards.
+	State fromPending(unsigned _i) const;
+
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
 	/// If the _grandParent is passed, it will check the validity of each of the uncles.
 	/// This might throw.
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
+	/// Get the fee associated for a transaction with the given data.
+	u256 txGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_txGas + _gas; }
+
 	/// Get the fee associated for a contract created with the given data.
-	u256 createGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_createGas + _gas; }
+	u256 createGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
 
 	/// Get the fee associated for a normal transaction.
-	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
+	u256 callGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
+
+	/// @return the difference between this state (origin) and @a _c (destination).
+	StateDiff diff(State const& _c) const;
 
 private:
+	/// Undo the changes to the state for committing to mine.
+	void uncommitToMine();
+
 	/// Retrieve all information about a given address into the cache.
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
@@ -238,9 +293,7 @@ private:
 
 	void refreshManifest(RLPStream* _txs = nullptr);
 
-	/// Unfinalise the block, unapplying the earned rewards.
-	void unapplyRewards(Addresses const& _uncleAddresses);
-
+	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
 	Overlay m_db;								///< Our overlay for the state tree.
@@ -269,58 +322,9 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
-// TODO: Update for latest AddressState/StateTrie changes.
-// trie should always be used as base. AddressState just contains overlay.
-inline std::ostream& operator<<(std::ostream& _out, State const& _s)
-{
-	_out << "--- " << _s.rootHash() << std::endl;
-	std::set<Address> d;
-	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash()))
-	{
-		auto it = _s.m_cache.find(i.first);
-		if (it == _s.m_cache.end())
-		{
-			RLP r(i.second);
-			_out << "[    ]" << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
-			if (r.itemCount() == 4)
-			{
-				_out << " *" << r[2].toHash<h256>();
-				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-				std::map<u256, u256> mem;
-				for (auto const& j: memdb)
-				{
-					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-					mem[j.first] = RLP(j.second).toInt<u256>();
-				}
-				_out << std::endl << mem;
-			}
-			_out << std::endl;
-		}
-		else
-			d.insert(i.first);
-	}
-	for (auto i: _s.m_cache)
-		if (!i.second.isAlive())
-			_out << "[XXX " << i.first << std::endl;
-		else
-		{
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.codeHash() != EmptySHA3)
-			{
-				_out << " *" << i.second.oldRoot();
-				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
-				std::map<u256, u256> mem;
-				for (auto const& j: memdb)
-				{
-					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-					mem[j.first] = RLP(j.second).toInt<u256>();
-				}
-				_out << std::endl << mem;
-			}
-			_out << std::endl;
-		}
-	return _out;
-}
+std::ostream& operator<<(std::ostream& _out, State const& _s);
+std::ostream& operator<<(std::ostream& _out, StateDiff const& _s);
+std::ostream& operator<<(std::ostream& _out, AccountDiff const& _s);
 
 template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)

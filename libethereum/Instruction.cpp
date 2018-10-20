@@ -42,6 +42,8 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "NEG", Instruction::NEG },
 	{ "LT", Instruction::LT },
 	{ "GT", Instruction::GT },
+	{ "SLT", Instruction::SLT },
+	{ "SGT", Instruction::SGT },
 	{ "EQ", Instruction::EQ },
 	{ "NOT", Instruction::NOT },
 	{ "AND", Instruction::AND },
@@ -131,6 +133,8 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::NEG,          { "NEG",          0, 1, 1 } },
 	{ Instruction::LT,           { "LT",           0, 2, 1 } },
 	{ Instruction::GT,           { "GT",           0, 2, 1 } },
+	{ Instruction::SLT,          { "SLT",          0, 2, 1 } },
+	{ Instruction::SGT,          { "SGT",          0, 2, 1 } },
 	{ Instruction::EQ,           { "EQ",           0, 2, 1 } },
 	{ Instruction::NOT,          { "NOT",          0, 1, 1 } },
 	{ Instruction::AND,          { "AND",          0, 2, 1 } },
@@ -348,7 +352,7 @@ static void appendCode(bytes& o_code, vector<unsigned>& o_locs, bytes _code, vec
 static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs, map<string, unsigned>& _vars)
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
-	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
+	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "S<", { Instruction::SLT, false } }, { "S<=", { Instruction::SGT, true } }, { "S>", { Instruction::SGT, false } }, { "S>=", { Instruction::SLT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '~' };
 
@@ -657,7 +661,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
 						if (o == -1 || (i == 0 && o != 1))
 							return false;
-						cnote << "FOR " << i << o;
 						if (i > 0)
 							for (int j = 0; j < o; ++j)
 								codes[i].push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
@@ -754,6 +757,44 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						else
 							break;
 					}
+				}
+				else if (t == "LLL")
+				{
+					bytes codes;
+					vector<unsigned> locs;
+					map<string, unsigned> vars;
+					if (compileLispFragment(d, e, _quiet, codes, locs, _vars) == -1)
+						return false;
+					unsigned codeLoc = o_code.size() + 5 + 1;
+					o_locs.push_back(o_code.size());
+					pushLocation(o_code, codeLoc + codes.size());
+					o_code.push_back((byte)Instruction::JUMP);
+					for (auto b: codes)
+						o_code.push_back(b);
+
+					bytes ncode[1];
+					vector<unsigned> nlocs[1];
+					if (compileLispFragment(d, e, _quiet, ncode[0], nlocs[0], _vars) != 1)
+						return false;
+
+					pushLiteral(o_code, codes.size());
+					o_code.push_back((byte)Instruction::DUP);
+					int o = compileLispFragment(d, e, _quiet, o_code, o_locs, _vars);
+					if (o == 1)
+					{
+						o_code.push_back((byte)Instruction::LT);
+						o_code.push_back((byte)Instruction::NOT);
+						o_code.push_back((byte)Instruction::MUL);
+						o_code.push_back((byte)Instruction::DUP);
+					}
+					else if (o != -1)
+						return false;
+
+					o_locs.push_back(o_code.size());
+					pushLocation(o_code, codeLoc);
+					appendCode(o_code, o_locs, ncode[0], nlocs[0]);
+					o_code.push_back((byte)Instruction::CODECOPY);
+					outs = 1;
 				}
 				else if (t == "&&")
 				{
@@ -1025,19 +1066,14 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 {
 	char const* d = _code.data();
 	char const* e = _code.data() + _code.size();
-	bytes first;
-	bytes second;
+	bytes body;
 	vector<unsigned> locs;
 	map<string, unsigned> vars;
-	compileLispFragment(d, e, _quiet, first, locs, vars);
+	compileLispFragment(d, e, _quiet, _init, locs, vars);
 	locs.clear();
 	vars.clear();
-	if (compileLispFragment(d, e, _quiet, second, locs, vars) > -1)
-	{
-		_init = first;
-		return second;
-	}
-	return first;
+	compileLispFragment(d, e, _quiet, body, locs, vars);
+	return body;
 }
 
 string eth::disassemble(bytes const& _mem)

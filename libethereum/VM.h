@@ -228,15 +228,11 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::EXP:
 		{
-			// TODO: better implementation?
 			require(2);
 			auto base = m_stack.back();
-			auto x = m_stack[m_stack.size() - 2];
+			unsigned expon = (unsigned)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
-			u256 n = 1;
-			for (u256 i = 0; i < x; ++i)
-				n = (u256) n * base;
-			m_stack.back() = n;
+			m_stack.back() = boost::multiprecision::pow(base, expon);
 			break;
 		}
 		case Instruction::NEG:
@@ -251,6 +247,16 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::GT:
 			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() > m_stack[m_stack.size() - 2] ? 1 : 0;
+			m_stack.pop_back();
+			break;
+		case Instruction::SLT:
+			require(2);
+			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() < (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+			m_stack.pop_back();
+			break;
+		case Instruction::SGT:
+			require(2);
+			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() > (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:
@@ -554,6 +560,8 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize)));
 			}
+			else
+				m_stack.push_back(0);
 
 			m_gas += gas;
 			break;

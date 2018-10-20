@@ -50,11 +50,11 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath):
+Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
 	m_clientVersion(_clientVersion),
 	m_vc(_dbPath, PeerServer::protocolVersion()),
-	m_bc(_dbPath, !m_vc.ok()),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok())),
+	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
 	m_postMine(_us, m_stateDB),
 	m_workState(Active)
@@ -207,11 +207,10 @@ void Client::work()
 			m_restartMining = true;	// need to re-commit to mine.
 			m_postMine = m_preMine;
 		}
-		if (m_postMine.sync(m_tq))
+		if (m_postMine.sync(m_tq, &changed))
 		{
 			if (m_doMine)
 				cnote << "Additional transaction ready: Restarting mining operation.";
-			changed = true;
 			m_restartMining = true;
 		}
 	}
@@ -221,9 +220,26 @@ void Client::work()
 		if (m_restartMining)
 		{
 			lock_guard<recursive_mutex> l(m_lock);
-			m_postMine.commitToMine(m_bc);
+			if (m_paranoia)
+			{
+				if (m_postMine.amIJustParanoid(m_bc))
+				{
+					cnote << "I'm just paranoid. Block is fine.";
+					m_postMine.commitToMine(m_bc);
+				}
+				else
+				{
+					cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
+					m_doMine = false;
+				}
+			}
+			else
+				m_postMine.commitToMine(m_bc);
 		}
+	}
 
+	if (m_doMine)
+	{
 		m_restartMining = false;
 
 		// Mine for a while.
