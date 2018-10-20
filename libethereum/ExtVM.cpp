@@ -14,8 +14,11 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file stdafx.cpp
- * @author Tim Hughes <tim@twistedfury.com>
+/** @file ExtVM.cpp
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
+#include "ExtVM.h"
+
+namespace { char dummy; };

@@ -24,7 +24,7 @@
 #pragma once
 
 // define version
-#define ETH_VERSION 0.4.3
+#define ETH_VERSION 0.5.4
 
 // way to many uint to size_t warnings in 32 bit build
 #ifdef _M_IX86
@@ -78,6 +78,7 @@ using HexMap = std::map<bytes, std::string>;
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
+static const std::map<u256, u256> EmptyMapU256U256;
 
 /// Trivial UnitTest type that everyone can agree on, mainly to allow befriending for test classes & their code.
 template <unsigned T> class UnitTest {};

@@ -23,8 +23,7 @@
 
 #include <map>
 #include <memory>
-#include "Exceptions.h"
-#include "CommonEth.h"
+#include "Common.h"
 #include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
@@ -88,6 +87,17 @@ extern const h256 c_shaNull;
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
  * This version uses an LDB backend
+ * Usage:
+ * @code
+ * GenericTrieDB<MyDB> t(&myDB);
+ * assert(t.isNull());
+ * t.init();
+ * assert(t.isEmpty());
+ * t.insert(x, y);
+ * assert(t.at(x) == y.toString());
+ * t.remove(x);
+ * assert(t.isEmpty());
+ * @endcode
  */
 template <class DB>
 class GenericTrieDB
@@ -101,6 +111,11 @@ public:
 
 	void init();
 	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ if (!node(m_root).size()) throw RootNotFound(); }
+
+	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
+	bool isNull() const { return !node(m_root).size(); }
+	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
+	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
 	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
@@ -644,7 +659,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k)
 {
-	bytes b = deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
+	bytes b = _orig.isEmpty() ? bytes() : deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
 
 	if (!b.size())	// not found - no change.
 		return false;
