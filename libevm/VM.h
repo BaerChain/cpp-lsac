@@ -22,15 +22,23 @@
 #pragma once
 
 #include <unordered_map>
-#include "CommonEth.h"
-#include "Exceptions.h"
+#include <libethsupport/Exceptions.h>
+#include <libethcore/CommonEth.h>
+#include <libethcore/Instruction.h>
+#include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
-#include "Instruction.h"
-#include "BlockInfo.h"
 #include "ExtVMFace.h"
 
 namespace eth
 {
+
+class VMException: public Exception {};
+class StepsDone: public VMException {};
+class BreakPointHit: public VMException {};
+class BadInstruction: public VMException {};
+class OutOfGas: public VMException {};
+class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -51,8 +59,6 @@ inline u256 fromAddress(Address _a)
  */
 class VM
 {
-	template <unsigned T> friend class UnitTest;
-
 public:
 	/// Construct VM object.
 	explicit VM(u256 _gas = 0) { reset(_gas); }
@@ -112,7 +118,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 
 		case Instruction::SLOAD:
-			runGas += c_sloadGas;
+            runGas = c_sloadGas;
 			break;
 
 		// These all operate on memory and therefore potentially expand it:
@@ -162,7 +168,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			unsigned inOff = (unsigned)m_stack[m_stack.size() - 2];
 			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
-			runGas += c_createGas;
+            runGas = c_createGas;
 			break;
 		}
 
@@ -213,7 +219,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SDIV:
 			require(2);
-			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2] : 0;
+            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) / u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
@@ -223,7 +229,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SMOD:
 			require(2);
-			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2] : 0;
+            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) % u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
@@ -251,12 +257,12 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SLT:
 			require(2);
-			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() < (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) < u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SGT:
 			require(2);
-			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() > (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) > u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:
@@ -285,7 +291,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::BYTE:
 			require(2);
-			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(31 - m_stack.back())) & 0xff : 0;
+			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SHA3:
