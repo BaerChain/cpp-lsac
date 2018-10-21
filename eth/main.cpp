@@ -24,6 +24,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/trim_all.hpp>
 #include <libethsupport/FileSystem.h>
 #include <libethcore/Instruction.h>
 #include <libethereum/Defaults.h>
@@ -31,6 +33,7 @@
 #include <libethereum/PeerNetwork.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/State.h>
+#include <libethcore/CommonEth.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -41,6 +44,7 @@
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
+using namespace boost::algorithm;
 using eth::Instruction;
 using eth::c_instructionInfo;
 
@@ -70,10 +74,16 @@ void interactiveHelp()
 		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
 		<< "    balance  Gives the current balance." << endl
+		<< "    transact  Execute a given transaction." << endl
+		<< "    send  Execute a given transaction with current secret." << endl
+		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    transact  Execute a given transaction. TODO." << endl
-		<< "    send  Execute a given transaction with current secret. TODO." << endl
-		<< "    create  Create a new contract with current secret. TODO." << endl
+		<< "    listAccounts List the accounts on the network." << endl
+		<< "    listContracts List the contracts on the network." << endl
+		<< "    setSecret <secret> Set the secret to the hex secret key." <<endl
+		<< "    setAddress <addr> Set the coinbase (mining payout) address." <<endl
+		<< "    exportConfig <path> Export the config (.RLP) to the path provided." <<endl
+		<< "    importConfig <path> Import the config (.RLP) from the path provided." <<endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -111,20 +121,20 @@ string credits(bool _interactive = false)
 {
 	std::ostringstream cout;
 	cout
-		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
+        << "Ethereum (++) " << eth::EthVersion << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
 	if (_interactive)
 	{
-		string vs = toString(ETH_QUOTED(ETH_VERSION));
+        string vs = toString(eth::EthVersion);
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
 		string m_servers;
-		if (pocnumber == 3)
-			m_servers = "54.201.28.117";
 		if (pocnumber == 4)
 			m_servers = "54.72.31.55";
+		else
+			m_servers = "54.72.69.180";
 
 		cout << "Type 'netstart 30303' to start networking" << endl;
 		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -135,7 +145,7 @@ string credits(bool _interactive = false)
 
 void version()
 {
-	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
+    cout << "eth version " << eth::EthVersion << endl;
 	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -156,7 +166,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-
+bytes parse_data(string _args);
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -278,7 +288,7 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+    Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	cout << credits();
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
@@ -399,19 +409,171 @@ int main(int argc, char** argv)
 			else if (cmd == "balance")
 			{
 				ClientGuard g(&c);
-				cout << "Current balance: " << c.postState().balance(us.address()) << endl;
+				cout << "Current balance: " << formatBalance(c.postState().balance(us.address())) << " = " << c.postState().balance(us.address()) << " wei" << endl;
 			}
 			else if (cmd == "transact")
 			{
-				//TODO.
+				ClientGuard g(&c);
+				auto const& bc = c.blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if(iss.peek()!=-1){
+					string hexAddr;
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+
+					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
+					
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = parse_data(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					int size = hexAddr.length();
+					u256 minGas = (u256)c.state().callGas(data.size(), 0);
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length: " << size;
+					}
+					else if (amount < 0)
+						cwarn << "Invalid amount: " << amount;
+					else if (gasPrice < info.minGasPrice)
+						cwarn << "Minimum gas price is " << info.minGasPrice;
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is " << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						Secret secret = h256(fromHex(sechex));
+						Address dest = h160(fromHex(hexAddr));
+						c.transact(secret, amount, dest, data, gas, gasPrice);
+					}
+				} else {
+					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
+				}
+			}
+			else if (cmd == "listContracts")
+			{
+				ClientGuard g(&c);
+				auto const& st = c.state();
+				auto acs = st.addresses();
+				string ss;
+				for (auto const& i: acs)
+				{
+					auto r = i.first;
+					if (st.addressHasCode(r))
+					{
+						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						cout << ss << endl;
+					}
+				}
+			}
+			else if (cmd == "listAccounts")
+			{
+				ClientGuard g(&c);
+				auto const& st = c.state();
+				auto acs = st.addresses();
+				string ss;
+				for (auto const& i: acs)
+				{
+					auto r = i.first;
+					if (!st.addressHasCode(r))
+					{
+						ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						cout << ss << endl;
+					}
+					
+				}
 			}
 			else if (cmd == "send")
 			{
-				//TODO
+				ClientGuard g(&c);
+				if(iss.peek() != -1){
+					string hexAddr;
+					u256 amount;
+					int size = hexAddr.length();
+
+					iss >> hexAddr >> amount;
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length: " << size;
+					}
+					else if (amount < 0) {
+						cwarn << "Invalid amount: " << amount;
+					} else {
+						auto const& bc = c.blockChain();
+						auto h = bc.currentHash();
+						auto blockData = bc.block(h);
+						BlockInfo info(blockData);
+						u256 minGas = (u256)c.state().callGas(0, 0);
+						Address dest = h160(fromHex(hexAddr));
+						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+					}
+					
+				} else {
+					cwarn << "Require parameters: send ADDRESS AMOUNT";
+				}
 			}
-			else if (cmd == "create")
+			else if (cmd == "contract")
 			{
-				//TODO
+				ClientGuard g(&c);
+				auto const& bc = c.blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if(iss.peek() != -1) {
+					u256 endowment;
+					u256 gas;
+					u256 gasPrice;
+					string sinit;
+					iss >> endowment >> gasPrice >> gas >> sinit;
+					trim_all(sinit);
+					int size = sinit.length();
+					bytes init;
+					cnote << "Init:";
+					cnote << sinit;
+					cnote << "Code size: " << size;
+					if (size < 1)
+						cwarn << "No code submitted";
+					else
+					{
+						cnote << "Assembled:";
+						stringstream ssc;
+						init = fromHex(sinit);
+						ssc.str(string());
+						ssc << disassemble(init);
+						cnote << "Init:";
+						cnote << ssc.str();
+					}
+					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					if (endowment < 0)
+						cwarn << "Invalid endowment";
+					else if (gasPrice < info.minGasPrice)
+						cwarn << "Minimum gas price is " << info.minGasPrice;
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is " << minGas;
+					else
+					{
+						c.transact(us.secret(), endowment, init, gas, gasPrice);
+					}
+				} else {
+					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
+				}
 			}
 			else if (cmd == "inspect")
 			{
@@ -436,6 +598,56 @@ int main(int argc, char** argv)
 					ofs.open(outFile, ofstream::binary);
 					ofs.write(s.str().c_str(), s.str().length());
 					ofs.close();
+				}
+			}
+			else if (cmd == "setSecret")
+			{
+				if(iss.peek() != -1) {
+					string hexSec;
+					iss >> hexSec;
+					us = KeyPair(h256(fromHex(hexSec)));
+				} else {
+					cwarn << "Require parameter: setSecret HEXSECRETKEY";
+				}
+			}
+			else if (cmd == "setAddress")
+			{
+				if(iss.peek() != -1) {
+					string hexAddr;
+					iss >> hexAddr;
+					coinbase = h160(fromHex(hexAddr));
+				} else {
+					cwarn << "Require parameter: setAddress HEXADDRESS";
+				}
+			}
+			else if (cmd == "exportConfig")
+			{
+				if(iss.peek() != -1) {
+					string path;
+					iss >> path;
+					RLPStream config(2);
+					config << us.secret() << coinbase;
+					writeFile(path, config.out());
+				} else {
+					cwarn << "Require parameter: exportConfig PATH";
+				}
+			}
+			else if (cmd == "importConfig")
+			{
+				if(iss.peek() != -1) {
+					string path;
+					iss >> path;
+					bytes b = contents(path);
+					if (b.size())
+					{
+						RLP config(b);
+						us = KeyPair(config[0].toHash<Secret>());
+						coinbase = config[1].toHash<Address>();
+					} else {
+						cwarn << path << " has no content!";
+					}
+				} else {
+					cwarn << "Require parameter: importConfig PATH";
 				}
 			}
 			else if (cmd == "help")
@@ -465,4 +677,60 @@ int main(int argc, char** argv)
 
 
 	return 0;
+}
+
+bytes parse_data(string _args)
+{
+	bytes m_data;
+	stringstream args(_args);
+	string arg;
+	int cc = 0;
+	while (args >> arg)
+	{
+		int al = arg.length();
+		if (boost::starts_with(arg, "0x"))
+		{
+			bytes bs = fromHex(arg);
+			m_data += bs;
+		}
+		else if (arg[0] == '@')
+		{
+			arg = arg.substr(1, arg.length());
+			if (boost::starts_with(arg, "0x"))
+			{
+				cnote << "hex: " << arg;
+				bytes bs = fromHex(arg);
+				int size = bs.size();
+				if (size < 32)
+					for (auto i = 0; i < 32 - size; ++i)
+						m_data.push_back(0);
+				m_data += bs;
+			}
+			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
+			{
+				arg = arg.substr(1, arg.length() - 2);
+				cnote << "string: " << arg;
+				if (al < 32)
+					for (int i = 0; i < 32 - al; ++i)
+						m_data.push_back(0);
+				for (int i = 0; i < al; ++i)
+					m_data.push_back(arg[i]);
+			}
+			else
+			{
+				cnote << "value: " << arg;
+				bytes bs = toBigEndian(u256(arg));
+				int size = bs.size();
+				if (size < 32)
+					for (auto i = 0; i < 32 - size; ++i)
+						m_data.push_back(0);
+				m_data += bs;
+			}
+		}
+		else
+			for (int i = 0; i < al; ++i)
+				m_data.push_back(arg[i]);
+		cc++;
+	}
+	return m_data;
 }

@@ -110,10 +110,13 @@ private slots:
 	void on_inject_triggered();
 	void on_showAll_triggered() { refresh(true); }
 	void on_showAllAccounts_triggered() { refresh(true); }
+	void on_loadJS_triggered();
+	void on_blockChainFilter_textChanged();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
 	void refreshMining();
+	void refreshBlockChain();
 
 signals:
 	void changed();	// TODO: manifest
@@ -128,6 +131,7 @@ private:
 	void debugFinished();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
+	std::string renderDiff(eth::State const& fs, eth::State const& ts) const;
 
 	eth::State const& state() const;
 
