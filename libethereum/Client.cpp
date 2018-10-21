@@ -154,7 +154,6 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
-	m_changed = true;
 }
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
@@ -170,7 +169,6 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
-	m_changed = true;
 	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
@@ -226,6 +224,9 @@ void Client::work()
 	{
 		if (m_restartMining)
 		{
+			m_mineProgress.best = (uint)-1;
+			m_mineProgress.hashes = 0;
+			m_mineProgress.ms = 0;
 			lock_guard<recursive_mutex> l(m_lock);
 			if (m_paranoia)
 			{
@@ -251,16 +252,22 @@ void Client::work()
 
 		// Mine for a while.
 		MineInfo mineInfo = m_postMine.mine(100);
-		m_mineProgress.best = max(m_mineProgress.best, mineInfo.best);
+
+		m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
 		m_mineProgress.current = mineInfo.best;
 		m_mineProgress.requirement = mineInfo.requirement;
+		m_mineProgress.ms += 100;
+		m_mineProgress.hashes += mineInfo.hashes;
+		{
+			lock_guard<recursive_mutex> l(m_lock);
+			m_mineHistory.push_back(mineInfo);
+		}
 
 		if (mineInfo.completed)
 		{
 			// Import block.
 			lock_guard<recursive_mutex> l(m_lock);
 			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
-			m_mineProgress.best = 0;
 			m_changed = true;
 		}
 	}

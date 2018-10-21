@@ -37,7 +37,7 @@ using namespace eth;
 
 #define ctrace clog(StateTrace)
 
-Overlay State::openDB(std::string _path, bool _killExisting)
+OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
@@ -51,13 +51,12 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
 	cnote << "Opened state DB.";
-	return Overlay(db);
+	return OverlayDB(db);
 }
 
-State::State(Address _coinbaseAddress, Overlay const& _db):
+State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_db(_db),
 	m_state(&m_db),
-	m_transactionManifest(&m_db),
 	m_ourAddress(_coinbaseAddress)
 {
 	m_blockReward = 1500 * finney;
@@ -66,13 +65,20 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
+
+	paranoia("beginning of normal construction.", true);
+
 	eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
+
+	paranoia("after DB commit of normal construction.", true);
 
 	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
+
+	paranoia("end of normal construction.", true);
 }
 
 State::State(State const& _s):
@@ -80,13 +86,29 @@ State::State(State const& _s):
 	m_state(&m_db, _s.m_state.root()),
 	m_transactions(_s.m_transactions),
 	m_transactionSet(_s.m_transactionSet),
-	m_transactionManifest(&m_db, _s.m_transactionManifest.root()),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
 	m_ourAddress(_s.m_ourAddress),
 	m_blockReward(_s.m_blockReward)
 {
+	paranoia("after state cloning (copy cons).", true);
+}
+
+void State::paranoia(std::string const& _when, bool _enforceRefs) const
+{
+#if ETH_PARANOIA
+	// TODO: variable on context; just need to work out when there should be no leftovers
+	// [in general this is hard since contract alteration will result in nodes in the DB that are no directly part of the state DB].
+	if (!isTrieGood(_enforceRefs, false))
+	{
+		cwarn << "BAD TRIE" << _when;
+		throw InvalidTrie();
+	}
+#else
+	(void)_when;
+	(void)_enforceRefs;
+#endif
 }
 
 State& State::operator=(State const& _s)
@@ -95,18 +117,18 @@ State& State::operator=(State const& _s)
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
 	m_transactionSet = _s.m_transactionSet;
-	m_transactionManifest.open(&m_db, _s.m_transactionManifest.root());
 	m_cache = _s.m_cache;
 	m_previousBlock = _s.m_previousBlock;
 	m_currentBlock = _s.m_currentBlock;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
+	paranoia("after state cloning (assignment op)", true);
 	return *this;
 }
 
 struct CachedAddressState
 {
-	CachedAddressState(std::string const& _rlp, AddressState const* _s, Overlay const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
+	CachedAddressState(std::string const& _rlp, AddressState const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
 
 	bool exists() const
 	{
@@ -115,12 +137,12 @@ struct CachedAddressState
 
 	u256 balance() const
 	{
-		return r ? s ? s->balance() : r[0].toInt<u256>() : 0;
+		return r ? s ? s->balance() : r[1].toInt<u256>() : 0;
 	}
 
 	u256 nonce() const
 	{
-		return r ? s ? s->nonce() : r[1].toInt<u256>() : 0;
+		return r ? s ? s->nonce() : r[0].toInt<u256>() : 0;
 	}
 
 	bytes code() const
@@ -136,7 +158,7 @@ struct CachedAddressState
 		std::map<u256, u256> ret;
 		if (r)
 		{
-			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
 			for (auto const& j: memdb)
 				ret[j.first] = RLP(j.second).toInt<u256>();
 		}
@@ -183,7 +205,7 @@ struct CachedAddressState
 	std::string rS;
 	RLP r;
 	AddressState const* s;
-	Overlay const* o;
+	OverlayDB const* o;
 };
 
 StateDiff State::diff(State const& _c) const
@@ -194,8 +216,8 @@ StateDiff State::diff(State const& _c) const
 	std::set<Address> trieAds;
 	std::set<Address> trieAdsD;
 
-	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&m_db), rootHash());
-	auto trieD = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_c.m_db), _c.rootHash());
+	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
+	auto trieD = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
 
 	for (auto i: trie)
 		ads.insert(i.first), trieAds.insert(i.first);
@@ -267,7 +289,7 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 	{
 		auto b = _bc.block(_block);
 		bi.populate(b);
-		bi.verifyInternals(_bc.block(_block));
+//		bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
 	}
 	catch (...)
 	{
@@ -323,7 +345,7 @@ map<Address, u256> State::addresses() const
 			ret[i.first] = i.second.balance();
 	for (auto const& i: m_state)
 		if (m_cache.find(i.first) == m_cache.end())
-			ret[i.first] = RLP(i.second)[0].toInt<u256>();
+			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 }
 
@@ -331,7 +353,6 @@ void State::resetCurrent()
 {
 	m_transactions.clear();
 	m_transactionSet.clear();
-	m_transactionManifest.init();
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
@@ -344,7 +365,10 @@ void State::resetCurrent()
 	// Update timestamp according to clock.
 	// TODO: check.
 
+	m_lastTx = m_db;
 	m_state.setRoot(m_currentBlock.stateRoot);
+
+	paranoia("begin resetCurrent", true);
 }
 
 bool State::cull(TransactionQueue& _tq) const
@@ -458,8 +482,9 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
-	if (_fullCommit)
-		m_transactionManifest.init();
+	MemoryDB tm;
+	GenericTrieDB<MemoryDB> transactionManifest(&tm);
+	transactionManifest.init();
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
@@ -481,9 +506,15 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		if (_fullCommit)
 		{
 			bytes k = rlp(i);
-			m_transactionManifest.insert(&k, tr.data());
+			transactionManifest.insert(&k, tr.data());
 		}
 		++i;
+	}
+
+	if (transactionManifest.root() != m_currentBlock.transactionsRoot)
+	{
+		cwarn << "Bad transactions state root!";
+		throw InvalidTransactionStateRoot();
 	}
 
 	// Initialise total difficulty calculation.
@@ -518,7 +549,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	{
 		cwarn << "Bad state root!";
 		cnote << "Given to be:" << m_currentBlock.stateRoot;
-		cnote << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
+		cnote << TrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
 		cnote << "Calculated to be:" << rootHash();
 		cnote << m_state;
 		cnote << *this;
@@ -529,21 +560,12 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 	{
-		if (!isTrieGood())
-		{
-			cwarn << "INVALID TRIE prior to database commit!";
-			throw InvalidTrie();
-		}
+		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
 		m_db.commit();
 
-		if (!isTrieGood())
-		{
-			cwarn << "INVALID TRIE immediately after database commit!";
-			throw InvalidTrie();
-		}
-
+		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
 	}
 	else
@@ -558,12 +580,17 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 void State::uncommitToMine()
 {
-	m_cache.clear();
-	if (!m_transactions.size())
-		m_state.setRoot(m_previousBlock.stateRoot);
-	else
-		m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
-	m_currentBlock.sha3Uncles = h256();
+	if (m_currentBlock.sha3Uncles)
+	{
+		m_cache.clear();
+		if (!m_transactions.size())
+			m_state.setRoot(m_previousBlock.stateRoot);
+		else
+			m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
+		m_db = m_lastTx;
+		paranoia("Uncommited to mine", true);
+		m_currentBlock.sha3Uncles = h256();
+	}
 }
 
 bool State::amIJustParanoid(BlockChain const& _bc)
@@ -609,10 +636,12 @@ void State::commitToMine(BlockChain const& _bc)
 	uncommitToMine();
 
 	cnote << "Commiting to mine on block" << m_previousBlock.hash;
-#ifndef RELEASE
+#ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif
+
+	m_lastTx = m_db;
 
 	RLPStream uncles;
 	Addresses uncleAddresses;
@@ -635,14 +664,9 @@ void State::commitToMine(BlockChain const& _bc)
 	else
 		uncles.appendList(0);
 
-//	cnote << *this;
-	applyRewards(uncleAddresses);
-	if (m_transactionManifest.isNull())
-		m_transactionManifest.init();
-	else
-		while(!m_transactionManifest.isEmpty())
-			m_transactionManifest.remove((*m_transactionManifest.begin()).first);
-//	cnote << *this;
+	MemoryDB tm;
+	GenericTrieDB<MemoryDB> transactionManifest(&tm);
+	transactionManifest.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -652,15 +676,18 @@ void State::commitToMine(BlockChain const& _bc)
 		k << i;
 		RLPStream v;
 		m_transactions[i].fillStream(v);
-		m_transactionManifest.insert(&k.out(), &v.out());
+		transactionManifest.insert(&k.out(), &v.out());
 		txs.appendRaw(v.out());
 	}
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = m_transactionManifest.root();
+	m_currentBlock.transactionsRoot = transactionManifest.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
+	// Apply rewards last of all.
+	applyRewards(uncleAddresses);
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
@@ -736,7 +763,7 @@ void State::noteSending(Address _id)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(0, 1, h256(), EmptySHA3);
+		m_cache[_id] = AddressState(1, 0, h256(), EmptySHA3);
 	else
 		it->second.incNonce();
 }
@@ -746,7 +773,7 @@ void State::addBalance(Address _id, u256 _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(_amount, 0, h256(), EmptySHA3);
+		m_cache[_id] = AddressState(0, _amount, h256(), EmptySHA3);
 	else
 		it->second.addBalance(_amount);
 }
@@ -786,7 +813,7 @@ u256 State::storage(Address _id, u256 _memory) const
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
-	TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
+	TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
 	string payload = memdb.at(_memory);
 	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
 	it->second.setStorage(_memory, ret);
@@ -804,7 +831,7 @@ map<u256, u256> State::storage(Address _id) const
 		// Pull out all values from trie storage.
 		if (it->second.oldRoot())
 		{
-			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 			for (auto const& i: memdb)
 				ret[i.first] = RLP(i.second).toInt<u256>();
 		}
@@ -838,46 +865,44 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
-bool State::isTrieGood()
+bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
-	{
-		EnforceRefs r(m_db, false);
-		for (auto const& i: m_state)
+	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
+		try
 		{
-			RLP r(i.second);
-			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
-			try
+			EnforceRefs r(m_db, !!e);
+			auto lo = m_state.leftOvers();
+			if (!lo.empty() && _requireNoLeftOvers)
 			{
+				cwarn << "LEFTOVERS" << (e ? "[enforced" : "[unenforced") << "refs]";
+				cnote << "Left:" << lo;
+				cnote << "Keys:" << m_db.keys();
+				m_state.debugStructure(cerr);
+				return false;
+			}
+			// TODO: Enable once fixed.
+			for (auto const& i: m_state)
+			{
+				RLP r(i.second);
+				TrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
 				for (auto const& j: storageDB) { (void)j; }
-			}
-			catch (InvalidTrie)
-			{
-				cwarn << "BAD TRIE [unenforced refs]";
-				return false;
-			}
-			if (r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
-				return false;
-		}
-	}
-	{
-		EnforceRefs r(m_db, true);
-		for (auto const& i: m_state)
-		{
-			RLP r(i.second);
-			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
-			try
-			{
-				for (auto const& j: storageDB) { (void)j; }
-			}
-			catch (InvalidTrie)
-			{
-				cwarn << "BAD TRIE [enforced refs]";
-				return false;
+				if (!e && r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+					return false;
 			}
 		}
-	}
+		catch (InvalidTrie)
+		{
+			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
+			cnote << m_db.keys();
+			m_state.debugStructure(cerr);
+			return false;
+		}
 	return true;
 }
+
+// TODO: kill temp nodes automatically in TrieDB
+// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+// TODO: TransactionReceipt trie should be MemoryDB and built as necessary
 
 u256 State::execute(bytesConstRef _rlp)
 {
@@ -885,28 +910,22 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();	// get an updated hash
 #endif
 
-#if ETH_PARANOIA
-	if (!isTrieGood())
-	{
-		cwarn << "BAD TRIE before execution begins.";
-		throw InvalidTrie();
-	}
-#endif
+	paranoia("start of execution.", true);
 
 	State old(*this);
+#if ETH_PARANOIA
 	auto h = rootHash();
+#endif
 
 	Executive e(*this);
 	e.setup(_rlp);
+
+	u256 startGasUsed = gasUsed();
 
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp(true));
 #endif
-
-	u256 startGasUsed = gasUsed();
-	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
-		throw BlockGasLimitReached();	// TODO: make sure this is handled.
 
 	e.go();
 	e.finalize();
@@ -919,19 +938,19 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();
 
 #if ETH_PARANOIA
-	if (e.t().receiveAddress)
-	{
-		EnforceRefs r(m_db, true);
-		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress)).size());
-	}
-
 	ctrace << "Executed; now" << rootHash();
 	ctrace << old.diff(*this);
 
-	if (!isTrieGood())
+	paranoia("after execution commit.", true);
+
+	if (e.t().receiveAddress)
 	{
-		cwarn << "BAD TRIE immediately after execution.";
-		throw InvalidTrie();
+		EnforceRefs r(m_db, true);
+		if (storageRoot(e.t().receiveAddress) && m_db.lookup(storageRoot(e.t().receiveAddress)).empty())
+		{
+			cwarn << "TRIE immediately after execution; no node for receiveAddress";
+			throw InvalidTrie();
+		}
 	}
 #endif
 
@@ -1077,7 +1096,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
 	std::set<Address> dtr;
-	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash());
+	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
 	for (auto i: trie)
 		d.insert(i.first), dtr.insert(i.first);
 	for (auto i: _s.m_cache)
@@ -1096,7 +1115,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 		else
 		{
 			string lead = (cache ? r ? " *   " : " +   " : "     ");
-			if (cache && r && (cache->balance() == r[0].toInt<u256>() && cache->nonce() == r[1].toInt<u256>()))
+			if (cache && r && cache->nonce() == r[0].toInt<u256>() && cache->balance() == r[1].toInt<u256>())
 				lead = " .   ";
 
 			stringstream contout;
@@ -1109,7 +1128,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 				std::set<u256> cached;
 				if (r)
 				{
-					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+					TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
 					for (auto const& j: memdb)
 						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
@@ -1140,7 +1159,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 			}
 			else
 				contout << " [SIMPLE]";
-			_out << lead << i << ": " << std::dec << (cache ? cache->balance() : r[0].toInt<u256>()) << " #:" << (cache ? cache->nonce() : r[1].toInt<u256>()) << contout.str() << std::endl;
+			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
 	return _out;
@@ -1165,17 +1184,17 @@ std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
 	if (!_s.exist.to())
 		return _out;
 
-	if (_s.balance)
-	{
-		_out << std::dec << _s.balance.to() << " ";
-		if (_s.balance.from())
-			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
-	}
 	if (_s.nonce)
 	{
 		_out << std::dec << "#" << _s.nonce.to() << " ";
 		if (_s.nonce.from())
 			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
+	}
+	if (_s.balance)
+	{
+		_out << std::dec << _s.balance.to() << " ";
+		if (_s.balance.from())
+			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
 	}
 	if (_s.code)
 		_out << "$" << std::hex << _s.code.to() << " (" << _s.code.from() << ") ";

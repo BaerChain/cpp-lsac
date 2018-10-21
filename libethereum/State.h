@@ -112,7 +112,7 @@ class State
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), Overlay const& _db = Overlay());
+	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB());
 
 	/// Copy state object.
 	State(State const& _s);
@@ -126,8 +126,8 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-    static Overlay openDB(std::string _path, bool _killExisting = false);
-	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+	static OverlayDB openDB(std::string _path, bool _killExisting = false);
+	static OverlayDB openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
@@ -297,13 +297,15 @@ private:
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
-	bool isTrieGood();
+	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
+	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
-	Overlay m_db;								///< Our overlay for the state tree.
-	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
+	OverlayDB m_db;								///< Our overlay for the state tree.
+	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
-	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
+//	GenericTrieDB<OverlayDB> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
+	OverlayDB m_lastTx;
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
@@ -338,7 +340,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 		else
 		{
 			RLPStream s(4);
-			s << i.second.balance() << i.second.nonce();
+			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
 				s.append(i.second.oldRoot(), false, true);

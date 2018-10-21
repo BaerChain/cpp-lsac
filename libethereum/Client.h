@@ -23,6 +23,7 @@
 
 #include <thread>
 #include <mutex>
+#include <list>
 #include <atomic>
 #include <libethsupport/Common.h>
 #include <libethcore/Dagger.h>
@@ -36,9 +37,11 @@ namespace eth
 
 struct MineProgress
 {
-	uint requirement;
-	uint best;
-	uint current;
+	double requirement;
+	double best;
+	double current;
+	uint hashes;
+	uint ms;
 };
 
 class Client;
@@ -119,6 +122,7 @@ public:
 
 	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
+	bool peekChanged() const { return m_changed; }
 
 	/// Get the object representing the current state of Ethereum.
 	State const& state() const { return m_preMine; }
@@ -165,8 +169,12 @@ public:
 	void stopMining();
 	/// Are we mining now?
 	bool isMining() { return m_doMine; }
+	/// Register a callback for information concerning mining.
+	/// This callback will be in an arbitrary thread, blocking progress. JUST COPY THE DATA AND GET OUT.
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { return m_mineProgress; }
+	/// Get and clear the mining history.
+	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
 private:
 	void work();
@@ -175,7 +183,7 @@ private:
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
-	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;					///< The present state of the client.
 	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
@@ -187,6 +195,7 @@ private:
 	bool m_paranoia = false;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
+	std::list<MineInfo> m_mineHistory;
 	mutable bool m_restartMining = false;
 
 	mutable bool m_changed;

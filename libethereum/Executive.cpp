@@ -49,14 +49,14 @@ void Executive::setup(bytesConstRef _rlp)
 	auto nonceReq = m_s.transactionsFrom(m_sender);
 	if (m_t.nonce != nonceReq)
 	{
-		clog(StateChat) << "Invalid Nonce.";
+		clog(StateChat) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
 		throw InvalidNonce(nonceReq, m_t.nonce);
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
 	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
 	{
-		clog(StateChat) << "Offered gas-price is too low.";
+		clog(StateChat) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
 		throw GasPriceTooLow();
 	}
 
@@ -65,7 +65,7 @@ void Executive::setup(bytesConstRef _rlp)
 
 	if (m_t.gas < gasCost)
 	{
-		clog(StateChat) << "Not enough gas to pay for the transaction.";
+		clog(StateChat) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
 		throw OutOfGas();
 	}
 
@@ -74,8 +74,15 @@ void Executive::setup(bytesConstRef _rlp)
 	// Avoid unaffordable transactions.
 	if (m_s.balance(m_sender) < cost)
 	{
-		clog(StateChat) << "Not enough cash.";
+		clog(StateChat) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
 		throw NotEnoughCash();
+	}
+
+	u256 startGasUsed = m_s.gasUsed();
+	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
+	{
+		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
+		throw BlockGasLimitReached();
 	}
 
 	// Increment associated nonce for sender.
@@ -113,7 +120,7 @@ void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 		m_newAddress = (u160)m_newAddress + 1;
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, 0, h256(), h256());
+	m_s.m_cache[m_newAddress] = AddressState(0, _endowment, h256(), h256());
 
 	// Execute _init.
 	m_vm = new VM(_gas);
@@ -127,7 +134,34 @@ bool Executive::go(uint64_t _steps)
 		bool revert = false;
 		try
 		{
+#if ETH_VMTRACE
+			if (_steps == (uint64_t)0 - 1)
+				for (uint64_t s = 0;; ++s)
+				{
+					ostringstream o;
+					o << endl << "    STACK" << endl;
+					for (auto i: vm().stack())
+						o << (h256)i << endl;
+					o << "    MEMORY" << endl << memDump(vm().memory());
+					o << "    STORAGE" << endl;
+					for (auto const& i: state().storage(ext().myAddress))
+						o << showbase << hex << i.first << ": " << i.second << endl;
+					eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+					eth::LogOutputStream<VMTraceChannel, false>(false) << dec << " | #" << s << " | " << hex << setw(4) << setfill('0') << vm().curPC() << " : " << c_instructionInfo.at((Instruction)ext().getCode(vm().curPC())).name << " | " << dec << vm().gas() << " ]";
+					if (s >= _steps)
+						break;
+					try
+					{
+						m_out = m_vm->go(*m_ext, 1);
+						break;
+					}
+					catch (StepsDone const&) {}
+				}
+			else
+				m_out = m_vm->go(*m_ext, _steps);
+#else
 			m_out = m_vm->go(*m_ext, _steps);
+#endif
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)

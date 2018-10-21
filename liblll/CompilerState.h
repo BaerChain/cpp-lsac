@@ -37,12 +37,13 @@ struct Macro
 struct CompilerState
 {
 	CodeFragment const& getDef(std::string const& _s);
+	void populateStandard();
 
 	std::map<std::string, unsigned> vars;
 	std::map<std::string, CodeFragment> defs;
 	std::map<std::string, CodeFragment> args;
 	std::map<std::string, CodeFragment> outers;
-	std::map<std::string, Macro> macros;
+	std::map<std::pair<std::string, unsigned>, Macro> macros;
 	std::vector<boost::spirit::utree> treesToKill;
 };
 

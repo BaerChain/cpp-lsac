@@ -156,14 +156,14 @@ public:
 
 		previousBlock.hash = h256(_o["previousHash"].get_str());
 		currentBlock.number = toInt(_o["currentNumber"]);
-		currentBlock.gasLimit = toInt(_o["gasLimit"]);
+		currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
 		currentBlock.difficulty = toInt(_o["currentDifficulty"]);
 		currentBlock.timestamp = toInt(_o["currentTimestamp"]);
 		currentBlock.coinbaseAddress = Address(_o["currentCoinbase"].get_str());
 
 		thisTxCode.clear();
 		if (_o["code"].type() == str_type)
-			thisTxCode = compileLLL(_o["code"].get_str(), nullptr);
+			thisTxCode = compileLLL(_o["code"].get_str());
 		else
 			for (auto const& j: _o["code"].get_array())
 				thisTxCode.push_back(toByte(j));
@@ -250,7 +250,7 @@ public:
 				mArray d;
 				for (auto const& i: get<3>(a.second))
 					push(d, i);
-				ret["code"] = d;
+				o["code"] = d;
 			}
 
 			ret[toString(a.first)] = o;
@@ -278,7 +278,7 @@ public:
 					get<2>(a)[adr++] = toInt(k);
 			}
 			if (o["code"].type() == str_type)
-				get<3>(a) = compileLLL(o["code"].get_str(), nullptr);
+				get<3>(a) = compileLLL(o["code"].get_str());
 			else
 			{
 				get<3>(a).clear();

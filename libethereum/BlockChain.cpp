@@ -82,7 +82,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 			"6c386a4b26f73c802f34673f7248bb118f97424a",
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
-			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
 
 	}
 	return s_ret;
@@ -97,8 +97,8 @@ bytes BlockChain::createGenesisBlock()
 
 	h256 stateRoot;
 	{
-		BasicMap db;
-		TrieDB<Address, BasicMap> state(&db);
+		MemoryDB db;
+		TrieDB<Address, MemoryDB> state(&db);
 		state.init();
 		eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
@@ -167,7 +167,7 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
+bool BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
 {
 #if ETH_CATCH
 	try
@@ -185,7 +185,7 @@ bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
 }
 
 
-void BlockChain::import(bytes const& _block, Overlay const& _db)
+void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;

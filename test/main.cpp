@@ -20,6 +20,10 @@
  * Main test functions.
  */
 
+#include <libethsupport/TrieDB.h>
+#include "TrieHash.h"
+#include "MemTrie.h"
+
 #include <boost/test/unit_test.hpp>
 
 int trieTest();
@@ -38,8 +42,6 @@ using namespace eth;
 
 BOOST_AUTO_TEST_CASE(basic_tests)
 {
-	cnote << "Hello";
-
 /*	RLPStream s;
 	BlockInfo::genesis().fillStream(s, false);
 	std::cout << RLP(s.out()) << std::endl;
