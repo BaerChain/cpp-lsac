@@ -21,8 +21,9 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
-#include "BlockInfo.h"
+#include <libethential/Common.h>
+#include <libethcore/CommonEth.h>
+#include <libethcore/BlockInfo.h>
 
 namespace eth
 {
@@ -39,7 +40,6 @@ public:
 	/// Full constructor.
 	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock);
 
-
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
 
@@ -52,20 +52,23 @@ public:
 	/// Read address's balance.
 	u256 balance(Address) { return 0; }
 
-	/// Subtract amount from address's balance.
+	/// Subtract amount from account's balance.
 	void subBalance(u256) {}
 
-	/// Determine address's TX count.
+	/// Determine account's TX count.
 	u256 txCount(Address) { return 0; }
 
 	/// Suicide the associated contract to the given address.
-	void suicide(Address) {}
+	void suicide(Address _a) { suicides.insert(_a); }
 
-	/// Create a new contract.
+	/// Create a new (contract) account.
 	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
 
 	/// Make a new message call.
 	bool call(Address, u256, bytesConstRef, u256*, bytesRef) { return false; }
+
+	/// Revert any changes made (by any of the other calls).
+	void revert() {}
 
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).
@@ -76,6 +79,7 @@ public:
 	bytesConstRef code;			///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
+	std::set<Address> suicides;	///< Any accounts that have suicided.
 };
 
 }

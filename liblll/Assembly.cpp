@@ -21,7 +21,7 @@
 
 #include "Assembly.h"
 
-#include <libethsupport/Log.h>
+#include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 
 using namespace std;
@@ -174,6 +174,11 @@ AssemblyItem const& Assembly::append(AssemblyItem const& _i)
 	m_deposit += _i.deposit();
 	m_items.push_back(_i);
 	return back();
+}
+
+void Assembly::injectStart(AssemblyItem const& _i)
+{
+	m_items.insert(m_items.begin(), _i);
 }
 
 inline bool matches(AssemblyItemsConstRef _a, AssemblyItemsConstRef _b)

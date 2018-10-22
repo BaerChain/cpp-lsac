@@ -22,13 +22,14 @@
 #include "CommonEth.h"
 #include <random>
 #include <secp256k1/secp256k1.h>
+#include <libethcore/SHA3.h>
 #include "Exceptions.h"
 using namespace std;
 using namespace eth;
 
 //#define ETH_ADDRESS_DEBUG 1
 
-const unsigned eth::c_protocolVersion = 20;
+const unsigned eth::c_protocolVersion = 21;
 
 static const vector<pair<u256, string>> g_units =
 {

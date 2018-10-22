@@ -23,8 +23,8 @@
 
 #include <iostream>
 #include <sstream>
-#include <libethsupport/Common.h>
-#include <libethcore/Instruction.h>
+#include <libethential/Common.h>
+#include <libevmface/Instruction.h>
 #include "Exceptions.h"
 
 namespace eth
@@ -69,8 +69,8 @@ class Assembly
 public:
 	AssemblyItem newTag() { return AssemblyItem(Tag, m_usedTags++); }
 	AssemblyItem newPushTag() { return AssemblyItem(PushTag, m_usedTags++); }
-	AssemblyItem newData(bytes const& _data) { auto h = sha3(_data); m_data[h] = _data; return AssemblyItem(PushData, h); }
-	AssemblyItem newPushString(std::string const& _data) { auto h = sha3(_data); m_strings[h] = _data; return AssemblyItem(PushString, h); }
+	AssemblyItem newData(bytes const& _data) { h256 h = (u256)std::hash<std::string>()(asString(_data)); m_data[h] = _data; return AssemblyItem(PushData, h); }
+	AssemblyItem newPushString(std::string const& _data) { h256 h = (u256)std::hash<std::string>()(_data); m_strings[h] = _data; return AssemblyItem(PushString, h); }
 
 	AssemblyItem append() { return append(newTag()); }
 	void append(Assembly const& _a);
@@ -96,6 +96,8 @@ public:
 	void endIgnored() { m_deposit = m_baseDeposit; m_baseDeposit = 0; }
 
 	void popTo(int _deposit) { while (m_deposit > _deposit) append(Instruction::POP); }
+
+	void injectStart(AssemblyItem const& _i);
 
 	std::string out() const { std::stringstream ret; streamOut(ret); return ret.str(); }
 	int deposit() const { return m_deposit; }

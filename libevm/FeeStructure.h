@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
+#include <libethential/Common.h>
 
 namespace eth
 {

@@ -23,7 +23,7 @@
 #include <fstream>
 #include <random>
 #include "JsonSpiritHeaders.h"
-#include <libethsupport/TrieDB.h>
+#include <libethcore/TrieDB.h>
 #include "TrieHash.h"
 #include "MemTrie.h"
 #include <boost/test/unit_test.hpp>
@@ -51,16 +51,22 @@ BOOST_AUTO_TEST_CASE(trie_tests)
 	cnote << "Testing Trie...";
 	js::mValue v;
 	string s = asString(contents("../../../tests/trietest.json"));
-	BOOST_REQUIRE_MESSAGE( s.length() > 0, "Contents of 'trietest.json' is empty. Have you cloned the 'tests' repo branch develop?");
+	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'trietest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())
 	{
+		cnote << i.first;
 		js::mObject& o = i.second.get_obj();
-//		cnote << i.first;
 		vector<pair<string, string>> ss;
-		for (auto& i: o["in"].get_obj())
+		for (auto i: o["in"].get_obj())
+		{
 			ss.push_back(make_pair(i.first, i.second.get_str()));
-		for (unsigned j = 0; j < eth::test::fac((unsigned)ss.size()); ++j)
+			if (!ss.back().first.find("0x"))
+				ss.back().first = asString(fromHex(ss.back().first.substr(2)));
+			if (!ss.back().second.find("0x"))
+				ss.back().second = asString(fromHex(ss.back().second.substr(2)));
+		}
+		for (unsigned j = 0; j < min(1000u, eth::test::fac((unsigned)ss.size())); ++j)
 		{
 			next_permutation(ss.begin(), ss.end());
 			MemoryDB m;
@@ -69,12 +75,11 @@ BOOST_AUTO_TEST_CASE(trie_tests)
 			BOOST_REQUIRE(t.check(true));
 			for (auto const& k: ss)
 			{
-//				cdebug << k.first << k.second;
 				t.insert(k.first, k.second);
 				BOOST_REQUIRE(t.check(true));
 			}
 			BOOST_REQUIRE(!o["root"].is_null());
-			BOOST_CHECK(o["root"].get_str() == toHex(t.root().asArray()) ); 
+			BOOST_CHECK_EQUAL(o["root"].get_str(), toHex(t.root().asArray()));
 		}
 	}
 }
@@ -263,7 +268,7 @@ BOOST_AUTO_TEST_CASE(trieStess)
 				m.erase(k);
 				if (!d.check(true))
 				{
-					cwarn << m;
+					// cwarn << m;
 					for (auto i: d)
 						cwarn << i.first.toString() << i.second.toString();
 

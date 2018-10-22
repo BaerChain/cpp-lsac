@@ -1,0 +1,33 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# VS stuff
+build
+ipch
+*.sdf
+*.opensdf
+*.suo
+
+#Xcode stuff
+build_xc
+
+*.user
+*.user.*
+*~
+
+build/
+
+*.pyc
+
+.DS_Store

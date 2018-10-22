@@ -19,9 +19,11 @@
  * @date 2014
  */
 
-#include <libethsupport/Common.h>
-#include <libethsupport/RLP.h>
-#include <libethsupport/TrieDB.h>
+#if !ETH_LANGUAGES
+
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
@@ -156,7 +158,7 @@ u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
 	if (!parentHash)
 		return 1000000;
 	else
-		return max<u256>(10000, (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024);
+		return max<u256>(125000, (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
@@ -189,3 +191,5 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 			throw InvalidNumber();
 	}
 }
+
+#endif

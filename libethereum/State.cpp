@@ -25,7 +25,7 @@
 #include <time.h>
 #include <random>
 #include <secp256k1/secp256k1.h>
-#include <libethcore/Instruction.h>
+#include <libevmface/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/Dagger.h>
 #include <libevm/VM.h>
@@ -1004,7 +1004,7 @@ u256 State::execute(bytesConstRef _rlp)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1022,6 +1022,9 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 		{
 			auto out = vm.go(evm);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+			if (o_suicides)
+				for (auto i: evm.suicides)
+					o_suicides->insert(i);
 		}
 		catch (OutOfGas const& /*_e*/)
 		{
@@ -1052,7 +1055,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1064,7 +1067,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	// Set up new account...
 	m_cache[newAddress] = AddressState(0, 0, h256(), h256());
 
-	// Execute _init.
+	// Execute init code.
 	VM vm(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code);
 	bool revert = false;
@@ -1073,6 +1076,9 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	try
 	{
 		out = vm.go(evm);
+		if (o_suicides)
+			for (auto i: evm.suicides)
+				o_suicides->insert(i);
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -1096,7 +1102,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	if (revert)
 		evm.revert();
 
-	// Set code as long as we didn't suicide.
+	// Set code.
 	if (addressInUse(newAddress))
 		m_cache[newAddress].setCode(out);
 
@@ -1195,9 +1201,9 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 
 				for (auto const& j: mem)
 					if (j.second)
-						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
+						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << nouppercase << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
 					else
-						contout << std::endl << "XXX    " << std::hex << std::setw(64) << j.first << "";
+						contout << std::endl << "XXX    " << std::hex << nouppercase << std::setw(64) << j.first << "";
 			}
 			else
 				contout << " [SIMPLE]";
@@ -1239,14 +1245,14 @@ std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
 			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
 	}
 	if (_s.code)
-		_out << "$" << std::hex << _s.code.to() << " (" << _s.code.from() << ") ";
+		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
 	for (pair<u256, Diff<u256>> const& i: _s.storage)
 		if (!i.second.from())
-			_out << endl << " +     " << (h256)i.first << ": " << std::hex << i.second.to();
+			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
 		else if (!i.second.to())
-			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << i.second.from() << ")";
+			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
 		else
-			_out << endl << " *     " << (h256)i.first << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
 	return _out;
 }
 
