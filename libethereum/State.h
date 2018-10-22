@@ -149,10 +149,25 @@ public:
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
+	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns a non-empty byte array containing the block if it got lucky. In this case, call blockData()
-	/// to get the block if you need it later.
+	/// @returns Information on the mining.
 	MineInfo mine(uint _msTimeout = 1000);
+
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * // lock
+	 * commitToMine(blockchain);
+	 * // unlock
+	 * MineInfo info;
+	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * // lock
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -169,8 +184,8 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(bytes const& _rlp) { return execute(&_rlp); }
-	u256 execute(bytesConstRef _rlp);
+	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr) { return execute(&_rlp, o_output, _commit, o_ms); }
+	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr);
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
@@ -283,18 +298,18 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo());
+	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo(), bool _checkNonce = true);
 
-	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
+	// Two priviledged entry points for the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr);
+	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();

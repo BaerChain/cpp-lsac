@@ -21,10 +21,11 @@
 
 #include "Parser.h"
 
+#define BOOST_RESULT_OF_USE_DECLTYPE
+#define BOOST_SPIRIT_USE_PHOENIX_V3
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/support_utree.hpp>
-#include <libethcore/CommonEth.h>
 
 using namespace std;
 using namespace eth;
@@ -55,6 +56,7 @@ void eth::debugOutAST(ostream& _out, sp::utree const& _this)
 		case 3: _out << "[ "; debugOutAST(_out, _this.front()); _out << " ] "; debugOutAST(_out, _this.back()); break;
 		case 4: _out << "[[ "; debugOutAST(_out, _this.front()); _out << " ]] "; debugOutAST(_out, _this.back()); break;
 		case 5: _out << "{ "; for (auto const& i: _this) { debugOutAST(_out, i); _out << " "; } _out << "}"; break;
+		case 6: _out << "$ "; debugOutAST(_out, _this.front()); break;
 		default:;
 		}
 
@@ -67,16 +69,35 @@ void eth::debugOutAST(ostream& _out, sp::utree const& _this)
 	}
 }
 
+namespace eth {
+namespace parseTreeLLL_ {
+
+template<unsigned N>
+struct tagNode
+{
+	void operator()(sp::utree& n, qi::rule<string::const_iterator, qi::ascii::space_type, sp::utree()>::context_type& c) const
+	{
+		(boost::fusion::at_c<0>(c.attributes) = n).tag(N);
+	}
+};
+
+}}
+
 void eth::parseTreeLLL(string const& _s, sp::utree& o_out)
 {
 	using qi::ascii::space;
+	using eth::parseTreeLLL_::tagNode;
 	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
 	typedef string::const_iterator it;
 
+	static const u256 ether = u256(1000000000) * 1000000000;
+	static const u256 finney = u256(1000000000) * 1000000;
+	static const u256 szabo = u256(1000000000) * 1000;
+
 	qi::rule<it, qi::ascii::space_type, sp::utree()> element;
 	qi::rule<it, string()> str = '"' > qi::lexeme[+(~qi::char_(std::string("\"") + '\0'))] > '"';
-	qi::rule<it, string()> strsh = '\'' > qi::lexeme[+(~qi::char_(std::string(" ;@()[]{}:") + '\0'))];
-	qi::rule<it, symbol_type()> symbol = qi::lexeme[+(~qi::char_(std::string(" @[]{}:();\"\x01-\x1f\x7f") + '\0'))];
+	qi::rule<it, string()> strsh = '\'' > qi::lexeme[+(~qi::char_(std::string(" ;$@()[]{}:\n\t") + '\0'))];
+	qi::rule<it, symbol_type()> symbol = qi::lexeme[+(~qi::char_(std::string(" $@[]{}:();\"\x01-\x1f\x7f") + '\0'))];
 	qi::rule<it, string()> intstr = qi::lexeme[ qi::no_case["0x"][qi::_val = "0x"] >> *qi::char_("0-9a-fA-F")[qi::_val += qi::_1]] | qi::lexeme[+qi::char_("0-9")[qi::_val += qi::_1]];
 	qi::rule<it, bigint()> integer = intstr;
 	qi::rule<it, bigint()> multiplier = qi::lit("wei")[qi::_val = 1] | qi::lit("szabo")[qi::_val = szabo] | qi::lit("finney")[qi::_val = finney] | qi::lit("ether")[qi::_val = ether];
@@ -87,16 +108,11 @@ void eth::parseTreeLLL(string const& _s, sp::utree& o_out)
 	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> sload = qi::lit("@@") > element;
 	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> mstore = '[' > element > ']' > -qi::lit(":") > element;
 	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> sstore = qi::lit("[[") > element > qi::lit("]]") > -qi::lit(":") > element;
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> calldataload = qi::lit("$") > element;
 	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> list = '(' > *element > ')';
 
-	// todo: fix compound compile errors in this line for Visual Studio 2013
-#ifndef _MSC_VER
-	qi::rule<it, qi::ascii::space_type, sp::utree()> extra = sload[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 2)] | mload[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 1)] | sstore[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 4)] | mstore[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 3)] | seq[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 5)];
+	qi::rule<it, qi::ascii::space_type, sp::utree()> extra = sload[tagNode<2>()] | mload[tagNode<1>()] | sstore[tagNode<4>()] | mstore[tagNode<3>()] | seq[tagNode<5>()] | calldataload[tagNode<6>()];
 	element = atom | list | extra;
-#else
-	element = atom | list/* | extra*/;
-#endif
-	
 
 	string s;
 	s.reserve(_s.size());
@@ -120,7 +136,8 @@ void eth::parseTreeLLL(string const& _s, sp::utree& o_out)
 	}
 	auto ret = s.cbegin();
 	qi::phrase_parse(ret, s.cend(), element, space, qi::skip_flag::dont_postskip, o_out);
-	if (ret != s.cend())
-		throw std::exception();
+	for (auto i = ret; i != s.cend(); ++i)
+		if (!isspace(*i))
+			throw std::exception();
 }
 

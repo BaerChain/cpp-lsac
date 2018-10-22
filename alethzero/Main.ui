@@ -161,12 +161,29 @@
     <property name="title">
      <string>Deb&amp;ug</string>
     </property>
+    <widget class="QMenu" name="menuDump_Trace">
+     <property name="title">
+      <string>&amp;Dump Trace</string>
+     </property>
+     <addaction name="dumpTrace"/>
+     <addaction name="dumpTraceStorage"/>
+    </widget>
+    <addaction name="debugCurrent"/>
+    <addaction name="debugDumpState"/>
+    <addaction name="debugDumpStatePre"/>
+    <addaction name="separator"/>
     <addaction name="debugStep"/>
-    <addaction name="debugStepback"/>
+    <addaction name="debugStepInto"/>
+    <addaction name="debugStepOut"/>
+    <addaction name="debugStepBack"/>
+    <addaction name="debugStepBackInto"/>
+    <addaction name="debugStepBackOut"/>
+    <addaction name="menuDump_Trace"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
+    <addaction name="clearPending"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -517,10 +534,23 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QPlainTextEdit" name="data"/>
+       <widget class="QPlainTextEdit" name="data">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
+        </property>
+       </widget>
        <widget class="QTextEdit" name="code">
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
         </property>
        </widget>
       </widget>
@@ -915,6 +945,9 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_9">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
@@ -922,25 +955,70 @@
     <string>Debugger</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="debugPanel">
     <property name="enabled">
      <bool>false</bool>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
      <item>
       <widget class="QSplitter" name="splitter_6">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <widget class="QListWidget" name="debugCode">
+       <widget class="QSplitter" name="splitter_42">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <horstretch>1</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <widget class="QListWidget" name="debugCode">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+        </widget>
+        <widget class="QListWidget" name="callStack">
+         <property name="font">
+          <font>
+           <family>Ubuntu Mono</family>
+          </font>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+        </widget>
        </widget>
        <widget class="QSplitter" name="splitter_4">
         <property name="sizePolicy">
@@ -952,25 +1030,54 @@
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
-        <widget class="QListWidget" name="debugStack">
-         <property name="selectionMode">
-          <enum>QAbstractItemView::NoSelection</enum>
+        <widget class="QTextEdit" name="debugStack">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
          </property>
         </widget>
         <widget class="QTextEdit" name="debugMemory">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
          <property name="readOnly">
           <bool>true</bool>
          </property>
          <property name="textInteractionFlags">
-          <set>Qt::NoTextInteraction</set>
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
          </property>
         </widget>
         <widget class="QTextEdit" name="debugStorage">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
          <property name="readOnly">
           <bool>true</bool>
          </property>
          <property name="textInteractionFlags">
-          <set>Qt::NoTextInteraction</set>
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugCallData">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </widget>
@@ -1289,7 +1396,7 @@ font-size: 14pt</string>
           <string notr="true">background: white;
 border: 0;
 font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New;
-font-size: 12pt</string>
+font-size: 14pt</string>
          </property>
          <property name="inputMask">
           <string/>
@@ -1370,7 +1477,7 @@ font-size: 12pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>&amp;Single Step</string>
+    <string>&amp;Step Over</string>
    </property>
    <property name="shortcut">
     <string>F10</string>
@@ -1433,15 +1540,104 @@ font-size: 12pt</string>
     <string>&amp;Load Javascript...</string>
    </property>
   </action>
-  <action name="debugStepback">
+  <action name="debugStepBack">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Single Step &amp;Backwards</string>
+    <string>Step Over &amp;Backwards</string>
    </property>
    <property name="shortcut">
-    <string>Shift+F10</string>
+    <string>Ctrl+F10</string>
+   </property>
+  </action>
+  <action name="clearPending">
+   <property name="text">
+    <string>&amp;Clear Pending</string>
+   </property>
+  </action>
+  <action name="dumpTraceStorage">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Standard with &amp;Storage...</string>
+   </property>
+  </action>
+  <action name="debugStepInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Into</string>
+   </property>
+   <property name="shortcut">
+    <string>F11</string>
+   </property>
+  </action>
+  <action name="debugStepOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Out</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+F11</string>
+   </property>
+  </action>
+  <action name="dumpTrace">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>S&amp;tandard...</string>
+   </property>
+  </action>
+  <action name="debugStepBackInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Into Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F11</string>
+   </property>
+  </action>
+  <action name="debugStepBackOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Out Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+F11</string>
+   </property>
+  </action>
+  <action name="debugCurrent">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debu&amp;g Current Transaction</string>
+   </property>
+  </action>
+  <action name="debugDumpState">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (post)</string>
+   </property>
+  </action>
+  <action name="debugDumpStatePre">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (pre)</string>
    </property>
   </action>
  </widget>

@@ -1,40 +1,38 @@
+# cmake global
 project(ethereum)
 cmake_minimum_required(VERSION 2.8.9)
-
 set(CMAKE_AUTOMOC ON)
-
 cmake_policy(SET CMP0015 NEW)
 
-set(HEADLESS CACHE BOOL 0)
-set(LANGUAGES CACHE BOOL 0)
+# user defined, defaults
+# Normally, set(...CACHE...) creates cache variables, but does not modify them.
 
-if ("x${PARANOIA}" STREQUAL "x")
-    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		set(PARANOIA CACHE BOOL 1)
-    else ()
-		set(PARANOIA CACHE BOOL 0)
-    endif ()
-endif ()
-
-if ("x${VMTRACE}" STREQUAL "x")
-    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		set(VMTRACE CACHE BOOL 1)
-    else ()
-		set(VMTRACE CACHE BOOL 0)
-    endif ()
-endif ()
-
-if (PARANOIA)
-	add_definitions(-DETH_PARANOIA)
-endif ()
-
-if (VMTRACE)
-	add_definitions(-DETH_VMTRACE)
-endif ()
+set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
+set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
+set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
+set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 
 if (LANGUAGES)
 	add_definitions(-DETH_LANGUAGES)
 endif ()
+
+if (PARANOIA)
+	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+		add_definitions(-DETH_PARANOIA)
+	else ()
+		message(FATAL_ERROR "Paranoia requires debug.")
+	endif ()
+endif ()
+
+if (VMTRACE)
+	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+		add_definitions(-DETH_VMTRACE)
+	else ()
+		message(FATAL_ERROR "VM tracing requires debug.")
+	endif ()
+endif ()
+
+message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
 
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
@@ -46,6 +44,19 @@ if ("${TARGET_PLATFORM}" STREQUAL "linux")
 	set(CMAKE_THREAD_LIBS_INIT pthread)
 endif ()
 
+# Set default build type to Release w/debug info
+# if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+#    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+# endif()
+
+# Initialize CXXFLAGS
+set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -DSHAREDLIB")
+set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
+
+# Windows 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
@@ -70,10 +81,14 @@ if ("${TARGET_PLATFORM}" STREQUAL "w64")
 
 	set(CMAKE_INSTALL_PREFIX	/usr/x86_64-w64-mingw32)
 	set(ETH_BUILD_PLATFORM "windows")
+	set(ETH_STATIC 1)
 else ()
 	set(ETH_BUILD_PLATFORM ${CMAKE_SYSTEM_NAME})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	set(ETH_SHARED 1)
 endif()
 
+# Set build platform; to be written to BuildInfo.h
 if (CMAKE_COMPILER_IS_MINGW)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 elseif (CMAKE_COMPILER_IS_MSYS)
@@ -82,21 +97,17 @@ elseif (CMAKE_COMPILER_IS_GNUCXX)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
 elseif (CMAKE_COMPILER_IS_MSVC)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
 else ()
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 endif ()
 
-# Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC -DSHAREDLIB")
-set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
-
+message("CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 #add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
 #add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
 
-# Compiler-specific C++11 activation.
+# C++11 check and activation
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	execute_process(
 		COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -109,10 +120,16 @@ else ()
 	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
 
-if (${TARGET_PLATFORM} STREQUAL "w64")
-else ()
+if("${TARGET_PLATFORM}" STREQUAL "w64")
+#	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
+	set(LEVELDB_LS leveldb)
+	set(CRYPTOPP_LS cryptopp)
+	set(CRYPTOPP_ID /usr/x86_64-w64-mingw32/include/cryptopp)
+else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
 	find_path(ID cryptlib.h
+		../cryptopp/src
+		../../cryptopp/src
 		/usr/include/cryptopp
 		/usr/include/crypto++
 		/usr/local/include/cryptopp
@@ -121,54 +138,39 @@ else ()
 		/opt/local/include/crypto++
 		)
 	find_library(LS NAMES cryptoppeth cryptopp
+		../cryptopp/src/../target/build/release
+		../../cryptopp/src/../target/build/release
 		PATHS
 		/usr/lib
 		/usr/local/lib
 		/opt/local/lib
 		)
 
-	if(ID AND LS)
+	if (ID AND LS)
 		message(STATUS "Found Crypto++: ${ID}, ${LS}")
 		set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
 		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
 			file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
 			string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
 			if(${_CRYPTOPP_VERSION} LESS 562)
-				message(STATUS "System Crypto++ version found is smaller than 5.6.2.")
+				message(FATAL_ERROR "Crypto++ version found is smaller than 5.6.2.")
 			else()
-				set(CRYPTOPP_INCLUDE_DIR ${ID} CACHE FILEPATH "" FORCE)
-				set(CRYPTOPP_LIBRARIES ${LS} CACHE FILEPATH "" FORCE)
-				set(CRYPTOPP_FOUND TRUE)
-				message(STATUS "System Crypto++ found and version greater or equal to 5.6.2")
+				set(CRYPTOPP_ID ${ID} CACHE FILEPATH "")
+				set(CRYPTOPP_LS ${LS} CACHE FILEPATH "")
+				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
-	endif()
-
-	if(NOT CRYPTOPP_FOUND)
-		set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-		find_library(LSLOC NAMES cryptoppeth cryptopp
-			PATHS ../cryptopp562
-			NO_DEFAULT_PATH
-			)
-		set(CRYPTOPP_LIBRARIES ${LSLOC} CACHE FILEPATH "" FORCE)
-		message(STATUS "System Crypto++ not found, broken or too old. We use ${LSLOC}")
-	endif()
-
-	# Not really worth caching. We want to reevaluate anyway.
-	mark_as_advanced(CRYPTOPP_INCLUDE_DIR CRYPTOPP_LIBRARIES)
-
-	# Always "found", given last block.
-	include_directories(${CRYPTOPP_INCLUDE_DIR})
-
-	if (NOT APPLE)
-		link_directories(${CRYPTOPP_LIBRARIES})
+  else()
+    message(STATUS "Crypto++ Not Found: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
 	endif()
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include
 		/usr/local/include
 		)
-	if ( LEVELDB_ID )
+	if ( LEVELDB_ID STREQUAL "LEVELDB_ID-NOTFOUND" )
+		message(FATAL_ERROR "Failed to find the LevelDB headers")
+	else ()
 		message(STATUS "Found LevelDB Headers")
 
 		# Check for accessory dev libraries leveldb and miniupnpc
@@ -179,20 +181,21 @@ else ()
 			/opt/local/lib
 			/usr/lib/*/
 			)
-		if ( LEVELDB_LS )
-			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
-		else ()
+		if ( LEVELDB_LS STREQUAL "LEVELDB_LS-NOTFOUND" )
 			message(FATAL_ERROR "Failed to find the LevelDB Library!")
+		else ()
+			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
+			add_definitions(-DETH_LEVELDB)
 		endif ()
-	else ()
-		message(FATAL_ERROR "Failed to find the LevelDB headers")
 	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
 		/usr/include/python2.7
 		/usr/local/include/python2.7
 		)
-	if ( PYTHON_ID )
+	if ( PYTHON_ID STREQUAL "PYTHON_ID-NOTFOUND" )
+		message(STATUS "Failed to find the Python-2.7 headers")
+	else ()
 		message(STATUS "Found Python-2.7 Headers: ${PYTHON_ID}")
 
 		# Check for accessory dev libraries leveldb and miniupnpc
@@ -203,13 +206,14 @@ else ()
 			/opt/local/lib
 			/usr/lib/*/
 			)
-		if ( PYTHON_LS )
-			message(STATUS "Found Python-2.7 Library: ${PYTHON_LS}")
+		if ( PYTHON_LS STREQUAL "PYTHON_LS-NOTFOUND" )
+			message(STATUS "Failed to find the Python-2.7 Library!")
+			set(PYTHON_ID)
+			set(PYTHON_LS)
 		else ()
-			message(FATAL_ERROR "Failed to find the Python-2.7 Library!")
+			message(STATUS "Found Python-2.7 Library: ${PYTHON_LS}")
+			add_definitions(-DETH_PYTHON)
 		endif ()
-	else ()
-		message(FATAL_ERROR "Failed to find the Python-2.7 headers")
 	endif ()
 
 	find_path( MINIUPNPC_ID miniupnpc/miniwget.h
@@ -228,13 +232,13 @@ else ()
 			)
 		if ( MINIUPNPC_LS )
 			message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
+			add_definitions(-DETH_MINIUPNPC)
 		else ()
-			message(FATAL_ERROR "Failed to find the miniupnpc library!")
+			message(STATUS "Failed to find the miniupnpc library!")
 		endif ()
 	else ()
-		message(FATAL_ERROR "Failed to find the miniupnpc headers!")
+		message(STATUS "Failed to find the miniupnpc headers!")
 	endif ()
-
 
 	find_path( JSONRPC_ID jsonrpc/rpc.h
 		/usr/include
@@ -251,6 +255,7 @@ else ()
 			)
 		if ( JSONRPC_LS )
 			message(STATUS "Found jsonrpc library: ${JSONRPC_LS}")
+		add_definitions(-DETH_JSONRPC)
 		else ()
 			message(STATUS "Failed to find the jsonrpc library!")
 		endif ()
@@ -273,6 +278,7 @@ else ()
 			)
 		if ( READLINE_LS )
 			message(STATUS "Found readline library: ${READLINE_LS}")
+			add_definitions(-DETH_READLINE)
 		else ()
 			message(STATUS "Failed to find the readline library!")
 		endif ()
@@ -280,57 +286,89 @@ else ()
 		message(STATUS "Failed to find the readline headers!")
 	endif ()
 
-endif()
-
-if (UNIX)
 	if (LANGUAGES)
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
 	else()
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
 	endif()
+
+	set(QTQML 1)
+endif()
+
+if(CRYPTOPP_ID)
+	include_directories(${CRYPTOPP_ID})
+endif()
+if(PYTHON_ID)
+	include_directories(${PYTHON_ID})
+endif()
+if(MINIUPNPC_ID)
+	include_directories(${MINIUPNPC_ID})
+endif()
+if(LEVELDB_ID)
+	include_directories(${LEVELDB_ID})
+endif()
+if(READLINE_ID)
+	include_directories(${READLINE_ID})
+endif()
+if(JSONRPC_ID)
+	include_directories(${JSONRPC_ID})
 endif()
 
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+endif()
 
 add_subdirectory(libethential)
 add_subdirectory(libevmface)
 add_subdirectory(liblll)
 add_subdirectory(libserpent)
-if (PYTHON_LS)
+if(NOT APPLE)
+if(PYTHON_LS)
 add_subdirectory(libpyserpent)
-endif ()
+endif()
+endif()
 add_subdirectory(lllc)
 add_subdirectory(sc)
 if (NOT LANGUAGES)
-add_subdirectory(secp256k1)
-add_subdirectory(libethcore)
-add_subdirectory(libevm)
-add_subdirectory(libethereum)
-add_subdirectory(test)
-add_subdirectory(eth)
-if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-	add_subdirectory(exp)
-endif ()
-if (NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
-	add_subdirectory(neth)
-endif ()
+	add_subdirectory(secp256k1)
+	add_subdirectory(libethcore)
+	add_subdirectory(libevm)
+	add_subdirectory(libethereum)
+	add_subdirectory(test)
+	add_subdirectory(eth)
+	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+		add_subdirectory(exp)
+	endif ()
+	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
+		add_subdirectory(neth)
+	endif ()
+	if(QTQML)
+		add_definitions(-DETH_QTQML)
+	endif()
 
-if (NOT HEADLESS)
-	add_subdirectory(libqethereum)
-	add_subdirectory(alethzero)
-	add_subdirectory(walleth)
-endif ()
-endif ()
+	if(NOT HEADLESS)
+		if ("${TARGET_PLATFORM}" STREQUAL "w64")
+			cmake_policy(SET CMP0020 NEW)
+		endif ()
+		
+		add_subdirectory(libqethereum)
+		add_subdirectory(alethzero)
+		if(QTQML)
+			add_subdirectory(walleth)
+		endif()
+	endif()
+endif()
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(SRC_LIST BuildInfo.h)
 
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
-#unset(HEADLESS CACHE)
 #unset(TARGET_PLATFORM CACHE)
 

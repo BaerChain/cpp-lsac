@@ -212,15 +212,21 @@ void PeerServer::populateAddresses()
 			char host[NI_MAXHOST];
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
-			// TODO: Make exception safe when no internet.
-			auto it = r.resolve({host, "30303"});
-			bi::tcp::endpoint ep = it->endpoint();
-			bi::address ad = ep.address();
-			m_addresses.push_back(ad.to_v4());
-			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-			if (!isLocal)
-				m_peerAddresses.push_back(ad.to_v4());
-			clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			try
+			{
+				auto it = r.resolve({host, "30303"});
+				bi::tcp::endpoint ep = it->endpoint();
+				bi::address ad = ep.address();
+				m_addresses.push_back(ad.to_v4());
+				bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+				if (!isLocal)
+					m_peerAddresses.push_back(ad.to_v4());
+				clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			}
+			catch (...)
+			{
+				clog(NetNote) << "Couldn't resolve: " << host;
+			}
 		}
 	}
 
@@ -317,25 +323,6 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerServer::sync()
-{
-	bool ret = false;
-	if (isInitialised())
-		for (auto i = m_peers.begin(); i != m_peers.end();)
-		{
-			auto p = i->second.lock();
-			if (p && p->m_socket.is_open() &&
-					(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
-				++i;
-			else
-			{
-				i = m_peers.erase(i);
-				ret = true;
-			}
-		}
-	return ret;
-}
-
 bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 {
 	if (m_latestBlockSent == h256())
@@ -355,10 +342,7 @@ bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
 	bool ret = ensureInitialised(_bc, _tq);
-
-	if (sync())
-		ret = true;
-
+	
 	if (m_mode == NodeMode::Full)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
@@ -424,6 +408,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 			if (m_incomingBlocks.size())
 				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
+					cdebug << "Importing new block";
 					try
 					{
 						_bc.import(*it, _o);

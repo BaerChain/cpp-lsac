@@ -63,7 +63,9 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
 	m_changed = true;
+}
 
+void Client::start() {
 	static const char* c_threadName = "eth";
 
 	m_work.reset(new thread([&](){
@@ -143,7 +145,7 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _value;
@@ -158,7 +160,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
@@ -174,7 +176,7 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	m_tq.attemptImport(_rlp);
 	m_changed = true;
 }
@@ -188,9 +190,9 @@ void Client::work()
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
 	{
-		m_net->process();
+		ClientGuard l(this);
+		m_net->process();	// must be in guard for now since it uses the blockchain. TODO: make BlockChain thread-safe.
 
-		lock_guard<recursive_mutex> l(m_lock);
 		if (m_net->sync(m_bc, m_tq, m_stateDB))
 			changed = true;
 	}
@@ -203,7 +205,7 @@ void Client::work()
 	//   all blocks.
 	// Resynchronise state with block chain & trans
 	{
-		lock_guard<recursive_mutex> l(m_lock);
+		ClientGuard l(this);
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
@@ -227,7 +229,7 @@ void Client::work()
 			m_mineProgress.best = (double)-1;
 			m_mineProgress.hashes = 0;
 			m_mineProgress.ms = 0;
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
 			if (m_paranoia)
 			{
 				if (m_postMine.amIJustParanoid(m_bc))
@@ -259,14 +261,15 @@ void Client::work()
 		m_mineProgress.ms += 100;
 		m_mineProgress.hashes += mineInfo.hashes;
 		{
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
 			m_mineHistory.push_back(mineInfo);
 		}
 
 		if (mineInfo.completed)
 		{
 			// Import block.
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
+			m_postMine.completeMine();
 			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 			m_changed = true;
 		}
@@ -277,12 +280,136 @@ void Client::work()
 	m_changed = m_changed || changed;
 }
 
-void Client::lock()
+void Client::lock() const
 {
 	m_lock.lock();
 }
 
-void Client::unlock()
+void Client::unlock() const
 {
 	m_lock.unlock();
+}
+
+unsigned Client::numberOf(int _n) const
+{
+	if (_n > 0)
+		return _n;
+	else if (_n == GenesisBlock)
+		return 0;
+	else
+		return m_bc.details().number + max(-(int)m_bc.details().number, 1 + _n);
+}
+
+State Client::asOf(int _h) const
+{
+	if (_h == 0)
+		return m_postMine;
+	else if (_h == -1)
+		return m_preMine;
+	else
+		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
+}
+
+u256 Client::balanceAt(Address _a, int _block) const
+{
+	ClientGuard l(this);
+	return asOf(_block).balance(_a);
+}
+
+u256 Client::countAt(Address _a, int _block) const
+{
+	ClientGuard l(this);
+	return asOf(_block).transactionsFrom(_a);
+}
+
+u256 Client::stateAt(Address _a, u256 _l, int _block) const
+{
+	ClientGuard l(this);
+	return asOf(_block).storage(_a, _l);
+}
+
+bytes Client::codeAt(Address _a, int _block) const
+{
+	ClientGuard l(this);
+	return asOf(_block).code(_a);
+}
+
+bool TransactionFilter::matches(State const& _s, unsigned _i) const
+{
+	Transaction t = _s.pending()[_i];
+	if (!m_to.empty() && !m_to.count(t.receiveAddress))
+		return false;
+	if (!m_from.empty() && !m_from.count(t.sender()))
+		return false;
+	if (m_stateAltered.empty() && m_altered.empty())
+		return true;
+	StateDiff d = _s.pendingDiff(_i);
+	if (!m_altered.empty())
+	{
+		for (auto const& s: m_altered)
+			if (d.accounts.count(s))
+				return true;
+		return false;
+	}
+	if (!m_stateAltered.empty())
+	{
+		for (auto const& s: m_stateAltered)
+			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
+				return true;
+		return false;
+	}
+	return true;
+}
+
+PastTransactions Client::transactions(TransactionFilter const& _f) const
+{
+	ClientGuard l(this);
+
+	PastTransactions ret;
+	unsigned begin = numberOf(_f.latest());
+	unsigned end = min(begin, numberOf(_f.earliest()));
+	unsigned m = _f.max();
+	unsigned s = _f.skip();
+
+	// Handle pending transactions differently as they're not on the block chain.
+	if (_f.latest() == 0)
+	{
+		for (unsigned i = m_postMine.pending().size(); i-- && ret.size() != m;)
+			if (_f.matches(m_postMine, i))
+			{
+				if (s)
+					s--;
+				else
+					ret.insert(ret.begin(), PastTransaction(m_postMine.pending()[i], h256(), i, time(0), 0));
+			}
+		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
+		if (_f.earliest() == 0)
+			return ret;
+	}
+
+	auto cn = m_bc.number();
+	auto h = m_bc.numberHash(begin);
+	for (unsigned n = begin; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
+	{
+		try
+		{
+			State st(m_stateDB, m_bc, h);
+			for (unsigned i = st.pending().size(); i-- && ret.size() != m;)
+				if (_f.matches(st, i))
+				{
+					if (s)
+						s--;
+					else
+						ret.insert(ret.begin(), PastTransaction(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
+				}
+		}
+		catch (...)
+		{
+			// Gaa. bad state. not good at all. bury head in sand for now.
+		}
+
+		if (n == end)
+			break;
+	}
+	return ret;
 }

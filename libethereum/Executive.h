@@ -21,8 +21,11 @@
 
 #pragma once
 
+#include <functional>
 #include <libethential/Log.h>
+#include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
+#include <libevm/ExtVMFace.h>
 #include "Transaction.h"
 
 namespace eth
@@ -32,20 +35,38 @@ class VM;
 class ExtVM;
 class State;
 
+struct Manifest;
+using Manifests = std::vector<Manifest>;
+
 struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
+
+/**
+ * @brief A record of the state-interaction of a transaction/call/create.
+ */
+struct Manifest
+{
+	Address from;
+	Address to;
+	u256s altered;
+	bytes input;
+	bytes output;
+	Manifests internal;
+};
 
 class Executive
 {
 public:
-	Executive(State& _s): m_s(_s) {}
+	Executive(State& _s, Manifest* o_ms = nullptr): m_s(_s), m_ms(o_ms) {}
 	~Executive();
 
 	bool setup(bytesConstRef _transaction);
 	bool create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
-	bool go(uint64_t _steps = (uint64_t)-1);
+	bool go(OnOpFunc const& _onOp = OnOpFunc());
 	void finalize();
 	u256 gasUsed() const;
+
+	static OnOpFunc simpleTrace();
 
 	Transaction const& t() const { return m_t; }
 
@@ -62,6 +83,7 @@ private:
 	State& m_s;
 	ExtVM* m_ext = nullptr;	// TODO: make safe.
 	VM* m_vm = nullptr;
+	Manifest* m_ms = nullptr;
 	bytesConstRef m_out;
 	Address m_newAddress;
 

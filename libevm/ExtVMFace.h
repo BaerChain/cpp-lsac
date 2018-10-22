@@ -22,6 +22,7 @@
 #pragma once
 
 #include <libethential/Common.h>
+#include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
@@ -58,8 +59,8 @@ public:
 	/// Determine account's TX count.
 	u256 txCount(Address) { return 0; }
 
-	/// Suicide the associated contract to the given address.
-	void suicide(Address _a) { suicides.insert(_a); }
+	/// Suicide the associated contract and give proceeds to the given address.
+	void suicide(Address) { suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
 	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
@@ -81,5 +82,7 @@ public:
 	BlockInfo currentBlock;		///< The current block's information.
 	std::set<Address> suicides;	///< Any accounts that have suicided.
 };
+
+typedef std::function<void(uint64_t /*steps*/, Instruction /*instr*/, unsigned /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)> OnOpFunc;
 
 }

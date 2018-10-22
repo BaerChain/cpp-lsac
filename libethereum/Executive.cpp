@@ -26,7 +26,7 @@
 using namespace std;
 using namespace eth;
 
-#define EVM_TRACE 1
+#define ETH_VMTRACE 1
 
 Executive::~Executive()
 {
@@ -94,6 +94,13 @@ bool Executive::setup(bytesConstRef _rlp)
 //	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
 	m_s.subBalance(m_sender, cost);
 
+	if (m_ms)
+	{
+		m_ms->from = m_sender;
+		m_ms->to = m_t.receiveAddress;
+		m_ms->input = m_t.data;
+	}
+
 	if (m_t.isCreation())
 		return create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
 	else
@@ -109,18 +116,17 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	{
 		m_vm = new VM(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
-		return false;
+		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
-	{
 		m_endGas = _gas;
-		return true;
-	}
+	return !m_ext;
 }
 
 bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
+	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_newAddress, since
+	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 	while (m_s.addressInUse(m_newAddress))
 		m_newAddress = (u160)m_newAddress + 1;
@@ -130,45 +136,38 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
 	return _init.empty();
 }
 
-bool Executive::go(uint64_t _steps)
+OnOpFunc Executive::simpleTrace()
+{
+	return [](uint64_t steps, Instruction inst, unsigned newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	{
+		ExtVM const& ext = *(ExtVM const*)voidExt;
+		VM& vm = *(VM*)voidVM;
+
+		ostringstream o;
+		o << endl << "    STACK" << endl;
+		for (auto i: vm.stack())
+			o << (h256)i << endl;
+		o << "    MEMORY" << endl << memDump(vm.memory());
+		o << "    STORAGE" << endl;
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			o << showbase << hex << i.first << ": " << i.second << endl;
+		eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << c_instructionInfo.at(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+	};
+}
+
+bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
 	{
 		bool revert = false;
 		try
 		{
-#if ETH_VMTRACE
-			if (_steps == (uint64_t)0 - 1)
-				for (uint64_t s = 0;; ++s)
-				{
-					ostringstream o;
-					o << endl << "    STACK" << endl;
-					for (auto i: vm().stack())
-						o << (h256)i << endl;
-					o << "    MEMORY" << endl << memDump(vm().memory());
-					o << "    STORAGE" << endl;
-					for (auto const& i: state().storage(ext().myAddress))
-						o << showbase << hex << i.first << ": " << i.second << endl;
-					eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-					eth::LogOutputStream<VMTraceChannel, false>(false) << dec << " | #" << s << " | " << hex << setw(4) << setfill('0') << vm().curPC() << " : " << c_instructionInfo.at((Instruction)ext().getCode(vm().curPC())).name << " | " << dec << vm().gas() << " ]";
-					if (s >= _steps)
-						break;
-					try
-					{
-						m_out = m_vm->go(*m_ext, 1);
-						break;
-					}
-					catch (StepsDone const&) {}
-				}
-			else
-				m_out = m_vm->go(*m_ext, _steps);
-#else
-			m_out = m_vm->go(*m_ext, _steps);
-#endif
+			m_out = m_vm->go(*m_ext, _onOp);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
@@ -197,6 +196,7 @@ bool Executive::go(uint64_t _steps)
 		if (revert)
 		{
 			m_ext->revert();
+			// Explicitly delete a newly created address - this will still be in the reverted state.
 			if (m_newAddress)
 			{
 				m_s.m_cache.erase(m_newAddress);
@@ -230,7 +230,11 @@ void Executive::finalize()
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 
+	if (m_ms)
+		m_ms->output = m_out.toBytes();
+
 	// Suicides...
-	for (auto a: m_ext->suicides)
-		m_s.m_cache[a].kill();
+	if (m_ext)
+		for (auto a: m_ext->suicides)
+			m_s.m_cache[a].kill();
 }

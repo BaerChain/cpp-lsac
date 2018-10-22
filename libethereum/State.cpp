@@ -104,7 +104,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_ourAddress = bi.coinbaseAddress;
 
 	sync(_bc, bi.parentHash, bip);
-	enact(b);
+	enact(&b);
 }
 
 State::State(State const& _s):
@@ -362,9 +362,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				m_currentBlock.populate(b);
-				m_currentBlock.verifyInternals(b);
-				enact(b, BlockInfo());
+				enact(&b);
 				cleanup(true);
 			}
 		}
@@ -391,7 +389,6 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 		biGrandParent.populate(_bc.block(biParent.parentHash));
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
-	m_currentBlock = _bi;
 	m_previousBlock = biParent;
 	return enact(_block, biGrandParent);
 }
@@ -507,11 +504,11 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
+u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
-#if !RELEASE
+#if !ETH_RELEASE
 	BlockInfo bi(_block);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
@@ -520,6 +517,10 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
 
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
+
+	// Populate m_currentBlock with the correct values.
+	m_currentBlock.populate(_block, _checkNonce);
+	m_currentBlock.verifyInternals(_block);
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
@@ -540,7 +541,7 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
 			// Invalid state root
 			cnote << m_state.root() << "\n" << m_state;
 			cnote << *this;
-			cnote << "INVALID: " << hex << tr[1].toInt<u256>();
+			cnote << "INVALID: " << tr[1].toHash<h256>();
 			throw InvalidTransactionStateRoot();
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
@@ -653,9 +654,9 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	try
 	{
 		cnote << "PARANOIA root:" << s.rootHash();
-		s.m_currentBlock.populate(&block.out(), false);	// don't check nonce for this since we haven't mined it yet.
-		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), BlockInfo());
+//		s.m_currentBlock.populate(&block.out(), false);
+//		s.m_currentBlock.verifyInternals(&block.out());
+		s.enact(&block.out(), BlockInfo(), false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -749,28 +750,37 @@ MineInfo State::mine(uint _msTimeout)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	MineInfo ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
-	if (ret.completed)
-	{
-		// Got it!
+	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
 
-		// Commit to disk.
-		m_db.commit();
-
-		// Compile block:
-		RLPStream ret;
-		ret.appendList(3);
-		m_currentBlock.fillStream(ret, true);
-		ret.appendRaw(m_currentTxs);
-		ret.appendRaw(m_currentUncles);
-		ret.swapOut(m_currentBytes);
-		m_currentBlock.hash = sha3(m_currentBytes);
-		cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
-	}
-	else
+	if (!ret.completed)
 		m_currentBytes.clear();
 
 	return ret;
+}
+
+void State::completeMine()
+{
+	cdebug << "Completing mine!";
+	// Got it!
+
+	// Commit to disk.
+	m_db.commit();
+
+	// Compile block:
+	RLPStream ret;
+	ret.appendList(3);
+	m_currentBlock.fillStream(ret, true);
+	ret.appendRaw(m_currentTxs);
+	ret.appendRaw(m_currentUncles);
+	ret.swapOut(m_currentBytes);
+	m_currentBlock.hash = sha3(m_currentBytes);
+	cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
+
+	// Quickly reset the transactions.
+	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
+	m_transactions.clear();
+	m_transactionSet.clear();
+	m_lastTx = m_db;
 }
 
 bool State::addressInUse(Address _id) const
@@ -881,7 +891,7 @@ map<u256, u256> State::storage(Address _id) const
 		// Then merge cached storage over the top.
 		for (auto const& i: it->second.storage())
 			if (i.second)
-				ret.insert(i);
+				ret[i.first] = i.second;
 			else
 				ret.erase(i.first);
 	}
@@ -942,13 +952,11 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-// TODO: kill temp nodes automatically in TrieDB
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
-// TODO: TransactionReceipt trie should be MemoryDB and built as necessary
 
-u256 State::execute(bytesConstRef _rlp)
+u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest* o_ms)
 {
-#ifndef RELEASE
+#ifndef ETH_RELEASE
 	commit();	// get an updated hash
 #endif
 
@@ -959,7 +967,7 @@ u256 State::execute(bytesConstRef _rlp)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this);
+	Executive e(*this, o_ms);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -976,6 +984,15 @@ u256 State::execute(bytesConstRef _rlp)
 	ctrace << "Ready for commit;";
 	ctrace << old.diff(*this);
 #endif
+
+	if (o_output)
+		*o_output = e.out().toBytes();
+
+	if (!_commit)
+	{
+		m_cache.clear();
+		return e.gasUsed();
+	}
 
 	commit();
 
@@ -1004,7 +1021,7 @@ u256 State::execute(bytesConstRef _rlp)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1012,19 +1029,28 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
+	if (o_ms)
+	{
+		o_ms->from = _senderAddress;
+		o_ms->to = _receiveAddress;
+		o_ms->input = _data.toBytes();
+	}
+
 	if (addressHasCode(_receiveAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress));
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms, _level);
 		bool revert = false;
 
 		try
 		{
-			auto out = vm.go(evm);
+			auto out = vm.go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 			if (o_suicides)
 				for (auto i: evm.suicides)
 					o_suicides->insert(i);
+			if (o_ms)
+				o_ms->output = out.toBytes();
 		}
 		catch (OutOfGas const& /*_e*/)
 		{
@@ -1055,10 +1081,17 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
+
+	if (o_ms)
+	{
+		o_ms->from = _sender;
+		o_ms->to = Address();
+		o_ms->input = _code.toBytes();
+	}
 
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 	while (addressInUse(newAddress))
@@ -1069,13 +1102,15 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 
 	// Execute init code.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;
 
 	try
 	{
-		out = vm.go(evm);
+		out = vm.go(evm, _onOp);
+		if (o_ms)
+			o_ms->output = out.toBytes();
 		if (o_suicides)
 			for (auto i: evm.suicides)
 				o_suicides->insert(i);
@@ -1097,6 +1132,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		clog(StateChat) << "std::exception in VM: " << _e.what();
 	}
+
+	// TODO: CHECK: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
 
 	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)

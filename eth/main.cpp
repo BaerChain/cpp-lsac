@@ -26,6 +26,9 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
+#if ETH_JSONRPC
+#include <jsonrpc/connectors/httpserver.h>
+#endif
 #include <libethcore/FileSystem.h>
 #include <libevmface/Instruction.h>
 #include <libethereum/Defaults.h>
@@ -289,6 +292,7 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
     Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	c.start();
 	cout << credits();
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;

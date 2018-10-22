@@ -67,7 +67,7 @@ public:
 	void reset(u256 _gas = 0);
 
 	template <class Ext>
-	bytesConstRef go(Ext& _ext, uint64_t _steps = (uint64_t)-1);
+	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
 	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
@@ -87,9 +87,10 @@ private:
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
+template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	u256 nextPC = m_curPC + 1;
+	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
 	{
 		// INSTRUCTION...
@@ -180,6 +181,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+
+		if (_onOp)
+			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : 0, runGas, this, &_ext);
 
 		if (m_gas < runGas)
 		{
@@ -516,7 +520,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::PC:
 			m_stack.push_back(m_curPC);
 			break;
-		case Instruction::MEMSIZE:
+		case Instruction::MSIZE:
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
@@ -536,7 +540,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
 				_ext.subBalance(endowment);
-				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize)));
+				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
 			else
 				m_stack.push_back(0);
@@ -565,7 +569,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize)));
+				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp));
 			}
 			else
 				m_stack.push_back(0);

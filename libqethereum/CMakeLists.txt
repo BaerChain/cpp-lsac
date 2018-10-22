@@ -18,12 +18,11 @@ if (APPLE)
 
 	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
 	include_directories(/usr/local/opt/qt5/include /usr/local/include)
-elseif (${TARGET_PLATFORM} STREQUAL "w64")
+elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
 elseif (UNIX)
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
 endif ()
-
 
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Quick REQUIRED)
@@ -52,10 +51,15 @@ if (APPLE)
 	include(BundleUtilities)
 endif ()
 
-add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
+if(ETH_STATIC)
+	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST})
+else()
+	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
+endif()
 
+include_directories(/)
 qt5_use_modules(${EXECUTABLE} Core Gui WebKit WebKitWidgets Widgets Network Quick Qml)
-target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${CRYPTOPP_LS})
 
 if (APPLE)
 	if (${ADDFRAMEWORKS})
@@ -68,31 +72,24 @@ if (APPLE)
 	# will not be set but defaults to release.
 	set(generator_lowercase "${CMAKE_GENERATOR}")
 	string(TOLOWER "${CMAKE_GENERATOR}" generator_lowercase)
-	if (generator_lowercase STREQUAL "xcode")
+	if ("${generator_lowercase}" STREQUAL "xcode")
 		# TODO: Not sure how to resolve this. Possibly \${TARGET_BUILD_DIR}
 		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}/Debug")
 	else ()
 		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}")
 	endif ()
 
-	set(APPS ${binary_build_dir}/${EXECUTABLE}.app)
-
-	# This tool and the next will automatically looked at the linked libraries in order to determine what dependencies are required. Thus, target_link_libaries only needs to add ethereum and secp256k1 (above)
-	install(CODE "
-		include(BundleUtilities)
-		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
-		" COMPONENT RUNTIME )
+  set(APPS ${binary_build_dir}/${EXECUTABLE})
 
 	if (${ADDFRAMEWORKS})	
 		add_custom_target(addframeworks ALL
-			COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTABLE}.app
+			COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTABLE}
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 			DEPENDS ${PROJECT_NAME}
 		)
 	endif ()
 
-elseif (${TARGET_PLATFORM} STREQUAL "w64")
+elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s -Wl,-subsystem,windows -mthreads -L/usr/x86_64-w64-mingw32/plugins/platforms")
 	target_link_libraries(${EXECUTABLE} gcc)

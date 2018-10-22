@@ -44,11 +44,13 @@ struct BlockDetails
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	uint number;
+	uint number;			// TODO: remove?
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
+	// TODO: add trace bloom
 };
+// TODO: DB for full traces.
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
 
@@ -70,6 +72,8 @@ std::map<Address, AddressState> const& genesisState();
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
+ * @todo Make thread-safe.
+ * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
 {
@@ -89,12 +93,12 @@ public:
 	void import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the number of the last block of the longest chain.
-	BlockDetails const& details(h256 _hash) const;
-	BlockDetails const& details() const { return details(currentHash()); }
+	BlockDetails details(h256 _hash) const;
+	BlockDetails details() const { return details(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
-	bytesConstRef block(h256 _hash) const;
-	bytesConstRef block() const { return block(currentHash()); }
+	bytes block(h256 _hash) const;
+	bytes block() const { return block(currentHash()); }
 
 	uint number(h256 _hash) const;
 	uint number() const { return number(currentHash()); }
@@ -104,6 +108,9 @@ public:
 
 	/// Get the hash of the genesis block.
 	h256 genesisHash() const { return m_genesisHash; }
+
+	/// Get the hash of a block of a given number.
+	h256 numberHash(unsigned _n) const;
 
 	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
 	void pushInterest(Address _a) { m_interest[_a]++; }
@@ -117,8 +124,8 @@ private:
 
 	/// Get fully populated from disk DB.
 	mutable BlockDetailsHash m_details;
-	mutable std::map<h256, std::string> m_cache;
-	mutable std::mutex m_lock;
+	mutable std::map<h256, bytes> m_cache;
+	mutable std::recursive_mutex m_lock;
 
 	/// The queue of transactions that have happened that we're interested in.
 	std::map<Address, int> m_interest;

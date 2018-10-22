@@ -1,4 +1,6 @@
+#if ETH_QTQML
 #include <QtQml/QtQml>
+#endif
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libethcore/FileSystem.h>
@@ -231,7 +233,8 @@ QString unpadded(QString _s)
 
 QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
 {
-	connect(_p, SIGNAL(changed()), SIGNAL(changed()));
+	// required to prevent crash on osx when performing addto/evaluatejavascript calls
+	this->moveToThread(_p->thread());
 }
 
 QEthereum::~QEthereum()
@@ -240,22 +243,7 @@ QEthereum::~QEthereum()
 
 void QEthereum::setup(QWebFrame* _e)
 {
-	// disconnect
-	disconnect(SIGNAL(changed()));
-	_e->addToJavaScriptWindowObject("eth", this, QWebFrame::ScriptOwnership);
-/*	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);*/
-	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
-	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
-	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
-	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
-	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
-	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
-	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
-	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
-	_e->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }");
-	_e->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }");
+	// Alex: JS codes moved to mainwin until qtwebkit bugs are resolved (#245)
 }
 
 void QEthereum::teardown(QWebFrame*)
@@ -337,9 +325,9 @@ QString QEthereum::storageAt(QString _a, QString _p) const
 	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
 }
 
-u256 QEthereum::balanceAt(Address _a) const
+double QEthereum::txCountAt(QString _a) const
 {
-	return client()->postState().balance(_a);
+	return (double)client()->postState().transactionsFrom(toAddress(_a));
 }
 
 bool QEthereum::isContractAt(QString _a) const
@@ -347,9 +335,103 @@ bool QEthereum::isContractAt(QString _a) const
 	return client()->postState().addressHasCode(toAddress(_a));
 }
 
+u256 QEthereum::balanceAt(Address _a) const
+{
+	return client()->postState().balance(_a);
+}
+
+double QEthereum::txCountAt(Address _a) const
+{
+	return (double)client()->postState().transactionsFrom(_a);
+}
+
 bool QEthereum::isContractAt(Address _a) const
 {
 	return client()->postState().addressHasCode(_a);
+}
+
+QString QEthereum::balanceAt(QString _a, int _block) const
+{
+	return toQJS(client()->balanceAt(toAddress(_a), _block));
+}
+
+QString QEthereum::stateAt(QString _a, QString _p, int _block) const
+{
+	return toQJS(client()->stateAt(toAddress(_a), toU256(_p), _block));
+}
+
+QString QEthereum::codeAt(QString _a, int _block) const
+{
+	return ::fromBinary(client()->codeAt(toAddress(_a), _block));
+}
+
+double QEthereum::countAt(QString _a, int _block) const
+{
+	return (double)(uint64_t)client()->countAt(toAddress(_a), _block);
+}
+
+QString QEthereum::getTransactions(QString _a) const
+{
+	eth::TransactionFilter filter;
+
+	QJsonObject f = QJsonDocument::fromJson(_a.toUtf8()).object();
+	if (f.contains("earliest"))
+		filter.withEarliest(f["earliest"].toInt());
+	if (f.contains("latest"))
+		filter.withLatest(f["latest"].toInt());
+	if (f.contains("max"))
+		filter.withMax(f["max"].toInt());
+	if (f.contains("skip"))
+		filter.withSkip(f["skip"].toInt());
+	if (f.contains("from"))
+	{
+		if (f["from"].isArray())
+			for (auto i: f["from"].toArray())
+				filter.from(toAddress(i.toString()));
+		else
+			filter.from(toAddress(f["from"].toString()));
+	}
+	if (f.contains("to"))
+	{
+		if (f["to"].isArray())
+			for (auto i: f["to"].toArray())
+				filter.to(toAddress(i.toString()));
+		else
+			filter.to(toAddress(f["to"].toString()));
+	}
+	if (f.contains("altered"))
+	{
+		if (f["altered"].isArray())
+			for (auto i: f["altered"].toArray())
+				if (i.isObject())
+					filter.altered(toAddress(i.toObject()["id"].toString()), toU256(i.toObject()["at"].toString()));
+				else
+					filter.altered(toAddress(i.toString()));
+		else
+			if (f["altered"].isObject())
+				filter.altered(toAddress(f["altered"].toObject()["id"].toString()), toU256(f["altered"].toObject()["at"].toString()));
+			else
+				filter.altered(toAddress(f["altered"].toString()));
+	}
+
+	QJsonArray ret;
+	for (eth::PastTransaction const& t: m_client->transactions(filter))
+	{
+		QJsonObject v;
+		v["data"] = ::fromBinary(t.data);
+		v["gas"] = toQJS(t.gas);
+		v["gasPrice"] = toQJS(t.gasPrice);
+		v["nonce"] = (int)t.nonce;
+		v["to"] = toQJS(t.receiveAddress);
+		v["value"] = toQJS(t.value);
+		v["from"] = toQJS(t.sender());
+		v["timestamp"] = (int)t.timestamp;
+		v["block"] = toQJS(t.block);
+		v["index"] = (int)t.index;
+		v["age"] = (int)t.age;
+		ret.append(v);
+	}
+	return QString::fromUtf8(QJsonDocument(ret).toJson());
 }
 
 bool QEthereum::isMining() const
@@ -376,16 +458,6 @@ void QEthereum::setListening(bool _l)
 		client()->startNetwork();
 	else
 		client()->stopNetwork();
-}
-
-double QEthereum::txCountAt(QString _a) const
-{
-	return (double)client()->postState().transactionsFrom(toAddress(_a));
-}
-
-double QEthereum::txCountAt(Address _a) const
-{
-	return (double)client()->postState().transactionsFrom(_a);
 }
 
 unsigned QEthereum::peerCount() const

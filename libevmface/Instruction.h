@@ -21,7 +21,11 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
+#include <libethential/Common.h>
+#include <libethential/Exceptions.h>
+
+namespace boost { namespace spirit { class utree; } }
+namespace sp = boost::spirit;
 
 namespace eth
 {
@@ -85,7 +89,7 @@ enum class Instruction: uint8_t
 	JUMP,
 	JUMPI,
 	PC,
-	MEMSIZE,
+	MSIZE,
 	GAS,
 
 	PUSH1 = 0x60,
@@ -142,16 +146,7 @@ extern const std::map<Instruction, InstructionInfo> c_instructionInfo;
 /// Convert from string mnemonic to Instruction type.
 extern const std::map<std::string, Instruction> c_instructions;
 
-/// Convert from simple EVM assembly language to EVM code.
-bytes assemble(std::string const& _code, bool _quiet = false);
-
 /// Convert from EVM code to simple EVM assembly language.
 std::string disassemble(bytes const& _mem);
-
-/// Compile a Low-level Lisp-like Language program into EVM-code.
-bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
-
-/// Append an appropriate PUSH instruction together with the literal value onto the given code.
-unsigned pushLiteral(bytes& o_code, u256 _literalValue);
 
 }
