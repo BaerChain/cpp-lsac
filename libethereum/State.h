@@ -47,7 +47,9 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 
 struct TransactionReceipt
 {
-	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed): transaction(_t), stateRoot(_root), gasUsed(_gasUsed) {}
+	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms) {}
+
+//	Manifest const& changes() const { return changes; }
 
 	void fillStream(RLPStream& _s) const
 	{
@@ -59,6 +61,7 @@ struct TransactionReceipt
 	Transaction transaction;
 	h256 stateRoot;
 	u256 gasUsed;
+	Manifest changes;
 };
 
 enum class ExistDiff { Same, New, Dead };
@@ -135,6 +138,8 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
+	BlockInfo const& info() const { return m_currentBlock; }
+
 	/// @brief Checks that mining the current object will result in a valid block.
 	/// Effectively attempts to import the serialised block.
 	/// @returns true if all is ok. If it's false, worry.
@@ -175,17 +180,17 @@ public:
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	/// @returns true if we uncommitted from mining during the operation.
-	/// @a o_changed boolean pointer, the value of which will be set to true if the state changed and the pointer
-	/// is non-null
-	bool sync(TransactionQueue& _tq, bool* o_changed = nullptr);
+	/// @returns a list of bloom filters one for each transaction placed from the queue into the state.
+	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
+	/// changed and the pointer is non-null
+	h256s sync(TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr) { return execute(&_rlp, o_output, _commit, o_ms); }
-	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr);
+	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(&_rlp, o_output, _commit); }
+	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
@@ -239,6 +244,15 @@ public:
 	/// Get the list of pending transactions.
 	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
 
+	/// Get the list of pending transactions.
+	Manifest changesFromPending(unsigned _i) const { return m_transactions[_i].changes; }
+
+	/// Get the bloom filter of all changes happened in the block.
+	h256 bloom() const;
+
+	/// Get the bloom filter of a particular transaction that happened in the block.
+	h256 bloom(unsigned _i) const { return m_transactions[_i].changes.bloom(); }
+
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
 	/// If (_i == pending().size()) returns the final state of the block, prior to rewards.
@@ -267,12 +281,7 @@ public:
 	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
 
 	/// Execute all transactions within a given block.
-	/// @warning We must already have been sync()ed with said block.
 	/// @returns the additional total difficulty.
-	/// If the @a _grandParent is passed, it will check the validity of each of the uncles.
-	/// @throws if there are any validation errors.
-	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent = BlockInfo());
-
 	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
 
 	/// Returns back to a pristine state after having done a playback.

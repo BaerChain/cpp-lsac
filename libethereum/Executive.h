@@ -27,6 +27,7 @@
 #include <libethcore/CommonEth.h>
 #include <libevm/ExtVMFace.h>
 #include "Transaction.h"
+#include "Manifest.h"
 
 namespace eth
 {
@@ -35,23 +36,7 @@ class VM;
 class ExtVM;
 class State;
 
-struct Manifest;
-using Manifests = std::vector<Manifest>;
-
 struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
-
-/**
- * @brief A record of the state-interaction of a transaction/call/create.
- */
-struct Manifest
-{
-	Address from;
-	Address to;
-	u256s altered;
-	bytes input;
-	bytes output;
-	Manifests internal;
-};
 
 class Executive
 {

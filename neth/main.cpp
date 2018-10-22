@@ -24,6 +24,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
@@ -133,10 +134,10 @@ string credits()
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
-	if (pocnumber == 4)
-		m_servers = "54.72.31.55";
-	else
+	if (pocnumber == 5)
 		m_servers = "54.72.69.180";
+	else
+		m_servers = "54.76.56.74";
 
 	ccout << "Type 'netstart 30303' to start networking" << endl;
 	ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -151,7 +152,8 @@ void version()
 	exit(0);
 }
 
-Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
+Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+
 string pretty(h160 _a, eth::State _st)
 {
 	string ns;
@@ -298,7 +300,7 @@ int nc_window_streambuf::sync()
 }
 
 vector<string> form_dialog(vector<string> _sfields, vector<string> _lfields, vector<string> _bfields, int _cols, int _rows, string _post_form);
-bytes parse_data(string _args);
+bytes parseData(string _args);
 
 
 int main(int argc, char** argv)
@@ -655,7 +657,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = parse_data(sdata);
+				bytes data = parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -667,12 +669,12 @@ int main(int argc, char** argv)
 				if (size < 40)
 				{
 					if (size > 0)
-						cwarn << "Invalid address length: " << size;
+						cwarn << "Invalid address length:" << size;
 				}
 				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is " << info.minGasPrice;
+					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
-					cwarn << "Minimum gas amount is " << minGas;
+					cwarn << "Minimum gas amount is" << minGas;
 				else if (ssize < 40)
 				{
 					if (ssize > 0)
@@ -712,7 +714,7 @@ int main(int argc, char** argv)
 				if (size < 40)
 				{
 					if (size > 0)
-						cwarn << "Invalid address length: " << size;
+						cwarn << "Invalid address length:" << size;
 				}
 				else
 				{
@@ -769,7 +771,7 @@ int main(int argc, char** argv)
 				bytes init;
 				cnote << "Init:";
 				cnote << sinit;
-				cnote << "Code size: " << size;
+				cnote << "Code size:" << size;
 				if (size < 1)
 					cwarn << "No code submitted";
 				else
@@ -786,9 +788,9 @@ int main(int argc, char** argv)
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
 				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is " << info.minGasPrice;
+					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
-					cwarn << "Minimum gas amount is " << minGas;
+					cwarn << "Minimum gas amount is" << minGas;
 				else
 				{
 					c.transact(us.secret(), endowment, init, gas, gasPrice);
@@ -807,17 +809,26 @@ int main(int argc, char** argv)
 				ClientGuard g(&c);
 				auto h = h160(fromHex(rechex));
 				stringstream s;
-				auto mem = c.state().storage(h);
 
-				for (auto const& i: mem)
-					s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-				s << endl << disassemble(c.state().code(h));
+				try
+				{
+					auto storage = c.state().storage(h);
+					for (auto const& i: storage)
+						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+					s << endl << disassemble(c.state().code(h)) << endl;
 
-				string outFile = getDataDir() + "/" + rechex + ".evm";
-				ofstream ofs;
-				ofs.open(outFile, ofstream::binary);
-				ofs.write(s.str().c_str(), s.str().length());
-				ofs.close();
+					string outFile = getDataDir() + "/" + rechex + ".evm";
+					ofstream ofs;
+					ofs.open(outFile, ofstream::binary);
+					ofs.write(s.str().c_str(), s.str().length());
+					ofs.close();
+
+					cnote << "Saved" << rechex << "to" << outFile;
+				}
+				catch (eth::InvalidTrie)
+				{
+					cwarn << "Corrupted trie.";
+				}
 			}
 		}
 		else if (cmd == "reset")
@@ -853,14 +864,23 @@ int main(int argc, char** argv)
 			string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
 			mvwaddnstr(blockswin, y++, x, s.c_str(), qwidth);
 
-			for (auto const& i: RLP(bc.block(h))[1])
+			auto b = bc.block(h);
+			for (auto const& i: RLP(b)[1])
 			{
 				Transaction t(i[0].data());
-				string ss;
-				ss = t.receiveAddress ?
-					"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
-					"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
-				mvwaddnstr(blockswin, y++, x, ss.c_str(), qwidth - 2);
+				auto s = t.receiveAddress ?
+					boost::format("  %1% %2%> %3%: %4% [%5%]") %
+						toString(t.safeSender()) %
+						(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+						toString(t.receiveAddress) %
+						toString(formatBalance(t.value)) %
+						toString((unsigned)t.nonce) :
+					boost::format("  %1% +> %2%: %3% [%4%]") %
+						toString(t.safeSender()) %
+						toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
+						toString(formatBalance(t.value)) %
+						toString((unsigned)t.nonce);
+				mvwaddnstr(blockswin, y++, x, s.str().c_str(), qwidth - 2);
 				if (y > qheight - 2)
 					break;
 			}
@@ -871,16 +891,22 @@ int main(int argc, char** argv)
 
 		// Pending
 		y = 1;
-		auto aps = c.pending();
-		for (auto const& t: aps)
+		for (Transaction const& t: c.pending())
 		{
-			string ss;
-			if (t.receiveAddress)
-				ss = toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
-			else
-				ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
-			mvwaddnstr(pendingwin, y++, x, ss.c_str(), qwidth);
-			if (y > qheight - 4)
+			auto s = t.receiveAddress ?
+				boost::format("%1% %2%> %3%: %4% [%5%]") %
+					toString(t.safeSender()) %
+					(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+					toString(t.receiveAddress) %
+					toString(formatBalance(t.value)) %
+					toString((unsigned)t.nonce) :
+				boost::format("%1% +> %2%: %3% [%4%]") %
+					toString(t.safeSender()) %
+					toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
+					toString(formatBalance(t.value)) %
+					toString((unsigned)t.nonce);
+			mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
+			if (y > height * 1 / 5 - 4)
 				break;
 		}
 
@@ -893,32 +919,43 @@ int main(int argc, char** argv)
 		{
 			auto r = i.first;
 
-			string ss;
-			ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-			mvwaddnstr(addswin, y++, x, ss.c_str(), width / 2 - 4);
-			scrollok(addswin, true);
-
 			if (st.addressHasCode(r))
 			{
-				ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-				mvwaddnstr(contractswin, cc++, x, ss.c_str(), qwidth);
+				auto s = boost::format("%1%%2% : %3% [%4%]") %
+					toString(r) %
+					pretty(r, st) %
+					toString(formatBalance(i.second)) %
+					toString((unsigned)st.transactionsFrom(i.first));
+				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
 				if (cc > qheight - 2)
 					break;
 			}
-			if (y > height * 2 / 5 - 2)
-				break;
+		}
+		for (auto const& i: acs)
+		{
+			auto r = i.first;
+			if (!st.addressHasCode(r)) {
+				auto s = boost::format("%1%%2% : %3% [%4%]") %
+					toString(r) %
+					pretty(r, st) %
+					toString(formatBalance(i.second)) %
+					toString((unsigned)st.transactionsFrom(i.first));
+				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
+				if (y > height * 3 / 5 - 4)
+					break;
+			}
 		}
 
 		// Peers
 		y = 1;
-		string psc;
-		string pss;
-		auto cp = c.peers();
-		psc = toString(cp.size()) + " peer(s)";
-		for (PeerInfo const& i: cp)
+		for (PeerInfo const& i: c.peers())
 		{
-			pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
-			mvwaddnstr(peerswin, y++, x, pss.c_str(), qwidth);
+			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
+				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
+				i.host %
+				toString(i.port) %
+				i.clientVersion;
+			mvwaddnstr(peerswin, y++, x, s.str().c_str(), qwidth);
 			if (y > height * 2 / 5 - 4)
 				break;
 		}
@@ -934,7 +971,8 @@ int main(int argc, char** argv)
 		// Balance
 		stringstream ssb;
 		u256 balance = c.state().balance(us.address());
-		Address gavCoin("0115554959f43bf1d04cd7e3749d00fb0623ce1f");
+		Address coinsAddr = right160(c.stateAt(c_config, 1));
+		Address gavCoin = right160(c.stateAt(coinsAddr, c.stateAt(coinsAddr, 1)));
 		u256 totalGavCoinBalance = st.storage(gavCoin, (u160)us.address());
 		ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
@@ -1188,23 +1226,18 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	return vs;
 }
 
-bytes parse_data(string _args)
+bytes parseData(string _args)
 {
 	bytes m_data;
 	stringstream args(_args);
 	string arg;
-	int cc = 0;
+	static const boost::regex r("\"([^\"]*)\"(.*)");
+	static const boost::regex h("(0x)?(([a-fA-F0-9])+)(.*)");
+
 	while (args >> arg)
 	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
+		if (boost::regex_match(arg, h))
 		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
 			if (boost::starts_with(arg, "0x"))
 			{
 				cnote << "hex: " << arg;
@@ -1214,16 +1247,6 @@ bytes parse_data(string _args)
 					for (auto i = 0; i < 32 - size; ++i)
 						m_data.push_back(0);
 				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
 			}
 			else
 			{
@@ -1236,10 +1259,17 @@ bytes parse_data(string _args)
 				m_data += bs;
 			}
 		}
-		else
+		else if (boost::regex_match(arg, r))
+		{
+			arg = arg.substr(1, arg.length() - 2);
+			int al = arg.length();
+			cnote << "string: " << arg;
 			for (int i = 0; i < al; ++i)
 				m_data.push_back(arg[i]);
-		cc++;
+			if (al < 32)
+				for (int i = 0; i < 32 - al; ++i)
+					m_data.push_back(0);
+		}
 	}
 	return m_data;
 }

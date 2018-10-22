@@ -14,19 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Guards.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace eth;
+#include <mutex>
+#include <boost/thread.hpp>
 
 namespace eth
 {
 
-char const* EthVersion = "0.6.1";
+using Guard = std::lock_guard<std::mutex>;
+using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
+using ReadGuard = boost::shared_lock<boost::shared_mutex>;
+using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
+using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
+using WriteGuard = boost::unique_lock<boost::shared_mutex>;
 
 }

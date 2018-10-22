@@ -31,6 +31,8 @@
 namespace eth
 {
 
+extern std::mt19937_64 s_fixedHashEngine;
+
 /// Fixed-size raw-byte array container type, with an API optimised for storing hashes.
 /// Transparently converts to/from the corresponding arithmetic type; this will
 /// assume the data contained in the hash is big-endian.
@@ -50,8 +52,14 @@ public:
 	/// Method to convert from a string.
 	enum ConstructFromStringType { FromHex, FromBinary };
 
+	/// Method to convert from a string.
+	enum ConstructFromHashType { AlignLeft, AlignRight };
+
 	/// Construct an empty hash.
 	FixedHash() { m_data.fill(0); }
+
+	/// Construct from another hash, filling with zeroes or cropping as necessary.
+	template <unsigned M> FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
 
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -77,13 +85,16 @@ public:
 	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
 
 	// The obvious binary operators.
-	FixedHash& operator^=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
+	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
 	FixedHash operator^(FixedHash const& _c) const { return FixedHash(*this) ^= _c; }
-	FixedHash& operator|=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] |= _c.m_data[i]; return *this; }
+	FixedHash& operator|=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] |= _c.m_data[i]; return *this; }
 	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
-	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
+	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
-	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+	FixedHash& operator~() { for (unsigned i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
+	/// @returns true if all bytes in @a _c are set in this object.
+	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
 
 	/// @returns a particular byte from the hash.
 	byte& operator[](unsigned _i) { return m_data[_i]; }
@@ -116,7 +127,7 @@ public:
 
 	/// @returns a randomly-valued hash
 	template <class Engine>
-	static FixedHash random(Engine& _eng)
+	static FixedHash random(Engine& _eng = s_fixedHashEngine)
 	{
 		FixedHash ret;
 		for (auto& i: ret.m_data)
@@ -145,16 +156,14 @@ public:
 		return ret;
 	}
 
-
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };
 
-
 /// Fast equality operator for h256.
 template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
 {
-	const uint64_t* hash1 = (const uint64_t*)this->data();
+	const uint64_t* hash1 = (const uint64_t*)data();
 	const uint64_t* hash2 = (const uint64_t*)_other.data();
 	return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
 }

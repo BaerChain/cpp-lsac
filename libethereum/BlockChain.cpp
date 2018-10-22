@@ -35,13 +35,10 @@ using namespace eth;
 
 #define ETH_CATCH 1
 
-namespace eth
+std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
-
-std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
-{
-	string cmp = toBigEndianString(_bc.m_lastBlockHash);
-	auto it = _bc.m_detailsDB->NewIterator(_bc.m_readOptions);
+	string cmp = toBigEndianString(_bc.currentHash());
+	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
@@ -50,20 +47,6 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 		}
 	delete it;
 	return _out;
-}
-}
-
-BlockDetails::BlockDetails(RLP const& _r)
-{
-	number = _r[0].toInt<uint>();
-	totalDifficulty = _r[1].toInt<u256>();
-	parent = _r[2].toHash<h256>();
-	children = _r[3].toVector<h256>();
-}
-
-bytes BlockDetails::rlp() const
-{
-	return rlpList(number, totalDifficulty, parent, children);
 }
 
 std::map<Address, AddressState> const& eth::genesisState()
@@ -86,6 +69,21 @@ std::map<Address, AddressState> const& eth::genesisState()
 }
 
 BlockInfo* BlockChain::s_genesis = nullptr;
+boost::shared_mutex BlockChain::x_genesis;
+
+ldb::Slice eth::toSlice(h256 _h, unsigned _sub)
+{
+#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
+	static thread_local h256 h = _h ^ h256(u256(_sub));
+	return ldb::Slice((char const*)&h, 32);
+#else
+	static boost::thread_specific_ptr<h256> t_h;
+	if (!t_h.get())
+		t_h.reset(new h256);
+	*t_h = _h ^ h256(u256(_sub));
+	return ldb::Slice((char const*)t_h.get(), 32);
+#endif
+}
 
 bytes BlockChain::createGenesisBlock()
 {
@@ -123,8 +121,8 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	o.create_if_missing = true;
 	auto s = ldb::DB::Open(o, _path + "/blocks", &m_db);
 	assert(m_db);
-	s = ldb::DB::Open(o, _path + "/details", &m_detailsDB);
-	assert(m_detailsDB);
+	s = ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+	assert(m_extrasDB);
 
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisHash = BlockChain::genesis().hash;
@@ -133,25 +131,26 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
+		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
 		auto r = m_details[m_genesisHash].rlp();
-		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
+		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
 	}
 
 	checkConsistency();
 
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
-	m_detailsDB->Get(m_readOptions, ldb::Slice("best"), &l);
+	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
+
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
-	cnote << "Opened blockchain DB. Latest: " << m_lastBlockHash;
+	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
 
 BlockChain::~BlockChain()
 {
 	cnote << "Closing blockchain DB";
-	delete m_detailsDB;
+	delete m_extrasDB;
 	delete m_db;
 }
 
@@ -164,25 +163,45 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-bool BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
+h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
-#if ETH_CATCH
-	try
-#endif
+	vector<bytes> blocks;
+	_bq.drain(blocks);
+
+	h256s ret;
+	for (auto const& block: blocks)
 	{
-		import(_block, _stateDB);
-		return true;
+		try
+		{
+			for (auto h: import(block, _stateDB))
+				if (!_max--)
+					break;
+				else
+					ret.push_back(h);
+		}
+		catch (UnknownParent)
+		{
+			cwarn << "Unknown parent of block!!!" << eth::sha3(block).abridged();
+			_bq.import(&block, *this);
+		}
+		catch (...){}
 	}
-#if ETH_CATCH
-	catch (...)
-	{
-		return false;
-	}
-#endif
+	return ret;
 }
 
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept
+{
+	try
+	{
+		return import(_block, _stateDB);
+	}
+	catch (...)
+	{
+		return h256s();
+	}
+}
 
-void BlockChain::import(bytes const& _block, OverlayDB const& _db)
+h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
@@ -223,7 +242,7 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	if (bi.timestamp > (u256)time(0))
 	{
 		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
-		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		// Block has a timestamp in the future. This is no good.
 		throw FutureTime();
 	}
 
@@ -238,6 +257,14 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
+		auto b = s.bloom();
+		BlockBlooms bb;
+		BlockTraces bt;
+		for (unsigned i = 0; i < s.pending().size(); ++i)
+		{
+			bt.traces.push_back(s.changesFromPending(i));
+			bb.blooms.push_back(s.changesFromPending(i).bloom());
+		}
 		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
 
@@ -246,14 +273,24 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #endif
 		// All ok - insert into DB
 		{
-			lock_guard<recursive_mutex> l(m_lock);
-			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
+			WriteGuard l(x_details);
+			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {}, b);
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
+		{
+			WriteGuard l(x_blooms);
+			m_blooms[newHash] = bb;
+		}
+		{
+			WriteGuard l(x_traces);
+			m_traces[newHash] = bt;
+		}
 
-		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
-		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
-		m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)eth::ref(m_blooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)eth::ref(m_traces[newHash].rlp()));
+		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -269,24 +306,65 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
+	h256s ret;
 	// This might be the new best block...
-	if (td > details(m_lastBlockHash).totalDifficulty)
+	h256 last = currentHash();
+	if (td > details(last).totalDifficulty)
 	{
-		m_lastBlockHash = newHash;
-		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings.";
+		ret = treeRoute(last, newHash);
+		{
+			WriteGuard l(x_lastBlockHash);
+			m_lastBlockHash = newHash;
+		}
+		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
+		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
+		for (auto r: ret)
+			clog(BlockChainNote) << r;
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(m_lastBlockHash).totalDifficulty << ", TD:" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << ", TD:" << td << ")";
 	}
+	return ret;
+}
+
+h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common) const
+{
+	h256s ret;
+	h256s back;
+	unsigned fn = details(_from).number;
+	unsigned tn = details(_to).number;
+	while (fn > tn)
+	{
+		ret.push_back(_from);
+		_from = details(_from).parent;
+		fn--;
+	}
+	while (fn < tn)
+	{
+		back.push_back(_to);
+		_to = details(_to).parent;
+		tn--;
+	}
+	while (_from != _to)
+	{
+		_from = details(_from).parent;
+		_to = details(_to).parent;
+		ret.push_back(_from);
+		back.push_back(_to);
+	}
+	if (o_common)
+		*o_common = _from;
+	ret.reserve(ret.size() + back.size());
+	for (auto it = back.cbegin(); it != back.cend(); ++it)
+		ret.push_back(*it);
+	return ret;
 }
 
 void BlockChain::checkConsistency()
 {
-	lock_guard<recursive_mutex> l(m_lock);
 	m_details.clear();
-	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
+	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
 		{
@@ -308,23 +386,24 @@ bytes BlockChain::block(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return m_genesisBlock;
 
-	lock_guard<recursive_mutex> l(m_lock);
-
-	auto it = m_cache.find(_hash);
-	if (it != m_cache.end())
-		return it->second;
+	{
+		ReadGuard l(x_cache);
+		auto it = m_cache.find(_hash);
+		if (it != m_cache.end())
+			return it->second;
+	}
 
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
+	WriteGuard l(x_cache);
 	m_cache[_hash].resize(d.size());
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
-	return m_cache[_hash];
-}
 
-eth::uint BlockChain::number(h256 _hash) const
-{
-	return details(_hash).number;
+	if (!d.size())
+		cwarn << "Couldn't find requested block:" << _hash;
+
+	return m_cache[_hash];
 }
 
 h256 BlockChain::numberHash(unsigned _n) const
@@ -334,26 +413,4 @@ h256 BlockChain::numberHash(unsigned _n) const
 	h256 ret = currentHash();
 	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
 	return ret;
-}
-
-BlockDetails BlockChain::details(h256 _h) const
-{
-	lock_guard<recursive_mutex> l(m_lock);
-
-	BlockDetailsHash::const_iterator it = m_details.find(_h);
-	if (it != m_details.end())
-		return it->second;
-
-	std::string s;
-	m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
-	if (s.empty())
-	{
-//			cout << "Not found in DB: " << _h << endl;
-		return NullBlockDetails;
-	}
-	{
-		bool ok;
-		tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
-	}
-	return it->second;
 }

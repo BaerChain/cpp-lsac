@@ -31,13 +31,12 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 64;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
-static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const eth::uint c_maxHashes = 4096;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 2048;		///< Maximum number of blocks Blocks will ever send.
+static const eth::uint c_maxBlocksAsk = 512;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
-	m_strand(_socket.get_io_service()),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
 	m_listenPort(_peerPort),
@@ -50,24 +49,23 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi
 
 PeerSession::~PeerSession()
 {
-	m_strand.post([=]()
+	// Read-chain finished for one reason or another.
+	try
 	{
-		if (!m_writeq.empty())
-			m_writeq.clear();
-		
-		try {
-			if (m_socket.is_open())
-				m_socket.close();
-		}catch (...){}
-	});
+		if (m_socket.is_open())
+			m_socket.close();
+	}
+	catch (...){}
 }
 
 bi::tcp::endpoint PeerSession::endpoint() const
 {
 	if (m_socket.is_open())
-		try {
+		try
+		{
 			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_listenPort);
-		} catch (...){}
+		}
+		catch (...){}
 
 	return bi::tcp::endpoint();
 }
@@ -88,15 +86,13 @@ bool PeerSession::interpret(RLP const& _r)
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
-		if (m_server->m_peers.count(m_id))
-			if (auto l = m_server->m_peers[m_id].lock())
-				if (l.get() != this && l->isOpen())
-				{
-					// Already connected.
-					cwarn << "Already have peer id" << m_id.abridged() << "at" << l->endpoint() << "rather than" << endpoint();
-					disconnect(DuplicatePeer);
-					return false;
-				}
+		if (m_server->havePeer(m_id))
+		{
+			// Already connected.
+			cwarn << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
+			disconnect(DuplicatePeer);
+			return false;
+		}
 
 		if (m_protocolVersion != PeerServer::protocolVersion() || m_networkId != m_server->networkId() || !m_id)
 		{
@@ -111,26 +107,12 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 
-		m_server->m_peers[m_id] = shared_from_this();
+		m_server->registerPeer(shared_from_this());
+		startInitialSync();
 
-		// Grab their block chain off them.
+		// Grab trsansactions off them.
 		{
-			uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
-			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
-			uint count = std::min(c_maxHashes, n + 1);
 			RLPStream s;
-			prep(s).appendList(2 + count);
-			s << GetChainPacket;
-			auto h = m_server->m_latestBlockSent;
-			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
-			{
-				clogS(NetAllDetail) << "   " << i << ":" << h;
-				s << h;
-			}
-
-			s << c_maxBlocksAsk;
-			sealAndSend(s);
-			s.clear();
 			prep(s).appendList(1);
 			s << GetTransactionsPacket;
 			sealAndSend(s);
@@ -190,7 +172,7 @@ bool PeerSession::interpret(RLP const& _r)
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << toHex(id.ref().cropped(0, 4)) << ")";
 
 			// check that it's not us or one we already know:
-			if (id && (m_server->m_key.pub() == id || m_server->m_peers.count(id) || m_server->m_incomingPeers.count(id)))
+			if (id && (m_server->m_key.pub() == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
 				goto CONTINUE;
 
 			// check that we're not already connected to addr:
@@ -199,13 +181,6 @@ bool PeerSession::interpret(RLP const& _r)
 			for (auto i: m_server->m_addresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
-			for (auto i: m_server->m_peers)
-				if (shared_ptr<PeerSession> p = i.second.lock())
-				{
-					clogS(NetAllDetail) << "   ...against " << p->endpoint();
-					if (p->m_socket.is_open() && p->endpoint() == ep)
-						goto CONTINUE;
-				}
 			for (auto i: m_server->m_incomingPeers)
 				if (i.second.first == ep)
 					goto CONTINUE;
@@ -235,25 +210,34 @@ bool PeerSession::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = sha3(_r[i].data());
-			if (!m_server->m_chain->details(h))
+			if (m_server->noteBlock(h, _r[i].data()))
 			{
-				cdebug << "Pushing new block";
-				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
 				m_knownBlocks.insert(h);
 				used++;
 			}
 		}
 		m_rating += used;
-		if (g_logVerbosity >= 3)
+		unsigned knownParents = 0;
+		unsigned unknownParents = 0;
+		if (g_logVerbosity >= 2)
+		{
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
 				auto h = sha3(_r[i].data());
 				BlockInfo bi(_r[i].data());
 				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
+				{
+					unknownParents++;
 					clogS(NetMessageDetail) << "Unknown parent " << bi.parentHash << " of block " << h;
+				}
 				else
+				{
+					knownParents++;
 					clogS(NetMessageDetail) << "Known parent " << bi.parentHash << " of block " << h;
+				}
 			}
+		}
+		clogS(NetMessageSummary) << dec << knownParents << " known parents, " << unknownParents << "unknown, " << used << "used.";
 		if (used)	// we received some - check if there's any more
 		{
 			RLPStream s;
@@ -263,6 +247,8 @@ bool PeerSession::interpret(RLP const& _r)
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
 		}
+		else
+			clogS(NetMessageSummary) << "Peer sent all blocks in chain.";
 		break;
 	}
 	case GetChainPacket:
@@ -291,11 +277,11 @@ bool PeerSession::interpret(RLP const& _r)
 
 			// try to find parent in our blockchain
 			// todo: add some delta() fn to blockchain
-			BlockDetails f_parent = m_server->m_chain->details(parent);
-			if (f_parent)
+			BlockDetails fParent = m_server->m_chain->details(parent);
+			if (fParent)
 			{
 				latestNumber = m_server->m_chain->number(latest);
-				parentNumber = f_parent.number;
+				parentNumber = fParent.number;
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
 				clogS(NetAllDetail) << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber;
 				clogS(NetAllDetail) << latest << " - " << parent;
@@ -320,6 +306,9 @@ bool PeerSession::interpret(RLP const& _r)
 					clogS(NetAllDetail) << "   " << dec << i << " " << h;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
+
+				if (!count)
+					clogS(NetMessageSummary) << "Sent peer all we have.";
 				clogS(NetAllDetail) << "Parent: " << h;
 			}
 			else if (parent != parents.back())
@@ -397,19 +386,6 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 	return _s.appendRaw(bytes(8, 0));
 }
 
-void PeerServer::seal(bytes& _b)
-{
-	_b[0] = 0x22;
-	_b[1] = 0x40;
-	_b[2] = 0x08;
-	_b[3] = 0x91;
-	uint32_t len = (uint32_t)_b.size() - 8;
-	_b[4] = (len >> 24) & 0xff;
-	_b[5] = (len >> 16) & 0xff;
-	_b[6] = (len >> 8) & 0xff;
-	_b[7] = len & 0xff;
-}
-
 void PeerSession::sealAndSend(RLPStream& _s)
 {
 	bytes b;
@@ -443,7 +419,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	}
 
 	bytes buffer = bytes(std::move(_msg));
-	m_strand.post(boost::bind(&PeerSession::writeImpl, this, buffer));
+	writeImpl(buffer);
 }
 
 void PeerSession::send(bytesConstRef _msg)
@@ -456,64 +432,63 @@ void PeerSession::send(bytesConstRef _msg)
 	}
 
 	bytes buffer = bytes(_msg.toBytes());
-	m_strand.post(boost::bind(&PeerSession::writeImpl, this, buffer));
+	writeImpl(buffer);
 }
 
 void PeerSession::writeImpl(bytes& _buffer)
 {
-	m_writeq.push_back(_buffer);
-	if (m_writeq.size() > 1)
+//	cerr << (void*)this << " writeImpl" << endl;
+	if (!m_socket.is_open())
 		return;
 
-	this->write();
+	lock_guard<recursive_mutex> l(m_writeLock);
+	m_writeQueue.push_back(_buffer);
+	if (m_writeQueue.size() == 1)
+		write();
 }
 
 void PeerSession::write()
 {
-	if (m_writeq.empty())
+//	cerr << (void*)this << " write" << endl;
+	lock_guard<recursive_mutex> l(m_writeLock);
+	if (m_writeQueue.empty())
 		return;
 	
-	const bytes& bytes = m_writeq[0];
-	if (m_socket.is_open())
-		ba::async_write(m_socket, ba::buffer(bytes), m_strand.wrap([this](boost::system::error_code ec, std::size_t /*length*/)
+	const bytes& bytes = m_writeQueue[0];
+	auto self(shared_from_this());
+	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
+	{
+//		cerr << (void*)this << " write.callback" << endl;
+
+		// must check queue, as write callback can occur following dropped()
+		if (ec)
 		{
-			// must check que, as write callback can occur following dropped()
-			if (!m_writeq.empty())
-				this->m_writeq.pop_front();
-			
-			if (ec)
-			{
-				cwarn << "Error sending: " << ec.message();
-				this->dropped();
-			} else
-				m_strand.post(boost::bind(&PeerSession::write, this));
-		}));
+			cwarn << "Error sending: " << ec.message();
+			dropped();
+		}
+		else
+		{
+			m_writeQueue.pop_front();
+			write();
+		}
+	});
 }
 
 void PeerSession::dropped()
 {
+//	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
-		try {
-			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
+		try
+		{
+			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint();
 			m_socket.close();
-		}catch (...){}
-	
-	// block future writes by running in strand and clearing queue
-	m_strand.post([=]()
-	{
-		m_writeq.clear();
-		for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
-			if (i->second.lock().get() == this)
-			{
-				m_server->m_peers.erase(i);
-				break;
-			}
-	});
+		}
+		catch (...) {}
 }
 
 void PeerSession::disconnect(int _reason)
 {
-	clogS(NetNote) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
+	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
 	if (m_socket.is_open())
 	{
 		if (m_disconnect == chrono::steady_clock::time_point::max())
@@ -541,6 +516,25 @@ void PeerSession::start()
 	doRead();
 }
 
+void PeerSession::startInitialSync()
+{
+	uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
+	clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
+	uint count = std::min(c_maxHashes, n + 1);
+	RLPStream s;
+	prep(s).appendList(2 + count);
+	s << GetChainPacket;
+	auto h = m_server->m_latestBlockSent;
+	for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+	{
+		clogS(NetAllDetail) << "   " << i << ":" << h;
+		s << h;
+	}
+
+	s << c_maxBlocksAsk;
+	sealAndSend(s);
+}
+
 void PeerSession::doRead()
 {
 	// ignore packets received while waiting to disconnect
@@ -557,7 +551,7 @@ void PeerSession::doRead()
 			cwarn << "Error reading: " << ec.message();
 			dropped();
 		}
-		else if(ec && length == 0)
+		else if (ec && length == 0)
 		{
 			return;
 		}
@@ -570,10 +564,7 @@ void PeerSession::doRead()
 				while (m_incoming.size() > 8)
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
-					{
 						doRead();
-
-					}
 					else
 					{
 						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));

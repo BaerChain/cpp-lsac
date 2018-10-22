@@ -454,28 +454,24 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-bool State::sync(TransactionQueue& _tq, bool* _changed)
+h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	bool ret = false;
+	h256s ret;
 	auto ts = _tq.transactions();
-	vector<pair<h256, bytes>> futures;
 
 	for (int goodTxs = 1; goodTxs;)
 	{
 		goodTxs = 0;
 		for (auto const& i: ts)
-		{
 			if (!m_transactionSet.count(i.first))
 			{
 				// don't have it yet! Execute it now.
 				try
 				{
-					ret = true;
 					uncommitToMine();
 					execute(i.second);
-					if (_changed)
-						*_changed = true;
+					ret.push_back(m_transactions.back().changes.bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 				}
@@ -485,8 +481,8 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 					{
 						// too old
 						_tq.drop(i.first);
-						if (_changed)
-							*_changed = true;
+						if (o_transactionQueueChanged)
+							*o_transactionQueueChanged = true;
 					}
 					else
 						_tq.setFuture(i);
@@ -495,11 +491,10 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					if (_changed)
-						*_changed = true;
+					if (o_transactionQueueChanged)
+						*o_transactionQueueChanged = true;
 				}
 			}
-		}
 	}
 	return ret;
 }
@@ -672,6 +667,14 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	return false;
 }
 
+h256 State::bloom() const
+{
+	h256 ret;
+	for (auto const& i: m_transactions)
+		ret |= i.changes.bloom();
+	return ret;
+}
+
 // @returns the block that represents the difference between m_previousBlock and m_currentBlock.
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
@@ -708,25 +711,26 @@ void State::commitToMine(BlockChain const& _bc)
 		uncles.appendList(0);
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionManifest(&tm);
-	transactionManifest.init();
+	GenericTrieDB<MemoryDB> transactionReceipts(&tm);
+	transactionReceipts.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
+
 	for (unsigned i = 0; i < m_transactions.size(); ++i)
 	{
 		RLPStream k;
 		k << i;
 		RLPStream v;
 		m_transactions[i].fillStream(v);
-		transactionManifest.insert(&k.out(), &v.out());
+		transactionReceipts.insert(&k.out(), &v.out());
 		txs.appendRaw(v.out());
 	}
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionManifest.root();
+	m_currentBlock.transactionsRoot = transactionReceipts.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
@@ -954,7 +958,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
 
-u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest* o_ms)
+u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -967,7 +971,9 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest*
 	auto h = rootHash();
 #endif
 
-	Executive e(*this, o_ms);
+	Manifest ms;
+
+	Executive e(*this, &ms);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1016,7 +1022,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest*
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed()));
+	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed(), ms));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
@@ -1033,6 +1039,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	{
 		o_ms->from = _senderAddress;
 		o_ms->to = _receiveAddress;
+		o_ms->value = _value;
 		o_ms->input = _data.toBytes();
 	}
 
@@ -1090,6 +1097,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		o_ms->from = _sender;
 		o_ms->to = Address();
+		o_ms->value = _endowment;
 		o_ms->input = _code.toBytes();
 	}
 

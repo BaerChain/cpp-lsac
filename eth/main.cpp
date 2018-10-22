@@ -169,7 +169,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-bytes parse_data(string _args);
+bytes parseData(string _args);
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -292,7 +292,6 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
     Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-	c.start();
 	cout << credits();
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
@@ -310,9 +309,16 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
+		string logbuf;
 		string l;
 		while (true)
 		{
+			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
+			cout << logbuf << "Press Enter" << flush;
+			std::getline(cin, l);
+			logbuf.clear();
+			g_logPost = [&](std::string const& a, char const*) { logbuf += a + "\n"; };
+
 #if ETH_READLINE
 			if (l.size())
 				add_history(l.c_str());
@@ -435,7 +441,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = parse_data(sdata);
+					bytes data = parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -448,12 +454,12 @@ int main(int argc, char** argv)
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else if (ssize < 40)
 					{
 						if (ssize > 0)
@@ -515,7 +521,7 @@ int main(int argc, char** argv)
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else 
 					{
@@ -550,7 +556,7 @@ int main(int argc, char** argv)
 					bytes init;
 					cnote << "Init:";
 					cnote << sinit;
-					cnote << "Code size: " << size;
+					cnote << "Code size:" << size;
 					if (size < 1)
 						cwarn << "No code submitted";
 					else
@@ -567,9 +573,9 @@ int main(int argc, char** argv)
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else
 						c.transact(us.secret(), endowment, init, gas, gasPrice);
 				} 
@@ -588,17 +594,26 @@ int main(int argc, char** argv)
 					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
-					auto mem = c.state().storage(h);
 
-					for (auto const& i: mem)
-						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-					s << endl << disassemble(c.state().code(h));
+					try
+					{
+						auto storage = c.state().storage(h);
+						for (auto const& i: storage)
+							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+						s << endl << disassemble(c.state().code(h)) << endl;
 
-					string outFile = getDataDir() + "/" + rechex + ".evm";
-					ofstream ofs;
-					ofs.open(outFile, ofstream::binary);
-					ofs.write(s.str().c_str(), s.str().length());
-					ofs.close();
+						string outFile = getDataDir() + "/" + rechex + ".evm";
+						ofstream ofs;
+						ofs.open(outFile, ofstream::binary);
+						ofs.write(s.str().c_str(), s.str().length());
+						ofs.close();
+
+						cnote << "Saved" << rechex << "to" << outFile;
+					}
+					catch (eth::InvalidTrie)
+					{
+						cwarn << "Corrupted trie.";
+					}
 				}
 			}
 			else if (cmd == "setSecret")
@@ -687,7 +702,7 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-bytes parse_data(string _args)
+bytes parseData(string _args)
 {
 	bytes m_data;
 	stringstream args(_args);

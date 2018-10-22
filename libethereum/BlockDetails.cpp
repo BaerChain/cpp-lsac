@@ -14,19 +14,27 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file BlockDetails.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#include "BlockDetails.h"
 
+#include <libethential/Common.h>
 using namespace std;
 using namespace eth;
 
-namespace eth
+BlockDetails::BlockDetails(RLP const& _r)
 {
+	number = _r[0].toInt<uint>();
+	totalDifficulty = _r[1].toInt<u256>();
+	parent = _r[2].toHash<h256>();
+	children = _r[3].toVector<h256>();
+	bloom = _r[4].toHash<h256>();
+}
 
-char const* EthVersion = "0.6.1";
-
+bytes BlockDetails::rlp() const
+{
+	return rlpList(number, totalDifficulty, parent, children, bloom);
 }
