@@ -30,6 +30,7 @@
 #include <boost/algorithm/string.hpp>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethcore/Dagger.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
@@ -37,60 +38,25 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
-#include <libethereum/PeerServer.h>
+#include <libethereum/EthereumHost.h>
+#include <libethereum/DownloadMan.h>
+#include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
-
-// types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using eth::BlockChain;
-using eth::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
-using eth::Executive;
-
-// functions
-using eth::toHex;
-using eth::compileLLL;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::sha3;
-using eth::left160;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
-using eth::operator<<;
-
-// vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
-using eth::c_instructionInfo;
+using namespace dev;
+using namespace dev::p2p;
+using namespace dev::eth;
 
 static void initUnits(QComboBox* _b)
 {
-	for (auto n = (::uint)units().size(); n-- != 0; )
+	for (auto n = (unsigned)units().size(); n-- != 0; )
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
+static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 {
 	if (_n)
 	{
@@ -115,7 +81,6 @@ static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
 	return QString();
 }
 
-
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
 Main::Main(QWidget *parent) :
@@ -134,33 +99,17 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
-#if 0&&ETH_DEBUG
-	m_servers.append("192.168.0.10:30301");
-#else
-    int pocnumber = QString(eth::EthVersion).section('.', 1, 1).toInt();
-	if (pocnumber == 5)
-        m_servers.push_back("54.72.69.180:30303");
-	else if (pocnumber == 6)
-		m_servers.push_back("54.76.56.74:30303");
-	else
-	{
-		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
-		{
-			m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
-		});
-		QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString::number(pocnumber) + ".txt"));
-		r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
-		m_webCtrl.get(r);
-		srand(time(0));
-	}
+#if ETH_DEBUG
+	m_servers.append("localhost:30300");
 #endif
+	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
     cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
-	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
-	cerr << "Client database version: " << eth::c_databaseVersion << endl;
+	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
 	ui->configDock->close();
 	on_verbosity_valueChanged();
@@ -178,12 +127,12 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_client.reset(new Client("AlethZero"));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_ethereum = new QEthereum(this, m_client.get(), owned());
+		m_ethereum = new QEthereum(this, ethereum(), owned());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
@@ -227,53 +176,58 @@ Main::~Main()
 	writeSettings();
 }
 
+dev::p2p::NetworkPreferences Main::netPrefs() const
+{
+	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), ui->localNetworking->isChecked());
+}
+
 void Main::onKeysChanged()
 {
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
-unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
 void Main::installWatches()
 {
-	installWatch(eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
-	installWatch(eth::PendingChangedFilter, [=](){ onNewPending(); });
-	installWatch(eth::ChainChangedFilter, [=](){ onNewBlock(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
+	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
 
 void Main::installNameRegWatch()
 {
-	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	ethereum()->uninstallWatch(m_nameRegFilter);
+	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
-	m_client->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	ethereum()->uninstallWatch(m_currenciesFilter);
+	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	eth::MessageFilter tf;
+	dev::eth::MessageFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
-		altCoins.push_back(right160(m_client->stateAt(coinsAddr, i + 1)));
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 	{
 		tf.altered(i.address());
@@ -281,7 +235,7 @@ void Main::installBalancesWatch()
 			tf.altered(c, (u160)i.address());
 	}
 
-	m_client->uninstallWatch(m_balancesFilter);
+	ethereum()->uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
 }
 
@@ -329,7 +283,13 @@ void Main::onNewPending()
 
 void Main::on_forceMining_triggered()
 {
-	m_client->setForceMining(ui->forceMining->isChecked());
+	ethereum()->setForceMining(ui->forceMining->isChecked());
+}
+
+void Main::on_enableOptimizer_triggered()
+{
+	m_enableOptimizer = ui->enableOptimizer->isChecked();
+	on_data_textChanged();
 }
 
 void Main::load(QString _s)
@@ -356,6 +316,7 @@ void Main::load(QString _s)
 		}
 	}
 }
+
 // env.load("/home/gav/eth/init.eth")
 
 void Main::on_loadJS_triggered()
@@ -390,7 +351,7 @@ void Main::eval(QString const& _js)
 {
 	if (_js.trimmed().isEmpty())
 		return;
-	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
+	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript((_js.startsWith("{") || _js.startsWith("if ") || _js.startsWith("if(")) ? _js : ("___RET=(" + _js + ")"));
 	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(___RET)");
 	QString s;
 	if (ev.isNull())
@@ -412,20 +373,20 @@ void Main::eval(QString const& _js)
 	ui->jsConsole->setHtml(s);
 }
 
-QString Main::pretty(eth::Address _a) const
+QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-		n = m_client->stateAt(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+		n = ethereum()->stateAt(nameReg, (u160)(_a));
 
 	if (!n)
-		n = m_client->stateAt(m_nameReg, (u160)(_a));
+		n = ethereum()->stateAt(m_nameReg, (u160)(_a));
 
 	return fromRaw(n);
 }
 
-QString Main::render(eth::Address _a) const
+QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
 	if (!p.isNull())
@@ -446,11 +407,11 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-			if (h256 a = m_client->stateAt(nameReg, n))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
 
-		if (h256 a = m_client->stateAt(m_nameReg, n))
+		if (h256 a = ethereum()->stateAt(m_nameReg, n))
 			return right160(a);
 	}
 	if (_a.size() == 40)
@@ -478,11 +439,11 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)m_client->stateAt(c_config, 4, 0))
-		ret = m_client->stateAt(dnsReg, n);
+	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
-		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0, 0))
-			ret = m_client->stateAt(nameReg, n2);
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
+			ret = ethereum()->stateAt(nameReg, n2);
 */
 	if (ret && !((u256)ret >> 32))
 		return QString("%1.%2.%3.%4").arg((int)ret[28]).arg((int)ret[29]).arg((int)ret[30]).arg((int)ret[31]);
@@ -495,12 +456,12 @@ QString Main::lookup(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About AlethZero PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("AlethZero/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
+	QMessageBox::about(this, "About AlethZero PoC-" + QString(dev::Version).section('.', 1, 1), QString("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::on_paranoia_triggered()
 {
-	m_client->setParanoia(ui->paranoia->isChecked());
+	ethereum()->setParanoia(ui->paranoia->isChecked());
 }
 
 void Main::writeSettings()
@@ -519,16 +480,20 @@ void Main::writeSettings()
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
+	s.setValue("localNetworking", ui->localNetworking->isChecked());
 	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
+	s.setValue("enableOptimizer", m_enableOptimizer);
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
+	s.setValue("privateChain", m_privateChain);
+	s.setValue("verbosity", ui->verbosity->value());
 
-	bytes d = m_client->savePeers();
+	bytes d = m_webThree->savePeers();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -560,20 +525,27 @@ void Main::readSettings(bool _skipGeometry)
 				m_myKeys.append(KeyPair(k));
 		}
 	}
-	m_client->setAddress(m_myKeys.back().address());
+	ethereum()->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
+	ui->localNetworking->setChecked(s.value("localNetworking", true).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
+	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
+	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("NameReg", "").toString());
+	ui->nameReg->setText(s.value("nameReg", "").toString());
+	m_privateChain = s.value("privateChain", "").toString();
+	ui->usePrivate->setChecked(m_privateChain.size());
+	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
+
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -598,6 +570,26 @@ void Main::on_importKey_triggered()
 		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
 }
 
+void Main::on_importKeyFile_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	bytes b = fromHex(s.toStdString());
+	if (b.size() == 32)
+	{
+		auto k = KeyPair(h256(b));
+		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+		{
+			m_myKeys.append(k);
+			m_keysChanged = true;
+			update();
+		}
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	else
+		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
@@ -605,6 +597,21 @@ void Main::on_exportKey_triggered()
 		auto k = m_myKeys[ui->ourAccounts->currentRow()];
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + render(k.address()) + " is:\n" + QString::fromStdString(toHex(k.sec().ref())));
 	}
+}
+
+void Main::on_usePrivate_triggered()
+{
+	if (ui->usePrivate->isChecked())
+	{
+		m_privateChain = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)));
+		if (m_privateChain.isEmpty())
+			ui->usePrivate->setChecked(false);
+	}
+	else
+	{
+		m_privateChain.clear();
+	}
+	on_killBlockchain_triggered();
 }
 
 void Main::on_urlEdit_returnPressed()
@@ -635,24 +642,24 @@ void Main::on_nameReg_textChanged()
 
 void Main::on_preview_triggered()
 {
-	m_client->setDefault(ui->preview->isChecked() ? 0 : -1);
+	ethereum()->setDefault(ui->preview->isChecked() ? 0 : -1);
 	refreshAll();
 }
 
 void Main::refreshMining()
 {
-	eth::MineProgress p = m_client->miningProgress();
-	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
+	dev::eth::MineProgress p = ethereum()->miningProgress();
+	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
-	list<eth::MineInfo> l = m_client->miningHistory();
-	static uint lh = 0;
+	list<dev::eth::MineInfo> l = ethereum()->miningHistory();
+	static unsigned lh = 0;
 	if (p.hashes < lh)
 		ui->miningView->resetStats();
 	lh = p.hashes;
 	ui->miningView->appendStats(l, p);
 /*	if (p.ms)
-		for (eth::MineInfo const& i: l)
+		for (dev::eth::MineInfo const& i: l)
 			cnote << i.hashes * 10 << "h/sec, need:" << i.requirement << " best:" << i.best << " best-so-far:" << p.best << " avg-speed:" << (p.hashes * 1000 / p.ms) << "h/sec";
 */
 }
@@ -664,26 +671,26 @@ void Main::refreshBalances()
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
 	map<Address, tuple<QString, u256, u256>> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
 	{
-		auto n = m_client->stateAt(coinsAddr, i + 1);
-		auto addr = right160(m_client->stateAt(coinsAddr, n));
-		auto denom = m_client->stateAt(coinsAddr, sha3(h256(n).asBytes()));
+		auto n = ethereum()->stateAt(coinsAddr, i + 1);
+		auto addr = right160(ethereum()->stateAt(coinsAddr, n));
+		auto denom = ethereum()->stateAt(coinsAddr, sha3(h256(n).asBytes()));
 		if (denom == 0)
 			denom = 1;
-		cdebug << n << addr << denom << sha3(h256(n).asBytes());
+//		cdebug << n << addr << denom << sha3(h256(n).asBytes());
 		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
 	}
 	for (auto i: m_myKeys)
 	{
-		u256 b = m_client->balanceAt(i.address());
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->countAt(i.address())), ui->ourAccounts))
+		u256 b = ethereum()->balanceAt(i.address());
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)ethereum()->countAt(i.address())), ui->ourAccounts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 		totalBalance += b;
 
 		for (auto& c: altCoins)
-			get<1>(c.second) += (u256)m_client->stateAt(c.first, (u160)i.address());
+			get<1>(c.second) += (u256)ethereum()->stateAt(c.first, (u160)i.address());
 	}
 
 	QString b;
@@ -699,12 +706,12 @@ void Main::refreshBalances()
 
 void Main::refreshNetwork()
 {
-	auto ps = m_client->peers();
+	auto ps = web3()->peers();
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
 	for (PeerInfo const& i: ps)
-		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
+		ui->peers->addItem(QString("%3 ms - %1:%2 - %4 %5").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))));
 }
 
 void Main::refreshAll()
@@ -721,7 +728,7 @@ void Main::refreshPending()
 {
 	cwatch << "refreshPending()";
 	ui->transactionQueue->clear();
-	for (Transaction const& t: m_client->pending())
+	for (Transaction const& t: ethereum()->pending())
 	{
 		QString s = t.receiveAddress ?
 			QString("%2 %5> %3: %1 [%4]")
@@ -729,7 +736,7 @@ void Main::refreshPending()
 				.arg(render(t.safeSender()))
 				.arg(render(t.receiveAddress))
 				.arg((unsigned)t.nonce)
-				.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
+				.arg(ethereum()->codeAt(t.receiveAddress).size() ? '*' : '-') :
 			QString("%2 +> %3: %1 [%4]")
 				.arg(formatBalance(t.value).c_str())
 				.arg(render(t.safeSender()))
@@ -745,16 +752,16 @@ void Main::refreshAccounts()
 	ui->accounts->clear();
 	ui->contracts->clear();
 	for (auto n = 0; n < 2; ++n)
-		for (auto i: m_client->addresses())
+		for (auto i: ethereum()->addresses())
 		{
 			auto r = render(i);
 			if (r.contains('(') == !n)
 			{
 				if (n == 0 || ui->showAllAccounts->isChecked())
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->accounts))
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(r).arg((unsigned)ethereum()->countAt(i)), ui->accounts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
-				if (m_client->codeAt(i).size())
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->contracts))
+				if (ethereum()->codeAt(i).size())
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(r).arg((unsigned)ethereum()->countAt(i)), ui->contracts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
@@ -764,7 +771,7 @@ void Main::refreshDestination()
 {
 	cwatch << "refreshDestination()";
 	QString s;
-	for (auto i: m_client->addresses())
+	for (auto i: ethereum()->addresses())
 		if ((s = pretty(i)).size())
 			// A namereg address
 			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
@@ -777,12 +784,12 @@ void Main::refreshDestination()
 void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
-	auto d = m_client->blockChain().details();
-	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
+	auto d = ethereum()->blockChain().details();
+	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
+	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
-static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
+static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
 {
 	try
 	{
@@ -807,6 +814,11 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 	return false;
 }
 
+void Main::on_turboMining_triggered()
+{
+	ethereum()->setTurboMining(ui->turboMining->isChecked());
+}
+
 void Main::refreshBlockChain()
 {
 	cwatch << "refreshBlockChain()";
@@ -815,9 +827,9 @@ void Main::refreshBlockChain()
 	ui->blocks->clear();
 
 	string filter = ui->blockChainFilter->text().toLower().toStdString();
-	auto const& bc = m_client->blockChain();
+	auto const& bc = ethereum()->blockChain();
 	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
-	for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
+	for (auto h = bc.currentHash(); h != bc.genesisHash() && bc.details(h) && i; h = bc.details(h).parent, --i)
 	{
 		auto d = bc.details(h);
 		auto bm = blockMatch(filter, d, h, bc);
@@ -842,7 +854,7 @@ void Main::refreshBlockChain()
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
-						.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
+						.arg(ethereum()->codeAt(t.receiveAddress).size() ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
@@ -891,11 +903,14 @@ void Main::timerEvent(QTimerEvent*)
 	if (interval / 100 % 2 == 0)
 		refreshMining();
 
+	if (interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing())
+		ui->downloadView->update();
+
 	if (m_logChanged)
 	{
 		m_logLock.lock();
 		m_logChanged = false;
-		ui->log->appendPlainText(m_logHistory);
+		ui->log->appendPlainText(m_logHistory.mid(0, m_logHistory.length() - 1));
 		m_logHistory.clear();
 		m_logLock.unlock();
 	}
@@ -913,11 +928,11 @@ void Main::timerEvent(QTimerEvent*)
 		m_ethereum->poll();
 
 	for (auto const& i: m_handlers)
-		if (m_client->checkWatch(i.first))
+		if (ethereum()->checkWatch(i.first))
 			i.second();
 }
 
-string Main::renderDiff(eth::StateDiff const& _d) const
+string Main::renderDiff(dev::eth::StateDiff const& _d) const
 {
 	stringstream s;
 
@@ -926,7 +941,7 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 	{
 		s << "<hr/>";
 
-		eth::AccountDiff const& ad = i.second;
+		dev::eth::AccountDiff const& ad = i.second;
 		s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
 		if (!ad.exist.to())
 			continue;
@@ -934,12 +949,12 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 		if (ad.balance)
 		{
 			s << "<br/>" << indent << "Balance " << std::dec << formatBalance(ad.balance.to());
-			s << " <b>" << std::showpos << (((eth::bigint)ad.balance.to()) - ((eth::bigint)ad.balance.from())) << std::noshowpos << "</b>";
+			s << " <b>" << std::showpos << (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from())) << std::noshowpos << "</b>";
 		}
 		if (ad.nonce)
 		{
 			s << "<br/>" << indent << "Count #" << std::dec << ad.nonce.to();
-			s << " <b>" << std::showpos << (((eth::bigint)ad.nonce.to()) - ((eth::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
+			s << " <b>" << std::showpos << (((dev::bigint)ad.nonce.to()) - ((dev::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
 		}
 		if (ad.code)
 		{
@@ -948,7 +963,7 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}
 
-		for (pair<u256, eth::Diff<u256>> const& i: ad.storage)
+		for (pair<u256, dev::eth::Diff<u256>> const& i: ad.storage)
 		{
 			s << "<br/><code style=\"white-space: pre\">";
 			if (!i.second.from())
@@ -984,9 +999,9 @@ void Main::on_transactionQueue_currentItemChanged()
 
 	stringstream s;
 	int i = ui->transactionQueue->currentRow();
-	if (i >= 0 && i < (int)m_client->pending().size())
+	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
-		Transaction tx(m_client->pending()[i]);
+		Transaction tx(ethereum()->pending()[i]);
 		auto ss = tx.safeSender();
 		h256 th = sha3(rlpList(ss, tx.nonce));
 		s << "<h3>" << th << "</h3>";
@@ -1007,14 +1022,14 @@ void Main::on_transactionQueue_currentItemChanged()
 		else
 		{
 			if (tx.data.size())
-				s << eth::memDump(tx.data, 16, true);
+				s << dev::memDump(tx.data, 16, true);
 		}
 		s << "<hr/>";
 
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 
-		s << renderDiff(m_client->diff(i, 0));
+		s << renderDiff(ethereum()->diff(i, 0));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -1041,7 +1056,7 @@ void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
 	bytes b = fromHex(s.toStdString());
-	m_client->inject(&b);
+	ethereum()->inject(&b);
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -1055,8 +1070,8 @@ void Main::on_blocks_currentItemChanged()
 		auto hba = item->data(Qt::UserRole).toByteArray();
 		assert(hba.size() == 32);
 		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
-		auto details = m_client->blockChain().details(h);
-		auto blockData = m_client->blockChain().block(h);
+		auto details = ethereum()->blockChain().details(h);
+		auto blockData = ethereum()->blockChain().block(h);
 		auto block = RLP(blockData);
 		BlockInfo info(blockData);
 
@@ -1080,7 +1095,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
-			s << "<br/>Pre: <b>" << BlockInfo(m_client->blockChain().block(info.parentHash)).stateRoot << "</b>";
+			s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i[0].data()).abridged() << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
@@ -1114,9 +1129,9 @@ void Main::on_blocks_currentItemChanged()
 			else
 			{
 				if (tx.data.size())
-					s << eth::memDump(tx.data, 16, true);
+					s << dev::memDump(tx.data, 16, true);
 			}
-			s << renderDiff(m_client->diff(txi, h));
+			s << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
 			ui->debugDumpStatePre->setEnabled(true);
@@ -1138,7 +1153,7 @@ void Main::on_debugCurrent_triggered()
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = m_client->state(txi + 1, h);
+			m_executiveState = ethereum()->state(txi + 1, h);
 			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
@@ -1164,7 +1179,7 @@ void Main::on_debugDumpState_triggered(int _add)
 			if (f.is_open())
 			{
 				unsigned txi = item->data(Qt::UserRole + 1).toInt();
-				f << m_client->state(txi + _add, h) << endl;
+				f << ethereum()->state(txi + _add, h) << endl;
 			}
 		}
 	}
@@ -1175,7 +1190,7 @@ void Main::on_debugDumpStatePre_triggered()
 	on_debugDumpState_triggered(0);
 }
 
-void Main::populateDebugger(eth::bytesConstRef _r)
+void Main::populateDebugger(dev::bytesConstRef _r)
 {
 	bool done = m_currentExecution->setup(_r);
 	if (!done)
@@ -1187,10 +1202,10 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, unsigned newMemSize, eth::bigint gasCost, void* voidVM, void const* voidExt)
+		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
 		{
-			eth::VM& vm = *(eth::VM*)voidVM;
-			eth::ExtVM const& ext = *(eth::ExtVM const*)voidExt;
+			dev::eth::VM& vm = *(dev::eth::VM*)voidVM;
+			dev::eth::ExtVM const& ext = *(dev::eth::ExtVM const*)voidExt;
 			if (ext.code != lastExtCode)
 			{
 				lastExtCode = ext.code;
@@ -1212,6 +1227,7 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 		};
 		m_currentExecution->go(onOp);
+		m_currentExecution->finalize(onOp);
 		initDebugger();
 		updateDebugger();
 	}
@@ -1229,13 +1245,13 @@ void Main::on_contracts_currentItemChanged()
 		stringstream s;
 		try
 		{
-			auto storage = m_client->storageAt(address);
+			auto storage = ethereum()->storageAt(address);
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
-			s << "<h4>Body Code</h4>" << disassemble(m_client->codeAt(address));
+			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
-		catch (eth::InvalidTrie)
+		catch (dev::eth::InvalidTrie)
 		{
 			ui->contractInfo->appendHtml("Corrupted trie.");
 		}
@@ -1245,7 +1261,7 @@ void Main::on_contracts_currentItemChanged()
 
 void Main::on_idealPeers_valueChanged()
 {
-	m_client->setIdealPeerCount(ui->idealPeers->value());
+	m_webThree->setIdealPeerCount(ui->idealPeers->value());
 }
 
 void Main::on_ourAccounts_doubleClicked()
@@ -1302,14 +1318,12 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			auto asmcode = eth::compileLLLToAsm(src, false);
-			auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
-			m_data = eth::compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
+			m_data = dev::eth::compileLLL(src, m_enableOptimizer, &errors);
 			if (errors.size())
 			{
 				try
 				{
-					m_data = eth::asBytes(::compile(src));
+					m_data = dev::asBytes(::compile(src));
 					for (auto& i: errors)
 						i = "(LLL " + i + ")";
 				}
@@ -1319,7 +1333,15 @@ void Main::on_data_textChanged()
 				}
 			}
 			else
-				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+			{
+				auto asmcode = dev::eth::compileLLLToAsm(src, false);
+				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+				if (m_enableOptimizer)
+				{
+					asmcode = dev::eth::compileLLLToAsm(src, true);
+					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
+				}
+			}
 		}
 		QString errs;
 		if (errors.size())
@@ -1358,12 +1380,12 @@ void Main::on_data_textChanged()
 			{
 				u256 v(d.cap(2).toStdString());
 				if (d.cap(6) == "szabo")
-					v *= eth::szabo;
+					v *= dev::eth::szabo;
 				else if (d.cap(5) == "finney")
-					v *= eth::finney;
+					v *= dev::eth::finney;
 				else if (d.cap(4) == "ether")
-					v *= eth::ether;
-				bytes bs = eth::toCompactBigEndian(v);
+					v *= dev::eth::ether;
+				bytes bs = dev::toCompactBigEndian(v);
 				if (d.cap(1) != "$")
 					for (auto i = bs.size(); i < 32; ++i)
 						m_data.push_back(0);
@@ -1384,8 +1406,8 @@ void Main::on_data_textChanged()
 			else
 				s = s.mid(1);
 		}
-		ui->code->setHtml(QString::fromStdString(eth::memDump(m_data, 8, true)));
-		if (m_client->codeAt(fromString(ui->destination->currentText()), 0).size())
+		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
+		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
 			ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
@@ -1408,9 +1430,9 @@ void Main::on_killBlockchain_triggered()
 	writeSettings();
 	ui->mine->setChecked(false);
 	ui->net->setChecked(false);
-	m_client.reset();
-	m_client.reset(new Client("AlethZero", Address(), string(), true));
-	m_ethereum->setClient(m_client.get());
+	web3()->stopNetwork();
+	ethereum()->killChain();
+	m_ethereum->setClient(ethereum());
 	readSettings(true);
 	installWatches();
 	refreshAll();
@@ -1453,7 +1475,7 @@ void Main::updateFee()
 
 	bool ok = false;
 	for (auto i: m_myKeys)
-		if (m_client->balanceAt(i.address()) >= totalReq)
+		if (ethereum()->balanceAt(i.address()) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -1468,19 +1490,28 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-    string n = string("AlethZero/v") + eth::EthVersion;
+    string n = string("AlethZero/v") + dev::Version;
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
-	m_client->setClientVersion(n);
+	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
+	web3()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
+		// TODO: alter network stuff?
+		//ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0
+		web3()->setIdealPeerCount(ui->idealPeers->value());
+		web3()->setNetworkPreferences(netPrefs());
+		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
+		web3()->startNetwork();
+		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 		if (m_peers.size() && ui->usePast->isChecked())
-			m_client->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			web3()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
-		m_client->stopNetwork();
+	{
+		ui->downloadView->setDownloadMan(nullptr);
+		web3()->stopNetwork();
+	}
 }
 
 void Main::on_connect_triggered()
@@ -1496,7 +1527,7 @@ void Main::on_connect_triggered()
 	{
 		string host = s.section(":", 0, 0).toStdString();
 		unsigned short port = s.section(":", 1).toInt();
-		m_client->connect(host, port);
+		web3()->connect(host, port);
 	}
 }
 
@@ -1510,25 +1541,25 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		m_client->setAddress(m_myKeys.last().address());
-		m_client->startMining();
+		ethereum()->setAddress(m_myKeys.last().address());
+		ethereum()->startMining();
 	}
 	else
-		m_client->stopMining();
+		ethereum()->stopMining();
 }
 
 void Main::on_send_clicked()
 {
 	u256 totalReq = value() + fee();
 	for (auto i: m_myKeys)
-		if (m_client->balanceAt(i.address(), 0) >= totalReq)
+		if (ethereum()->balanceAt(i.address(), 0) >= totalReq)
 		{
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
 			else
-				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
@@ -1541,13 +1572,13 @@ void Main::on_debug_clicked()
 	{
 		u256 totalReq = value() + fee();
 		for (auto i: m_myKeys)
-			if (m_client->balanceAt(i.address()) >= totalReq)
+			if (ethereum()->balanceAt(i.address()) >= totalReq)
 			{
 				Secret s = i.secret();
-				m_executiveState = m_client->postState();
+				m_executiveState = ethereum()->postState();
 				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 				Transaction t;
-				t.nonce = m_executiveState.transactionsFrom(toAddress(s));
+				t.nonce = m_executiveState.transactionsFrom(dev::toAddress(s));
 				t.value = value();
 				t.gasPrice = gasPrice();
 				t.gas = ui->gas->value();
@@ -1561,7 +1592,7 @@ void Main::on_debug_clicked()
 			}
 		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 	}
-	catch (eth::Exception const& _e)
+	catch (dev::Exception const& _e)
 	{
 		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(_e.description()));
 	}
@@ -1643,7 +1674,7 @@ void Main::on_dumpTrace_triggered()
 	ofstream f(fn.toStdString());
 	if (f.is_open())
 		for (WorldState const& ws: m_history)
-			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
 void Main::on_dumpTracePretty_triggered()
@@ -1656,11 +1687,11 @@ void Main::on_dumpTracePretty_triggered()
 			f << endl << "    STACK" << endl;
 			for (auto i: ws.stack)
 				f << (h256)i << endl;
-			f << "    MEMORY" << endl << eth::memDump(ws.memory);
+			f << "    MEMORY" << endl << dev::memDump(ws.memory);
 			f << "    STORAGE" << endl;
 			for (auto const& i: ws.storage)
 				f << showbase << hex << i.first << ": " << i.second << endl;
-			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << c_instructionInfo.at(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
+			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << dev::eth::instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
 		}
 }
 
@@ -1673,9 +1704,19 @@ void Main::on_dumpTraceStorage_triggered()
 		{
 			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
 				for (auto i: ws.storage)
-					f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
-			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
+}
+
+void Main::on_go_triggered()
+{
+	if (!ui->net->isChecked())
+	{
+		ui->net->setChecked(true);
+		on_net_triggered();
+	}
+	web3()->connect(Host::pocHost());
 }
 
 void Main::on_callStack_currentItemChanged()
@@ -1732,7 +1773,7 @@ void Main::on_debugTimeline_valueChanged()
 	updateDebugger();
 }
 
-QString Main::prettyU256(eth::u256 _n) const
+QString Main::prettyU256(dev::u256 _n) const
 {
 	unsigned inc = 0;
 	QString raw;
@@ -1776,7 +1817,7 @@ void Main::updateDebugger()
 				bytes out(size, 0);
 				for (; o < size && from + o < ws.memory.size(); ++o)
 					out[o] = ws.memory[from + o];
-				ui->debugMemory->setHtml("<h3>RETURN</h3>" + QString::fromStdString(eth::memDump(out, 16, true)));
+				ui->debugMemory->setHtml("<h3>RETURN</h3>" + QString::fromStdString(dev::memDump(out, 16, true)));
 			}
 			else if (ws.inst == Instruction::STOP)
 				ui->debugMemory->setHtml("<h3>STOP</h3>");
@@ -1786,7 +1827,7 @@ void Main::updateDebugger()
 				ui->debugMemory->setHtml("<h3>EXCEPTION</h3>");
 
 			ostringstream ss;
-			ss << dec << "EXIT  |  GAS: " << dec << max<eth::bigint>(0, (eth::bigint)ws.gas - ws.gasCost);
+			ss << dec << "EXIT  |  GAS: " << dec << max<dev::bigint>(0, (dev::bigint)ws.gas - ws.gasCost);
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			ui->debugStorage->setHtml("");
 			ui->debugCallData->setHtml("");
@@ -1809,7 +1850,7 @@ void Main::updateDebugger()
 					ostringstream out;
 					out << s.cur.abridged();
 					if (i)
-						out << " " << c_instructionInfo.at(s.inst).name << " @0x" << hex << s.curPC;
+						out << " " << instructionInfo(s.inst).name << " @0x" << hex << s.curPC;
 					ui->callStack->addItem(QString::fromStdString(out.str()));
 				}
 			}
@@ -1825,7 +1866,7 @@ void Main::updateDebugger()
 					byte b = i < code.size() ? code[i] : 0;
 					try
 					{
-						QString s = c_instructionInfo.at((Instruction)b).name;
+						QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 						ostringstream out;
 						out << hex << setw(4) << setfill('0') << i;
 						m_pcWarp[i] = dc->count();
@@ -1851,7 +1892,7 @@ void Main::updateDebugger()
 				if (ws.callData)
 				{
 					assert(m_codes.count(ws.callData));
-					ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
+					ui->debugCallData->setHtml(QString::fromStdString(dev::memDump(m_codes[ws.callData], 16, true)));
 				}
 				else
 					ui->debugCallData->setHtml("");
@@ -1861,7 +1902,7 @@ void Main::updateDebugger()
 			for (auto i: ws.stack)
 				stack.prepend("<div>" + prettyU256(i) + "</div>");
 			ui->debugStack->setHtml(stack);
-			ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
+			ui->debugMemory->setHtml(QString::fromStdString(dev::memDump(ws.memory, 16, true)));
 			assert(m_codes.count(ws.code));
 
 			if (m_codes[ws.code].size() >= (unsigned)ws.curPC)
@@ -1875,7 +1916,7 @@ void Main::updateDebugger()
 				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
 
 			ostringstream ss;
-			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
+			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << dev::eth::instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
 			for (auto const& i: ws.storage)
@@ -1894,5 +1935,8 @@ void Main::updateDebugger()
 
 #include\
 "moc_MiningView.cpp"
+
+#include\
+"moc_DownloadView.cpp"
 
 #endif

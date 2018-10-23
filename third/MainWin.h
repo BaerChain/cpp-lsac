@@ -27,7 +27,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
@@ -36,11 +36,12 @@ namespace Ui {
 class Main;
 }
 
+namespace dev { class WebThreeDirect;
 namespace eth {
 class Client;
 class State;
 class MessageFilter;
-}
+}}
 
 class QQuickView;
 
@@ -52,9 +53,10 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	eth::Client* client() { return m_client.get(); }
+	dev::WebThreeDirect* web3() const { return m_web3.get(); }
+	dev::eth::Client* ethereum() const;
 
-	QList<eth::KeyPair> const& owned() const { return m_myKeys; }
+	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
 public slots:
 	void note(QString _entry);
@@ -79,16 +81,16 @@ signals:
 	void poll();
 
 private:
-	QString pretty(eth::Address _a) const;
-	QString render(eth::Address _a) const;
-	eth::Address fromString(QString const& _a) const;
+	QString pretty(dev::Address _a) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
 	QString lookup(QString const& _n) const;
 
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
-	unsigned installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f);
-	unsigned installWatch(eth::h256 _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 
 	void onNewBlock();
 	void onNameRegChange();
@@ -111,9 +113,9 @@ private:
 
 	std::unique_ptr<Ui::Main> ui;
 
-	std::unique_ptr<eth::Client> m_client;
+	std::unique_ptr<dev::WebThreeDirect> m_web3;
 
-	QList<eth::KeyPair> m_myKeys;
+	QList<dev::KeyPair> m_myKeys;
 
 	std::map<unsigned, std::function<void()>> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;

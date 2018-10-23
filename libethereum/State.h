@@ -24,9 +24,9 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Dagger.h>
@@ -36,7 +36,10 @@
 #include "AddressState.h"
 #include "Transaction.h"
 #include "Executive.h"
+#include "AccountDiff.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -64,44 +67,6 @@ struct TransactionReceipt
 	Manifest changes;
 };
 
-enum class ExistDiff { Same, New, Dead };
-template <class T>
-class Diff
-{
-public:
-	Diff() {}
-	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
-
-	T const& from() const { return m_from; }
-	T const& to() const { return m_to; }
-
-	explicit operator bool() const { return m_from != m_to; }
-
-private:
-	T m_from;
-	T m_to;
-};
-
-enum class AccountChange { None, Creation, Deletion, Intrinsic, CodeStorage, All };
-
-struct AccountDiff
-{
-	inline bool changed() const { return storage.size() || code || nonce || balance || exist; }
-	char const* lead() const;
-	AccountChange changeType() const;
-
-	Diff<bool> exist;
-	Diff<u256> balance;
-	Diff<u256> nonce;
-	std::map<u256, Diff<u256>> storage;
-	Diff<bytes> code;
-};
-
-struct StateDiff
-{
-	std::map<Address, AccountDiff> accounts;
-};
-
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -124,6 +89,8 @@ public:
 
 	/// Copy state object.
 	State& operator=(State const& _s);
+
+	~State();
 
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
@@ -157,7 +124,7 @@ public:
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns Information on the mining.
-	MineInfo mine(uint _msTimeout = 1000);
+	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -299,20 +266,20 @@ private:
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
 
-	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
+	/// Execute the given block, assuming it corresponds to m_currentBlock. If _bc is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo(), bool _checkNonce = true);
+	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
 
 	// Two priviledged entry points for the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -332,7 +299,6 @@ private:
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
-//	GenericTrieDB<OverlayDB> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 	OverlayDB m_lastTx;
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
@@ -356,8 +322,6 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& _out, State const& _s);
-std::ostream& operator<<(std::ostream& _out, StateDiff const& _s);
-std::ostream& operator<<(std::ostream& _out, AccountDiff const& _s);
 
 template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
@@ -387,15 +351,21 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				h256 ch = sha3(i.second.code());
 				_db.insert(ch, &i.second.code());
-				s << ch;
+				if (i.second.code().size())
+					s << ch;
+				else
+					s << "";
 			}
 			else
-				s << i.second.codeHash();
+				if (i.second.codeHash() == EmptySHA3)
+					s << "";
+				else
+					s << i.second.codeHash();
 
 			_state.insert(i.first, &s.out());
 		}
 }
 
 }
-
+}
 

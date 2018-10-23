@@ -21,16 +21,23 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <mutex>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
-#include "Guards.h"
+#include <libdevcore/Guards.h>
 #include "BlockDetails.h"
 #include "AddressState.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -63,6 +70,8 @@ public:
 	BlockChain(std::string _path, bool _killExisting = false);
 	~BlockChain();
 
+	void reopen(std::string _path, bool _killExisting = false) { close(); open(_path, _killExisting); }
+
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
@@ -77,6 +86,9 @@ public:
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	h256s import(bytes const& _block, OverlayDB const& _stateDB);
+
+	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
+	bool isKnown(h256 _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
@@ -95,8 +107,8 @@ public:
 	bytes block() const { return block(currentHash()); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
-	uint number(h256 _hash) const { return details(_hash).number; }
-	uint number() const { return number(currentHash()); }
+	unsigned number(h256 _hash) const { return details(_hash).number; }
+	unsigned number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { ReadGuard l(x_lastBlockHash); return m_lastBlockHash; }
@@ -106,6 +118,11 @@ public:
 
 	/// Get the hash of a block of a given number. Slow; try not to use it too much.
 	h256 numberHash(unsigned _n) const;
+
+	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
+	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation +5
+	/// togther with all their quoted uncles.
+	h256Set allUnclesFrom(h256 _parent) const;
 
 	/// @returns the genesis block header.
 	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
@@ -128,9 +145,12 @@ public:
 	 * treeRoute(1b, 2a) == { 1b, 1a, 2a }; // *o_common == g
 	 * @endcode
 	 */
-	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr) const;
+	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
 
 private:
+	void open(std::string _path, bool _killExisting = false);
+	void close();
+
 	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
 	{
 		{
@@ -189,4 +209,5 @@ private:
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 
+}
 }

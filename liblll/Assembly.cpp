@@ -21,17 +21,18 @@
 
 #include "Assembly.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 int AssemblyItem::deposit() const
 {
 	switch (m_type)
 	{
 	case Operation:
-		return c_instructionInfo.at((Instruction)(byte)m_data).ret - c_instructionInfo.at((Instruction)(byte)m_data).args;
+		return instructionInfo((Instruction)(byte)m_data).ret - instructionInfo((Instruction)(byte)m_data).args;
 	case Push: case PushString: case PushTag: case PushData: case PushSub: case PushSubSize:
 		return 1;
 	case Tag:
@@ -59,7 +60,7 @@ unsigned Assembly::bytesRequired() const
 				ret += 33;
 				break;
 			case Push:
-				ret += 1 + max<unsigned>(1, eth::bytesRequired(i.m_data));
+				ret += 1 + max<unsigned>(1, dev::bytesRequired(i.m_data));
 				break;
 			case PushSubSize:
 				ret += 4;		// worst case: a 16MB program
@@ -71,7 +72,7 @@ unsigned Assembly::bytesRequired() const
 			case Tag:;
 			default:;
 			}
-		if (eth::bytesRequired(ret) <= br)
+		if (dev::bytesRequired(ret) <= br)
 			return ret;
 	}
 }
@@ -110,13 +111,13 @@ void Assembly::append(Assembly const& _a, int _deposit)
 	}
 }
 
-ostream& eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
+ostream& dev::eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 {
 	for (AssemblyItem const& i: _i)
 		switch (i.type())
 		{
 		case Operation:
-			_out << " " << c_instructionInfo.at((Instruction)(byte)i.data()).name;
+			_out << " " << instructionInfo((Instruction)(byte)i.data()).name;
 			break;
 		case Push:
 			_out << " PUSH" << i.data();
@@ -153,7 +154,7 @@ ostream& Assembly::streamOut(ostream& _out, string const& _prefix) const
 		switch (i.m_type)
 		{
 		case Operation:
-			_out << _prefix << "  " << c_instructionInfo.at((Instruction)(byte)i.m_data).name << endl;
+			_out << _prefix << "  " << instructionInfo((Instruction)(byte)i.m_data).name << endl;
 			break;
 		case Push:
 			_out << _prefix << "  PUSH " << i.m_data << endl;
@@ -217,7 +218,7 @@ inline bool matches(AssemblyItemsConstRef _a, AssemblyItemsConstRef _b)
 }
 
 struct OptimiserChannel: public LogChannel { static const char* name() { return "OPT"; } static const int verbosity = 12; };
-#define copt eth::LogOutputStream<OptimiserChannel, true>()
+#define copt dev::LogOutputStream<OptimiserChannel, true>()
 
 Assembly& Assembly::optimise(bool _enable)
 {
@@ -227,14 +228,14 @@ Assembly& Assembly::optimise(bool _enable)
 	{
 		{ Instruction::SUB, [](u256 a, u256 b)->u256{return a - b;} },
 		{ Instruction::DIV, [](u256 a, u256 b)->u256{return a / b;} },
-        { Instruction::SDIV, [](u256 a, u256 b)->u256{return s2u(u2s(a) / u2s(b));} },
+		{ Instruction::SDIV, [](u256 a, u256 b)->u256{return s2u(u2s(a) / u2s(b));} },
 		{ Instruction::MOD, [](u256 a, u256 b)->u256{return a % b;} },
-        { Instruction::SMOD, [](u256 a, u256 b)->u256{return s2u(u2s(a) % u2s(b));} },
-		{ Instruction::EXP, [](u256 a, u256 b)->u256{return boost::multiprecision::pow(a, (unsigned)b);} },
+		{ Instruction::SMOD, [](u256 a, u256 b)->u256{return s2u(u2s(a) % u2s(b));} },
+		{ Instruction::EXP, [](u256 a, u256 b)->u256{return (u256)boost::multiprecision::powm((bigint)a, (bigint)b, bigint(2) << 256);} },
 		{ Instruction::LT, [](u256 a, u256 b)->u256{return a < b ? 1 : 0;} },
 		{ Instruction::GT, [](u256 a, u256 b)->u256{return a > b ? 1 : 0;} },
-        { Instruction::SLT, [](u256 a, u256 b)->u256{return u2s(a) < u2s(b) ? 1 : 0;} },
-        { Instruction::SGT, [](u256 a, u256 b)->u256{return u2s(a) > u2s(b) ? 1 : 0;} },
+		{ Instruction::SLT, [](u256 a, u256 b)->u256{return u2s(a) < u2s(b) ? 1 : 0;} },
+		{ Instruction::SGT, [](u256 a, u256 b)->u256{return u2s(a) > u2s(b) ? 1 : 0;} },
 		{ Instruction::EQ, [](u256 a, u256 b)->u256{return a == b ? 1 : 0;} },
 	};
 	map<Instruction, function<u256(u256, u256)>> c_associative =
@@ -353,7 +354,7 @@ bytes Assembly::assemble() const
 	vector<unsigned> tagPos(m_usedTags);
 	map<unsigned, unsigned> tagRef;
 	multimap<h256, unsigned> dataRef;
-	unsigned bytesPerTag = eth::bytesRequired(totalBytes);
+	unsigned bytesPerTag = dev::bytesRequired(totalBytes);
 	byte tagPush = (byte)Instruction::PUSH1 - 1 + bytesPerTag;
 
 	for (auto const& i: m_subs)
@@ -380,7 +381,7 @@ bytes Assembly::assemble() const
 		}
 		case Push:
 		{
-			byte b = max<unsigned>(1, eth::bytesRequired(i.m_data));
+			byte b = max<unsigned>(1, dev::bytesRequired(i.m_data));
 			ret.push_back((byte)Instruction::PUSH1 - 1 + b);
 			ret.resize(ret.size() + b);
 			bytesRef byr(&ret.back() + 1 - b, b);
@@ -404,7 +405,7 @@ bytes Assembly::assemble() const
 		case PushSubSize:
 		{
 			auto s = m_data[i.m_data].size();
-			byte b = max<unsigned>(1, eth::bytesRequired(s));
+			byte b = max<unsigned>(1, dev::bytesRequired(s));
 			ret.push_back((byte)Instruction::PUSH1 - 1 + b);
 			ret.resize(ret.size() + b);
 			bytesRef byr(&ret.back() + 1 - b, b);

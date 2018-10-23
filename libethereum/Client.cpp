@@ -24,23 +24,14 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
+#include <libp2p/Host.h>
 #include "Defaults.h"
-#include "PeerServer.h"
+#include "EthereumHost.h"
 using namespace std;
-using namespace eth;
-
-void MessageFilter::fillStream(RLPStream& _s) const
-{
-	_s.appendList(8) << m_from << m_to << m_stateAltered << m_altered << m_earliest << m_latest << m_max << m_skip;
-}
-
-h256 MessageFilter::sha3() const
-{
-	RLPStream s;
-	fillStream(s);
-	return eth::sha3(s.out());
-}
+using namespace dev;
+using namespace dev::eth;
+using namespace p2p;
 
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
@@ -62,71 +53,107 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
-	m_clientVersion(_clientVersion),
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId):
+	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
-	m_preMine(_us, m_stateDB),
-	m_postMine(_us, m_stateDB),
-	m_workState(Deleted)
+	m_preMine(Address(), m_stateDB),
+	m_postMine(Address(), m_stateDB)
 {
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+
+	setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-	work(true);
-}
+	doWork();
 
-void Client::ensureWorking()
-{
-	static const char* c_threadName = "eth";
-
-	if (!m_work)
-		m_work.reset(new thread([&]()
-		{
-			setThreadName(c_threadName);
-			m_workState.store(Active, std::memory_order_release);
-			while (m_workState.load(std::memory_order_acquire) != Deleting)
-				work();
-			m_workState.store(Deleted, std::memory_order_release);
-
-			// Synchronise the state according to the head of the block chain.
-			// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-			WriteGuard l(x_stateDB);
-			m_preMine.sync(m_bc);
-			m_postMine = m_preMine;
-		}));
+	startWorking();
 }
 
 Client::~Client()
 {
-	if (m_work)
-	{
-		if (m_workState.load(std::memory_order_acquire) == Active)
-			m_workState.store(Deleting, std::memory_order_release);
-		while (m_workState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_work->join();
-		m_work.reset(nullptr);
-	}
-	stopNetwork();
+	stopWorking();
+}
+
+void Client::setNetworkId(u256 _n)
+{
+	if (auto h = m_host.lock())
+		h->setNetworkId(_n);
+}
+
+DownloadMan const* Client::downloadMan() const { if (auto h = m_host.lock()) return &(h->downloadMan()); return nullptr; }
+bool Client::isSyncing() const { if (auto h = m_host.lock()) return h->isSyncing(); return false; }
+
+void Client::doneWorking()
+{
+	// Synchronise the state according to the head of the block chain.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+	WriteGuard l(x_stateDB);
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
 }
 
 void Client::flushTransactions()
 {
-	work(true);
+	doWork();
+}
+
+void Client::killChain()
+{
+	bool wasMining = isMining();
+	if (wasMining)
+		stopMining();
+	stopWorking();
+
+	m_tq.clear();
+	m_bq.clear();
+	m_miners.clear();
+	m_preMine = State();
+	m_postMine = State();
+
+	{
+		WriteGuard l(x_stateDB);
+		m_stateDB = OverlayDB();
+		m_stateDB = State::openDB(Defaults::dbPath(), true);
+	}
+	m_bc.reopen(Defaults::dbPath(), true);
+
+	m_preMine = State(Address(), m_stateDB);
+	m_postMine = State(Address(), m_stateDB);
+
+	if (auto h = m_host.lock())
+		h->reset();
+
+	doWork();
+
+	setMiningThreads(0);
+
+	startWorking();
+	if (wasMining)
+		startMining();
 }
 
 void Client::clearPending()
 {
-	WriteGuard l(x_stateDB);
-	if (!m_postMine.pending().size())
-		return;
 	h256Set changeds;
-	for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-		appendFromNewPending(m_postMine.bloom(i), changeds);
-	changeds.insert(PendingChangedFilter);
-	m_postMine = m_preMine;
+	{
+		WriteGuard l(x_stateDB);
+		if (!m_postMine.pending().size())
+			return;
+		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
+			appendFromNewPending(m_postMine.bloom(i), changeds);
+		changeds.insert(PendingChangedFilter);
+		m_postMine = m_preMine;
+	}
+
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
+	}
+
 	noteChanged(changeds);
 }
 
@@ -168,6 +195,17 @@ void Client::uninstallWatch(unsigned _i)
 			m_filters.erase(fit);
 }
 
+void Client::noteChanged(h256Set const& _filters)
+{
+	lock_guard<mutex> l(m_filterLock);
+	for (auto& i: m_watches)
+		if (_filters.count(i.second.id))
+		{
+			cwatch << "!!!" << i.first << i.second.id;
+			i.second.changes++;
+		}
+}
+
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
@@ -186,136 +224,84 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 			o_changed.insert(i.first);
 }
 
-void Client::noteChanged(h256Set const& _filters)
+void Client::setForceMining(bool _enable)
 {
-	lock_guard<mutex> l(m_filterLock);
-	for (auto& i: m_watches)
-		if (_filters.count(i.second.id))
+	 m_forceMining = _enable;
+	 if (!m_host.lock())
+	 {
+		 ReadGuard l(x_miners);
+		 for (auto& m: m_miners)
+			 m.noteStateChange();
+	 }
+}
+
+void Client::setMiningThreads(unsigned _threads)
+{
+	stopMining();
+
+	auto t = _threads ? _threads : thread::hardware_concurrency();
+	WriteGuard l(x_miners);
+	m_miners.clear();
+	m_miners.resize(t);
+	unsigned i = 0;
+	for (auto& m: m_miners)
+		m.setup(this, i++);
+}
+
+MineProgress Client::miningProgress() const
+{
+	MineProgress ret;
+	ReadGuard l(x_miners);
+	for (auto& m: m_miners)
+		ret.combine(m.miningProgress());
+	return ret;
+}
+
+std::list<MineInfo> Client::miningHistory()
+{
+	std::list<MineInfo> ret;
+
+	ReadGuard l(x_miners);
+	if (m_miners.empty())
+		return ret;
+	ret = m_miners[0].miningHistory();
+	for (unsigned i = 1; i < m_miners.size(); ++i)
+	{
+		auto l = m_miners[i].miningHistory();
+		auto ri = ret.begin();
+		auto li = l.begin();
+		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
+			ri->combine(*li);
+	}
+	return ret;
+}
+
+void Client::setupState(State& _s)
+{
+	{
+		ReadGuard l(x_stateDB);
+		cwork << "SETUP MINE";
+		_s = m_postMine;
+	}
+	if (m_paranoia)
+	{
+		if (_s.amIJustParanoid(m_bc))
 		{
-			cwatch << "!!!" << i.first << i.second.id;
-			i.second.changes++;
+			cnote << "I'm just paranoid. Block is fine.";
+			_s.commitToMine(m_bc);
 		}
-}
-
-void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
-{
-	static const char* c_threadName = "net";
-
-	{
-		UpgradableGuard l(x_net);
-		if (m_net.get())
-			return;
+		else
 		{
-			UpgradeGuard ul(l);
-
-			if (!m_workNet)
-				m_workNet.reset(new thread([&]()
-				{
-					setThreadName(c_threadName);
-					m_workNetState.store(Active, std::memory_order_release);
-					while (m_workNetState.load(std::memory_order_acquire) != Deleting)
-						workNet();
-					m_workNetState.store(Deleted, std::memory_order_release);
-				}));
-
-			try
-			{
-				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
-			}
-			catch (std::exception const&)
-			{
-				// Probably already have the port open.
-				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
-			}
+			cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
 		}
-		m_net->setIdealPeerCount(_peers);
 	}
-
-	if (_seedHost.size())
-		connect(_seedHost, _port);
-
-	ensureWorking();
-}
-
-void Client::stopNetwork()
-{
-	UpgradableGuard l(x_net);
-
-	if (m_workNet)
-	{
-		if (m_workNetState.load(std::memory_order_acquire) == Active)
-			m_workNetState.store(Deleting, std::memory_order_release);
-		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_workNet->join();
-	}
-	if (m_net)
-	{
-		UpgradeGuard ul(l);
-		m_net.reset(nullptr);
-		m_workNet.reset(nullptr);
-	}
-}
-
-std::vector<PeerInfo> Client::peers()
-{
-	ReadGuard l(x_net);
-	return m_net ? m_net->peers() : std::vector<PeerInfo>();
-}
-
-size_t Client::peerCount() const
-{
-	ReadGuard l(x_net);
-	return m_net ? m_net->peerCount() : 0;
-}
-
-void Client::setIdealPeerCount(size_t _n) const
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->setIdealPeerCount(_n);
-}
-
-bytes Client::savePeers()
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->savePeers();
-	return bytes();
-}
-
-void Client::restorePeers(bytesConstRef _saved)
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->restorePeers(_saved);
-}
-
-void Client::connect(std::string const& _seedHost, unsigned short _port)
-{
-	ReadGuard l(x_net);
-	if (!m_net.get())
-		return;
-	m_net->connect(_seedHost, _port);
-}
-
-void Client::startMining()
-{
-	ensureWorking();
-
-	m_doMine = true;
-	m_restartMining = true;
-}
-
-void Client::stopMining()
-{
-	m_doMine = false;
+	else
+		_s.commitToMine(m_bc);
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	ensureWorking();
+	startWorking();
 
 	Transaction t;
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
@@ -357,7 +343,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
-	ensureWorking();
+	startWorking();
 
 	Transaction t;
 	{
@@ -377,91 +363,29 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
-	ensureWorking();
+	startWorking();
 
 	m_tq.attemptImport(_rlp);
 }
 
-void Client::workNet()
+void Client::doWork()
 {
-	// Process network events.
-	// Synchronise block chain with network.
-	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	{
-		ReadGuard l(x_net);
-		if (m_net)
-		{
-			cwork << "NETWORK";
-			m_net->process();	// must be in guard for now since it uses the blockchain.
+	// TODO: Use condition variable rather than polling.
 
-			// returns h256Set as block hashes, once for each block that has come in/gone out.
-			cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
-			m_net->sync(m_tq, m_bq);
-
-			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
-		}
-	}
-	this_thread::sleep_for(chrono::milliseconds(1));
-}
-
-void Client::work(bool _justQueue)
-{
 	cworkin << "WORK";
 	h256Set changeds;
 
-	// Do some mining.
-	if (!_justQueue && (m_pendingCount || m_forceMining))
 	{
-
-		// TODO: Separate "Miner" object.
-		if (m_doMine)
-		{
-			if (m_restartMining)
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			if (m.isComplete())
 			{
-				m_mineProgress.best = (double)-1;
-				m_mineProgress.hashes = 0;
-				m_mineProgress.ms = 0;
-				WriteGuard l(x_stateDB);
-				if (m_paranoia)
-				{
-					if (m_postMine.amIJustParanoid(m_bc))
-					{
-						cnote << "I'm just paranoid. Block is fine.";
-						m_postMine.commitToMine(m_bc);
-					}
-					else
-					{
-						cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
-						m_doMine = false;
-					}
-				}
-				else
-					m_postMine.commitToMine(m_bc);
-			}
-		}
-
-		if (m_doMine)
-		{
-			cwork << "MINE";
-			m_restartMining = false;
-
-			// Mine for a while.
-			MineInfo mineInfo = m_postMine.mine(100);
-
-			m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
-			m_mineProgress.current = mineInfo.best;
-			m_mineProgress.requirement = mineInfo.requirement;
-			m_mineProgress.ms += 100;
-			m_mineProgress.hashes += mineInfo.hashes;
-			WriteGuard l(x_stateDB);
-			m_mineHistory.push_back(mineInfo);
-			if (mineInfo.completed)
-			{
-				// Import block.
-				cwork << "COMPLETE MINE";
-				m_postMine.completeMine();
 				cwork << "CHAIN <== postSTATE";
-				h256s hs = m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
+				h256s hs;
+				{
+					WriteGuard l(x_stateDB);
+					hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				}
 				if (hs.size())
 				{
 					for (auto h: hs)
@@ -469,18 +393,9 @@ void Client::work(bool _justQueue)
 					changeds.insert(ChainChangedFilter);
 					//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
 				}
+				for (auto& m: m_miners)
+					m.noteStateChange();
 			}
-		}
-		else
-		{
-			cwork << "SLEEP";
-			this_thread::sleep_for(chrono::milliseconds(100));
-		}
-	}
-	else
-	{
-		cwork << "SLEEP";
-		this_thread::sleep_for(chrono::milliseconds(100));
 	}
 
 	// Synchronise state to block chain.
@@ -490,9 +405,9 @@ void Client::work(bool _justQueue)
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
 	// Resynchronise state with block chain & trans
+	bool rsm = false;
 	{
 		WriteGuard l(x_stateDB);
-
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
@@ -510,11 +425,12 @@ void Client::work(bool _justQueue)
 		cwork << "preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
-			if (m_doMine)
+			if (isMining())
 				cnote << "New block on chain: Restarting mining operation.";
-			m_restartMining = true;	// need to re-commit to mine.
 			m_postMine = m_preMine;
+			rsm = true;
 			changeds.insert(PendingChangedFilter);
+			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
 
 		// returns h256s as blooms, once for each transaction.
@@ -526,16 +442,23 @@ void Client::work(bool _justQueue)
 				appendFromNewPending(i, changeds);
 			changeds.insert(PendingChangedFilter);
 
-			if (m_doMine)
+			if (isMining())
 				cnote << "Additional transaction ready: Restarting mining operation.";
-			m_restartMining = true;
+			rsm = true;
 		}
-		m_pendingCount = m_postMine.pending().size();
+	}
+	if (rsm)
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
 	}
 
 	cwork << "noteChanged" << changeds.size() << "items";
 	noteChanged(changeds);
 	cworkout << "WORK";
+
+	this_thread::sleep_for(chrono::milliseconds(100));
 }
 
 unsigned Client::numberOf(int _n) const
@@ -620,117 +543,6 @@ u256 Client::stateAt(Address _a, u256 _l, int _block) const
 bytes Client::codeAt(Address _a, int _block) const
 {
 	return asOf(_block).code(_a);
-}
-
-bool MessageFilter::matches(h256 _bloom) const
-{
-	auto have = [=](Address const& a) { return _bloom.contains(a.bloom()); };
-	if (m_from.size())
-	{
-		for (auto i: m_from)
-			if (have(i))
-				goto OK1;
-		return false;
-	}
-	OK1:
-	if (m_to.size())
-	{
-		for (auto i: m_to)
-			if (have(i))
-				goto OK2;
-		return false;
-	}
-	OK2:
-	if (m_stateAltered.size() || m_altered.size())
-	{
-		for (auto i: m_altered)
-			if (have(i))
-				goto OK3;
-		for (auto i: m_stateAltered)
-			if (have(i.first) && _bloom.contains(h256(i.second).bloom()))
-				goto OK3;
-		return false;
-	}
-	OK3:
-	return true;
-}
-
-bool MessageFilter::matches(State const& _s, unsigned _i) const
-{
-	h256 b = _s.changesFromPending(_i).bloom();
-	if (!matches(b))
-		return false;
-
-	Transaction t = _s.pending()[_i];
-	if (!m_to.empty() && !m_to.count(t.receiveAddress))
-		return false;
-	if (!m_from.empty() && !m_from.count(t.sender()))
-		return false;
-	if (m_stateAltered.empty() && m_altered.empty())
-		return true;
-	StateDiff d = _s.pendingDiff(_i);
-	if (!m_altered.empty())
-	{
-		for (auto const& s: m_altered)
-			if (d.accounts.count(s))
-				return true;
-		return false;
-	}
-	if (!m_stateAltered.empty())
-	{
-		for (auto const& s: m_stateAltered)
-			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
-				return true;
-		return false;
-	}
-	return true;
-}
-
-PastMessages MessageFilter::matches(Manifest const& _m, unsigned _i) const
-{
-	PastMessages ret;
-	matches(_m, vector<unsigned>(1, _i), _m.from, PastMessages(), ret);
-	return ret;
-}
-
-bool MessageFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const
-{
-	bool ret;
-
-	if ((m_from.empty() || m_from.count(_m.from)) && (m_to.empty() || m_to.count(_m.to)))
-		_limbo.push_back(PastMessage(_m, _p, _o));
-
-	// Handle limbos, by checking against all addresses in alteration.
-	bool alters = m_altered.empty() && m_stateAltered.empty();
-	alters = alters || m_altered.count(_m.from) || m_altered.count(_m.to);
-
-	if (!alters)
-		for (auto const& i: _m.altered)
-			if (m_altered.count(_m.to) || m_stateAltered.count(make_pair(_m.to, i)))
-			{
-				alters = true;
-				break;
-			}
-	// If we do alter stuff,
-	if (alters)
-	{
-		o_ret += _limbo;
-		_limbo.clear();
-		ret = true;
-	}
-
-	_p.push_back(0);
-	for (auto const& m: _m.internal)
-	{
-		if (matches(m, _p, _o, _limbo, o_ret))
-		{
-			_limbo.clear();
-			ret = true;
-		}
-		_p.back()++;
-	}
-
-	return ret;
 }
 
 PastMessages Client::messages(MessageFilter const& _f) const
