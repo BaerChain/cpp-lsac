@@ -14,19 +14,19 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Utility.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace eth;
+#include <string>
+#include <libethential/Common.h>
 
 namespace eth
 {
 
-char const* EthVersion = "0.6.2";
+bytes parseData(std::string const& _args);
 
 }

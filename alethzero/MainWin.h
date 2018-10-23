@@ -39,7 +39,7 @@ class Main;
 namespace eth {
 class Client;
 class State;
-class TransactionFilter;
+class MessageFilter;
 }
 
 class QQuickView;
@@ -125,7 +125,7 @@ private slots:
 	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
-	void on_clearPending_triggered();
+	void on_forceMining_triggered();
 	void on_dumpTrace_triggered();
 	void on_dumpTraceStorage_triggered();
 	void on_dumpTracePretty_triggered();
@@ -146,6 +146,8 @@ private:
 	QString pretty(eth::Address _a) const;
 	QString prettyU256(eth::u256 _n) const;
 
+	QString lookup(QString const& _n) const;
+
 	void populateDebugger(eth::bytesConstRef r);
 	void initDebugger();
 	void updateDebugger();
@@ -156,10 +158,8 @@ private:
 
 	void alterDebugStateGroup(bool _enable) const;
 
-	eth::State const& state() const;
-
 	void updateFee();
-	void readSettings();
+	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
 	bool isCreation() const;
@@ -168,7 +168,7 @@ private:
 	eth::u256 value() const;
 	eth::u256 gasPrice() const;
 
-	unsigned installWatch(eth::TransactionFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(eth::h256 _tf, std::function<void()> const& _f);
 
 	void onNewPending();
@@ -204,10 +204,6 @@ private:
 	unsigned m_balancesFilter = (unsigned)-1;
 
 	QByteArray m_peers;
-	QMutex m_guiLock;
-	QTimer* m_ticker;
-	QTimer* m_refreshNetwork;
-	QTimer* m_refreshMining;
 	QStringList m_servers;
 	QList<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;

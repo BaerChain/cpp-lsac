@@ -190,6 +190,7 @@ else()
 	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
+		${PYTHON_INCLUDE_DIR}
 		/usr/include/python2.7
 		/usr/local/include/python2.7
 		)
@@ -289,7 +290,7 @@ else()
 	if (LANGUAGES)
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
 	else()
-		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
+		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system regex)
 	endif()
 
 	set(QTQML 1)
@@ -358,6 +359,7 @@ if (NOT LANGUAGES)
 		
 		add_subdirectory(libqethereum)
 		add_subdirectory(alethzero)
+		add_subdirectory(third)
 		if(QTQML)
 			add_subdirectory(walleth)
 		endif()

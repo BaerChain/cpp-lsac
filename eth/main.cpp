@@ -31,12 +31,8 @@
 #endif
 #include <libethcore/FileSystem.h>
 #include <libevmface/Instruction.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/Client.h>
-#include <libethereum/PeerNetwork.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
-#include <libethcore/CommonEth.h>
+#include <libevm/VM.h>
+#include <libethereum/All.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -50,6 +46,8 @@ using namespace eth;
 using namespace boost::algorithm;
 using eth::Instruction;
 using eth::c_instructionInfo;
+
+#undef RETURN
 
 bool isTrue(std::string const& _m)
 {
@@ -73,6 +71,7 @@ void interactiveHelp()
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
+		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
 		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
@@ -81,13 +80,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    listAccounts List the accounts on the network." << endl
-		<< "    listContracts List the contracts on the network." << endl
-		<< "    setSecret <secret> Set the secret to the hex secret key." <<endl
-		<< "    setAddress <addr> Set the coinbase (mining payout) address." <<endl
-		<< "    exportConfig <path> Export the config (.RLP) to the path provided." <<endl
-		<< "    importConfig <path> Import the config (.RLP) from the path provided." <<endl
-		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    listAccounts  List the accounts on the network." << endl
+		<< "    listContracts  List the contracts on the network." << endl
+		<< "    setSecret <secret>  Set the secret to the hex secret key." <<endl
+		<< "    setAddress <addr>  Set the coinbase (mining payout) address." <<endl
+		<< "    exportConfig <path>  Export the config (.RLP) to the path provided." <<endl
+		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
+		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -100,7 +100,8 @@ void help()
         << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-        << "    -h,--help  Show this help message and exit." << endl
+		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
@@ -108,7 +109,7 @@ void help()
 #endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-        << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
         << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
@@ -169,7 +170,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-bytes parseData(string _args);
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -185,6 +186,7 @@ int main(int argc, char** argv)
 #endif
 	string publicIP;
 	bool upnp = true;
+	bool forceMining = false;
 	string clientName;
 
 	// Init defaults
@@ -256,6 +258,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-f" || arg == "--force-mining")
+			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
@@ -291,8 +295,14 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-    Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	c.setForceMining(true);
+
 	cout << credits();
+
+	c.setForceMining(forceMining);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
@@ -341,7 +351,6 @@ int main(int argc, char** argv)
 			{
 				eth::uint port;
 				iss >> port;
-				ClientGuard g(&c);
 				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
@@ -349,12 +358,10 @@ int main(int argc, char** argv)
 				string addr;
 				eth::uint port;
 				iss >> addr >> port;
-				ClientGuard g(&c);
 				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{
-				ClientGuard g(&c);
 				c.stopNetwork();
 			}
 			else if (cmd == "minestart")
@@ -364,6 +371,12 @@ int main(int argc, char** argv)
 			else if (cmd == "minestop")
 			{
 				c.stopMining();
+			}
+			else if (cmd == "mineforce")
+			{
+				string enable;
+				iss >> enable;
+				c.setForceMining(isTrue(enable));
 			}
 			else if (cmd == "verbosity")
 			{
@@ -405,12 +418,10 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "block")
 			{
-				ClientGuard g(&c);
-				cout << "Current block: " << c.blockChain().details().number;
+				cout << "Current block: " << c.blockChain().details().number << endl;
 			}
 			else if (cmd == "peers")
 			{
-				ClientGuard g(&c);
 				for (auto it: c.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
@@ -418,12 +429,10 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "balance")
 			{
-				ClientGuard g(&c);
-				cout << "Current balance: " << formatBalance(c.postState().balance(us.address())) << " = " << c.postState().balance(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance(c.balanceAt(us.address())) << " = " << c.balanceAt(us.address()) << " wei" << endl;
 			}
 			else if (cmd == "transact")
 			{
-				ClientGuard g(&c);
 				auto const& bc = c.blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
@@ -441,7 +450,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = parseData(sdata);
+					bytes data = eth::parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -450,7 +459,7 @@ int main(int argc, char** argv)
 					cnote << ssbd.str();
 					int ssize = sechex.length();
 					int size = hexAddr.length();
-					u256 minGas = (u256)c.state().callGas(data.size(), 0);
+					u256 minGas = (u256)Client::txGas(data.size(), 0);
 					if (size < 40)
 					{
 						if (size > 0)
@@ -477,40 +486,28 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "listContracts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs = c.addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (st.addressHasCode(r))
+					if (c.codeAt(i, 0).size())
 					{
-						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
-				}
 			}
 			else if (cmd == "listAccounts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs = c.addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (!st.addressHasCode(r))
+					if (c.codeAt(i, 0).empty())
 					{
-						ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
-					
-				}
 			}
 			else if (cmd == "send")
 			{
-				ClientGuard g(&c);
 				if (iss.peek() != -1)
 				{
 					string hexAddr;
@@ -529,23 +526,22 @@ int main(int argc, char** argv)
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
-						u256 minGas = (u256)c.state().callGas(0, 0);
+						u256 minGas = (u256)Client::txGas(0, 0);
 						Address dest = h160(fromHex(hexAddr));
 						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 					}
-					
 				} 
 				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
 			}
 			else if (cmd == "contract")
 			{
-				ClientGuard g(&c);
 				auto const& bc = c.blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					u256 endowment;
 					u256 gas;
 					u256 gasPrice;
@@ -569,7 +565,7 @@ int main(int argc, char** argv)
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
-					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					u256 minGas = (u256)Client::txGas(init.size(), 0);
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gasPrice < info.minGasPrice)
@@ -582,6 +578,58 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
+			else if (cmd == "dumptrace")
+			{
+				unsigned block;
+				unsigned index;
+				string filename;
+				string format;
+				iss >> block >> index >> filename >> format;
+				ofstream f;
+				f.open(filename);
+
+				eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
+				if (index < state.pending().size())
+				{
+					Executive e(state);
+					Transaction t = state.pending()[index];
+					state = state.fromPending(index);
+					bytes r = t.rlp();
+					e.setup(&r);
+
+					if (format == "pretty")
+						e.go([&](uint64_t steps, Instruction instr, unsigned newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << endl << "    STACK" << endl;
+							for (auto i: vm->stack())
+								f << (h256)i << endl;
+							f << "    MEMORY" << endl << eth::memDump(vm->memory());
+							f << "    STORAGE" << endl;
+							for (auto const& i: ext->state().storage(ext->myAddress))
+								f << showbase << hex << i.first << ": " << i.second << endl;
+							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << c_instructionInfo.at(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+						});
+					else if (format == "standard")
+						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						});
+					else if (format == "standard+")
+						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
+							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						});
+				}
+			}
 			else if (cmd == "inspect")
 			{
 				string rechex;
@@ -591,16 +639,15 @@ int main(int argc, char** argv)
 					cwarn << "Invalid address length";
 				else
 				{
-					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
 
 					try
 					{
-						auto storage = c.state().storage(h);
+						auto storage = c.storageAt(h, 0);
 						for (auto const& i: storage)
 							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble(c.state().code(h)) << endl;
+						s << endl << disassemble(c.codeAt(h, 0)) << endl;
 
 						string outFile = getDataDir() + "/" + rechex + ".evm";
 						ofstream ofs;
@@ -702,58 +749,3 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-bytes parseData(string _args)
-{
-	bytes m_data;
-	stringstream args(_args);
-	string arg;
-	int cc = 0;
-	while (args >> arg)
-	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
-		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
-			if (boost::starts_with(arg, "0x"))
-			{
-				cnote << "hex: " << arg;
-				bytes bs = fromHex(arg);
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
-			}
-			else
-			{
-				cnote << "value: " << arg;
-				bytes bs = toBigEndian(u256(arg));
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-		}
-		else
-			for (int i = 0; i < al; ++i)
-				m_data.push_back(arg[i]);
-		cc++;
-	}
-	return m_data;
-}
