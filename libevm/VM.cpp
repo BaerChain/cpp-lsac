@@ -14,22 +14,21 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Utility.h
+/** @file VM.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "VM.h"
 
-#include <string>
-#include <libdevcore/Common.h>
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
 
-namespace dev
+void VM::reset(u256 _gas)
 {
-namespace eth
-{
-
-bytes parseData(std::string const& _args);
-
-}
+	m_gas = _gas;
+	m_curPC = 0;
+	m_jumpLatch = false;
+	m_destinations.clear();
 }
