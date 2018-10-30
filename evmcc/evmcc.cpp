@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -11,9 +12,8 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libevmface/Instruction.h>
-
-#include "Compiler.h"
-#include "ExecutionEngine.h"
+#include <libevmjit/Compiler.h>
+#include <libevmjit/ExecutionEngine.h>
 
 
 void show_usage()
@@ -21,6 +21,7 @@ void show_usage()
     // FIXME: Use arg[0] as program name?
     std::cerr << "usage: evmcc (-b|-c|-d)+ <inputfile.bc>\n";
 }
+
 
 int main(int argc, char** argv)
 {
@@ -30,7 +31,8 @@ int main(int argc, char** argv)
     bool opt_show_bytes = false;
 	bool opt_compile = false;
 	bool opt_interpret = false;
-    bool opt_unknown = false;
+	bool opt_dump_graph = false;
+	bool opt_unknown = false;
 
     for (int i = 1; i < argc; i++)
     {
@@ -43,6 +45,8 @@ int main(int argc, char** argv)
 			opt_dissassemble = true;
 		else if (option == "-i")
 			opt_interpret = true;
+		else if (option == "-g")
+			opt_dump_graph = true;
 		else if (option[0] != '-' && input_file.empty())
 			input_file = option;
         else
@@ -89,15 +93,24 @@ int main(int argc, char** argv)
 
     if (opt_compile)
     {
-		auto module = eth::jit::Compiler().compile(bytecode);
+    	auto compiler = eth::jit::Compiler();
+		auto module = compiler.compile({bytecode.data(), bytecode.size()});
 		llvm::raw_os_ostream out(std::cout);
 		module->print(out, nullptr);
+
+		if (opt_dump_graph)
+		{
+			std::ofstream ofs("blocks.dot");
+			compiler.dumpBasicBlockGraph(ofs);
+			ofs.close();
+			std::cout << "Basic blocks graph written to block.dot\n";
+		}
     }
 
 	if (opt_interpret)
 	{
 		auto engine = eth::jit::ExecutionEngine();
-		auto module = eth::jit::Compiler().compile(bytecode);
+		auto module = eth::jit::Compiler().compile({bytecode.data(), bytecode.size()});
 		module->dump();
 		auto result = engine.run(std::move(module));
 		return result;
