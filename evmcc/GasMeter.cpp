@@ -12,15 +12,17 @@
 #include "Utils.h"
 #include "Ext.h"
 
-namespace evmcc
+namespace dev
 {
-
-using namespace dev::eth; // We should move all the JIT code into dev::eth namespace
+namespace eth
+{
+namespace jit
+{
 
 namespace // Helper functions
 {
 
-uint64_t getStepCost(dev::eth::Instruction inst) // TODO: Add this function to FeeSructure
+uint64_t getStepCost(Instruction inst) // TODO: Add this function to FeeSructure (pull request submitted)
 {
 	switch (inst)
 	{
@@ -79,7 +81,7 @@ bool isCostBlockEnd(Instruction _inst)
 }
 
 GasMeter::GasMeter(llvm::IRBuilder<>& _builder, llvm::Module* _module) :
-	m_builder(_builder)
+	CompilerHelper(_builder, _module)
 {
 	m_gas = new llvm::GlobalVariable(*_module, Type::i256, false, llvm::GlobalVariable::ExternalLinkage, nullptr, "gas");
 	m_gas->setUnnamedAddr(true); // Address is not important
@@ -193,3 +195,6 @@ llvm::Value* GasMeter::getGas()
 }
 
 }
+}
+}
+

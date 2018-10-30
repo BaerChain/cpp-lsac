@@ -5,7 +5,11 @@
 
 #include <libdevcore/Common.h>
 
-namespace evmcc
+namespace dev
+{
+namespace eth
+{
+namespace jit
 {
 
 /// Representation of 256-bit value binary compatible with LLVM i256
@@ -19,8 +23,8 @@ struct i256
 };
 static_assert(sizeof(i256) == 32, "Wrong i265 size");
 
-dev::u256 llvm2eth(i256);
-i256 eth2llvm(dev::u256);
+u256 llvm2eth(i256);
+i256 eth2llvm(u256);
 
 struct InsertPointGuard
 {
@@ -111,4 +115,6 @@ private:
 	case Instruction::SWAP15: \
 	case Instruction::SWAP16
 
+}
+}
 }

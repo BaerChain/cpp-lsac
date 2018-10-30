@@ -1,23 +1,24 @@
 
 #pragma once
 
-#include <llvm/IR/IRBuilder.h>
-
 #include <libevmface/Instruction.h>
 
-namespace evmcc
+#include "CompilerHelper.h"
+
+namespace dev
+{
+namespace eth
+{
+namespace jit
 {
 
-class GasMeter
+class GasMeter : public CompilerHelper
 {
 public:
 	GasMeter(llvm::IRBuilder<>& _builder, llvm::Module* _module);
 
-	GasMeter(const GasMeter&) = delete;
-	void operator=(GasMeter) = delete;
-
 	/// Count step cost of instruction
-	void count(dev::eth::Instruction _inst);
+	void count(Instruction _inst);
 
 	/// Calculate & count gas cost for SSTORE instruction
 	void countSStore(class Ext& _ext, llvm::Value* _index, llvm::Value* _newValue);
@@ -38,10 +39,13 @@ private:
 	/// Cumulative gas cost of a block of instructions
 	/// @TODO Handle overflow
 	uint64_t m_blockCost = 0;
-	llvm::IRBuilder<>& m_builder;
+
 	llvm::CallInst* m_checkCall = nullptr;
 	llvm::GlobalVariable* m_gas;
 	llvm::Function* m_gasCheckFunc;
 };
 
 }
+}
+}
+
