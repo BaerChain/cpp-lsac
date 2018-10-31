@@ -23,9 +23,10 @@
 #include "TrieDB.h"
 using namespace std;
 using namespace dev;
+using namespace dev::eth;
 
 #if !ETH_LANGUAGES
 
-const h256 dev::c_shaNull = sha3(rlp(""));
+const h256 dev::eth::c_shaNull = sha3(rlp(""));
 
 #endif

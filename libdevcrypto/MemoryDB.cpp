@@ -23,8 +23,11 @@
 #include "MemoryDB.h"
 using namespace std;
 using namespace dev;
+using namespace dev::eth;
 
 namespace dev
+{
+namespace eth
 {
 
 std::map<h256, std::string> MemoryDB::get() const
@@ -112,4 +115,5 @@ set<h256> MemoryDB::keys() const
 	return ret;
 }
 
+}
 }

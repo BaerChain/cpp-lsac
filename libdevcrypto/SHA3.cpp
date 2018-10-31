@@ -24,8 +24,11 @@
 
 using namespace std;
 using namespace dev;
+using namespace dev::eth;
 
 namespace dev
+{
+namespace eth
 {
 
 h256 EmptySHA3 = sha3(bytesConstRef());
@@ -114,4 +117,5 @@ bytes aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned
 	}
 }
 
+}
 }
