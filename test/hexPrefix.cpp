@@ -29,6 +29,7 @@
 
 using namespace std;
 using namespace dev;
+using namespace dev::eth;
 namespace js = json_spirit;
 
 BOOST_AUTO_TEST_CASE(hexPrefix_test)

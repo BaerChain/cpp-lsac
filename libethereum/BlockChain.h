@@ -39,15 +39,13 @@ namespace ldb = leveldb;
 
 namespace dev
 {
-
-class OverlayDB;
-
 namespace eth
 {
 
 static const h256s NullH256s;
 
 class State;
+class OverlayDB;
 
 struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};

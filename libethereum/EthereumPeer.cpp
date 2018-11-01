@@ -142,6 +142,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
 				host()->m_latestBlockSent = m_syncingLatestHash;
+
 			}
 			else
 			{
@@ -155,7 +156,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 		if (m_asking == Asking::Nothing || m_asking == Asking::Hashes || m_asking == Asking::Blocks)
 		{
 			// Looks like it's the best yet for total difficulty. Set to download.
-			setAsking(Asking::Blocks, isSyncing());		// will kick off other peers to help if available.
+			setAsking(Asking::Blocks, true);		// will kick off other peers to help if available.
 			auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 			if (blocks.size())
 			{

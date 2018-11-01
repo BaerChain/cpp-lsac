@@ -22,9 +22,9 @@
 
 #include "vm.h"
 #include <libdevcore/CommonIO.h>
-#include <boost/filesystem/path.hpp>
+#include <libevmjit/VM.h>
 
-#define FILL_TESTS
+//#define FILL_TESTS
 
 using namespace std;
 using namespace json_spirit;
@@ -98,7 +98,7 @@ bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, 
 			{
 				cnote << "not able to call to : " << myAddress << "\n";
 				cnote << "in FakeExtVM you can only make a call to " << na << "\n";
-				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(toString(myAddress)));
+				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(myAddress));
 				return false;
 			}
 		}
@@ -124,7 +124,7 @@ bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, 
 			{
 				cnote << "not able to call to : " << (_codeAddressOverride ? _codeAddressOverride : _receiveAddress) << "\n";
 				cnote << "in FakeExtVM you can only make a call to " << na << "\n";
-				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(toString(_codeAddressOverride ? _codeAddressOverride : _receiveAddress)));
+				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(_codeAddressOverride ? _codeAddressOverride : _receiveAddress));
 				return false;
 			}
 		}
@@ -252,13 +252,12 @@ mObject FakeExtVM::exportEnv()
 
 void FakeExtVM::importEnv(mObject& _o)
 {
-	// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
-	assert(_o.count("previousHash") > 0);
-	assert(_o.count("currentGasLimit") > 0);
-	assert(_o.count("currentDifficulty") > 0);
-	assert(_o.count("currentTimestamp") > 0);
-	assert(_o.count("currentCoinbase") > 0);
-	assert(_o.count("currentNumber") > 0);
+	BOOST_REQUIRE(_o.count("previousHash") > 0);
+	BOOST_REQUIRE(_o.count("currentGasLimit") > 0);
+	BOOST_REQUIRE(_o.count("currentDifficulty") > 0);
+	BOOST_REQUIRE(_o.count("currentTimestamp") > 0);
+	BOOST_REQUIRE(_o.count("currentCoinbase") > 0);
+	BOOST_REQUIRE(_o.count("currentNumber") > 0);
 
 	previousBlock.hash = h256(_o["previousHash"].get_str());
 	currentBlock.number = toInt(_o["currentNumber"]);
@@ -295,11 +294,10 @@ void FakeExtVM::importState(mObject& _object)
 	for (auto const& i: _object)
 	{
 		mObject o = i.second.get_obj();
-		// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
-		assert(o.count("balance") > 0);
-		assert(o.count("nonce") > 0);
-		assert(o.count("storage") > 0);
-		assert(o.count("code") > 0);
+		BOOST_REQUIRE(o.count("balance") > 0);
+		BOOST_REQUIRE(o.count("nonce") > 0);
+		BOOST_REQUIRE(o.count("storage") > 0);
+		BOOST_REQUIRE(o.count("code") > 0);
 
 		auto& a = addresses[Address(i.first)];
 		get<0>(a) = toInt(o["balance"]);
@@ -337,14 +335,13 @@ mObject FakeExtVM::exportExec()
 
 void FakeExtVM::importExec(mObject& _o)
 {
-	// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
-	assert(_o.count("address")> 0);
-	assert(_o.count("caller") > 0);
-	assert(_o.count("origin") > 0);
-	assert(_o.count("value") > 0);
-	assert(_o.count("data") > 0);
-	assert(_o.count("gasPrice") > 0);
-	assert(_o.count("gas") > 0);
+	BOOST_REQUIRE(_o.count("address")> 0);
+	BOOST_REQUIRE(_o.count("caller") > 0);
+	BOOST_REQUIRE(_o.count("origin") > 0);
+	BOOST_REQUIRE(_o.count("value") > 0);
+	BOOST_REQUIRE(_o.count("data") > 0);
+	BOOST_REQUIRE(_o.count("gasPrice") > 0);
+	BOOST_REQUIRE(_o.count("gas") > 0);
 
 	myAddress = Address(_o["address"].get_str());
 	caller = Address(_o["caller"].get_str());
@@ -515,9 +512,22 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		u256 gas;
 		try
 		{
-			VM vm(fev.gas);
-			output = vm.go(fev).toVector();
-			gas = vm.gas(); // Get the remaining gas
+			auto argc = boost::unit_test::framework::master_test_suite().argc;
+			auto argv = boost::unit_test::framework::master_test_suite().argv;
+
+			auto useJit = argc >= 2 && std::string(argv[1]) == "--jit";
+			if (useJit)
+			{
+				jit::VM vm(fev.gas);
+				output = vm.go(fev);
+				gas = vm.gas();
+			}
+			else
+			{
+				VM vm(fev.gas);
+				output = vm.go(fev).toVector();
+				gas = vm.gas(); // Get the remaining gas
+			}
 		}
 		catch (Exception const& _e)
 		{
@@ -615,29 +625,16 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 
 void executeTests(const string& _name)
 {
-	const char* ptestPath = getenv("ETHEREUM_TEST_PATH");
-	string testPath;
-
-	if (ptestPath == NULL)
-	{
-		cnote << " could not find environment variable ETHEREUM_TEST_PATH \n";
-		testPath = "../../../tests/vmtests";
-	}
-	else
-		testPath = ptestPath;
-
 #ifdef FILL_TESTS
 	try
 	{
 		cnote << "Populating VM tests...";
 		json_spirit::mValue v;
-		boost::filesystem::path p(__FILE__);
-		boost::filesystem::path dir = p.parent_path();
-		string s = asString(contents(dir.string() + "/" + _name + "Filler.json"));
+		string s = asString(contents("../../../cpp-ethereum/test/" + _name + "Filler.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + "Filler.json is empty.");
 		json_spirit::read_string(s, v);
 		dev::test::doTests(v, true);
-		writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
+		writeFile("../../../tests/vmtests/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
 	}
 	catch (Exception const& _e)
 	{
@@ -653,8 +650,8 @@ void executeTests(const string& _name)
 	{
 		cnote << "Testing VM..." << _name;
 		json_spirit::mValue v;
-		string s = asString(contents(testPath + "/" + _name + ".json"));
-		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+		string s = asString(contents("../../../tests/vmtests/" + _name + ".json"));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + ".json is empty. Have you cloned the 'tests' repo branch develop?");
 		json_spirit::read_string(s, v);
 		dev::test::doTests(v, false);
 	}
