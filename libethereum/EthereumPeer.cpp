@@ -82,11 +82,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 {
 	clogS(NetMessageSummary) << "Transition!" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
 
-	if (m_asking == Asking::State && _a != Asking::State)
-		m_requireTransactions = true;
-
 	RLPStream s;
-
 	if (_a == Asking::State)
 	{
 		if (m_asking == Asking::Nothing)
@@ -292,8 +288,6 @@ void EthereumPeer::attemptSync()
 
 bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 {
-	try
-	{
 	switch (_id)
 	{
 	case StatusPacket:
@@ -328,7 +322,11 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		}
 		break;
 	}
-	case GetTransactionsPacket: break;	// DEPRECATED.
+	case GetTransactionsPacket:
+	{
+		m_requireTransactions = true;
+		break;
+	}
 	case TransactionsPacket:
 	{
 		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << "entries)";
@@ -511,11 +509,5 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	default:
 		return false;
 	}
-	}
-	catch (std::exception const& _e)
-	{
-		clogS(NetWarn) << "Peer causing an exception:" << _e.what() << _r;
-	}
-
 	return true;
 }

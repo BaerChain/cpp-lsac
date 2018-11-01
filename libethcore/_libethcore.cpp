@@ -2,6 +2,6 @@
 #include "All.h"
 #include "BlockInfo.cpp"
 #include "CommonEth.cpp"
-#include "ProofOfWork.cpp"
+#include "Dagger.cpp"
 #include "Exceptions.cpp"
 #endif

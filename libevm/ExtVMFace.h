@@ -57,37 +57,37 @@ public:
 	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
 
 	/// Get the code at the given location in code ROM.
-	virtual byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
+	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
 
 	/// Read storage location.
-	virtual u256 store(u256) { return 0; }
+	u256 store(u256) { return 0; }
 
 	/// Write a value in storage.
-	virtual void setStore(u256, u256) {}
+	void setStore(u256, u256) {}
 
 	/// Read address's balance.
-	virtual u256 balance(Address) { return 0; }
+	u256 balance(Address) { return 0; }
 
 	/// Read address's code.
-	virtual bytes const& codeAt(Address) { return NullBytes; }
+	bytes const& codeAt(Address) { return NullBytes; }
 
 	/// Subtract amount from account's balance.
-	virtual void subBalance(u256) {}
+	void subBalance(u256) {}
 
 	/// Determine account's TX count.
-	virtual u256 txCount(Address) { return 0; }
+	u256 txCount(Address) { return 0; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	virtual void suicide(Address) { suicides.insert(myAddress); }
+	void suicide(Address) { suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
+	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
-	virtual void revert() {}
+	void revert() {}
 
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).

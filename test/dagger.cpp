@@ -17,12 +17,12 @@
 /** @file dagger.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * ProofOfWork test functions.
+ * Dagger test functions.
  */
 
 #include <chrono>
 #include <libdevcore/Log.h>
-#include <libethcore/ProofOfWork.h>
+#include <libethcore/Dagger.h>
 using namespace std;
 using namespace std::chrono;
 using namespace dev;
@@ -30,20 +30,20 @@ using namespace dev::eth;
 
 int daggerTest()
 {
-	cnote << "Testing ProofOfWork...";
+	cnote << "Testing Dagger...";
 	// Test dagger
 	{
 		auto s = steady_clock::now();
-		cout << hex << ProofOfWork().eval((h256)(u256)1, (h256)(u256)0);
+		cout << hex << Dagger().eval((h256)(u256)1, (h256)(u256)0);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
-		cout << hex << ProofOfWork().eval((h256)(u256)1, (h256)(u256)1);
+		cout << hex << Dagger().eval((h256)(u256)1, (h256)(u256)1);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
 	}
 	{
 		auto s = steady_clock::now();
-		cout << hex << ProofOfWork().eval((h256)(u256)1, (h256)(u256)0);
+		cout << hex << Dagger().eval((h256)(u256)1, (h256)(u256)0);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
-		cout << hex << ProofOfWork().eval((h256)(u256)1, (h256)(u256)1);
+		cout << hex << Dagger().eval((h256)(u256)1, (h256)(u256)1);
 		cout << " " << dec << duration_cast<milliseconds>(steady_clock::now() - s).count() << " ms" << endl;
 	}
 	return 0;

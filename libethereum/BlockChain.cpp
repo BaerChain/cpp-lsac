@@ -26,7 +26,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/ProofOfWork.h>
+#include <libethcore/Dagger.h>
 #include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
@@ -428,10 +428,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 
 void BlockChain::checkConsistency()
 {
-	{
-		WriteGuard l(x_details);
-		m_details.clear();
-	}
+	m_details.clear();
 	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -439,17 +436,11 @@ void BlockChain::checkConsistency()
 			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
-			if (p != h256() && p != m_genesisHash)	// TODO: for some reason the genesis details with the children get squished. not sure why.
+			if (p != h256())
 			{
 				auto dp = details(p);
-				if (asserts(contains(dp.children, h)))
-				{
-					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
-				if (assertsEqual(dp.number, dh.number - 1))
-				{
-					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
+//				assert(contains(dp.children, h));		// WTF?
+				assert(dp.number == dh.number - 1);
 			}
 		}
 	delete it;

@@ -2,17 +2,20 @@ cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
 
-set(EXECUTABLE devcrypto)
+set(EXECUTABLE ethcore)
 
-file(GLOB HEADERS "*.h")
+# set(CMAKE_INSTALL_PREFIX ../lib)
 if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST})
 else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
 endif()
+
+file(GLOB HEADERS "*.h") 
 
 include_directories(..)
 
+target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)

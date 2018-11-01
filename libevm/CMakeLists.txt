@@ -6,12 +6,14 @@ aux_source_directory(. SRC_LIST)
 
 set(EXECUTABLE evm)
 
-file(GLOB HEADERS "*.h")
+# set(CMAKE_INSTALL_PREFIX ../lib)
 if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST})
 else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
 endif()
+
+file(GLOB HEADERS "*.h") 
 
 include_directories(..)
 

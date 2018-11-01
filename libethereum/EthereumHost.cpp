@@ -148,19 +148,17 @@ void EthereumHost::doWork()
 {
 	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
-	// If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
-	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
-	{
-		maintainTransactions();
-		maintainBlocks(h);
-	}
+	maintainTransactions(h);
+	maintainBlocks(h);
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
 }
 
-void EthereumHost::maintainTransactions()
+void EthereumHost::maintainTransactions(h256 _currentHash)
 {
+	bool resendAll = (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
+
 	// Send any new transactions.
 	for (auto const& p: peers())
 		if (auto ep = p->cap<EthereumPeer>())
@@ -168,14 +166,14 @@ void EthereumHost::maintainTransactions()
 			bytes b;
 			unsigned n = 0;
 			for (auto const& i: m_tq.transactions())
-				if (ep->m_requireTransactions || (!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)))
+				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
 				{
 					b += i.second;
 					++n;
 					m_transactionsSent.insert(i.first);
 				}
 			ep->clearKnownTransactions();
-
+			
 			if (n || ep->m_requireTransactions)
 			{
 				RLPStream ts;
@@ -188,17 +186,23 @@ void EthereumHost::maintainTransactions()
 
 void EthereumHost::maintainBlocks(h256 _currentHash)
 {
-	// Send any new blocks.
-	if (m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	// If we've finished our initial sync send any new blocks.
+	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
-		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+		// TODO: clean up
+		h256s hs;
+		hs.push_back(_currentHash);
+		bytes bs;
+		for (auto h: hs)
+			bs += m_chain.block(h);
+		clog(NetMessageSummary) << "Sending" << hs.size() << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
 		for (auto j: peers())
 		{
 			auto p = j->cap<EthereumPeer>();
 
 			RLPStream ts;
-			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
+			p->prep(ts, NewBlockPacket, hs.size()).appendRaw(bs, hs.size());
 
 			Guard l(p->x_knownBlocks);
 			if (!p->m_knownBlocks.count(_currentHash))

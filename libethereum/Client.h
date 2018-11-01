@@ -31,6 +31,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libevm/FeeStructure.h>
+#include <libethcore/Dagger.h>
 #include <libp2p/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
