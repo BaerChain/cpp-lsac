@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <random>
 #include <secp256k1/secp256k1.h>
+#include "EC.h"
 #include "SHA3.h"
 using namespace std;
 using namespace dev;
@@ -77,6 +78,7 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
+	secp256k1_start();
 	int ok = secp256k1_ecdsa_seckey_verify(m_secret.data());
 	if (!ok)
 		return;
@@ -108,16 +110,20 @@ KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _pass
 	return KeyPair(sha3(aesDecrypt(_seed, _password)));
 }
 
-void dev::encrypt(Public _k, bytesConstRef _plain, bytes& _cipher)
+void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
 {
-	(void)_k;
-	_cipher = _plain.toBytes();
+	bytes io = _plain.toBytes();
+	crypto::encrypt(_k, io);
+	o_cipher = std::move(io);
 }
 
-bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& _plain)
+bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
-	(void)_k;
-	_plain = _cipher.toBytes();
+	bytes io = _cipher.toBytes();
+	crypto::decrypt(_k, io);
+	if (io.empty())
+		return false;
+	o_plaintext = std::move(io);
 	return true;
 }
 
@@ -139,7 +145,9 @@ Public dev::recover(Signature _sig, h256 _message)
 	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
 #endif
 
-	return *(Public const*)&(pubkey[1]);
+	Public ret;
+	memcpy(&ret, &(pubkey[1]), sizeof(Public));
+	return ret;
 }
 
 inline h256 kFromMessage(h256 _msg, h256 _priv)
@@ -147,17 +155,18 @@ inline h256 kFromMessage(h256 _msg, h256 _priv)
 	return _msg ^ _priv;
 }
 
-Signature dev::sign(Secret _k, h256 _message)
+Signature dev::sign(Secret _k, h256 _hash)
 {
 	int v = 0;
 
 	secp256k1_start();
 
 	SignatureStruct ret;
-	h256 nonce = kFromMessage(_message, _k);
+	h256 nonce = kFromMessage(_hash, _k);
 
-	if (!secp256k1_ecdsa_sign_compact(_message.data(), 32, ret.r.data(), _k.data(), nonce.data(), &v))
+	if (!secp256k1_ecdsa_sign_compact(_hash.data(), 32, ret.r.data(), _k.data(), nonce.data(), &v))
 		return Signature();
+	
 #if ETH_ADDRESS_DEBUG
 	cout << "---- SIGN -------------------------------" << endl;
 	cout << "MSG: " << _message << endl;
@@ -169,3 +178,9 @@ Signature dev::sign(Secret _k, h256 _message)
 	ret.v = v;
 	return *(Signature const*)&ret;
 }
+
+bool dev::verify(Public _p, Signature _s, h256 _hash)
+{
+	return crypto::verify(_p, _s, bytesConstRef(_hash.data(), 32), true);
+}
+

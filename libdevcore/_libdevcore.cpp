@@ -3,7 +3,6 @@
 #include "Common.cpp"
 #include "CommonData.cpp"
 #include "CommonIO.cpp"
-#include "CommonJS.h"
 #include "FixedHash.cpp"
 #include "Guards.cpp"
 #include "Log.cpp"
