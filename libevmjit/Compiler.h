@@ -33,10 +33,8 @@ private:
 
 	void compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode, class Memory& memory, class Ext& ext, class GasMeter& gasMeter, llvm::BasicBlock* nextBasicBlock);
 
-	void removeDeadBlocks();
+	void linkBasicBlocks(); //class Stack& stack);
 
-	/// Dump all basic blocks to stderr. Useful in a debugging session.
-	void dump();
 
 	llvm::IRBuilder<> m_builder;
 
