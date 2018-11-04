@@ -1,166 +1,49 @@
-# cmake global
-cmake_minimum_required(VERSION 2.8.9)
-
-project(ethereum)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-
-######################################################################################################
-
-# user defined, defaults
-# Normally, set(...CACHE...) creates cache variables, but does not modify them.
-function(createDefaultCacheConfig)
-	set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
-	set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
-	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
-	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
-endfunction()
-
-
-# propagates CMake configuration options to the compiler
-function(configureProject)
-	if (LANGUAGES)
-		add_definitions(-DETH_LANGUAGES)
-	endif ()
-
-	if (PARANOIA)
-		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-			add_definitions(-DETH_PARANOIA)
-		else ()
-			message(FATAL_ERROR "Paranoia requires debug.")
-		endif ()
-	endif ()
-
-	if (VMTRACE)
-		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-			add_definitions(-DETH_VMTRACE)
-		else ()
-			message(FATAL_ERROR "VM tracing requires debug.")
-		endif ()
-	endif ()
-endfunction()
-
-
-function(createBuildInfo)
-	# Set build platform; to be written to BuildInfo.h
-	if (CMAKE_COMPILER_IS_MINGW)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
-	elseif (CMAKE_COMPILER_IS_MSYS)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msys")
-	elseif (CMAKE_COMPILER_IS_GNUCXX)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
-	elseif (CMAKE_COMPILER_IS_MSVC)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
-	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
-	else ()
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
-	endif ()
-
-	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
-	include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-	set(CMAKE_INCLUDE_CURRENT_DIR ON)
-	set(SRC_LIST BuildInfo.h)
-endfunction()
-
-######################################################################################################
-
-
-set(CMAKE_AUTOMOC ON)
 cmake_policy(SET CMP0015 NEW)
 
+aux_source_directory(. SRC_LIST)
+list(REMOVE_ITEM SRC_LIST "./createRandomTest.cpp")
 
-createDefaultCacheConfig()
-configureProject()
-message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+include_directories(..)
+link_directories(../libethcore)
+link_directories(../libethereum)
+link_directories(../libevm)
+link_directories(../libevmjit)
 
+file(GLOB HEADERS "*.h")
+add_executable(testeth ${SRC_LIST} ${HEADERS})
+add_executable(createRandomTest createRandomTest.cpp vm.cpp)
 
-# Default TARGET_PLATFORM to "linux".
-set(TARGET_PLATFORM CACHE STRING "linux")
-if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
+target_link_libraries(testeth ethereum)
+target_link_libraries(testeth ethcore)
+target_link_libraries(testeth secp256k1)
+target_link_libraries(testeth gmp)
+target_link_libraries(testeth ${CRYPTOPP_LS})
+target_link_libraries(testeth evm)
+target_link_libraries(testeth evmjit)
+
+target_link_libraries(createRandomTest ethereum)
+target_link_libraries(createRandomTest ethcore)
+target_link_libraries(createRandomTest boost_chrono)
+target_link_libraries(createRandomTest boost_unit_test_framework)
+target_link_libraries(createRandomTest evmjit)
+
+if ("${TARGET_PLATFORM}" STREQUAL "w64")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+	target_link_libraries(testeth boost_system-mt-s)
+	target_link_libraries(testeth boost_filesystem-mt-s)
+	target_link_libraries(testeth boost_thread_win32-mt-s)
+	target_link_libraries(testeth gcc)
+	target_link_libraries(testeth gdi32)
+	target_link_libraries(testeth ws2_32)
+	target_link_libraries(testeth mswsock)
+	target_link_libraries(testeth shlwapi)
+	target_link_libraries(testeth iphlpapi)
+	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+elseif (UNIX)
+	find_package(Boost 1.53 REQUIRED COMPONENTS unit_test_framework)
+else ()
+	target_link_libraries(testeth boost_system)
+	target_link_libraries(testeth boost_filesystem)	
+	find_package(Threads REQUIRED)
+	target_link_libraries(testeth ${CMAKE_THREAD_LIBS_INIT})
 endif ()
-
-if ("${TARGET_PLATFORM}" STREQUAL "linux")
-	set(CMAKE_THREAD_LIBS_INIT pthread)
-endif ()
-
-# Set default build type to Release w/debug info
-# if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-#    set(CMAKE_BUILD_TYPE RelWithDebInfo)
-# endif()
-
-
-include(EthCompilerSettings)
-message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
-
-#add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
-#add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
-
-
-include(EthDependenciesDeprecated)
-
-createBuildInfo()
-
-add_subdirectory(libdevcore)
-add_subdirectory(libevmface)
-add_subdirectory(liblll)
-add_subdirectory(libserpent)
-add_subdirectory(libsolidity)
-if(NOT APPLE)
-	if(PYTHON_LS)
-		add_subdirectory(libpyserpent)
-	endif()
-endif()
-
-add_subdirectory(lllc)
-add_subdirectory(solc)
-add_subdirectory(sc)
-if (NOT LANGUAGES)
-	add_subdirectory(secp256k1)
-	add_subdirectory(libp2p)
-	add_subdirectory(libdevcrypto)
-	add_subdirectory(libwhisper)
-
-	add_subdirectory(libethcore)
-	add_subdirectory(libevm)
-	add_subdirectory(libethereum)
-#	add_subdirectory(libethereumx)	 # TODO remove
-
-	add_subdirectory(libwebthree)
-	add_subdirectory(test)
-	add_subdirectory(eth)
-	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		add_subdirectory(exp)
-	endif ()
-	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
-		add_subdirectory(neth)
-	endif ()
-	if(QTQML)
-		add_definitions(-DETH_QTQML)
-	endif()
-
-	if(NOT HEADLESS)
-		if ("${TARGET_PLATFORM}" STREQUAL "w64")
-			cmake_policy(SET CMP0020 NEW)
-		endif ()
-		
-		add_subdirectory(libqethereum)
-		add_subdirectory(alethzero)
-		add_subdirectory(third)
-		if(QTQML)
-			#add_subdirectory(iethxi)
-			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
-		endif()
-	endif()
-endif()
-
-
-enable_testing()
-add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
-
-#unset(TARGET_PLATFORM CACHE)
-
