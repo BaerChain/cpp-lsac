@@ -30,13 +30,17 @@ namespace dev
 namespace solidity
 {
 
+/**
+ * Visitor interface for the abstract syntax tree. This class is tightly bound to the
+ * implementation of @ref ASTNode::accept and its overrides. After a call to
+ * @ref ASTNode::accept, the function visit for the appropriate parameter is called and then
+ * (if it returns true) this continues recursively for all child nodes in document order
+ * (there is an exception for contracts). After all child nodes have been visited, endVisit is
+ * called for the node.
+ */
 class ASTVisitor
 {
 public:
-	/// These functions are called after a call to ASTNode::accept,
-	/// first visit, then (if visit returns true) recursively for all
-	/// child nodes in document order (exception for contracts) and then
-	/// endVisit.
 	virtual bool visit(ASTNode&) { return true; }
 	virtual bool visit(ContractDefinition&) { return true; }
 	virtual bool visit(StructDefinition&) { return true; }
@@ -56,6 +60,7 @@ public:
 	virtual bool visit(Break&) { return true; }
 	virtual bool visit(Return&) { return true; }
 	virtual bool visit(VariableDefinition&) { return true; }
+	virtual bool visit(ExpressionStatement&) { return true; }
 	virtual bool visit(Expression&) { return true; }
 	virtual bool visit(Assignment&) { return true; }
 	virtual bool visit(UnaryOperation&) { return true; }
@@ -87,6 +92,7 @@ public:
 	virtual void endVisit(Break&) { }
 	virtual void endVisit(Return&) { }
 	virtual void endVisit(VariableDefinition&) { }
+	virtual void endVisit(ExpressionStatement&) { }
 	virtual void endVisit(Expression&) { }
 	virtual void endVisit(Assignment&) { }
 	virtual void endVisit(UnaryOperation&) { }

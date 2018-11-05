@@ -44,8 +44,8 @@ private:
 	/// End position of the current token
 	int getEndPosition() const;
 
-	/// Parsing functions for the AST nodes
-	/// @{
+	///@{
+	///@name Parsing functions for the AST nodes
 	ASTPointer<ContractDefinition> parseContractDefinition();
 	ASTPointer<FunctionDefinition> parseFunctionDefinition(bool _isPublic);
 	ASTPointer<StructDefinition> parseStructDefinition();
@@ -58,22 +58,24 @@ private:
 	ASTPointer<IfStatement> parseIfStatement();
 	ASTPointer<WhileStatement> parseWhileStatement();
 	ASTPointer<VariableDefinition> parseVariableDefinition();
+	ASTPointer<ExpressionStatement> parseExpressionStatement();
 	ASTPointer<Expression> parseExpression();
 	ASTPointer<Expression> parseBinaryExpression(int _minPrecedence = 4);
 	ASTPointer<Expression> parseUnaryExpression();
 	ASTPointer<Expression> parseLeftHandSideExpression();
 	ASTPointer<Expression> parsePrimaryExpression();
 	std::vector<ASTPointer<Expression>> parseFunctionCallArguments();
-	/// @}
+	///@}
 
-	/// Helper functions
-	/// @{
+	///@{
+	///@name Helper functions
+
 	/// If current token value is not _value, throw exception otherwise advance token.
 	void expectToken(Token::Value _value);
 	Token::Value expectAssignmentOperator();
 	ASTPointer<ASTString> expectIdentifierToken();
 	ASTPointer<ASTString> getLiteralAndAdvance();
-	/// @}
+	///@}
 
 	/// Creates a @ref ParserError exception and annotates it with the current position and the
 	/// given @a _description.

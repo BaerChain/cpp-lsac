@@ -30,12 +30,15 @@ namespace dev
 namespace solidity
 {
 
+/**
+ * Pretty-printer for the abstract syntax tree (the "pretty" is arguable) for debugging purposes.
+ */
 class ASTPrinter: public ASTVisitor
 {
 public:
 	/// Create a printer for the given abstract syntax tree. If the source is specified,
 	/// the corresponding parts of the source are printed with each node.
-	ASTPrinter(ASTPointer<ASTNode> const& _ast, const std::string& _source = std::string());
+	ASTPrinter(ASTPointer<ASTNode> const& _ast, std::string const& _source = std::string());
 	/// Output the string representation of the AST to _stream.
 	void print(std::ostream& _stream);
 
@@ -57,6 +60,7 @@ public:
 	bool visit(Break& _node) override;
 	bool visit(Return& _node) override;
 	bool visit(VariableDefinition& _node) override;
+	bool visit(ExpressionStatement& _node) override;
 	bool visit(Expression& _node) override;
 	bool visit(Assignment& _node) override;
 	bool visit(UnaryOperation& _node) override;
@@ -88,6 +92,7 @@ public:
 	void endVisit(Break&) override;
 	void endVisit(Return&) override;
 	void endVisit(VariableDefinition&) override;
+	void endVisit(ExpressionStatement&) override;
 	void endVisit(Expression&) override;
 	void endVisit(Assignment&) override;
 	void endVisit(UnaryOperation&) override;

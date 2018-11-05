@@ -82,7 +82,7 @@ public:
 	/// Construct an alive Account, with given endowment, for either a normal (non-contract) account or for a
 	/// contract account in the
 	/// conception phase, where the code is not yet known.
-	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? c_contractConceptionCodeHash : EmptySHA3) {}
+	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? EmptySHA3 : c_contractConceptionCodeHash) {}
 	/// Explicit constructor for wierd cases of construction of a normal account.
 	Account(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
 
@@ -123,7 +123,7 @@ public:
 	h256 baseRoot() const { assert(m_storageRoot); return m_storageRoot; }
 
 	/// @returns the storage overlay as a simple map.
-	std::map<u256, u256> const& storage() const { return m_storageOverlay; }
+	std::map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.

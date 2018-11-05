@@ -29,7 +29,6 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
@@ -41,7 +40,7 @@
 #include <readline/history.h>
 #endif
 #if ETH_JSONRPC
-#include <libweb3jsonrpc/WebThreeStubServer.h>
+#include "EthStubServer.h"
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -337,11 +336,11 @@ int main(int argc, char** argv)
 		web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
-	auto_ptr<WebThreeStubServer> jsonrpcServer;
+	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
-		jsonrpcServer->setIdentities({us});
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -428,8 +427,8 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
-				jsonrpcServer->setIdentities({us});
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
