@@ -48,11 +48,11 @@ bytes compileContract(const string& _sourceCode)
 	Parser parser;
 	ASTPointer<ContractDefinition> contract;
 	BOOST_REQUIRE_NO_THROW(contract = parser.parse(make_shared<Scanner>(CharStream(_sourceCode))));
-	NameAndTypeResolver resolver;
+	NameAndTypeResolver resolver({});
 	BOOST_REQUIRE_NO_THROW(resolver.resolveNamesAndTypes(*contract));
 
 	Compiler compiler;
-	compiler.compileContract(*contract);
+	compiler.compileContract(*contract, {});
 	// debug
 	//compiler.streamAssembly(cout);
 	return compiler.getAssembledBytecode();
@@ -128,8 +128,6 @@ BOOST_AUTO_TEST_CASE(different_argument_numbers)
 					   byte(Instruction::JUMP),
 					   byte(Instruction::JUMPDEST),
 					   // stack here: ret e h f(1,2,3)
-					   byte(Instruction::DUP2),
-					   byte(Instruction::POP),
 					   byte(Instruction::SWAP1),
 					   // stack here: ret e f(1,2,3) h
 					   byte(Instruction::POP),

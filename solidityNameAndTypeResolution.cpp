@@ -43,7 +43,7 @@ void parseTextAndResolveNames(std::string const& _source)
 	Parser parser;
 	ASTPointer<ContractDefinition> contract = parser.parse(
 										   std::make_shared<Scanner>(CharStream(_source)));
-	NameAndTypeResolver resolver;
+	NameAndTypeResolver resolver({});
 	resolver.resolveNamesAndTypes(*contract);
 }
 }
@@ -121,6 +121,44 @@ BOOST_AUTO_TEST_CASE(reference_to_later_declaration)
 	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
 }
 
+BOOST_AUTO_TEST_CASE(struct_definition_directly_recursive)
+{
+	char const* text = "contract test {\n"
+					   "  struct MyStructName {\n"
+					   "    address addr;\n"
+					   "    MyStructName x;\n"
+					   "  }\n"
+					   "}\n";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), ParserError);
+}
+
+BOOST_AUTO_TEST_CASE(struct_definition_indirectly_recursive)
+{
+	char const* text = "contract test {\n"
+					   "  struct MyStructName1 {\n"
+					   "    address addr;\n"
+					   "    uint256 count;\n"
+					   "    MyStructName2 x;\n"
+					   "  }\n"
+					   "  struct MyStructName2 {\n"
+					   "    MyStructName1 x;\n"
+					   "  }\n"
+					   "}\n";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), ParserError);
+}
+
+BOOST_AUTO_TEST_CASE(struct_definition_recursion_via_mapping)
+{
+	char const* text = "contract test {\n"
+					   "  struct MyStructName1 {\n"
+					   "    address addr;\n"
+					   "    uint256 count;\n"
+					   "    mapping(uint => MyStructName1) x;\n"
+					   "  }\n"
+					   "}\n";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
 BOOST_AUTO_TEST_CASE(type_inference_smoke_test)
 {
 	char const* text = "contract test {\n"
@@ -184,6 +222,26 @@ BOOST_AUTO_TEST_CASE(type_inference_explicit_conversion)
 					   "  function f() returns (int256 r) { var x = int256(uint32(2)); return x; }"
 					   "}\n";
 	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(balance)
+{
+	char const* text = "contract test {\n"
+					   "  function fun() {\n"
+					   "    uint256 x = address(0).balance;\n"
+					   "  }\n"
+					   "}\n";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(balance_invalid)
+{
+	char const* text = "contract test {\n"
+					   "  function fun() {\n"
+					   "    address(0).balance = 7;\n"
+					   "  }\n"
+					   "}\n";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
