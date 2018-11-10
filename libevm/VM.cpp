@@ -20,22 +20,14 @@
  */
 
 #include "VM.h"
-#include <libethereum/ExtVM.h>
 
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas) noexcept
+void VM::reset(u256 _gas)
 {
-	VMFace::reset(_gas);
+	m_gas = _gas;
 	m_curPC = 0;
 	m_jumpDests.clear();
-}
-
-bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
-{
-	if (auto defaultExt = dynamic_cast<ExtVM*>(&_ext))
-		return go<ExtVM>(*defaultExt, _onOp, _steps);
-	else
-		return go<ExtVMFace>(_ext, _onOp, _steps);
 }

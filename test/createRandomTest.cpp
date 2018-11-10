@@ -127,9 +127,7 @@ void doMyTests(json_spirit::mValue& v)
 		assert(o.count("pre") > 0);
 		assert(o.count("exec") > 0);
 
-
-		auto vmObj = eth::VMFace::create(eth::VMFace::Interpreter);
-		auto& vm = *vmObj;
+		eth::VM vm;
 		test::FakeExtVM fev;
 		fev.importEnv(o["env"].get_obj());
 		fev.importState(o["pre"].get_obj());

@@ -20,9 +20,9 @@
  * vm test functions.
  */
 
-#include <chrono>
 #include <boost/filesystem.hpp>
 #include "vm.h"
+
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
@@ -317,15 +317,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		BOOST_REQUIRE(o.count("pre") > 0);
 		BOOST_REQUIRE(o.count("exec") > 0);
 
-		auto argc = boost::unit_test::framework::master_test_suite().argc;
-		auto argv = boost::unit_test::framework::master_test_suite().argv;
-		auto useJit = false;
-		for (auto i =  0; i < argc && !useJit; ++i)
-			useJit |= std::string(argv[i]) == "--jit";
-		auto vmKind = useJit ? VMFace::JIT : VMFace::Interpreter;
-
 		dev::test::FakeExtVM fev;
-
 		fev.importEnv(o["env"].get_obj());
 		fev.importState(o["pre"].get_obj());
 
@@ -339,16 +331,15 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			fev.code = fev.thisTxCode;
 		}
 
-		auto vm = VMFace::create(vmKind, fev.gas);
 		bytes output;
+		VM vm(fev.gas);
 
-		auto startTime = std::chrono::high_resolution_clock::now();
 		u256 gas;
 		bool vmExceptionOccured = false;
 		try
 		{
-			output = vm->go(fev, fev.simpleTrace()).toBytes();
-			gas = vm->gas();
+			output = vm.go(fev, fev.simpleTrace()).toBytes();
+			gas = vm.gas();
 		}
 		catch (VMException const& _e)
 		{
@@ -364,19 +355,6 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		{
 			cnote << "VM did throw an exception: " << _e.what();
 			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
-		}
-
-		auto endTime = std::chrono::high_resolution_clock::now();
-		for (auto i = 0; i < argc; ++i)
-		{	       
-			if (std::string(argv[i]) == "--show-times")
-			{
-				auto testDuration = endTime - startTime;
-				cnote << "Execution time: "
-				      << std::chrono::duration_cast<std::chrono::milliseconds>(testDuration).count()
-				      << " ms";
-				break;
-			}
 		}
 
 		// delete null entries in storage for the sake of comparison
@@ -426,29 +404,29 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				test.importCallCreates(o["callcreates"].get_array());
 				test.importLog(o["logs"].get_obj());
 
-			checkOutput(output, o);
+				checkOutput(output, o);
 
-			BOOST_CHECK_EQUAL(toInt(o["gas"]), gas);
-			
-			auto& expectedAddrs = test.addresses;
-			auto& resultAddrs = fev.addresses;
-			for (auto&& expectedPair : expectedAddrs)
-			{
-				auto& expectedAddr = expectedPair.first;
-				auto resultAddrIt = resultAddrs.find(expectedAddr);
-				if (resultAddrIt == resultAddrs.end())
-					BOOST_ERROR("Missing expected address " << expectedAddr);
-				else
+				BOOST_CHECK_EQUAL(toInt(o["gas"]), gas);
+
+				auto& expectedAddrs = test.addresses;
+				auto& resultAddrs = fev.addresses;
+				for (auto&& expectedPair : expectedAddrs)
 				{
-					auto& expectedState = expectedPair.second;
-					auto& resultState = resultAddrIt->second;
-					BOOST_CHECK_MESSAGE(std::get<0>(expectedState) == std::get<0>(resultState), expectedAddr << ": incorrect balance " << std::get<0>(resultState) << ", expected " << std::get<0>(expectedState));
-					BOOST_CHECK_MESSAGE(std::get<1>(expectedState) == std::get<1>(resultState), expectedAddr << ": incorrect txCount " << std::get<1>(resultState) << ", expected " << std::get<1>(expectedState));
-					BOOST_CHECK_MESSAGE(std::get<3>(expectedState) == std::get<3>(resultState), expectedAddr << ": incorrect code");
+					auto& expectedAddr = expectedPair.first;
+					auto resultAddrIt = resultAddrs.find(expectedAddr);
+					if (resultAddrIt == resultAddrs.end())
+						BOOST_ERROR("Missing expected address " << expectedAddr);
+					else
+					{
+						auto& expectedState = expectedPair.second;
+						auto& resultState = resultAddrIt->second;
+						BOOST_CHECK_MESSAGE(std::get<0>(expectedState) == std::get<0>(resultState), expectedAddr << ": incorrect balance " << std::get<0>(resultState) << ", expected " << std::get<0>(expectedState));
+						BOOST_CHECK_MESSAGE(std::get<1>(expectedState) == std::get<1>(resultState), expectedAddr << ": incorrect txCount " << std::get<1>(resultState) << ", expected " << std::get<1>(expectedState));
+						BOOST_CHECK_MESSAGE(std::get<3>(expectedState) == std::get<3>(resultState), expectedAddr << ": incorrect code");
 
-					checkStorage(std::get<2>(expectedState), std::get<2>(resultState), expectedAddr);
+						checkStorage(std::get<2>(expectedState), std::get<2>(resultState), expectedAddr);
+					}
 				}
-			}
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
 				BOOST_CHECK(test.callcreates == fev.callcreates);

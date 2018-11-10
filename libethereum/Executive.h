@@ -25,6 +25,7 @@
 #include <libdevcore/Log.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/CommonEth.h>
+#include <libevm/ExtVMFace.h>
 #include "Transaction.h"
 #include "Manifest.h"
 
@@ -33,7 +34,7 @@ namespace dev
 namespace eth
 {
 
-class VMFace;
+class VM;
 class ExtVM;
 class State;
 
@@ -62,14 +63,14 @@ public:
 	h160 newAddress() const { return m_newAddress; }
 	LogEntries const& logs() const { return m_logs; }
 
-	VMFace const& vm() const { return *m_vm; }
+	VM const& vm() const { return *m_vm; }
 	State const& state() const { return m_s; }
 	ExtVM const& ext() const { return *m_ext; }
 
 private:
 	State& m_s;
 	ExtVM* m_ext = nullptr;	// TODO: make safe.
-	VMFace* m_vm = nullptr;
+	VM* m_vm = nullptr;
 	Manifest* m_ms = nullptr;
 	bytesConstRef m_out;
 	Address m_newAddress;

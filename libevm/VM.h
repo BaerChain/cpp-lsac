@@ -27,7 +27,6 @@
 #include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include "VMFace.h"
 #include "FeeStructure.h"
 #include "ExtVMFace.h"
 
@@ -36,29 +35,53 @@ namespace dev
 namespace eth
 {
 
+struct VMException: virtual Exception {};
+struct StepsDone: virtual VMException {};
+struct BreakPointHit: virtual VMException {};
+struct BadInstruction: virtual VMException {};
+struct BadJumpDestination: virtual VMException {};
+struct OutOfGas: virtual VMException {};
+struct StackTooSmall: virtual public VMException {};
+
+// Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
+// Currently we just pull out the right (low-order in BE) 160-bits.
+inline Address asAddress(u256 _item)
+{
+	return right160(h256(_item));
+}
+
+inline u256 fromAddress(Address _a)
+{
+	return (u160)_a;
+//	h256 ret;
+//	memcpy(&ret, &_a, sizeof(_a));
+//	return ret;
+}
+
 /**
  */
-class VM : public VMFace
+class VM
 {
 public:
-	virtual void reset(u256 _gas = 0) noexcept override final;
+	/// Construct VM object.
+	explicit VM(u256 _gas = 0) { reset(_gas); }
 
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
+	void reset(u256 _gas = 0);
+
+	template <class Ext>
+	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
 	void require(u256 _n) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); } }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
+
+	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
 
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
 private:
-	friend VMFace;
-	explicit VM(u256 _gas = 0): VMFace(_gas) {}
-
-	template <class Ext>
-	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps);
-
+	u256 m_gas = 0;
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
@@ -108,6 +131,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		// FEES...
 		bigint runGas = c_stepGas;
 		bigint newTempSize = m_temp.size();
+		bigint copySize = 0;
 
 		auto onOperation = [&]()
 		{
@@ -170,14 +194,17 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
+			copySize = m_stack[m_stack.size() - 3];
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::CODECOPY:
 			require(3);
+			copySize = m_stack[m_stack.size() - 3];
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::EXTCODECOPY:
 			require(4);
+			copySize = m_stack[m_stack.size() - 4];
 			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
 			break;
 			
@@ -213,6 +240,13 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
             runGas = c_createGas;
+			break;
+		}
+		case Instruction::EXP:
+		{
+			require(2);
+			auto expon = m_stack[m_stack.size() - 2];
+			runGas = c_expGas + c_extByteGas * (32 - (h256(expon).firstBitSet() / 8));
 			break;
 		}
 
@@ -281,7 +315,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SDIV:
 		case Instruction::MOD:
 		case Instruction::SMOD:
-		case Instruction::EXP:
 		case Instruction::LT:
 		case Instruction::GT:
 		case Instruction::SLT:
@@ -342,6 +375,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+		runGas += c_copyGas * (copySize + 31) / 32;
 
 		onOperation();
 //		if (_onOp)
