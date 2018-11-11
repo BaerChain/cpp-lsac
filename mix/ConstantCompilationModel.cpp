@@ -42,7 +42,6 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 		res.success = true;
 		res.comment = "ok";
 		res.hexCode = QString::fromStdString(dev::eth::disassemble(m_data));
-		res.bytes = m_data;
 	}
 	catch (dev::Exception const& _exception)
 	{

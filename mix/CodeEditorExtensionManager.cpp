@@ -27,8 +27,6 @@
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
-#include "AssemblyDebuggerCtrl.h"
-#include "features.h"
 #include "ApplicationCtx.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
@@ -60,29 +58,22 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
-	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
-}
-
-void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> ext)
-{
-	if (!ext.get()->contentUrl().isEmpty())
+	//only one for now
+	std::shared_ptr<ConstantCompilationCtrl> constantCompilation = std::make_shared<ConstantCompilationCtrl>(m_doc);
+	if (constantCompilation.get()->contentUrl() != "")
 	{
 		try
 		{
-			if (ext.get()->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
-			{
-				ext.get()->addTabOn(m_tabView);
-			}
+			constantCompilation.get()->addContentOn(m_tabView);
 		}
 		catch (...)
 		{
-			qDebug() << "Exception when adding tab into view.";
+			qDebug() << "Exception when adding content into view.";
 			return;
 		}
 	}
-	ext.get()->start();
-	m_features.append(ext);
+	constantCompilation.get()->start();
+	m_features.append(constantCompilation);
 }
 
 void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
