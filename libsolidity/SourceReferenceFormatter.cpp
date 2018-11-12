@@ -21,7 +21,6 @@
  */
 
 #include <libsolidity/SourceReferenceFormatter.h>
-#include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Exceptions.h>
 
@@ -39,6 +38,7 @@ void SourceReferenceFormatter::printSourceLocation(ostream& _stream,
 	int startLine;
 	int startColumn;
 	tie(startLine, startColumn) = _scanner.translatePositionToLineColumn(_location.start);
+	_stream << "starting at line " << (startLine + 1) << ", column " << (startColumn + 1) << "\n";
 	int endLine;
 	int endColumn;
 	tie(endLine, endColumn) = _scanner.translatePositionToLineColumn(_location.end);
@@ -58,28 +58,37 @@ void SourceReferenceFormatter::printSourceLocation(ostream& _stream,
 				<< "Spanning multiple lines.\n";
 }
 
+void SourceReferenceFormatter::printSourcePosition(ostream& _stream,
+												   int _position,
+												   const Scanner& _scanner)
+{
+	int line;
+	int column;
+	tie(line, column) = _scanner.translatePositionToLineColumn(_position);
+	_stream << "at line " << (line + 1) << ", column " << (column + 1) << endl
+			<< _scanner.getLineAtPosition(_position) << endl
+			<< string(column, ' ') << "^" << endl;
+}
+
 void SourceReferenceFormatter::printExceptionInformation(ostream& _stream,
 														 Exception const& _exception,
 														 string const& _name,
-														 CompilerStack& _compiler)
+														 Scanner const& _scanner)
 {
-	Location const* location = boost::get_error_info<errinfo_sourceLocation>(_exception);
-	Scanner const* scanner;
-
-	if (location)
-	{
-		scanner = &_compiler.getScanner(*location->sourceName);
-		int startLine;
-		int startColumn;
-		tie(startLine, startColumn) = scanner->translatePositionToLineColumn(location->start);
-		_stream << *location->sourceName << ":" << (startLine + 1) << ":" << (startColumn + 1) << ": ";
-	}
 	_stream << _name;
 	if (string const* description = boost::get_error_info<errinfo_comment>(_exception))
-		_stream << ": " << *description << endl;
+		_stream << ": " << *description;
 
-	if (location)
-		printSourceLocation(_stream, *location, *scanner);
+	if (int const* position = boost::get_error_info<errinfo_sourcePosition>(_exception))
+	{
+		_stream << " ";
+		printSourcePosition(_stream, *position, _scanner);
+	}
+	if (Location const* location = boost::get_error_info<errinfo_sourceLocation>(_exception))
+	{
+		_stream << " ";
+		printSourceLocation(_stream, *location, _scanner);
+	}
 }
 
 }

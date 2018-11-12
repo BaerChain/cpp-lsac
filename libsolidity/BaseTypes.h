@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
 #include <ostream>
 
 namespace dev
@@ -37,19 +35,19 @@ namespace solidity
  */
 struct Location
 {
-	Location(int _start, int _end, std::shared_ptr<std::string const> _sourceName):
-		start(_start), end(_end), sourceName(_sourceName) { }
+	Location(int _start, int _end): start(_start), end(_end) { }
 	Location(): start(-1), end(-1) { }
+
+	bool IsValid() const { return start >= 0 && end >= start; }
 
 	int start;
 	int end;
-	std::shared_ptr<std::string const> sourceName;
 };
 
 /// Stream output for Location (used e.g. in boost exceptions).
 inline std::ostream& operator<<(std::ostream& _out, Location const& _location)
 {
-	return _out << *_location.sourceName << "[" << _location.start << "," << _location.end << ")";
+	return _out << "[" << _location.start << "," << _location.end << ")";
 }
 
 }

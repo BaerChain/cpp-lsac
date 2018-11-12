@@ -78,7 +78,7 @@ private:
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;
-	std::multimap<unsigned, h256> m_expiryQueue;
+	std::map<unsigned, h256> m_expiryQueue;
 
 	mutable dev::Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

@@ -86,34 +86,27 @@ bytes compileFirstExpression(const string& _sourceCode, vector<vector<string>> _
 							 vector<vector<string>> _localVariables = {})
 {
 	Parser parser;
-	ASTPointer<SourceUnit> sourceUnit;
-	BOOST_REQUIRE_NO_THROW(sourceUnit = parser.parse(make_shared<Scanner>(CharStream(_sourceCode))));
+	ASTPointer<ContractDefinition> contract;
+	BOOST_REQUIRE_NO_THROW(contract = parser.parse(make_shared<Scanner>(CharStream(_sourceCode))));
 	NameAndTypeResolver resolver({});
-	resolver.registerDeclarations(*sourceUnit);
-	for (ASTPointer<ASTNode> const& node: sourceUnit->getNodes())
-		if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
-		{
-			BOOST_REQUIRE_NO_THROW(resolver.resolveNamesAndTypes(*contract));
-			FirstExpressionExtractor extractor(*contract);
-			BOOST_REQUIRE(extractor.getExpression() != nullptr);
+	BOOST_REQUIRE_NO_THROW(resolver.resolveNamesAndTypes(*contract));
+	FirstExpressionExtractor extractor(*contract);
+	BOOST_REQUIRE(extractor.getExpression() != nullptr);
 
-			CompilerContext context;
-			for (vector<string> const& function: _functions)
-				context.addFunction(dynamic_cast<FunctionDefinition const&>(resolveDeclaration(function, resolver)));
-			for (vector<string> const& variable: _localVariables)
-				context.addVariable(dynamic_cast<VariableDeclaration const&>(resolveDeclaration(variable, resolver)));
+	CompilerContext context;
+	for (vector<string> const& function: _functions)
+		context.addFunction(dynamic_cast<FunctionDefinition const&>(resolveDeclaration(function, resolver)));
+	for (vector<string> const& variable: _localVariables)
+		context.addVariable(dynamic_cast<VariableDeclaration const&>(resolveDeclaration(variable, resolver)));
 
-			ExpressionCompiler::compileExpression(context, *extractor.getExpression());
+	ExpressionCompiler::compileExpression(context, *extractor.getExpression());
 
-			for (vector<string> const& function: _functions)
-				context << context.getFunctionEntryLabel(dynamic_cast<FunctionDefinition const&>(resolveDeclaration(function, resolver)));
-			bytes instructions = context.getAssembledBytecode();
-			// debug
-			// cout << eth::disassemble(instructions) << endl;
-			return instructions;
-		}
-	BOOST_FAIL("No contract found in source.");
-	return bytes();
+	for (vector<string> const& function: _functions)
+		context << context.getFunctionEntryLabel(dynamic_cast<FunctionDefinition const&>(resolveDeclaration(function, resolver)));
+	bytes instructions = context.getAssembledBytecode();
+	// debug
+	// cout << eth::disassemble(instructions) << endl;
+	return instructions;
 }
 
 } // end anonymous namespace

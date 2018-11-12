@@ -43,13 +43,6 @@ void ASTPrinter::print(ostream& _stream)
 }
 
 
-bool ASTPrinter::visit(ImportDirective& _node)
-{
-	writeLine("ImportDirective \"" + _node.getIdentifier() + "\"");
-	printSourcePart(_node);
-	return goDeeper();
-}
-
 bool ASTPrinter::visit(ContractDefinition& _node)
 {
 	writeLine("ContractDefinition \"" + _node.getName() + "\"");
@@ -277,7 +270,7 @@ bool ASTPrinter::visit(Literal& _node)
 	return goDeeper();
 }
 
-void ASTPrinter::endVisit(ImportDirective&)
+void ASTPrinter::endVisit(ASTNode&)
 {
 	m_indentation--;
 }

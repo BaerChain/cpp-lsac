@@ -510,7 +510,7 @@ std::string WebThreeStubServer::eth_solidity(std::string const& _code)
 	catch (dev::Exception const& exception)
 	{
 		ostringstream error;
-		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
 		cwarn << "Solidity compilation error: " << error.str();
 	}
 	catch (...)

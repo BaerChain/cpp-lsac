@@ -46,23 +46,16 @@ namespace
 bytes compileContract(const string& _sourceCode)
 {
 	Parser parser;
-	ASTPointer<SourceUnit> sourceUnit;
-	BOOST_REQUIRE_NO_THROW(sourceUnit = parser.parse(make_shared<Scanner>(CharStream(_sourceCode))));
+	ASTPointer<ContractDefinition> contract;
+	BOOST_REQUIRE_NO_THROW(contract = parser.parse(make_shared<Scanner>(CharStream(_sourceCode))));
 	NameAndTypeResolver resolver({});
-	resolver.registerDeclarations(*sourceUnit);
-	for (ASTPointer<ASTNode> const& node: sourceUnit->getNodes())
-		if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
-		{
-			BOOST_REQUIRE_NO_THROW(resolver.resolveNamesAndTypes(*contract));
+	BOOST_REQUIRE_NO_THROW(resolver.resolveNamesAndTypes(*contract));
 
-			Compiler compiler;
-			compiler.compileContract(*contract, {});
-			// debug
-			//compiler.streamAssembly(cout);
-			return compiler.getAssembledBytecode();
-		}
-	BOOST_FAIL("No contract found in source.");
-	return bytes();
+	Compiler compiler;
+	compiler.compileContract(*contract, {});
+	// debug
+	//compiler.streamAssembly(cout);
+	return compiler.getAssembledBytecode();
 }
 
 /// Checks that @a _compiledCode is present starting from offset @a _offset in @a _expectation.

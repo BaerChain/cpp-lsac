@@ -75,11 +75,7 @@ Session::~Session()
 	try
 	{
 		if (m_socket.is_open())
-		{
-			boost::system::error_code ec;
-			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_socket.close();
-		}
 	}
 	catch (...){}
 }
@@ -483,8 +479,6 @@ void Session::drop(DisconnectReason _reason)
 		try
 		{
 			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
-			boost::system::error_code ec;
-			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_socket.close();
 		}
 		catch (...) {}

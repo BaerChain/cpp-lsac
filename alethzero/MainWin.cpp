@@ -64,7 +64,7 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
+QString Main::fromRaw(dev::h256 _n, unsigned* _inc)
 {
 	if (_n)
 	{
@@ -148,7 +148,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
-	
+
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
@@ -173,17 +173,17 @@ Main::Main(QWidget *parent) :
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
-	
+
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		m_qweb->poll();
 	});
-	
+
 	connect(ui->webView, &QWebView::titleChanged, [=]()
 	{
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
-	
+
 	readSettings();
 	installWatches();
 	startTimer(100);
@@ -1067,7 +1067,7 @@ void Main::timerEvent(QTimerEvent*)
 	// 7/18, Alex: aggregating timers, prelude to better threading?
 	// Runs much faster on slower dual-core processors
 	static int interval = 100;
-	
+
 	// refresh mining every 200ms
 	if (interval / 100 % 2 == 0)
 		refreshMining();
@@ -1093,7 +1093,7 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-	
+
 	if (m_qweb)
 		m_qweb->poll();
 
@@ -1285,7 +1285,6 @@ void Main::on_blocks_currentItemChanged()
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Dump: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[0].data()) << "</span>";
-			s << "<div>Receipts-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(ethereum()->blockChain().receipts(h).rlp()) << "</span></div>";
 		}
 		else
 		{
@@ -1626,7 +1625,7 @@ void Main::on_data_textChanged()
 			catch (dev::Exception const& exception)
 			{
 				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 			catch (...)
@@ -1760,7 +1759,7 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-    string n = string("AlethZero/v") + dev::Version;
+	string n = string("AlethZero/v") + dev::Version;
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
 	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);

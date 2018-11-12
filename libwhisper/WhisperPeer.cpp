@@ -83,22 +83,32 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 void WhisperPeer::sendMessages()
 {
 	RLPStream amalg;
-	unsigned msgCount = 0;
+	unsigned n = 0;
+
 	{
 		Guard l(x_unseen);
-		msgCount = m_unseen.size();
 		while (m_unseen.size())
 		{
 			auto p = *m_unseen.begin();
 			m_unseen.erase(m_unseen.begin());
 			host()->streamMessage(p.second, amalg);
+			n++;
 		}
 	}
-	
-	if (msgCount)
+
+	// the message subsystem should really just keep pumping out messages while m_unseen.size() and there's bandwidth for them.
+	auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - m_timer);
+	if (n || diff.count() > 0)
 	{
 		RLPStream s;
-		prep(s, MessagesPacket, msgCount).appendRaw(amalg.out(), msgCount);
+		prep(s, MessagesPacket, n).appendRaw(amalg.out(), n);
+		sealAndSend(s);
+		m_timer = chrono::system_clock::now();
+	}
+
+	{
+		RLPStream s;
+		prep(s, MessagesPacket, n).appendRaw(amalg.out(), n);
 		sealAndSend(s);
 	}
 }
@@ -106,5 +116,5 @@ void WhisperPeer::sendMessages()
 void WhisperPeer::noteNewMessage(h256 _h, Message const& _m)
 {
 	Guard l(x_unseen);
-	m_unseen.insert(make_pair(rating(_m), _h));
+	m_unseen[rating(_m)] = _h;
 }

@@ -42,7 +42,6 @@ public:
 	/// Output the string representation of the AST to _stream.
 	void print(std::ostream& _stream);
 
-	bool visit(ImportDirective& _node) override;
 	bool visit(ContractDefinition& _node) override;
 	bool visit(StructDefinition& _node) override;
 	bool visit(ParameterList& _node) override;
@@ -74,7 +73,7 @@ public:
 	bool visit(ElementaryTypeNameExpression& _node) override;
 	bool visit(Literal& _node) override;
 
-	void endVisit(ImportDirective&) override;
+	void endVisit(ASTNode& _node) override;
 	void endVisit(ContractDefinition&) override;
 	void endVisit(StructDefinition&) override;
 	void endVisit(ParameterList&) override;
