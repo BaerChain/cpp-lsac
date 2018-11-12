@@ -32,7 +32,7 @@ using namespace std;
 namespace dev {
 namespace solidity {
 
-void Compiler::compileContract(ContractDefinition& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals)
+void Compiler::compileContract(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals)
 {
 	m_context = CompilerContext(); // clear it just in case
 
@@ -179,7 +179,7 @@ void Compiler::registerStateVariables(ContractDefinition const& _contract)
 		m_context.addStateVariable(*variable);
 }
 
-bool Compiler::visit(FunctionDefinition& _function)
+bool Compiler::visit(FunctionDefinition const& _function)
 {
 	//@todo to simplify this, the calling convention could by changed such that
 	// caller puts: [retarg0] ... [retargm] [return address] [arg0] ... [argn]
@@ -240,7 +240,7 @@ bool Compiler::visit(FunctionDefinition& _function)
 	return false;
 }
 
-bool Compiler::visit(IfStatement& _ifStatement)
+bool Compiler::visit(IfStatement const& _ifStatement)
 {
 	ExpressionCompiler::compileExpression(m_context, _ifStatement.getCondition());
 	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
@@ -253,7 +253,7 @@ bool Compiler::visit(IfStatement& _ifStatement)
 	return false;
 }
 
-bool Compiler::visit(WhileStatement& _whileStatement)
+bool Compiler::visit(WhileStatement const& _whileStatement)
 {
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
@@ -275,24 +275,24 @@ bool Compiler::visit(WhileStatement& _whileStatement)
 	return false;
 }
 
-bool Compiler::visit(Continue&)
+bool Compiler::visit(Continue const&)
 {
 	if (!m_continueTags.empty())
 		m_context.appendJumpTo(m_continueTags.back());
 	return false;
 }
 
-bool Compiler::visit(Break&)
+bool Compiler::visit(Break const&)
 {
 	if (!m_breakTags.empty())
 		m_context.appendJumpTo(m_breakTags.back());
 	return false;
 }
 
-bool Compiler::visit(Return& _return)
+bool Compiler::visit(Return const& _return)
 {
 	//@todo modifications are needed to make this work with functions returning multiple values
-	if (Expression* expression = _return.getExpression())
+	if (Expression const* expression = _return.getExpression())
 	{
 		ExpressionCompiler::compileExpression(m_context, *expression);
 		VariableDeclaration const& firstVariable = *_return.getFunctionReturnParameters().getParameters().front();
@@ -305,9 +305,9 @@ bool Compiler::visit(Return& _return)
 	return false;
 }
 
-bool Compiler::visit(VariableDefinition& _variableDefinition)
+bool Compiler::visit(VariableDefinition const& _variableDefinition)
 {
-	if (Expression* expression = _variableDefinition.getExpression())
+	if (Expression const* expression = _variableDefinition.getExpression())
 	{
 		ExpressionCompiler::compileExpression(m_context, *expression);
 		ExpressionCompiler::appendTypeConversion(m_context,
@@ -320,9 +320,9 @@ bool Compiler::visit(VariableDefinition& _variableDefinition)
 	return false;
 }
 
-bool Compiler::visit(ExpressionStatement& _expressionStatement)
+bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 {
-	Expression& expression = _expressionStatement.getExpression();
+	Expression const& expression = _expressionStatement.getExpression();
 	ExpressionCompiler::compileExpression(m_context, expression);
 //	Type::Category category = expression.getType()->getCategory();
 	for (unsigned i = 0; i < expression.getType()->getSizeOnStack(); ++i)

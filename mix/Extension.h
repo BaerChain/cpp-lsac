@@ -28,31 +28,19 @@ namespace dev
 namespace mix
 {
 
-enum ExtensionDisplayBehavior
-{
-	Tab,
-	ModalDialog
-};
-
-
 class Extension: public QObject
 {
 	Q_OBJECT
 
 public:
 	Extension() {}
-	Extension(ExtensionDisplayBehavior _displayBehavior) { m_displayBehavior = _displayBehavior; }
 	virtual QString contentUrl() const { return ""; }
 	virtual QString title() const { return ""; }
 	virtual void start() const {}
-	void addContentOn(QObject* _tabView);
-	void addTabOn(QObject* _view);
-	void setDisplayBehavior(ExtensionDisplayBehavior _displayBehavior) { m_displayBehavior = _displayBehavior; }
-	ExtensionDisplayBehavior getDisplayBehavior() { return m_displayBehavior; }
+	void addContentOn(QObject* tabView);
 
 protected:
 	QObject* m_view;
-	ExtensionDisplayBehavior m_displayBehavior;
 };
 
 }

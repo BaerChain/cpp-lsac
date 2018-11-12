@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <libevm/VM.h>
 #include <QObject>
 
 namespace dev
@@ -35,7 +34,6 @@ struct CompilerResult
 {
 	QString hexCode;
 	QString comment;
-	dev::bytes bytes;
 	bool success;
 };
 
@@ -45,7 +43,7 @@ class ConstantCompilationModel
 public:
 	ConstantCompilationModel() {}
 	~ConstantCompilationModel() {}
-	CompilerResult compile(QString);
+	CompilerResult compile(QString code);
 };
 
 }

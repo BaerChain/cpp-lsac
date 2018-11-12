@@ -42,12 +42,11 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 		res.success = true;
 		res.comment = "ok";
 		res.hexCode = QString::fromStdString(dev::eth::disassemble(m_data));
-		res.bytes = m_data;
 	}
 	catch (dev::Exception const& _exception)
 	{
 		ostringstream error;
-		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler.getScanner());
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler);
 		res.success = false;
 		res.comment = QString::fromStdString(error.str()).toHtmlEscaped();
 		res.hexCode = "";
