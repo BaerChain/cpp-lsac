@@ -1,15 +1,30 @@
+cmake_policy(SET CMP0015 NEW)
 
-cmake_minimum_required(VERSION 2.8.12)
+aux_source_directory(. SRC_LIST)
+list(REMOVE_ITEM SRC_LIST "./createRandomTest.cpp")
 
-project(evmjit)
+include_directories(${CRYPTOPP_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(..)
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+file(GLOB HEADERS "*.h")
+add_executable(testeth ${SRC_LIST} ${HEADERS})
+add_executable(createRandomTest createRandomTest.cpp vm.cpp TestHelper.cpp)
 
-# LLVM
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+target_link_libraries(testeth ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(testeth ${CURL_LIBRARIES})
+target_link_libraries(testeth ethereum)
+target_link_libraries(testeth ethcore)
+target_link_libraries(testeth secp256k1)
+target_link_libraries(testeth solidity)
+target_link_libraries(testeth webthree)
 
-add_subdirectory(libevmjit)
-add_subdirectory(libevmjit-cpp)
-add_subdirectory(evmcc)
+if (JSONRPC)
+	target_link_libraries(testeth web3jsonrpc)
+	target_link_libraries(testeth ${JSON_RPC_CPP_CLIENT_LIBRARIES})
+endif()
+
+target_link_libraries(createRandomTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(createRandomTest ethereum)
+target_link_libraries(createRandomTest ethcore)
