@@ -28,6 +28,7 @@
 #include <memory>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
 
 namespace dev {
 namespace solidity {
@@ -92,6 +93,9 @@ public:
 	/// Can be one of 4 types defined at @c DocumentationType
 	std::string const& getMetadata(std::string const& _contractName, DocumentationType _type) const;
 
+	/// Convenience function to return all contract method hashes in a string
+	std::string const getFunctionHashes(std::string const& _contractName = "");
+
 	/// @returns the previously used scanner, useful for counting lines during error reporting.
 	Scanner const& getScanner(std::string const& _sourceName = "") const;
 	/// @returns the parsed source unit with the supplied name.
@@ -103,6 +107,9 @@ public:
 	/// Compile the given @a _sourceCode to bytecode. If a scanner is provided, it is used for
 	/// scanning the source code - this is useful for printing exception information.
 	static bytes staticCompile(std::string const& _sourceCode, bool _optimize = false);
+
+	/// Get the runtime context's code hash for a contract. LTODO
+	dev::h256 getContractCodeHash(std::string const& _contractName);
 
 private:
 	/**
