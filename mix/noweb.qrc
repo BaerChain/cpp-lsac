@@ -1,5 +1,0 @@
-<RCC>
-        <qresource prefix="/">
-                <file alias="qml/WebPreview.qml">qml/WebPreviewStub.qml</file>
-        </qresource>
-</RCC>
