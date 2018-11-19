@@ -2,7 +2,14 @@
 #pragma once
 
 #include <csetjmp>
+#include <vector>
+
+#include "Instruction.h"
+#include "CompilerHelper.h"
+#include "Utils.h"
+#include "Type.h"
 #include "RuntimeData.h"
+
 
 #ifdef _MSC_VER
 	#define EXPORT __declspec(dllexport)
@@ -33,7 +40,7 @@ public:
 	MemoryImpl& getMemory() { return m_memory; }
 	Env* getEnvPtr() { return &m_env; }
 
-	bytes_ref getReturnData() const;
+	bytes getReturnData() const;
 	jmp_buf_ref getJmpBuf() { return m_jmpBuf; }
 
 private:

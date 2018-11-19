@@ -32,6 +32,9 @@ else()
 	link_directories(/usr/lib/llvm-3.5/lib)
 endif()
 
+# Boost
+find_package(Boost REQUIRED)
+
 add_subdirectory(libevmjit)
 
 if(EVMJIT_CPP)
