@@ -273,7 +273,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.div(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -282,7 +282,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.sdiv(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -290,8 +290,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.mod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.div(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -299,8 +299,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.smod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.sdiv(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -639,13 +639,15 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CALLVALUE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
-		case Instruction::TIMESTAMP:
-		case Instruction::NUMBER:
 		case Instruction::DIFFICULTY:
 		case Instruction::GASLIMIT:
+		case Instruction::NUMBER:
+		case Instruction::TIMESTAMP:
 		{
 			// Pushes an element of runtime data on stack
-			stack.push(_runtimeManager.get(inst));
+			auto value = _runtimeManager.get(inst);
+			value = m_builder.CreateZExt(value, Type::Word);
+			stack.push(value);
 			break;
 		}
 
