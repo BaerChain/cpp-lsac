@@ -24,7 +24,10 @@ llvm::StructType* RuntimeManager::getRuntimeDataType()
 		{
 			llvm::ArrayType::get(Type::Word, RuntimeData::_size),	// i256[]
 			Type::BytePtr,		// callData
-			Type::BytePtr		// code
+			Type::BytePtr,		// code
+			Type::Size,			// codeSize
+			Type::Size,			// callDataSize
+			Type::Size,			// gas
 		};
 		type = llvm::StructType::create(elems, "RuntimeData");
 	}
@@ -56,19 +59,16 @@ llvm::Twine getName(RuntimeData::Index _index)
 	switch (_index)
 	{
 	default:						return "data";
-	case RuntimeData::Gas:			return "gas";
 	case RuntimeData::Address:		return "address";
 	case RuntimeData::Caller:		return "caller";
 	case RuntimeData::Origin:		return "origin";
 	case RuntimeData::CallValue:	return "callvalue";
-	case RuntimeData::CallDataSize:	return "calldatasize";
 	case RuntimeData::GasPrice:		return "gasprice";
 	case RuntimeData::CoinBase:		return "coinbase";
 	case RuntimeData::TimeStamp:	return "timestamp";
 	case RuntimeData::Number:		return "number";
 	case RuntimeData::Difficulty:	return "difficulty";
 	case RuntimeData::GasLimit:		return "gaslimit";
-	case RuntimeData::CodeSize:		return "codesize";
 	}
 }
 }
@@ -127,8 +127,17 @@ void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
 
 void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size)
 {
-	set(RuntimeData::ReturnDataOffset, _offset);
-	set(RuntimeData::ReturnDataSize, _size);
+	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 3);
+	auto mem = getBuilder().CreateLoad(memPtr, "memory");
+	auto returnDataPtr = getBuilder().CreateGEP(mem, _offset);
+	auto callDataPtr = getBuilder().CreateStructGEP(getDataPtr(), 1);
+	getBuilder().CreateStore(returnDataPtr, callDataPtr);
+
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
+	assert(ptr->getType() == Type::Size->getPointerTo());
+	assert(_size->getType() == Type::Word);
+	auto size64 = getBuilder().CreateTrunc(_size, Type::Size);
+	getBuilder().CreateStore(size64, ptr);
 }
 
 void RuntimeManager::registerSuicide(llvm::Value* _balanceAddress)
@@ -146,32 +155,45 @@ llvm::Value* RuntimeManager::get(Instruction _inst)
 	switch (_inst)
 	{
 	default: assert(false); return nullptr;
-	case Instruction::GAS:			return get(RuntimeData::Gas);
 	case Instruction::ADDRESS:		return get(RuntimeData::Address);
 	case Instruction::CALLER:		return get(RuntimeData::Caller);
 	case Instruction::ORIGIN:		return get(RuntimeData::Origin);
 	case Instruction::CALLVALUE:	return get(RuntimeData::CallValue);
-	case Instruction::CALLDATASIZE:	return get(RuntimeData::CallDataSize);
 	case Instruction::GASPRICE:		return get(RuntimeData::GasPrice);
 	case Instruction::COINBASE:		return get(RuntimeData::CoinBase);
 	case Instruction::TIMESTAMP:	return get(RuntimeData::TimeStamp);
 	case Instruction::NUMBER:		return get(RuntimeData::Number);
 	case Instruction::DIFFICULTY:	return get(RuntimeData::Difficulty);
 	case Instruction::GASLIMIT:		return get(RuntimeData::GasLimit);
-	case Instruction::CODESIZE:		return get(RuntimeData::CodeSize);
 	}
 }
 
 llvm::Value* RuntimeManager::getCallData()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 1, "calldataPtr");
-	return getBuilder().CreateLoad(ptr, "calldata");
+	return getBuilder().CreateLoad(ptr, "callData");
 }
 
 llvm::Value* RuntimeManager::getCode()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 2, "codePtr");
 	return getBuilder().CreateLoad(ptr, "code");
+}
+
+llvm::Value* RuntimeManager::getCodeSize()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 3);
+	auto value = getBuilder().CreateLoad(ptr, "codeSize");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
+}
+
+llvm::Value* RuntimeManager::getCallDataSize()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
+	auto value = getBuilder().CreateLoad(ptr, "callDataSize");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
 }
 
 llvm::Value* RuntimeManager::getJmpBuf()
@@ -182,14 +204,17 @@ llvm::Value* RuntimeManager::getJmpBuf()
 
 llvm::Value* RuntimeManager::getGas()
 {
-	return get(RuntimeData::Gas);
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 5);
+	auto value = getBuilder().CreateLoad(ptr, "gas");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
 }
 
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
-	llvm::Value* idxList[] = {m_builder.getInt32(0), m_builder.getInt32(0), m_builder.getInt32(RuntimeData::Gas)};
-	auto ptr = m_builder.CreateInBoundsGEP(getDataPtr(), idxList, "gasPtr");
-	m_builder.CreateStore(_gas, ptr);
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 5);
+	auto newGas = getBuilder().CreateTrunc(_gas, Type::Size);
+	getBuilder().CreateStore(newGas, ptr);
 }
 
 }

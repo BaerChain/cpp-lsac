@@ -15,11 +15,11 @@ add_library(${TARGET_NAME} SHARED ${SOURCES} ${HEADERS})
 set_property(TARGET ${TARGET_NAME} PROPERTY FOLDER "libs")
 
 include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${Boost_INCLUDE_DIRS})
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${LLVM_LIBS})
+target_link_libraries(${TARGET_NAME} PRIVATE gmp)
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 
 install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib)
-install(FILES ${INTERFACE_HEADERS} DESTINATION include/${TARGET_NAME})
+#install(FILES ${INTERFACE_HEADERS} DESTINATION include/${TARGET_NAME})
