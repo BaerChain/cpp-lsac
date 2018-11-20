@@ -76,7 +76,7 @@ ASTPointer<SourceUnit> parseTextAndResolveNamesWithChecks(std::string const& _so
 	}
 	catch(boost::exception const& _e)
 	{
-		auto msg = std::string("Parsing text and resolving nanes failed with: \n") + boost::diagnostic_information(_e);
+		auto msg = std::string("Parsing text and resolving names failed with: \n") + boost::diagnostic_information(_e);
 		BOOST_FAIL(msg);
 	}
 	return sourceUnit;
@@ -642,12 +642,24 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	ASTPointer<SourceUnit> source;
 	ContractDefinition const* contract;
 	BOOST_CHECK_NO_THROW(source = parseTextAndResolveNamesWithChecks(text));
-	BOOST_CHECK((contract = retrieveContract(source, 0)) != nullptr);
+	BOOST_REQUIRE((contract = retrieveContract(source, 0)) != nullptr);
 	FunctionDescription function = retrieveFunctionBySignature(contract, "foo()");
 	BOOST_CHECK_MESSAGE(function.getDeclaration() != nullptr, "Could not find the accessor function");
 	auto returnParams = function.getReturnParameters();
 	BOOST_CHECK_EQUAL(returnParams.at(0).getType(), "uint256");
 	BOOST_CHECK(function.isConstant());
+}
+
+BOOST_AUTO_TEST_CASE(function_clash_with_state_variable_accessor)
+{
+	char const* text = "contract test {\n"
+					   "  function fun() {\n"
+					   "    uint64(2);\n"
+					   "  }\n"
+					   "uint256 foo;\n"
+					   "   function foo() {}\n"
+					   "}\n";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), DeclarationError);
 }
 
 BOOST_AUTO_TEST_CASE(private_state_variable)
