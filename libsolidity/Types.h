@@ -233,9 +233,10 @@ public:
 	/// if no type fits.
 	static std::shared_ptr<StaticStringType> smallestTypeForLiteral(std::string const& _literal);
 
-	StaticStringType(int _bytes);
+	explicit StaticStringType(int _bytes);
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool operator==(Type const& _other) const override;
 
 	virtual unsigned getCalldataEncodedSize() const override { return m_bytes; }
@@ -352,6 +353,7 @@ public:
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
+	explicit FunctionType(VariableDeclaration const& _varDecl);
 	FunctionType(strings const& _parameterTypes, strings const& _returnParameterTypes,
 				 Location _location = Location::INTERNAL):
 		FunctionType(parseElementaryTypeVector(_parameterTypes), parseElementaryTypeVector(_returnParameterTypes),
@@ -363,7 +365,9 @@ public:
 		m_location(_location), m_gasSet(_gasSet), m_valueSet(_valueSet) {}
 
 	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
+	std::vector<std::string> const& getParameterNames() const { return m_parameterNames; }
 	TypePointers const& getReturnParameterTypes() const { return m_returnParameterTypes; }
+	std::vector<std::string> const& getReturnParameterNames() const { return m_returnParameterNames; }
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString() const override;
@@ -374,7 +378,7 @@ public:
 	virtual MemberList const& getMembers() const override;
 
 	Location const& getLocation() const { return m_location; }
-	std::string getCanonicalSignature() const;
+	std::string getCanonicalSignature(std::string const& _name) const;
 
 	bool gasSet() const { return m_gasSet; }
 	bool valueSet() const { return m_valueSet; }
@@ -388,6 +392,8 @@ private:
 
 	TypePointers m_parameterTypes;
 	TypePointers m_returnParameterTypes;
+	std::vector<std::string> m_parameterNames;
+	std::vector<std::string> m_returnParameterNames;
 	Location const m_location;
 	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack
 	bool const m_valueSet = false; ///< true iff the value to be sent is on the stack
@@ -451,6 +457,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
 	virtual MemberList const& getMembers() const override;
 
@@ -476,6 +483,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString() const override;
 

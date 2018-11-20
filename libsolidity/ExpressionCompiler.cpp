@@ -628,38 +628,65 @@ void ExpressionCompiler::appendTypeConversion(Type const& _typeOnStack, Type con
 		return;
 	Type::Category stackTypeCategory = _typeOnStack.getCategory();
 	Type::Category targetTypeCategory = _targetType.getCategory();
-	if (stackTypeCategory == Type::Category::INTEGER || stackTypeCategory == Type::Category::CONTRACT ||
-			 stackTypeCategory == Type::Category::INTEGER_CONSTANT)
+
+	if (stackTypeCategory == Type::Category::STRING)
 	{
-		solAssert(targetTypeCategory == Type::Category::INTEGER || targetTypeCategory == Type::Category::CONTRACT, "");
-		IntegerType addressType(0, IntegerType::Modifier::ADDRESS);
-		IntegerType const& targetType = targetTypeCategory == Type::Category::INTEGER
-			? dynamic_cast<IntegerType const&>(_targetType) : addressType;
-		if (stackTypeCategory == Type::Category::INTEGER_CONSTANT)
+		if (targetTypeCategory == Type::Category::INTEGER)
 		{
-			IntegerConstantType const& constType = dynamic_cast<IntegerConstantType const&>(_typeOnStack);
-			// We know that the stack is clean, we only have to clean for a narrowing conversion
-			// where cleanup is forced.
-			if (targetType.getNumBits() < constType.getIntegerType()->getNumBits() && _cleanupNeeded)
-				appendHighBitsCleanup(targetType);
+			// conversion from string to hash. no need to clean the high bit
+			// only to shift right because of opposite alignment
+			IntegerType const& targetIntegerType = dynamic_cast<IntegerType const&>(_targetType);
+			StaticStringType const& typeOnStack = dynamic_cast<StaticStringType const&>(_typeOnStack);
+			solAssert(targetIntegerType.isHash(), "Only conversion between String and Hash is allowed.");
+			solAssert(targetIntegerType.getNumBits() == typeOnStack.getNumBytes() * 8, "The size should be the same.");
+			m_context << (u256(1) << (256 - typeOnStack.getNumBytes() * 8)) << eth::Instruction::SWAP1 << eth::Instruction::DIV;
 		}
 		else
 		{
-			IntegerType const& typeOnStack = stackTypeCategory == Type::Category::INTEGER
-				? dynamic_cast<IntegerType const&>(_typeOnStack) : addressType;
-			// Widening: clean up according to source type width
-			// Non-widening and force: clean up according to target type bits
-			if (targetType.getNumBits() > typeOnStack.getNumBits())
-				appendHighBitsCleanup(typeOnStack);
-			else if (_cleanupNeeded)
-				appendHighBitsCleanup(targetType);
+			solAssert(targetTypeCategory == Type::Category::STRING, "Invalid type conversion requested.");
+			// nothing to do, strings are high-order-bit-aligned
+			//@todo clear lower-order bytes if we allow explicit conversion to shorter strings
 		}
 	}
-	else if (stackTypeCategory == Type::Category::STRING)
+	else if (stackTypeCategory == Type::Category::INTEGER || stackTypeCategory == Type::Category::CONTRACT ||
+			 stackTypeCategory == Type::Category::INTEGER_CONSTANT)
 	{
-		solAssert(targetTypeCategory == Type::Category::STRING, "");
-		// nothing to do, strings are high-order-bit-aligned
-		//@todo clear lower-order bytes if we allow explicit conversion to shorter strings
+		if (targetTypeCategory == Type::Category::STRING && stackTypeCategory == Type::Category::INTEGER)
+		{
+			// conversion from hash to string. no need to clean the high bit
+			// only to shift left because of opposite alignment
+			StaticStringType const& targetStringType = dynamic_cast<StaticStringType const&>(_targetType);
+			IntegerType const& typeOnStack = dynamic_cast<IntegerType const&>(_typeOnStack);
+			solAssert(typeOnStack.isHash(), "Only conversion between String and Hash is allowed.");
+			solAssert(typeOnStack.getNumBits() == targetStringType.getNumBytes() * 8, "The size should be the same.");
+			m_context << (u256(1) << (256 - typeOnStack.getNumBits())) << eth::Instruction::MUL;
+		}
+		else
+		{
+			solAssert(targetTypeCategory == Type::Category::INTEGER || targetTypeCategory == Type::Category::CONTRACT, "");
+			IntegerType addressType(0, IntegerType::Modifier::ADDRESS);
+			IntegerType const& targetType = targetTypeCategory == Type::Category::INTEGER
+											? dynamic_cast<IntegerType const&>(_targetType) : addressType;
+			if (stackTypeCategory == Type::Category::INTEGER_CONSTANT)
+			{
+				IntegerConstantType const& constType = dynamic_cast<IntegerConstantType const&>(_typeOnStack);
+				// We know that the stack is clean, we only have to clean for a narrowing conversion
+				// where cleanup is forced.
+				if (targetType.getNumBits() < constType.getIntegerType()->getNumBits() && _cleanupNeeded)
+					appendHighBitsCleanup(targetType);
+			}
+			else
+			{
+				IntegerType const& typeOnStack = stackTypeCategory == Type::Category::INTEGER
+												? dynamic_cast<IntegerType const&>(_typeOnStack) : addressType;
+				// Widening: clean up according to source type width
+				// Non-widening and force: clean up according to target type bits
+				if (targetType.getNumBits() > typeOnStack.getNumBits())
+					appendHighBitsCleanup(typeOnStack);
+				else if (_cleanupNeeded)
+					appendHighBitsCleanup(targetType);
+			}
+		}
 	}
 	else if (_typeOnStack != _targetType)
 		// All other types should not be convertible to non-equal types.
@@ -762,6 +789,13 @@ unsigned ExpressionCompiler::appendArgumentCopyToMemory(TypePointers const& _typ
 	return length;
 }
 
+void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const* _varDecl)
+{
+	m_currentLValue.fromStateVariable(*_varDecl, _varDecl->getType());
+	// TODO
+	// m_currentLValue.retrieveValueFromStorage();
+}
+
 ExpressionCompiler::LValue::LValue(CompilerContext& _compilerContext, LValueType _type, Type const& _dataType,
 								   unsigned _baseStackOffset):
 	m_context(&_compilerContext), m_type(_type), m_baseStackOffset(_baseStackOffset)
@@ -789,21 +823,7 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 		break;
 	}
 	case STORAGE:
-		if (!_expression.getType()->isValueType())
-			break; // no distinction between value and reference for non-value types
-		if (!_remove)
-			*m_context << eth::Instruction::DUP1;
-		if (m_size == 1)
-			*m_context << eth::Instruction::SLOAD;
-		else
-			for (unsigned i = 0; i < m_size; ++i)
-			{
-				*m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD << eth::Instruction::SWAP1;
-				if (i + 1 < m_size)
-					*m_context << u256(1) << eth::Instruction::ADD;
-				else
-					*m_context << eth::Instruction::POP;
-			}
+		retrieveValueFromStorage(_expression, _remove);
 		break;
 	case MEMORY:
 		if (!_expression.getType()->isValueType())
@@ -816,6 +836,25 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 													  << errinfo_comment("Unsupported location type."));
 		break;
 	}
+}
+
+void ExpressionCompiler::LValue::retrieveValueFromStorage(Expression const& _expression, bool _remove) const
+{
+	if (!_expression.getType()->isValueType())
+		return; // no distinction between value and reference for non-value types
+	if (!_remove)
+		*m_context << eth::Instruction::DUP1;
+	if (m_size == 1)
+		*m_context << eth::Instruction::SLOAD;
+	else
+		for (unsigned i = 0; i < m_size; ++i)
+		{
+			*m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD << eth::Instruction::SWAP1;
+			if (i + 1 < m_size)
+				*m_context << u256(1) << eth::Instruction::ADD;
+			else
+				*m_context << eth::Instruction::POP;
+		}
 }
 
 void ExpressionCompiler::LValue::storeValue(Expression const& _expression, bool _move) const
@@ -924,6 +963,14 @@ void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(Expression co
 	}
 }
 
+void ExpressionCompiler::LValue::fromStateVariable(Declaration const& _varDecl, std::shared_ptr<Type const> const& _type)
+{
+	m_type = STORAGE;
+	solAssert(_type->getStorageSize() <= numeric_limits<unsigned>::max(), "The storage size of " + _type->toString() + " should fit in an unsigned");
+	*m_context << m_context->getStorageLocationOfVariable(_varDecl);
+	m_size = unsigned(_type->getStorageSize());
+}
+
 void ExpressionCompiler::LValue::fromIdentifier(Identifier const& _identifier, Declaration const& _declaration)
 {
 	if (m_context->isLocalVariable(&_declaration))
@@ -934,10 +981,7 @@ void ExpressionCompiler::LValue::fromIdentifier(Identifier const& _identifier, D
 	}
 	else if (m_context->isStateVariable(&_declaration))
 	{
-		m_type = STORAGE;
-		solAssert(_identifier.getType()->getStorageSize() <= numeric_limits<unsigned>::max(), "The storage size of " + _identifier.getType()->toString() + " should fit in unsigned");
-		m_size = unsigned(_identifier.getType()->getStorageSize());
-		*m_context << m_context->getStorageLocationOfVariable(_declaration);
+		fromStateVariable(_declaration, _identifier.getType());
 	}
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_identifier.getLocation())

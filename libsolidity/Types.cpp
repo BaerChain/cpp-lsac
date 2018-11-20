@@ -140,6 +140,11 @@ bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
+	if (_convertTo.getCategory() == Category::STRING)
+	{
+		StaticStringType const& convertTo = dynamic_cast<StaticStringType const&>(_convertTo);
+		return isHash() && (m_bits == convertTo.getNumBytes() * 8);
+	}
 	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::CONTRACT;
 }
 
@@ -367,6 +372,17 @@ bool StaticStringType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 	return convertTo.m_bytes >= m_bytes;
 }
 
+bool StaticStringType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	if (_convertTo.getCategory() == Category::INTEGER)
+	{
+		IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
+		if (convertTo.isHash() && (m_bytes * 8 == convertTo.getNumBits()))
+			return true;
+	}
+	return isImplicitlyConvertibleTo(_convertTo);
+}
+
 bool StaticStringType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -473,7 +489,7 @@ MemberList const& ContractType::getMembers() const
 		map<string, shared_ptr<Type const>> members(IntegerType::AddressMemberList.begin(),
 													IntegerType::AddressMemberList.end());
 		for (auto const& it: m_contract.getInterfaceFunctions())
-			members[it.second->getName()] = make_shared<FunctionType>(*it.second, false);
+			members[it.second.getName()] = it.second.getFunctionTypeShared();
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -495,9 +511,9 @@ shared_ptr<FunctionType const> const& ContractType::getConstructorType() const
 u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 {
 	auto interfaceFunctions = m_contract.getInterfaceFunctions();
-	for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it)
-		if (it->second->getName() == _functionName)
-			return FixedHash<4>::Arith(it->first);
+	for (auto const& it: m_contract.getInterfaceFunctions())
+		if (it.second.getName() == _functionName)
+			return FixedHash<4>::Arith(it.first);
 
 	return Invalid256;
 }
@@ -566,15 +582,47 @@ FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal
 	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL)
 {
 	TypePointers params;
+	vector<string> paramNames;
 	TypePointers retParams;
+	vector<string> retParamNames;
 	params.reserve(_function.getParameters().size());
+	paramNames.reserve(_function.getParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
+	{
+		paramNames.push_back(var->getName());
 		params.push_back(var->getType());
+	}
 	retParams.reserve(_function.getReturnParameters().size());
+	retParamNames.reserve(_function.getReturnParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.getReturnParameters())
+	{
+		retParamNames.push_back(var->getName());
 		retParams.push_back(var->getType());
+	}
 	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
 	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
+}
+
+FunctionType::FunctionType(VariableDeclaration const& _varDecl):
+	m_location(Location::EXTERNAL)
+{
+	TypePointers params;
+	vector<string> paramNames;
+	TypePointers retParams;
+	vector<string> retParamNames;
+	// for now, no input parameters LTODO: change for some things like mapping
+	params.reserve(0);
+	paramNames.reserve(0);
+	retParams.reserve(1);
+	retParamNames.reserve(1);
+	retParams.push_back(_varDecl.getType());
+	retParamNames.push_back(_varDecl.getName());
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
+	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
 }
 
 bool FunctionType::operator==(Type const& _other) const
@@ -656,9 +704,9 @@ MemberList const& FunctionType::getMembers() const
 	}
 }
 
-string FunctionType::getCanonicalSignature() const
+string FunctionType::getCanonicalSignature(std::string const& _name) const
 {
-	string ret = "(";
+	string ret = _name + "(";
 
 	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
 		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
