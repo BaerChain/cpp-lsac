@@ -4,6 +4,7 @@
 #include <functional>
 #include <fstream>
 #include <chrono>
+#include <sstream>
 
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/CFG.h>
@@ -38,10 +39,10 @@ Compiler::Compiler(Options const& _options):
 	Type::init(m_builder.getContext());
 }
 
-void Compiler::createBasicBlocks(bytes const& _bytecode)
+void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd)
 {
 	/// Helper function that skips push data and finds next iterator (can be the end)
-	auto skipPushDataAndGetNext = [](bytes::const_iterator _curr, bytes::const_iterator _end)
+	auto skipPushDataAndGetNext = [](code_iterator _curr, code_iterator _end)
 	{
 		static const auto push1  = static_cast<size_t>(Instruction::PUSH1);
 		static const auto push32 = static_cast<size_t>(Instruction::PUSH32);
@@ -51,11 +52,11 @@ void Compiler::createBasicBlocks(bytes const& _bytecode)
 		return _curr + offset;
 	};
 
-	auto begin = _bytecode.begin();
+	auto begin = _codeBegin; // begin of current block
 	bool nextJumpDest = false;
-	for (auto curr = begin, next = begin; curr != _bytecode.end(); curr = next)
+	for (auto curr = begin, next = begin; curr != _codeEnd; curr = next)
 	{
-		next = skipPushDataAndGetNext(curr, _bytecode.end());
+		next = skipPushDataAndGetNext(curr, _codeEnd);
 
 		bool isEnd = false;
 		switch (Instruction(*curr))
@@ -76,15 +77,15 @@ void Compiler::createBasicBlocks(bytes const& _bytecode)
 			break;
 		}
 
-		assert(next <= _bytecode.end());
-		if (next == _bytecode.end() || Instruction(*next) == Instruction::JUMPDEST)
+		assert(next <= _codeEnd);
+		if (next == _codeEnd || Instruction(*next) == Instruction::JUMPDEST)
 			isEnd = true;
 
 		if (isEnd)
 		{
-			auto beginIdx = begin - _bytecode.begin();
+			auto beginIdx = begin - _codeBegin;
 			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
-					std::forward_as_tuple(begin, next, m_mainFunc, m_builder, nextJumpDest));
+					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
 			nextJumpDest = false;
 			begin = next;
 		}
@@ -123,7 +124,7 @@ llvm::BasicBlock* Compiler::getBadJumpBlock()
 	return m_badJumpBlock->llvm();
 }
 
-std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::string const& _id)
+std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_iterator _end, std::string const& _id)
 {
 	auto compilationStartTime = std::chrono::high_resolution_clock::now();
 	auto module = std::unique_ptr<llvm::Module>(new llvm::Module(_id, m_builder.getContext()));
@@ -137,7 +138,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
 
-	createBasicBlocks(_bytecode);
+	createBasicBlocks(_begin, _end);
 
 	// Init runtime structures.
 	RuntimeManager runtimeManager(m_builder);
@@ -155,7 +156,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 		auto iterCopy = basicBlockPairIt;
 		++iterCopy;
 		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
-		compileBasicBlock(basicBlock, _bytecode, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock);
+		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock);
 	}
 
 	// Code for special blocks:
@@ -222,7 +223,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 }
 
 
-void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode, RuntimeManager& _runtimeManager,
+void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
 								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock)
 {
 	if (!_nextBasicBlock) // this is the last block in the code
@@ -272,7 +273,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.div(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -281,7 +282,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.sdiv(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -289,8 +290,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.mod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.div(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -298,8 +299,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.smod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.sdiv(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -455,14 +456,15 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 			// test for word >> (k * 8 + 7)
 			auto bitpos = m_builder.CreateAdd(k32x8, m_builder.getInt64(7), "bitpos");
-			auto bittester = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto bitposEx = m_builder.CreateZExt(bitpos, Type::Word);
+			auto bittester = m_builder.CreateShl(Constant::get(1), bitposEx);
 			auto bitresult = m_builder.CreateAnd(word, bittester);
 			auto bittest = m_builder.CreateICmpUGT(bitresult, Constant::get(0));
 			// FIXME: The following does not work - LLVM bug, report!
 			//auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
 			//auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
 
-			auto mask_ = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto mask_ = m_builder.CreateShl(Constant::get(1), bitposEx);
 			auto mask = m_builder.CreateSub(mask_, Constant::get(1), "mask");
 
 			auto negmask = m_builder.CreateXor(mask, llvm::ConstantInt::getAllOnesValue(Type::Word), "negmask");
@@ -620,7 +622,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 		case Instruction::PC:
 		{
-			auto value = Constant::get(it - _bytecode.begin());
+			auto value = Constant::get(it - _basicBlock.begin() + _basicBlock.firstInstrIdx());
 			stack.push(value);
 			break;
 		}
@@ -636,19 +638,28 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CALLER:
 		case Instruction::ORIGIN:
 		case Instruction::CALLVALUE:
-		case Instruction::CALLDATASIZE:
-		case Instruction::CODESIZE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
-		case Instruction::TIMESTAMP:
-		case Instruction::NUMBER:
 		case Instruction::DIFFICULTY:
 		case Instruction::GASLIMIT:
+		case Instruction::NUMBER:
+		case Instruction::TIMESTAMP:
 		{
 			// Pushes an element of runtime data on stack
-			stack.push(_runtimeManager.get(inst));
+			auto value = _runtimeManager.get(inst);
+			value = m_builder.CreateZExt(value, Type::Word);
+			stack.push(value);
 			break;
 		}
+
+		case Instruction::CODESIZE:
+			// TODO: Use constant
+			stack.push(_runtimeManager.getCodeSize());
+			break;
+
+		case Instruction::CALLDATASIZE:
+			stack.push(_runtimeManager.getCallDataSize());
+			break;
 
 		case Instruction::BLOCKHASH:
 		{
@@ -681,7 +692,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCallData();
-			auto srcSize = _runtimeManager.get(RuntimeData::CallDataSize);
+			auto srcSize = _runtimeManager.getCallDataSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;
@@ -694,7 +705,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCode();    // TODO: Code & its size are constants, feature #80814234
-			auto srcSize = _runtimeManager.get(RuntimeData::CodeSize);
+			auto srcSize = _runtimeManager.getCodeSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;
