@@ -3,7 +3,7 @@
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 
-#include "Utils.h"
+#include <evmjit/libevmjit/Utils.h>
 
 extern "C"
 {
@@ -16,6 +16,7 @@ extern "C"
 	using namespace dev;
 	using namespace dev::eth;
 	using jit::i256;
+	using jit::eth2llvm;
 
 	EXPORT void env_sload(ExtVMFace* _env, i256* _index, i256* o_value)
 	{

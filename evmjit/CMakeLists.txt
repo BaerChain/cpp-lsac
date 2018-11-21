@@ -3,14 +3,13 @@ cmake_minimum_required(VERSION 2.8.12)
 project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_AUTOMOC OFF)
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	# Do not allow unresovled symbols in shared library (default on linux)
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()
@@ -32,6 +31,9 @@ else()
 	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 	link_directories(/usr/lib/llvm-3.5/lib)
 endif()
+
+# Boost
+find_package(Boost REQUIRED)
 
 add_subdirectory(libevmjit)
 
