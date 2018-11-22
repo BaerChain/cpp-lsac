@@ -1,44 +1,37 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_policy(SET CMP0015 NEW)
 
-project(evmjit)
+aux_source_directory(. SRC_LIST)
+list(REMOVE_ITEM SRC_LIST "./createRandomTest.cpp")
+list(REMOVE_ITEM SRC_LIST "./checkRandomTest.cpp")
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_AUTOMOC OFF)
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${CRYPTOPP_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(..)
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
-else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
+file(GLOB HEADERS "*.h")
+add_executable(testeth ${SRC_LIST} ${HEADERS})
+add_executable(createRandomTest createRandomTest.cpp vm.cpp TestHelper.cpp)
+add_executable(checkRandomTest checkRandomTest.cpp vm.cpp TestHelper.cpp)
+
+target_link_libraries(testeth ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(testeth ${CURL_LIBRARIES})
+target_link_libraries(testeth ethereum)
+target_link_libraries(testeth ethcore)
+target_link_libraries(testeth secp256k1)
+target_link_libraries(testeth solidity)
+target_link_libraries(testeth webthree)
+
+if (JSONRPC)
+	target_link_libraries(testeth web3jsonrpc)
+	target_link_libraries(testeth ${JSON_RPC_CPP_CLIENT_LIBRARIES})
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-	# Do not allow unresovled symbols in shared library (default on linux)
-	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
-endif()
+target_link_libraries(createRandomTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(createRandomTest ethereum)
+target_link_libraries(createRandomTest ethcore)
+target_link_libraries(checkRandomTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(checkRandomTest ethereum)
+target_link_libraries(checkRandomTest ethcore)
 
-# LLVM
-if(LLVM_DIR OR APPLE)	# local LLVM build
-	find_package(LLVM REQUIRED CONFIG)
-	message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-	message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-	add_definitions(${LLVM_DEFINITIONS})
-	# TODO: bitwriter is needed only for evmcc
-	llvm_map_components_to_libnames(LLVM_LIBS core support mcjit x86asmparser x86codegen bitwriter)
-else()
-	# Workaround for Ubuntu broken LLVM package
-	message(STATUS "Using llvm-3.5-dev package from Ubuntu. If does not work, build LLVM and set -DLLVM_DIR=llvm-build/share/llvm/cmake")
-	execute_process(COMMAND llvm-config-3.5 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS)
-	message(STATUS "LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
-	set(LLVM_LIBS "-lLLVMBitWriter -lLLVMX86CodeGen -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMInstCombine -lLLVMTransformUtils -lLLVMipa -lLLVMAnalysis -lLLVMX86AsmParser -lLLVMX86Desc -lLLVMX86Info -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMMCJIT -lLLVMTarget -lLLVMRuntimeDyld -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMExecutionEngine -lLLVMMC -lLLVMCore -lLLVMSupport -lz -lpthread -lffi -ltinfo -ldl -lm")
-	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
-	link_directories(/usr/lib/llvm-3.5/lib)
-endif()
-
-add_subdirectory(libevmjit)
-
-if(EVMJIT_CPP)
-	add_subdirectory(libevmjit-cpp)
-endif()
-
-if(EVMJIT_TOOLS)
-	add_subdirectory(evmcc)
-endif()
