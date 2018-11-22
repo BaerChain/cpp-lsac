@@ -1,6 +1,7 @@
 #include "ExecutionEngine.h"
 
 #include <chrono>
+#include <cstdlib>	// env options
 
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
@@ -19,12 +20,7 @@
 #include "Compiler.h"
 #include "Cache.h"
 
-#if defined(NDEBUG)
-#define DEBUG_ENV_OPTION(name) false
-#else
-#include <cstdlib>
-#define DEBUG_ENV_OPTION(name) (std::getenv(#name) != nullptr)
-#endif
+#include <iostream>
 
 namespace dev
 {
@@ -52,30 +48,42 @@ ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
 	return returnCode;
 }
 
-std::string codeHash(bytes const& _code)
+std::string codeHash(i256 const& _hash)
 {
-	uint32_t hash = 0;
-	for (auto b : _code)
+	static const auto size = sizeof(_hash);
+	static const auto hexChars = "0123456789abcdef";
+	std::string str;
+	str.resize(size * 2);
+	auto outIt = str.rbegin(); // reverse for BE
+	auto& arr = *(std::array<byte, size>*)&_hash;
+	for (auto b : arr)
 	{
-		hash += b;
-		hash += (hash << 10);
-		hash ^= (hash >> 6);
+		*(outIt++) = hexChars[b & 0xf];
+		*(outIt++) = hexChars[b >> 4];
 	}
-	hash += (hash << 3);
-	hash ^= (hash >> 11);
-	hash += (hash << 15);
-	return std::to_string(hash);
+	return str;
+}
+
+bool getEnvOption(char const* _name, bool _default)
+{
+	auto var = std::getenv(_name);
+	if (!var)
+		return _default;
+	return std::strtol(var, nullptr, 10) != 0;
 }
 
 }
 
-ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _env)
+ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
 	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
-	static auto debugDumpModule = DEBUG_ENV_OPTION(EVMJIT_DUMP_MODULE);
-	static bool objectCacheEnabled = !DEBUG_ENV_OPTION(EVMJIT_CACHE_OFF);
+	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
+	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
 
-	auto mainFuncName = codeHash(_code);
+	auto codeBegin = _data->code;
+	auto codeEnd = codeBegin + _data->codeSize;
+	assert(codeBegin || !codeEnd); //TODO: Is it good idea to execute empty code?
+	auto mainFuncName = codeHash(_data->codeHash);
 	EntryFuncPtr entryFuncPtr{};
 	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
@@ -89,7 +97,7 @@ ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _en
 		if (objectCache)
 			module = Cache::getObject(mainFuncName);
 		if (!module)
-			module = Compiler({}).compile(_code, mainFuncName);
+			module = Compiler({}).compile(codeBegin, codeEnd, mainFuncName);
 		if (debugDumpModule)
 			module->dump();
 		if (!ee)
@@ -136,7 +144,10 @@ ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _en
 
 	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
 	if (returnCode == ReturnCode::Return)
-		this->returnData = runtime.getReturnData();
+	{
+		returnData = runtime.getReturnData();     // Save reference to return data
+		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
+	}
 
 	auto executionEndTime = std::chrono::high_resolution_clock::now();
 	clog(JIT) << " + " << std::chrono::duration_cast<std::chrono::milliseconds>(executionEndTime - executionStartTime).count() << " ms\n";
