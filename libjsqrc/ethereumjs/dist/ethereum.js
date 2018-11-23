@@ -210,7 +210,7 @@ module.exports = {
 };
 
 
-},{"./const":2,"./formatters":6,"./types":11,"./utils":12,"./web3":13}],2:[function(require,module,exports){
+},{"./const":2,"./formatters":6,"./types":10,"./utils":11,"./web3":12}],2:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -238,32 +238,9 @@ if ("build" !== 'build') {/*
     var BigNumber = require('bignumber.js'); // jshint ignore:line
 */}
 
-var ETH_UNITS = [ 
-    'wei', 
-    'Kwei', 
-    'Mwei', 
-    'Gwei', 
-    'szabo', 
-    'finney', 
-    'ether', 
-    'grand', 
-    'Mether', 
-    'Gether', 
-    'Tether', 
-    'Pether', 
-    'Eether', 
-    'Zether', 
-    'Yether', 
-    'Nether', 
-    'Dether', 
-    'Vether', 
-    'Uether' 
-];
-
 module.exports = {
     ETH_PADDING: 32,
     ETH_SIGNATURE_LENGTH: 4,
-    ETH_UNITS: ETH_UNITS,
     ETH_BIGNUMBER_ROUNDING_MODE: { ROUNDING_MODE: BigNumber.ROUND_DOWN }
 };
 
@@ -391,11 +368,6 @@ var addFunctionsToContract = function (contract, desc, address) {
 
 var addEventRelatedPropertiesToContract = function (contract, desc, address) {
     contract.address = address;
-    contract._onWatchEventResult = function (data) {
-        var matchingEvent = event.getMatchingEvent(utils.filterEvents(desc));
-        var parser = eventImpl.outputParser(matchingEvent);
-        return parser(data);
-    };
     
     Object.defineProperty(contract, 'topic', {
         get: function() {
@@ -414,12 +386,8 @@ var addEventsToContract = function (contract, desc, address) {
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
             var signature = abi.eventSignatureFromAscii(e.name);
-            var event = eventImpl.inputParser(address, signature, e);
+            var event = eventImpl(address, signature, e);
             var o = event.apply(null, params);
-            o._onWatchEventResult = function (data) {
-                var parser = eventImpl.outputParser(e);
-                return parser(data);
-            };
             return web3.eth.watch(o);  
         };
         
@@ -487,7 +455,7 @@ var contract = function (address, desc) {
 module.exports = contract;
 
 
-},{"./abi":1,"./event":4,"./utils":12,"./web3":13}],4:[function(require,module,exports){
+},{"./abi":1,"./event":4,"./utils":11,"./web3":12}],4:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -513,16 +481,6 @@ module.exports = contract;
 var abi = require('./abi');
 var utils = require('./utils');
 
-/// filter inputs array && returns only indexed (or not) inputs
-/// @param inputs array
-/// @param bool if result should be an array of indexed params on not
-/// @returns array of (not?) indexed params
-var filterInputs = function (inputs, indexed) {
-    return inputs.filter(function (current) {
-        return current.indexed === indexed;
-    });
-};
-
 var inputWithName = function (inputs, name) {
     var index = utils.findIndex(inputs, function (input) {
         return input.name === name;
@@ -538,7 +496,7 @@ var inputWithName = function (inputs, name) {
 var indexedParamsToTopics = function (event, indexed) {
     // sort keys?
     return Object.keys(indexed).map(function (key) {
-        var inputs = [inputWithName(filterInputs(event.inputs, true), key)];
+        var inputs = [inputWithName(event.inputs, key)];
 
         var value = indexed[key];
         if (value instanceof Array) {
@@ -550,7 +508,7 @@ var indexedParamsToTopics = function (event, indexed) {
     });
 };
 
-var inputParser = function (address, signature, event) {
+var implementationOfEvent = function (address, signature, event) {
     
     // valid options are 'earliest', 'latest', 'offset' and 'max', as defined for 'eth.watch'
     return function (indexed, options) {
@@ -565,66 +523,10 @@ var inputParser = function (address, signature, event) {
     };
 };
 
-var getArgumentsObject = function (inputs, indexed, notIndexed) {
-    var indexedCopy = indexed.slice();
-    var notIndexedCopy = notIndexed.slice();
-    return inputs.reduce(function (acc, current) {
-        var value;
-        if (current.indexed)
-            value = indexed.splice(0, 1)[0];
-        else
-            value = notIndexed.splice(0, 1)[0];
-
-        acc[current.name] = value;
-        return acc;
-    }, {}); 
-};
- 
-var outputParser = function (event) {
-    
-    return function (output) {
-        var result = {
-            event: utils.extractDisplayName(event.name),
-            number: output.number,
-            args: {}
-        };
-
-        if (!output.topic) {
-            return result;
-        }
-       
-        var indexedOutputs = filterInputs(event.inputs, true);
-        var indexedData = "0x" + output.topic.slice(1, output.topic.length).map(function (topic) { return topic.slice(2); }).join("");
-        var indexedRes = abi.formatOutput(indexedOutputs, indexedData);
-
-        var notIndexedOutputs = filterInputs(event.inputs, false);
-        var notIndexedRes = abi.formatOutput(notIndexedOutputs, output.data);
-
-        result.args = getArgumentsObject(event.inputs, indexedRes, notIndexedRes);
-
-        return result;
-    };
-};
-
-var getMatchingEvent = function (events, payload) {
-    for (var i = 0; i < events.length; i++) {
-        var signature = abi.eventSignatureFromAscii(events[i].name); 
-        if (signature === payload.topic[0]) {
-            return events[i];
-        }
-    }
-    return undefined;
-};
+module.exports = implementationOfEvent;
 
 
-module.exports = {
-    inputParser: inputParser,
-    outputParser: outputParser,
-    getMatchingEvent: getMatchingEvent
-};
-
-
-},{"./abi":1,"./utils":12}],5:[function(require,module,exports){
+},{"./abi":1,"./utils":11}],5:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -663,8 +565,6 @@ var Filter = function(options, impl) {
         if (options.topics) {
             console.warn('"topics" is deprecated, use "topic" instead');
         }
-        
-        this._onWatchResult = options._onWatchEventResult;
 
         // evaluate lazy properties
         options = {
@@ -683,7 +583,7 @@ var Filter = function(options, impl) {
     this.callbacks = [];
 
     this.id = impl.newFilter(options);
-    web3.provider.startPolling({method: impl.changed, params: [this.id]}, this.id, this.trigger.bind(this));
+    web3.provider.startPolling({call: impl.changed, args: [this.id]}, this.id, this.trigger.bind(this));
 };
 
 /// alias for changed*
@@ -703,8 +603,7 @@ Filter.prototype.changed = function(callback) {
 Filter.prototype.trigger = function(messages) {
     for (var i = 0; i < this.callbacks.length; i++) {
         for (var j = 0; j < messages.length; j++) {
-            var message = this._onWatchResult ? this._onWatchResult(messages[j]) : messages[j];
-            this.callbacks[i].call(this, message);
+            this.callbacks[i].call(this, messages[j]);
         }
     }
 };
@@ -727,7 +626,7 @@ Filter.prototype.logs = function () {
 
 module.exports = Filter;
 
-},{"./web3":13}],6:[function(require,module,exports){
+},{"./web3":12}],6:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -883,7 +782,7 @@ module.exports = {
 };
 
 
-},{"./const":2,"./utils":12}],7:[function(require,module,exports){
+},{"./const":2,"./utils":11}],7:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -916,89 +815,46 @@ var HttpSyncProvider = function (host) {
     this.host = host || 'http://localhost:8080';
 };
 
+/// Transforms inner message to proper jsonrpc object
+/// @param inner message object
+/// @returns jsonrpc object
+function formatJsonRpcObject(object) {
+    return {
+        jsonrpc: '2.0',
+        method: object.call,
+        params: object.args,
+        id: object._id
+    };
+}
+
+/// Transforms jsonrpc object to inner message
+/// @param incoming jsonrpc message 
+/// @returns inner message object
+function formatJsonRpcMessage(message) {
+    var object = JSON.parse(message);
+
+    return {
+        _id: object.id,
+        data: object.result,
+        error: object.error
+    };
+}
+
 HttpSyncProvider.prototype.send = function (payload) {
-    //var data = formatJsonRpcObject(payload);
+    var data = formatJsonRpcObject(payload);
     
     var request = new XMLHttpRequest();
     request.open('POST', this.host, false);
-    request.send(JSON.stringify(payload));
+    request.send(JSON.stringify(data));
     
     // check request.status
-    var result = request.responseText;
-    return JSON.parse(result);
+    return request.responseText;
 };
 
 module.exports = HttpSyncProvider;
 
 
 },{}],8:[function(require,module,exports){
-/*
-    This file is part of ethereum.js.
-
-    ethereum.js is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    ethereum.js is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file jsonrpc.js
- * @authors:
- *   Marek Kotewicz <marek@ethdev.com>
- * @date 2015
- */
-
-var messageId = 1;
-
-/// Should be called to valid json create payload object
-/// @param method of jsonrpc call, required
-/// @param params, an array of method params, optional
-/// @returns valid jsonrpc payload object
-var toPayload = function (method, params) {
-    if (!method)
-        console.error('jsonrpc method should be specified!');
-
-    return {
-        jsonrpc: '2.0',
-        method: method,
-        params: params || [],
-        id: messageId++
-    }; 
-};
-
-/// Should be called to check if jsonrpc response is valid
-/// @returns true if response is valid, otherwise false 
-var isValidResponse = function (response) {
-    return !!response &&
-        !response.error &&
-        response.jsonrpc === '2.0' &&
-        typeof response.id === 'number' &&
-        response.result !== undefined; // only undefined is not valid json object
-};
-
-/// Should be called to create batch payload object
-/// @param messages, an array of objects with method (required) and params (optional) fields
-var toBatchPayload = function (messages) {
-    return messages.map(function (message) {
-        return toPayload(message.method, message.params);
-    }); 
-};
-
-module.exports = {
-    toPayload: toPayload,
-    isValidResponse: isValidResponse,
-    toBatchPayload: toBatchPayload
-};
-
-
-
-},{}],9:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1024,9 +880,7 @@ module.exports = {
  * @date 2014
  */
 
-var web3 = require('./web3'); 
-var jsonrpc = require('./jsonrpc');
-
+var web3 = require('./web3'); // jshint ignore:line
 
 /**
  * Provider manager object prototype
@@ -1040,38 +894,48 @@ var jsonrpc = require('./jsonrpc');
 var ProviderManager = function() {
     this.polls = [];
     this.provider = undefined;
+    this.id = 1;
 
     var self = this;
     var poll = function () {
-        self.polls.forEach(function (data) {
-            var result = self.send(data.data);
+        if (self.provider) {
+            self.polls.forEach(function (data) {
+                data.data._id = self.id;
+                self.id++;
+                var result = self.provider.send(data.data);
+            
+                result = JSON.parse(result);
+                
+                // dont call the callback if result is not an array, or empty one
+                if (result.error || !(result.result instanceof Array) || result.result.length === 0) {
+                    return;
+                }
 
-            if (!(result instanceof Array) || result.length === 0) {
-                return;
-            }
-
-            data.callback(result);
-        });
-
+                data.callback(result.result);
+            });
+        }
         setTimeout(poll, 1000);
     };
     poll();
 };
 
 /// sends outgoing requests
-/// @params data - an object with at least 'method' property
 ProviderManager.prototype.send = function(data) {
-    var payload = jsonrpc.toPayload(data.method, data.params);
+
+    data.args = data.args || [];
+    data._id = this.id++;
 
     if (this.provider === undefined) {
         console.error('provider is not set');
         return null; 
     }
 
-    var result = this.provider.send(payload);
+    //TODO: handle error here? 
+    var result = this.provider.send(data);
+    result = JSON.parse(result);
 
-    if (!jsonrpc.isValidResponse(result)) {
-        console.log(result);
+    if (result.error) {
+        console.log(result.error);
         return null;
     }
 
@@ -1102,7 +966,7 @@ ProviderManager.prototype.stopPolling = function (pollId) {
 module.exports = ProviderManager;
 
 
-},{"./jsonrpc":8,"./web3":13}],10:[function(require,module,exports){
+},{"./web3":12}],9:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1130,14 +994,13 @@ var QtSyncProvider = function () {
 };
 
 QtSyncProvider.prototype.send = function (payload) {
-    var result = navigator.qt.callMethod(JSON.stringify(payload));
-    return JSON.parse(result);
+    return navigator.qt.callMethod(JSON.stringify(payload));
 };
 
 module.exports = QtSyncProvider;
 
 
-},{}],11:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1218,7 +1081,7 @@ module.exports = {
 };
 
 
-},{"./formatters":6}],12:[function(require,module,exports){
+},{"./formatters":6}],11:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1240,8 +1103,6 @@ module.exports = {
  *   Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
-
-var c = require('./const');
 
 /// Finds first index of array element matching pattern
 /// @param array
@@ -1305,7 +1166,7 @@ var extractDisplayName = function (name) {
 var extractTypeName = function (name) {
     /// TODO: make it invulnerable
     var length = name.indexOf('(');
-    return length !== -1 ? name.substr(length + 1, name.length - 1 - (length + 1)).replace(' ', '') : "";
+    return length !== -1 ? name.substr(length + 1, name.length - 1 - (length + 1)) : "";
 };
 
 /// Filters all function from input abi
@@ -1324,32 +1185,6 @@ var filterEvents = function (json) {
     });
 };
 
-/// used to transform value/string to eth string
-/// TODO: use BigNumber.js to parse int
-/// TODO: add tests for it!
-var toEth = function (str) {
-    var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
-    var unit = 0;
-    var units = c.ETH_UNITS;
-    while (val > 3000 && unit < units.length - 1)
-    {
-        val /= 1000;
-        unit++;
-    }
-    var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
-    var replaceFunction = function($0, $1, $2) {
-        return $1 + ',' + $2;
-    };
-
-    while (true) {
-        var o = s;
-        s = s.replace(/(\d)(\d\d\d[\.\,])/, replaceFunction);
-        if (o === s)
-            break;
-    }
-    return s + ' ' + units[unit];
-};
-
 module.exports = {
     findIndex: findIndex,
     toAscii: toAscii,
@@ -1357,12 +1192,11 @@ module.exports = {
     extractDisplayName: extractDisplayName,
     extractTypeName: extractTypeName,
     filterFunctions: filterFunctions,
-    filterEvents: filterEvents,
-    toEth: toEth
+    filterEvents: filterEvents
 };
 
 
-},{"./const":2}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1393,6 +1227,28 @@ if ("build" !== 'build') {/*
 */}
 
 var utils = require('./utils');
+
+var ETH_UNITS = [ 
+    'wei', 
+    'Kwei', 
+    'Mwei', 
+    'Gwei', 
+    'szabo', 
+    'finney', 
+    'ether', 
+    'grand', 
+    'Mether', 
+    'Gether', 
+    'Tether', 
+    'Pether', 
+    'Eether', 
+    'Zether', 
+    'Yether', 
+    'Nether', 
+    'Dether', 
+    'Vether', 
+    'Uether' 
+];
 
 /// @returns an array of objects describing web3 api methods
 var web3Methods = function () {
@@ -1501,8 +1357,8 @@ var setupMethods = function (obj, methods) {
             var args = Array.prototype.slice.call(arguments);
             var call = typeof method.call === 'function' ? method.call(args) : method.call;
             return web3.provider.send({
-                method: call,
-                params: args
+                call: call,
+                args: args
             });
         };
     });
@@ -1515,15 +1371,15 @@ var setupProperties = function (obj, properties) {
         var proto = {};
         proto.get = function () {
             return web3.provider.send({
-                method: property.getter
+                call: property.getter
             });
         };
 
         if (property.setter) {
             proto.set = function (val) {
                 return web3.provider.send({
-                    method: property.setter,
-                    params: [val]
+                    call: property.setter,
+                    args: [val]
                 });
             };
         }
@@ -1556,7 +1412,29 @@ var web3 = {
     },
 
     /// used to transform value/string to eth string
-    toEth: utils.toEth,
+    /// TODO: use BigNumber.js to parse int
+    toEth: function(str) {
+        var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
+        var unit = 0;
+        var units = ETH_UNITS;
+        while (val > 3000 && unit < units.length - 1)
+        {
+            val /= 1000;
+            unit++;
+        }
+        var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
+        var replaceFunction = function($0, $1, $2) {
+            return $1 + ',' + $2;
+        };
+
+        while (true) {
+            var o = s;
+            s = s.replace(/(\d)(\d\d\d[\.\,])/, replaceFunction);
+            if (o === s)
+                break;
+        }
+        return s + ' ' + units[unit];
+    },
 
     /// eth object prototype
     eth: {
@@ -1592,6 +1470,11 @@ var web3 = {
             return new web3.filter(filter, shhWatch);
         }
     },
+
+    /// @returns true if provider is installed
+    haveProvider: function() {
+        return !!web3.provider.provider;
+    }
 };
 
 /// setups all api methods
@@ -1614,13 +1497,14 @@ var shhWatch = {
 setupMethods(shhWatch, shhWatchMethods());
 
 web3.setProvider = function(provider) {
+    //provider.onmessage = messageHandler; // there will be no async calls, to remove
     web3.provider.set(provider);
 };
 
 module.exports = web3;
 
 
-},{"./utils":12}],"web3":[function(require,module,exports){
+},{"./utils":11}],"web3":[function(require,module,exports){
 var web3 = require('./lib/web3');
 var ProviderManager = require('./lib/providermanager');
 web3.provider = new ProviderManager();
@@ -1633,7 +1517,7 @@ web3.abi = require('./lib/abi');
 
 module.exports = web3;
 
-},{"./lib/abi":1,"./lib/contract":3,"./lib/filter":5,"./lib/httpsync":7,"./lib/providermanager":9,"./lib/qtsync":10,"./lib/web3":13}]},{},["web3"])
+},{"./lib/abi":1,"./lib/contract":3,"./lib/filter":5,"./lib/httpsync":7,"./lib/providermanager":8,"./lib/qtsync":9,"./lib/web3":12}]},{},["web3"])
 
 
 //# sourceMappingURL=ethereum.js.map

@@ -21,7 +21,7 @@
 
 #include <boost/variant/multivisitors.hpp>
 #include <boost/variant.hpp>
-#include <libethcore/CommonJS.h>
+#include <libdevcore/CommonJS.h>
 #include "QBigInt.h"
 
 using namespace dev;

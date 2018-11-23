@@ -28,17 +28,8 @@
 
 namespace dev
 {
-
 namespace eth
 {
-class LogFilter;
-}
-
-namespace eth
-{
-
-/// Simple stream output for the StateDiff.
-std::ostream& operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
 
 class State;
 
@@ -65,17 +56,14 @@ public:
 	LogFilter withEarliest(int _e) { m_earliest = _e; return *this; }
 	LogFilter withLatest(int _e) { m_latest = _e; return *this; }
 
-	friend std::ostream& dev::eth::operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
-
 private:
 	AddressSet m_addresses;
 	std::array<h256Set, 4> m_topics;
 	int m_earliest = 0;
 	int m_latest = -1;
-	unsigned m_max = 10;
-	unsigned m_skip = 0;
+	unsigned m_max;
+	unsigned m_skip;
 };
 
 }
-
 }

@@ -169,7 +169,7 @@ ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
 	if (m_scanner->getCurrentToken() == Token::LPAREN)
 	{
 		m_scanner->next();
-		arguments = parseFunctionCallListArguments();
+		arguments = parseFunctionCallArguments();
 		nodeFactory.markEndPosition();
 		expectToken(Token::RPAREN);
 	}
@@ -332,7 +332,7 @@ ASTPointer<ModifierInvocation> Parser::parseModifierInvocation()
 	if (m_scanner->getCurrentToken() == Token::LPAREN)
 	{
 		m_scanner->next();
-		arguments = parseFunctionCallListArguments();
+		arguments = parseFunctionCallArguments();
 		nodeFactory.markEndPosition();
 		expectToken(Token::RPAREN);
 	}
@@ -592,6 +592,7 @@ ASTPointer<Expression> Parser::parseBinaryExpression(int _minPrecedence)
 	ASTPointer<Expression> expression = parseUnaryExpression();
 	int precedence = Token::precedence(m_scanner->getCurrentToken());
 	for (; precedence >= _minPrecedence; --precedence)
+	{
 		while (Token::precedence(m_scanner->getCurrentToken()) == precedence)
 		{
 			Token::Value op = m_scanner->getCurrentToken();
@@ -600,6 +601,7 @@ ASTPointer<Expression> Parser::parseBinaryExpression(int _minPrecedence)
 			nodeFactory.setEndPositionFromNode(right);
 			expression = nodeFactory.createNode<BinaryOperation>(expression, op, right);
 		}
+	}
 	return expression;
 }
 
@@ -665,12 +667,10 @@ ASTPointer<Expression> Parser::parseLeftHandSideExpression()
 		case Token::LPAREN:
 		{
 			m_scanner->next();
-			vector<ASTPointer<Expression>> arguments;
-			vector<ASTPointer<ASTString>> names;
-			std::tie(arguments, names) = parseFunctionCallArguments();
+			vector<ASTPointer<Expression>> arguments = parseFunctionCallArguments();
 			nodeFactory.markEndPosition();
 			expectToken(Token::RPAREN);
-			expression = nodeFactory.createNode<FunctionCall>(expression, arguments, names);
+			expression = nodeFactory.createNode<FunctionCall>(expression, arguments);
 		}
 		break;
 		default:
@@ -723,7 +723,7 @@ ASTPointer<Expression> Parser::parsePrimaryExpression()
 	return expression;
 }
 
-vector<ASTPointer<Expression>> Parser::parseFunctionCallListArguments()
+vector<ASTPointer<Expression>> Parser::parseFunctionCallArguments()
 {
 	vector<ASTPointer<Expression>> arguments;
 	if (m_scanner->getCurrentToken() != Token::RPAREN)
@@ -736,32 +736,6 @@ vector<ASTPointer<Expression>> Parser::parseFunctionCallListArguments()
 		}
 	}
 	return arguments;
-}
-
-pair<vector<ASTPointer<Expression>>, vector<ASTPointer<ASTString>>> Parser::parseFunctionCallArguments()
-{
-	pair<vector<ASTPointer<Expression>>, vector<ASTPointer<ASTString>>> ret;
-	Token::Value token = m_scanner->getCurrentToken();
-	if (token == Token::LBRACE)
-	{
-		// call({arg1 : 1, arg2 : 2 })
-		expectToken(Token::LBRACE);
-		while (m_scanner->getCurrentToken() != Token::RBRACE)
-		{
-			ret.second.push_back(expectIdentifierToken());
-			expectToken(Token::COLON);
-			ret.first.push_back(parseExpression());
-
-			if (m_scanner->getCurrentToken() == Token::COMMA)
-				expectToken(Token::COMMA);
-			else
-				break;
-		}
-		expectToken(Token::RBRACE);
-	}
-	else
-		ret.first = parseFunctionCallListArguments();
-	return ret;
 }
 
 

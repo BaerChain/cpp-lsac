@@ -4,7 +4,6 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 import QtWebEngine 1.0
-import QtWebEngine.experimental 1.0
 
 Item {
 	signal editorTextChanged
@@ -30,18 +29,6 @@ Item {
 		return currentText;
 	}
 
-	function syncClipboard() {
-		if (Qt.platform.os == "osx") {
-			var text = appContext.clipboard;
-			editorBrowser.runJavaScript("setClipboardBase64(\"" + Qt.btoa(text) + "\")");
-		}
-	}
-
-	Connections {
-		target: appContext
-		onClipboardChanged:	syncClipboard()
-	}
-
 	anchors.top: parent.top
 	id: codeEditorView
 	anchors.fill: parent
@@ -49,7 +36,6 @@ Item {
 		id: editorBrowser
 		url: "qrc:///qml/html/codeeditor.html"
 		anchors.fill: parent
-		experimental.settings.javascriptCanAccessClipboard: true
 		onJavaScriptConsoleMessage:  {
 			console.log("editor: " + sourceID + ":" + lineNumber + ":" + message);
 		}
@@ -61,7 +47,6 @@ Item {
 				setText(currentText, currentMode);
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
-				syncClipboard();
 			}
 		}
 

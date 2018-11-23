@@ -29,6 +29,28 @@ if (process.env.NODE_ENV !== 'build') {
 
 var utils = require('./utils');
 
+var ETH_UNITS = [ 
+    'wei', 
+    'Kwei', 
+    'Mwei', 
+    'Gwei', 
+    'szabo', 
+    'finney', 
+    'ether', 
+    'grand', 
+    'Mether', 
+    'Gether', 
+    'Tether', 
+    'Pether', 
+    'Eether', 
+    'Zether', 
+    'Yether', 
+    'Nether', 
+    'Dether', 
+    'Vether', 
+    'Uether' 
+];
+
 /// @returns an array of objects describing web3 api methods
 var web3Methods = function () {
     return [
@@ -136,8 +158,8 @@ var setupMethods = function (obj, methods) {
             var args = Array.prototype.slice.call(arguments);
             var call = typeof method.call === 'function' ? method.call(args) : method.call;
             return web3.provider.send({
-                method: call,
-                params: args
+                call: call,
+                args: args
             });
         };
     });
@@ -150,15 +172,15 @@ var setupProperties = function (obj, properties) {
         var proto = {};
         proto.get = function () {
             return web3.provider.send({
-                method: property.getter
+                call: property.getter
             });
         };
 
         if (property.setter) {
             proto.set = function (val) {
                 return web3.provider.send({
-                    method: property.setter,
-                    params: [val]
+                    call: property.setter,
+                    args: [val]
                 });
             };
         }
@@ -191,7 +213,29 @@ var web3 = {
     },
 
     /// used to transform value/string to eth string
-    toEth: utils.toEth,
+    /// TODO: use BigNumber.js to parse int
+    toEth: function(str) {
+        var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
+        var unit = 0;
+        var units = ETH_UNITS;
+        while (val > 3000 && unit < units.length - 1)
+        {
+            val /= 1000;
+            unit++;
+        }
+        var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
+        var replaceFunction = function($0, $1, $2) {
+            return $1 + ',' + $2;
+        };
+
+        while (true) {
+            var o = s;
+            s = s.replace(/(\d)(\d\d\d[\.\,])/, replaceFunction);
+            if (o === s)
+                break;
+        }
+        return s + ' ' + units[unit];
+    },
 
     /// eth object prototype
     eth: {
@@ -227,6 +271,11 @@ var web3 = {
             return new web3.filter(filter, shhWatch);
         }
     },
+
+    /// @returns true if provider is installed
+    haveProvider: function() {
+        return !!web3.provider.provider;
+    }
 };
 
 /// setups all api methods
@@ -249,6 +298,7 @@ var shhWatch = {
 setupMethods(shhWatch, shhWatchMethods());
 
 web3.setProvider = function(provider) {
+    //provider.onmessage = messageHandler; // there will be no async calls, to remove
     web3.provider.set(provider);
 };
 

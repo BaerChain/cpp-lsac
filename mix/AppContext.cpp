@@ -27,16 +27,15 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <QWindow>
+#include <QQuickWindow>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "CodeEditorExtensionManager.h"
 #include "Exceptions.h"
-#include "QEther.h"
-#include "QVariableDefinition.h"
-#include "HttpServer.h"
 #include "AppContext.h"
+#include "QEther.h"
+#include "HttpServer.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -50,7 +49,6 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
-	connect(QApplication::clipboard(), &QClipboard::dataChanged, [this] { emit clipboardChanged();});
 }
 
 AppContext::~AppContext()
@@ -84,7 +82,7 @@ void AppContext::load()
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
-	QWindow *window = qobject_cast<QWindow *>(m_applicationEngine->rootObjects().at(0));
+	QQuickWindow *window = qobject_cast<QQuickWindow *>(m_applicationEngine->rootObjects().at(0));
 	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
 	appLoaded();
 }
@@ -105,12 +103,6 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
-}
-
-QString AppContext::clipboard() const
-{
-	QClipboard *clipboard = QApplication::clipboard();
-	return clipboard->text();
 }
 
 void AppContext::toClipboard(QString _text)

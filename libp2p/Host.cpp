@@ -378,8 +378,6 @@ string Host::pocHost()
 
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
 
@@ -411,8 +409,6 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 
 void Host::connect(bi::tcp::endpoint const& _ep)
 {
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
 
@@ -434,8 +430,6 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 
 void Host::connect(std::shared_ptr<Node> const& _n)
 {
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
 	

@@ -118,9 +118,8 @@ function codeStr(stateIndex)
 
 function highlightSelection(index)
 {
-	statesList.positionViewAtRow(index, ListView.Center);
-	statesList.selection.clear();
-	statesList.selection.select(index);
+	statesList.currentIndex = index;
+	statesList.positionViewAtIndex(index, ListView.Center);
 }
 
 function completeCtxInformation(state)

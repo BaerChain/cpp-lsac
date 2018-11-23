@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Account.h"
-#include "CanonBlockChain.h"
+#include "BlockChain.h"
 #include "Client.h"
 #include "Defaults.h"
 #include "Executive.h"
