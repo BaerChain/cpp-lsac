@@ -505,7 +505,7 @@ void FunctionCall::checkTypeRequirements()
 			// check duplicate names
 			for (size_t i = 0; i < m_names.size(); i++) {
 				for (size_t j = i + 1; j < m_names.size(); j++) {
-					if (m_names[i] == m_names[j])
+					if (*m_names[i] == *m_names[j])
 						BOOST_THROW_EXCEPTION(createTypeError("Duplicate named argument."));
 				}
 			}
@@ -592,17 +592,6 @@ void Identifier::checkTypeRequirements()
 void ElementaryTypeNameExpression::checkTypeRequirements()
 {
 	m_type = make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
-}
-
-Literal::Literal(Location const& _location, Token::Value _token,
-				 ASTPointer<ASTString> const& _value,
-				 Token::Value _sub):
-	PrimaryExpression(_location), m_token(_token), m_value(_value)
-{
-	if (Token::isEtherSubdenomination(_sub))
-		m_subDenomination = static_cast<Literal::SubDenomination>(_sub);
-	else
-		m_subDenomination = Literal::SubDenomination::None;
 }
 
 void Literal::checkTypeRequirements()

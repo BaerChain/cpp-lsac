@@ -55,6 +55,15 @@ Rectangle {
 		onCompilationComplete: update(null, false);
 	}
 
+	Settings {
+		id: splitSettings
+		property alias transactionLogHeight: transactionLog.height
+		property alias callStackHeight: callStack.height
+		property alias storageHeightSettings: storageRect.height
+		property alias memoryDumpHeightSettings: memoryRect.height
+		property alias callDataHeightSettings: callDataRect.height
+	}
+
 	Rectangle
 	{
 		visible: false;
@@ -104,36 +113,46 @@ Rectangle {
 		}
 	}
 
-	Flickable {
-		property int firstColumnWidth: 180
-		property int secondColumnWidth: 250
+	ScrollView {
 		id: debugScrollArea
-		flickableDirection: Flickable.VerticalFlick
 		anchors.fill: parent
-		contentHeight: 4000
-		contentWidth: parent.width
-		Rectangle
+
+		SplitView
 		{
-			color: "transparent"
-			anchors.fill: parent
-			ColumnLayout
-			{
-				property int sideMargin: 10
-				id: machineStates
-				anchors.top: parent.top
-				anchors.topMargin: 15
-				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin
-				anchors.right: parent.right;
-				anchors.rightMargin: machineStates.sideMargin
-				anchors.fill: parent
+			property int sideMargin: 10
+			id: machineStates
+			anchors.top: parent.top
+			anchors.topMargin: 15
+			anchors.left: parent.left;
+			anchors.leftMargin: machineStates.sideMargin
+			width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
+			orientation: Qt.Vertical
+			handleDelegate: Rectangle {
+				height: machineStates.sideMargin
+				color: "transparent"
+			}
+
+			function updateHeight() {
+				machineStates.height = transactionLog.childrenRect.height + buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
+						callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
+			}
+
+			Component.onCompleted: updateHeight();
+
+
+			TransactionLog {
+				id: transactionLog
+				Layout.fillWidth: true
+				Layout.minimumHeight: 60
+				height: 250
+			}
+
+			ColumnLayout {
+
 				Layout.fillWidth: true
 				Layout.fillHeight: true
-
-				TransactionLog {
-					Layout.fillWidth: true
-					height: 250
-				}
+				id: statesLayout
+				spacing: machineStates.sideMargin
 
 				RowLayout {
 					// step button + slider
@@ -142,11 +161,11 @@ Rectangle {
 					height: 27
 					Layout.fillWidth: true
 
-					Rectangle
-					{
+					Rectangle {
 						height: parent.height
 						color: "transparent"
-						width: debugScrollArea.firstColumnWidth
+						Layout.minimumWidth: stateListContainer.width
+						Layout.maximumWidth: stateListContainer.width
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
@@ -255,83 +274,101 @@ Rectangle {
 					}
 				}
 
-				RowLayout {
+				Rectangle {
 					// Assembly code
 					id: assemblyCodeRow
 					Layout.fillWidth: true
 					height: 405
 					implicitHeight: 405
-					spacing: machineStates.sideMargin
+					color: "transparent"
 
 					Rectangle
 					{
 						id: stateListContainer
-						width: debugScrollArea.firstColumnWidth
+						anchors.top : parent.top
+						anchors.bottom: parent.bottom
+						anchors.left: parent.left
+						width: parent.width * 0.4
 						height: parent.height
 						border.width: 3
 						border.color: "#deddd9"
 						color: "white"
-						anchors.top: parent.top
-						ListView {
+						TableView {
+							id: statesList
 							anchors.fill: parent
 							anchors.leftMargin: 3
 							anchors.rightMargin: 3
 							anchors.topMargin: 3
 							anchors.bottomMargin: 3
 							clip: true
-							id: statesList
-							delegate: renderDelegate
-							highlight: highlightBar
-							//highlightFollowsCurrentItem: false
+							headerDelegate: null
+							itemDelegate: renderDelegate
 							model: ListModel {}
+							TableViewColumn {
+								role: "line"
+								width: parent.width - 10
+							}
+
 						}
 
 						Component {
 							id: highlightBar
 							Rectangle {
 								radius: 4
-								height: statesList.currentItem.height
-								width: statesList.currentItem.width;
+								anchors.fill: parent
 								y: statesList.currentItem.y
 								color: "#4A90E2"
-								//Behavior on y {
-								//	 PropertyAnimation { properties: "y"; easing.type: Easing.InOutQuad; duration: 50}
-								//}
 							}
 						}
 
 						Component {
 							id: renderDelegate
+							Item {
+
+							Rectangle {
+								radius: 4
+								anchors.fill: parent
+								color: "#4A90E2"
+								visible: styleData.selected;
+							}
+
 							RowLayout {
 								id: wrapperItem
 								height: 20
-								width: parent.width
+								//width: parent.width
+								anchors.fill: parent
 								spacing: 5
+
+
 								Text {
 									anchors.left: parent.left
 									anchors.leftMargin: 10
 									width: 15
 									color: "#b2b3ae"
-									text: line.split(' ')[0]
+									text: styleData.value.split(' ')[0]
 									font.family: "monospace"
 									font.pointSize: 9
-									id: id
 									wrapMode: Text.NoWrap
+									id: id
 								}
 								Text {
+									anchors.left: id.right;
 									wrapMode: Text.NoWrap
-									color: parent.ListView.isCurrentItem ? "white" : "black"
+									color: styleData.selected ? "white" : "black"
 									font.family: "monospace"
-									text: line.replace(line.split(' ')[0], '')
-									anchors.left: id.right
+									text: styleData.value.replace(styleData.value.split(' ')[0], '')
 									font.pointSize: 9
 								}
+							}
 							}
 						}
 					}
 
 					Rectangle {
-						Layout.fillWidth: true
+						width: parent.width * 0.6 - machineStates.sideMargin
+						anchors.top : parent.top
+						anchors.bottom: parent.bottom
+						anchors.right: parent.right
 						height: parent.height //- 2 * stateListContainer.border.width
 						color: "transparent"
 						ColumnLayout
@@ -434,17 +471,7 @@ Rectangle {
 					id: splitInfoList
 					Layout.fillHeight: true
 					Layout.fillWidth: true
-
-					Settings {
-						id: splitSettings
-						property alias storageHeightSettings: storageRect.height
-						property alias memoryDumpHeightSettings: memoryRect.height
-						property alias callDataHeightSettings: callDataRect.height
-					}
-
 					orientation: Qt.Vertical
-					width: debugPanel.width - 2 * machineStates.sideMargin
-
 
 					Rectangle
 					{
@@ -454,6 +481,7 @@ Rectangle {
 						width: parent.width
 						Layout.minimumHeight: 120
 						Layout.maximumHeight: 400
+						onHeightChanged: machineStates.updateHeight();
 						CallStack {
 							anchors.fill: parent
 							id: callStack
@@ -461,15 +489,14 @@ Rectangle {
 						}
 					}
 
-
 					Rectangle
 					{
 						id: storageRect
 						color: "transparent"
 						width: parent.width
 						Layout.minimumHeight: 25
-						Layout.maximumHeight: 223
-						height: 25
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
 						DebugInfoList
 						{
 							id: storage
@@ -493,7 +520,6 @@ Rectangle {
 										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Layout.minimumHeight: parent.height
-										Layout.maximumHeight: parent.height
 										Text {
 											anchors.verticalCenter: parent.verticalCenter
 											anchors.left: parent.left
@@ -514,7 +540,6 @@ Rectangle {
 										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Layout.minimumHeight: parent.height
-										Layout.maximumHeight: parent.height
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
@@ -545,10 +570,10 @@ Rectangle {
 					{
 						id: memoryRect;
 						color: "transparent"
-						height: 25
 						width: parent.width
 						Layout.minimumHeight: 25
-						Layout.maximumHeight: 223
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
 						DebugInfoList {
 							id: memoryDump
 							anchors.fill: parent
@@ -567,10 +592,10 @@ Rectangle {
 					{
 						id: callDataRect
 						color: "transparent"
-						height: 25
 						width: parent.width
 						Layout.minimumHeight: 25
-						Layout.maximumHeight: 223
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
 						DebugInfoList {
 							id: callDataDump
 							anchors.fill: parent
@@ -586,8 +611,9 @@ Rectangle {
 					}
 					Rectangle
 					{
+						id: bottomRect;
 						width: parent.width
-						Layout.minimumHeight: 25
+						Layout.minimumHeight: 20
 						color: "transparent"
 					}
 				}
