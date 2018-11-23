@@ -195,6 +195,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	{
 		//@todo struct construction
 		solAssert(_functionCall.getArguments().size() == 1, "");
+		solAssert(_functionCall.getNames().empty(), "");
 		Expression const& firstArgument = *_functionCall.getArguments().front();
 		firstArgument.accept(*this);
 		appendTypeConversion(*firstArgument.getType(), *_functionCall.getType());
@@ -202,8 +203,27 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	else
 	{
 		FunctionType const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType());
-		vector<ASTPointer<Expression const>> arguments = _functionCall.getArguments();
-		solAssert(arguments.size() == function.getParameterTypes().size(), "");
+		TypePointers const& parameterTypes = function.getParameterTypes();
+		vector<ASTPointer<Expression const>> const& callArguments = _functionCall.getArguments();
+		vector<ASTPointer<ASTString>> const& callArgumentNames = _functionCall.getNames();
+		if (function.getLocation() != Location::SHA3)
+			solAssert(callArguments.size() == parameterTypes.size(), "");
+
+		vector<ASTPointer<Expression const>> arguments;
+		if (callArgumentNames.empty())
+			// normal arguments
+			arguments = callArguments;
+		else
+			// named arguments
+			for (auto const& parameterName: function.getParameterNames())
+			{
+				bool found = false;
+				for (size_t j = 0; j < callArgumentNames.size() && !found; j++)
+					if ((found = (parameterName == *callArgumentNames[j])))
+						// we found the actual parameter position
+						arguments.push_back(callArguments[j]);
+				solAssert(found, "");
+			}
 
 		switch (function.getLocation())
 		{
@@ -255,7 +275,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << u256(0) << eth::Instruction::CODECOPY;
 
 			unsigned length = bytecode.size();
-			length += appendArgumentCopyToMemory(function.getParameterTypes(), arguments, length);
+			length += appendArgumentsCopyToMemory(arguments, function.getParameterTypes(), length);
 			// size, offset, endowment
 			m_context << u256(length) << u256(0);
 			if (function.valueSet())
@@ -306,9 +326,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << eth::Instruction::SUICIDE;
 			break;
 		case Location::SHA3:
-			appendExpressionCopyToMemory(*function.getParameterTypes().front(), *arguments.front());
-			m_context << u256(32) << u256(0) << eth::Instruction::SHA3;
+		{
+			unsigned length = appendArgumentsCopyToMemory(arguments);
+			m_context << u256(length) << u256(0) << eth::Instruction::SHA3;
 			break;
+		}
 		case Location::LOG0:
 		case Location::LOG1:
 		case Location::LOG2:
@@ -778,7 +800,7 @@ void ExpressionCompiler::appendExternalFunctionCall(FunctionType const& _functio
 
 	// reserve space for the function identifier
 	unsigned dataOffset = bare ? 0 : CompilerUtils::dataStartOffset;
-	dataOffset += appendArgumentCopyToMemory(_functionType.getParameterTypes(), _arguments, dataOffset);
+	dataOffset += appendArgumentsCopyToMemory(_arguments, _functionType.getParameterTypes(), dataOffset);
 
 	//@todo only return the first return value for now
 	Type const* firstType = _functionType.getReturnParameterTypes().empty() ? nullptr :
@@ -814,28 +836,44 @@ void ExpressionCompiler::appendExternalFunctionCall(FunctionType const& _functio
 	}
 }
 
-unsigned ExpressionCompiler::appendArgumentCopyToMemory(TypePointers const& _types,
-														vector<ASTPointer<Expression const>> const& _arguments,
-														unsigned _memoryOffset)
+unsigned ExpressionCompiler::appendArgumentsCopyToMemory(vector<ASTPointer<Expression const>> const& _arguments,
+														 TypePointers const& _types,
+														 unsigned _memoryOffset)
 {
 	unsigned length = 0;
+	if (!_types.empty())
+	{
+		for (unsigned i = 0; i < _arguments.size(); ++i)
+			length += appendExpressionCopyToMemory(*_types[i], *_arguments[i], _memoryOffset + length);
+		return length;
+	}
+
+	// without type conversion
 	for (unsigned i = 0; i < _arguments.size(); ++i)
-		length += appendExpressionCopyToMemory(*_types[i], *_arguments[i], _memoryOffset + length);
+	{
+		_arguments[i]->accept(*this);
+		length += moveTypeToMemory(*_arguments[i]->getType()->getRealType(), _arguments[i]->getLocation(), _memoryOffset + length);
+	}
 	return length;
+}
+
+unsigned ExpressionCompiler::moveTypeToMemory(Type const& _type, Location const& _location, unsigned _memoryOffset)
+{
+	unsigned const c_numBytes = CompilerUtils::getPaddedSize(_type.getCalldataEncodedSize());
+	if (c_numBytes == 0 || c_numBytes > 32)
+		BOOST_THROW_EXCEPTION(CompilerError()
+							  << errinfo_sourceLocation(_location)
+							  << errinfo_comment("Type " + _type.toString() + " not yet supported."));
+	bool const c_leftAligned = _type.getCategory() == Type::Category::STRING;
+	bool const c_padToWords = true;
+	return CompilerUtils(m_context).storeInMemory(_memoryOffset, c_numBytes, c_leftAligned, c_padToWords);
 }
 
 unsigned ExpressionCompiler::appendTypeConversionAndMoveToMemory(Type const& _expectedType, Type const& _type,
 																 Location const& _location, unsigned _memoryOffset)
 {
 	appendTypeConversion(_type, _expectedType, true);
-	unsigned const c_numBytes = CompilerUtils::getPaddedSize(_expectedType.getCalldataEncodedSize());
-	if (c_numBytes == 0 || c_numBytes > 32)
-		BOOST_THROW_EXCEPTION(CompilerError()
-							  << errinfo_sourceLocation(_location)
-							  << errinfo_comment("Type " + _expectedType.toString() + " not yet supported."));
-	bool const c_leftAligned = _expectedType.getCategory() == Type::Category::STRING;
-	bool const c_padToWords = true;
-	return CompilerUtils(m_context).storeInMemory(_memoryOffset, c_numBytes, c_leftAligned, c_padToWords);
+	return moveTypeToMemory(_expectedType, _location, _memoryOffset);
 }
 
 unsigned ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,

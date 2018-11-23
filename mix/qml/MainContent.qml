@@ -59,8 +59,7 @@ Rectangle {
 	}
 
 	function hideRightView() {
-		if (rightView.visible)
-			rightView.hide();
+		rightView.visible = false;
 	}
 
 	function toggleWebPreview() {
@@ -145,8 +144,8 @@ Rectangle {
 
 				ProjectList	{
 					id: projectList
-					width: 350
-					Layout.minimumWidth: 250
+					width: 200
+					Layout.minimumWidth: 180
 					Layout.fillHeight: true
 				}
 				Rectangle {
