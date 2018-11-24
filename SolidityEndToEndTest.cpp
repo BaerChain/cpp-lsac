@@ -959,6 +959,24 @@ BOOST_AUTO_TEST_CASE(complex_accessors)
 	BOOST_CHECK(callContractFunction("to_multiple_map(uint256,uint256)", 42, 23) == encodeArgs(31));
 }
 
+BOOST_AUTO_TEST_CASE(struct_accessor)
+{
+	char const* sourceCode = R"(
+		contract test {
+			struct Data { uint a; uint8 b; mapping(uint => uint) c; bool d; }
+			mapping(uint => Data) public data;
+			function test() {
+				data[7].a = 1;
+				data[7].b = 2;
+				data[7].c[0] = 3;
+				data[7].d = true;
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("data(uint256)", 7) == encodeArgs(1, 2, true));
+}
+
 BOOST_AUTO_TEST_CASE(balance)
 {
 	char const* sourceCode = "contract test {\n"
@@ -2093,25 +2111,6 @@ BOOST_AUTO_TEST_CASE(event_lots_of_data)
 	BOOST_CHECK(m_logs[0].data == encodeArgs(m_sender, id, value, true));
 	BOOST_REQUIRE_EQUAL(m_logs[0].topics.size(), 1);
 	BOOST_CHECK_EQUAL(m_logs[0].topics[0], dev::sha3(string("Deposit(address,hash256,uint256,bool)")));
-}
-
-BOOST_AUTO_TEST_CASE(sha3_multiple_arguments)
-{
-	char const* sourceCode = R"(
-		contract c {
-			// function foo(uint a) returns (hash d)
-			function foo(uint a, uint b, uint c) returns (hash d)
-			{
-				d = sha3(a, b, c);
-			}
-		})";
-	compileAndRun(sourceCode);
-
-	BOOST_CHECK(callContractFunction("foo(uint256,uint256,uint256)", 10, 12, 13) == encodeArgs(
-					dev::sha3(
-						toBigEndian(u256(10)) +
-						toBigEndian(u256(12)) +
-						toBigEndian(u256(13)))));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
