@@ -1,6 +1,4 @@
-
 #pragma once
-
 #include "CompilerHelper.h"
 #include "Instruction.h"
 
@@ -50,7 +48,7 @@ public:
 private:
 	/// Cumulative gas cost of a block of instructions
 	/// @TODO Handle overflow
-	uint64_t m_blockCost = 0;
+	int64_t m_blockCost = 0;
 
 	llvm::CallInst* m_checkCall = nullptr;
 	llvm::Function* m_gasCheckFunc = nullptr;

@@ -1,7 +1,5 @@
 #pragma once
-
-#include "Utils.h"
-
+#include "Common.h"
 
 namespace dev
 {
@@ -50,6 +48,7 @@ struct RuntimeData
 	int64_t 	timestamp = 0;
 	byte const* code = nullptr;
 	uint64_t 	codeSize = 0;
+	i256		codeHash;
 };
 
 /// VM Environment (ExtVM) opaque type
