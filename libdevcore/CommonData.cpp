@@ -96,7 +96,6 @@ bytes dev::fromHex(std::string const& _s)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information(); 
 #endif
-			throw;
 		}
 	for (unsigned i = s; i < _s.size(); i += 2)
 		try
@@ -108,7 +107,6 @@ bytes dev::fromHex(std::string const& _s)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information();
 #endif
-			throw;
 		}
 	return ret;
 }
