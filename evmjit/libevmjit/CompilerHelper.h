@@ -1,8 +1,7 @@
+
 #pragma once
 
-#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IRBuilder.h>
-#include "preprocessor/llvm_includes_end.h"
 
 
 namespace dev
@@ -20,7 +19,7 @@ protected:
 	CompilerHelper(llvm::IRBuilder<>& _builder);
 
 	CompilerHelper(const CompilerHelper&) = delete;
-	CompilerHelper& operator=(CompilerHelper) = delete;
+	void operator=(CompilerHelper) = delete;
 
 	/// Reference to the IR module being compiled
 	llvm::Module* getModule();

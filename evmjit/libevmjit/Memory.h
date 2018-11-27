@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CompilerHelper.h"
 
 namespace dev
@@ -30,16 +31,13 @@ private:
 	GasMeter& m_gasMeter;
 
 	llvm::Function* createFunc(bool _isStore, llvm::Type* _type, GasMeter& _gasMeter);
+	llvm::Function* createRequireFunc(GasMeter& _gasMeter);
 
-	llvm::Function* getRequireFunc();
-	llvm::Function* getLoadWordFunc();
-	llvm::Function* getStoreWordFunc();
-	llvm::Function* getStoreByteFunc();
-
-	llvm::Function* m_require = nullptr;
-	llvm::Function* m_loadWord = nullptr;
-	llvm::Function* m_storeWord = nullptr;
-	llvm::Function* m_storeByte = nullptr;
+	llvm::Function* m_resize;
+	llvm::Function* m_require;
+	llvm::Function* m_loadWord;
+	llvm::Function* m_storeWord;
+	llvm::Function* m_storeByte;
 };
 
 }

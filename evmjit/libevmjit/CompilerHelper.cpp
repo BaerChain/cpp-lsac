@@ -1,6 +1,10 @@
+
 #include "CompilerHelper.h"
-#include "RuntimeManager.h"
+
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
+
+#include "RuntimeManager.h"
 
 namespace dev
 {

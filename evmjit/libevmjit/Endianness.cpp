@@ -1,9 +1,9 @@
-#include "Endianness.h"
-#include "Type.h"
 
-#include "preprocessor/llvm_includes_start.h"
+#include "Endianness.h"
+
 #include <llvm/IR/IntrinsicInst.h>
-#include "preprocessor/llvm_includes_end.h"
+
+#include "Type.h"
 
 namespace dev
 {

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Common.h"
 
 namespace llvm
@@ -160,11 +161,11 @@ enum class Instruction: uint8_t
 /// Reads PUSH data from pointed fragment of bytecode and constructs number out of it
 /// Reading out of bytecode means reading 0
 /// @param _curr is updated and points the last real byte read
-llvm::APInt readPushData(code_iterator& _curr, code_iterator _end);
+llvm::APInt readPushData(bytes::const_iterator& _curr, bytes::const_iterator _end);
 
 /// Skips PUSH data in pointed fragment of bytecode.
 /// @param _curr is updated and points the last real byte skipped
-void skipPushData(code_iterator& _curr, code_iterator _end);
+void skipPushData(bytes::const_iterator& _curr, bytes::const_iterator _end);
 
 #define ANY_PUSH	  PUSH1:  \
 	case Instruction::PUSH2:  \
