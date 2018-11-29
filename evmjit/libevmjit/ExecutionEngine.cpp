@@ -1,25 +1,24 @@
 #include "ExecutionEngine.h"
 
-#include <array>
+#include <chrono>
 #include <cstdlib>	// env options
-#include <iostream>
 
-#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
+#pragma warning(push)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
+#pragma warning(pop)
+#pragma GCC diagnostic pop
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
-#include "preprocessor/llvm_includes_end.h"
 
 #include "Runtime.h"
 #include "Compiler.h"
 #include "Cache.h"
-#include "ExecStats.h"
-#include "Utils.h"
-#include "BuildInfo.gen.h"
 
 namespace dev
 {
@@ -32,20 +31,34 @@ namespace
 {
 using EntryFuncPtr = ReturnCode(*)(Runtime*);
 
-std::string codeHash(i256 const& _hash)
+ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
 {
-	static const auto size = sizeof(_hash);
-	static const auto hexChars = "0123456789abcdef";
-	std::string str;
-	str.resize(size * 2);
-	auto outIt = str.rbegin(); // reverse for BE
-	auto& arr = *(std::array<byte, size>*)&_hash;
-	for (auto b : arr)
+	// That function uses long jumps to handle "execeptions".
+	// Do not create any non-POD objects here
+
+	ReturnCode returnCode{};
+	auto sj = setjmp(_runtime->getJmpBuf());
+	if (sj == 0)
+		returnCode = _mainFunc(_runtime);
+	else
+		returnCode = static_cast<ReturnCode>(sj);
+
+	return returnCode;
+}
+
+std::string codeHash(bytes const& _code)
+{
+	uint32_t hash = 0;
+	for (auto b : _code)
 	{
-		*(outIt++) = hexChars[b & 0xf];
-		*(outIt++) = hexChars[b >> 4];
+		hash += b;
+		hash += (hash << 10);
+		hash ^= (hash >> 6);
 	}
-	return str;
+	hash += (hash << 3);
+	hash ^= (hash >> 11);
+	hash += (hash << 15);
+	return std::to_string(hash);
 }
 
 bool getEnvOption(char const* _name, bool _default)
@@ -56,94 +69,82 @@ bool getEnvOption(char const* _name, bool _default)
 	return std::strtol(var, nullptr, 10) != 0;
 }
 
-bool showInfo()
-{
-	auto show = getEnvOption("EVMJIT_INFO", false);
-	if (show)
-	{
-		std::cout << "The Ethereum EVM JIT " EVMJIT_VERSION_FULL " LLVM " LLVM_VERSION << std::endl;
-	}
-	return show;
 }
 
-}
-
-ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
+ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _env)
 {
+	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
 	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
 	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
-	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
-	static auto infoShown = showInfo();
-	(void) infoShown;
 
-	std::unique_ptr<ExecStats> listener{new ExecStats};
-	listener->stateChanged(ExecState::Started);
-
-	auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
-
-	static std::unique_ptr<llvm::ExecutionEngine> ee;
-	if (!ee)
-	{
-		llvm::InitializeNativeTarget();
-		llvm::InitializeNativeTargetAsmPrinter();
-
-		auto module = std::unique_ptr<llvm::Module>(new llvm::Module({}, llvm::getGlobalContext()));
-		llvm::EngineBuilder builder(module.get());
-		builder.setEngineKind(llvm::EngineKind::JIT);
-		builder.setUseMCJIT(true);
-		builder.setOptLevel(llvm::CodeGenOpt::None);
-
-		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
-		if (triple.getOS() == llvm::Triple::OSType::Win32)
-			triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
-		module->setTargetTriple(triple.str());
-
-		ee.reset(builder.create());
-		if (!CHECK(ee))
-			return ReturnCode::LLVMConfigError;
-		module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
-		ee->setObjectCache(objectCache);
-	}
-
-	static StatsCollector statsCollector;
-
-	auto mainFuncName = codeHash(_data->codeHash);
+	auto mainFuncName = codeHash(_code);
+	EntryFuncPtr entryFuncPtr{};
 	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
-	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
-	if (!entryFuncPtr)
+	if (ee && (entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName)))
 	{
-		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
+	}
+	else
+	{
+		auto objectCache = objectCacheEnabled ? Cache::getObjectCache() : nullptr;
+		std::unique_ptr<llvm::Module> module;
+		if (objectCache)
+			module = Cache::getObject(mainFuncName);
 		if (!module)
-		{
-			listener->stateChanged(ExecState::Compilation);
-			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler({}).compile(_data->code, _data->code + _data->codeSize, mainFuncName);
-		}
+			module = Compiler({}).compile(_code, mainFuncName);
 		if (debugDumpModule)
 			module->dump();
+		if (!ee)
+		{
+			llvm::InitializeNativeTarget();
+			llvm::InitializeNativeTargetAsmPrinter();
 
-		ee->addModule(module.get());
-		module.release();
-		listener->stateChanged(ExecState::CodeGen);
-		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+			llvm::EngineBuilder builder(module.get());
+			builder.setEngineKind(llvm::EngineKind::JIT);
+			builder.setUseMCJIT(true);
+			std::unique_ptr<llvm::SectionMemoryManager> memoryManager(new llvm::SectionMemoryManager);
+			builder.setMCJITMemoryManager(memoryManager.get());
+			builder.setOptLevel(llvm::CodeGenOpt::None);
+
+			auto triple = llvm::Triple(llvm::sys::getProcessTriple());
+			if (triple.getOS() == llvm::Triple::OSType::Win32)
+				triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
+			module->setTargetTriple(triple.str());
+
+			ee.reset(builder.create());
+			if (!ee)
+				return ReturnCode::LLVMConfigError;
+
+			module.release();         // Successfully created llvm::ExecutionEngine takes ownership of the module
+			memoryManager.release();  // and memory manager
+
+			if (objectCache)
+				ee->setObjectCache(objectCache);
+			entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+		}
+		else
+		{
+			if (!entryFuncPtr)
+			{
+				ee->addModule(module.get());
+				module.release();
+				entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+			}
+		}
 	}
-	if (!CHECK(entryFuncPtr))
-		return ReturnCode::LLVMLinkError;
+	assert(entryFuncPtr);
 
-	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&runtime);
-	listener->stateChanged(ExecState::Return);
+	auto executionStartTime = std::chrono::high_resolution_clock::now();
 
+	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
 	if (returnCode == ReturnCode::Return)
 	{
 		returnData = runtime.getReturnData();     // Save reference to return data
 		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
 	}
-	listener->stateChanged(ExecState::Finished);
 
-	if (statsCollectingEnabled)
-		statsCollector.stats.push_back(std::move(listener));
+	auto executionEndTime = std::chrono::high_resolution_clock::now();
+	clog(JIT) << " + " << std::chrono::duration_cast<std::chrono::milliseconds>(executionEndTime - executionStartTime).count() << " ms\n";
 
 	return returnCode;
 }

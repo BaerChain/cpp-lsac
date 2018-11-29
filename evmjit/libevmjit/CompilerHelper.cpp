@@ -1,8 +1,8 @@
+
 #include "CompilerHelper.h"
 
-#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
-#include "preprocessor/llvm_includes_end.h"
 
 #include "RuntimeManager.h"
 

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <memory>
-
+#include <unordered_map>
 #include <llvm/ExecutionEngine/ObjectCache.h>
+
 
 namespace dev
 {
@@ -10,7 +11,6 @@ namespace eth
 {
 namespace jit
 {
-class ExecutionEngineListener;
 
 class ObjectCache : public llvm::ObjectCache
 {
@@ -23,13 +23,16 @@ public:
 	/// not available. The caller owns both the MemoryBuffer returned by this
 	/// and the memory it references.
 	virtual llvm::MemoryBuffer* getObject(llvm::Module const* _module) final override;
+
+private:
+	std::unordered_map<std::string, std::unique_ptr<llvm::MemoryBuffer>> m_map;
 };
 
 
 class Cache
 {
 public:
-	static ObjectCache* getObjectCache(ExecutionEngineListener* _listener);
+	static ObjectCache* getObjectCache();
 	static std::unique_ptr<llvm::Module> getObject(std::string const& id);
 };
 

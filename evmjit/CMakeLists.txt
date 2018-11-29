@@ -3,14 +3,13 @@ cmake_minimum_required(VERSION 2.8.12)
 project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_AUTOMOC OFF)
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-unknown-pragmas")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	# Do not allow unresovled symbols in shared library (default on linux)
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()

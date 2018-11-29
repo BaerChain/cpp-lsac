@@ -1,7 +1,6 @@
 #pragma once
-
 #include <vector>
-
+#include <llvm/IR/BasicBlock.h>
 #include "Common.h"
 #include "Stack.h"
 
@@ -12,7 +11,7 @@ namespace eth
 namespace jit
 {
 
-using instr_idx = uint64_t;
+using ProgramCounter = uint64_t; // TODO: Rename
 
 class BasicBlock
 {
@@ -51,7 +50,10 @@ public:
 		BasicBlock& m_bblock;
 	};
 
-	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
+	/// Basic block name prefix. The rest is instruction index.
+	static const char* NamePrefix;
+
+	explicit BasicBlock(bytes::const_iterator _begin, bytes::const_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 
 	BasicBlock(const BasicBlock&) = delete;
@@ -59,9 +61,8 @@ public:
 
 	llvm::BasicBlock* llvm() { return m_llvmBB; }
 
-	instr_idx firstInstrIdx() const { return m_firstInstrIdx; }
-	code_iterator begin() const { return m_begin; }
-	code_iterator end() const { return m_end; }
+	bytes::const_iterator begin() { return m_begin; }
+	bytes::const_iterator end() { return m_end; }
 
 	bool isJumpDest() const { return m_isJumpDest; }
 
@@ -83,9 +84,8 @@ public:
 	void dump(std::ostream& os, bool _dotOutput = false);
 
 private:
-	instr_idx const m_firstInstrIdx = 0; 	///< Code index of first instruction in the block
-	code_iterator const m_begin = {};			///< Iterator pointing code beginning of the block
-	code_iterator const m_end = {};				///< Iterator pointing code end of the block
+	bytes::const_iterator const m_begin;
+	bytes::const_iterator const m_end;
 
 	llvm::BasicBlock* const m_llvmBB;
 
