@@ -9,15 +9,15 @@ import "."
 
 Window {
 	id: modalTransactionDialog
-	modality: Qt.ApplicationModal
+	modality: Qt.WindowModal
 	width: 450
-	height: (paramsModel.count > 0 ? 500 : 300)
+	height: (paramsModel.count > 0 ? 550 : 300)
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
-	title: qsTr("Edit Transaction")
+	title: qsTr("Transaction Edition")
 	property int transactionIndex
 	property alias transactionParams: paramsModel;
-	property alias gas: gasValueEdit.gasValue;
+	property alias gas: gasField.value;
 	property alias gasPrice: gasPriceField.value;
 	property alias transactionValue: valueField.value;
 	property alias functionId: functionComboBox.currentText;
@@ -36,7 +36,7 @@ Window {
 		rowGasPrice.visible = !useTransactionDefaultValue;
 
 		transactionIndex = index;
-		gasValueEdit.gasValue = item.gas;
+		gasField.value = item.gas;
 		gasPriceField.value = item.gasPrice;
 		valueField.value = item.value;
 		var functionId = item.functionId;
@@ -170,27 +170,32 @@ Window {
 		return item;
 	}
 
-	ColumnLayout {
-		anchors.fill: parent
-		anchors.margins: 10
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
 
-		SourceSansProLight
-		{
-			id: lightFont
-		}
+	Rectangle {
+		anchors.fill: parent
+		anchors.left: parent.left
+		anchors.right: parent.right
+		anchors.top: parent.top
+		anchors.margins: 10
+		color: StateDialogStyle.generic.backgroundColor
 
 		ColumnLayout {
 			id: dialogContent
-			anchors.top: parent.top
-			spacing: 10
+			spacing: 30
 			RowLayout
 			{
 				id: rowFunction
 				Layout.fillWidth: true
 				height: 150
-				DefaultLabel {
+				Label {
 					Layout.preferredWidth: 75
 					text: qsTr("Function")
+					font.family: regularFont.name
+					color: "#808080"
 				}
 				ComboBox {
 					id: functionComboBox
@@ -205,24 +210,22 @@ Window {
 						loadParameters();
 					}
 					style: ComboBoxStyle {
-						font: lightFont.name
+						font: regularFont.name
 					}
 				}
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
 
 			RowLayout
 			{
 				id: rowValue
 				Layout.fillWidth: true
 				height: 150
-				DefaultLabel {
+				Label {
 					Layout.preferredWidth: 75
 					text: qsTr("Value")
+					font.family: regularFont.name
+					color: "#808080"
 				}
 				Ether {
 					id: valueField
@@ -231,34 +234,23 @@ Window {
 				}
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
 
 			RowLayout
 			{
 				id: rowGas
 				Layout.fillWidth: true
 				height: 150
-				DefaultLabel {
+				Label {
 					Layout.preferredWidth: 75
 					text: qsTr("Gas")
+					font.family: regularFont.name
+					color: "#808080"
 				}
-
-				DefaultTextField
-				{
-					property variant gasValue
-					onGasValueChanged: text = gasValue.value();
-					onTextChanged: gasValue.setValue(text);
-					implicitWidth: 200
-					id: gasValueEdit;
+				Ether {
+					id: gasField
+					edit: true
+					displayFormattedValue: true
 				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
 			}
 
 			RowLayout
@@ -266,9 +258,11 @@ Window {
 				id: rowGasPrice
 				Layout.fillWidth: true
 				height: 150
-				DefaultLabel {
+				Label {
 					Layout.preferredWidth: 75
 					text: qsTr("Gas Price")
+					font.family: regularFont.name
+					color: "#808080"
 				}
 				Ether {
 					id: gasPriceField
@@ -277,62 +271,59 @@ Window {
 				}
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			DefaultLabel {
-				id: paramLabel
-				text: qsTr("Parameters:")
+			Label {
+				text: qsTr("Parameters")
 				Layout.preferredWidth: 75
+				font.family: regularFont.name
+				color: "#808080"
 				visible: paramsModel.count > 0
 			}
 
 			ScrollView
 			{
-				anchors.top: paramLabel.bottom
-				anchors.topMargin: 10
-				Layout.preferredWidth: 350
-				Layout.fillHeight: true
+				Layout.fillWidth: true
 				visible: paramsModel.count > 0
-				Column
+				ColumnLayout
 				{
 					id: paramRepeater
 					Layout.fillWidth: true
-					Layout.fillHeight: true
-					spacing: 3
+					spacing: 10
 					Repeater
 					{
-						height: 20 * paramsModel.count
+						anchors.fill: parent
 						model: paramsModel
 						visible: paramsModel.count > 0
 						RowLayout
 						{
 							id: row
 							Layout.fillWidth: true
-							height: 20
-							DefaultLabel {
+							height: 150
+
+							Label {
 								id: typeLabel
 								text: type
+								font.family: regularFont.name
 								Layout.preferredWidth: 50
 							}
 
-							DefaultLabel {
+							Label {
 								id: nameLabel
 								text: name
-								Layout.preferredWidth: 80
+								font.family: regularFont.name
+								Layout.preferredWidth: 50
 							}
 
-							DefaultLabel {
+							Label {
 								id: equalLabel
 								text: "="
+								font.family: regularFont.name
 								Layout.preferredWidth: 15
 							}
 
 							Loader
 							{
 								id: typeLoader
+								Layout.preferredHeight: 50
 								Layout.preferredWidth: 150
 								function getCurrent()
 								{
@@ -365,7 +356,7 @@ Window {
 									id: intViewComp
 									QIntTypeView
 									{
-										height: 20
+										height: 50
 										width: 150
 										id: intView
 										text: typeLoader.getCurrent().value
@@ -377,7 +368,7 @@ Window {
 									id: boolViewComp
 									QBoolTypeView
 									{
-										height: 20
+										height: 50
 										width: 150
 										id: boolView
 										defaultValue: "1"
@@ -394,7 +385,7 @@ Window {
 									id: stringViewComp
 									QStringTypeView
 									{
-										height: 20
+										height: 50
 										width: 150
 										id: stringView
 										text:
@@ -409,7 +400,7 @@ Window {
 									id: hashViewComp
 									QHashTypeView
 									{
-										height: 20
+										height: 50
 										width: 150
 										id: hashView
 										text: typeLoader.getCurrent().value
@@ -419,11 +410,6 @@ Window {
 						}
 					}
 				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
 			}
 		}
 

@@ -17,7 +17,6 @@ Item
 		TextInput {
 			id: textinput
 			text: text
-			clip: true
 			anchors.fill: parent
 			wrapMode: Text.WrapAnywhere
 			font.family: boldFont.name

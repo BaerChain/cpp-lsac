@@ -32,16 +32,6 @@ Item {
 		anchors.fill: parent
 		RowLayout {
 
-			Connections
-			{
-				target: projectModel
-				onProjectSaved:
-				{
-					if (codeModel.hasContract && !clientModel.running)
-						projectModel.stateListModel.debugDefaultState();
-				}
-			}
-
 			ComboBox {
 				id: statesCombo
 				model: projectModel.stateListModel

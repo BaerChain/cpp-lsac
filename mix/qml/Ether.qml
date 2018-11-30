@@ -32,8 +32,12 @@ RowLayout {
 		units.currentIndex = unit;
 	}
 
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
 
-	DefaultTextField
+	TextField
 	{
 		implicitWidth: 200
 		onTextChanged:
@@ -47,10 +51,7 @@ RowLayout {
 		readOnly: !edit
 		visible: edit
 		id: etherValueEdit;
-	}
-
-	SourceSansProBold {
-		id: regularFont;
+		font.family: regularFont.name
 	}
 
 	ComboBox

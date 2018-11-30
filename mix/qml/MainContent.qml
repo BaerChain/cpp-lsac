@@ -85,7 +85,7 @@ Rectangle {
 		property alias webWidth: webPreview.width
 		property alias webHeight: webPreview.height
 		property alias showProjectView: projectList.visible
-		property bool runOnProjectLoad: true
+		property bool runOnProjectLoad: false
 	}
 
 	ColumnLayout

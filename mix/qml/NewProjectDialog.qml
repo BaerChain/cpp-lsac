@@ -6,7 +6,7 @@ import QtQuick.Dialogs 1.1
 
 Window {
 	id: newProjectWin
-	modality: Qt.ApplicationModal
+	modality: Qt.WindowModal
 
 	width: 640
 	height: 120

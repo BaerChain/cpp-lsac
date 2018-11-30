@@ -10,11 +10,11 @@ import "."
 
 Window {
 	id: modalStateDialog
-	modality: Qt.ApplicationModal
+	modality: Qt.WindowModal
 
 	width: 450
 	height: 480
-	title: qsTr("Edit State")
+	title: qsTr("State Edition")
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 
@@ -44,7 +44,6 @@ Window {
 		isDefault = setDefault;
 		titleField.focus = true;
 		defaultCheckBox.enabled = !isDefault;
-		forceActiveFocus();
 	}
 
 	function close() {
@@ -61,67 +60,53 @@ Window {
 		return item;
 	}
 
-	ColumnLayout {
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
+
+	Rectangle {
 		anchors.fill: parent
 		anchors.margins: 10
-		ColumnLayout {
+		color: StateDialogStyle.generic.backgroundColor
+		GridLayout {
 			id: dialogContent
+			columns: 2
 			anchors.top: parent.top
+			rowSpacing: 10
+			columnSpacing: 10
 
-			RowLayout
-			{
+			Label {
+				text: qsTr("Title")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			TextField {
+				id: titleField
+				focus: true
 				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Title")
-				}
-				DefaultTextField
-				{
-					id: titleField
-					Layout.fillWidth: true
-				}
+				font.family: regularFont.name
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
+			Label {
+				text: qsTr("Balance")
+				font.family: regularFont.name
+				color: "#808080"
 			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Balance")
-				}
-				Ether {
-					id: balanceField
-					edit: true
-					displayFormattedValue: true
-					Layout.fillWidth: true
-				}
-			}
-
-			CommonSeparator
-			{
+			Ether {
+				id: balanceField
+				edit: true
+				displayFormattedValue: true
 				Layout.fillWidth: true
 			}
 
-			RowLayout
-			{
-				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Default")
-				}
-				CheckBox {
-					id: defaultCheckBox
-					Layout.fillWidth: true
-				}
+			Label {
+				text: qsTr("Default")
+				font.family: regularFont.name
+				color: "#808080"
 			}
-
-			CommonSeparator
-			{
+			CheckBox {
+				id: defaultCheckBox
 				Layout.fillWidth: true
 			}
 		}
@@ -129,51 +114,52 @@ Window {
 		ColumnLayout {
 			anchors.top: dialogContent.bottom
 			anchors.topMargin: 5
-			spacing: 0
+			spacing: 5
 			RowLayout
 			{
-				DefaultLabel {
-					text: qsTr("Transactions: ")
+				Label {
+					text: qsTr("Transactions")
+					font.family: regularFont.name
+					color: "#808080"
 				}
 
-				Button
-				{
-					iconSource: "qrc:/qml/img/plus.png"
-					action: newTrAction
-					width: 10
-					height: 10
-				}
-
-				Action {
-					id: newTrAction
+				Button {
 					tooltip: qsTr("Create a new transaction")
-					onTriggered: transactionsModel.addTransaction()
-				}
-			}
-
-			ScrollView
-			{
-				Layout.fillHeight: true
-				Layout.preferredWidth: 300
-				Column
-				{
-					Layout.fillHeight: true
-					Repeater
-					{
-						id: trRepeater
-						model: transactionsModel
-						delegate: transactionRenderDelegate
-						visible: transactionsModel.count > 0
-						height: 20 * transactionsModel.count
+					onClicked: transactionsModel.addTransaction()
+					height: 5
+					width: 5
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("+")
+							font.pointSize: 15
+							color: "#808080"
+							height: 5
+							width: 5
+						}
+						background: Rectangle {
+							radius: 4
+							border.width: 1
+							color: "#f7f7f7"
+							height: 5
+							implicitHeight: 5
+						}
 					}
+
 				}
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
+			ListView {
+				id: trList
+				Layout.preferredWidth: 200
+				Layout.fillHeight: true
+				Layout.minimumHeight: 20 * transactionsModel.count
+				model: transactionsModel
+				delegate: transactionRenderDelegate
+				visible: transactionsModel.count > 0
 			}
 		}
+
 
 		RowLayout
 		{
@@ -218,37 +204,53 @@ Window {
 
 	Component {
 		id: transactionRenderDelegate
-		RowLayout {
-			DefaultLabel {
-				Layout.preferredWidth: 150
-				text: functionId
-			}
-
-			Button
-			{
-				id: deleteBtn
-				iconSource: "qrc:/qml/img/delete_sign.png"
-				action: deleteAction
-				width: 10
-				height: 10
-				Action {
-					id: deleteAction
-					tooltip: qsTr("Delete")
-					onTriggered: transactionsModel.deleteTransaction(index)
+		Item {
+			id: wrapperItem
+			height: 20
+			width: parent.width
+			RowLayout {
+				anchors.fill: parent
+				Text {
+					Layout.fillWidth: true
+					Layout.fillHeight: true
+					text: functionId
+					font.pointSize: StateStyle.general.basicFontSize //12
+					verticalAlignment: Text.AlignBottom
+					font.family: regularFont.name
 				}
-			}
-
-			Button
-			{
-				iconSource: "qrc:/qml/img/edit.png"
-				action: editAction
-				visible: !stdContract
-				width: 10
-				height: 10
-				Action {
-					id: editAction
-					tooltip: qsTr("Edit")
-					onTriggered: transactionsModel.editTransaction(index)
+				ToolButton {
+					text: qsTr("Edit");
+					visible: !stdContract
+					Layout.fillHeight: true
+					onClicked: transactionsModel.editTransaction(index)
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Edit")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
+					}
+				}
+				ToolButton {
+					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
+					text: qsTr("Delete");
+					Layout.fillHeight: true
+					onClicked: transactionsModel.deleteTransaction(index)
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Delete")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
+					}
 				}
 			}
 		}
