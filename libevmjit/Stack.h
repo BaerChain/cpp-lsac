@@ -2,8 +2,6 @@
 
 #include "CompilerHelper.h"
 
-#include <llvm/IR/Module.h>
-
 namespace dev
 {
 namespace eth
@@ -22,17 +20,18 @@ public:
 	void pop(size_t _count);
 	void push(llvm::Value* _value);
 
-	static size_t maxStackSize;
-
 private:
+	llvm::Function* getPopFunc();
+	llvm::Function* getPushFunc();
+	llvm::Function* getGetFunc();
+	llvm::Function* getSetFunc();
+
 	RuntimeManager& m_runtimeManager;
 
-	llvm::Function* m_push;
-	llvm::Function* m_pop;
-	llvm::Function* m_get;
-	llvm::Function* m_set;
-
-	llvm::Value* m_arg;
+	llvm::Function* m_pop = nullptr;
+	llvm::Function* m_push = nullptr;
+	llvm::Function* m_get = nullptr;
+	llvm::Function* m_set = nullptr;
 };
 
 
