@@ -18,17 +18,17 @@ public:
 	Runtime(const Runtime&) = delete;
 	Runtime& operator=(const Runtime&) = delete;
 
-	MemoryImpl& getMemory() { return m_memory; }
-
 	bytes_ref getReturnData() const;
 
 private:
 	RuntimeData& m_data;			///< Pointer to data. Expected by compiled contract.
 	Env& m_env;						///< Pointer to environment proxy. Expected by compiled contract.
-	void* m_currJmpBuf = nullptr;	///< Pointer to jump buffer. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
-	MemoryImpl m_memory;
+public:
+	byte* m_memData = nullptr; // FIXME: Remember to free memory
+	uint64_t m_memSize = 0;    // TODO: Init array in LLVM, to allow more optimization
+	uint64_t m_memCap = 0;
 };
 
 }

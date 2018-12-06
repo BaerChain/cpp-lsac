@@ -1,6 +1,7 @@
 #include "Array.h"
 
 #include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "preprocessor/llvm_includes_end.h"
 
@@ -20,12 +21,12 @@ namespace jit
 static const auto c_reallocStep = 1;
 static const auto c_reallocMultipier = 2;
 
-llvm::Value* LazyFunction::call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args)
+llvm::Value* LazyFunction::call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args, llvm::Twine const& _name)
 {
 	if (!m_func)
 		m_func = m_creator();
 
-	return _builder.CreateCall(m_func, {_args.begin(), _args.size()});
+	return _builder.CreateCall(m_func, {_args.begin(), _args.size()}, _name);
 }
 
 llvm::Function* Array::createArrayPushFunc()
@@ -34,12 +35,6 @@ llvm::Function* Array::createArrayPushFunc()
 	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "array.push", getModule());
 	func->setDoesNotThrow();
 	func->setDoesNotCapture(1);
-
-	llvm::Type* reallocArgTypes[] = {Type::BytePtr, Type::Size};
-	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), llvm::Function::ExternalLinkage, "ext_realloc", getModule());
-	reallocFunc->setDoesNotThrow();
-	reallocFunc->setDoesNotAlias(0);
-	reallocFunc->setDoesNotCapture(1);
 
 	auto arrayPtr = &func->getArgumentList().front();
 	arrayPtr->setName("arrayPtr");
@@ -66,7 +61,7 @@ llvm::Function* Array::createArrayPushFunc()
 	//newCap = m_builder.CreateNUWMul(newCap, m_builder.getInt64(c_reallocMultipier));
 	auto reallocSize = m_builder.CreateShl(newCap, 5, "reallocSize"); // size in bytes: newCap * 32
 	auto bytes = m_builder.CreateBitCast(data, Type::BytePtr, "bytes");
-	auto newBytes = m_builder.CreateCall2(reallocFunc, bytes, reallocSize, "newBytes");
+	auto newBytes = m_reallocFunc.call(m_builder, {bytes, reallocSize}, "newBytes");
 	auto newData = m_builder.CreateBitCast(newBytes, Type::WordPtr, "newData");
 	m_builder.CreateStore(newData, dataPtr);
 	m_builder.CreateStore(newCap, capPtr);
@@ -131,6 +126,28 @@ llvm::Function* Array::createArrayGetFunc()
 	return func;
 }
 
+llvm::Function* Array::createGetPtrFunc()
+{
+	llvm::Type* argTypes[] = {m_array->getType(), Type::Size};
+	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, argTypes, false), llvm::Function::PrivateLinkage, "array.getPtr", getModule());
+	func->setDoesNotThrow();
+	func->setDoesNotCapture(1);
+
+	auto arrayPtr = &func->getArgumentList().front();
+	arrayPtr->setName("arrayPtr");
+	auto index = arrayPtr->getNextNode();
+	index->setName("index");
+
+	InsertPointGuard guard{m_builder};
+	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
+	auto dataPtr = m_builder.CreateBitCast(arrayPtr, Type::BytePtr->getPointerTo(), "dataPtr");
+	auto data = m_builder.CreateLoad(dataPtr, "data");
+	auto bytePtr = m_builder.CreateGEP(data, index, "bytePtr");
+	auto wordPtr = m_builder.CreateBitCast(bytePtr, Type::WordPtr, "wordPtr");
+	m_builder.CreateRet(wordPtr);
+	return func;
+}
+
 llvm::Function* Array::createFreeFunc()
 {
 	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, m_array->getType(), false), llvm::Function::PrivateLinkage, "array.free", getModule());
@@ -154,6 +171,56 @@ llvm::Function* Array::createFreeFunc()
 	return func;
 }
 
+llvm::Function* Array::getReallocFunc()
+{
+	if (auto func = getModule()->getFunction("ext_realloc"))
+		return func;
+
+	llvm::Type* reallocArgTypes[] = {Type::BytePtr, Type::Size};
+	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), llvm::Function::ExternalLinkage, "ext_realloc", getModule());
+	reallocFunc->setDoesNotThrow();
+	reallocFunc->setDoesNotAlias(0);
+	reallocFunc->setDoesNotCapture(1);
+	return reallocFunc;
+}
+
+llvm::Function* Array::createExtendFunc()
+{
+	llvm::Type* argTypes[] = {m_array->getType(), Type::Size};
+	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "array.extend", getModule());
+	func->setDoesNotThrow();
+	func->setDoesNotCapture(1);
+
+	auto arrayPtr = &func->getArgumentList().front();
+	arrayPtr->setName("arrayPtr");
+	auto newSize = arrayPtr->getNextNode();
+	newSize->setName("newSize");
+
+	InsertPointGuard guard{m_builder};
+	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
+	auto dataPtr = m_builder.CreateBitCast(arrayPtr, Type::BytePtr->getPointerTo(), "dataPtr");// TODO: Use byte* in Array
+	auto sizePtr = m_builder.CreateStructGEP(arrayPtr, 1, "sizePtr");
+	auto capPtr = m_builder.CreateStructGEP(arrayPtr, 2, "capPtr");
+	auto data = m_builder.CreateLoad(dataPtr, "data");
+	auto size = m_builder.CreateLoad(sizePtr, "size");
+	auto extSize = m_builder.CreateNUWSub(newSize, size, "extSize");
+	auto newData = m_reallocFunc.call(m_builder, {data, newSize}, "newData"); // TODO: Check realloc result for null
+	auto extPtr = m_builder.CreateGEP(newData, size, "extPtr");
+	m_builder.CreateMemSet(extPtr, m_builder.getInt8(0), extSize, 16);
+	m_builder.CreateStore(newData, dataPtr);
+	m_builder.CreateStore(newSize, sizePtr);
+	m_builder.CreateStore(newSize, capPtr);
+	m_builder.CreateRetVoid();
+	return func;
+}
+
+llvm::Type* Array::getType()
+{
+	llvm::Type* elementTys[] = {Type::WordPtr, Type::Size, Type::Size};
+	static auto arrayTy = llvm::StructType::create(elementTys, "Array");
+	return arrayTy;
+}
+
 Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 	CompilerHelper(_builder),
 	m_pushFunc([this](){ return createArrayPushFunc(); }),
@@ -161,12 +228,19 @@ Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 	m_getFunc([this](){ return createArrayGetFunc(); }),
 	m_freeFunc([this](){ return createFreeFunc(); })
 {
-	llvm::Type* elementTys[] = {Type::WordPtr, Type::Size, Type::Size};
-	static auto arrayTy = llvm::StructType::create(elementTys, "Array");
-
-	m_array = m_builder.CreateAlloca(arrayTy, nullptr, _name);
-	m_builder.CreateStore(llvm::ConstantAggregateZero::get(arrayTy), m_array);
+	m_array = m_builder.CreateAlloca(getType(), nullptr, _name);
+	m_builder.CreateStore(llvm::ConstantAggregateZero::get(getType()), m_array);
 }
+
+Array::Array(llvm::IRBuilder<>& _builder, llvm::Value* _array) :
+	CompilerHelper(_builder),
+	m_array(_array),
+	m_pushFunc([this](){ return createArrayPushFunc(); }),
+	m_setFunc([this](){ return createArraySetFunc(); }),
+	m_getFunc([this](){ return createArrayGetFunc(); }),
+	m_freeFunc([this](){ return createFreeFunc(); })
+{}
+
 
 void Array::pop(llvm::Value* _count)
 {
@@ -176,10 +250,17 @@ void Array::pop(llvm::Value* _count)
 	m_builder.CreateStore(newSize, sizePtr);
 }
 
-llvm::Value* Array::size()
+llvm::Value* Array::size(llvm::Value* _array)
 {
-	auto sizePtr = m_builder.CreateStructGEP(m_array, 1, "sizePtr");
+	auto sizePtr = m_builder.CreateStructGEP(_array ? _array : m_array, 1, "sizePtr");
 	return m_builder.CreateLoad(sizePtr, "array.size");
+}
+
+void Array::extend(llvm::Value* _arrayPtr, llvm::Value* _size)
+{
+	assert(_arrayPtr->getType() == m_array->getType());
+	assert(_size->getType() == Type::Size);
+	m_extendFunc.call(m_builder, {_arrayPtr, _size});
 }
 
 }

@@ -153,12 +153,16 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	if (returnCode == ReturnCode::Return)
 	{
 		returnData = runtime.getReturnData();     // Save reference to return data
-		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
 	}
 	listener->stateChanged(ExecState::Finished);
 
 	if (g_stats)
 		statsCollector.stats.push_back(std::move(listener));
+
+	if (runtime.m_memData)
+	{
+		std::cerr << "MEM: " << (size_t) runtime.m_memData << " [" << runtime.m_memSize << ", " << runtime.m_memCap << "}\n";
+	}
 
 	return returnCode;
 }

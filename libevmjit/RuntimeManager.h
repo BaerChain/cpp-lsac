@@ -33,13 +33,14 @@ public:
 	llvm::Value* getJmpBuf() { return m_jmpBuf; }
 	void setGas(llvm::Value* _gas);
 
-	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
+	llvm::Value* getMem();
+
+	void registerReturnData(llvm::Value* _index, llvm::Value* _size); // TODO: Move to Memory.
 	void registerSuicide(llvm::Value* _balanceAddress);
 
 	void exit(ReturnCode _returnCode);
 
 	void abort(llvm::Value* _jmpBuf);
-	void abort() { abort(getJmpBufExt()); }
 
 	void setStack(Stack& _stack) { m_stack = &_stack; }
 
@@ -49,11 +50,12 @@ public:
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);
 	void set(RuntimeData::Index _index, llvm::Value* _value);
-	llvm::Value* getJmpBufExt();
 
 	llvm::Function* m_longjmp = nullptr;
 	llvm::Value* const m_jmpBuf;
 	llvm::Value* m_dataPtr = nullptr;
+	llvm::Value* m_gasPtr = nullptr;
+	llvm::Value* m_memPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
 
 	code_iterator m_codeBegin = {};
