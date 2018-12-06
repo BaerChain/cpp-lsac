@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Runtime.h"
+#include "RuntimeData.h"
 
 namespace dev
 {
@@ -17,7 +17,6 @@ enum class ExecState
 	CacheLoad,
 	CacheWrite,
 	Compilation,
-	Optimization,
 	CodeGen,
 	Execution,
 	Return,
@@ -51,7 +50,9 @@ public:
 	bytes_ref returnData;
 
 private:
-	Runtime m_runtime;
+	/// After execution, if RETURN used, memory is moved there
+	/// to allow client copy the returned data
+	bytes m_memory;
 };
 
 }

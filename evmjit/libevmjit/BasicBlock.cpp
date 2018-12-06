@@ -11,7 +11,6 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Type.h"
-#include "Utils.h"
 
 namespace dev
 {
@@ -243,12 +242,13 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 	bool valuesChanged = true;
 	while (valuesChanged)
 	{
-		for (auto& pair : cfg)
+		if (getenv("EVMCC_DEBUG_BLOCKS"))
 		{
-			DLOG(bb) << pair.second.bblock.llvm()->getName().str()
-				<< ": in " << pair.second.inputItems
-				<< ", out " << pair.second.outputItems
-				<< "\n";
+			for (auto& pair : cfg)
+				std::cerr << pair.second.bblock.llvm()->getName().str()
+						  << ": in " << pair.second.inputItems
+						  << ", out " << pair.second.outputItems
+						  << "\n";
 		}
 
 		valuesChanged = false;
@@ -340,8 +340,6 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 	{
 		if (val == nullptr)
 			out << "  ?";
-		else if (llvm::isa<llvm::ExtractValueInst>(val))
-			out << "  " << val->getName();
 		else if (llvm::isa<llvm::Instruction>(val))
 			out << *val;
 		else
@@ -351,8 +349,8 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 	}
 
 	out << (_dotOutput ? "| " : "Instructions:\n");
-	//for (auto ins = m_llvmBB->begin(); ins != m_llvmBB->end(); ++ins)
-	//	out << *ins << (_dotOutput ? "\\l" : "\n");
+	for (auto ins = m_llvmBB->begin(); ins != m_llvmBB->end(); ++ins)
+		out << *ins << (_dotOutput ? "\\l" : "\n");
 
 	if (! _dotOutput)
 		out << "Current stack (offset = " << m_tosOffset << "):\n";
@@ -363,8 +361,6 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 	{
 		if (*val == nullptr)
 			out << "  ?";
-		else if (llvm::isa<llvm::ExtractValueInst>(*val))
-			out << "  " << (*val)->getName();
 		else if (llvm::isa<llvm::Instruction>(*val))
 			out << **val;
 		else

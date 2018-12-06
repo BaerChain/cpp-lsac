@@ -1,7 +1,7 @@
 #include "ExecutionEngine.h"
 
 #include <array>
-#include <mutex>
+#include <cstdlib>	// env options
 #include <iostream>
 
 #include "preprocessor/llvm_includes_start.h"
@@ -12,13 +12,10 @@
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
-#include <llvm/Support/CommandLine.h>
-#include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Runtime.h"
 #include "Compiler.h"
-#include "Optimizer.h"
 #include "Cache.h"
 #include "ExecStats.h"
 #include "Utils.h"
@@ -51,44 +48,38 @@ std::string codeHash(i256 const& _hash)
 	return str;
 }
 
-void printVersion()
+bool getEnvOption(char const* _name, bool _default)
 {
-	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
-			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
-#ifdef NDEBUG
-			  << "  Optimized build, " EVMJIT_VERSION_FULL "\n"
-#else
-			  << "  DEBUG build, " EVMJIT_VERSION_FULL "\n"
-#endif
-			  << "  Built " << __DATE__ << " (" << __TIME__ << ")\n"
-			  << std::endl;
+	auto var = std::getenv(_name);
+	if (!var)
+		return _default;
+	return std::strtol(var, nullptr, 10) != 0;
 }
 
-namespace cl = llvm::cl;
-cl::opt<bool> g_optimize{"O", cl::desc{"Optimize"}};
-cl::opt<bool> g_cache{"cache", cl::desc{"Cache compiled EVM code on disk"}, cl::init(true)};
-cl::opt<bool> g_stats{"st", cl::desc{"Statistics"}};
-cl::opt<bool> g_dump{"dump", cl::desc{"Dump LLVM IR module"}};
-
-void parseOptions()
+bool showInfo()
 {
-	static llvm::llvm_shutdown_obj shutdownObj{};
-	cl::AddExtraVersionPrinter(printVersion);
-	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
+	auto show = getEnvOption("EVMJIT_INFO", false);
+	if (show)
+	{
+		std::cout << "The Ethereum EVM JIT " EVMJIT_VERSION_FULL " LLVM " LLVM_VERSION << std::endl;
+	}
+	return show;
 }
 
 }
-
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
-	static std::once_flag flag;
-	std::call_once(flag, parseOptions);
+	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
+	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
+	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
+	static auto infoShown = showInfo();
+	(void) infoShown;
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
-	auto objectCache = g_cache ? Cache::getObjectCache(listener.get()) : nullptr;
+	auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
 
 	static std::unique_ptr<llvm::ExecutionEngine> ee;
 	if (!ee)
@@ -100,7 +91,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		llvm::EngineBuilder builder(module.get());
 		builder.setEngineKind(llvm::EngineKind::JIT);
 		builder.setUseMCJIT(true);
-		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
+		builder.setOptLevel(llvm::CodeGenOpt::None);
 
 		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 		if (triple.getOS() == llvm::Triple::OSType::Win32)
@@ -117,7 +108,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static StatsCollector statsCollector;
 
 	auto mainFuncName = codeHash(_data->codeHash);
-	m_runtime.init(_data, _env);
+	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
 	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	if (!entryFuncPtr)
@@ -127,15 +118,9 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		{
 			listener->stateChanged(ExecState::Compilation);
 			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler{{}}.compile(_data->code, _data->code + _data->codeSize, mainFuncName);
-
-			if (g_optimize)
-			{
-				listener->stateChanged(ExecState::Optimization);
-				optimize(*module);
-			}
+			module = Compiler({}).compile(_data->code, _data->code + _data->codeSize, mainFuncName);
 		}
-		if (g_dump)
+		if (debugDumpModule)
 			module->dump();
 
 		ee->addModule(module.get());
@@ -147,15 +132,17 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		return ReturnCode::LLVMLinkError;
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&m_runtime);
+	auto returnCode = entryFuncPtr(&runtime);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-		returnData = m_runtime.getReturnData();     // Save reference to return data
-
+	{
+		returnData = runtime.getReturnData();     // Save reference to return data
+		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
+	}
 	listener->stateChanged(ExecState::Finished);
 
-	if (g_stats)
+	if (statsCollectingEnabled)
 		statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;

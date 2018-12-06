@@ -101,7 +101,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
 		receiptsRoot = _header[field = 5].toHash<h256>();
-		logBloom = _header[field = 6].toHash<h512>();
+		logBloom = _header[field = 6].toHash<LogBloom>();
 		difficulty = _header[field = 7].toInt<u256>();
 		number = _header[field = 8].toInt<u256>();
 		gasLimit = _header[field = 9].toInt<u256>();
@@ -191,16 +191,19 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return max<u256>(1024, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10)));
+		return max<u256>(2048, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
 }
+
+template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
-	if (gasLimit != calculateGasLimit(_parent))
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent)));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
+
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)

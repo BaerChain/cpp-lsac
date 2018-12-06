@@ -1,5 +1,8 @@
 #include "Cache.h"
 
+#include <iostream>
+#include <cassert>
+
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
@@ -19,6 +22,9 @@ namespace eth
 namespace jit
 {
 
+//#define CACHE_LOG std::cerr << "CACHE "
+#define CACHE_LOG std::ostream(nullptr)
+
 namespace
 {
 	llvm::MemoryBuffer* g_lastObject;
@@ -37,7 +43,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 	if (g_listener)
 		g_listener->stateChanged(ExecState::CacheLoad);
 
-	DLOG(cache) << id << ": search\n";
+	CACHE_LOG << id << ": search\n";
 	if (!CHECK(!g_lastObject))
 		g_lastObject = nullptr;
 
@@ -66,7 +72,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 
 	if (g_lastObject)  // if object found create fake module
 	{
-		DLOG(cache) << id << ": found\n";
+		CACHE_LOG << id << ": found\n";
 		auto&& context = llvm::getGlobalContext();
 		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, context));
 		auto mainFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false);
@@ -75,7 +81,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 		bb->getInstList().push_back(new llvm::UnreachableInst{context});
 		return module;
 	}
-	DLOG(cache) << id << ": not found\n";
+	CACHE_LOG << id << ": not found\n";
 	return nullptr;
 }
 
@@ -95,7 +101,7 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 
 	llvm::sys::path::append(cachePath, id);
 
-	DLOG(cache) << id << ": write\n";
+	CACHE_LOG << id << ": write\n";
 	std::string error;
 	llvm::raw_fd_ostream cacheFile(cachePath.c_str(), error, llvm::sys::fs::F_None);
 	cacheFile << _object->getBuffer();
@@ -103,7 +109,7 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 
 llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
 {
-	DLOG(cache) << _module->getModuleIdentifier() << ": use\n";
+	CACHE_LOG << _module->getModuleIdentifier() << ": use\n";
 	auto o = g_lastObject;
 	g_lastObject = nullptr;
 	return o;

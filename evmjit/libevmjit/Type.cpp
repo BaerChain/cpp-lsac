@@ -1,7 +1,4 @@
 #include "Type.h"
-
-#include <llvm/IR/MDBuilder.h>
-
 #include "RuntimeManager.h"
 
 namespace dev
@@ -26,7 +23,6 @@ llvm::PointerType* Type::EnvPtr;
 llvm::PointerType* Type::RuntimeDataPtr;
 llvm::PointerType* Type::RuntimePtr;
 llvm::ConstantInt* Constant::gasMax;
-llvm::MDNode* Type::expectTrue;
 
 void Type::init(llvm::LLVMContext& _context)
 {
@@ -50,8 +46,6 @@ void Type::init(llvm::LLVMContext& _context)
 		RuntimePtr = RuntimeManager::getRuntimeType()->getPointerTo();
 
 		Constant::gasMax = llvm::ConstantInt::getSigned(Type::Gas, std::numeric_limits<int64_t>::max());
-
-		expectTrue = llvm::MDBuilder{_context}.createBranchWeights(1, 0);
 	}
 }
 

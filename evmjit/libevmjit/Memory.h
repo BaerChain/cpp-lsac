@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Array.h"
+#include "CompilerHelper.h"
 
 namespace dev
 {
@@ -28,11 +28,9 @@ public:
 	void require(llvm::Value* _offset, llvm::Value* _size);
 
 private:
-	Array m_memory;
-
 	GasMeter& m_gasMeter;
 
-	llvm::Function* createFunc(bool _isStore, llvm::Type* _type);
+	llvm::Function* createFunc(bool _isStore, llvm::Type* _type, GasMeter& _gasMeter);
 
 	llvm::Function* getRequireFunc();
 	llvm::Function* getLoadWordFunc();

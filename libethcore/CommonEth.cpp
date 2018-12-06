@@ -32,8 +32,14 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 54;
-const unsigned c_databaseVersion = 5;
+const unsigned c_protocolVersion = 55;
+const unsigned c_databaseVersion = 6 +
+#if ETH_FATDB
+	1000
+#else
+	0
+#endif
+;
 
 vector<pair<u256, string>> const& units()
 {

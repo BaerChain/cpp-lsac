@@ -2,7 +2,6 @@
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/Support/Host.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Type.h"
@@ -16,7 +15,13 @@ namespace jit
 
 llvm::Value* Endianness::bswapIfLE(llvm::IRBuilder<>& _builder, llvm::Value* _word)
 {
-	if (llvm::sys::IsLittleEndianHost)
+	union tester
+	{
+		unsigned int  x;
+		unsigned char isLE;
+	};
+
+	if (tester{1}.isLE)
 	{
 		// FIXME: Disabled because of problems with BYTE
 		//if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(_word))
