@@ -8,26 +8,20 @@ namespace eth
 {
 namespace jit
 {
-using MemoryImpl = bytes;
 
 class Runtime
 {
 public:
-	Runtime(RuntimeData* _data, Env* _env);
-
-	Runtime(const Runtime&) = delete;
-	Runtime& operator=(const Runtime&) = delete;
+	void init(RuntimeData* _data, Env* _env);
+	EXPORT ~Runtime();
 
 	bytes_ref getReturnData() const;
 
 private:
-	RuntimeData& m_data;			///< Pointer to data. Expected by compiled contract.
-	Env& m_env;						///< Pointer to environment proxy. Expected by compiled contract.
-	byte* m_memoryData = nullptr;
-	i256 m_memorySize;
-public:
-	byte* m_memData = nullptr; // FIXME: Remember to free memory
-	uint64_t m_memSize = 0;    // TODO: Init array in LLVM, to allow more optimization
+	RuntimeData* m_data = nullptr;	///< Pointer to data. Expected by compiled contract.
+	Env* m_env = nullptr;			///< Pointer to environment proxy. Expected by compiled contract.
+	byte* m_memData = nullptr;
+	uint64_t m_memSize = 0;
 	uint64_t m_memCap = 0;
 };
 
