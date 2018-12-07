@@ -284,7 +284,6 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 #if ETH_DEBUG && 0
 		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
-		auto& w = m_watches.at(_watchId);
 		std::swap(ret, w.changes);
 		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
@@ -500,10 +499,10 @@ pair<h256, u256> Client::getWork()
 	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
 }
 
-bool Client::submitNonce(h256  const&_nonce)
+bool Client::submitWork(ProofOfWork::Proof const& _proof)
 {
 	Guard l(x_remoteMiner);
-	return m_remoteMiner.submitWork(_nonce);
+	return m_remoteMiner.submitWork(_proof);
 }
 
 void Client::doWork()
@@ -517,9 +516,18 @@ void Client::doWork()
 	{
 		if (m.isComplete())
 		{
-			cwork << "CHAIN <== postSTATE";
+			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
+			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			if (false && lm && !m_verifyOwnBlocks)
 			{
+				// TODO: implement
+				//m_bc.attemptImport(m_blockData(), m_stateDB, lm->state());
+				// TODO: derive hs from lm->state()
+			}
+			else
+			{
+				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
 				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
