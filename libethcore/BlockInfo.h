@@ -23,12 +23,14 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include "Common.h"
+#include "CommonEth.h"
 
 namespace dev
 {
 namespace eth
 {
+
+extern u256 c_genesisDifficulty;
 
 enum IncludeNonce
 {
@@ -74,9 +76,7 @@ public:
 	u256 gasUsed;
 	u256 timestamp;
 	bytes extraData;
-	h256 mixHash;
-	h256 seedHash;
-	Nonce nonce;
+	h256 nonce;
 
 	BlockInfo();
 	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
@@ -85,7 +85,6 @@ public:
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
 
-	static BlockInfo fromHeader(bytes const& _block) { return fromHeader(bytesConstRef(&_block)); }
 	static BlockInfo fromHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
@@ -105,8 +104,6 @@ public:
 				gasUsed == _cmp.gasUsed &&
 				timestamp == _cmp.timestamp &&
 				extraData == _cmp.extraData &&
-				mixHash == _cmp.mixHash &&
-				seedHash == _cmp.seedHash &&
 				nonce == _cmp.nonce;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
@@ -122,7 +119,6 @@ public:
 
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 calculateGasLimit(BlockInfo const& _parent) const;
-	h256 calculateSeedHash(BlockInfo const& _parent) const;
 
 	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
@@ -133,7 +129,7 @@ inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
 			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
-			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.seedHash << " " << _bi.nonce;
+			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
 	return _out;
 }
 

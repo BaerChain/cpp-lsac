@@ -23,7 +23,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libethcore/Common.h>
+#include <libethcore/CommonEth.h>
 #include "TransactionReceipt.h"
 
 namespace dev

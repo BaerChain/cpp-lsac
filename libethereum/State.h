@@ -30,7 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
-#include <libethcore/Params.h>
+#include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
 #include "Account.h"
@@ -112,7 +112,7 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(ProofOfWork::Proof const& _result);
+	bool completeMine(h256 const& _nonce);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.

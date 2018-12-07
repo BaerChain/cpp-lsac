@@ -22,6 +22,7 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include "JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libethereum/CanonBlockChain.h>
@@ -64,7 +65,6 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		catch (Exception const& _e)
 		{
 			cnote << "state execution did throw an exception: " << diagnostic_information(_e);
-			theState.commit();
 		}
 		catch (std::exception const& _e)
 		{
@@ -72,13 +72,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		}
 
 		if (_fillin)
-		{
-#if ETH_FATDB
 			importer.exportTest(output, theState);
-#else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
-#endif
-		}
 		else
 		{
 			BOOST_REQUIRE(o.count("post") > 0);
@@ -91,7 +85,6 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			checkLog(theState.pending().size() ? theState.log(0) : LogEntries(), importer.m_environment.sub.logs);
 
 			// check addresses
-#if ETH_FATDB
 			auto expectedAddrs = importer.m_statePost.addresses();
 			auto resultAddrs = theState.addresses();
 			for (auto& expectedPair : expectedAddrs)
@@ -110,8 +103,6 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 				}
 			}
 			checkAddresses<map<Address, u256> >(expectedAddrs, resultAddrs);
-#endif
-			BOOST_CHECK_MESSAGE(theState.rootHash() == h256(o["postStateRoot"].get_str()), "wrong post state root");
 		}
 	}
 }
@@ -169,52 +160,51 @@ BOOST_AUTO_TEST_CASE(stBlockHashTest)
 	dev::test::executeTests("stBlockHashTest", "/StateTests", dev::test::doStateTests);
 }
 
-//BOOST_AUTO_TEST_CASE(stQuadraticComplexityTest)
-//{
-//	   for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-//	   {
-//			   string arg = boost::unit_test::framework::master_test_suite().argv[i];
-//			   if (arg == "--quadratic" || arg == "--all")
-//			   {
-//					   auto start = chrono::steady_clock::now();
+BOOST_AUTO_TEST_CASE(stQuadraticComplexityTest)
+{
+	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
+	{
+		string arg = boost::unit_test::framework::master_test_suite().argv[i];
+		if (arg == "--quadratic" || arg == "--all")
+		{
+			auto start = chrono::steady_clock::now();
 
-//					   dev::test::executeTests("stQuadraticComplexityTest", "/StateTests", dev::test::doStateTests);
+			dev::test::executeTests("stQuadraticComplexityTest", "/StateTests", dev::test::doStateTests);
 
-//					   auto end = chrono::steady_clock::now();
-//					   auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-//					   cnote << "test duration: " << duration.count() << " milliseconds.\n";
-//			   }
-//	   }
-//}
+			auto end = chrono::steady_clock::now();
+			auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+			cnote << "test duration: " << duration.count() << " milliseconds.\n";
+		}
+	}
+}
 
 BOOST_AUTO_TEST_CASE(stMemoryStressTest)
 {
-	   for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	   {
-			   string arg = boost::unit_test::framework::master_test_suite().argv[i];
-			   if (arg == "--memory" || arg == "--all")
-			   {
-					   auto start = chrono::steady_clock::now();
+	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
+	{
+		string arg = boost::unit_test::framework::master_test_suite().argv[i];
+		if (arg == "--memory" || arg == "--all")
+		{
+			auto start = chrono::steady_clock::now();
 
-					   dev::test::executeTests("stMemoryStressTest", "/StateTests", dev::test::doStateTests);
+			dev::test::executeTests("stMemoryStressTest", "/StateTests", dev::test::doStateTests);
 
-					   auto end = chrono::steady_clock::now();
-					   auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-					   cnote << "test duration: " << duration.count() << " milliseconds.\n";
-			   }
-	   }
+			auto end = chrono::steady_clock::now();
+			auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+			cnote << "test duration: " << duration.count() << " milliseconds.\n";
+		}
+	}
 }
 
- BOOST_AUTO_TEST_CASE(stSolidityTest)
- {
-		dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
- }
+BOOST_AUTO_TEST_CASE(stSolidityTest)
+{
+	dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
+}
 
 BOOST_AUTO_TEST_CASE(stMemoryTest)
 {
-	   dev::test::executeTests("stMemoryTest", "/StateTests", dev::test::doStateTests);
+	dev::test::executeTests("stMemoryTest", "/StateTests", dev::test::doStateTests);
 }
-
 
 BOOST_AUTO_TEST_CASE(stCreateTest)
 {
@@ -252,7 +242,7 @@ BOOST_AUTO_TEST_CASE(stCreateTest)
 
 BOOST_AUTO_TEST_CASE(userDefinedFileState)
 {
-	dev::test::userDefinedTest("--statetest", dev::test::doStateTests);
+	dev::test::userDefinedTest("--singletest", dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

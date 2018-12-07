@@ -27,12 +27,14 @@
 #include <atomic>
 #include <string>
 #include <array>
+
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/Params.h>
+#include <libevm/FeeStructure.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
@@ -44,6 +46,7 @@
 
 namespace dev
 {
+
 namespace eth
 {
 
@@ -145,7 +148,7 @@ public:
 	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
 	u256 const& difficulty() const { return m_state.info().difficulty; }
 
-	bool submitWork(ProofOfWork::Proof const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
+	bool submitWork(h256 const& _nonce) { return (m_isComplete = m_state.completeMine(_nonce)); }
 
 	virtual bool isComplete() const override { return m_isComplete; }
 	virtual bytes const& blockData() const { return m_state.blockData(); }
@@ -166,7 +169,13 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
+	explicit Client(
+		p2p::Host* _host,
+		std::string const& _dbPath = std::string(),
+		bool _forceClean = false,
+		u256 _networkId = 0,
+		int _miners = -1
+	);
 
 	/// Destructor.
 	virtual ~Client();
@@ -220,7 +229,7 @@ public:
 	/// @returns the length of the chain.
 	virtual unsigned number() const { return m_bc.number(); }
 
-	/// Get a map containing each of the pending transactions.
+	/// Get the list of pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	virtual Transactions pending() const { return m_postMine.pending(); }
 
@@ -294,8 +303,8 @@ public:
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
 	virtual std::pair<h256, u256> getWork() override;
-	/// Submit the proof for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) override;
+	/// Submit the nonce for the proof-of-work.
+	virtual bool submitNonce(h256  const&_nonce) override;
 
 	// Debug stuff:
 
@@ -311,7 +320,7 @@ public:
 protected:
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
@@ -359,7 +368,6 @@ private:
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
-	bool m_verifyOwnBlocks = true;			///< Shoudl be verify blocks that we mined?
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

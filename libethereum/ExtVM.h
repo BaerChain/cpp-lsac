@@ -23,7 +23,7 @@
 
 #include <map>
 #include <functional>
-#include <libethcore/Common.h>
+#include <libethcore/CommonEth.h>
 #include <libevm/ExtVMFace.h>
 #include "State.h"
 

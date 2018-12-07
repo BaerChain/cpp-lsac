@@ -27,6 +27,7 @@
 #include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -133,7 +134,7 @@ State::State(State const& _s):
 
 void State::paranoia(std::string const& _when, bool _enforceRefs) const
 {
-#if ETH_PARANOIA && !ETH_FATDB
+#if ETH_PARANOIA
 	// TODO: variable on context; just need to work out when there should be no leftovers
 	// [in general this is hard since contract alteration will result in nodes in the DB that are no directly part of the state DB].
 	if (!isTrieGood(_enforceRefs, false))
@@ -255,7 +256,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			{
 				auto b = _bc.block(_block);
 				bi.populate(b);
-//				bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+	//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
 				break;
 			}
 			catch (Exception const& _e)
@@ -486,11 +487,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	receiptsTrie.init();
 
 	LastHashes lh = getLastHashes(_bc, (unsigned)m_previousBlock.number);
-	RLP rlp(_block);
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	for (auto const& tr: rlp[1])
+	for (auto const& tr: RLP(_block)[1])
 	{
 		RLPStream k;
 		k << i;
@@ -504,11 +504,17 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		++i;
 	}
 
+	if (transactionsTrie.root() != m_currentBlock.transactionsRoot)
+	{
+		cwarn << "Bad transactions state root!";
+		BOOST_THROW_EXCEPTION(InvalidTransactionsStateRoot());
+	}
+
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
 		cwarn << "Block:" << toHex(_block);
-		cwarn << "Block RLP:" << rlp;
+		cwarn << "Block RLP:" << RLP(_block);
 		cwarn << "Calculated: " << receiptsTrie.root();
 		for (unsigned j = 0; j < i; ++j)
 		{
@@ -543,14 +549,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
-	if (rlp[2].itemCount() > 2)
-		BOOST_THROW_EXCEPTION(TooManyUncles());
-
-	set<Nonce> nonces = { m_currentBlock.nonce };
+	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
-
-	for (auto const& i: rlp[2])
+	for (auto const& i: RLP(_block)[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
 			BOOST_THROW_EXCEPTION(UncleInChain(knownUncles, sha3(i.data()) ));
@@ -698,7 +700,7 @@ void State::commitToMine(BlockChain const& _bc)
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
 		set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 		auto p = m_previousBlock.parentHash;
-		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2; ++gen, p = _bc.details(p).parent)
+		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash(); ++gen, p = _bc.details(p).parent)
 		{
 			auto us = _bc.details(p).children;
 			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
@@ -709,8 +711,6 @@ void State::commitToMine(BlockChain const& _bc)
 					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
-					if (unclesCount == 2)
-						break;
 				}
 		}
 	}
@@ -773,28 +773,23 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 
 	MineInfo ret;
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	ProofOfWork::Proof r;
-	tie(ret, r) = m_pow.mine(m_currentBlock, _msTimeout, true, _turbo);
+	tie(ret, m_currentBlock.nonce) = m_pow.mine(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
-	{
-		ProofOfWork::assignResult(r, m_currentBlock);
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-	}
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
 
 	return ret;
 }
 
-bool State::completeMine(ProofOfWork::Proof const& _nonce)
+bool State::completeMine(h256 const& _nonce)
 {
-	ProofOfWork::assignResult(_nonce, m_currentBlock);
-
-	if (!m_pow.verify(m_currentBlock))
+	if (!m_pow.verify(m_currentBlock.headerHash(WithoutNonce), _nonce, m_currentBlock.difficulty))
 		return false;
 
-	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
+	m_currentBlock.nonce = _nonce;
+	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
 
 	completeMine();
 
@@ -815,6 +810,12 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
+	StructuredLogger::minedNewBlock(
+		m_currentBlock.hash.abridged(),
+		m_currentBlock.nonce.abridged(),
+		"", //TODO: chain head hash here ??
+		m_currentBlock.parentHash.abridged()
+	);
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
@@ -1090,7 +1091,7 @@ u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, 
 
 	commit();
 
-#if ETH_PARANOIA && !ETH_FATDB
+#if ETH_PARANOIA
 	ctrace << "Executed; now" << rootHash();
 	ctrace << old.diff(*this);
 

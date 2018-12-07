@@ -23,7 +23,9 @@
 
 #include <thread>
 #include <chrono>
+
 #include <boost/filesystem/path.hpp>
+
 #include <libethereum/Client.h>
 #include <liblll/Compiler.h>
 #include <libevm/VMFactory.h>
@@ -67,7 +69,7 @@ namespace test
 struct ValueTooLarge: virtual Exception {};
 bigint const c_max256plus1 = bigint(1) << 256;
 
-ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller) : m_statePre(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty),  m_statePost(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty), m_TestObject(_o)
+ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller): m_TestObject(_o)
 {
 	importEnv(_o["env"].get_obj());
 	importState(_o["pre"].get_obj(), m_statePre);
@@ -170,7 +172,7 @@ void ImportTest::importTransaction(json_spirit::mObject& _o)
 	}
 }
 
-void ImportTest::exportTest(bytes _output, State& _statePost)
+void ImportTest::exportTest(bytes const& _output, State const& _statePost)
 {
 	// export output
 	m_TestObject["out"] = "0x" + toHex(_output);
@@ -181,8 +183,13 @@ void ImportTest::exportTest(bytes _output, State& _statePost)
 	// export post state
 	json_spirit::mObject postState;
 
+	std::map<Address, Account> genesis = genesisState();
+
 	for (auto const& a: _statePost.addresses())
 	{
+		if (genesis.count(a.first))
+			continue;
+
 		json_spirit::mObject o;
 		o["balance"] = toString(_statePost.balance(a.first));
 		o["nonce"] = toString(_statePost.transactionsFrom(a.first));
@@ -198,13 +205,14 @@ void ImportTest::exportTest(bytes _output, State& _statePost)
 	}
 	m_TestObject["post"] = json_spirit::mValue(postState);
 
-	m_TestObject["postStateRoot"] = toHex(_statePost.rootHash().asBytes());
-
 	// export pre state
 	json_spirit::mObject preState;
 
 	for (auto const& a: m_statePre.addresses())
 	{
+		if (genesis.count(a.first))
+			continue;
+
 		json_spirit::mObject o;
 		o["balance"] = toString(m_statePre.balance(a.first));
 		o["nonce"] = toString(m_statePre.transactionsFrom(a.first));
