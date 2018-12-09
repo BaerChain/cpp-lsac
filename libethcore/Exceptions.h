@@ -22,7 +22,6 @@
 #pragma once
 
 #include <libdevcore/Exceptions.h>
-#include "Common.h"
 
 namespace dev
 {
@@ -48,7 +47,6 @@ struct InvalidSignature: virtual dev::Exception {};
 class InvalidBlockFormat: virtual public dev::Exception { public: InvalidBlockFormat(int _f, bytesConstRef _d); int f; bytes d; };
 struct InvalidUnclesHash: virtual dev::Exception {};
 struct InvalidUncle: virtual dev::Exception {};
-struct TooManyUncles: virtual dev::Exception {};
 struct UncleTooOld: virtual dev::Exception {};
 class UncleInChain: virtual public dev::Exception { public: UncleInChain(h256Set _uncles, h256 _block); h256Set uncles; h256 block; };
 struct DuplicateUncleNonce: virtual dev::Exception {};
@@ -57,16 +55,15 @@ struct InvalidGasUsed: virtual dev::Exception {};
 class InvalidTransactionsHash: virtual public dev::Exception { public: InvalidTransactionsHash(h256 _head, h256 _real); h256 head; h256 real; };
 struct InvalidTransaction: virtual dev::Exception {};
 struct InvalidDifficulty: virtual dev::Exception {};
-struct InvalidSeedHash: virtual dev::Exception {};
-class InvalidGasLimit: virtual public dev::Exception { public: InvalidGasLimit(u256 _provided = 0, u256 _n = 0, u256 _x = 0): provided(_provided), minimum(_n), maximum(_x) {} u256 provided; u256 minimum; u256 maximum; virtual const char* what() const noexcept; };
-class InvalidMinGasPrice: virtual public dev::Exception { public: InvalidMinGasPrice(u256 _provided = 0, u256 _limit = 0): provided(_provided), limit(_limit) {} u256 provided; u256 limit; virtual const char* what() const noexcept; };
+class InvalidGasLimit: virtual public dev::Exception { public: InvalidGasLimit(u256 _provided = 0, u256 _valid = 0); u256 provided; u256 valid; };
+class InvalidMinGasPrice: virtual public dev::Exception { public: InvalidMinGasPrice(u256 _provided = 0, u256 _limit = 0); u256 provided; u256 limit; };
 struct InvalidTransactionGasUsed: virtual dev::Exception {};
 struct InvalidTransactionsStateRoot: virtual dev::Exception {};
 struct InvalidReceiptsStateRoot: virtual dev::Exception {};
 struct InvalidTimestamp: virtual dev::Exception {};
 struct InvalidLogBloom: virtual dev::Exception {};
-class InvalidNonce: virtual public dev::Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; virtual const char* what() const noexcept; };
-class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h = h256(), Nonce _n = Nonce(), u256 _d = 0): h(_h), n(_n), d(_d) {} h256 h; Nonce n; u256 d; virtual const char* what() const noexcept; };
+class InvalidNonce: virtual public dev::Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0); u256 required; u256 candidate; };
+class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h = h256(), h256 _n = h256(), u256 _d = 0); h256 h; h256 n; u256 d; };
 struct InvalidParentHash: virtual dev::Exception {};
 struct InvalidNumber: virtual dev::Exception {};
 struct InvalidContractAddress: virtual public dev::Exception {};

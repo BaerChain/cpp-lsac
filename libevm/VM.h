@@ -23,11 +23,11 @@
 
 #include <unordered_map>
 #include <libdevcore/Exceptions.h>
-#include <libethcore/Common.h>
+#include <libethcore/CommonEth.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Params.h>
+#include "FeeStructure.h"
 #include "VMFace.h"
 
 namespace dev

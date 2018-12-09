@@ -14,52 +14,47 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file OverlayDB.h
+/** @file CachedAddressState.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
-#include <memory>
+#include <string>
 #include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include "MemoryDB.h"
-namespace ldb = leveldb;
+#include <libdevcore/RLP.h>
+#include "AccountDiff.h"
 
 namespace dev
 {
 
-class OverlayDB: public MemoryDB
+class OverlayDB;
+
+namespace eth
+{
+
+class Account;
+
+class CachedAddressState
 {
 public:
-	OverlayDB(ldb::DB* _db = nullptr): m_db(_db) {}
-	~OverlayDB();
+	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): m_rS(_rlp), m_r(m_rS), m_s(_s), m_o(_o) {}
 
-	ldb::DB* db() const { return m_db.get(); }
-	void setDB(ldb::DB* _db, bool _clearOverlay = true);
-
-	void commit();
-	void rollback();
-
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void kill(h256 _h);
-
-	bytes lookupAux(h256 _h) const;
+	bool exists() const;
+	u256 balance() const;
+	u256 nonce() const;
+	bytes code() const;
+	std::map<u256, u256> storage() const;
+	AccountDiff diff(CachedAddressState const& _c);
 
 private:
-	using MemoryDB::clear;
-
-	std::shared_ptr<ldb::DB> m_db;
-
-	ldb::ReadOptions m_readOptions;
-	ldb::WriteOptions m_writeOptions;
+	std::string m_rS;
+	RLP m_r;
+	Account const* m_s;
+	OverlayDB const* m_o;
 };
+
+}
 
 }
