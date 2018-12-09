@@ -24,8 +24,9 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
-#include <memory>
+
 #include <boost/algorithm/string.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/StructuredLogger.h>
@@ -35,7 +36,6 @@
 #include "Common.h"
 #include "Capability.h"
 #include "UPnP.h"
-#include "RLPxHandshake.h"
 #include "Host.h"
 using namespace std;
 using namespace dev;
@@ -157,65 +157,32 @@ unsigned Host::protocolVersion() const
 	return 3;
 }
 
-bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
+void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
-	/// Get or create Peer
-	shared_ptr<Peer> p;
-	p = m_peers[_id];
-	if (!p)
 	{
-		p.reset(new Peer()); // this maybe redundant
-		p->id = _id;
-	}
-	p->m_lastDisconnect = NoDisconnect;
-	if (p->isOffline())
-		p->m_lastConnected = std::chrono::system_clock::now();
-	p->m_failedAttempts = 0;
-	// TODO: update pendingconns w/session-weak-ptr for graceful shutdown (otherwise this line isn't safe)
-	p->endpoint.tcp.address(_endpoint.address());
-
-	auto protocolVersion = _rlp[0].toInt<unsigned>();
-	auto clientVersion = _rlp[1].toString();
-	auto caps = _rlp[2].toVector<CapDesc>();
-	auto listenPort = _rlp[3].toInt<unsigned short>();
-	
-	// clang error (previously: ... << hex << caps ...)
-	// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
-	stringstream capslog;
-	for (auto cap: caps)
-		capslog << "(" << cap.first << "," << dec << cap.second << ")";
-	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id.abridged() << showbase << capslog.str() << dec << listenPort;
-	
-	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
-	if (protocolVersion != this->protocolVersion())
-	{
-		ps->disconnect(IncompatibleProtocol);
-		return false;
-	}
-	
-	{
+		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
+		StructuredLogger::p2pConnected(
+			_s->m_peer->id.abridged(),
+			_s->m_peer->peerEndpoint(),
+			_s->m_peer->m_lastConnected,
+			_s->m_info.clientVersion,
+			peerCount()
+		);
 		RecursiveGuard l(x_sessions);
-		if (m_sessions.count(_id) && !!m_sessions[_id].lock())
-		{
-			// Already connected.
-			clog(NetWarn) << "Session already exists for peer with id" << _id.abridged();
-			ps->disconnect(DuplicatePeer);
-			return false;
-		}
-		m_sessions[_id] = ps;
+		// TODO: temporary loose-coupling; if m_peers already has peer,
+		//       it is same as _s->m_peer. (fixing next PR)
+		if (!m_peers.count(_s->m_peer->id))
+			m_peers[_s->m_peer->id] = _s->m_peer;
+		m_sessions[_s->m_peer->id] = _s;
 	}
-	ps->start();
+
 	unsigned o = (unsigned)UserPacket;
-	for (auto const& i: caps)
+	for (auto const& i: _caps)
 		if (haveCapability(i))
 		{
-			ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
+			_s->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(_s.get(), o));
 			o += m_capabilities[i]->messageCount();
 		}
-	clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
-	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->peerEndpoint(), ps->m_peer->m_lastConnected, clientVersion, peerCount());
-	return true;
 }
 
 void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
@@ -266,6 +233,19 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
+}
+
+void Host::seal(bytes& _b)
+{
+	_b[0] = 0x22;
+	_b[1] = 0x40;
+	_b[2] = 0x08;
+	_b[3] = 0x91;
+	uint32_t len = (uint32_t)_b.size() - 8;
+	_b[4] = (len >> 24) & 0xff;
+	_b[5] = (len >> 16) & 0xff;
+	_b[6] = (len >> 8) & 0xff;
+	_b[7] = len & 0xff;
 }
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)
@@ -356,18 +336,18 @@ void Host::runAcceptor()
 		// case the socket may be open and must be closed to prevent asio from
 		// processing socket events after socket is deallocated.
 
-		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
-		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
+		bi::tcp::socket *s = new bi::tcp::socket(m_ioService);
+		m_tcp4Acceptor.async_accept(*s, [=](boost::system::error_code ec)
 		{
-			// if no error code
+			// if no error code, doHandshake takes ownership
 			bool success = false;
 			if (!ec)
 			{
 				try
 				{
+					// doHandshake takes ownersihp of *s via std::move
 					// incoming connection; we don't yet know nodeid
-					auto handshake = make_shared<RLPXHandshake>(this, socket);
-					handshake->start();
+					doHandshake(s, NodeId());
 					success = true;
 				}
 				catch (Exception const& _e)
@@ -380,14 +360,39 @@ void Host::runAcceptor()
 				}
 			}
 
-			if (!success)
-				socket->ref().close();
-			
+			// asio doesn't close socket on error
+			if (!success && s->is_open())
+			{
+				boost::system::error_code ec;
+				s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+				s->close();
+			}
+
 			m_accepting = false;
+			delete s;
+
 			if (ec.value() < 1)
 				runAcceptor();
 		});
 	}
+}
+
+void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
+{
+	try {
+		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
+	} catch (...){}
+
+	shared_ptr<Peer> p;
+	if (_nodeId)
+		p = m_peers[_nodeId];
+
+	if (!p)
+		p.reset(new Peer());
+	p->endpoint.tcp.address(_socket->remote_endpoint().address());
+
+	auto ps = std::make_shared<Session>(this, std::move(*_socket), p);
+	ps->start();
 }
 
 string Host::pocHost()
@@ -464,8 +469,8 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	}
 
 	clog(NetConnect) << "Attempting connection to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "from" << id().abridged();
-	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
-	socket->ref().async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
+	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+	s->async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
@@ -476,9 +481,15 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
-			auto handshake = make_shared<RLPXHandshake>(this, socket, _p->id);
-			handshake->start();
+			_p->m_lastDisconnect = NoDisconnect;
+			_p->m_lastConnected = std::chrono::system_clock::now();
+			_p->m_failedAttempts = 0;
+
+			auto ps = make_shared<Session>(this, std::move(*s), _p);
+			ps->start();
+
 		}
+		delete s;
 		Guard l(x_pendingNodeConns);
 		m_pendingPeerConns.erase(nptr);
 	});
@@ -531,8 +542,8 @@ void Host::run(boost::system::error_code const&)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
 
-//	keepAlivePeers();
-//	disconnectLatePeers();
+	keepAlivePeers();
+	disconnectLatePeers();
 
 	auto c = peerCount();
 	if (m_idealPeerCount && !c)

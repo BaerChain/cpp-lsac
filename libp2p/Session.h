@@ -16,7 +16,6 @@
 */
 /** @file Session.h
  * @author Gav Wood <i@gavwood.com>
- * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
@@ -33,7 +32,6 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Guards.h>
-#include "RLPxHandshake.h"
 #include "Common.h"
 
 namespace dev
@@ -54,7 +52,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n);
 	virtual ~Session();
 
 	void start();
@@ -65,13 +63,16 @@ public:
 	bool isConnected() const { return m_socket.is_open(); }
 
 	NodeId id() const;
-	unsigned socketId() const { return m_info.socket; }
+	unsigned socketId() const { return m_socket.native_handle(); }
 
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
 
 	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
+	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
+	void send(bytes&& _msg);
+	void send(bytesConstRef _msg);
 
 	int rating() const;
 	void addRating(unsigned _r);
@@ -84,8 +85,6 @@ public:
 	void serviceNodesRequest();
 
 private:
-	void send(bytes&& _msg);
-
 	/// Drop the connection for the reason @a _r.
 	void drop(DisconnectReason _r);
 
@@ -96,18 +95,17 @@ private:
 	void write();
 
 	/// Interpret an incoming message.
-	bool interpret(PacketType _t, RLP const& _r);
+	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
 
 	Host* m_server;							///< The host that owns us. Never null.
 
-	RLPXFrameIO* m_io;						///< Transport over which packets are sent.
-	bi::tcp::socket& m_socket;				///< Socket for the peer's connection.
+	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.
-	std::array<byte, 16777216> m_data;			///< Buffer for ingress packet data.
+	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
 	bytes m_incoming;						///< Read buffer for ingress bytes.
 
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.

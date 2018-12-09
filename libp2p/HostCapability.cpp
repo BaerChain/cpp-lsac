@@ -14,27 +14,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file BlockDetails.cpp
+/** @file HostCapability.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "BlockDetails.h"
+#include "HostCapability.h"
 
-#include <libdevcore/Common.h>
+#include "Session.h"
+#include "Host.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::p2p;
 
-BlockDetails::BlockDetails(RLP const& _r)
+void HostCapabilityFace::seal(bytes& _b)
 {
-	number = _r[0].toInt<unsigned>();
-	totalDifficulty = _r[1].toInt<u256>();
-	parent = _r[2].toHash<h256>();
-	children = _r[3].toVector<h256>();
+	m_host->seal(_b);
 }
 
-bytes BlockDetails::rlp() const
+std::vector<std::pair<std::shared_ptr<Session>,std::shared_ptr<Peer>>> HostCapabilityFace::peerSessions() const
 {
-	return rlpList(number, totalDifficulty, parent, children);
+	RecursiveGuard l(m_host->x_sessions);
+	std::vector<std::pair<std::shared_ptr<Session>,std::shared_ptr<Peer>>> ret;
+	for (auto const& i: m_host->m_sessions)
+		if (std::shared_ptr<Session> s = i.second.lock())
+			if (s->m_capabilities.count(capDesc()))
+				ret.push_back(make_pair(s,s->m_peer));
+	return ret;
 }

@@ -48,11 +48,6 @@ private:
 	std::map<Address,AliasSession> m_sessions;
 	Secret m_secret;
 };
-
-namespace ecdh
-{
-void agree(Secret const& _s, Public const& _r, h256& o_s);
-}
 	
 /**
  * @brief Derive DH shared secret from EC keypairs.
@@ -67,14 +62,12 @@ public:
 	/// Public key sent to remote.
 	Public pubkey() { return m_ephemeral.pub(); }
 	
-	Secret seckey() { return m_ephemeral.sec(); }
-	
 	/// Input public key for dh agreement, output generated shared secret.
-	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret) const;
+	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret);
 	
 protected:
-	KeyPair m_ephemeral;					///< Ephemeral keypair; generated.
-	mutable Public m_remoteEphemeral;		///< Public key of remote; parameter. Set once when agree is called, otherwise immutable.
+	KeyPair m_ephemeral;			///< Ephemeral keypair; generated.
+	Public m_remoteEphemeral;		///< Public key of remote; parameter.
 };
 
 /**
@@ -87,10 +80,10 @@ class ECDHEKeyExchange: private ECDHE
 {
 public:
 	/// Exchange with unknown remote (pass public key for ingress exchange)
-	ECDHEKeyExchange(Alias& _k): m_alias(_k) {}
+	ECDHEKeyExchange(Alias& _k): m_alias(_k) {};
 
 	/// Exchange with known remote
-	ECDHEKeyExchange(Alias& _k, AliasSession _known): m_alias(_k), m_known(_known) {}
+	ECDHEKeyExchange(Alias& _k, AliasSession _known): m_alias(_k), m_known(_known) {};
 
 	/// Provide public key for dh agreement to generate shared secret.
 	void agree(Public const& _remoteEphemeral);

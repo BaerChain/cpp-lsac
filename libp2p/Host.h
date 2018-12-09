@@ -35,12 +35,10 @@
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcrypto/Common.h>
-#include <libdevcrypto/ECDHE.h>
 #include "NodeTable.h"
 #include "HostCapability.h"
 #include "Network.h"
 #include "Peer.h"
-#include "RLPxFrameIO.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -50,7 +48,7 @@ namespace dev
 
 namespace p2p
 {
-	
+
 class Host;
 
 class HostNodeTableHandler: public NodeTableEventHandler
@@ -70,16 +68,19 @@ private:
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  *
- * @todo cleanup startPeerSession
+ * @todo exceptions when nodeTable not set (prior to start)
+ * @todo onNodeTableEvent: move peer-connection logic into ensurePeers
+ * @todo handshake: gracefully disconnect peer if peer already connected
+ * @todo abstract socket -> IPConnection
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
+ * @todo write host identifier to disk w/nodes
  * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
+ * @todo configuration-management (NetworkPrefs+Keys+Topology)
  */
 class Host: public Worker
 {
 	friend class HostNodeTableHandler;
-	friend class RLPXHandshake;
-	
 	friend class Session;
 	friend class HostCapabilityFace;
 
@@ -112,6 +113,8 @@ public:
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
+
+	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
 
@@ -150,8 +153,7 @@ public:
 
 	NodeId id() const { return m_alias.pub(); }
 
-	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	bool startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
+	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
@@ -160,8 +162,6 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
-	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
-	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 
@@ -175,6 +175,11 @@ private:
 
 	/// Called only from startedWorking().
 	void runAcceptor();
+
+	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections. If successful, socket is moved to Session via std::move.
+	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId = NodeId());
+
+	void seal(bytes& _b);
 
 	/// Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void startedWorking();
