@@ -27,6 +27,7 @@
 #include <memory>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
@@ -40,6 +41,12 @@
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
+
+/// Interval at which Host::run will call keepAlivePeers to ping peers.
+std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
+
+/// Disconnect timeout after failure to respond to keepAlivePeers ping.
+std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
 
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
@@ -169,21 +176,16 @@ void Host::doneWorking()
 	m_sessions.clear();
 }
 
-unsigned Host::protocolVersion() const
-{
-	return 3;
-}
-
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
-	/// Get or create Peer
 	shared_ptr<Peer> p;
-	p = m_peers[_id];
-	if (!p)
+	if (!m_peers.count(_id))
 	{
-		p.reset(new Peer()); // this maybe redundant
+		p.reset(new Peer());
 		p->id = _id;
 	}
+	else
+		p = m_peers[_id];
 	p->m_lastDisconnect = NoDisconnect;
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
@@ -204,7 +206,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	
 	// create session so disconnects are managed
 	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
-	if (protocolVersion != this->protocolVersion())
+	if (protocolVersion != dev::p2p::c_protocolVersion)
 	{
 		ps->disconnect(IncompatibleProtocol);
 		return;
@@ -259,7 +261,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 					p->required = n.required;
 					m_peers[_n] = p;
 
-					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint.tcp.address() << p->endpoint.udp.address();
+					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << "udp:" << p->endpoint.udp.address() << "tcp:" << p->endpoint.tcp.address();
 				}
 				p->endpoint.tcp = n.endpoint.tcp;
 			}
@@ -276,9 +278,9 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				connect(p);
 		}
 	}
-	else if (_e == NodeEntryRemoved)
+	else if (_e == NodeEntryDropped)
 	{
-		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryRemoved " << _n;
+		clog(NetNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
@@ -473,6 +475,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
 			_p->m_lastDisconnect = TCPError;
 			_p->m_lastAttempted = std::chrono::system_clock::now();
+			_p->m_failedAttempts++;
 		}
 		else
 		{
@@ -608,8 +611,7 @@ void Host::startedWorking()
 	else
 		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Listen port is invalid or unavailable. Node Table using default port (30303).";
 
-	// TODO: add m_tcpPublic endpoint; sort out endpoint stuff for nodetable
-	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort > 0 ? m_listenPort : 30303));
+	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort() > 0 ? listenPort() : 30303));
 	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	restoreNetwork(&m_restoreNetwork);
 
@@ -673,7 +675,7 @@ bytes Host::saveNetwork() const
 			// TODO: alpha: Figure out why it ever shares these ports.//p.address.port() >= 30300 && p.address.port() <= 30305 &&
 			// TODO: alpha: if/how to save private addresses
 			// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-			if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.peerEndpoint().address()))
+			if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.endpoint.udp.address()) && !isPrivateAddress(p.endpoint.tcp.address()))
 			{
 				network.appendList(10);
 				if (p.peerEndpoint().address().is_v4())
@@ -707,7 +709,7 @@ bytes Host::saveNetwork() const
 	}
 
 	RLPStream ret(3);
-	ret << 1 << m_alias.secret();
+	ret << dev::p2p::c_protocolVersion << m_alias.secret();
 	ret.appendList(count).appendRaw(network.out(), count);
 	return ret.out();
 }
@@ -720,7 +722,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == 1)
+	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)
 	{
 		// r[0] = version
 		// r[1] = key
@@ -740,6 +742,13 @@ void Host::restoreNetwork(bytesConstRef _b)
 				tcp = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
 				udp = bi::udp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
 			}
+			
+			// skip private addresses
+			// todo: to support private addresseses entries must be stored
+			//       and managed externally by host rather than nodetable.
+			if (isPrivateAddress(tcp.address()) || isPrivateAddress(udp.address()))
+				continue;
+			
 			auto id = (NodeId)i[2];
 			if (i.itemCount() == 3)
 				m_nodeTable->addNode(id, udp, tcp);

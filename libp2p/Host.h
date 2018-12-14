@@ -94,17 +94,8 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 
-	/// Interval at which Host::run will call keepAlivePeers to ping peers.
-	std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
-
-	/// Disconnect timeout after failure to respond to keepAlivePeers ping.
-	std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
-
 	/// Default host for current version of client.
 	static std::string pocHost();
-
-	/// Basic peer network protocol version.
-	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
@@ -113,6 +104,7 @@ public:
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 
+	/// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
 
 	/// Set ideal number of peers.
