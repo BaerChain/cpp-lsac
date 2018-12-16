@@ -1,265 +1,54 @@
-# cmake global
-cmake_minimum_required(VERSION 2.8.12)
-# let cmake autolink dependencies on windows
-# it's specified globally, cause qt libraries requires that on windows and they are also found globally
-cmake_policy(SET CMP0020 NEW)
-
-project(ethereum)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-
-######################################################################################################
-
-# user defined, defaults
-# Normally, set(...CACHE...) creates cache variables, but does not modify them.
-function(createDefaultCacheConfig)
-	set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
-	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
-	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
-	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
-	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
-	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
-	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
-	set(SOLIDITY ON CACHE BOOL "Build the Solidity language components (requried unless HEADLESS)")
-	set(USENPM OFF CACHE BOOL "Use npm to recompile ethereum.js if it was changed")
-	set(ETHASHCL OFF CACHE BOOL "Build in support for GPU mining via OpenCL")
-endfunction()
-
-
-# propagates CMake configuration options to the compiler
-function(configureProject)
-	if (PARANOIA)
-		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-			add_definitions(-DETH_PARANOIA)
-		else ()
-			message(FATAL_ERROR "Paranoia requires debug.")
-		endif ()
-	endif ()
-
-	if (VMTRACE)
-		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-			add_definitions(-DETH_VMTRACE)
-		else ()
-			message(FATAL_ERROR "VM tracing requires debug.")
-		endif ()
-	endif ()
-
-	if (ETHASHCL)
-		add_definitions(-DETH_ETHASHCL)
-	endif()
-
-	if (EVMJIT)
-		add_definitions(-DETH_EVMJIT)
-	endif()
-
-	if (FATDB)
-		add_definitions(-DETH_FATDB)
-	endif()
-
-	if (SOLIDITY)
-		add_definitions(-DETH_SOLIDITY)
-	endif()
-
-	if (HEADLESS OR JUSTTESTS)
-		add_definitions(-DETH_HEADLESS)
-	endif()
-endfunction()
-
-set(CPPETHEREUM 1)
-
-function(createBuildInfo)
-	# Set build platform; to be written to BuildInfo.h
-	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
-	if (CMAKE_COMPILER_IS_MINGW)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
-	elseif (CMAKE_COMPILER_IS_MSYS)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msys")
-	elseif (CMAKE_COMPILER_IS_GNUCXX)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
-	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
-	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
-	else ()
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
-	endif ()
-
-	if (EVMJIT)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/JIT")
-	else ()
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
-	endif ()
-
-	if (PARANOIA)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
-	endif ()
-
-	#cmake build type may be not specified when using msvc
-	if (CMAKE_BUILD_TYPE)
-		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
-	else()
-		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
-	endif()
-
-	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
-			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
-			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
-		)
-	include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-	set(CMAKE_INCLUDE_CURRENT_DIR ON)
-	set(SRC_LIST BuildInfo.h)
-endfunction()
-
-
-
-######################################################################################################
-
-
-set(CMAKE_AUTOMOC ON)
 cmake_policy(SET CMP0015 NEW)
 
+aux_source_directory(. SRC_LIST)
+list(REMOVE_ITEM SRC_LIST "./createRandomVMTest.cpp")
+list(REMOVE_ITEM SRC_LIST "./createRandomStateTest.cpp")
+list(REMOVE_ITEM SRC_LIST "./checkRandomVMTest.cpp")
+list(REMOVE_ITEM SRC_LIST "./checkRandomStateTest.cpp")
 
-createDefaultCacheConfig()
-configureProject()
-
-# Force chromium.
-set (ETH_HAVE_WEBENGINE 1)
-
-message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}; USENPM: ${USENPM}; ETHASHCL: ${ETHASHCL}")
-
-
-# Default TARGET_PLATFORM to "linux".
-set(TARGET_PLATFORM CACHE STRING "linux")
-if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
-endif ()
-
-if ("${TARGET_PLATFORM}" STREQUAL "linux")
-	set(CMAKE_THREAD_LIBS_INIT pthread)
-endif ()
-
-include(EthCompilerSettings)
-message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
-
-
-# this must be an include, as a function it would messs up with variable scope!
-include(EthDependencies)
-include(EthExecutableHelper)
-
-createBuildInfo()
-
-if (EVMJIT)
-	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
-	add_subdirectory(evmjit)
+if (NOT JSONRPC)
+	list(REMOVE_ITEM SRC_LIST "./AccountHolder.cpp")
 endif()
 
-add_subdirectory(libdevcore)
-add_subdirectory(libevmcore)
-add_subdirectory(liblll)
+include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(BEFORE ..)
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${CRYPTOPP_INCLUDE_DIRS})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-	add_subdirectory(libserpent)
-	add_subdirectory(sc)
-endif ()
 
-add_subdirectory(libsolidity)
+file(GLOB HEADERS "*.h")
+add_executable(testeth ${SRC_LIST} ${HEADERS})
+add_executable(createRandomVMTest createRandomVMTest.cpp vm.cpp TestHelper.cpp Stats.cpp)
+add_executable(createRandomStateTest createRandomStateTest.cpp TestHelper.cpp Stats.cpp)
+add_executable(checkRandomVMTest checkRandomVMTest.cpp vm.cpp TestHelper.cpp Stats.cpp)
+add_executable(checkRandomStateTest checkRandomStateTest.cpp TestHelper.cpp Stats.cpp)
 
-if (NOT JUSTTESTS)
-	add_subdirectory(lllc)
-	add_subdirectory(solc)
+target_link_libraries(testeth ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(testeth ${CURL_LIBRARIES})
+target_link_libraries(testeth ethereum)
+target_link_libraries(testeth ethcore)
+target_link_libraries(testeth secp256k1)
+target_link_libraries(testeth solidity)
+if (NOT HEADLESS AND NOT JUSTTESTS)
+	target_link_libraries(testeth webthree)
+	target_link_libraries(testeth natspec)
 endif()
-
 if (JSONRPC)
-	add_subdirectory(libweb3jsonrpc)
-	add_subdirectory(ethrpctest)
+	target_link_libraries(testeth web3jsonrpc)
+	target_link_libraries(testeth ${JSON_RPC_CPP_CLIENT_LIBRARIES})
 endif()
 
-add_subdirectory(secp256k1)
-add_subdirectory(libp2p)
-add_subdirectory(libdevcrypto)
-add_subdirectory(libwhisper)
+target_link_libraries(createRandomVMTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(createRandomVMTest ethereum)
+target_link_libraries(createRandomVMTest ethcore)
+target_link_libraries(createRandomStateTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(createRandomStateTest ethereum)
+target_link_libraries(createRandomStateTest ethcore)
+target_link_libraries(checkRandomVMTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(checkRandomVMTest ethereum)
+target_link_libraries(checkRandomVMTest ethcore)
+target_link_libraries(checkRandomStateTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+target_link_libraries(checkRandomStateTest ethereum)
+target_link_libraries(checkRandomStateTest ethcore)
 
-add_subdirectory(libethash)
-if (ETHASHCL)
-	add_subdirectory(libethash-cl)
-endif ()
-
-add_subdirectory(libethcore)
-add_subdirectory(libevm)
-add_subdirectory(libethereum)
-
-add_subdirectory(libwebthree)
-add_subdirectory(libtestutils)
-add_subdirectory(test)
-
-if (NOT JUSTTESTS)
-
-	add_subdirectory(rlp)
-	add_subdirectory(abi)
-	add_subdirectory(eth)
-
-	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		add_subdirectory(exp)
-	endif ()
-
-	# TODO check msvc
-	if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-		add_subdirectory(neth)
-	endif ()
-
-	if (NOT HEADLESS)
-
-		add_subdirectory(libnatspec)
-		add_subdirectory(libjsqrc)
-
-		if (ETH_HAVE_WEBENGINE)
-			add_subdirectory(alethzero)
-#			add_subdirectory(third)	// reenable once not qtwebkit.
-		endif()
-
-		add_subdirectory(mix)
-
-	endif()
-
-endif()
-
-enable_testing()
-add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
-
-#unset(TARGET_PLATFORM CACHE)
-
-if (WIN32)
-	# packaging stuff
-	include(InstallRequiredSystemLibraries)
-	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ethereum")
-	set(CPACK_PACKAGE_VENDOR "ethereum.org")
-	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	set(CPACK_PACKAGE_VERSION "0.7")
-	set(CPACK_GENERATOR "NSIS")
-	# seems to be not working
-	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
-
-	# our stuff
-	set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
-	set(CPACK_COMPONENT_THIRD_GROUP "Applications")
-	set(CPACK_COMPONENT_MIX_GROUP "Applications")
-	set(CPACK_COMPONENTS_ALL alethzero third mix)
-
-	# nsis specific stuff
-	set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ethereum")
-	set(CPACK_NSIS_HELP_LINK "https://github.com/ethereum/cpp-ethereum")
-	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
-	set(CPACK_NSIS_CONTACT "ethereum.org")
-	set(CPACK_NSIS_MODIFY_PATH ON)
-	set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
-	set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
-
-	include(CPack)
-endif (WIN32)
