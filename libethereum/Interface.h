@@ -38,7 +38,6 @@ namespace eth
 {
 
 using TransactionHashes = h256s;
-using UncleHashes = h256s;
 
 enum class Reaping
 {
@@ -66,6 +65,9 @@ public:
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
+	virtual void inject(bytesConstRef _rlp) = 0;
 
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() = 0;
@@ -116,7 +118,6 @@ public:
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
-	virtual UncleHashes uncleHashes(h256 _blockHash) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
 	virtual Transactions transactions(h256 _blockHash) const = 0;
@@ -137,7 +138,6 @@ public:
 	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const = 0;
 
 	/// Get a list of all active addresses.
-	/// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw InterfaceNotSupported.
 	virtual Addresses addresses() const { return addresses(m_default); }
 	virtual Addresses addresses(BlockNumber _block) const = 0;
 
