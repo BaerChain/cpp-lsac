@@ -1,4 +1,3 @@
-
 /*
 	This file is part of cpp-ethereum.
 
@@ -21,6 +20,8 @@
  * @date 2014
  * Unit tests for the solidity expression compiler, testing the behaviour of the code.
  */
+
+#if ETH_SOLIDITY
 
 #include <string>
 #include <tuple>
@@ -1466,6 +1467,8 @@ BOOST_AUTO_TEST_CASE(ecrecover)
 	u160 addr("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b");
 	BOOST_CHECK(callContractFunction("a(bytes32,uint8,bytes32,bytes32)", h, v, r, s) == encodeArgs(addr));
 }
+
+#endif
 
 BOOST_AUTO_TEST_CASE(inter_contract_calls)
 {
@@ -3626,4 +3629,3 @@ BOOST_AUTO_TEST_SUITE_END()
 }
 }
 } // end namespaces
-

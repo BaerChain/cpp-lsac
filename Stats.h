@@ -14,36 +14,43 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Defaults.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#include <chrono>
+#include <vector>
+
+#include "TestHelper.h"
 
 namespace dev
 {
-namespace eth
+namespace test
 {
 
-struct Defaults
+class Stats: public Listener
 {
-	friend class BlockChain;
-	friend class State;
-
 public:
-	Defaults();
+	using clock = std::chrono::high_resolution_clock;
 
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-	static std::string const& dbPath() { return get()->m_dbPath; }
+	struct Item
+	{
+		clock::duration duration;
+		std::string 	name;
+	};
+
+	static Stats& get();
+
+	~Stats();
+
+	void suiteStarted(std::string const& _name) override;
+	void testStarted(std::string const& _name) override;
+	void testFinished() override;
 
 private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
+	clock::time_point m_tp;
+	std::string m_currentSuite;
+	std::string m_currentTest;
+	std::vector<Item> m_stats;
 };
 
 }
