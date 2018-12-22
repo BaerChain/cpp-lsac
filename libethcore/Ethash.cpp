@@ -132,8 +132,7 @@ void Ethash::CPUMiner::workLoop()
 	WorkPackage w = work();
 
 	auto p = EthashAux::params(w.seedHash);
-	auto dag = EthashAux::full(w.seedHash);
-	auto dagPointer = dag->data.data();
+	void const* dagPointer = EthashAux::full(w.seedHash).data();
 	uint8_t const* headerHashPointer = w.headerHash.data();
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
