@@ -13,62 +13,96 @@
 
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/**
- * @author Christian R <c@ethdev.com>
+*/
+/** @file AccountHolder.cpp
+ * @authors:
+ *   Christian R <c@ethdev.com>
+ *   Lefteris Karapetsas <lefteris@ethdev.com>
  * @date 2015
- * Unit tests for the account holder used by the WebThreeStubServer.
  */
 
-#include <boost/test/unit_test.hpp>
-#include <libweb3jsonrpc/AccountHolder.h>
+#include "AccountHolder.h"
+#include <random>
+#include <ctime>
+#include <libdevcore/Guards.h>
+#include <libethereum/Client.h>
 
-namespace dev
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
+
+vector<TransactionSkeleton> g_emptyQueue;
+static std::mt19937 g_randomNumberGenerator(time(0));
+static Mutex x_rngMutex;
+
+void AccountHolder::setAccounts(vector<KeyPair> const& _accounts)
 {
-namespace test
-{
-
-BOOST_AUTO_TEST_SUITE(AccountHolderTest)
-
-BOOST_AUTO_TEST_CASE(ProxyAccountUseCase)
-{
-	AccountHolder h = AccountHolder(std::function<eth::Interface*()>());
-	BOOST_CHECK(h.getAllAccounts().empty());
-	BOOST_CHECK(h.getRealAccounts().empty());
-	Address addr("abababababababababababababababababababab");
-	Address addr2("abababababababababababababababababababab");
-	int id = h.addProxyAccount(addr);
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
-	// register it again
-	int secondID = h.addProxyAccount(addr);
-	BOOST_CHECK(h.getQueuedTransactions(secondID).empty());
-
-	eth::TransactionSkeleton t1;
-	eth::TransactionSkeleton t2;
-	t1.from = addr;
-	t1.data = fromHex("12345678");
-	t2.from = addr;
-	t2.data = fromHex("abcdef");
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
-	h.queueTransaction(t1);
-	BOOST_CHECK_EQUAL(1, h.getQueuedTransactions(id).size());
-	h.queueTransaction(t2);
-	BOOST_REQUIRE_EQUAL(2, h.getQueuedTransactions(id).size());
-
-	// second proxy should not see transactions
-	BOOST_CHECK(h.getQueuedTransactions(secondID).empty());
-
-	BOOST_CHECK(h.getQueuedTransactions(id)[0].data == t1.data);
-	BOOST_CHECK(h.getQueuedTransactions(id)[1].data == t2.data);
-
-	h.clearQueue(id);
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
-	// removing fails because it never existed
-	BOOST_CHECK(!h.removeProxyAccount(secondID));
-	BOOST_CHECK(h.removeProxyAccount(id));
+	m_accounts.clear();
+	for (auto const& keyPair: _accounts)
+	{
+		m_accounts.push_back(keyPair.address());
+		m_keyPairs[keyPair.address()] = keyPair;
+	}
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-
+vector<Address> AccountHolder::getAllAccounts() const
+{
+	vector<Address> accounts = m_accounts;
+	for (auto const& pair: m_proxyAccounts)
+		if (!isRealAccount(pair.first))
+			accounts.push_back(pair.first);
+	return accounts;
 }
+
+Address const& AccountHolder::getDefaultTransactAccount() const
+{
+	if (m_accounts.empty())
+		return ZeroAddress;
+	Address const* bestMatch = &m_accounts.front();
+	for (auto const& account: m_accounts)
+		if (m_client()->balanceAt(account) > m_client()->balanceAt(*bestMatch))
+			bestMatch = &account;
+	return *bestMatch;
+}
+
+int AccountHolder::addProxyAccount(const Address& _account)
+{
+	Guard g(x_rngMutex);
+	int id = std::uniform_int_distribution<int>(1)(g_randomNumberGenerator);
+	id = int(u256(FixedHash<32>(sha3(bytesConstRef((byte*)(&id), sizeof(int) / sizeof(byte))))));
+	if (isProxyAccount(_account) || id == 0 || m_transactionQueues.count(id))
+		return 0;
+	m_proxyAccounts.insert(make_pair(_account, id));
+	m_transactionQueues[id].first = _account;
+	return id;
+}
+
+bool AccountHolder::removeProxyAccount(unsigned _id)
+{
+	if (!m_transactionQueues.count(_id))
+		return false;
+	m_proxyAccounts.erase(m_transactionQueues[_id].first);
+	m_transactionQueues.erase(_id);
+	return true;
+}
+
+void AccountHolder::queueTransaction(TransactionSkeleton const& _transaction)
+{
+	if (!m_proxyAccounts.count(_transaction.from))
+		return;
+	int id = m_proxyAccounts[_transaction.from];
+	m_transactionQueues[id].second.push_back(_transaction);
+}
+
+vector<TransactionSkeleton> const& AccountHolder::getQueuedTransactions(int _id) const
+{
+	if (!m_transactionQueues.count(_id))
+		return g_emptyQueue;
+	return m_transactionQueues.at(_id).second;
+}
+
+void AccountHolder::clearQueue(int _id)
+{
+	if (m_transactionQueues.count(_id))
+		m_transactionQueues.at(_id).second.clear();
 }
