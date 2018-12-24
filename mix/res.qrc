@@ -67,6 +67,5 @@
         <file>qml/img/stop_button2x.png</file>
         <file>qml/img/warningicon.png</file>
         <file>qml/img/warningicon@2x.png</file>
-        <file>qml/QAddressView.qml</file>
     </qresource>
 </RCC>
