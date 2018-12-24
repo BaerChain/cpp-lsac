@@ -87,12 +87,11 @@ struct WarnChannel: public LogChannel { static const char* name(); static const 
 struct NoteChannel: public LogChannel { static const char* name(); };
 struct DebugChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
 
-enum class LogTag
+enum LogTag
 {
 	None,
-	Url,
-	Error,
-	Special
+	url,
+	error
 };
 
 class LogOutputStreamBase
@@ -104,13 +103,12 @@ public:
 	{
 		switch (m_logTag)
 		{
-		case LogTag::Url: m_sstr << EthNavyUnder; break;
-		case LogTag::Error: m_sstr << EthRedBold; break;
-		case LogTag::Special: m_sstr << EthWhiteBold; break;
+		case url: m_sstr << EthNavyUnder; break;
+		case error: m_sstr << EthRedBold; break;
 		default:;
 		}
 		m_sstr << _t << EthReset;
-		m_logTag = LogTag::None;
+		m_logTag = None;
 	}
 
 	void append(unsigned long _t) { m_sstr << EthBlue << _t << EthReset; }
