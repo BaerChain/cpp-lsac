@@ -36,7 +36,6 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
-#include <libdevcore/RLP.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -163,17 +162,10 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
-	enum RLPAppend
-	{
-		List,
-		Inline
-	};
-	
 	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
-	NodeIPEndpoint(RLP const& _r) { interpretRLP(_r); }
 
 	bi::address address;
 	uint16_t udpPort;
@@ -185,9 +177,6 @@ struct NodeIPEndpoint
 	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
 	
 	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
-	
-	void streamRLP(RLPStream& _s, RLPAppend _inline = List) const { if (_inline == List) _s.appendList(3); if (address.is_v4()) _s << address.to_v4().to_bytes(); else if (address.is_v6()) _s << address.to_v6().to_bytes(); else _s << ""; _s << udpPort << tcpPort; }
-	void interpretRLP(RLP const& _r) { if (_r[0].size() == 0) address = bi::address(); else if (_r[0].size() == 4) address = bi::address_v4(_r[0].toArray<byte, 4>()); else address = bi::address_v6(_r[0].toArray<byte, 16>()); udpPort = _r[1].toInt<uint16_t>(); tcpPort = _r[2].toInt<uint16_t>(); }
 };
 	
 struct Node

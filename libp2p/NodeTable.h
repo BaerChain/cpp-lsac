@@ -146,7 +146,10 @@ public:
 	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryDropped events. Events are coalesced by type whereby old events are ignored.
 	void processEvents();
 
-	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
+	/// Add node. Node will be pinged and empty shared_ptr is returned if NodeId is uknown.
+	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, NodeIPEndpoint const& _ep);
+
+	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
@@ -201,7 +204,7 @@ private:
 	};
 
 	/// Used to ping endpoint.
-	void ping(NodeIPEndpoint _to) const;
+	void ping(bi::udp::endpoint _to) const;
 
 	/// Used ping known node. Used by node table when refreshing buckets and as part of eviction process (see evict).
 	void ping(NodeEntry* _n) const;
@@ -296,20 +299,30 @@ struct InvalidRLP: public Exception {};
  * a given bucket which is full, the least-responsive node is pinged.
  * If the pinged node doesn't respond, then it is removed and the new
  * node is inserted.
+ *
+ * RLP Encoded Items: 3
+ * Minimum Encoded Size: 18 bytes
+ * Maximum Encoded Size:  bytes // todo after u128 addresses
+ *
+ * signature: Signature of message.
+ * ipAddress: Our IP address.
+ * port: Our port.
+ *
+ * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
+ *
  */
 struct PingNode: RLPXDatagram<PingNode>
 {
-	/// Constructor used for sending PingNode.
-	PingNode(NodeIPEndpoint _src, NodeIPEndpoint _dest): RLPXDatagram<PingNode>(_dest), source(_src), destination(_dest), ts(secondsSinceEpoch()) {}
-	/// Constructor used to create empty PingNode for parsing inbound packets.
-	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep), source(UnspecifiedNodeIPEndpoint), destination(UnspecifiedNodeIPEndpoint) {}
+	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep) {}
+	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _ts = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), tcpPort(_srcPort), ts(futureFromEpoch(_ts)) {}
 
 	static const uint8_t type = 1;
 
 	unsigned version = 0;
-	NodeIPEndpoint source;
-	NodeIPEndpoint destination;
-	uint32_t ts;
+	std::string ipAddress;
+//	uint16_t udpPort;
+	uint16_t tcpPort;
+	unsigned ts;
 
 	void streamRLP(RLPStream& _s) const override;
 	void interpretRLP(bytesConstRef _bytes) override;
@@ -317,17 +330,19 @@ struct PingNode: RLPXDatagram<PingNode>
 
 /**
  * Pong packet: Sent in response to ping
+ *
+ * RLP Encoded Items: 2
+ * Minimum Encoded Size: 33 bytes
+ * Maximum Encoded Size: 33 bytes
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	Pong(bi::udp::endpoint const& _ep): RLPXDatagram<Pong>(_ep), destination(UnspecifiedNodeIPEndpoint) {}
-	Pong(NodeIPEndpoint const& _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), destination(_dest), ts(secondsSinceEpoch()) {}
+	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 2;
 
-	NodeIPEndpoint destination;
 	h256 echo;				///< MCD of PingNode
-	uint32_t ts;
+	unsigned ts;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<unsigned>(); }
@@ -348,45 +363,57 @@ struct Pong: RLPXDatagram<Pong>
 struct FindNode: RLPXDatagram<FindNode>
 {
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
-	FindNode(bi::udp::endpoint _ep, NodeId _target): RLPXDatagram<FindNode>(_ep), target(_target), ts(secondsSinceEpoch()) {}
+	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _ts = std::chrono::seconds(60)): RLPXDatagram<FindNode>(_ep), target(_target), ts(futureFromEpoch(_ts)) {}
 
 	static const uint8_t type = 3;
 
 	h512 target;
-	uint32_t ts;
+	unsigned ts;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); ts = r[1].toInt<unsigned>(); }
 };
 
 /**
- * Node Packet: One or more node packets are sent in response to FindNode.
+ * Node Packet: Multiple node packets are sent in response to FindNode.
+ *
+ * RLP Encoded Items: 2 (first item is list)
+ * Minimum Encoded Size: 10 bytes
  */
 struct Neighbours: RLPXDatagram<Neighbours>
 {
-	struct Neighbour
+	struct Node
 	{
-		Neighbour(Node const& _node): endpoint(_node.endpoint), node(_node.id) {}
-		Neighbour(RLP const& _r): endpoint(_r) { node = h512(_r[3].toBytes()); }
-		NodeIPEndpoint endpoint;
+		Node() = default;
+		Node(RLP const& _r) { interpretRLP(_r); }
+		std::string ipAddress;
+		uint16_t udpPort;
+//		uint16_t tcpPort;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::Inline); _s << node; }
+		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << udpPort << node; }
+		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); udpPort = _r[1].toInt<uint16_t>(); node = h512(_r[2].toBytes()); }
 	};
 
-	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(secondsSinceEpoch()) {}
-	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), ts(secondsSinceEpoch())
+	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(futureFromEpoch(std::chrono::seconds(30))) {}
+	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), ts(futureFromEpoch(std::chrono::seconds(30)))
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
-			neighbours.push_back(Neighbour(*_nearest[i]));
+		{
+			Node node;
+			node.ipAddress = _nearest[i]->endpoint.address.to_string();
+			node.udpPort = _nearest[i]->endpoint.udpPort;
+			node.node = _nearest[i]->publicKey();
+			nodes.push_back(node);
+		}
 	}
 
 	static const uint8_t type = 4;
-	std::vector<Neighbour> neighbours;
-	uint32_t ts = 1;
+	std::vector<Node> nodes;
+	unsigned ts = 1;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(neighbours.size()); for (auto& n: neighbours) n.streamRLP(_s); _s << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) neighbours.push_back(Neighbour(n)); ts = r[1].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << ts; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); ts = r[1].toInt<unsigned>(); }
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
