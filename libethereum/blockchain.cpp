@@ -48,9 +48,14 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 {
 	for (auto& i: _v.get_obj())
 	{
-		cerr << i.first << endl;
 		mObject& o = i.second.get_obj();
+		if (test::Options::get().singleTest && test::Options::get().singleTestName != i.first)
+		{
+			o.clear();
+			continue;
+		}
 
+		cerr << i.first << endl;
 		BOOST_REQUIRE(o.count("genesisBlockHeader"));
 		BlockInfo biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj());
 
@@ -62,12 +67,11 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		//Imported blocks from the start
 		typedef std::vector<bytes> uncleList;
 		typedef std::pair<bytes, uncleList> blockSet;
-		std::vector<blockSet> blockRLPs;
+		std::vector<blockSet> blockSets;
 
 		importer.importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState);
 		trueState.commit();
-
 
 		if (_fillin)
 			biGenesisBlock.stateRoot = trueState.rootHash();
@@ -100,16 +104,18 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			blockSet genesis;
 			genesis.first = rlpGenesisBlock.out();
 			genesis.second = uncleList();
-			blockRLPs.push_back(genesis);
+			blockSets.push_back(genesis);
 			vector<BlockInfo> vBiBlocks;
 			vBiBlocks.push_back(biGenesisBlock);
 
-			size_t importBlockNumber;
+			size_t importBlockNumber = 0;
 			for (auto const& bl: o["blocks"].get_array())
 			{
 				mObject blObj = bl.get_obj();
-				BOOST_REQUIRE(blObj.count("blocknumber"));
-
+				if (blObj.count("blocknumber") > 0)
+					importBlockNumber = std::max((int)toInt(blObj["blocknumber"]), 1);
+				else
+					importBlockNumber++;
 
 				//each time construct a new blockchain up to importBlockNumber (to generate next block header)
 				vBiBlocks.clear();
@@ -121,21 +127,19 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				importer.importState(o["pre"].get_obj(), state);
 				state.commit();
 
-				importBlockNumber = std::max((int)toInt(blObj["blocknumber"]), 1);
 				for (size_t i = 1; i < importBlockNumber; i++) //0 block is genesis
 				{
 					BlockQueue uncleQueue;
-					uncleList uncles = blockRLPs.at(i).second;
+					uncleList uncles = blockSets.at(i).second;
 					for (size_t j = 0; j < uncles.size(); j++)
 						uncleQueue.import(&uncles.at(j), bc);
 
-					const bytes block = blockRLPs.at(i).first;
+					const bytes block = blockSets.at(i).first;
 					bc.sync(uncleQueue, state.db(), 4);
 					bc.attemptImport(block, state.db());
 					vBiBlocks.push_back(BlockInfo(block));
 
 					state.sync(bc);
-					//vBiBlocks.push_back(state.info());
 				}
 
 				// get txs
@@ -251,20 +255,21 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					//there we get new blockchain status in state which could have more difficulty than we have in trueState
 					//attempt to import new block to the true blockchain
 					trueBc.sync(uncleBlockQueue, trueState.db(), 4);
-					trueBc.attemptImport(state.blockData(), trueState.db());
+					trueBc.attemptImport(block2.out(), trueState.db());
 					trueState.sync(trueBc);
 
 					blockSet newBlock;
-					newBlock.first = state.blockData();
+					newBlock.first = block2.out();
 					newBlock.second = uncleBlockQueueList;
-					if (importBlockNumber < blockRLPs.size())
+					if (importBlockNumber < blockSets.size())
 					{
 						//make new correct history of imported blocks
-						blockRLPs[importBlockNumber] = newBlock;
-						for (size_t i = importBlockNumber+1; i < blockRLPs.size(); i++)
-							blockRLPs.pop_back();
+						blockSets[importBlockNumber] = newBlock;
+						for (size_t i = importBlockNumber + 1; i < blockSets.size(); i++)
+							blockSets.pop_back();
 					}
-					else	blockRLPs.push_back(newBlock);
+					else
+						blockSets.push_back(newBlock);
 				}
 				// if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle list should be given
 				catch (...)
@@ -289,6 +294,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 			o["blocks"] = blArray;
 			o["postState"] = fillJsonWithState(trueState);
+			o["lastblockhash"] = toString(trueBc.info().hash());
 
 			//make all values hex in pre section
 			State prestate(OverlayDB(), BaseState::Empty, biGenesisBlock.coinbaseAddress);
@@ -300,16 +306,16 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		{
 			for (auto const& bl: o["blocks"].get_array())
 			{
-				bool importedAndNotBest = false;
+				bool importedAndBest = true;
 				mObject blObj = bl.get_obj();
 				bytes blockRLP;
 				try
 				{
-					trueState.sync(trueBc);
 					blockRLP = importByteArray(blObj["rlp"].get_str());
+					trueState.sync(trueBc);
 					trueBc.import(blockRLP, trueState.db());
 					if (trueBc.info() != BlockInfo(blockRLP))
-						importedAndNotBest  = true;
+						importedAndBest  = false;
 					trueState.sync(trueBc);
 				}
 				// if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle list should be given
@@ -348,7 +354,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				BlockInfo blockFromRlp = trueBc.info();
 
-				if (!importedAndNotBest)
+				if (importedAndBest)
 				{
 					//Check the fields restored from RLP to original fields
 					BOOST_CHECK_MESSAGE(blockHeaderFromFields.headerHash(WithNonce) == blockFromRlp.headerHash(WithNonce), "hash in given RLP not matching the block hash!");
@@ -465,8 +471,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 					for (size_t i = 0; i < uBlHsFromField.size(); ++i)
 						BOOST_CHECK_MESSAGE(uBlHsFromField[i] == uBlHsFromRlp[i], "block header in rlp and in field do not match");
-				}
-			}
+				}//importedAndBest
+			}//all blocks
+
+			BOOST_REQUIRE(o.count("lastblockhash") > 0);
+			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"].get_str(),
+					"Boost check: " + i.first + " lastblockhash does not match " + toString(trueBc.info().hash()) + " expected: " + o["lastblockhash"].get_str());
 		}
 	}
 }
@@ -508,6 +518,7 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 
 		// make uncle header valid
 		uncleBlockFromFields.timestamp = (u256)time(0);
+		cnote << "uncle block n = " << toString(uncleBlockFromFields.number);
 		if (vBiBlocks.size() > 2)
 		{
 			if (uncleBlockFromFields.number - 1 < vBiBlocks.size())
@@ -700,11 +711,11 @@ mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
 	_o["receiptTrie"] = toString(_bi.receiptsRoot);
 	_o["bloom"] = toString(_bi.logBloom);
-	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add);
-	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add);
-	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add);
-	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add);
-	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add);
+	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add, 1);
+	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add, 1);
+	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add, 1);
+	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add, 1);
+	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add, 1);
 	_o["extraData"] = toHex(_bi.extraData, 2, HexPrefix::Add);
 	_o["mixHash"] = toString(_bi.mixHash);
 	_o["nonce"] = toString(_bi.nonce);
@@ -781,7 +792,7 @@ BOOST_AUTO_TEST_CASE(bcWalletTest)
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doBlockchainTests);
+	dev::test::userDefinedTest(dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
