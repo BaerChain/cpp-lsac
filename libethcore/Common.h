@@ -100,10 +100,9 @@ struct ImportRequirements
 	using value = unsigned;
 	enum
 	{
-		ValidNonce = 1, ///< Validate nonce
+		ValidNonce = 1, ///< Validate Nonce
 		DontHave = 2, ///< Avoid old blocks
-		CheckUncles = 4, ///< Check uncle nonces
-		Default = ValidNonce | DontHave | CheckUncles
+		Default = ValidNonce | DontHave
 	};
 };
 

@@ -317,8 +317,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	{
 		try
 		{
-			// Nonce & uncle nonces already verified thread at this point.
-			auto r = import(block.first, block.second, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
+			// Nonce is already verified thread at this point.
+			auto r = import(block.first, block.second, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 			fresh += r.first;
 			dead += r.second;
 		}
