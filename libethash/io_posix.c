@@ -26,8 +26,6 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <pwd.h>
 
 FILE* ethash_fopen(char const* file_name, char const* mode)
 {
@@ -91,13 +89,6 @@ bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 	static const char dir_suffix[] = ".ethash/";
 	strbuf[0] = '\0';
 	char* home_dir = getenv("HOME");
-	if (!home_dir || strlen(home_dir) == 0)
-	{
-		struct passwd* pwd = getpwuid(getuid());
-		if (pwd)
-			home_dir = pwd->pw_dir;
-	}
-	
 	size_t len = strlen(home_dir);
 	if (!ethash_strncat(strbuf, buffsize, home_dir, len)) {
 		return false;

@@ -19,8 +19,6 @@
  * @date 2014
  */
 
-#pragma once
-
 #include <condition_variable>
 #include <libethash/ethash.h>
 #include <libdevcore/Worker.h>
