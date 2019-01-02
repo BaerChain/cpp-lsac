@@ -44,10 +44,13 @@ h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpF
 	return na;
 }
 
-bool FakeExtVM::call(CallParameters& _p)
+bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256& io_gas, bytesRef _out, OnOpFunc const&, Address _myAddressOverride, Address _codeAddressOverride)
 {
-	Transaction t(_p.value, gasPrice, _p.gas, _p.receiveAddress, _p.data.toVector());
+	Transaction t(_value, gasPrice, io_gas, _receiveAddress, _data.toVector());
 	callcreates.push_back(t);
+	(void)_out;
+	(void)_myAddressOverride;
+	(void)_codeAddressOverride;
 	return true;
 }
 

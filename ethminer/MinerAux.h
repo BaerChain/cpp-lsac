@@ -174,10 +174,6 @@ public:
 			m_minerType = MinerType::GPU;
 			miningThreads = 1;
 		}
-		else if (arg == "--no-precompute")
-		{
-			precompute = false;
-		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
@@ -272,7 +268,6 @@ public:
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
-			<< "    --no-precompute  Don't precompute the next epoch's DAG." << endl
 #endif
 			<< "Ethash verify mode:" << endl
 			<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
@@ -428,8 +423,6 @@ private:
 						cnote << "Grabbing DAG for" << newSeedHash;
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
-					if (precompute)
-						EthashAux::computeFull(sha3(newSeedHash), true);
 					if (hh != current.headerHash)
 					{
 						current.headerHash = hh;
@@ -493,5 +486,5 @@ private:
 	/// Farm params
 	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
-	bool precompute = true;
+
 };

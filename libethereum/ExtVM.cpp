@@ -26,16 +26,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-bool ExtVM::call(CallParameters& _p)
+bool ExtVM::call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp, Address _myAddressOverride, Address _codeAddressOverride)
 {
 	Executive e(m_s, lastHashes, depth + 1);
-	if (!e.call(_p, gasPrice, origin))
+	if (!e.call(_receiveAddress, _codeAddressOverride, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, origin))
 	{
-		e.go(_p.onOp);
+		e.go(_onOp);
 		e.accrueSubState(sub);
 	}
-	_p.gas = e.endGas();
-	e.out().copyTo(_p.out);
+	io_gas = e.endGas();
+	e.out().copyTo(_out);
 
 	return !e.excepted();
 }
