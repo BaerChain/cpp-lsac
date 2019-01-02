@@ -83,11 +83,14 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
-	function setSourceName(_sourceName)
-	{
-		sourceName = _sourceName;
+	function setGasCosts(gasCosts) {
 		if (initialized && editorBrowser)
-			editorBrowser.runJavaScript("setSourceName('" + sourceName + "')", function(result) {});
+			editorBrowser.runJavaScript("setGasCosts('" + JSON.stringify(gasCosts) + "')", function(result) {});
+	}
+
+	function displayGasEstimation(show) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("displayGasEstimation('" + show + "')", function(result) {});
 	}
 
 	Clipboard
@@ -141,36 +144,25 @@ Item {
 		function compilationComplete()
 		{
 			if (editorBrowser)
+			{
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+				parent.displayGasEstimation(gasEstimationAction.checked);
+			}
+
+
 		}
 
-		function compilationError(error, firstLocation, secondLocations)
+		function compilationError(error, sourceName)
 		{
+			if (sourceName !== parent.sourceName)
+				return;
 			if (!editorBrowser || !error)
 				return;
-
-			var lineError = firstLocation.start.line + 1;
-			var errorOrigin = "source error in " + firstLocation.contractName + " line " + lineError
-			var secondErrorDetail = " Secondary sources: ";
-			for (var k in secondLocations)
-			{
-				lineError = secondLocations[k].start.line + 1;
-				secondErrorDetail += secondLocations[k].contractName + " line " + lineError + " - ";
-				displayErrorAnnotations(secondLocations[k], errorOrigin, "second");
-			}
-			var detail = error.split('\n')[0];
-			var reg = detail.match(/:\d+:\d+:/g);
-			if (reg !== null)
-				detail = detail.replace(reg[0], "");
-			if (secondLocations.length > 0)
-				detail += secondErrorDetail;
-			displayErrorAnnotations(firstLocation, detail, "first");
-		}
-
-		function displayErrorAnnotations(location, detail, type)
-		{
-			if (location.source === parent.sourceName)
-				editorBrowser.runJavaScript("compilationError('" + JSON.stringify(location) + "', '" + detail + "', '" + type + "')", function(result){});
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
+			if (errorInfo.line && errorInfo.column)
+				editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+			else
+				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
 		Timer

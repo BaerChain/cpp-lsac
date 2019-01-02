@@ -14,41 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file Hash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Main test functions.
+ *
+ * The FixedHash fixed-size "hash" container type.
  */
 
-#include <boost/test/unit_test.hpp>
+#pragma once
 
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int vmTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
+#include <string>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/vector_ref.h>
+#include "SHA3.h"
 
-#include <libdevcore/Log.h>
-#include <libethcore/BlockInfo.h>
-using namespace std;
-using namespace dev;
-using namespace dev::eth;
+namespace dev
+{
 
-//BOOST_AUTO_TEST_CASE(basic_tests)
-//{
-/*	RLPStream s;
-	BlockInfo::genesis().streamRLP(s, false);
-	std::cout << RLP(s.out()) << std::endl;
-	std::cout << toHex(s.out()) << std::endl;
-	std::cout << sha3(s.out()) << std::endl;*/
+h256 sha256(bytesConstRef _input);
 
-//	int r = 0;
-//	r += daggerTest();
-//	r += stateTest();
-//	r += peerTest(argc, argv);
-//	BOOST_REQUIRE(!r);
-//}
+h160 ripemd160(bytesConstRef _input);
 
+}
