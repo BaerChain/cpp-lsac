@@ -75,6 +75,13 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	return ret;
 }
 
+void Ethash::ensurePrecomputed(unsigned _number)
+{
+	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+		// 90% of the way to the new epoch
+		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
+}
+
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
 	EthashAux::full(_header.seedHash(), true, _f);
@@ -135,7 +142,7 @@ void Ethash::CPUMiner::workLoop()
 	WorkPackage w = work();
 
 	EthashAux::FullType dag;
-	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash)))
+	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash, true)))
 		this_thread::sleep_for(chrono::milliseconds(500));
 
 	h256 boundary = w.boundary;
@@ -306,6 +313,7 @@ void Ethash::GPUMiner::workLoop()
 		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;
