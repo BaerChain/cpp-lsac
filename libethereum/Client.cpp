@@ -746,9 +746,3 @@ void Client::flushTransactions()
 {
 	doWork();
 }
-
-HashChainStatus Client::hashChainStatus() const
-{
-	auto h = m_host.lock();
-	return h ? h->status() : HashChainStatus { 0, 0, false };
-}

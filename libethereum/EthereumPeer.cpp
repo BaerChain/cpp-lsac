@@ -40,6 +40,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
+	m_syncHashNumber = host()->chain().number() + 1;
 	requestStatus();
 }
 
@@ -51,7 +52,8 @@ EthereumPeer::~EthereumPeer()
 
 void EthereumPeer::abortSync()
 {
-	host()->onPeerAborting(this);
+	if (isSyncing())
+		setIdle();
 }
 
 EthereumHost* EthereumPeer::host() const
@@ -103,7 +105,6 @@ void EthereumPeer::requestHashes()
 {
 	assert(m_asking == Asking::Nothing);
 	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
-	m_syncHash = h256();
 	setAsking(Asking::Hashes);
 	RLPStream s;
 	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
@@ -118,8 +119,6 @@ void EthereumPeer::requestHashes(h256 const& _lastHash)
 	RLPStream s;
 	prep(s, GetBlockHashesPacket, 2) << _lastHash << c_maxHashesAsk;
 	clog(NetMessageDetail) << "Requesting block hashes staring from " << _lastHash;
-	m_syncHash = _lastHash;
-	m_syncHashNumber = 0;
 	sealAndSend(s);
 }
 
@@ -241,10 +240,12 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		setAsking(Asking::Nothing);
 		h256s hashes(itemCount);
 		for (unsigned i = 0; i < itemCount; ++i)
+		{
 			hashes[i] = _r[i].toHash<h256>();
+			m_hashSub.noteHash(m_syncHashNumber + i, 1);
+		}
 
-		if (m_syncHashNumber > 0)
-			m_syncHashNumber += itemCount;
+		m_syncHashNumber += itemCount;
 		host()->onPeerHashes(this, hashes);
 		break;
 	}
