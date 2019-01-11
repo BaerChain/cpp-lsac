@@ -30,8 +30,6 @@
 #include "EthereumHost.h"
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
-#include "BlockChainSync.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -40,6 +38,7 @@ using namespace p2p;
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap):
 	Capability(_s, _h, _i),
 	m_sub(host()->downloadMan()),
+	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
 	session()->addNote("manners", isRude() ? "RUDE" : "nice");
@@ -49,7 +48,6 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 
 EthereumPeer::~EthereumPeer()
 {
-	clog(NetMessageSummary) << "Aborting Sync :-(";
 	abortSync();
 }
 
@@ -58,8 +56,15 @@ bool EthereumPeer::isRude() const
 	return repMan().isRude(*session(), name());
 }
 
+unsigned EthereumPeer::askOverride() const
+{
+	bytes const& d = repMan().data(*session(), name());
+	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
+}
+
 void EthereumPeer::setRude()
 {
+	repMan().setData(*session(), name(), rlp(askOverride() / 2 + 1));
 	repMan().noteRude(*session(), name());
 	session()->addNote("manners", "RUDE");
 }
@@ -92,6 +97,8 @@ string toString(Asking _a)
 
 void EthereumPeer::setIdle()
 {
+	m_sub.doneFetch();
+	m_hashSub.doneFetch();
 	setAsking(Asking::Nothing);
 }
 
@@ -112,14 +119,14 @@ void EthereumPeer::requestStatus()
 	sealAndSend(s);
 }
 
-void EthereumPeer::requestHashes(u256 _number, unsigned _count)
+void EthereumPeer::requestHashes()
 {
 	assert(m_asking == Asking::Nothing);
-	m_syncHashNumber = _number;
+	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
 	m_syncHash = h256();
 	setAsking(Asking::Hashes);
 	RLPStream s;
-	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << _count;
+	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
 	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + c_maxHashesAsk - 1;
 	sealAndSend(s);
 }
@@ -139,7 +146,7 @@ void EthereumPeer::requestHashes(h256 const& _lastHash)
 void EthereumPeer::requestBlocks()
 {
 	setAsking(Asking::Blocks);
-	auto blocks = m_sub.nextFetch(isRude() ? 1 : c_maxBlocksAsk);
+	auto blocks = m_sub.nextFetch(askOverride());
 	if (blocks.size())
 	{
 		RLPStream s;

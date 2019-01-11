@@ -80,8 +80,10 @@ enum class Asking
 enum class SyncState
 {
 	Idle,				///< Initial chain sync complete. Waiting for new packets
-	Waiting,			///< Block downloading paused. Waiting for block queue to process blocks and free space
-	Hashes,				///< Downloading hashes from multiple peers over
+	WaitingQueue,		///< Block downloading paused. Waiting for block queue to process blocks and free space
+	HashesNegotiate,	///< Waiting for first hashes to arrive
+	HashesSingle,		///< Locked on and downloading hashes from a single peer
+	HashesParallel,		///< Downloading hashes from multiple peers over
 	Blocks,				///< Downloading blocks
 	NewBlocks,			///< Downloading blocks learned from NewHashes packet
 
