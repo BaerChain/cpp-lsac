@@ -21,6 +21,7 @@
 
 #include "BlockQueue.h"
 #include <thread>
+#include <sstream>
 #include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
@@ -36,6 +37,7 @@ const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 #else
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
+const char* BlockQueueTraceChannel::name() { return EthOrange "▣ ▶"; }
 
 size_t const c_maxKnownCount = 100000;
 size_t const c_maxKnownSize = 128 * 1024 * 1024;
@@ -81,6 +83,8 @@ void BlockQueue::clear()
 	m_unknownCount = 0;
 	m_knownSize = 0;
 	m_knownCount = 0;
+	m_difficulty = 0;
+	m_drainingDifficulty = 0;
 }
 
 void BlockQueue::verifierBody()
@@ -99,7 +103,7 @@ void BlockQueue::verifierBody()
 			BlockInfo bi;
 			bi.mixHash = work.hash;
 			bi.parentHash = work.parentHash;
-			m_verifying.push_back(VerifiedBlock { VerifiedBlockRef { bytesConstRef(), move(bi), Transactions() }, bytes() });
+			m_verifying.emplace_back(move(bi));
 		}
 
 		VerifiedBlock res;
@@ -111,15 +115,11 @@ void BlockQueue::verifierBody()
 		catch (...)
 		{
 			// bad block.
-			{
-				// has to be this order as that's how invariants() assumes.
-				WriteGuard l2(m_lock);
-				unique_lock<Mutex> l(m_verification);
-				m_readySet.erase(work.hash);
-				m_knownBad.insert(work.hash);
-			}
-
+			// has to be this order as that's how invariants() assumes.
+			WriteGuard l2(m_lock);
 			unique_lock<Mutex> l(m_verification);
+			m_readySet.erase(work.hash);
+			m_knownBad.insert(work.hash);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
 				if (it->verified.info.mixHash == work.hash)
 				{
@@ -128,6 +128,7 @@ void BlockQueue::verifierBody()
 				}
 			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
+			drainVerified_WITH_BOTH_LOCKS();
 			continue;
 		}
 
@@ -145,18 +146,9 @@ void BlockQueue::verifierBody()
 					m_knownBad.insert(res.verified.info.hash());
 				}
 				else
-					m_verified.push_back(move(res));
-				while (m_verifying.size() && !m_verifying.front().blockData.empty())
-				{
-					if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
-					{
-						m_readySet.erase(m_verifying.front().verified.info.hash());
-						m_knownBad.insert(res.verified.info.hash());
-					}
-					else
-						m_verified.push_back(move(m_verifying.front()));
-					m_verifying.pop_front();
-				}
+					m_verified.emplace_back(move(res));
+
+				drainVerified_WITH_BOTH_LOCKS();
 				ready = true;
 			}
 			else
@@ -176,19 +168,35 @@ void BlockQueue::verifierBody()
 	}
 }
 
+void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
+{
+	while (!m_verifying.empty() && !m_verifying.front().blockData.empty())
+	{
+		if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
+		{
+			m_readySet.erase(m_verifying.front().verified.info.hash());
+			m_knownBad.insert(m_verifying.front().verified.info.hash());
+		}
+		else
+			m_verified.emplace_back(move(m_verifying.front()));
+		m_verifying.pop_front();
+	}
+}
+
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
+	clog(BlockQueueTraceChannel) << std::this_thread::get_id();
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
-	cblockq << "Queuing block" << h << "for import...";
+	clog(BlockQueueTraceChannel) << "Queuing block" << h << "for import...";
 
 	UpgradableGuard l(m_lock);
 
 	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h) || m_knownBad.count(h))
 	{
 		// Already know about this one.
-		cblockq << "Already known.";
+		clog(BlockQueueTraceChannel) << "Already known.";
 		return ImportResult::AlreadyKnown;
 	}
 
@@ -226,10 +234,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		time_t bit = (unsigned)bi.timestamp;
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
-		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
+		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
-		return ImportResult::FutureTime;
+		m_difficulty += bi.difficulty;
+		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
+		return unknown ? ImportResult::FutureTimeUnknown : ImportResult::FutureTimeKnown;
 	}
 	else
 	{
@@ -237,17 +247,18 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		if (m_knownBad.count(bi.parentHash))
 		{
 			m_knownBad.insert(bi.hash());
-			updateBad(bi.hash());
+			updateBad_WITH_LOCK(bi.hash());
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
 		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			cblockq << "OK - queued as unknown parent:" << bi.parentHash;
+			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash;
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 			m_unknownSize += _block.size();
+			m_difficulty += bi.difficulty;
 			m_unknownCount++;
 
 			return ImportResult::UnknownParent;
@@ -255,12 +266,13 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		else
 		{
 			// If valid, append to blocks.
-			cblockq << "OK - ready for chain insertion.";
+			clog(BlockQueueTraceChannel) << "OK - ready for chain insertion.";
 			DEV_GUARDED(m_verification)
 				m_unverified.push_back(UnverifiedBlock { h, bi.parentHash, _block.toBytes() });
 			m_moreToVerify.notify_one();
 			m_readySet.insert(h);
 			m_knownSize += _block.size();
+			m_difficulty += bi.difficulty;
 			m_knownCount++;
 
 			noteReady_WITH_LOCK(h);
@@ -270,12 +282,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	}
 }
 
-void BlockQueue::updateBad(h256 const& _bad)
+void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 {
 	DEV_INVARIANT_CHECK;
 	DEV_GUARDED(m_verification)
 	{
-		collectUnknownBad(_bad);
+		collectUnknownBad_WITH_BOTH_LOCKS(_bad);
 		bool moreBad = true;
 		while (moreBad)
 		{
@@ -287,7 +299,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.verified.info.hash());
 					m_readySet.erase(b.verified.info.hash());
-					collectUnknownBad(b.verified.info.hash());
+					collectUnknownBad_WITH_BOTH_LOCKS(b.verified.info.hash());
 					moreBad = true;
 				}
 				else
@@ -300,7 +312,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.hash);
 					m_readySet.erase(b.hash);
-					collectUnknownBad(b.hash);
+					collectUnknownBad_WITH_BOTH_LOCKS(b.hash);
 					moreBad = true;
 				}
 				else
@@ -314,17 +326,16 @@ void BlockQueue::updateBad(h256 const& _bad)
 					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.mixHash;
 					m_knownBad.insert(h);
 					m_readySet.erase(h);
-					collectUnknownBad(h);
+					collectUnknownBad_WITH_BOTH_LOCKS(h);
 					moreBad = true;
 				}
 				else
 					m_verifying.push_back(std::move(b));
 		}
 	}
-	DEV_INVARIANT_CHECK;
 }
 
-void BlockQueue::collectUnknownBad(h256 const& _bad)
+void BlockQueue::collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad)
 {
 	list<h256> badQueue(1, _bad);
 	while (!badQueue.empty())
@@ -342,7 +353,6 @@ void BlockQueue::collectUnknownBad(h256 const& _bad)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
-
 }
 
 bool BlockQueue::doneDrain(h256s const& _bad)
@@ -350,13 +360,16 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	WriteGuard l(m_lock);
 	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
+	m_difficulty -= m_drainingDifficulty;
+	m_drainingDifficulty = 0;
 	if (_bad.size())
 	{
 		// at least one of them was bad.
 		m_knownBad += _bad;
 		for (h256 const& b : _bad)
-			updateBad(b);
-	}	return !m_readySet.empty();
+			updateBad_WITH_LOCK(b);
+	}
+	return !m_readySet.empty();
 }
 
 void BlockQueue::tick(BlockChain const& _bc)
@@ -427,38 +440,47 @@ bool BlockQueue::unknownFull() const
 
 void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 {
-	WriteGuard l(m_lock);
-	DEV_INVARIANT_CHECK;
-
-	if (m_drainingSet.empty())
+	bool wasFull = false;
+	DEV_WRITE_GUARDED(m_lock)
 	{
-		bool wasFull = knownFull();
-		DEV_GUARDED(m_verification)
+		DEV_INVARIANT_CHECK;
+		wasFull = knownFull();
+		if (m_drainingSet.empty())
 		{
-			o_out.resize(min<unsigned>(_max, m_verified.size()));
-			for (unsigned i = 0; i < o_out.size(); ++i)
-				swap(o_out[i], m_verified[i]);
-			m_verified.erase(m_verified.begin(), advanced(m_verified.begin(), o_out.size()));
+			m_drainingDifficulty = 0;
+			DEV_GUARDED(m_verification)
+			{
+				o_out.resize(min<unsigned>(_max, m_verified.size()));
+				for (unsigned i = 0; i < o_out.size(); ++i)
+					swap(o_out[i], m_verified[i]);
+				m_verified.erase(m_verified.begin(), advanced(m_verified.begin(), o_out.size()));
+			}
+			for (auto const& bs: o_out)
+			{
+				// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
+				auto h = bs.verified.info.hash();
+				m_drainingSet.insert(h);
+				m_drainingDifficulty += bs.verified.info.difficulty;
+				m_readySet.erase(h);
+				m_knownSize -= bs.verified.block.size();
+				m_knownCount--;
+			}
 		}
-		for (auto const& bs: o_out)
-		{
-			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
-			auto h = bs.verified.info.hash();
-			m_drainingSet.insert(h);
-			m_readySet.erase(h);
-			m_knownSize -= bs.verified.block.size();
-			m_knownCount--;
-		}
-		if (wasFull && !knownFull())
-			m_onRoomAvailable();
 	}
-
+	if (wasFull && !knownFull())
+		m_onRoomAvailable();
 }
 
 bool BlockQueue::invariants() const
 {
 	Guard l(m_verification);
-	return m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size();
+	if (!(m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size()))
+	{
+		std::stringstream s;
+		s << "Failed BlockQueue invariant: m_readySet: " << m_readySet.size() << " m_verified: " << m_verified.size() << " m_unverified: " << m_unverified.size() << " m_verifying" << m_verifying.size();
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment(s.str()));
+	}
+	return true;
 }
 
 void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
@@ -488,7 +510,6 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 	}
 	if (notify)
 		m_moreToVerify.notify_all();
-	DEV_INVARIANT_CHECK;
 }
 
 void BlockQueue::retryAllUnknown()
@@ -523,4 +544,20 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _
 	_out << "bad: " << _bqs.bad << endl;
 
 	return _out;
+}
+
+u256 BlockQueue::difficulty() const
+{
+	UpgradableGuard l(m_lock);
+	return m_difficulty;
+}
+
+bool BlockQueue::isActive() const
+{
+	UpgradableGuard l(m_lock);
+	if (m_readySet.empty() && m_drainingSet.empty())
+		DEV_GUARDED(m_verification)
+			if (m_verified.empty() && m_verifying.empty() && m_unverified.empty())
+				return false;
+	return true;
 }

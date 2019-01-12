@@ -22,12 +22,12 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <secp256k1/secp256k1.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/State.h>
 #include <libethcore/Farm.h>
 #include <libethereum/Defaults.h>
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -48,6 +48,9 @@ BOOST_AUTO_TEST_CASE(Basic)
 
 BOOST_AUTO_TEST_CASE(Complex)
 {
+	if (test::Options::get().nodag)
+		return;
+
 	cnote << "Testing State...";
 
 	KeyPair me = sha3("Gav Wood");

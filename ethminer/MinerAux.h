@@ -107,7 +107,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
@@ -116,7 +116,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
@@ -126,7 +126,34 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-global-work" && i + 1 < argc)
+			try {
+				m_globalWorkSizeMultiplier = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-local-work" && i + 1 < argc)
+			try {
+				m_localWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
+			try {
+				m_msPerBatch = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
@@ -134,8 +161,6 @@ public:
 			m_clAllowCPU = true;
 		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
-		else if (arg == "--force-single-chunk")
-			m_forceSingleChunk = true;
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -146,7 +171,7 @@ public:
 			else
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
@@ -156,7 +181,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trial" && i + 1 < argc)
 			try {
@@ -165,7 +190,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
 			try {
@@ -174,7 +199,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
@@ -197,7 +222,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
@@ -219,7 +244,7 @@ public:
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -234,7 +259,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "-M" || arg == "--benchmark")
@@ -247,7 +272,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else
@@ -267,19 +292,18 @@ public:
 			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 			if (!ProofOfWork::GPUMiner::configureGPU(
+					m_localWorkSize,
+					m_globalWorkSizeMultiplier,
+					m_msPerBatch,
 					m_openclPlatform,
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
-					m_forceSingleChunk,
 					m_currentBlock
 				))
-			{
-				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 				exit(1);
-			}
+			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(m_initDAG);
@@ -318,10 +342,12 @@ public:
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
-			<< "    --list-devices List the detected OpenCL devices and exit." <<endl
-			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." <<endl
-			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." <<endl
-			<< "    --force-single-chunk Force DAG uploading in a single chunk against OpenCL's judgement. Use at your own risk." <<endl
+			<< "    --list-devices List the detected OpenCL devices and exit." << endl
+			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
+			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(dev::eth::Ethash::defaultGlobalWorkSizeMultiplier) << " * " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(dev::eth::Ethash::defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 			;
 	}
 
@@ -510,7 +536,9 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
-	bool m_forceSingleChunk = false;
+	unsigned m_globalWorkSizeMultiplier = dev::eth::Ethash::defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = dev::eth::Ethash::defaultLocalWorkSize;
+	unsigned m_msPerBatch = dev::eth::Ethash::defaultMSPerBatch;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;

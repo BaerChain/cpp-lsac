@@ -32,11 +32,11 @@
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
 #include <libevm/ExtVMFace.h>
-#include "TransactionQueue.h"
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 #include "AccountDiff.h"
+#include "GasPricer.h"
 
 namespace dev
 {
@@ -58,12 +58,15 @@ using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, 
 
 using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
 using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
+using errinfo_transaction = boost::error_info<struct tag_transaction, bytes>;
+using errinfo_phase = boost::error_info<struct tag_phase, unsigned>;
 using errinfo_required_LogBloom = boost::error_info<struct tag_required_LogBloom, LogBloom>;
 using errinfo_got_LogBloom = boost::error_info<struct tag_get_LogBloom, LogBloom>;
 using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo_got_LogBloom>;
 
 class BlockChain;
 class State;
+class TransactionQueue;
 struct VerifiedBlockRef;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
@@ -76,45 +79,6 @@ enum class BaseState
 	PreExisting,
 	Empty,
 	CanonGenesis
-};
-
-enum class TransactionPriority
-{
-	Lowest = 0,
-	Low = 2,
-	Medium = 4,
-	High = 6,
-	Highest = 8
-};
-
-class GasPricer
-{
-public:
-	GasPricer() = default;
-	virtual ~GasPricer() = default;
-
-	virtual u256 ask(State const&) const = 0;
-	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
-
-	virtual void update(BlockChain const&) {}
-};
-
-class TrivialGasPricer: public GasPricer
-{
-public:
-	TrivialGasPricer() = default;
-	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
-
-	void setAsk(u256 const& _ask) { m_ask = _ask; }
-	void setBid(u256 const& _bid) { m_bid = _bid; }
-
-	u256 ask() const { return m_ask; }
-	u256 ask(State const&) const override { return m_ask; }
-	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
-
-private:
-	u256 m_ask = 10 * szabo;
-	u256 m_bid = 10 * szabo;
 };
 
 enum class Permanence
@@ -169,7 +133,7 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 	OverlayDB& db() { return m_db; }
@@ -192,7 +156,7 @@ public:
 	/// The only thing left to do after this is to actually mine().
 	///
 	/// This may be called multiple times and without issue.
-	void commitToMine(BlockChain const& _bc);
+	void commitToMine(BlockChain const& _bc, bytes const& _extraData = {});
 
 	/// @returns true iff commitToMine() has been called without any subsequest transactions added &c.
 	bool isCommittedToMine() const { return m_committedToMine; }
@@ -206,6 +170,8 @@ public:
 			return false;
 
 		PoW::assignResult(_result, m_currentBlock);
+		if (!PoW::verify(m_currentBlock))
+			return false;
 
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 

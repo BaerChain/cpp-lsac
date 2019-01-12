@@ -42,6 +42,7 @@ namespace eth
 class BlockChain;
 
 struct BlockQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct BlockQueueTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 7; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 struct BlockQueueStatus
@@ -110,13 +111,15 @@ public:
 	/// Get some infomration on the given block's status regarding us.
 	QueueStatus blockStatus(h256 const& _h) const;
 
-	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
-	template <class T> Handler onRoomAvailable(T const& _t) { return m_onRoomAvailable.add(_t); }
+	template <class T> Handler<> onReady(T const& _t) { return m_onReady.add(_t); }
+	template <class T> Handler<> onRoomAvailable(T const& _t) { return m_onRoomAvailable.add(_t); }
 
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
 
 	bool knownFull() const;
 	bool unknownFull() const;
+	u256 difficulty() const;	// Total difficulty of queueud blocks
+	bool isActive() const;
 
 private:
 	struct UnverifiedBlock
@@ -131,8 +134,9 @@ private:
 	bool invariants() const override;
 
 	void verifierBody();
-	void collectUnknownBad(h256 const& _bad);
-	void updateBad(h256 const& _bad);
+	void collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad);
+	void updateBad_WITH_LOCK(h256 const& _bad);
+	void drainVerified_WITH_BOTH_LOCKS();
 
 	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.
@@ -141,8 +145,8 @@ private:
 	std::unordered_multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For blocks that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	h256Hash m_knownBad;												///< Set of blocks that we know will never be valid.
 	std::multimap<unsigned, std::pair<h256, bytes>> m_future;			///< Set of blocks that are not yet valid. Ordered by timestamp
-	Signal m_onReady;													///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
-	Signal m_onRoomAvailable;											///< Called when space for new blocks becomes availabe after a drain. Be nice and exit fast.
+	Signal<> m_onReady;													///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
+	Signal<> m_onRoomAvailable;											///< Called when space for new blocks becomes availabe after a drain. Be nice and exit fast.
 
 	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
@@ -158,6 +162,8 @@ private:
 	std::atomic<size_t> m_knownSize;									///< Tracks total size in bytes of all known blocks;
 	std::atomic<size_t> m_unknownCount;									///< Tracks total count of unknown blocks. Used to avoid additional syncing
 	std::atomic<size_t> m_knownCount;									///< Tracks total count of known blocks. Used to avoid additional syncing
+	u256 m_difficulty;													///< Total difficulty of blocks in the queue
+	u256 m_drainingDifficulty;											///< Total difficulty of blocks in draining
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);

@@ -25,7 +25,6 @@
 #include <random>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
-#include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
@@ -39,37 +38,44 @@
 #include "Executive.h"
 #include "CachedAddressState.h"
 #include "CanonBlockChain.h"
+#include "TransactionQueue.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
 static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
+static const unsigned c_maxSyncTransactions = 256;
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
 const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 
-OverlayDB State::openDB(std::string _path, WithExisting _we)
+OverlayDB State::openDB(std::string const& _basePath, WithExisting _we)
 {
-	if (_path.empty())
-		_path = Defaults::get()->m_dbPath;
-	boost::filesystem::create_directory(_path);
+	std::string path = _basePath.empty() ? Defaults::get()->m_dbPath : _basePath;
 
 	if (_we == WithExisting::Kill)
-		boost::filesystem::remove_all(_path + "/state");
+	{
+		cnote << "Killing state database (WithExisting::Kill).";
+		boost::filesystem::remove_all(path + "/state");
+	}
+
+	path += "/" + toHex(CanonBlockChain::genesis().hash().ref().cropped(0, 4)) + "/" + toString(c_databaseVersion);
+	boost::filesystem::create_directories(path);
 
 	ldb::Options o;
 	o.max_open_files = 256;
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
-	ldb::DB::Open(o, _path + "/state", &db);
+	ldb::DB::Open(o, path + "/state", &db);
 	if (!db)
 	{
-		if (boost::filesystem::space(_path + "/state").available < 1024)
+		if (boost::filesystem::space(path + "/state").available < 1024)
 		{
 			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
@@ -117,7 +123,7 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 
 PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
-	PopulationStatistics ret;
+	PopulationStatistics ret { 0.0, 0.0 };
 
 	if (!_bc.isKnown(_h))
 	{
@@ -139,7 +145,7 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		boost::timer t;
+		Timer t;
 		auto vb = BlockChain::verifyBlock(b);
 		ret.verify = t.elapsed();
 		t.restart();
@@ -401,7 +407,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
-	boost::timer t;
+	Timer t;
 	double populateVerify;
 	double populateGrand;
 	double syncReset;
@@ -439,7 +445,8 @@ u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, Impor
 
 #if ETH_TIMED_ENACTMENTS
 	enactment = t.elapsed();
-	cnote << "popVer/popGrand/syncReset/enactment = " << populateVerify << "/" << populateGrand << "/" << syncReset << "/" << enactment;
+	if (populateVerify + populateGrand + syncReset + enactment > 0.5)
+		clog(StateChat) << "popVer/popGrand/syncReset/enactment = " << populateVerify << "/" << populateGrand << "/" << syncReset << "/" << enactment;
 #endif
 	return ret;
 }
@@ -456,7 +463,7 @@ unordered_map<Address, u256> State::addresses() const
 			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 #else
-	throw InterfaceNotSupported("State::addresses()");
+	BOOST_THROW_EXCEPTION(InterfaceNotSupported("State::addresses()"));
 #endif
 }
 
@@ -491,7 +498,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 	pair<TransactionReceipts, bool> ret;
 	ret.second = false;
 
-	auto ts = _tq.transactions();
+	auto ts = _tq.topTransactions(c_maxSyncTransactions);
 
 	LastHashes lh;
 
@@ -500,27 +507,25 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 	for (int goodTxs = 1; goodTxs; )
 	{
 		goodTxs = 0;
-		for (auto const& i: ts)
-			if (!m_transactionSet.count(i.first))
+		for (auto const& t: ts)
+			if (!m_transactionSet.count(t.sha3()))
 			{
 				try
 				{
-					if (i.second.gasPrice() >= _gp.ask(*this))
+					if (t.gasPrice() >= _gp.ask(*this))
 					{
-	//					boost::timer t;
+//						Timer t;
 						if (lh.empty())
 							lh = _bc.lastHashes();
-						execute(lh, i.second);
+						execute(lh, t);
 						ret.first.push_back(m_receipts.back());
-						_tq.noteGood(i);
 						++goodTxs;
-	//					cnote << "TX took:" << t.elapsed() * 1000;
+//						cnote << "TX took:" << t.elapsed() * 1000;
 					}
-					else if (i.second.gasPrice() < _gp.ask(*this) * 9 / 10)
+					else if (t.gasPrice() < _gp.ask(*this) * 9 / 10)
 					{
-						// less than 90% of our ask price for gas. drop.
-						cnote << i.first << "Dropping El Cheapo transaction (<90% of ask price)";
-						_tq.drop(i.first);
+						clog(StateTrace) << t.sha3() << "Dropping El Cheapo transaction (<90% of ask price)";
+						_tq.drop(t.sha3());
 					}
 				}
 				catch (InvalidNonce const& in)
@@ -531,45 +536,45 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						cnote << i.first << "Dropping old transaction (nonce too low)";
-						_tq.drop(i.first);
+						clog(StateTrace) << t.sha3() << "Dropping old transaction (nonce too low)";
+						_tq.drop(t.sha3());
 					}
-					else if (got > req + _tq.waiting(i.second.sender()))
+					else if (got > req + _tq.waiting(t.sender()))
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (too many nonces ahead)";
-						_tq.drop(i.first);
+						clog(StateTrace) << t.sha3() << "Dropping new transaction (too many nonces ahead)";
+						_tq.drop(t.sha3());
 					}
 					else
-						_tq.setFuture(i);
+						_tq.setFuture(t.sha3());
 				}
 				catch (BlockGasLimitReached const& e)
 				{
 					bigint const& got = *boost::get_error_info<errinfo_got>(e);
 					if (got > m_currentBlock.gasLimit)
 					{
-						cnote << i.first << "Dropping over-gassy transaction (gas > block's gas limit)";
-						_tq.drop(i.first);
+						clog(StateTrace) << t.sha3() << "Dropping over-gassy transaction (gas > block's gas limit)";
+						_tq.drop(t.sha3());
 					}
 					else
 					{
 						// Temporarily no gas left in current block.
 						// OPTIMISE: could note this and then we don't evaluate until a block that does have the gas left.
 						// for now, just leave alone.
-//						_tq.setFuture(i);
+//						_tq.setFuture(t.sha3());
 					}
 				}
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
-					cnote << i.first << "Dropping invalid transaction:" << diagnostic_information(_e);
-					_tq.drop(i.first);
+					clog(StateTrace) << t.sha3() << "Dropping invalid transaction:" << diagnostic_information(_e);
+					_tq.drop(t.sha3());
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
-					_tq.drop(i.first);
-					cnote << i.first << "Transaction caused low-level exception :(";
+					_tq.drop(t.sha3());
+					cwarn << t.sha3() << "Transaction caused low-level exception :(";
 				}
 			}
 		if (chrono::steady_clock::now() > deadline)
@@ -592,7 +597,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	m_currentBlock.noteDirty();
 
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
-	vector<bytes> receipts;
 
 	string ret;
 	unsigned i = 0;
@@ -602,10 +606,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 		st.setShowMnemonics();
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, st.onOp());
 		ret += (ret.empty() ? "[" : ",") + st.json();
-
-		RLPStream receiptRLP;
-		m_receipts.back().streamRLP(receiptRLP);
-		receipts.push_back(receiptRLP.out());
 		++i;
 	}
 	return ret.empty() ? "[]" : (ret + "]");
@@ -634,7 +634,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 //	cnote << m_state;
 
 	LastHashes lh;
-	DEV_TIMED_ABOVE(lastHashes, 500)
+	DEV_TIMED_ABOVE("lastHashes", 500)
 		lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 
 	RLP rlp(_block.block);
@@ -643,7 +643,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	DEV_TIMED_ABOVE(txEcec, 500)
+	DEV_TIMED_ABOVE("txExec", 500)
 		for (auto const& tr: _block.transactions)
 		{
 			try
@@ -664,7 +664,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 		}
 
 	h256 receiptsRoot;
-	DEV_TIMED_ABOVE(receiptsRoot, 500)
+	DEV_TIMED_ABOVE("receiptsRoot", 500)
 		receiptsRoot = orderedTrieRoot(receipts);
 
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
@@ -698,12 +698,12 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	vector<BlockInfo> rewarded;
 	h256Hash excluded;
-	DEV_TIMED_ABOVE(allKin, 500)
+	DEV_TIMED_ABOVE("allKin", 500)
 		excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	unsigned ii = 0;
-	DEV_TIMED_ABOVE(uncleCheck, 500)
+	DEV_TIMED_ABOVE("uncleCheck", 500)
 		for (auto const& i: rlp[2])
 		{
 			try
@@ -752,11 +752,11 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 		}
 
-	DEV_TIMED_ABOVE(applyRewards, 500)
+	DEV_TIMED_ABOVE("applyRewards", 500)
 		applyRewards(rewarded);
 
 	// Commit all cached state changes to the state trie.
-	DEV_TIMED_ABOVE(commit, 500)
+	DEV_TIMED_ABOVE("commit", 500)
 		commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
@@ -872,7 +872,7 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-void State::commitToMine(BlockChain const& _bc)
+void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 {
 	uncommitToMine();
 
@@ -955,6 +955,9 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.gasUsed = gasUsed();
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash();
+	m_currentBlock.extraData = _extraData;
+	if (m_currentBlock.extraData.size() > 32)
+		m_currentBlock.extraData.resize(32);
 
 	m_committedToMine = true;
 }
@@ -1259,7 +1262,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
-		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
+		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + (m_currentBlock.number >= 830000 ? e.gasUsedNoRefunds() : e.gasUsed()), e.logs()));
 		m_transactionSet.insert(e.t().sha3());
 	}
 

@@ -41,7 +41,7 @@ void Assembly::append(Assembly const& _a)
 		if (i.type() == Tag || i.type() == PushTag)
 			i.setData(i.data() + m_usedTags);
 		else if (i.type() == PushSub || i.type() == PushSubSize)
-			i.setData(i.data() + m_usedTags);
+			i.setData(i.data() + m_subs.size());
 		append(i);
 	}
 	m_deposit = newDeposit;
@@ -136,10 +136,10 @@ ostream& Assembly::streamAsm(ostream& _out, string const& _prefix, StringMap con
 				_out << "  PUSH [tag" << dec << i.data() << "]";
 			break;
 		case PushSub:
-			_out << "  PUSH [$" << h256(i.data()).abridged() << "]";
+			_out << "  PUSH [$" << h256(i.data()).abridgedMiddle() << "]";
 			break;
 		case PushSubSize:
-			_out << "  PUSH #[$" << h256(i.data()).abridged() << "]";
+			_out << "  PUSH #[$" << h256(i.data()).abridgedMiddle() << "]";
 			break;
 		case PushProgramSize:
 			_out << "  PUSHSIZE";
@@ -290,16 +290,6 @@ AssemblyItem const& Assembly::append(AssemblyItem const& _i)
 void Assembly::injectStart(AssemblyItem const& _i)
 {
 	m_items.insert(m_items.begin(), _i);
-}
-
-inline bool matches(AssemblyItemsConstRef _a, AssemblyItemsConstRef _b)
-{
-	if (_a.size() != _b.size())
-		return false;
-	for (unsigned i = 0; i < _a.size(); ++i)
-		if (!_a[i].match(_b[i]))
-			return false;
-	return true;
 }
 
 struct OptimiserChannel: public LogChannel { static const char* name() { return "OPT"; } static const int verbosity = 12; };

@@ -21,15 +21,11 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
 #include <deque>
 #include <chrono>
 #include <unordered_map>
 #include <unordered_set>
+#include <libdevcore/db.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
@@ -41,7 +37,6 @@
 #include "Transaction.h"
 #include "BlockQueue.h"
 #include "VerifiedBlock.h"
-namespace ldb = leveldb;
 
 namespace std
 {
@@ -80,7 +75,6 @@ ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
-using ImportRoute = std::pair<h256s, h256s>;
 
 enum {
 	ExtraDetails = 0,
@@ -100,7 +94,7 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 class BlockChain
 {
 public:
-	BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p = ProgressCallback());
+	BlockChain(bytes const& _genesisBlock, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
 	/// Attempt a database re-open.
@@ -112,7 +106,7 @@ public:
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order.
 	/// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
-	std::tuple<h256s, h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
@@ -147,6 +141,9 @@ public:
 	/// receipts are given in the same order are in the same order as the transactions
 	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
+
+	/// Get the transaction receipt by transaction hash. Thread-safe.
+	TransactionReceipt transactionReceipt(h256 const& _transactionHash) const {TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytesConstRef(); return receipts(ta.blockHash).receipts[ta.index]; }
 
 	/// Get a list of transaction hashes for a given block. Thread-safe.
 	TransactionHashes transactionHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
@@ -183,6 +180,9 @@ public:
 	LogBloom blockBloom(unsigned _number) const { return blocksBlooms(chunkId(0, _number / c_bloomIndexSize)).blooms[_number % c_bloomIndexSize]; }
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const;
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _topLevel, unsigned _index) const;
+
+	/// Returns true if transaction is known. Thread-safe
+	bool isKnownTransaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); return !!ta; }
 
 	/// Get a transaction from its hash. Thread-safe.
 	bytes transaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
@@ -267,7 +267,7 @@ public:
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	void open(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	void close();
 
 	template<class T, unsigned N> T queryExtras(h256 const& _h, std::unordered_map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
