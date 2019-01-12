@@ -215,10 +215,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		return ImportResult::Malformed;
 	}
 
-	clog(BlockQueueTraceChannel) << "Block" << h << "is" << bi.number << "parent is" << bi.parentHash;
-
 	// Check block doesn't already exist first!
-	if (_bc.isKnown(h))
+	if (_bc.details(h))
 	{
 		cblockq << "Already known in chain.";
 		return ImportResult::AlreadyInChain;
