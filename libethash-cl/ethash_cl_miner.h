@@ -20,7 +20,7 @@
 class ethash_cl_miner
 {
 private:
-	enum { c_maxSearchResults = 63, c_bufferCount = 2, c_hashBatchSize = 1024, c_searchBatchSize = 1024 * 16 };
+	enum { c_maxSearchResults = 63, c_bufferCount = 2, c_hashBatchSize = 1024 };
 
 public:
 	struct search_hook
@@ -64,6 +64,14 @@ public:
 
 	void hash_chunk(uint8_t* _ret, uint8_t const* _header, uint64_t _nonce, unsigned _count);
 	void search_chunk(uint8_t const*_header, uint64_t _target, search_hook& _hook);
+
+	/* -- default values -- */
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned c_defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned c_defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned c_defaultMSPerBatch;
 
 private:
 
