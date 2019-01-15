@@ -58,9 +58,6 @@ public:
 	/// @returns true is Sync is in progress
 	virtual bool isSyncing() const = 0;
 
-	/// Restart sync
-	virtual void restartSync() = 0;
-
 	/// Called by peer to report status
 	virtual void onPeerStatus(std::shared_ptr<EthereumPeer> _peer);
 
@@ -94,6 +91,9 @@ protected:
 
 	/// Resume downloading after witing state
 	virtual void continueSync() = 0;
+
+	/// Restart sync
+	virtual void restartSync() = 0;
 
 	/// Called after all blocks have been donloaded
 	virtual void completeSync() = 0;

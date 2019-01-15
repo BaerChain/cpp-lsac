@@ -40,9 +40,6 @@
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
-#if ETH_ETHASHCL || !ETH_TRUE
-#include <libethash-cl/ethash_cl_miner.h>
-#endif
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
@@ -131,7 +128,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_ETHASHCL || !ETH_TRUE
 		else if (arg == "--cl-global-work" && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
@@ -159,7 +155,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#endif
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
 		else if (arg == "--allow-opencl-cpu")
@@ -297,7 +292,6 @@ public:
 			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
 			if (!ProofOfWork::GPUMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
@@ -310,10 +304,6 @@ public:
 				))
 				exit(1);
 			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
-#else
-			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
-			exit(1);
-#endif
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(m_initDAG);
@@ -354,12 +344,10 @@ public:
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
-#if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
-			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
-#endif
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(dev::eth::Ethash::defaultGlobalWorkSizeMultiplier) << " * " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(dev::eth::Ethash::defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 			;
 	}
 
@@ -548,11 +536,9 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
-#if ETH_ETHASHCL || !ETH_TRUE
-	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
-	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
-#endif
+	unsigned m_globalWorkSizeMultiplier = dev::eth::Ethash::defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = dev::eth::Ethash::defaultLocalWorkSize;
+	unsigned m_msPerBatch = dev::eth::Ethash::defaultMSPerBatch;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;

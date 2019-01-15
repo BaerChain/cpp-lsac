@@ -157,8 +157,7 @@ public:
 	~Signal()
 	{
 		for (auto const& h : m_fire)
-			if (auto l = h.second.lock())
-				l->reset();
+			h.second->reset();
 	}
 
 	std::shared_ptr<HandlerAux> add(Callback const& _h)
@@ -169,15 +168,10 @@ public:
 		return h;
 	}
 
-	void operator()(Args&... _args)
-	{
-		for (auto const& f: m_fire)
-			if (auto h = f.second.lock())
-				h->fire(std::forward<Args>(_args)...);
-	}
+	void operator()(Args&... _args) { for (auto const& f: m_fire) f.second->fire(std::forward<Args>(_args)...); }
 
 private:
-	std::map<unsigned, std::weak_ptr<typename Signal::HandlerAux>> m_fire;
+	std::map<unsigned, std::shared_ptr<typename Signal::HandlerAux>> m_fire;
 };
 
 template<class... Args> using Handler = std::shared_ptr<typename Signal<Args...>::HandlerAux>;
