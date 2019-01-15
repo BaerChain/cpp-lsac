@@ -16,337 +16,183 @@
 */
 /** @file SecretStore.cpp
  * @author Gav Wood <i@gavwood.com>
- * @date 2014
+ * @date 2015
+ * Secret store test functions.
  */
 
-#include "SecretStore.h"
-#include <thread>
-#include <mutex>
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <libdevcore/Log.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
-#include <test/JsonSpiritHeaders.h>
-#include <libdevcrypto/Exceptions.h>
+#include <fstream>
+#include <random>
+#include <boost/test/unit_test.hpp>
+#include "../JsonSpiritHeaders.h"
+#include <libdevcrypto/SecretStore.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
+#include "MemTrie.h"
+#include <test/TestHelper.h>
+#include <test/TestUtils.h>
 using namespace std;
 using namespace dev;
+using namespace dev::test;
+
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
-static const int c_keyFileVersion = 3;
+BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir )
 
-/// Upgrade the json-format to the current version.
-static js::mValue upgraded(string const& _s)
+BOOST_AUTO_TEST_SUITE(KeyStore)
+
+BOOST_AUTO_TEST_CASE(basic_tests)
 {
+	string testPath = test::getTestPath();
+
+	testPath += "/KeyStoreTests";
+
+	cnote << "Testing Key Store...";
 	js::mValue v;
-	js::read_string(_s, v);
-	if (v.type() != js::obj_type)
-		return js::mValue();
-	js::mObject ret = v.get_obj();
-	unsigned version = ret.count("Version") ? stoi(ret["Version"].get_str()) : ret.count("version") ? ret["version"].get_int() : 0;
-	if (version == 1)
+	string s = contentsString(testPath + "/basic_tests.json");
+	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'KeyStoreTests/basic_tests.json' is empty. Have you cloned the 'tests' repo branch develop?");
+	js::read_string(s, v);
+	for (auto& i: v.get_obj())
 	{
-		// upgrade to version 2
-		js::mObject old;
-		swap(old, ret);
+		cnote << i.first;
+		js::mObject& o = i.second.get_obj();
+		TransientDirectory tmpDir;
+		SecretStore store(tmpDir.path());
+		h128 u = store.readKeyContent(js::write_string(o["json"], false));
+		cdebug << "read uuid" << u;
+		bytes s = store.secret(u, [&](){ return o["password"].get_str(); });
+		cdebug << "got secret" << toHex(s);
+		BOOST_REQUIRE_EQUAL(toHex(s), o["priv"].get_str());
+	}
+}
 
-		ret["id"] = old["Id"];
-		js::mObject c;
-		c["ciphertext"] = old["Crypto"].get_obj()["CipherText"];
-		c["cipher"] = "aes-128-cbc";
+BOOST_AUTO_TEST_CASE(import_key_from_file)
+{
+	// Imports a key from an external file. Tests that the imported key is there
+	// and that the external file is not deleted.
+	TransientDirectory importDir;
+	string importFile = importDir.path() + "/import.json";
+	TransientDirectory storeDir;
+	string keyData = R"({
+		"version": 3,
+		"crypto": {
+			"ciphertext": "d69313b6470ac1942f75d72ebf8818a0d484ac78478a132ee081cd954d6bd7a9",
+			"cipherparams": { "iv": "ffffffffffffffffffffffffffffffff" },
+			"kdf": "pbkdf2",
+			"kdfparams": { "dklen": 32,  "c": 262144,  "prf": "hmac-sha256",  "salt": "c82ef14476014cbf438081a42709e2ed" },
+			"mac": "cf6bfbcc77142a22c4a908784b4a16f1023a1d0e2aff404c20158fa4f1587177",
+			"cipher": "aes-128-ctr",
+			"version": 1
+		},
+		"id": "abb67040-8dbe-0dad-fc39-2b082ef0ee5f"
+	})";
+	string password = "bar";
+	string priv = "0202020202020202020202020202020202020202020202020202020202020202";
+	writeFile(importFile, keyData);
+
+	h128 uuid;
+	{
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 0);
+		uuid = store.importKey(importFile);
+		BOOST_CHECK(!!uuid);
+		BOOST_CHECK(contentsString(importFile) == keyData);
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+	}
+	fs::remove(importFile);
+	// now do it again to check whether SecretStore properly stored it on disk
+	{
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(import_secret)
+{
+	for (string const& password: {"foobar", ""})
+	{
+		TransientDirectory storeDir;
+		string priv = "0202020202020202020202020202020202020202020202020202020202020202";
+
+		h128 uuid;
 		{
-			js::mObject cp;
-			cp["iv"] = old["Crypto"].get_obj()["IV"];
-			c["cipherparams"] = cp;
+			SecretStore store(storeDir.path());
+			BOOST_CHECK_EQUAL(store.keys().size(), 0);
+			uuid = store.importSecret(fromHex(priv), password);
+			BOOST_CHECK(!!uuid);
+			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+			BOOST_CHECK_EQUAL(store.keys().size(), 1);
 		}
-		c["kdf"] = old["Crypto"].get_obj()["KeyHeader"].get_obj()["Kdf"];
 		{
-			js::mObject kp;
-			kp["salt"] = old["Crypto"].get_obj()["Salt"];
-			for (auto const& i: old["Crypto"].get_obj()["KeyHeader"].get_obj()["KdfParams"].get_obj())
-				if (i.first != "SaltLen")
-					kp[boost::to_lower_copy(i.first)] = i.second;
-			c["kdfparams"] = kp;
-		}
-		c["sillymac"] = old["Crypto"].get_obj()["MAC"];
-		c["sillymacjson"] = _s;
-		ret["crypto"] = c;
-		version = 2;
-	}
-	if (version == 2)
-	{
-		ret["crypto"].get_obj()["cipher"] = "aes-128-ctr";
-		ret["crypto"].get_obj()["compat"] = "2";
-		version = 3;
-	}
-	if (version == c_keyFileVersion)
-		return ret;
-	return js::mValue();
-}
-
-SecretStore::SecretStore(string const& _path): m_path(_path)
-{
-	load();
-}
-
-bytes SecretStore::secret(h128 const& _uuid, function<string()> const& _pass, bool _useCache) const
-{
-	auto rit = m_cached.find(_uuid);
-	if (_useCache && rit != m_cached.end())
-		return rit->second;
-	auto it = m_keys.find(_uuid);
-	bytes key;
-	if (it != m_keys.end())
-	{
-		key = decrypt(it->second.encryptedKey, _pass());
-		if (!key.empty())
-			m_cached[_uuid] = key;
-	}
-	return key;
-}
-
-h128 SecretStore::importSecret(bytes const& _s, string const& _pass)
-{
-	h128 r;
-	EncryptedKey key{encrypt(_s, _pass), string()};
-	r = h128::random();
-	m_cached[r] = _s;
-	m_keys[r] = move(key);
-	save();
-	return r;
-}
-
-void SecretStore::kill(h128 const& _uuid)
-{
-	m_cached.erase(_uuid);
-	if (m_keys.count(_uuid))
-	{
-		fs::remove(m_keys[_uuid].filename);
-		m_keys.erase(_uuid);
-	}
-}
-
-void SecretStore::clearCache() const
-{
-	m_cached.clear();
-}
-
-void SecretStore::save(string const& _keysPath)
-{
-	fs::path p(_keysPath);
-	fs::create_directories(p);
-	for (auto& k: m_keys)
-	{
-		string uuid = toUUID(k.first);
-		string filename = (p / uuid).string() + ".json";
-		js::mObject v;
-		js::mValue crypto;
-		js::read_string(k.second.encryptedKey, crypto);
-		v["crypto"] = crypto;
-		v["id"] = uuid;
-		v["version"] = c_keyFileVersion;
-		writeFile(filename, js::write_string(js::mValue(v), true));
-		swap(k.second.filename, filename);
-		if (!filename.empty() && !fs::equivalent(filename, k.second.filename))
-			fs::remove(filename);
-	}
-}
-
-void SecretStore::load(string const& _keysPath)
-{
-	fs::path p(_keysPath);
-	fs::create_directories(p);
-	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
-		if (fs::is_regular_file(it->path()))
-			readKey(it->path().string(), true);
-}
-
-h128 SecretStore::readKey(string const& _file, bool _takeFileOwnership)
-{
-	cnote << "Reading" << _file;
-	return readKeyContent(contentsString(_file), _takeFileOwnership ? _file : string());
-}
-
-h128 SecretStore::readKeyContent(string const& _content, string const& _file)
-{
-	js::mValue u = upgraded(_content);
-	if (u.type() == js::obj_type)
-	{
-		js::mObject& o = u.get_obj();
-		auto uuid = fromUUID(o["id"].get_str());
-		m_keys[uuid] = EncryptedKey{js::write_string(o["crypto"], false), _file};
-		return uuid;
-	}
-	else
-		cwarn << "Invalid JSON in key file" << _file;
-	return h128();
-}
-
-bool SecretStore::recode(h128 const& _uuid, string const& _newPass, function<string()> const& _pass, KDF _kdf)
-{
-	bytes s = secret(_uuid, _pass, true);
-	if (s.empty())
-		return false;
-	m_cached.erase(_uuid);
-	m_keys[_uuid].encryptedKey = encrypt(s, _newPass, _kdf);
-	save();
-	return true;
-}
-
-static bytes deriveNewKey(string const& _pass, KDF _kdf, js::mObject& o_ret)
-{
-	unsigned dklen = 32;
-	unsigned iterations = 1 << 18;
-	bytes salt = h256::random().asBytes();
-	if (_kdf == KDF::Scrypt)
-	{
-		unsigned p = 1;
-		unsigned r = 8;
-		o_ret["kdf"] = "scrypt";
-		{
-			js::mObject params;
-			params["n"] = int64_t(iterations);
-			params["r"] = int(r);
-			params["p"] = int(p);
-			params["dklen"] = int(dklen);
-			params["salt"] = toHex(salt);
-			o_ret["kdfparams"] = params;
-		}
-		return scrypt(_pass, salt, iterations, r, p, dklen);
-	}
-	else
-	{
-		o_ret["kdf"] = "pbkdf2";
-		{
-			js::mObject params;
-			params["prf"] = "hmac-sha256";
-			params["c"] = int(iterations);
-			params["salt"] = toHex(salt);
-			params["dklen"] = int(dklen);
-			o_ret["kdfparams"] = params;
-		}
-		return pbkdf2(_pass, salt, iterations, dklen);
-	}
-}
-
-string SecretStore::encrypt(bytes const& _v, string const& _pass, KDF _kdf)
-{
-	js::mObject ret;
-
-	bytes derivedKey = deriveNewKey(_pass, _kdf, ret);
-	if (derivedKey.empty())
-		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key derivation failed."));
-
-	ret["cipher"] = "aes-128-ctr";
-	h128 key(derivedKey, h128::AlignLeft);
-	h128 iv = h128::random();
-	{
-		js::mObject params;
-		params["iv"] = toHex(iv.ref());
-		ret["cipherparams"] = params;
-	}
-
-	// cipher text
-	bytes cipherText = encryptSymNoAuth(key, iv, &_v);
-	if (cipherText.empty())
-		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key encryption failed."));
-	ret["ciphertext"] = toHex(cipherText);
-
-	// and mac.
-	h256 mac = sha3(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
-	ret["mac"] = toHex(mac.ref());
-
-	return js::write_string(js::mValue(ret), true);
-}
-
-bytes SecretStore::decrypt(string const& _v, string const& _pass)
-{
-	js::mObject o;
-	{
-		js::mValue ov;
-		js::read_string(_v, ov);
-		o = ov.get_obj();
-	}
-
-	// derive key
-	bytes derivedKey;
-	if (o["kdf"].get_str() == "pbkdf2")
-	{
-		auto params = o["kdfparams"].get_obj();
-		if (params["prf"].get_str() != "hmac-sha256")
-		{
-			cwarn << "Unknown PRF for PBKDF2" << params["prf"].get_str() << "not supported.";
-			return bytes();
-		}
-		unsigned iterations = params["c"].get_int();
-		bytes salt = fromHex(params["salt"].get_str());
-		derivedKey = pbkdf2(_pass, salt, iterations, params["dklen"].get_int());
-	}
-	else if (o["kdf"].get_str() == "scrypt")
-	{
-		auto p = o["kdfparams"].get_obj();
-		derivedKey = scrypt(_pass, fromHex(p["salt"].get_str()), p["n"].get_int(), p["r"].get_int(), p["p"].get_int(), p["dklen"].get_int());
-	}
-	else
-	{
-		cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
-		return bytes();
-	}
-
-	if (derivedKey.size() < 32 && !(o.count("compat") && o["compat"].get_str() == "2"))
-	{
-		cwarn << "Derived key's length too short (<32 bytes)";
-		return bytes();
-	}
-
-	bytes cipherText = fromHex(o["ciphertext"].get_str());
-
-	// check MAC
-	if (o.count("mac"))
-	{
-		h256 mac(o["mac"].get_str());
-		h256 macExp;
-		if (o.count("compat") && o["compat"].get_str() == "2")
-			macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
-		else
-			macExp = sha3(bytesConstRef(&derivedKey).cropped(16, 16).toBytes() + cipherText);
-		if (mac != macExp)
-		{
-			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-			return bytes();
+			SecretStore store(storeDir.path());
+			BOOST_CHECK_EQUAL(store.keys().size(), 1);
+			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
 		}
 	}
-	else if (o.count("sillymac"))
-	{
-		h256 mac(o["sillymac"].get_str());
-		h256 macExp = sha3(asBytes(o["sillymacjson"].get_str()) + bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
-		if (mac != macExp)
-		{
-			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-			return bytes();
-		}
-	}
-	else
-		cwarn << "No MAC. Proceeding anyway.";
+}
 
-	// decrypt
-	if (o["cipher"].get_str() == "aes-128-ctr")
+BOOST_AUTO_TEST_CASE(wrong_password)
+{
+	TransientDirectory storeDir;
+	SecretStore store(storeDir.path());
+	string password = "foobar";
+	string priv = "0202020202020202020202020202020202020202020202020202020202020202";
+
+	h128 uuid;
 	{
-		auto params = o["cipherparams"].get_obj();
-		h128 iv(params["iv"].get_str());
-		if (o.count("compat") && o["compat"].get_str() == "2")
-		{
-			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
-			return decryptSymNoAuth(key, iv, &cipherText);
-		}
-		else
-			return decryptSymNoAuth(h128(derivedKey, h128::AlignLeft), iv, &cipherText);
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 0);
+		uuid = store.importSecret(fromHex(priv), password);
+		BOOST_CHECK(!!uuid);
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		// password will not be queried
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return "abcdefg"; })));
 	}
-	else
 	{
-		cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
-		return bytes();
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		BOOST_CHECK(store.secret(uuid, [&](){ return "abcdefg"; }).empty());
 	}
 }
+
+BOOST_AUTO_TEST_CASE(recode)
+{
+	TransientDirectory storeDir;
+	SecretStore store(storeDir.path());
+	string password = "foobar";
+	string changedPassword = "abcdefg";
+	string priv = "0202020202020202020202020202020202020202020202020202020202020202";
+
+	h128 uuid;
+	{
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 0);
+		uuid = store.importSecret(fromHex(priv), password);
+		BOOST_CHECK(!!uuid);
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+	}
+	{
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		BOOST_CHECK(store.secret(uuid, [&](){ return "abcdefg"; }).empty());
+		BOOST_CHECK(store.recode(uuid, changedPassword, [&](){ return password; }));
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+		store.clearCache();
+		BOOST_CHECK(store.secret(uuid, [&](){ return password; }).empty());
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+	}
+	{
+		SecretStore store(storeDir.path());
+		BOOST_CHECK_EQUAL(store.keys().size(), 1);
+		BOOST_CHECK(store.secret(uuid, [&](){ return password; }).empty());
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+	}
+}
+
+BOOST_AUTO_TEST_SUITE_END()
