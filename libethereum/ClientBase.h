@@ -104,6 +104,7 @@ public:
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const override;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const override;
+	virtual void appendLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;
 
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) override;
@@ -118,8 +119,11 @@ public:
 	virtual BlockInfo blockInfo(h256 _hash) const override;
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
+	virtual LocalisedTransaction localisedTransaction(h256 const& _transactionHash) const override;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const override;
+	virtual LocalisedTransaction localisedTransaction(h256 const& _blockHash, unsigned _i) const override;
 	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const override;
+	virtual LocalisedTransactionReceipt localisedTransactionReceipt(h256 const& _transactionHash) const override;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const override;
 	virtual Transactions transactions(h256 _blockHash) const override;
 	virtual TransactionHashes transactionHashes(h256 _blockHash) const override;
