@@ -213,7 +213,6 @@ void KeyManager::kill(Address const& _a)
 	m_addrLookup.erase(_a);
 	m_keyInfo.erase(id);
 	m_store.kill(id);
-	write(m_keysFile);
 }
 
 Addresses KeyManager::accounts() const
