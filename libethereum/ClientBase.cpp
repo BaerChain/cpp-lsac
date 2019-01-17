@@ -171,49 +171,47 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = temp.receipt(i);
 			LogEntries le = _f.matches(tr);
-			if (le.size())
-				for (unsigned j = 0; j < le.size(); ++j)
-					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
+			for (unsigned j = 0; j < le.size(); ++j)
+				ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
 		}
 		begin = bc().number();
 	}
-	
+
+	// Handle blocks from main chain
 	set<unsigned> matchingBlocks;
 	for (auto const& i: _f.bloomPossibilities())
 		for (auto u: bc().withBlockBloom(i, end, begin))
 			matchingBlocks.insert(u);
 
-	unsigned falsePos = 0;
 	for (auto n: matchingBlocks)
+		appendLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
+
+	// Handle reverted blocks
+	h256s blocks;
+	h256 ancestor;
+	unsigned ancestorIndex;
+	tie(blocks, ancestor, ancestorIndex) = bc().treeRoute(_f.earliest(), _f.latest(), false);
+
+	for (size_t i = 0; i < ancestorIndex; i++)
+		appendLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
+
+	return ret;
+}
+
+void ClientBase::appendLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
+{
+	auto receipts = bc().receipts(_blockHash).receipts;
+	for (size_t i = 0; i < receipts.size(); i++)
 	{
-		int total = 0;
-		auto h = bc().numberHash(n);
-		auto info = bc().info(h);
-		auto receipts = bc().receipts(h).receipts;
-		unsigned logIndex = 0;
-		for (size_t i = 0; i < receipts.size(); i++)
+		TransactionReceipt receipt = receipts[i];
+		if (_f.matches(receipt.bloom()))
 		{
-			logIndex++;
-			TransactionReceipt receipt = receipts[i];
-			if (_f.matches(receipt.bloom()))
-			{
-				auto th = transaction(info.hash(), i).sha3();
-				LogEntries le = _f.matches(receipt);
-				if (le.size())
-				{
-					total += le.size();
-					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
-				}
-			}
-			
-			if (!total)
-				falsePos++;
+			auto th = transaction(_blockHash, i).sha3();
+			LogEntries le = _f.matches(receipt);
+			for (unsigned j = 0; j < le.size(); ++j)
+				io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
 		}
 	}
-
-	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
-	return ret;
 }
 
 unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
@@ -317,6 +315,12 @@ Transaction ClientBase::transaction(h256 _transactionHash) const
 	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	return localisedTransaction(tl.first, tl.second);
+}
+
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -327,9 +331,29 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction();
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	Transaction t = Transaction(bc().transaction(_blockHash, _i), CheckTransaction::Cheap);
+	return LocalisedTransaction(t, _blockHash, _i, numberFromHash(_blockHash));
+}
+
 TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
 {
 	return bc().transactionReceipt(_transactionHash);
+}
+
+LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
+	TransactionReceipt tr = bc().transactionReceipt(tl.first, tl.second);
+	return LocalisedTransactionReceipt(
+		tr,
+		t.sha3(),
+		tl.first,
+		numberFromHash(tl.first),
+		tl.second,
+		toAddress(t.from(), t.nonce()));
 }
 
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
@@ -479,3 +503,7 @@ bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
 	return bc().isKnownTransaction(_transactionHash);
 }
 
+bool ClientBase::isKnownTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	return isKnown(_blockHash) && bc().transactions().size() > _i;
+}
