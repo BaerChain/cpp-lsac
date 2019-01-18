@@ -78,28 +78,16 @@ ethash_cl_miner::~ethash_cl_miner()
 	finish();
 }
 
-std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
-{
-	vector<cl::Platform> platforms;
-	try
-	{
-		cl::Platform::get(&platforms);
-	}
-	catch(cl::Error const& err)
-	{
-		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
-			ETHCL_LOG("No OpenCL platforms found");
-		else
-			throw err;
-	}
-	return platforms;
-}
-
 string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
-	vector<cl::Platform> platforms = getPlatforms();
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
 		return string();
+	}
+
 	// get GPU device of the selected platform
 	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
@@ -121,35 +109,29 @@ std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> co
 {
 	vector<cl::Device> devices;
 	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
-	try
-	{
-		_platforms[platform_num].getDevices(
-			s_allowCPU ? CL_DEVICE_TYPE_ALL : ETHCL_QUERIED_DEVICE_TYPES,
-			&devices
-		);
-	}
-	catch (cl::Error const& err)
-	{
-		// if simply no devices found return empty vector
-		if (err.err() != CL_DEVICE_NOT_FOUND)
-			throw err;
-	}
+	_platforms[platform_num].getDevices(
+		s_allowCPU ? CL_DEVICE_TYPE_ALL : ETHCL_QUERIED_DEVICE_TYPES,
+		&devices
+	);
 	return devices;
 }
 
 unsigned ethash_cl_miner::getNumPlatforms()
 {
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return 0;
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	return platforms.size();
 }
 
 unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 {
-	vector<cl::Platform> platforms = getPlatforms();
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
 		return 0;
+	}
 
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
 	if (devices.empty())
@@ -209,9 +191,13 @@ unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGl
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
-	vector<cl::Platform> platforms = getPlatforms();
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
 		return false;
+	}
 	for (unsigned i = 0; i < platforms.size(); ++i)
 		if (searchForAllDevices(i, _callback))
 			return true;
@@ -221,9 +207,8 @@ bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _cal
 
 bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
 {
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return false;
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (_platformId >= platforms.size())
 		return false;
 
@@ -237,18 +222,21 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl
 
 void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
 {
-	vector<cl::Platform> platforms = getPlatforms();
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
 		return;
+	}
 	for (unsigned i = 0; i < platforms.size(); ++i)
 		doForAllDevices(i, _callback);
 }
 
 void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
 {
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (_platformId >= platforms.size())
 		return;
 
@@ -286,9 +274,13 @@ bool ethash_cl_miner::init(
 	// get all platforms
 	try
 	{
-		vector<cl::Platform> platforms = getPlatforms();
+		vector<cl::Platform> platforms;
+		cl::Platform::get(&platforms);
 		if (platforms.empty())
+		{
+			ETHCL_LOG("No OpenCL platforms found.");
 			return false;
+		}
 
 		// use selected platform
 		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
@@ -325,6 +317,8 @@ bool ethash_cl_miner::init(
 			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
 		// remember the device's address bits
 		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
+		// make sure first step of global work size adjustment is large enough
+		m_stepWorkSizeAdjust = pow(2, m_deviceBits / 2 + 1);
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -530,14 +524,26 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				{
 					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust > -1)
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = -1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - m_stepWorkSizeAdjust);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
 					}
 					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust < 1)
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = 1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + m_stepWorkSizeAdjust);
 						// Global work size should never be less than the workgroup size
 						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
