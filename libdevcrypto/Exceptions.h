@@ -14,9 +14,22 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file RangeMask.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
+/** @file Exceptions.h
+ * @author Christian <c@ethdev.com>
+ * @date 2016
  */
 
-#include "RangeMask.h"
+#pragma once
+
+#include <libdevcore/Exceptions.h>
+
+namespace dev
+{
+namespace crypto
+{
+
+/// Rare malfunction of cryptographic functions.
+DEV_SIMPLE_EXCEPTION(CryptoException);
+
+}
+}

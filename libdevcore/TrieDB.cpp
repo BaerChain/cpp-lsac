@@ -14,9 +14,17 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file RangeMask.cpp
+/** @file TrieDB.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "RangeMask.h"
+#include <libdevcore/Common.h>
+#include "TrieDB.h"
+using namespace std;
+using namespace dev;
+
+h256 const dev::c_shaNull = sha3(rlp(""));
+h256 const dev::EmptyTrie = sha3(rlp(""));
+
+const char* TrieDBChannel::name() { return "-T-"; }
