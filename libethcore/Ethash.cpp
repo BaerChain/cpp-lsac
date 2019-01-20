@@ -33,7 +33,6 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcore/CommonJS.h>
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
@@ -48,9 +47,6 @@
 #include "BlockInfo.h"
 #include "EthashAux.h"
 #include "Exceptions.h"
-#include "Farm.h"
-#include "Miner.h"
-#include "Params.h"
 using namespace std;
 using namespace std::chrono;
 
@@ -59,286 +55,26 @@ namespace dev
 namespace eth
 {
 
-h256 const& Ethash::BlockHeaderRaw::seedHash() const
+const Ethash::WorkPackage Ethash::NullWorkPackage = Ethash::WorkPackage();
+
+void Ethash::ensureHeaderCacheValid(HeaderCache& io_out, BlockInfo const& _h)
 {
-	if (!m_seedHash)
-		m_seedHash = EthashAux::seedHash((unsigned)m_number);
-	return m_seedHash;
+	if (!io_out)
+		io_out = EthashAux::seedHash((unsigned)_h.number);
 }
 
-void Ethash::BlockHeaderRaw::populateFromHeader(RLP const& _header, Strictness _s)
+void Ethash::composeException(Exception& _ex, BlockInfo& _bi)
 {
-	m_mixHash = _header[BlockInfo::BasicFields].toHash<h256>();
-	m_nonce = _header[BlockInfo::BasicFields + 1].toHash<h64>();
-
-	// check it hashes according to proof of work or that it's the genesis block.
-	if (_s == CheckEverything && m_parentHash && !verify())
-	{
-		InvalidBlockNonce ex;
-		ex << errinfo_nonce(m_nonce);
-		ex << errinfo_mixHash(m_mixHash);
-		ex << errinfo_seedHash(seedHash());
-		EthashProofOfWork::Result er = EthashAux::eval(seedHash(), hashWithout(), m_nonce);
-		ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
-		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(m_difficulty);
-		ex << errinfo_target(boundary());
-		BOOST_THROW_EXCEPTION(ex);
-	}
-	else if (_s == QuickNonce && m_parentHash && !preVerify())
-	{
-		InvalidBlockNonce ex;
-		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(m_difficulty);
-		ex << errinfo_nonce(m_nonce);
-		BOOST_THROW_EXCEPTION(ex);
-	}
-
-	if (_s != CheckNothing)
-	{
-		if (m_difficulty < c_minimumDifficulty)
-			BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(m_difficulty)) );
-
-		if (m_gasLimit < c_minGasLimit)
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(m_gasLimit)) );
-
-		if (m_number && m_extraData.size() > c_maximumExtraDataSize)
-			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(m_extraData.size())));
-	}
+	_ex << errinfo_nonce(_bi.proof.nonce);
+	_ex << errinfo_mixHash(_bi.proof.mixHash);
+	_ex << errinfo_seedHash(_bi.proofCache());
+	Ethash::Result er = EthashAux::eval(_bi.proofCache(), _bi.headerHash(WithoutProof), _bi.proof.nonce);
+	_ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
 }
 
-void Ethash::BlockHeaderRaw::verifyParent(BlockHeaderRaw const& _parent)
+void Ethash::composeExceptionPre(Exception& _ex, BlockInfo& _bi)
 {
-	// Check difficulty is correct given the two timestamps.
-	if (m_difficulty != calculateDifficulty(_parent))
-		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)m_difficulty));
-
-	if (m_gasLimit < c_minGasLimit ||
-		m_gasLimit <= _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor ||
-		m_gasLimit >= _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)m_gasLimit) << errinfo_max((bigint)_parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor));
-}
-
-void Ethash::BlockHeaderRaw::populateFromParent(BlockHeaderRaw const& _parent)
-{
-	(void)_parent;
-}
-
-bool Ethash::BlockHeaderRaw::preVerify() const
-{
-	if (m_number >= ETHASH_EPOCH_LENGTH * 2048)
-		return false;
-
-	bool ret = !!ethash_quick_check_difficulty(
-			(ethash_h256_t const*)hashWithout().data(),
-			(uint64_t)(u64)m_nonce,
-			(ethash_h256_t const*)m_mixHash.data(),
-			(ethash_h256_t const*)boundary().data());
-	return ret;
-}
-
-bool Ethash::BlockHeaderRaw::verify() const
-{
-	bool pre = preVerify();
-#if !ETH_DEBUG
-	if (!pre)
-	{
-		cwarn << "Fail on preVerify";
-		return false;
-	}
-#endif
-
-	auto result = EthashAux::eval(seedHash(), hashWithout(), m_nonce);
-	bool slow = result.value <= boundary() && result.mixHash == m_mixHash;
-
-//	cdebug << (slow ? "VERIFY" : "VERYBAD");
-//	cdebug << result.value.hex() << _header.boundary().hex();
-//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
-
-#if ETH_DEBUG || !ETH_TRUE
-	if (!pre && slow)
-	{
-		cwarn << "WARNING: evaluated result gives true whereas ethash_quick_check_difficulty gives false.";
-		cwarn << "headerHash:" << hashWithout();
-		cwarn << "nonce:" << m_nonce;
-		cwarn << "mixHash:" << m_mixHash;
-		cwarn << "difficulty:" << m_difficulty;
-		cwarn << "boundary:" << boundary();
-		cwarn << "result.value:" << result.value;
-		cwarn << "result.mixHash:" << result.mixHash;
-	}
-#endif
-
-	return slow;
-}
-
-void Ethash::BlockHeaderRaw::prep(std::function<int(unsigned)> const& _f) const
-{
-	EthashAux::full(seedHash(), true, _f);
-}
-
-StringHashMap Ethash::BlockHeaderRaw::jsInfo() const
-{
-	return { { "nonce", toJS(m_nonce) }, { "seedHash", toJS(seedHash()) }, { "mixHash", toJS(m_mixHash) } };
-}
-
-
-
-
-
-
-
-class EthashCPUMiner: public GenericMiner<EthashProofOfWork>, Worker
-{
-public:
-	EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci): GenericMiner<EthashProofOfWork>(_ci), Worker("miner" + toString(index())) {}
-
-	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
-	static std::string platformInfo();
-	static void listDevices() {}
-	static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
-	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
-
-protected:
-	void kickOff() override
-	{
-		stopWorking();
-		startWorking();
-	}
-
-	void pause() override { stopWorking(); }
-
-private:
-	void workLoop() override;
-	static unsigned s_numInstances;
-};
-
-#if ETH_ETHASHCL || !ETH_TRUE
-class EthashGPUMiner: public GenericMiner<EthashProofOfWork>, Worker
-{
-	friend class dev::eth::EthashCLHook;
-
-public:
-	EthashGPUMiner(ConstructionInfo const& _ci);
-	~EthashGPUMiner();
-
-	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-	static std::string platformInfo();
-	static unsigned getNumDevices();
-	static void listDevices();
-	static bool configureGPU(
-		unsigned _localWorkSize,
-		unsigned _globalWorkSizeMultiplier,
-		unsigned _msPerBatch,
-		unsigned _platformId,
-		unsigned _deviceId,
-		bool _allowCPU,
-		unsigned _extraGPUMemory,
-		boost::optional<uint64_t> _currentBlock
-	);
-	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-
-protected:
-	void kickOff() override;
-	void pause() override;
-
-private:
-	void workLoop() override;
-	bool report(uint64_t _nonce);
-
-	using Miner::accumulateHashes;
-
-	EthashCLHook* m_hook = nullptr;
-	ethash_cl_miner* m_miner = nullptr;
-
-	h256 m_minerSeed;		///< Last seed in m_miner
-	static unsigned s_platformId;
-	static unsigned s_deviceId;
-	static unsigned s_numInstances;
-};
-#endif
-
-struct EthashSealEngine: public SealEngineBase<Ethash>
-{
-	friend class Ethash;
-
-public:
-	EthashSealEngine()
-	{
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
-		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
-#if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
-#endif
-		m_farm.setSealers(sealers);
-	}
-
-	strings sealers() const override
-	{
-		return {
-			"cpu"
-#if ETH_ETHASHCL
-			, "opencl"
-#endif
-		};
-	}
-	void setSealer(std::string const& _sealer) override { m_sealer = _sealer; }
-	void cancelGeneration() override { m_farm.stop(); }
-	void generateSeal(BlockInfo const& _bi) override
-	{
-		m_sealing = Ethash::BlockHeader(_bi);
-		m_farm.setWork(m_sealing);
-		m_farm.start(m_sealer);
-		m_farm.setWork(m_sealing);		// TODO: take out one before or one after...
-		Ethash::ensurePrecomputed((unsigned)_bi.number());
-	}
-	void onSealGenerated(std::function<void(bytes const&)> const& _f) override
-	{
-		m_farm.onSolutionFound([=](EthashProofOfWork::Solution const& sol)
-		{
-			cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
-			m_sealing.m_mixHash = sol.mixHash;
-			m_sealing.m_nonce = sol.nonce;
-			RLPStream ret;
-			m_sealing.streamRLP(ret);
-			_f(ret.out());
-			return true;
-		});
-	}
-
-private:
-	bool m_opencl = false;
-	eth::GenericFarm<EthashProofOfWork> m_farm;
-	std::string m_sealer = "cpu";
-	Ethash::BlockHeader m_sealing;
-};
-
-void Ethash::manuallySubmitWork(SealEngineFace* _engine, h256 const& _mixHash, Nonce _nonce)
-{
-	if (EthashSealEngine* e = dynamic_cast<EthashSealEngine*>(_engine))
-		// Go via the farm since the handler function object is stored as a local within the Farm's lambda.
-		// Has the side effect of stopping local workers, which is good, as long as it only does it for
-		// valid submissions.
-		static_cast<GenericFarmFace<EthashProofOfWork>&>(e->m_farm).submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
-}
-
-bool Ethash::isWorking(SealEngineFace* _engine)
-{
-	if (EthashSealEngine* e = dynamic_cast<EthashSealEngine*>(_engine))
-		return e->m_farm.isMining();
-	return false;
-}
-
-WorkingProgress Ethash::workingProgress(SealEngineFace* _engine)
-{
-	if (EthashSealEngine* e = dynamic_cast<EthashSealEngine*>(_engine))
-		return e->m_farm.miningProgress();
-	return WorkingProgress();
-}
-
-SealEngineFace* Ethash::createSealEngine()
-{
-	return new EthashSealEngine;
+	_ex << errinfo_nonce(_bi.proof.nonce);
 }
 
 std::string Ethash::name()
@@ -351,6 +87,26 @@ unsigned Ethash::revision()
 	return ETHASH_REVISION;
 }
 
+void Ethash::Solution::populateFromRLP(RLP const& _header, int& _field)
+{
+	mixHash = _header[_field].toHash<h256>(RLP::VeryStrict);
+	nonce = _header[++_field].toHash<Nonce>(RLP::VeryStrict);
+}
+
+void Ethash::Solution::streamRLP(RLPStream& io_rlp) const
+{
+	io_rlp << mixHash << nonce;
+}
+
+Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
+{
+	WorkPackage ret;
+	ret.boundary = _bi.boundary();
+	ret.headerHash = _bi.headerHash(WithoutProof);
+	ret.seedHash = _bi.proofCache();
+	return ret;
+}
+
 void Ethash::ensurePrecomputed(unsigned _number)
 {
 	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
@@ -358,9 +114,65 @@ void Ethash::ensurePrecomputed(unsigned _number)
 		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
 }
 
-unsigned EthashCPUMiner::s_numInstances = 0;
+void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
+{
+	EthashAux::full(_header.proofCache(), true, _f);
+}
 
-void EthashCPUMiner::workLoop()
+bool Ethash::preVerify(BlockInfo const& _header)
+{
+	if (_header.number >= ETHASH_EPOCH_LENGTH * 2048)
+		return false;
+
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutProof).data(),
+			(uint64_t)(u64)_header.proof.nonce,
+			(ethash_h256_t const*)_header.proof.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
+}
+
+bool Ethash::verify(BlockInfo const& _header)
+{
+	bool pre = preVerify(_header);
+#if !ETH_DEBUG
+	if (!pre)
+	{
+		cwarn << "Fail on preVerify";
+		return false;
+	}
+#endif
+
+	auto result = EthashAux::eval(_header);
+	bool slow = result.value <= _header.boundary() && result.mixHash == _header.proof.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
+
+#if ETH_DEBUG || !ETH_TRUE
+	if (!pre && slow)
+	{
+		cwarn << "WARNING: evaluated result gives true whereas ethash_quick_check_difficulty gives false.";
+		cwarn << "headerHash:" << _header.headerHash(WithoutProof);
+		cwarn << "nonce:" << _header.proof.nonce;
+		cwarn << "mixHash:" << _header.proof.mixHash;
+		cwarn << "difficulty:" << _header.difficulty;
+		cwarn << "boundary:" << _header.boundary();
+		cwarn << "result.value:" << result.value;
+		cwarn << "result.mixHash:" << result.mixHash;
+	}
+#endif
+
+	return slow;
+}
+
+unsigned Ethash::CPUMiner::s_numInstances = 0;
+
+void Ethash::CPUMiner::workLoop()
 {
 	auto tid = std::this_thread::get_id();
 	static std::mt19937_64 s_eng((time(0) + std::hash<decltype(tid)>()(tid)));
@@ -384,7 +196,7 @@ void EthashCPUMiner::workLoop()
 	{
 		ethashReturn = ethash_full_compute(dag->full, *(ethash_h256_t*)w.headerHash.data(), tryNonce);
 		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
-		if (value <= boundary && submitProof(EthashProofOfWork::Solution{(h64)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
+		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
 		if (!(hashCount % 100))
 			accumulateHashes(100);
@@ -407,7 +219,7 @@ static string jsonEncode(map<string, string> const& _m)
 	return ret + "}";
 }
 
-std::string EthashCPUMiner::platformInfo()
+std::string Ethash::CPUMiner::platformInfo()
 {
 	string baseline = toString(std::thread::hardware_concurrency()) + "-thread CPU";
 #if ETH_CPUID || !ETH_TRUE
@@ -444,6 +256,29 @@ std::string EthashCPUMiner::platformInfo()
 }
 
 #if ETH_ETHASHCL || !ETH_TRUE
+
+using UniqueGuard = std::unique_lock<std::mutex>;
+
+template <class N>
+class Notified
+{
+public:
+	Notified() {}
+	Notified(N const& _v): m_value(_v) {}
+	Notified(Notified const&) = delete;
+	Notified& operator=(N const& _v) { UniqueGuard l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
+
+	operator N() const { UniqueGuard l(m_mutex); return m_value; }
+
+	void wait() const { UniqueGuard l(m_mutex); m_cv.wait(l); }
+	void wait(N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
+	template <class F> void wait(F const& _f) const { UniqueGuard l(m_mutex); m_cv.wait(l, _f); }
+
+private:
+	mutable Mutex m_mutex;
+	mutable std::condition_variable m_cv;
+	N m_value;
+};
 
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
@@ -503,28 +338,28 @@ private:
 	uint64_t m_last;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
-	EthashGPUMiner* m_owner = nullptr;
+	Ethash::GPUMiner* m_owner = nullptr;
 };
 
-unsigned EthashGPUMiner::s_platformId = 0;
-unsigned EthashGPUMiner::s_deviceId = 0;
-unsigned EthashGPUMiner::s_numInstances = 0;
+unsigned Ethash::GPUMiner::s_platformId = 0;
+unsigned Ethash::GPUMiner::s_deviceId = 0;
+unsigned Ethash::GPUMiner::s_numInstances = 0;
 
-EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
+Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	Worker("gpuminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
 
-EthashGPUMiner::~EthashGPUMiner()
+Ethash::GPUMiner::~GPUMiner()
 {
 	pause();
 	delete m_miner;
 	delete m_hook;
 }
 
-bool EthashGPUMiner::report(uint64_t _nonce)
+bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
 	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
@@ -533,13 +368,13 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 	return false;
 }
 
-void EthashGPUMiner::kickOff()
+void Ethash::GPUMiner::kickOff()
 {
 	m_hook->reset();
 	startWorking();
 }
 
-void EthashGPUMiner::workLoop()
+void Ethash::GPUMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
@@ -584,28 +419,28 @@ void EthashGPUMiner::workLoop()
 	}
 }
 
-void EthashGPUMiner::pause()
+void Ethash::GPUMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
 }
 
-std::string EthashGPUMiner::platformInfo()
+std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
 }
 
-unsigned EthashGPUMiner::getNumDevices()
+unsigned Ethash::GPUMiner::getNumDevices()
 {
 	return ethash_cl_miner::getNumDevices(s_platformId);
 }
 
-void EthashGPUMiner::listDevices()
+void Ethash::GPUMiner::listDevices()
 {
 	return ethash_cl_miner::listDevices();
 }
 
-bool EthashGPUMiner::configureGPU(
+bool Ethash::GPUMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _msPerBatch,

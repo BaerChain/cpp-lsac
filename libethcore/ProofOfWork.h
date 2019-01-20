@@ -14,15 +14,16 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Utility.h
+/** @file ProofOfWork.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
+ *
+ * Determines the PoW algorithm.
  */
 
 #pragma once
 
-#include <string>
-#include <libdevcore/Common.h>
+#include "Ethash.h"
 
 namespace dev
 {
@@ -30,19 +31,16 @@ namespace eth
 {
 
 /**
- * Takes a user-authorable string with several whitespace delimited arguments and builds a byte array
- * from it. Arguments can be hex data/numerals, decimal numbers or ASCII strings. Literals are padded
- * to 32 bytes if prefixed by a '@' (or not prefixed at all), and tightly packed if prefixed by a '$'.
- * Currency multipliers can be provided.
+ * The proof of work algorithm base type.
  *
- * Example:
- * @code
- * parseData("$42 0x42 $\"Hello\"");	// == bytes(1, 0x2a) + bytes(31, 0) + bytes(1, 0x42) + asBytes("Hello");
- * @endcode
+ * Must implement a basic templated interface, including:
+ * typename Result
+ * typename Solution
+ * typename CPUMiner
+ * typename GPUMiner
+ * and a few others. TODO
  */
-bytes parseData(std::string const& _args);
-
-void upgradeDatabase(std::string const& _basePath);
+using ProofOfWork = Ethash;
 
 }
 }

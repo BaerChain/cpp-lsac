@@ -29,6 +29,7 @@
 #include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
 #include <libevm/ExtVMFace.h>
 #include "Account.h"
@@ -76,7 +77,8 @@ struct StateSafeExceptions: public LogChannel { static const char* name(); stati
 enum class BaseState
 {
 	PreExisting,
-	Empty
+	Empty,
+	CanonGenesis
 };
 
 enum class Permanence
@@ -102,7 +104,6 @@ class State
 	friend class dev::test::ImportTest;
 	friend class dev::test::StateLoader;
 	friend class Executive;
-	friend class BlockChain;
 
 public:
 	/// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -124,7 +125,7 @@ public:
 	~State();
 
 	/// Construct state object from arbitrary point in blockchain.
-	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::None);
+	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
@@ -132,8 +133,8 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
-	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _genesisHash, _we); }
+	static OverlayDB openDB(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 	OverlayDB& db() { return m_db; }
 
@@ -162,20 +163,22 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff we were previously committed to mining.
-	/// TODO: verify it prior to calling this.
-	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
-	 * Typically looks like:
-	 * @code
-	 * while (notYetMined)
-	 * {
-	 * // lock
-	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
-	 * completeMine();
-	 * // unlock
-	 * @endcode
-	 */
-	bool sealBlock(bytes const& _header) { return sealBlock(&_header); }
-	bool sealBlock(bytesConstRef _header);
+	template <class PoW>
+	bool completeMine(typename PoW::Solution const& _result)
+	{
+		if (!m_committedToMine)
+			return false;
+
+		m_currentBlock.proof = _result;
+		if (!PoW::verify(m_currentBlock))
+			return false;
+
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutProof) << m_currentBlock.proof.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+
+		completeMine();
+
+		return true;
+	}
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -190,7 +193,7 @@ public:
 	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
-	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit() - gasUsed(); }
+	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
@@ -292,11 +295,11 @@ public:
 	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 const& _blockHash, BlockInfo const& _bi = BlockInfo());
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo(), ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc);
+	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -310,6 +313,19 @@ public:
 	void resetCurrent();
 
 private:
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * while (notYetMined)
+	 * {
+	 * // lock
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
+
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
 
@@ -324,7 +340,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc);
+	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -370,7 +386,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTrieDB<Address, DB>& _state)
+AddressHash commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
 	AddressHash ret;
 	for (auto const& i: _cache)
@@ -390,7 +406,7 @@ AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTri
 				}
 				else
 				{
-					SecureTrieDB<h256, DB> storageDB(_state.db(), i.second.baseRoot());
+					SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
 					for (auto const& j: i.second.storageOverlay())
 						if (j.second)
 							storageDB.insert(j.first, rlp(j.second));
@@ -403,7 +419,7 @@ AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTri
 				if (i.second.isFreshCode())
 				{
 					h256 ch = sha3(i.second.code());
-					_state.db()->insert(ch, &i.second.code());
+					_db.insert(ch, &i.second.code());
 					s << ch;
 				}
 				else

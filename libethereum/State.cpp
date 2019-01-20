@@ -55,7 +55,7 @@ const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
 const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 
-OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, WithExisting _we)
+OverlayDB State::openDB(std::string const& _basePath, WithExisting _we)
 {
 	std::string path = _basePath.empty() ? Defaults::get()->m_dbPath : _basePath;
 
@@ -65,7 +65,7 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 		boost::filesystem::remove_all(path + "/state");
 	}
 
-	path += "/" + toHex(_genesisHash.ref().cropped(0, 4)) + "/" + toString(c_databaseVersion);
+	path += "/" + toHex(CanonBlockChain::genesis().hash().ref().cropped(0, 4)) + "/" + toString(c_databaseVersion);
 	boost::filesystem::create_directories(path);
 
 	ldb::Options o;
@@ -103,9 +103,20 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 
 	paranoia("beginning of Genesis construction.", true);
 
-	m_previousBlock.clear();
-	m_currentBlock.clear();
-//	assert(m_state.root() == m_previousBlock.stateRoot());
+	if (_bs == BaseState::CanonGenesis)
+	{
+		dev::eth::commit(genesisState(), m_db, m_state);
+		m_db.commit();
+
+		paranoia("after DB commit of Genesis construction.", true);
+		m_previousBlock = CanonBlockChain::genesis();
+	}
+	else
+		m_previousBlock.clear();
+
+	resetCurrent();
+
+	assert(m_state.root() == m_previousBlock.stateRoot);
 
 	paranoia("end of normal construction.", true);
 }
@@ -123,21 +134,22 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 
 	auto b = _bc.block(_h);
 	BlockInfo bi(b);
-	if (bi.number())
+	if (bi.number)
 	{
 		// Non-genesis:
 
 		// 1. Start at parent's end state (state root).
-		BlockInfo bip(_bc.block(bi.parentHash()));
-		sync(_bc, bi.parentHash(), bip);
+		BlockInfo bip;
+		bip.populate(_bc.block(bi.parentHash));
+		sync(_bc, bi.parentHash, bip, _ir);
 
 		// 2. Enact the block's transactions onto this state.
-		m_ourAddress = bi.coinbaseAddress();
+		m_ourAddress = bi.coinbaseAddress;
 		Timer t;
-		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir);
+		auto vb = BlockChain::verifyBlock(b);
 		ret.verify = t.elapsed();
 		t.restart();
-		enact(vb, _bc);
+		enact(vb, _bc, _ir);
 		ret.enact = t.elapsed();
 	}
 	else
@@ -145,7 +157,7 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 		// Genesis required:
 		// We know there are no transactions, so just populate directly.
 		m_state.init();
-		sync(_bc, _h, bi);
+		sync(_bc, _h, bi, _ir);
 	}
 
 	return ret;
@@ -282,7 +294,7 @@ void State::ensureCached(std::unordered_map<Address, Account>& _cache, Address _
 
 void State::commit()
 {
-	m_touched += dev::eth::commit(m_cache, m_state);
+	m_touched += dev::eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
@@ -291,8 +303,9 @@ bool State::sync(BlockChain const& _bc)
 	return sync(_bc, _bc.currentHash());
 }
 
-bool State::sync(BlockChain const& _bc, h256 const& _block, BlockInfo const& _bi)
+bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, ImportRequirements::value _ir)
 {
+	(void)_ir;
 	bool ret = false;
 	// BLOCK
 	BlockInfo bi = _bi ? _bi : _bc.info(_block);
@@ -338,11 +351,11 @@ bool State::sync(BlockChain const& _bc, h256 const& _block, BlockInfo const& _bi
 		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
 
-		if (m_db.lookup(bi.stateRoot()).empty())
+		if (m_db.lookup(bi.stateRoot).empty())
 		{
-			cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot() << "not found in database.";
+			cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot << "not found in database.";
 			cwarn << "Database corrupt: contains block without stateRoot:" << bi;
-			cwarn << "Try rescuing the database by running: eth --rescue";
+			cwarn << "Bailing.";
 			exit(-1);
 		}
 		m_previousBlock = bi;
@@ -357,10 +370,10 @@ bool State::sync(BlockChain const& _bc, h256 const& _block, BlockInfo const& _bi
 		// (Most recent state dump might end up being genesis.)
 
 		std::vector<h256> chain;
-		while (bi.number() != 0 && m_db.lookup(bi.stateRoot()).empty())	// while we don't have the state root of the latest block...
+		while (bi.number != 0 && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
 			chain.push_back(bi.hash());				// push back for later replay.
-			bi.populate(_bc.block(bi.parentHash()));	// move to parent.
+			bi.populate(_bc.block(bi.parentHash));	// move to parent.
 		}
 
 		m_previousBlock = bi;
@@ -391,7 +404,7 @@ bool State::sync(BlockChain const& _bc, h256 const& _block, BlockInfo const& _bi
 	return ret;
 }
 
-u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc)
+u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
 	Timer t;
@@ -402,7 +415,7 @@ u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc)
 #endif
 
 	// Check family:
-	BlockInfo biParent = _bc.info(_block.info.parentHash());
+	BlockInfo biParent = _bc.info(_block.info.parentHash);
 	_block.info.verifyParent(biParent);
 
 #if ETH_TIMED_ENACTMENTS
@@ -411,15 +424,15 @@ u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc)
 #endif
 
 	BlockInfo biGrandParent;
-	if (biParent.number())
-		biGrandParent = _bc.info(biParent.parentHash());
+	if (biParent.number)
+		biGrandParent = _bc.info(biParent.parentHash);
 
 #if ETH_TIMED_ENACTMENTS
 	populateGrand = t.elapsed();
 	t.restart();
 #endif
 
-	sync(_bc, _block.info.parentHash(), BlockInfo());
+	sync(_bc, _block.info.parentHash, BlockInfo(), _ir);
 	resetCurrent();
 
 #if ETH_TIMED_ENACTMENTS
@@ -428,7 +441,7 @@ u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc)
 #endif
 
 	m_previousBlock = biParent;
-	auto ret = enact(_block, _bc);
+	auto ret = enact(_block, _bc, _ir);
 
 #if ETH_TIMED_ENACTMENTS
 	enactment = t.elapsed();
@@ -462,15 +475,17 @@ void State::resetCurrent()
 	m_cache.clear();
 	m_touched.clear();
 	m_currentBlock = BlockInfo();
-	m_currentBlock.setCoinbaseAddress(m_ourAddress);
-	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, (u256)time(0)));
+	m_currentBlock.coinbaseAddress = m_ourAddress;
+	m_currentBlock.timestamp = max(m_previousBlock.timestamp + 1, (u256)time(0));
+	m_currentBlock.transactionsRoot = h256();
+	m_currentBlock.sha3Uncles = h256();
 	m_currentBlock.populateFromParent(m_previousBlock);
 
 	// Update timestamp according to clock.
 	// TODO: check.
 
 	m_lastTx = m_db;
-	m_state.setRoot(m_previousBlock.stateRoot());
+	m_state.setRoot(m_previousBlock.stateRoot);
 
 	m_committedToMine = false;
 
@@ -536,7 +551,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				catch (BlockGasLimitReached const& e)
 				{
 					bigint const& got = *boost::get_error_info<errinfo_got>(e);
-					if (got > m_currentBlock.gasLimit())
+					if (got > m_currentBlock.gasLimit)
 					{
 						clog(StateTrace) << t.sha3() << "Dropping over-gassy transaction (gas > block's gas limit)";
 						_tq.drop(t.sha3());
@@ -576,12 +591,12 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	RLP rlp(_block);
 
 	cleanup(false);
-	BlockInfo bi(_block, (_ir & ImportRequirements::ValidSeal) ? CheckEverything : IgnoreSeal);
+	BlockInfo bi(_block, (_ir & ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
 	m_currentBlock = bi;
 	m_currentBlock.verifyInternals(_block);
 	m_currentBlock.noteDirty();
 
-	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number());
+	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 
 	string ret;
 	unsigned i = 0;
@@ -596,31 +611,31 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	return ret.empty() ? "[]" : (ret + "]");
 }
 
-u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
+u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	DEV_TIMED_FUNCTION_ABOVE(500);
 
 	// m_currentBlock is assumed to be prepopulated and reset.
 #if !ETH_RELEASE
-	assert(m_previousBlock.hash() == _block.info.parentHash());
-	assert(m_currentBlock.parentHash() == _block.info.parentHash());
-	assert(rootHash() == m_previousBlock.stateRoot());
+	assert(m_previousBlock.hash() == _block.info.parentHash);
+	assert(m_currentBlock.parentHash == _block.info.parentHash);
+	assert(rootHash() == m_previousBlock.stateRoot);
 #endif
 
-	if (m_currentBlock.parentHash() != m_previousBlock.hash())
+	if (m_currentBlock.parentHash != m_previousBlock.hash())
 		// Internal client error.
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
-	m_currentBlock.noteDirty();
 	m_currentBlock = _block.info;
+	m_currentBlock.noteDirty();
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
 	LastHashes lh;
 	DEV_TIMED_ABOVE("lastHashes", 500)
-		lh = _bc.lastHashes((unsigned)m_previousBlock.number());
+		lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 
 	RLP rlp(_block.block);
 
@@ -649,28 +664,28 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 		}
 
 	h256 receiptsRoot;
-	DEV_TIMED_ABOVE(".receiptsRoot()", 500)
+	DEV_TIMED_ABOVE("receiptsRoot", 500)
 		receiptsRoot = orderedTrieRoot(receipts);
 
-	if (receiptsRoot != m_currentBlock.receiptsRoot())
+	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
 		InvalidReceiptsStateRoot ex;
-		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot());
+		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot);
 		ex << errinfo_receipts(receipts);
-		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
+		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, _ir));
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
-	if (m_currentBlock.logBloom() != logBloom())
+	if (m_currentBlock.logBloom != logBloom())
 	{
 		InvalidLogBloom ex;
-		ex << LogBloomRequirementError(logBloom(), m_currentBlock.logBloom());
+		ex << LogBloomRequirementError(logBloom(), m_currentBlock.logBloom);
 		ex << errinfo_receipts(receipts);
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
 	// Initialise total difficulty calculation.
-	u256 tdIncrease = m_currentBlock.difficulty();
+	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
@@ -684,7 +699,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	vector<BlockInfo> rewarded;
 	h256Hash excluded;
 	DEV_TIMED_ABOVE("allKin", 500)
-		excluded = _bc.allKinFrom(m_currentBlock.parentHash(), 6);
+		excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	unsigned ii = 0;
@@ -704,26 +719,25 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 				}
 				excluded.insert(h);
 
-				// IgnoreSeal since it's a VerifiedBlock.
-				BlockInfo uncle(i.data(), IgnoreSeal, h, HeaderData);
+				BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
 
 				BlockInfo uncleParent;
-				if (!_bc.isKnown(uncle.parentHash()))
+				if (!_bc.isKnown(uncle.parentHash))
 					BOOST_THROW_EXCEPTION(UnknownParent());
-				uncleParent = BlockInfo(_bc.block(uncle.parentHash()));
+				uncleParent = BlockInfo(_bc.block(uncle.parentHash));
 
-				if ((bigint)uncleParent.number() < (bigint)m_currentBlock.number() - 7)
+				if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 				{
 					UncleTooOld ex;
-					ex << errinfo_uncleNumber(uncle.number());
-					ex << errinfo_currentNumber(m_currentBlock.number());
+					ex << errinfo_uncleNumber(uncle.number);
+					ex << errinfo_currentNumber(m_currentBlock.number);
 					BOOST_THROW_EXCEPTION(ex);
 				}
-				else if (uncle.number() == m_currentBlock.number())
+				else if (uncle.number == m_currentBlock.number)
 				{
 					UncleIsBrother ex;
-					ex << errinfo_uncleNumber(uncle.number());
-					ex << errinfo_currentNumber(m_currentBlock.number());
+					ex << errinfo_uncleNumber(uncle.number);
+					ex << errinfo_currentNumber(m_currentBlock.number);
 					BOOST_THROW_EXCEPTION(ex);
 				}
 				uncle.verifyParent(uncleParent);
@@ -746,17 +760,17 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 		commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
-	if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash())
+	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot()));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot));
 	}
 
-	if (m_currentBlock.gasUsed() != gasUsed())
+	if (m_currentBlock.gasUsed != gasUsed())
 	{
 		// Rollback the trie.
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed())));
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
 
 	return tdIncrease;
@@ -770,7 +784,7 @@ void State::cleanup(bool _fullCommit)
 
 		// Commit the new trie to disk.
 		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
-			clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot() << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+			clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		try {
 			EnforceRefs er(m_db, true);
@@ -784,7 +798,7 @@ void State::cleanup(bool _fullCommit)
 
 		m_db.commit();
 		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
-			clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot() << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+			clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
@@ -804,7 +818,7 @@ void State::uncommitToMine()
 	{
 		m_cache.clear();
 		if (!m_transactions.size())
-			m_state.setRoot(m_previousBlock.stateRoot());
+			m_state.setRoot(m_previousBlock.stateRoot);
 		else
 			m_state.setRoot(m_receipts.back().stateRoot());
 		m_db = m_lastTx;
@@ -815,8 +829,6 @@ void State::uncommitToMine()
 
 bool State::amIJustParanoid(BlockChain const& _bc)
 {
-	(void)_bc;
-	/*
 	commitToMine(_bc);
 
 	// Update difficulty according to timestamp.
@@ -836,7 +848,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(BlockChain::verifyBlock(block.out(), std::function<void(Exception&)>(), ImportRequirements::CheckUncles | ImportRequirements::CheckTransactions), _bc);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(BlockChain::verifyBlock(block.out()), _bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -848,7 +860,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	{
 		cwarn << "Bad block: " << _e.what();
 	}
-*/
+
 	return false;
 }
 
@@ -876,12 +888,12 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
-	if (m_previousBlock.number() != 0)
+	if (m_previousBlock.number != 0)
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
-//		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash() << endl;
-		h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash(), 6);
-		auto p = m_previousBlock.parentHash();
+//		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
+		h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
+		auto p = m_previousBlock.parentHash;
 		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2; ++gen, p = _bc.details(p).parent)
 		{
 			auto us = _bc.details(p).children;
@@ -889,9 +901,10 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 			for (auto const& u: us)
 				if (!excluded.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
-					uncleBlockHeaders.push_back(_bc.info(u));
-					unclesData.appendRaw(_bc.headerData(u));
+					BlockInfo ubi(_bc.block(u));
+					ubi.streamRLP(unclesData, WithProof);
 					++unclesCount;
+					uncleBlockHeaders.push_back(ubi);
 					if (unclesCount == 2)
 						break;
 				}
@@ -924,6 +937,11 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
+	m_currentBlock.transactionsRoot = hash256(transactionsMap);
+	m_currentBlock.receiptsRoot = hash256(receiptsMap);
+	m_currentBlock.logBloom = logBloom();
+	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
 	// Apply rewards last of all.
 	applyRewards(uncleBlockHeaders);
 
@@ -934,45 +952,35 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 //	cnote << m_state;
 //	cnote << *this;
 
-	m_currentBlock.setLogBloom(logBloom());
-	m_currentBlock.setGasUsed(gasUsed());
-	m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.root());
-
-	m_currentBlock.setParentHash(m_previousBlock.hash());
-	m_currentBlock.setExtraData(_extraData);
-	if (m_currentBlock.extraData().size() > 32)
-	{
-		auto ed = m_currentBlock.extraData();
-		ed.resize(32);
-		m_currentBlock.setExtraData(ed);
-	}
+	m_currentBlock.gasUsed = gasUsed();
+	m_currentBlock.stateRoot = m_state.root();
+	m_currentBlock.parentHash = m_previousBlock.hash();
+	m_currentBlock.extraData = _extraData;
+	if (m_currentBlock.extraData.size() > 32)
+		m_currentBlock.extraData.resize(32);
 
 	m_committedToMine = true;
 }
 
-bool State::sealBlock(bytesConstRef _header)
+void State::completeMine()
 {
-	if (!m_committedToMine)
-		return false;
-
-	cdebug << "Sealing block!";
+	cdebug << "Completing mine!";
 	// Got it!
 
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
-	ret.appendRaw(_header);
+	m_currentBlock.streamRLP(ret, WithProof);
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock = BlockInfo(_header, CheckNothing, h256(), HeaderData);
-	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
-	// TODO: move into Sealer
+	m_currentBlock.noteDirty();
+	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash << ")";
 	StructuredLogger::minedNewBlock(
 		m_currentBlock.hash().abridged(),
-		"",	// Can't give the nonce here.
+		m_currentBlock.proof.nonce.abridged(),
 		"", //TODO: chain head hash here ??
-		m_currentBlock.parentHash().abridged()
+		m_currentBlock.parentHash.abridged()
 	);
 
 	// Quickly reset the transactions.
@@ -981,8 +989,6 @@ bool State::sealBlock(bytesConstRef _header)
 	m_receipts.clear();
 	m_transactionSet.clear();
 	m_lastTx = m_db;
-
-	return true;
 }
 
 bool State::addressInUse(Address _id) const
@@ -1269,7 +1275,7 @@ State State::fromPending(unsigned _i) const
 	ret.m_cache.clear();
 	_i = min<unsigned>(_i, m_transactions.size());
 	if (!_i)
-		ret.m_state.setRoot(m_previousBlock.stateRoot());
+		ret.m_state.setRoot(m_previousBlock.stateRoot);
 	else
 		ret.m_state.setRoot(m_receipts[_i - 1].stateRoot());
 	while (ret.m_transactions.size() > _i)
@@ -1286,10 +1292,10 @@ void State::applyRewards(vector<BlockInfo> const& _uncleBlockHeaders)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleBlockHeaders)
 	{
-		addBalance(i.coinbaseAddress(), m_blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
+		addBalance(i.coinbaseAddress, m_blockReward * (8 + i.number - m_currentBlock.number) / 8);
 		r += m_blockReward / 32;
 	}
-	addBalance(m_currentBlock.coinbaseAddress(), r);
+	addBalance(m_currentBlock.coinbaseAddress, r);
 }
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)

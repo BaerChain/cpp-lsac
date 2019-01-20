@@ -357,7 +357,7 @@ BlockInfo ClientBase::uncle(h256 _blockHash, unsigned _i) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	if (_i < b[2].itemCount())
-		return BlockInfo(b[2][_i].data(), CheckNothing, h256(), HeaderData);
+		return BlockInfo::fromHeader(b[2][_i].data());
 	else
 		return BlockInfo();
 }

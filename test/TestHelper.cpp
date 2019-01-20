@@ -23,7 +23,6 @@
 
 #include <thread>
 #include <chrono>
-#include <libethcore/EthashAux.h>
 #include <libethereum/Client.h>
 #include <liblll/Compiler.h>
 #include <libevm/VMFactory.h>
@@ -64,17 +63,11 @@ void connectClients(Client& c1, Client& c2)
 void mine(State& s, BlockChain const& _bc)
 {
 	s.commitToMine(_bc);
-	GenericFarm<EthashProofOfWork> f;
+	GenericFarm<ProofOfWork> f;
 	bool completed = false;
-	Ethash::BlockHeader header(s.info);
-	f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
 	{
-			header.m_mixHash = sol.mixHash;
-			header.m_nonce = sol.nonce;
-			RLPStream ret;
-			header.streamRLP(ret);
-			s.sealBlock(ret);
-			return true;
+		return completed = s.completeMine<ProofOfWork>(sol);
 	});
 	f.setWork(s.info());
 	f.startCPU();
@@ -84,9 +77,9 @@ void mine(State& s, BlockChain const& _bc)
 
 void mine(BlockInfo& _bi)
 {
-	GenericFarm<EthashProofOfWork> f;
+	GenericFarm<ProofOfWork> f;
 	bool completed = false;
-	f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
 	{
 		_bi.proof = sol;
 		return completed = true;
@@ -158,12 +151,12 @@ void ImportTest::importEnv(json_spirit::mObject& _o)
 	assert(_o.count("currentCoinbase") > 0);
 	assert(_o.count("currentNumber") > 0);
 
-	m_environment.currentBlock.parentHash() = h256(_o["previousHash"].get_str());
+	m_environment.currentBlock.parentHash = h256(_o["previousHash"].get_str());
 	m_environment.currentBlock.number = toInt(_o["currentNumber"]);
 	m_environment.currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
 	m_environment.currentBlock.difficulty = toInt(_o["currentDifficulty"]);
-	m_environment.currentBlock.timestamp() = toInt(_o["currentTimestamp"]);
-	m_environment.currentBlock.coinbaseAddress() = Address(_o["currentCoinbase"].get_str());
+	m_environment.currentBlock.timestamp = toInt(_o["currentTimestamp"]);
+	m_environment.currentBlock.coinbaseAddress = Address(_o["currentCoinbase"].get_str());
 
 	m_statePre.m_previousBlock = m_environment.previousBlock;
 	m_statePre.m_currentBlock = m_environment.currentBlock;
