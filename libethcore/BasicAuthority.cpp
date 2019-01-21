@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <libdevcore/CommonJS.h>
 #include "Exceptions.h"
 #include "BasicAuthority.h"
 #include "BlockInfo.h"
@@ -26,11 +27,11 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-const Address BasicAuthority::Authority = Address("1234567890123456789012345678901234567890");
+AddressHash BasicAuthority::s_authorities;
 
 bool BasicAuthority::BlockHeaderRaw::verify() const
 {
-	return toAddress(recover(m_sig, hashWithout())) == Authority;
+	return s_authorities.count(toAddress(recover(m_sig, hashWithout())));
 }
 
 bool BasicAuthority::BlockHeaderRaw::preVerify() const
@@ -43,62 +44,74 @@ void BasicAuthority::BlockHeaderRaw::populateFromHeader(RLP const& _header, Stri
 	m_sig = _header[BlockInfo::BasicFields].toHash<Signature>();
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_s == CheckEverything && parentHash && !verify())
+	if (_s == CheckEverything && m_parentHash && !verify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		ex << errinfo_target(boundary());
 		BOOST_THROW_EXCEPTION(ex);
 	}
-	else if (_s == QuickNonce && parentHash && !preVerify())
+	else if (_s == QuickNonce && m_parentHash && !preVerify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		BOOST_THROW_EXCEPTION(ex);
 	}
 }
 
-
-
-class BasicAuthoritySeal: public SealFace
+void BasicAuthority::BlockHeaderRaw::verifyParent(BlockHeaderRaw const& _parent)
 {
-public:
-	BasicAuthoritySeal(Signature const& _sig): m_sig(_sig) {}
+	(void)_parent;
+}
 
-	virtual bytes sealedHeader(BlockInfo const& _bi) const
-	{
-		BasicAuthority::BlockHeader h(_bi);
-		h.m_sig = m_sig;
-		RLPStream ret;
-		h.streamRLP(ret);
-		return ret.out();
-	}
+void BasicAuthority::BlockHeaderRaw::populateFromParent(BlockHeaderRaw const& _parent)
+{
+	(void)_parent;
+}
 
-private:
-	Signature m_sig;
-};
+StringHashMap BasicAuthority::BlockHeaderRaw::jsInfo() const
+{
+	return { { "sig", toJS(m_sig) } };
+}
 
-class BasicAuthoritySealEngine: public SealEngineFace
+
+
+class BasicAuthoritySealEngine: public SealEngineBase<BasicAuthority>
 {
 public:
 	void setSecret(Secret const& _s) { m_secret = _s; }
 	void generateSeal(BlockInfo const& _bi)
 	{
-		BasicAuthoritySeal s(sign(m_secret, _bi.hashWithout()));
-		m_onSealGenerated(&s);
+		BasicAuthority::BlockHeader h(_bi);
+		h.m_sig = sign(m_secret, _bi.hashWithout());
+		RLPStream ret;
+		h.streamRLP(ret);
+		m_onSealGenerated(ret.out());
 	}
-	void onSealGenerated(std::function<void(SealFace const* s)> const& _f) { m_onSealGenerated = _f; }
-	bool isMining() const { return false; }
-	MiningProgress miningProgress() const { return MiningProgress(); }
+	void onSealGenerated(std::function<void(bytes const&)> const& _f) { m_onSealGenerated = _f; }
+	bool isWorking() const { return false; }
+	WorkingProgress workingProgress() const { return WorkingProgress(); }
 
 private:
+	virtual bool onOptionChanging(std::string const& _name, bytes const& _value)
+	{
+		RLP rlp(_value);
+		if (_name == "authorities")
+			BasicAuthority::s_authorities = rlp.toUnorderedSet<Address>();
+		else if (_name == "authority")
+			m_secret = rlp.toHash<Secret>();
+		else
+			return false;
+		return true;
+	}
+
 	Secret m_secret;
-	std::function<void(SealFace const* s)> m_onSealGenerated;
+	std::function<void(bytes const& s)> m_onSealGenerated;
 };
 
-SealEngineFace* createSealEngine()
+SealEngineFace* BasicAuthority::createSealEngine()
 {
 	return new BasicAuthoritySealEngine;
 }

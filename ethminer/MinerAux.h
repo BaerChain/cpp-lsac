@@ -37,7 +37,6 @@
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
-#include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -387,7 +386,6 @@ public:
 #endif
 	}
 
-#if ETH_USING_ETHASH
 	enum class MinerType
 	{
 		CPU,
@@ -400,8 +398,8 @@ private:
 	void doInitDAG(unsigned _n)
 	{
 		BlockInfo bi;
-		bi.number = _n;
-		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
+		bi.number() = _n;
+		cout << "Initializing DAG for epoch beginning #" << (bi.number() / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
 		Ethash::prep(bi);
 		exit(0);
 	}
@@ -412,10 +410,10 @@ private:
 		genesis.difficulty = 1 << 18;
 		cdebug << genesis.boundary();
 
-		GenericFarm<Ethash> f;
-		f.onSolutionFound([&](ProofOfWork::Solution) { return false; });
+		GenericFarm<EthashProofOfWork> f;
+		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? ProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? ProofOfWork::GPUMiner::platformInfo() : "";
+		string platformInfo = _m == MinerType::CPU ? "CPU" : "GPU";//EthashProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? EthashProofOfWork::GPUMiner::platformInfo() : "";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
@@ -488,20 +486,20 @@ private:
 		jsonrpc::HttpClient client(_remote);
 
 		Farm rpc(client);
-		GenericFarm<Ethash> f;
+		GenericFarm<EthashProofOfWork> f;
 		if (_m == MinerType::CPU)
 			f.startCPU();
 		else if (_m == MinerType::GPU)
 			f.startGPU();
 
-		ProofOfWork::WorkPackage current;
+		EthashProofOfWork::WorkPackage current;
 		EthashAux::FullType dag;
 		while (true)
 			try
 			{
 				bool completed = false;
-				ProofOfWork::Solution solution;
-				f.onSolutionFound([&](ProofOfWork::Solution sol)
+				EthashProofOfWork::Solution solution;
+				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 				{
 					solution = sol;
 					return completed = true;
@@ -595,5 +593,4 @@ private:
 	string m_farmURL = "http://127.0.0.1:8545";
 	unsigned m_farmRecheckPeriod = 500;
 	bool m_precompute = true;
-#endif
 };

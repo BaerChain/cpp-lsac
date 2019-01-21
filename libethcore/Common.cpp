@@ -29,7 +29,6 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include "Exceptions.h"
-#include "ProofOfWork.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
@@ -57,7 +56,7 @@ Network const c_network = Network::Frontier;
 Network const c_network = Network::Olympic;
 #endif
 
-const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (ProofOfWork::revision() << 9);
+const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (23 << 9);
 
 vector<pair<u256, string>> const& units()
 {
@@ -125,7 +124,7 @@ static void badBlockInfo(BlockInfo const& _bi, string const& _err)
 	ss << c_space << endl;
 	ss << c_border + "  Import Failure     " + _err + string(max<int>(0, 53 - _err.size()), ' ') + "  " + c_border << endl;
 	ss << c_space << endl;
-	string bin = toString(_bi.number);
+	string bin = toString(_bi.number());
 	ss << c_border + ("                     Guru Meditation #" + string(max<int>(0, 8 - bin.size()), '0') + bin + "." + _bi.hash().abridged() + "                    ") + c_border << endl;
 	ss << c_space << endl;
 	ss << c_line;
