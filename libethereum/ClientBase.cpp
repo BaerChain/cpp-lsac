@@ -15,207 +15,467 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 /** @file ClientBase.cpp
+ * @author Gav Wood <i@gavwood.com>
  * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
-#include <boost/test/unit_test.hpp>
-#include <libdevcore/CommonJS.h>
-#include "../TestUtils.h"
+#include "ClientBase.h"
+
+#include <libdevcore/StructuredLogger.h>
+#include "BlockChain.h"
+#include "Executive.h"
+#include "State.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::test;
 
-BOOST_FIXTURE_TEST_SUITE(ClientBase, ParallelClientBaseFixture)
+const char* WatchChannel::name() { return EthBlue "ℹ" EthWhite "  "; }
+const char* WorkInChannel::name() { return EthOrange "⚒" EthGreen "▬▶"; }
+const char* WorkOutChannel::name() { return EthOrange "⚒" EthNavy "◀▬"; }
+const char* WorkChannel::name() { return EthOrange "⚒" EthWhite "  "; }
 
-BOOST_AUTO_TEST_CASE(blocks)
+State ClientBase::asOf(BlockNumber _h) const
 {
-	enumerateClients([](Json::Value const& _json, dev::eth::ClientBase& _client) -> void
-	{
-		auto compareState = [&_client](Json::Value const& _o, string const& _name, BlockNumber _blockNumber) -> void
-		{
-			Address address(_name);
-
-			// balanceAt
-			u256 expectedBalance = u256(_o["balance"].asString());
-			u256 balance = _client.balanceAt(address, _blockNumber);
-			ETH_CHECK_EQUAL(expectedBalance, balance);
-
-			// countAt
-			u256 expectedCount = u256(_o["nonce"].asString());
-			u256 count = _client.countAt(address,  _blockNumber);
-			ETH_CHECK_EQUAL(expectedCount, count);
-
-			// stateAt
-			for (string const& pos: _o["storage"].getMemberNames())
-			{
-				u256 expectedState = u256(_o["storage"][pos].asString());
-				u256 state = _client.stateAt(address, u256(pos), _blockNumber);
-				ETH_CHECK_EQUAL(expectedState, state);
-			}
-
-			// codeAt
-			bytes expectedCode = fromHex(_o["code"].asString());
-			bytes code = _client.codeAt(address, _blockNumber);
-			ETH_CHECK_EQUAL_COLLECTIONS(expectedCode.begin(), expectedCode.end(),
-										code.begin(), code.end());
-		};
-
-		for (string const& name: _json["postState"].getMemberNames())
-		{
-			Json::Value o = _json["postState"][name];
-			compareState(o, name, PendingBlock);
-		}
-
-		for (string const& name: _json["pre"].getMemberNames())
-		{
-			Json::Value o = _json["pre"][name];
-			compareState(o, name, 0);
-		}
-
-		// number
-		unsigned expectedNumber = _json["blocks"].size();
-		unsigned number = _client.number();
-		ETH_CHECK_EQUAL(expectedNumber, number);
-		
-		u256 totalDifficulty = u256(_json["genesisBlockHeader"]["difficulty"].asString());
-		for (Json::Value const& block: _json["blocks"])
-		{
-			Json::Value blockHeader = block["blockHeader"];
-			Json::Value uncles = block["uncleHeaders"];
-			Json::Value transactions = block["transactions"];
-			h256 blockHash = h256(fromHex(blockHeader["hash"].asString()));
-			
-			// just update the difficulty
-			for (Json::Value const& uncle: uncles)
-			{
-				totalDifficulty += u256(uncle["difficulty"].asString());
-			}
-			
-			// hashFromNumber
-			h256 expectedHashFromNumber = h256(fromHex(blockHeader["hash"].asString()));
-			h256 hashFromNumber = _client.hashFromNumber(jsToInt(blockHeader["number"].asString()));
-			ETH_CHECK_EQUAL(expectedHashFromNumber, hashFromNumber);
-			
-			// blockInfo
-			auto compareBlockInfos = [](Json::Value const& _b, Ethash::BlockHeader _blockInfo) -> void
-			{
-				LogBloom expectedBlockInfoBloom = LogBloom(fromHex(_b["bloom"].asString()));
-				Address expectedBlockInfoCoinbase = Address(fromHex(_b["coinbase"].asString()));
-				u256 expectedBlockInfoDifficulty = u256(_b["difficulty"].asString());
-				bytes expectedBlockInfoExtraData = fromHex(_b["extraData"].asString());
-				u256 expectedBlockInfoGasLimit = u256(_b["gasLimit"].asString());
-				u256 expectedBlockInfoGasUsed = u256(_b["gasUsed"].asString());
-				h256 expectedBlockInfoHash = h256(fromHex(_b["hash"].asString()));
-				h256 expectedBlockInfoMixHash = h256(fromHex(_b["mixHash"].asString()));
-				Nonce expectedBlockInfoNonce = Nonce(fromHex(_b["nonce"].asString()));
-				u256 expectedBlockInfoNumber = u256(_b["number"].asString());
-				h256 expectedBlockInfoParentHash = h256(fromHex(_b["parentHash"].asString()));
-				h256 expectedBlockInfoReceiptsRoot = h256(fromHex(_b["receiptTrie"].asString()));
-				u256 expectedBlockInfoTimestamp = u256(_b["timestamp"].asString());
-				h256 expectedBlockInfoTransactionsRoot = h256(fromHex(_b["transactionsTrie"].asString()));
-				h256 expectedBlockInfoUncldeHash = h256(fromHex(_b["uncleHash"].asString()));
-				ETH_CHECK_EQUAL(expectedBlockInfoBloom, _blockInfo.logBloom());
-				ETH_CHECK_EQUAL(expectedBlockInfoCoinbase, _blockInfo.coinbaseAddress());
-				ETH_CHECK_EQUAL(expectedBlockInfoDifficulty, _blockInfo.difficulty());
-				ETH_CHECK_EQUAL_COLLECTIONS(
-					expectedBlockInfoExtraData.begin(),
-					expectedBlockInfoExtraData.end(),
-					_blockInfo.extraData().begin(),
-					_blockInfo.extraData().end()
-				);
-				ETH_CHECK_EQUAL(expectedBlockInfoGasLimit, _blockInfo.gasLimit());
-				ETH_CHECK_EQUAL(expectedBlockInfoGasUsed, _blockInfo.gasUsed());
-				ETH_CHECK_EQUAL(expectedBlockInfoHash, _blockInfo.hash());
-				ETH_CHECK_EQUAL(expectedBlockInfoMixHash, _blockInfo.mixHash());
-				ETH_CHECK_EQUAL(expectedBlockInfoNonce, _blockInfo.nonce());
-				ETH_CHECK_EQUAL(expectedBlockInfoNumber, _blockInfo.number());
-				ETH_CHECK_EQUAL(expectedBlockInfoParentHash, _blockInfo.parentHash());
-				ETH_CHECK_EQUAL(expectedBlockInfoReceiptsRoot, _blockInfo.receiptsRoot());
-				ETH_CHECK_EQUAL(expectedBlockInfoTimestamp, _blockInfo.timestamp());
-				ETH_CHECK_EQUAL(expectedBlockInfoTransactionsRoot, _blockInfo.transactionsRoot());
-				ETH_CHECK_EQUAL(expectedBlockInfoUncldeHash, _blockInfo.sha3Uncles());
-			};
-
-			Ethash::BlockHeader blockInfo(_client.bc().headerData(blockHash));
-			compareBlockInfos(blockHeader, blockInfo);
-
-			// blockDetails
-			unsigned expectedBlockDetailsNumber = jsToInt(blockHeader["number"].asString());
-			totalDifficulty += u256(blockHeader["difficulty"].asString());
-			BlockDetails blockDetails = _client.blockDetails(blockHash);
-			ETH_CHECK_EQUAL(expectedBlockDetailsNumber, blockDetails.number);
-			ETH_CHECK_EQUAL(totalDifficulty, blockDetails.totalDifficulty);
-			
-			auto compareTransactions = [](Json::Value const& _t, Transaction _transaction) -> void
-			{
-				bytes expectedTransactionData = fromHex(_t["data"].asString());
-				u256 expectedTransactionGasLimit = u256(_t["gasLimit"].asString());
-				u256 expectedTransactionGasPrice = u256(_t["gasPrice"].asString());
-				u256 expectedTransactionNonce = u256(_t["nonce"].asString());
-				u256 expectedTransactionSignatureR = h256(fromHex(_t["r"].asString()));
-				u256 expectedTransactionSignatureS = h256(fromHex(_t["s"].asString()));
-//				unsigned expectedTransactionSignatureV = jsToInt(t["v"].asString());
-				
-				ETH_CHECK_EQUAL_COLLECTIONS(
-					expectedTransactionData.begin(),
-					expectedTransactionData.end(),
-					_transaction.data().begin(),
-					_transaction.data().end()
-				);
-				ETH_CHECK_EQUAL(expectedTransactionGasLimit, _transaction.gas());
-				ETH_CHECK_EQUAL(expectedTransactionGasPrice, _transaction.gasPrice());
-				ETH_CHECK_EQUAL(expectedTransactionNonce, _transaction.nonce());
-				ETH_CHECK_EQUAL(expectedTransactionSignatureR, _transaction.signature().r);
-				ETH_CHECK_EQUAL(expectedTransactionSignatureS, _transaction.signature().s);
-//				ETH_CHECK_EQUAL(expectedTransactionSignatureV, _transaction.signature().v); // 27 === 0x0, 28 === 0x1, not sure why
-			};
-
-			Transactions ts = _client.transactions(blockHash);
-			TransactionHashes tHashes = _client.transactionHashes(blockHash);
-			unsigned tsCount = _client.transactionCount(blockHash);
-			
-			ETH_REQUIRE(transactions.size() == ts.size());
-			ETH_REQUIRE(transactions.size() == tHashes.size());
-			
-			// transactionCount
-			ETH_CHECK_EQUAL(transactions.size(), tsCount);
-			
-			for (unsigned i = 0; i < tsCount; i++)
-			{
-				Json::Value t = transactions[i];
-				
-				// transaction (by block hash and transaction index)
-				Transaction transaction = _client.transaction(blockHash, i);
-				compareTransactions(t, transaction);
-
-				// transaction (by hash)
-				Transaction transactionByHash = _client.transaction(transaction.sha3());
-				compareTransactions(t, transactionByHash);
-				
-				// transactions
-				compareTransactions(t, ts[i]);
-				
-				// transactionHashes
-				ETH_CHECK_EQUAL(transaction.sha3(), tHashes[i]);
-			}
-			
-			// uncleCount
-			unsigned usCount = _client.uncleCount(blockHash);
-			ETH_CHECK_EQUAL(uncles.size(), usCount);
-			
-			for (unsigned i = 0; i < usCount; i++)
-			{
-				Json::Value u = uncles[i];
-				
-				// uncle (by hash)
-				BlockInfo uncle = _client.uncle(blockHash, i);
-				compareBlockInfos(u, uncle);
-			}
-		}
-	});
+	if (_h == PendingBlock)
+		return postMine();
+	else if (_h == LatestBlock)
+		return preMine();
+	return asOf(bc().numberHash(_h));
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+pair<h256, Address> ClientBase::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
+{
+	prepareForTransaction();
+	
+	TransactionSkeleton ts(_t);
+	ts.from = toAddress(_secret);
+	if (_t.nonce == UndefinedU256)
+		ts.nonce = max<u256>(postMine().transactionsFrom(ts.from), m_tq.maxNonce(ts.from));
+
+	Transaction t(ts, _secret);
+	m_tq.import(t.rlp());
+	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
+	cnote << "New transaction " << t;
+	
+	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
+}
+
+// TODO: remove try/catch, allow exceptions
+ExecutionResult ClientBase::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
+{
+	ExecutionResult ret;
+	try
+	{
+		State temp = asOf(_blockNumber);
+		u256 n = temp.transactionsFrom(_from);
+		Transaction t(_value, _gasPrice, _gas, _dest, _data, n);
+		t.forceSender(_from);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
+	}
+	catch (...)
+	{
+		// TODO: Some sort of notification of failure.
+	}
+	return ret;
+}
+
+ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
+{
+	ExecutionResult ret;
+	try
+	{
+		State temp = asOf(_blockNumber);
+		u256 n = temp.transactionsFrom(_from);
+		//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+		
+		Transaction t(_value, _gasPrice, _gas, _data, n);
+		t.forceSender(_from);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
+		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
+	}
+	catch (...)
+	{
+		// TODO: Some sort of notification of failure.
+	}
+	return ret;
+}
+
+ImportResult ClientBase::injectBlock(bytes const& _block)
+{
+	return bc().attemptImport(_block, preMine().db()).first;
+}
+
+u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).balance(_a);
+}
+
+u256 ClientBase::countAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).transactionsFrom(_a);
+}
+
+u256 ClientBase::stateAt(Address _a, u256 _l, BlockNumber _block) const
+{
+	return asOf(_block).storage(_a, _l);
+}
+
+bytes ClientBase::codeAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).code(_a);
+}
+
+h256 ClientBase::codeHashAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).codeHash(_a);
+}
+
+unordered_map<u256, u256> ClientBase::storageAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).storage(_a);
+}
+
+// TODO: remove try/catch, allow exceptions
+LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
+{
+	LogFilter f;
+	try
+	{
+		Guard l(x_filtersWatches);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
+	}
+	catch (...)
+	{
+		return LocalisedLogEntries();
+	}
+	return logs(f);
+}
+
+LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
+{
+	LocalisedLogEntries ret;
+	unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
+	unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
+	
+	// Handle pending transactions differently as they're not on the block chain.
+	if (begin > bc().number())
+	{
+		State temp = postMine();
+		for (unsigned i = 0; i < temp.pending().size(); ++i)
+		{
+			// Might have a transaction that contains a matching log.
+			TransactionReceipt const& tr = temp.receipt(i);
+			LogEntries le = _f.matches(tr);
+			if (le.size())
+				for (unsigned j = 0; j < le.size(); ++j)
+					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
+		}
+		begin = bc().number();
+	}
+	
+	set<unsigned> matchingBlocks;
+	for (auto const& i: _f.bloomPossibilities())
+		for (auto u: bc().withBlockBloom(i, end, begin))
+			matchingBlocks.insert(u);
+
+	unsigned falsePos = 0;
+	for (auto n: matchingBlocks)
+	{
+		int total = 0;
+		auto h = bc().numberHash(n);
+		auto info = bc().info(h);
+		auto receipts = bc().receipts(h).receipts;
+		unsigned logIndex = 0;
+		for (size_t i = 0; i < receipts.size(); i++)
+		{
+			logIndex++;
+			TransactionReceipt receipt = receipts[i];
+			if (_f.matches(receipt.bloom()))
+			{
+				auto th = transaction(info.hash(), i).sha3();
+				LogEntries le = _f.matches(receipt);
+				if (le.size())
+				{
+					total += le.size();
+					for (unsigned j = 0; j < le.size(); ++j)
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
+				}
+			}
+			
+			if (!total)
+				falsePos++;
+		}
+	}
+
+	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
+	return ret;
+}
+
+unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
+{
+	h256 h = _f.sha3();
+	{
+		Guard l(x_filtersWatches);
+		if (!m_filters.count(h))
+		{
+			cwatch << "FFF" << _f << h;
+			m_filters.insert(make_pair(h, _f));
+		}
+	}
+	return installWatch(h, _r);
+}
+
+unsigned ClientBase::installWatch(h256 _h, Reaping _r)
+{
+	unsigned ret;
+	{
+		Guard l(x_filtersWatches);
+		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
+		m_watches[ret] = ClientWatch(_h, _r);
+		cwatch << "+++" << ret << _h;
+	}
+#if INITIAL_STATE_AS_CHANGES
+	auto ch = logs(ret);
+	if (ch.empty())
+		ch.push_back(InitialChange);
+	{
+		Guard l(x_filtersWatches);
+		swap(m_watches[ret].changes, ch);
+	}
+#endif
+	return ret;
+}
+
+bool ClientBase::uninstallWatch(unsigned _i)
+{
+	cwatch << "XXX" << _i;
+	
+	Guard l(x_filtersWatches);
+	
+	auto it = m_watches.find(_i);
+	if (it == m_watches.end())
+		return false;
+	auto id = it->second.id;
+	m_watches.erase(it);
+	
+	auto fit = m_filters.find(id);
+	if (fit != m_filters.end())
+		if (!--fit->second.refCount)
+		{
+			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
+			m_filters.erase(fit);
+		}
+	return true;
+}
+
+LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
+{
+	Guard l(x_filtersWatches);
+	
+//	cwatch << "peekWatch" << _watchId;
+	auto& w = m_watches.at(_watchId);
+//	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
+	return w.changes;
+}
+
+LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
+{
+	Guard l(x_filtersWatches);
+	LocalisedLogEntries ret;
+	
+//	cwatch << "checkWatch" << _watchId;
+	auto& w = m_watches.at(_watchId);
+//	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	std::swap(ret, w.changes);
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
+
+	return ret;
+}
+
+BlockInfo ClientBase::blockInfo(h256 _hash) const
+{
+	if (_hash == PendingBlockHash)
+		return preMine().info();
+	return BlockInfo(bc().block(_hash));
+}
+
+BlockDetails ClientBase::blockDetails(h256 _hash) const
+{
+	return bc().details(_hash);
+}
+
+Transaction ClientBase::transaction(h256 _transactionHash) const
+{
+	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
+}
+
+Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	if (_i < b[1].itemCount())
+		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
+	else
+		return Transaction();
+}
+
+TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
+{
+	return bc().transactionReceipt(_transactionHash);
+}
+
+pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
+{
+	return bc().transactionLocation(_transactionHash);
+}
+
+Transactions ClientBase::transactions(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckTransaction::Cheap);
+	return res;
+}
+
+TransactionHashes ClientBase::transactionHashes(h256 _blockHash) const
+{
+	return bc().transactionHashes(_blockHash);
+}
+
+BlockInfo ClientBase::uncle(h256 _blockHash, unsigned _i) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	if (_i < b[2].itemCount())
+		return BlockInfo(b[2][_i].data(), CheckNothing, h256(), HeaderData);
+	else
+		return BlockInfo();
+}
+
+UncleHashes ClientBase::uncleHashes(h256 _blockHash) const
+{
+	return bc().uncleHashes(_blockHash);
+}
+
+unsigned ClientBase::transactionCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[1].itemCount();
+}
+
+unsigned ClientBase::uncleCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[2].itemCount();
+}
+
+unsigned ClientBase::number() const
+{
+	return bc().number();
+}
+
+Transactions ClientBase::pending() const
+{
+	return postMine().pending();
+}
+
+h256s ClientBase::pendingHashes() const
+{
+	return h256s() + postMine().pendingHashes();
+}
+
+StateDiff ClientBase::diff(unsigned _txi, h256 _block) const
+{
+	State st = asOf(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1), true);
+}
+
+StateDiff ClientBase::diff(unsigned _txi, BlockNumber _block) const
+{
+	State st = asOf(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1), true);
+}
+
+Addresses ClientBase::addresses(BlockNumber _block) const
+{
+	Addresses ret;
+	for (auto const& i: asOf(_block).addresses())
+		ret.push_back(i.first);
+	return ret;
+}
+
+u256 ClientBase::gasLimitRemaining() const
+{
+	return postMine().gasLimitRemaining();
+}
+
+Address ClientBase::address() const
+{
+	return preMine().address();
+}
+
+h256 ClientBase::hashFromNumber(BlockNumber _number) const
+{
+	if (_number == PendingBlock)
+		return h256();
+	if (_number == LatestBlock)
+		return bc().currentHash();
+	return bc().numberHash(_number);
+}
+
+BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
+{
+	if (_blockHash == PendingBlockHash)
+		return bc().number() + 1;
+	else if (_blockHash == LatestBlockHash)
+		return bc().number();
+	else if (_blockHash == EarliestBlockHash)
+		return 0;
+	return bc().number(_blockHash);
+}
+
+int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
+{
+	BlockNumber n1 = numberFromHash(_h1);
+	BlockNumber n2 = numberFromHash(_h2);
+
+	if (n1 > n2) {
+		return 1;
+	} else if (n1 == n2) {
+		return 0;
+	}
+	return -1;
+}
+
+bool ClientBase::isKnown(h256 const& _hash) const
+{
+	return _hash == PendingBlockHash ||
+		_hash == LatestBlockHash ||
+		_hash == EarliestBlockHash ||
+		bc().isKnown(_hash);
+}
+
+bool ClientBase::isKnown(BlockNumber _block) const
+{
+	return _block == PendingBlock ||
+		_block == LatestBlock ||
+		bc().numberHash(_block) != h256();
+}
+
+bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
+{
+	return bc().isKnownTransaction(_transactionHash);
+}
+
