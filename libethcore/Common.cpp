@@ -23,13 +23,9 @@
 #include <random>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <libdevcore/Base64.h>
-#include <libdevcore/Terminal.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include "Exceptions.h"
-#include "BlockInfo.h"
+#include "ProofOfWork.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -56,7 +52,7 @@ Network const c_network = Network::Frontier;
 Network const c_network = Network::Olympic;
 #endif
 
-const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (23 << 9);
+const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (ProofOfWork::revision() << 9);
 
 vector<pair<u256, string>> const& units()
 {
@@ -116,15 +112,15 @@ std::string formatBalance(bigint const& _b)
 
 static void badBlockInfo(BlockInfo const& _bi, string const& _err)
 {
-	string const c_line = EthReset EthOnMaroon + string(80, ' ') + EthReset;
+	string const c_line = EthReset EthOnMaroon + string(80, ' ');
 	string const c_border = EthReset EthOnMaroon + string(2, ' ') + EthReset EthMaroonBold;
-	string const c_space = c_border + string(76, ' ') + c_border + EthReset;
+	string const c_space = c_border + string(76, ' ') + c_border;
 	stringstream ss;
 	ss << c_line << endl;
 	ss << c_space << endl;
 	ss << c_border + "  Import Failure     " + _err + string(max<int>(0, 53 - _err.size()), ' ') + "  " + c_border << endl;
 	ss << c_space << endl;
-	string bin = toString(_bi.number());
+	string bin = toString(_bi.number);
 	ss << c_border + ("                     Guru Meditation #" + string(max<int>(0, 8 - bin.size()), '0') + bin + "." + _bi.hash().abridged() + "                    ") + c_border << endl;
 	ss << c_space << endl;
 	ss << c_line;

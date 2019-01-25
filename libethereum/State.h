@@ -29,6 +29,7 @@
 #include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
 #include <libevm/ExtVMFace.h>
 #include "Account.h"
@@ -76,7 +77,8 @@ struct StateSafeExceptions: public LogChannel { static const char* name(); stati
 enum class BaseState
 {
 	PreExisting,
-	Empty
+	Empty,
+	CanonGenesis
 };
 
 enum class Permanence
@@ -102,7 +104,6 @@ class State
 	friend class dev::test::ImportTest;
 	friend class dev::test::StateLoader;
 	friend class Executive;
-	friend class BlockChain;
 
 public:
 	/// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -121,8 +122,10 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
+	~State();
+
 	/// Construct state object from arbitrary point in blockchain.
-	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::None);
+	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
@@ -130,8 +133,8 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
-	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _genesisHash, _we); }
+	static OverlayDB openDB(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 	OverlayDB& db() { return m_db; }
 
@@ -142,6 +145,11 @@ public:
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
 
+	/// @brief Checks that mining the current object will result in a valid block.
+	/// Effectively attempts to import the serialised block.
+	/// @returns true if all is ok. If it's false, worry.
+	bool amIJustParanoid(BlockChain const& _bc);
+
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
@@ -150,22 +158,27 @@ public:
 	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc, bytes const& _extraData = {});
 
+	/// @returns true iff commitToMine() has been called without any subsequest transactions added &c.
+	bool isCommittedToMine() const { return m_committedToMine; }
+
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff we were previously committed to mining.
-	/// TODO: verify it prior to calling this.
-	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
-	 * Typically looks like:
-	 * @code
-	 * while (notYetMined)
-	 * {
-	 * // lock
-	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
-	 * completeMine();
-	 * // unlock
-	 * @endcode
-	 */
-	bool sealBlock(bytes const& _header) { return sealBlock(&_header); }
-	bool sealBlock(bytesConstRef _header);
+	template <class PoW>
+	bool completeMine(typename PoW::Solution const& _result)
+	{
+		if (!m_committedToMine)
+			return false;
+
+		PoW::assignResult(_result, m_currentBlock);
+		if (!PoW::verify(m_currentBlock))
+			return false;
+
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+
+		completeMine();
+
+		return true;
+	}
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -180,27 +193,27 @@ public:
 	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
-	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit() - gasUsed(); }
+	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
 
 	/// Check if the address is in use.
-	bool addressInUse(Address const& _address) const;
+	bool addressInUse(Address _address) const;
 
 	/// Check if the address contains executable code.
-	bool addressHasCode(Address const& _address) const;
+	bool addressHasCode(Address _address) const;
 
 	/// Get an account's balance.
 	/// @returns 0 if the address has never been used.
-	u256 balance(Address const& _id) const;
+	u256 balance(Address _id) const;
 
 	/// Add some amount to balance.
 	/// Will initialise the address if it has never been used.
-	void addBalance(Address const& _id, u256 const& _amount);
+	void addBalance(Address _id, u256 _amount);
 
 	/** Subtract some amount from balance.
 	 * @throws NotEnoughCash if balance of @a _id is less than @a _value (or has never been used).
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
-	void subBalance(Address const& _id, bigint const& _value);
+	void subBalance(Address _id, bigint _value);
 
 	/**
 	 * @brief Transfers "the balance @a _value between two accounts.
@@ -208,40 +221,40 @@ public:
 	 * @param _to Account to which @a _value will be added.
 	 * @param _value Amount to be transferred.
 	 */
-	void transferBalance(Address const& _from, Address const& _to, u256 const& _value) { subBalance(_from, _value); addBalance(_to, _value); }
+	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
 
 	/// Get the root of the storage of an account.
-	h256 storageRoot(Address const& _contract) const;
+	h256 storageRoot(Address _contract) const;
 
 	/// Get the value of a storage position of an account.
 	/// @returns 0 if no account exists at that address.
-	u256 storage(Address const& _contract, u256 const& _memory) const;
+	u256 storage(Address _contract, u256 _memory) const;
 
 	/// Set the value of a storage position of an account.
-	void setStorage(Address const& _contract, u256 const& _location, u256 const& _value) { m_cache[_contract].setStorage(_location, _value); }
+	void setStorage(Address _contract, u256 _location, u256 _value) { m_cache[_contract].setStorage(_location, _value); }
 
 	/// Create a new contract.
-	Address newContract(u256 const& _balance, bytes const& _code);
+	Address newContract(u256 _balance, bytes const& _code);
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
 	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
-	std::unordered_map<u256, u256> storage(Address const& _contract) const;
+	std::unordered_map<u256, u256> storage(Address _contract) const;
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
-	bytes const& code(Address const& _contract) const;
+	bytes const& code(Address _contract) const;
 
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
-	h256 codeHash(Address const& _contract) const;
+	h256 codeHash(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
-	void noteSending(Address const& _id);
+	void noteSending(Address _id);
 
 	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
 	/// @returns 0 if the address has never been used.
-	u256 transactionsFrom(Address const& _address) const;
+	u256 transactionsFrom(Address _address) const;
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
@@ -282,11 +295,11 @@ public:
 	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 const& _blockHash, BlockInfo const& _bi = BlockInfo());
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo(), ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc);
+	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -300,6 +313,19 @@ public:
 	void resetCurrent();
 
 private:
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * while (notYetMined)
+	 * {
+	 * // lock
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
+
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
 
@@ -307,14 +333,14 @@ private:
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
 	/// exist in the DB.
-	void ensureCached(Address const& _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::unordered_map<Address, Account>& _cache, Address const& _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc);
+	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -360,7 +386,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTrieDB<Address, DB>& _state)
+AddressHash commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
 	AddressHash ret;
 	for (auto const& i: _cache)
@@ -380,7 +406,7 @@ AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTri
 				}
 				else
 				{
-					SecureTrieDB<h256, DB> storageDB(_state.db(), i.second.baseRoot());
+					SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
 					for (auto const& j: i.second.storageOverlay())
 						if (j.second)
 							storageDB.insert(j.first, rlp(j.second));
@@ -393,7 +419,7 @@ AddressHash commit(std::unordered_map<Address, Account> const& _cache, SecureTri
 				if (i.second.isFreshCode())
 				{
 					h256 ch = sha3(i.second.code());
-					_state.db()->insert(ch, &i.second.code());
+					_db.insert(ch, &i.second.code());
 					s << ch;
 				}
 				else

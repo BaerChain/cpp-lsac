@@ -71,7 +71,6 @@ DEV_SIMPLE_EXCEPTION(InvalidBlockHeaderItemCount);
 DEV_SIMPLE_EXCEPTION(InvalidBlockNonce);
 DEV_SIMPLE_EXCEPTION(InvalidParentHash);
 DEV_SIMPLE_EXCEPTION(InvalidNumber);
-DEV_SIMPLE_EXCEPTION(BlockNotFound);
 
 DEV_SIMPLE_EXCEPTION(DatabaseAlreadyOpen);
 DEV_SIMPLE_EXCEPTION(DAGCreationFailure);

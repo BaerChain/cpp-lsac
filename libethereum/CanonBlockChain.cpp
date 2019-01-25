@@ -27,6 +27,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/FileSystem.h>
 #include <libethcore/Exceptions.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Params.h>
 #include <liblll/Compiler.h>
@@ -40,44 +41,14 @@ namespace js = json_spirit;
 
 #define ETH_CATCH 1
 
-std::unique_ptr<Ethash::BlockHeader> CanonBlockChain<Ethash>::s_genesis;
-boost::shared_mutex CanonBlockChain<Ethash>::x_genesis;
-Nonce CanonBlockChain<Ethash>::s_nonce(u64(42));
-std::string CanonBlockChain<Ethash>::s_genesisStateJSON;
-
-CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
-	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path, _we, _pc)
-{
-}
-
-bytes CanonBlockChain<Ethash>::createGenesisBlock()
-{
-	RLPStream block(3);
-
-	h256 stateRoot;
-	{
-		MemoryDB db;
-		SecureTrieDB<Address, MemoryDB> state(&db);
-		state.init();
-		dev::eth::commit(createGenesisState(), state);
-		stateRoot = state.root();
-	}
-
-	block.appendList(15)
-			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << s_nonce;
-	block.appendRaw(RLPEmptyList);
-	block.appendRaw(RLPEmptyList);
-	return block.out();
-}
-
-unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
+std::unordered_map<Address, Account> const& dev::eth::genesisState()
 {
 	static std::unordered_map<Address, Account> s_ret;
 
 	if (s_ret.empty())
 	{
 		js::mValue val;
-		json_spirit::read_string(s_genesisStateJSON.empty() ? c_genesisInfo : s_genesisStateJSON, val);
+		json_spirit::read_string(c_genesisInfo, val);
 		for (auto account: val.get_obj())
 		{
 			u256 balance;
@@ -97,29 +68,53 @@ unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
 	return s_ret;
 }
 
-void CanonBlockChain<Ethash>::setGenesisState(std::string const& _json)
+// TODO: place Registry in here.
+
+std::unique_ptr<BlockInfo> CanonBlockChain::s_genesis;
+boost::shared_mutex CanonBlockChain::x_genesis;
+Nonce CanonBlockChain::s_nonce(u64(42));
+
+bytes CanonBlockChain::createGenesisBlock()
 {
-	WriteGuard l(x_genesis);
-	s_genesisStateJSON = _json;
-	s_genesis.reset();
+	RLPStream block(3);
+
+	h256 stateRoot;
+	{
+		MemoryDB db;
+		SecureTrieDB<Address, MemoryDB> state(&db);
+		state.init();
+		dev::eth::commit(genesisState(), db, state);
+		stateRoot = state.root();
+	}
+
+	block.appendList(15)
+			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << s_nonce;
+	block.appendRaw(RLPEmptyList);
+	block.appendRaw(RLPEmptyList);
+	return block.out();
 }
 
-void CanonBlockChain<Ethash>::setGenesisNonce(Nonce const& _n)
+CanonBlockChain::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
+	BlockChain(createGenesisBlock(), _path, _we, _pc)
+{
+}
+
+void CanonBlockChain::setGenesisNonce(Nonce const& _n)
 {
 	WriteGuard l(x_genesis);
 	s_nonce = _n;
 	s_genesis.reset();
 }
 
-Ethash::BlockHeader const& CanonBlockChain<Ethash>::genesis()
+BlockInfo const& CanonBlockChain::genesis()
 {
 	UpgradableGuard l(x_genesis);
 	if (!s_genesis)
 	{
 		auto gb = createGenesisBlock();
 		UpgradeGuard ul(l);
-		s_genesis.reset(new Ethash::BlockHeader);
-		s_genesis->populate(&gb, CheckEverything);
+		s_genesis.reset(new BlockInfo);
+		s_genesis->populate(&gb);
 	}
 	return *s_genesis;
 }

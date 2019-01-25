@@ -91,7 +91,7 @@ bytes dev::eth::parseData(string const& _args)
 	return m_data;
 }
 
-void dev::eth::upgradeDatabase(std::string const& _basePath, h256 const& _genesisHash)
+void dev::eth::upgradeDatabase(std::string const& _basePath)
 {
 	std::string path = _basePath.empty() ? Defaults::get()->dbPath() : _basePath;
 
@@ -105,7 +105,7 @@ void dev::eth::upgradeDatabase(std::string const& _basePath, h256 const& _genesi
 		{
 			auto minorProtocolVersion = (unsigned)status[1];
 			auto databaseVersion = (unsigned)status[2];
-			auto genesisHash = status.itemCount() > 3 ? (h256)status[3] : _genesisHash;
+			auto genesisHash = status.itemCount() > 3 ? (h256)status[3] : CanonBlockChain::genesis().hash();
 
 			string chainPath = path + "/" + toHex(genesisHash.ref().cropped(0, 4));
 			string extrasPath = chainPath + "/" + toString(databaseVersion);
@@ -113,14 +113,12 @@ void dev::eth::upgradeDatabase(std::string const& _basePath, h256 const& _genesi
 			// write status
 			if (!fs::exists(chainPath + "/blocks"))
 			{
-				fs::create_directories(chainPath);
-				fs::permissions(chainPath, fs::owner_all);
+				boost::filesystem::create_directories(chainPath);
 				fs::rename(path + "/blocks", chainPath + "/blocks");
 
 				if (!fs::exists(extrasPath + "/extras"))
 				{
-					fs::create_directories(extrasPath);
-					fs::permissions(extrasPath, fs::owner_all);
+					boost::filesystem::create_directories(extrasPath);
 					fs::rename(path + "/details", extrasPath + "/extras");
 					fs::rename(path + "/state", extrasPath + "/state");
 					writeFile(extrasPath + "/minor", rlp(minorProtocolVersion));

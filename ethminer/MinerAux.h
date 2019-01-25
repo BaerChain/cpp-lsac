@@ -37,9 +37,8 @@
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
-#include <libethcore/EthashGPUMiner.h>
-#include <libethcore/EthashCPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
@@ -99,7 +98,6 @@ public:
 		Benchmark,
 		Farm
 	};
-
 
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
 
@@ -243,7 +241,7 @@ public:
 			string m;
 			try
 			{
-				Ethash::BlockHeader bi;
+				BlockInfo bi;
 				m = boost::to_lower_copy(string(argv[++i]));
 				h256 powHash(m);
 				m = boost::to_lower_copy(string(argv[++i]));
@@ -253,16 +251,16 @@ public:
 				else
 					seedHash = EthashAux::seedHash(stol(m));
 				m = boost::to_lower_copy(string(argv[++i]));
-				bi.setDifficulty(u256(m));
+				bi.difficulty = u256(m);
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
-				bi.setNonce(h64(m));
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce());
+				bi.nonce = h64(m);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
-				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty() << endl;
-				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce() << ")" << endl;
+				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
@@ -297,18 +295,16 @@ public:
 	{
 		if (m_shouldListDevices)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
-			EthashGPUMiner::listDevices();
-#endif
+			ProofOfWork::GPUMiner::listDevices();
 			exit(0);
 		}
 
 		if (m_minerType == MinerType::CPU)
-			EthashCPUMiner::setNumInstances(m_miningThreads);
+			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (!EthashGPUMiner::configureGPU(
+			if (!ProofOfWork::GPUMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_msPerBatch,
@@ -319,7 +315,7 @@ public:
 					m_currentBlock
 				))
 				exit(1);
-			EthashGPUMiner::setNumInstances(m_miningThreads);
+			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -380,40 +376,41 @@ public:
 	};
 
 	MinerType minerType() const { return m_minerType; }
-	bool shouldPrecompute() const { return m_precompute; }
 
 private:
 	void doInitDAG(unsigned _n)
 	{
-		h256 seedHash = EthashAux::seedHash(_n);
-		cout << "Initializing DAG for epoch beginning #" << (_n / 30000 * 30000) << " (seedhash " << seedHash.abridged() << "). This will take a while." << endl;
-		EthashAux::full(seedHash, true);
+		BlockInfo bi;
+		bi.number = _n;
+		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
+		Ethash::prep(bi);
 		exit(0);
 	}
 
 	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
-		Ethash::BlockHeader genesis;
-		genesis.setDifficulty(1 << 18);
+		BlockInfo genesis;
+		genesis.difficulty = 1 << 18;
 		cdebug << genesis.boundary();
 
-		GenericFarm<EthashProofOfWork> f;
-		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
+		GenericFarm<Ethash> f;
+		f.onSolutionFound([&](ProofOfWork::Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : "GPU";//EthashProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? EthashProofOfWork::GPUMiner::platformInfo() : "";
+		string platformInfo = _m == MinerType::CPU ? ProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? ProofOfWork::GPUMiner::platformInfo() : "";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
-		genesis.prep();
+		Ethash::prep(genesis);
 
-		genesis.setDifficulty(u256(1) << 63);
+		genesis.difficulty = u256(1) << 63;
+		genesis.noteDirty();
 		f.setWork(genesis);
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.startCPU();
 		else if (_m == MinerType::GPU)
-			f.start("opencl");
+			f.startGPU();
 
-		map<uint64_t, WorkingProgress> results;
+		map<uint64_t, MiningProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -472,20 +469,20 @@ private:
 		jsonrpc::HttpClient client(_remote);
 
 		Farm rpc(client);
-		GenericFarm<EthashProofOfWork> f;
+		GenericFarm<Ethash> f;
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.startCPU();
 		else if (_m == MinerType::GPU)
-			f.start("opencl");
+			f.startGPU();
 
-		EthashProofOfWork::WorkPackage current;
+		ProofOfWork::WorkPackage current;
 		EthashAux::FullType dag;
 		while (true)
 			try
 			{
 				bool completed = false;
-				EthashProofOfWork::Solution solution;
-				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+				ProofOfWork::Solution solution;
+				f.onSolutionFound([&](ProofOfWork::Solution sol)
 				{
 					solution = sol;
 					return completed = true;
