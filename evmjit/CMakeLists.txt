@@ -1,15 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-if (${CMAKE_VERSION} VERSION_GREATER 3.0)
-	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
-	project(EVMJIT VERSION 0.9.0 LANGUAGES CXX)
-else()
-	project(EVMJIT)
-	set(EVMJIT_VERSION "0.9.0")
-	set(EVMJIT_VERSION_MAJOR 0)
-	set(EVMJIT_VERSION_MINOR 9)
-	set(EVMJIT_VERSION_PATCH 0)
-endif()
+project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_AUTOMOC OFF)

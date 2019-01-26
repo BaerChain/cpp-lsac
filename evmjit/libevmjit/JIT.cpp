@@ -51,11 +51,11 @@ void printVersion()
 	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
 			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
 #ifdef NDEBUG
-			  << "  Optimized build, "
+			  << "  Optimized build, " EVMJIT_VERSION_FULL "\n"
 #else
-			  << "  DEBUG build, "
+			  << "  DEBUG build, " EVMJIT_VERSION_FULL "\n"
 #endif
-			  << __DATE__ << " (" << __TIME__ << ")\n"
+			  << "  Built " << __DATE__ << " (" << __TIME__ << ")\n"
 			  << std::endl;
 }
 
