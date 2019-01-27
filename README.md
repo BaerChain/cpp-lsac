@@ -1,43 +1,58 @@
-# The Ethereum EVM JIT
+## Ethereum C++ Client.
 
-EVM JIT is a library for just-in-time compilation of Ethereum EVM code.
-It can be used to substitute classic interpreter-like EVM Virtual Machine in Ethereum client.
+[![Join the chat at https://gitter.im/ethereum/cpp-ethereum](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/cpp-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-## Build
+By Gav Wood et al*, 2013, 2014, 2015.
 
-### Linux / Ubuntu
+          | Linux   | OSX | Windows
+----------|---------|-----|--------
+develop   | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/Windows%20C%2B%2B%20develop%20branch/builds/-1)
+master    | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/Windows%20C%2B%2B%20master%20branch/builds/-1)
+evmjit    | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20evmjit)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20evmjit/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20evmjit)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20evmjit/builds/-1) | N/A
 
-1. Install llvm-3.5-dev package
-  1. For Ubuntu 14.04 using LLVM deb packages source: http://llvm.org/apt
-  2. For Ubuntu 14.10 using Ubuntu packages
-2. Build library with cmake
-  1. `mkdir build && cd $_`
-  2. `cmake .. && make`
-3. Install library
-  1. `sudo make install`
-  2. `sudo ldconfig`
-  
-### OSX
+[![Stories in Ready](https://badge.waffle.io/ethereum/cpp-ethereum.png?label=ready&title=Ready)](http://waffle.io/ethereum/cpp-ethereum)
 
-1. Install llvm35
-  1. `brew install llvm35 --disable-shared --HEAD`
-2. Build library with cmake
-  1. `mkdir build && cd $_`
-  2. `cmake -DLLVM_DIR=/usr/local/lib/llvm-3.5/share/llvm/cmake .. && make`
-3. Install library
-  1. `make install` (with admin rights?)
-  
-### Windows
+Ethereum is based on a design in an original whitepaper by Vitalik Buterin. This implementation is based on the formal specification of a refinement of that idea detailed in the 'yellow paper' by Gavin Wood. Contributors, builders and testers include:
 
-Ask me.
+- *arkpar* (**Arkadiy Paronyan**) Mix, PV61/BlockQueue
+- *debris* (**Marek Kotewicz**) JSONRPC, web3.js
+- *CJentzsch* (**Christoph Jentzsch**) tests, lots of tests
+- *LefterisJP* (**Lefteris Karapetsas**) Solidity, libethash
+- *chriseth* (**Christian Reitwiessner**) Solidity
+- *subtly* (**Alex Leverington**) libp2p, rlpx
+- *yann300* (**Yann Levreau**) Mix
+- *LianaHus* (**Liana Husikyan**) Solidity
+- *chfast* (**Paweł Bylica**) EVMJIT
+- *cubedro* (**Marian Oancea**) web3.js
+- *gluk250* (**Vlad Gluhovsky**) Whisper
+- *programmerTim* (**Tim Hughes**) libethash-cl
 
-## Options
+And let's not forget: Caktux (neth, ongoing CI), Eric Lombrozo (original MinGW32 cross-compilation), Marko Simovic (original CI).
 
-Options to evmjit library can be passed by environmental variables, e.g. `EVMJIT_CACHE=0 testeth --jit`.
+### Building
 
-Option        | Default value | Description
-------------- | ------------- | ----------------------------------------------
-EVMJIT_CACHE  | 1             | Enables on disk cache for compiled EVM objects
-EVMJIT_DUMP   | 0             | Dumps generated LLVM module to standard output
-  
+See the [Wiki](https://github.com/ethereum/cpp-ethereum/wiki) for build instructions, compatibility information and build tips. 
 
+### Testing
+
+To run the tests, make sure you clone the tests repository from github.com/ethereum to tests as a sibling to cpp-ethereum.
+
+### Yet To Do
+
+See [TODO](https://github.com/ethereum/cpp-ethereum/wiki/TODO)
+
+### License
+
+See [LICENSE](LICENSE)
+
+### Contributing
+
+All development goes in develop branch - please don't submit pull requests to master.
+
+Please read [CodingStandards.txt](CodingStandards.txt) thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formatting guidelines as described in [CodingStandards.txt](CodingStandards.txt).
+
+libweb3jsonrpc/abstractwebthreestubserver.h is autogenerated from the jsonrpcstub executable that comes with the libjsonrpc library (json-rpc-cpp project). It shouldn't be maually altered.
+
+```bash
+jsonrpcstub spec.json --cpp-server=AbstractWebThreeStubServer
+```
