@@ -1,92 +1,88 @@
 /*
-	This file is part of cpp-ethereum.
-
-	cpp-ethereum is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	cpp-ethereum is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ This file is part of cpp-ethereum.
+ 
+ cpp-ethereum is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ cpp-ethereum is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+ */
 /** @file AES.cpp
- * @author Christoph Jentzsch <cj@ethdev.com>
- * @date 2015
+ * @author Alex Leverington <nessence@gmail.com>
+ * @date 2014
  */
 
-#include <boost/test/unit_test.hpp>
+#include "AES.h"
 #include <libdevcore/Common.h>
-#include <libdevcrypto/Common.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcrypto/AES.h>
-#include <libdevcore/FixedHash.h>
-
+#include "CryptoPP.h"
 using namespace std;
 using namespace dev;
+using namespace dev::crypto;
+using namespace dev::crypto::aes;
+using namespace CryptoPP;
 
-BOOST_AUTO_TEST_SUITE(AES)
-
-BOOST_AUTO_TEST_CASE(AesDecrypt)
+struct aes::Aes128Ctr
 {
-	cout << "AesDecrypt" << endl;
-	bytes seed = fromHex("2dbaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1d87e2d597536c4641098b9a89836c94f58a2ab4c525c27c4cb848b3e22ea245b2bc5c8c7beaa900b0c479253fc96fce7ffc621");
-	KeyPair kp(sha3(aesDecrypt(&seed, "test")));
-	BOOST_CHECK(Address("07746f871de684297923f933279555dda418f8a2") == kp.address());
+	Aes128Ctr(h128 _k)
+	{
+		mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data());
+	}
+	CTR_Mode<AES>::Encryption mode;
+};
+
+Stream::Stream(StreamType, h128 _ckey):
+	m_cSecret(_ckey)
+{
+	cryptor = new Aes128Ctr(_ckey);
 }
 
-BOOST_AUTO_TEST_CASE(AesDecryptWrongSeed)
+Stream::~Stream()
 {
-	cout << "AesDecryptWrongSeed" << endl;
-	bytes seed = fromHex("badaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1d87e2d597536c4641098b9a89836c94f58a2ab4c525c27c4cb848b3e22ea245b2bc5c8c7beaa900b0c479253fc96fce7ffc621");
-	KeyPair kp(sha3(aesDecrypt(&seed, "test")));
-	BOOST_CHECK(Address("07746f871de684297923f933279555dda418f8a2") != kp.address());
+	delete cryptor;
 }
 
-BOOST_AUTO_TEST_CASE(AesDecryptWrongPassword)
+void Stream::update(bytesRef)
 {
-	cout << "AesDecryptWrongPassword" << endl;
-	bytes seed = fromHex("2dbaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1d87e2d597536c4641098b9a89836c94f58a2ab4c525c27c4cb848b3e22ea245b2bc5c8c7beaa900b0c479253fc96fce7ffc621");
-	KeyPair kp(sha3(aesDecrypt(&seed, "badtest")));
-	BOOST_CHECK(Address("07746f871de684297923f933279555dda418f8a2") != kp.address());
+
 }
 
-BOOST_AUTO_TEST_CASE(AesDecryptFailInvalidSeed)
+size_t Stream::streamOut(bytes&)
 {
-	cout << "AesDecryptFailInvalidSeed" << endl;
-	bytes seed = fromHex("xdbaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1d87e2d597536c4641098b9a89836c94f58a2ab4c525c27c4cb848b3e22ea245b2bc5c8c7beaa900b0c479253fc96fce7ffc621");
-	BOOST_CHECK(bytes() == aesDecrypt(&seed, "test"));
+	return 0;
 }
 
-BOOST_AUTO_TEST_CASE(AesDecryptFailInvalidSeedSize)
+bytes dev::aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)
 {
-	cout << "AesDecryptFailInvalidSeedSize" << endl;
-	bytes seed = fromHex("000102030405060708090a0b0c0d0e0f");
-	BOOST_CHECK(bytes() == aesDecrypt(&seed, "test"));
+	bytes pw = asBytes(_password);
+
+	if (!_salt.size())
+		_salt = &pw;
+
+	bytes target(64);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256>().DeriveKey(target.data(), target.size(), 0, pw.data(), pw.size(), _salt.data(), _salt.size(), _rounds);
+
+	try
+	{
+		CryptoPP::AES::Decryption aesDecryption(target.data(), 16);
+		auto cipher = _ivCipher.cropped(16);
+		auto iv = _ivCipher.cropped(0, 16);
+		CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv.data());
+		std::string decrypted;
+		CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
+		stfDecryptor.Put(cipher.data(), cipher.size());
+		stfDecryptor.MessageEnd();
+		return asBytes(decrypted);
+	}
+	catch (exception const& e)
+	{
+		cerr << e.what() << endl;
+		return bytes();
+	}
 }
-
-BOOST_AUTO_TEST_CASE(AesDecryptFailInvalidSeed2)
-{
-	cout << "AesDecryptFailInvalidSeed2" << endl;
-	bytes seed = fromHex("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f");
-	BOOST_CHECK(bytes() == aesDecrypt(&seed, "test"));
-}
-BOOST_AUTO_TEST_CASE(AuthenticatedStreamConstructor)
-{
-	cout << "AuthenticatedStreamConstructor" << endl;
-
-	Secret const sec(dev::sha3("test"));
-	crypto::aes::AuthenticatedStream as(crypto::aes::Encrypt, sec, 0);
-	BOOST_CHECK(as.getMacInterval() == 0);
-	as.adjustInterval(1);
-	BOOST_CHECK(as.getMacInterval() == 1);
-	crypto::aes::AuthenticatedStream as_mac(crypto::aes::Encrypt, h128(), h128(), 42);
-	BOOST_CHECK(as_mac.getMacInterval() == 42);
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
