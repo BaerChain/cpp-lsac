@@ -74,7 +74,7 @@ public:
 	void start() { transition(); }
 
 	/// Cancels handshake preventing
-	void cancel() { m_cancel = true; m_socket->close(); }
+	void cancel() { m_cancel = true; }
 	
 protected:
 	/// Write Auth message to socket and transitions to AckAuth.
