@@ -214,8 +214,6 @@ public:
 		return ret;
 	}
 
-	void clear() { m_data.fill(0); }
-
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };

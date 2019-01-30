@@ -272,13 +272,6 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 	return ret;
 }
 
-void KeyPair::populateFromSecret(Secret const& _sec)
-{
-	m_secret = _sec;
-	if (s_secp256k1pp.verifySecret(m_secret, m_public))
-		m_address = toAddress(m_public);
-}
-
 KeyPair KeyPair::create()
 {
 	for (int i = 0; i < 100; ++i)
@@ -288,6 +281,13 @@ KeyPair KeyPair::create()
 			return ret;
 	}
 	return KeyPair();
+}
+
+KeyPair::KeyPair(h256 _sec):
+	m_secret(_sec)
+{
+	if (s_secp256k1pp.verifySecret(m_secret, m_public))
+		m_address = toAddress(m_public);
 }
 
 KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)

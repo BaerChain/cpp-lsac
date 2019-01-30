@@ -152,7 +152,7 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, A
 	open(_genesisBlock, _genesisState, _path, _we, _p);
 }
 
-void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting, ProgressCallback const&)
+void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -165,6 +165,9 @@ void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Ac
 
 	// remove the next line real soon. we don't need to be supporting this forever.
 	upgradeDatabase(_path, genesisHash());
+
+	if (openDatabase(_path, _we) != c_minorProtocolVersion)
+		rebuild(_path, _p);
 }
 
 BlockChain::~BlockChain()
@@ -286,7 +289,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
 	m_extrasDB = nullptr;
-	boost::filesystem::rename(extrasPath + "/extras", extrasPath + "/extras.old");
+	boost::filesystem::rename(path + "/details", path + "/extras.old");
 	ldb::DB* oldExtrasDB;
 	ldb::Options o;
 	o.create_if_missing = true;
@@ -617,7 +620,10 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	{
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block.block.toBytes());
-		ex << errinfo_extraData(_block.info.extraData());
+		// only populate extraData if we actually managed to extract it. otherwise,
+		// we might be clobbering the existing one.
+		if (!_block.info.extraData().empty())
+			ex << errinfo_extraData(_block.info.extraData());
 		throw;
 	}
 #endif
