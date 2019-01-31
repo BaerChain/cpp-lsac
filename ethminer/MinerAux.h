@@ -471,11 +471,6 @@ private:
 
 	void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	{
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
-		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
-#if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
-#endif
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
@@ -484,7 +479,6 @@ private:
 
 		Farm rpc(client);
 		GenericFarm<EthashProofOfWork> f;
-		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
 			f.start("cpu");
 		else if (_m == MinerType::GPU)
