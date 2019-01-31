@@ -16,8 +16,7 @@ public:
 	struct Options
 	{
 		/// Optimize stack operations between basic blocks
-		/// TODO: Remove. It must be implemented as a separated pass.
-		bool optimizeStack = false;
+		bool optimizeStack = true;
 
 		/// Rewrite switch instructions to sequences of branches
 		bool rewriteSwitchToBranches = true;
@@ -36,9 +35,11 @@ private:
 
 	void createBasicBlocks(code_iterator _begin, code_iterator _end);
 
-	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack);
+	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock);
 
-	llvm::BasicBlock* getJumpTableBlock();
+	llvm::BasicBlock* getJumpTableBlock(RuntimeManager& _runtimeManager);
+
+	llvm::BasicBlock* getBadJumpBlock(RuntimeManager& _runtimeManager);
 
 	void removeDeadBlocks();
 
@@ -68,6 +69,9 @@ private:
 
 	/// Block with a jump table.
 	std::unique_ptr<BasicBlock> m_jumpTableBlock;
+
+	/// Destination for invalid jumps
+	std::unique_ptr<BasicBlock> m_badJumpBlock;
 
 	/// Main program function
 	llvm::Function* m_mainFunc = nullptr;
