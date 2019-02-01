@@ -15,9 +15,6 @@ public:
 
 	struct Options
 	{
-		/// Optimize stack operations between basic blocks
-		bool optimizeStack = true;
-
 		/// Rewrite switch instructions to sequences of branches
 		bool rewriteSwitchToBranches = true;
 
@@ -35,22 +32,9 @@ private:
 
 	void createBasicBlocks(code_iterator _begin, code_iterator _end);
 
-	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock);
+	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack);
 
-	llvm::BasicBlock* getJumpTableBlock(RuntimeManager& _runtimeManager);
-
-	llvm::BasicBlock* getBadJumpBlock(RuntimeManager& _runtimeManager);
-
-	void removeDeadBlocks();
-
-	/// Dumps basic block graph in graphviz format to a file, if option dumpCFG is enabled.
-	void dumpCFGifRequired(std::string const& _dotfilePath);
-
-	/// Dumps basic block graph in graphviz format to a stream.
-	void dumpCFGtoStream(std::ostream& _out);
-
-	/// Dumps all basic blocks to stderr. Useful in a debugging session.
-	void dump();
+	llvm::BasicBlock* getJumpTableBlock();
 
 	/// Compiler options
 	Options const& m_options;
@@ -69,9 +53,6 @@ private:
 
 	/// Block with a jump table.
 	std::unique_ptr<BasicBlock> m_jumpTableBlock;
-
-	/// Destination for invalid jumps
-	std::unique_ptr<BasicBlock> m_badJumpBlock;
 
 	/// Main program function
 	llvm::Function* m_mainFunc = nullptr;

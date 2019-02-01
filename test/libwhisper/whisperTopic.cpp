@@ -49,8 +49,7 @@ BOOST_AUTO_TEST_CASE(topic)
 	cnote << "Testing Whisper...";
 	VerbosityHolder setTemporaryLevel(0);
 
-	uint16_t port1 = 30311;
-	Host host1("Test", NetworkPreferences("127.0.0.1", port1, false));
+	Host host1("Test", NetworkPreferences("127.0.0.1", 30303, false));
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
@@ -81,14 +80,14 @@ BOOST_AUTO_TEST_CASE(topic)
 		}
 	});
 
-	Host host2("Test", NetworkPreferences("127.0.0.1", 30310, false));
+	Host host2("Test", NetworkPreferences("127.0.0.1", 30300, false));
 	host1.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
 	
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(5));
-	host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
+	host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30303, 30303));
 
 	// wait for nodes to connect
 	this_thread::sleep_for(chrono::milliseconds(1000));
@@ -116,8 +115,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 	VerbosityHolder setTemporaryLevel(0);
 
 	// Host must be configured not to share peers.
-	uint16_t port1 = 30312;
-	Host host1("Listner", NetworkPreferences("127.0.0.1", port1, false));
+	Host host1("Listner", NetworkPreferences("127.0.0.1", 30303, false));
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
@@ -152,8 +150,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 
 
 	// Host must be configured not to share peers.
-	uint16_t port2 = 30313;
-	Host host2("Forwarder", NetworkPreferences("127.0.0.1", port2, false));
+	Host host2("Forwarder", NetworkPreferences("127.0.0.1", 30305, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
@@ -170,7 +167,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 			this_thread::sleep_for(chrono::milliseconds(50));
 
 		this_thread::sleep_for(chrono::milliseconds(500));
-		host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
+		host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30303, 30303));
 
 		startedForwarder = true;
 
@@ -191,11 +188,11 @@ BOOST_AUTO_TEST_CASE(forwarding)
 	while (!startedForwarder)
 		this_thread::sleep_for(chrono::milliseconds(50));
 
-	Host ph("Sender", NetworkPreferences("127.0.0.1", 30314, false));
+	Host ph("Sender", NetworkPreferences("127.0.0.1", 30300, false));
 	ph.setIdealPeerCount(1);
 	shared_ptr<WhisperHost> wh = ph.registerCapability(new WhisperHost());
 	ph.start();
-	ph.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port2, port2));
+	ph.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 	while (!ph.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
@@ -224,8 +221,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	bool done = false;
 
 	// Host must be configured not to share peers.
-	uint16_t port1 = 30315;
-	Host host1("Forwarder", NetworkPreferences("127.0.0.1", port1, false));
+	Host host1("Forwarder", NetworkPreferences("127.0.0.1", 30305, false));
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
@@ -254,14 +250,14 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		this_thread::sleep_for(chrono::milliseconds(2));
 
 	{
-		Host host2("Sender", NetworkPreferences("127.0.0.1", 30316, false));
+		Host host2("Sender", NetworkPreferences("127.0.0.1", 30300, false));
 		host2.setIdealPeerCount(1);
 		shared_ptr<WhisperHost> whost2 = host2.registerCapability(new WhisperHost());
 		host2.start();
 		while (!host2.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
 
-		host2.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
+		host2.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 		while (!host2.peerCount() || !host1.peerCount())
 			this_thread::sleep_for(chrono::milliseconds(5));
 
@@ -271,7 +267,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	}
 
 	{
-		Host ph("Listener", NetworkPreferences("127.0.0.1", 30317, false));
+		Host ph("Listener", NetworkPreferences("127.0.0.1", 30300, false));
 		ph.setIdealPeerCount(1);
 		shared_ptr<WhisperHost> wh = ph.registerCapability(new WhisperHost());
 		ph.start();
@@ -279,7 +275,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 			this_thread::sleep_for(chrono::milliseconds(2));
 
 		auto w = wh->installWatch(BuildTopicMask("test")); // only interested in odd packets
-		ph.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
+		ph.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
 		for (int i = 0; i < 200 && !result; ++i)
 		{
@@ -307,15 +303,14 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	cnote << "Testing Topic Advertising...";
 	VerbosityHolder setTemporaryLevel(2);
 
-	Host host1("first", NetworkPreferences("127.0.0.1", 30319, false));
+	Host host1("first", NetworkPreferences("127.0.0.1", 30303, false));
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
-	uint16_t port2 = 30318;
-	Host host2("second", NetworkPreferences("127.0.0.1", port2, false));
+	Host host2("second", NetworkPreferences("127.0.0.1", 30305, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	unsigned w2 = whost2->installWatch(BuildTopicMask("test2"));
@@ -324,7 +319,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	while (!host2.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
-	host1.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port2, port2));
+	host1.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
@@ -390,7 +385,7 @@ BOOST_AUTO_TEST_CASE(selfAddressed)
 	char const* text = "deterministic pseudorandom test";
 	BuildTopicMask mask(text);
 
-	Host host("first", NetworkPreferences("127.0.0.1", 30320, false));
+	Host host("first", NetworkPreferences("127.0.0.1", 30305, false));
 	auto wh = host.registerCapability(new WhisperHost());
 	auto watch = wh->installWatch(BuildTopicMask(text));
 
