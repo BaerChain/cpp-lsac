@@ -39,6 +39,10 @@ typedef enum evmjit_return_code
 
 	// Standard error codes
 	OutOfGas           = -1,
+	StackUnderflow     = -2,
+	BadJumpDestination = -3,
+	BadInstruction     = -4,
+	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
 
 	// Internal error codes
 	LLVMError           = -101,
