@@ -62,7 +62,6 @@ class State;
 struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
 struct FutureTime: virtual Exception {};
-struct TransientError: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct BlockChainNote: public LogChannel { static const char* name(); static const int verbosity = 3; };
@@ -419,10 +418,7 @@ public:
 			ex << errinfo_phase(1);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block.toBytes());
-			// only populate extraData if we actually managed to extract it. otherwise,
-			// we might be clobbering the existing one.
-			if (!h.extraData().empty())
-				ex << errinfo_extraData(h.extraData());
+			ex << errinfo_extraData(h.extraData());
 			if (_onBad)
 				_onBad(ex);
 			throw;
@@ -444,10 +440,7 @@ public:
 					ex << errinfo_uncleIndex(i);
 					ex << errinfo_now(time(0));
 					ex << errinfo_block(_block.toBytes());
-					// only populate extraData if we actually managed to extract it. otherwise,
-					// we might be clobbering the existing one.
-					if (!h.extraData().empty())
-						ex << errinfo_extraData(h.extraData());
+					ex << errinfo_extraData(h.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;
@@ -469,10 +462,6 @@ public:
 					ex << errinfo_transactionIndex(i);
 					ex << errinfo_transaction(d.toBytes());
 					ex << errinfo_block(_block.toBytes());
-					// only populate extraData if we actually managed to extract it. otherwise,
-					// we might be clobbering the existing one.
-					if (!h.extraData().empty())
-						ex << errinfo_extraData(h.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;

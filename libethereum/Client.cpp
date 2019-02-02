@@ -219,10 +219,10 @@ void Client::onBadBlock(Exception& _ex) const
 	}
 	if (bytes const* ed = boost::get_error_info<errinfo_extraData>(_ex))
 	{
+		RLP r(*ed);
 		report["hints"]["extraData"] = toHex(*ed);
 		try
 		{
-			RLP r(*ed);
 			if (r[0].toInt<int>() == 0)
 				report["hints"]["minerVersion"] = r[1].toString();
 		}
@@ -464,9 +464,7 @@ void Client::setShouldPrecomputeDAG(bool _precompute)
 void Client::setTurboMining(bool _enable)
 {
 	m_turboMining = _enable;
-#if ETH_ETHASHCL || !ETH_TRUE
-	sealEngine()->setSealer(_enable ? "opencl" : "cpu");
-#endif
+	sealEngine()->setSealer("opencl");
 	if (isMining())
 		startMining();
 }
@@ -908,7 +906,7 @@ std::tuple<h256, h256, h256> EthashClient::getEthashWork()
 		// otherwise, set this to true so that it gets prepped next time.
 		m_remoteWorking = true;
 	Ethash::BlockHeader bh = Ethash::BlockHeader(m_miningInfo);
-	return std::tuple<h256, h256, h256>(bh.hashWithout(), bh.seedHash(), bh.boundary());
+	return std::tuple<h256, h256, h256>(bh.boundary(), bh.hashWithout(), bh.seedHash());
 }
 
 bool EthashClient::submitEthashWork(h256 const& _mixHash, h64 const& _nonce)
