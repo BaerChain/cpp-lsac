@@ -14,22 +14,20 @@
         You should have received a copy of the GNU General Public License
         along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FileSystem.h
- * @authors
- *	 Eric Lombrozo <elombrozo@gmail.com>
- *	 Gav Wood <i@gavwood.com>
+/** @file GenesisInfo.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
 #pragma once
 
 #include <string>
-#include <libdevcore/CommonIO.h>
 
-namespace dev
-{
+namespace dev {
+namespace eth {
 
-/// @returns the path for user data.
-std::string getDataDir(std::string _prefix = "ethereum");
+extern std::string const c_genesisInfoOlympic;
+extern std::string const c_genesisInfoFrontier;
 
+}
 }
