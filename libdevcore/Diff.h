@@ -14,9 +14,39 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file RangeMask.cpp
+/** @file Diff.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "RangeMask.h"
+#pragma once
+
+namespace dev
+{
+
+enum class ExistDiff
+{
+	Same,
+	New,
+	Dead
+};
+
+template <class T>
+class Diff
+{
+public:
+	Diff() {}
+	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
+
+	T const& from() const { return m_from; }
+	T const& to() const { return m_to; }
+
+	explicit operator bool() const { return m_from != m_to; }
+
+private:
+	T m_from;
+	T m_to;
+};
+
+}
+

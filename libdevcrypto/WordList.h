@@ -14,9 +14,18 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file RangeMask.cpp
+/** @file WordList.h
  * @author Gav Wood <i@gavwood.com>
- * @date 2014
+ * @date 2015
  */
 
-#include "RangeMask.h"
+#pragma once
+
+#include "Common.h"
+
+namespace dev
+{
+
+extern strings const WordList;
+
+}

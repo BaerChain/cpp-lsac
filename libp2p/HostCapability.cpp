@@ -14,30 +14,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FixedHash.cpp
+/** @file HostCapability.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "FixedHash.h"
-#include <ctime>
-#include <boost/algorithm/string.hpp>
+#include "HostCapability.h"
 
+#include "Session.h"
+#include "Host.h"
 using namespace std;
 using namespace dev;
+using namespace dev::p2p;
 
-boost::random_device dev::s_fixedHashEngine;
-
-h128 dev::fromUUID(std::string const& _uuid)
+std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> HostCapabilityFace::peerSessions() const
 {
-	return h128(boost::replace_all_copy(_uuid, "-", ""));
+	return peerSessions(version());
 }
 
-std::string dev::toUUID(h128 const& _uuid)
+std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> HostCapabilityFace::peerSessions(u256 const& _version) const
 {
-	std::string ret = toHex(_uuid.ref());
-	for (unsigned i: {20, 16, 12, 8})
-		ret.insert(ret.begin() + i, '-');
+	RecursiveGuard l(m_host->x_sessions);
+	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> ret;
+	for (auto const& i: m_host->m_sessions)
+		if (std::shared_ptr<Session> s = i.second.lock())
+			if (s->m_capabilities.count(std::make_pair(name(), _version)))
+				ret.push_back(make_pair(s,s->m_peer));
 	return ret;
 }
-

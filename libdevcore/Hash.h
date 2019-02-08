@@ -14,9 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file RangeMask.cpp
+/** @file Hash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
+ *
+ * The FixedHash fixed-size "hash" container type.
  */
 
-#include "RangeMask.h"
+#pragma once
+
+#include <string>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/vector_ref.h>
+#include "SHA3.h"
+
+namespace dev
+{
+
+h256 sha256(bytesConstRef _input);
+
+h160 ripemd160(bytesConstRef _input);
+
+}
