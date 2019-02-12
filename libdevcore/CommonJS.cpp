@@ -15,121 +15,82 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file CommonJS.cpp
- * @author Lefteris Karapetsas <lefteris@refu.co>
- * @date 2015
- * Tests for functions in CommonJS.h
+ * @authors:
+ *   Gav Wood <i@gavwood.com>
+ *   Marek Kotewicz <marek@ethdev.com>
+ * @date 2014
  */
 
-#include <boost/test/unit_test.hpp>
-#include <libdevcore/CommonJS.h>
-#include <test/TestHelper.h>
+#include "CommonJS.h"
 
-BOOST_AUTO_TEST_SUITE(CommonJSTests)
-
-using namespace dev;
 using namespace std;
 
-BOOST_AUTO_TEST_CASE(test_toJS)
+namespace dev
 {
-	h64 a("0xbaadf00ddeadbeef");
-	u64 b("0xffff0000bbbaaaa");
-	uint64_t c = 38990234243;
-	bytes d = {0xff, 0x0, 0xef, 0xbc};
 
-	BOOST_CHECK(toJS(a) == "0xbaadf00ddeadbeef");
-	BOOST_CHECK(toJS(b) == "0xffff0000bbbaaaa");
-	BOOST_CHECK(toJS(c) == "0x913ffc283");
-	BOOST_CHECK(toJS(d) == "0xff00efbc");
+bytes jsToBytes(string const& _s)
+{
+	if (_s.substr(0, 2) == "0x")
+		// Hex
+		return fromHex(_s.substr(2));
+	else if (_s.find_first_not_of("0123456789") == string::npos)
+		// Decimal
+		return toCompactBigEndian(bigint(_s));
+	else
+		return bytes();
 }
 
-BOOST_AUTO_TEST_CASE(test_jsToBytes)
+bytes padded(bytes _b, unsigned _l)
 {
-	bytes a = {0xff, 0xaa, 0xbb, 0xcc};
-	bytes b = {0x9, 0x13, 0xff, 0xc2, 0x83};
-	BOOST_CHECK(a == jsToBytes("0xffaabbcc"));
-	BOOST_CHECK(b == jsToBytes("38990234243"));
-	BOOST_CHECK(bytes() == jsToBytes(""));
-	BOOST_CHECK(bytes() == jsToBytes("Neither decimal nor hexadecimal"));
+	while (_b.size() < _l)
+		_b.insert(_b.begin(), 0);
+	return asBytes(asString(_b).substr(_b.size() - max(_l, _l)));
 }
 
-BOOST_AUTO_TEST_CASE(test_padded)
+bytes paddedRight(bytes _b, unsigned _l)
 {
-	bytes a = {0xff, 0xaa};
-	BOOST_CHECK(bytes({0x00, 0x00, 0xff, 0xaa}) == padded(a, 4));
-	bytes b = {};
-	BOOST_CHECK(bytes({0x00, 0x00, 0x00, 0x00}) == padded(b, 4));
-	bytes c = {0xff, 0xaa, 0xbb, 0xcc};
-	BOOST_CHECK(bytes{0xcc} == padded(c, 1));
+	_b.resize(_l);
+	return _b;
 }
 
-BOOST_AUTO_TEST_CASE(test_paddedRight)
+bytes unpadded(bytes _b)
 {
-	bytes a = {0xff, 0xaa};
-	BOOST_CHECK(bytes({0xff, 0xaa, 0x00, 0x00}) == paddedRight(a, 4));
-	bytes b = {};
-	BOOST_CHECK(bytes({0x00, 0x00, 0x00, 0x00}) == paddedRight(b, 4));
-	bytes c = {0xff, 0xaa, 0xbb, 0xcc};
-	BOOST_CHECK(bytes{0xff} == paddedRight(c, 1));
+	auto p = asString(_b).find_last_not_of((char)0);
+	_b.resize(p == string::npos ? 0 : (p + 1));
+	return _b;
 }
 
-BOOST_AUTO_TEST_CASE(test_unpadded)
+bytes unpadLeft(bytes _b)
 {
-	bytes a = {0xff, 0xaa, 0x00, 0x00, 0x00};
-	BOOST_CHECK(bytes({0xff, 0xaa}) == unpadded(a));
-	bytes b = {0x00, 0x00};
-	BOOST_CHECK(bytes() == unpadded(b));
-	bytes c = {};
-	BOOST_CHECK(bytes() == unpadded(c));
+	unsigned int i = 0;
+	if (_b.size() == 0)
+		return _b;
+
+	while (i < _b.size() && _b[i] == byte(0))
+		i++;
+
+	if (i != 0)
+		_b.erase(_b.begin(), _b.begin() + i);
+	return _b;
 }
 
-BOOST_AUTO_TEST_CASE(test_unpaddedLeft)
+string fromRaw(h256 _n)
 {
-	bytes a = {0x00, 0x00, 0x00, 0xff, 0xaa};
-	BOOST_CHECK(bytes({0xff, 0xaa}) == unpadLeft(a));
-	bytes b = {0x00, 0x00};
-	BOOST_CHECK(bytes() == unpadLeft(b));
-	bytes c = {};
-	BOOST_CHECK(bytes() == unpadLeft(c));
+	if (_n)
+	{
+		string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return "";
+		if (l != string::npos)
+			s.resize(l);
+		for (auto i: s)
+			if (i < 32)
+				return "";
+		return s;
+	}
+	return "";
 }
 
-BOOST_AUTO_TEST_CASE(test_fromRaw)
-{
-	//non ascii characters means empty string
-	h256 a("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-	BOOST_CHECK("" == fromRaw(a));
-	h256 b("");
-	BOOST_CHECK("" == fromRaw(b));
-	h256 c("0x4173636969436861726163746572730000000000000000000000000000000000");
-	BOOST_CHECK("AsciiCharacters" == fromRaw(c));
 }
 
-BOOST_AUTO_TEST_CASE(test_jsToFixed)
-{
-	h256 a("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-	BOOST_CHECK(a == jsToFixed<32>("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
-	h256 b("0x000000000000000000000000000000000000000000000000000000740c54b42f");
-	BOOST_CHECK(b == jsToFixed<32>("498423084079"));
-	BOOST_CHECK(h256() == jsToFixed<32>("NotAHexadecimalOrDecimal"));
-}
-
-BOOST_AUTO_TEST_CASE(test_jsToInt)
-{
-	BOOST_CHECK(43832124 == jsToInt("43832124"));
-	BOOST_CHECK(1342356623 == jsToInt("0x5002bc8f"));
-	BOOST_CHECK(3483942 == jsToInt("015224446"));
-	BOOST_CHECK(0 == jsToInt("NotAHexadecimalOrDecimal"));
-
-	BOOST_CHECK(u256("983298932490823474234") == jsToInt<32>("983298932490823474234"));
-	BOOST_CHECK(u256("983298932490823474234") == jsToInt<32>("0x354e03915c00571c3a"));
-	BOOST_CHECK(u256() == jsToInt<32>("NotAHexadecimalOrDecimal"));
-	BOOST_CHECK(u128("228273101986715476958866839113050921216") == jsToInt<16>("0xabbbccddeeff11223344556677889900"));
-	BOOST_CHECK(u128() == jsToInt<16>("NotAHexadecimalOrDecimal"));
-}
-
-BOOST_AUTO_TEST_CASE(test_jsToU256)
-{
-	BOOST_CHECK(u256("983298932490823474234") == jsToU256("983298932490823474234"));
-	BOOST_CHECK(u256() == jsToU256("NotAHexadecimalOrDecimal"));
-}
-
-BOOST_AUTO_TEST_SUITE_END()

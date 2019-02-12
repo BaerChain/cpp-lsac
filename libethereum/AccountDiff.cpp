@@ -15,130 +15,78 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file AccountDiff.cpp
- * @author Dimitry Khokhlov <Dimitry@ethdev.com>
- * @date 2015
- * libethereum unit test functions coverage.
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
  */
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/test/unit_test.hpp>
-#include <test/TestHelper.h>
-#include "../JsonSpiritHeaders.h"
+#include "AccountDiff.h"
 
-#include <libdevcore/TransientDirectory.h>
-
-#include <libethereum/Defaults.h>
-#include <libethereum/AccountDiff.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/BlockQueue.h>
-
+#include <libdevcore/CommonIO.h>
+using namespace std;
 using namespace dev;
-using namespace eth;
+using namespace dev::eth;
 
-BOOST_AUTO_TEST_SUITE(libethereum)
-
-BOOST_AUTO_TEST_CASE(AccountDiff)
+AccountChange AccountDiff::changeType() const
 {
-	dev::eth::AccountDiff accDiff;
-
-	// Testing changeType
-	// exist = true	   exist_from = true		AccountChange::Deletion
-	accDiff.exist = dev::Diff<bool>(true, false);
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::Deletion, "Account change type expected to be Deletion!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), "XXX") == 0, "Deletion lead expected to be 'XXX'!");
-
-	// exist = true	   exist_from = false		AccountChange::Creation
-	accDiff.exist = dev::Diff<bool>(false, true);
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::Creation, "Account change type expected to be Creation!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), "+++") == 0, "Creation lead expected to be '+++'!");
-
-	// exist = false	   bn = true	sc = true	AccountChange::All
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 2);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("01"));
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::All, "Account change type expected to be All!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), "***") == 0, "All lead expected to be '***'!");
-
-	// exist = false	   bn = true	sc = false  AccountChange::Intrinsic
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 2);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("00"));
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::Intrinsic, "Account change type expected to be Intrinsic!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), " * ") == 0, "Intrinsic lead expected to be ' * '!");
-
-	// exist = false	   bn = false   sc = true	AccountChange::CodeStorage
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 1);
-	accDiff.balance = dev::Diff<dev::u256>(1, 1);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("01"));
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::CodeStorage, "Account change type expected to be CodeStorage!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), "* *") == 0, "CodeStorage lead expected to be '* *'!");
-
-	// exist = false	   bn = false   sc = false	AccountChange::None
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 1);
-	accDiff.balance = dev::Diff<dev::u256>(1, 1);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("00"));
-	BOOST_CHECK_MESSAGE(accDiff.changeType() == dev::eth::AccountChange::None, "Account change type expected to be None!");
-	BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead(accDiff.changeType()), "   ") == 0, "None lead expected to be '   '!");
-
-	//ofstream
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 2);
-	accDiff.balance = dev::Diff<dev::u256>(1, 2);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("01"));
-	std::map<dev::u256, dev::Diff<dev::u256>> storage;
-	storage[1] = accDiff.nonce;
-	accDiff.storage = storage;
-	std::stringstream buffer;
-
-	//if (!_s.exist.to())
-	buffer << accDiff;
-	BOOST_CHECK_MESSAGE(buffer.str() == "",	"Not expected output: '" + buffer.str() + "'");
-	buffer.str(std::string());
-
-	accDiff.exist = dev::Diff<bool>(false, true);
-	buffer << accDiff;
-	BOOST_CHECK_MESSAGE(buffer.str() == "#2 (+1) 2 (+1) $[1] ([0]) \n *     0000000000000000000000000000000000000000000000000000000000000001: 2 (1)",	"Not expected output: '" + buffer.str() + "'");
-	buffer.str(std::string());
-
-	storage[1] = dev::Diff<dev::u256>(0, 0);
-	accDiff.storage = storage;
-	buffer << accDiff;
-	BOOST_CHECK_MESSAGE(buffer.str() == "#2 (+1) 2 (+1) $[1] ([0]) \n +     0000000000000000000000000000000000000000000000000000000000000001: 0",	"Not expected output: '" + buffer.str() + "'");
-	buffer.str(std::string());
-
-	storage[1] = dev::Diff<dev::u256>(1, 0);
-	accDiff.storage = storage;
-	buffer << accDiff;
-	BOOST_CHECK_MESSAGE(buffer.str() == "#2 (+1) 2 (+1) $[1] ([0]) \nXXX    0000000000000000000000000000000000000000000000000000000000000001 (1)",	"Not expected output: '" + buffer.str() + "'");
-	buffer.str(std::string());
-
-	BOOST_CHECK_MESSAGE(accDiff.changed() == true, "dev::eth::AccountDiff::changed(): incorrect return value");
-
-	//unexpected value
-	//BOOST_CHECK_MESSAGE(strcmp(dev::eth::lead((dev::eth::AccountChange)123), "") != 0, "Not expected output when dev::eth::lead on unexpected value");
+	bool bn = (balance || nonce);
+	bool sc = (!storage.empty() || code);
+	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
 }
 
-BOOST_AUTO_TEST_CASE(StateDiff)
+char const* dev::eth::lead(AccountChange _c)
 {
-	dev::eth::StateDiff stateDiff;
-	dev::eth::AccountDiff accDiff;
-
-	accDiff.exist = dev::Diff<bool>(false, false);
-	accDiff.nonce = dev::Diff<dev::u256>(1, 2);
-	accDiff.balance = dev::Diff<dev::u256>(1, 2);
-	accDiff.code = dev::Diff<dev::bytes>(dev::fromHex("00"), dev::fromHex("01"));
-	std::map<dev::u256, dev::Diff<dev::u256>> storage;
-	storage[1] = accDiff.nonce;
-	accDiff.storage = storage;
-	std::stringstream buffer;
-
-	dev::Address address("001122334455667788991011121314151617181920");
-	stateDiff.accounts[address] = accDiff;
-	buffer << stateDiff;
-
-	BOOST_CHECK_MESSAGE(buffer.str() == "1 accounts changed:\n***  0000000000000000000000000000000000000000: \n",	"Not expected output: '" + buffer.str() + "'");
+	switch (_c)
+	{
+	case AccountChange::None: return "   ";
+	case AccountChange::Creation: return "+++";
+	case AccountChange::Deletion: return "XXX";
+	case AccountChange::Intrinsic: return " * ";
+	case AccountChange::CodeStorage: return "* *";
+	case AccountChange::All: return "***";
+	}
+	assert(false);
+	return "";
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+namespace dev {
+
+std::ostream& operator<<(std::ostream& _out, dev::eth::AccountDiff const& _s)
+{
+	if (!_s.exist.to())
+		return _out;
+
+	if (_s.nonce)
+	{
+		_out << std::dec << "#" << _s.nonce.to() << " ";
+		if (_s.nonce.from())
+			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
+	}
+	if (_s.balance)
+	{
+		_out << std::dec << _s.balance.to() << " ";
+		if (_s.balance.from())
+			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
+	}
+	if (_s.code)
+		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
+	for (pair<u256, Diff<u256>> const& i: _s.storage)
+		if (!i.second.from())
+			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
+		else if (!i.second.to())
+			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
+		else
+			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
+	return _out;
+}
+
+std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s)
+{
+	_out << _s.accounts.size() << " accounts changed:" << endl;
+	dev::eth::AccountDiff d;
+	_out << d;
+	for (auto const& i: _s.accounts)
+		_out << lead(i.second.changeType()) << "  " << i.first << ": " << i.second << endl;
+	return _out;
+}
+
+}

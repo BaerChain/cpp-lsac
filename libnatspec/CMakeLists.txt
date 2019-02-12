@@ -1,5 +1,13 @@
-cmake_policy(SET CMP0015 NEW)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-aux_source_directory(. SRCS)
+set(EXECUTABLE natspec)
 
-add_sources(${SRCS})
+file(GLOB HEADERS "*.h")
+aux_source_directory(. SOURCES)
+
+eth_add_resources("${CMAKE_CURRENT_SOURCE_DIR}/NatspecResources.cmake" "JSRES" "${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_library(${EXECUTABLE} ${SOURCES} ${HEADERS} ${JSRES})
+
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
