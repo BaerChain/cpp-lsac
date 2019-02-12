@@ -1,20 +1,14 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
+set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/../webthree-helpers/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
-
-set(UTILS_DIR "${CMAKE_CURRENT_LIST_DIR}/utils" CACHE PATH "The path to the utils libraries directory")
-set(DEV_DIR "${CMAKE_CURRENT_LIST_DIR}/dev" CACHE PATH "The path to the dev libraries directory")
-set(ETH_DIR "${CMAKE_CURRENT_LIST_DIR}/ethereum" CACHE PATH "The path to the eth libraries directory")
-set(WEB3_DIR "${CMAKE_CURRENT_LIST_DIR}/webthree" CACHE PATH "The path to the webthree libraries directory")
-set(SOL_DIR "${CMAKE_CURRENT_LIST_DIR}/solidity" CACHE PATH "The path to the solidity libraries directory")
 
 # set cmake_policies
 include(EthPolicy)
 eth_policy()
 
 # project name and version should be set after cmake_policy CMP0048
-project(cpp-ethereum VERSION "0.9.91")
+project(ethereum VERSION "0.9.91")
 
 include(EthCompilerSettings)
 
@@ -28,19 +22,51 @@ include(EthOptions)
 configure_project()
 print_config()
 
-add_subdirectory(utils)
+# core libraries
+add_subdirectory(libethash)
+add_subdirectory(libethcore)
+add_subdirectory(libevmcore)
+add_subdirectory(libevmasm)
+add_subdirectory(liblll)
+add_subdirectory(libevm)
+add_subdirectory(libethereum)
 
-add_subdirectory(dev)
-add_subdirectory(ethereum)
-add_subdirectory(webthree)
-
-if (SOLIDITY)
-	add_subdirectory(solidity)
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
 endif()
 
-if (GUI)
-	add_subdirectory(alethzero)
-	add_subdirectory(mix)
-	eth_appdmg()
-	eth_nsis()
+# other libraries
+add_subdirectory(libnatspec)
+add_subdirectory(libtestutils)
+
+# executables
+
+if (TOOLS)
+	add_subdirectory(ethkey)
+	add_subdirectory(ethminer)
+	add_subdirectory(ethvm)
+	add_subdirectory(lllc)
 endif()
+
+if (TESTS)
+	# test
+	add_subdirectory(test)
+endif()
+
+if (EVMJIT)
+	if (NOT DEFINED LLVM_DIR)
+		if (DEFINED MSVC)
+			set(LLVM_DIR "${ETH_CMAKE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+		elseif (DEFINED APPLE)
+			set(LLVM_DIR "/usr/local/opt/llvm/share/llvm/cmake")
+		endif()
+	endif()
+
+	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
+	add_subdirectory(evmjit)
+	if (DEFINED MSVC)
+		set(EVMJIT_DLLS_LOCAL $<TARGET_FILE:evmjit>)
+		set(EVMJIT_DLLS optimized ${EVMJIT_DLLS_LOCAL} debug ${EVMJIT_DLLS_LOCAL})
+	endif()
+endif()
+
