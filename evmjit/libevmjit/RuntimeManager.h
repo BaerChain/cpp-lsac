@@ -13,7 +13,6 @@ namespace eth
 namespace jit
 {
 using namespace evmjit;
-class Stack;
 
 class RuntimeManager: public CompilerHelper
 {
@@ -48,9 +47,12 @@ public:
 	llvm::Value* getStackSize() const { return m_stackSize; }
 
 	void setJmpBuf(llvm::Value* _jmpBuf) { m_jmpBuf = _jmpBuf; }
+	void setExitBB(llvm::BasicBlock* _bb) { m_exitBB = _bb; }
 
 	static llvm::StructType* getRuntimeType();
 	static llvm::StructType* getRuntimeDataType();
+
+	static const size_t stackSizeLimit = 1024;
 
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);
@@ -67,6 +69,8 @@ private:
 
 	llvm::Value* m_stackBase = nullptr;
 	llvm::Value* m_stackSize = nullptr;
+
+	llvm::BasicBlock* m_exitBB = nullptr;
 
 	code_iterator m_codeBegin = {};
 	code_iterator m_codeEnd = {};
