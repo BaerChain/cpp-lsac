@@ -19,8 +19,7 @@ include(EthDependencies)
 include(EthUtils)
 
 include(EthOptions)
-configure_project()
-print_config()
+configure_project(CPUID CURL VMTRACE ROCKSDB OLYMPIC PARANOID TESTS ETHASHCL EVMJIT FATDB)
 
 if (EVMJIT)
 	if (NOT DEFINED LLVM_DIR)
@@ -31,7 +30,6 @@ if (EVMJIT)
 		endif()
 	endif()
 
-	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 	if (DEFINED MSVC)
 		set(EVMJIT_DLLS_LOCAL $<TARGET_FILE:evmjit>)

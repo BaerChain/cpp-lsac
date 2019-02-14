@@ -5,16 +5,11 @@
 #include <functional>
 
 #ifdef _MSC_VER
-#ifdef evmjit_EXPORTS
-	#define EVMJIT_API __declspec(dllexport)
-#else
-	#define EVMJIT_API __declspec(dllimport)
-#endif
-
+#define EXPORT __declspec(dllexport)
 #define _ALLOW_KEYWORD_MACROS
 #define noexcept throw()
 #else
-#define EVMJIT_API [[gnu::visibility("default")]]
+#define EXPORT
 #endif
 
 namespace dev
@@ -122,7 +117,7 @@ public:
 	ExecutionContext(RuntimeData& _data, Env* _env) { init(_data, _env); }
 	ExecutionContext(ExecutionContext const&) = delete;
 	ExecutionContext& operator=(ExecutionContext const&) = delete;
-	EVMJIT_API ~ExecutionContext() noexcept;
+	EXPORT ~ExecutionContext() noexcept;
 
 	void init(RuntimeData& _data, Env* _env) { m_data = &_data; m_env = _env; }
 
@@ -152,12 +147,12 @@ public:
 	/// Returns `true` if the EVM code has been compiled and loaded into memory.
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
-	EVMJIT_API static bool isCodeReady(h256 const& _codeHash);
+	EXPORT static bool isCodeReady(h256 const& _codeHash);
 
 	/// Compile the given EVM code to machine code and make available for execution.
-	EVMJIT_API static void compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash);
+	EXPORT static void compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash);
 
-	EVMJIT_API static ReturnCode exec(ExecutionContext& _context);
+	EXPORT static ReturnCode exec(ExecutionContext& _context);
 };
 
 }
