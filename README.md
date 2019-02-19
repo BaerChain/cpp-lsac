@@ -1,2 +1,2 @@
-# libethereum
-Blockchain with bounded-VM-based state transition mechanism
+# webthree
+The Web3 library and tool eth. 
