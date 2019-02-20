@@ -1,2 +1,2 @@
-# libweb3core
-Base library for C++ web three stuff
+# libethereum
+Blockchain with bounded-VM-based state transition mechanism
