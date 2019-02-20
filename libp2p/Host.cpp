@@ -255,17 +255,24 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
 	auto clientVersion = _rlp[1].toString();
 	auto caps = _rlp[2].toVector<CapDesc>();
 	auto listenPort = _rlp[3].toInt<unsigned short>();
-	
+	auto pub = _rlp[4].toHash<Public>();
+
+	if (pub != _id)
+	{
+		cdebug << "Wrong ID: " << pub << " vs. " << _id;
+		return;
+	}
+
 	// clang error (previously: ... << hex << caps ...)
 	// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
 	stringstream capslog;
 
 	// leave only highset mutually supported capability version
-	if (caps.size() > 1)
-		caps.erase(remove_if(caps.begin(), caps.end(), [&](CapDesc const& _r){ return !haveCapability(_r) || any_of(caps.begin(), caps.end(), [&](CapDesc const& _o){ return _r.first == _o.first && _o.second > _r.second && haveCapability(_o); }); }), caps.end());
+	caps.erase(remove_if(caps.begin(), caps.end(), [&](CapDesc const& _r){ return !haveCapability(_r) || any_of(caps.begin(), caps.end(), [&](CapDesc const& _o){ return _r.first == _o.first && _o.second > _r.second && haveCapability(_o); }); }), caps.end());
 
 	for (auto cap: caps)
 		capslog << "(" << cap.first << "," << dec << cap.second << ")";
+
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
@@ -273,6 +280,11 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
 	if (protocolVersion < dev::p2p::c_protocolVersion - 1)
 	{
 		ps->disconnect(IncompatibleProtocol);
+		return;
+	}
+	if (caps.empty())
+	{
+		ps->disconnect(UselessPeer);
 		return;
 	}
 
@@ -300,14 +312,26 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
 			ps->disconnect(TooManyPeers);
 			return;
 		}
-		
+
+		unsigned offset = (unsigned)UserPacket;
+		uint16_t cnt = 1;
+
 		// todo: mutex Session::m_capabilities and move for(:caps) out of mutex.
-		unsigned o = (unsigned)UserPacket;
 		for (auto const& i: caps)
 		{
-			ps->m_capabilities[i] = m_capabilities[i]->newPeerCapability(ps, o, i);
-			o += m_capabilities[i]->messageCount();
+			auto pcap = m_capabilities[i];
+			if (!pcap)
+				return ps->disconnect(IncompatibleProtocol);
+
+			if (Session::isFramingAllowedForVersion(protocolVersion))
+				pcap->newPeerCapability(ps, 0, i, cnt++);
+			else
+			{
+				pcap->newPeerCapability(ps, offset, i, 0);
+				offset += pcap->messageCount();
+			}
 		}
+
 		ps->start();
 		m_sessions[_id] = ps;
 	}
