@@ -1,47 +1,45 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 2.8.12)
+# A place where should we look for *.cmake files
+set(ETH_CMAKE_DIR   "${CMAKE_CURRENT_LIST_DIR}/../webthree-helpers/cmake"   CACHE PATH "The the path to the cmake directory")
 
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/webthree-helpers/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
+set(JSCONSOLE 1)
 
-set(UTILS_DIR "${CMAKE_CURRENT_LIST_DIR}/webthree-helpers/utils" CACHE PATH "The path to the utils libraries directory")
-set(DEV_DIR "${CMAKE_CURRENT_LIST_DIR}/libweb3core" CACHE PATH "The path to the dev libraries directory")
-set(ETH_DIR "${CMAKE_CURRENT_LIST_DIR}/libethereum" CACHE PATH "The path to the eth libraries directory")
-set(WEB3_DIR "${CMAKE_CURRENT_LIST_DIR}/webthree" CACHE PATH "The path to the webthree libraries directory")
-set(SOL_DIR "${CMAKE_CURRENT_LIST_DIR}/solidity" CACHE PATH "The path to the solidity libraries directory")
-
-# set cmake_policies
+# Set cmake_policies
 include(EthPolicy)
 eth_policy()
 
 # project name and version should be set after cmake_policy CMP0048
-project(cpp-ethereum VERSION "1.1.0")
+project(webthree VERSION "1.1.2")
 
-include(EthCompilerSettings)
-
-include(EthExecutableHelper)
-
+# Let's find our dependencies
 include(EthDependencies)
 
+# Figure out what compiler and system are we using
+include(EthCompilerSettings)
+
+# Include helper macros
+include(EthExecutableHelper)
+
+# Include utils
 include(EthUtils)
 
 include(EthOptions)
-configure_project(GUI SOLIDITY)
+configure_project(TESTS)
 
-add_subdirectory(webthree-helpers/utils)
+# libraries
+add_subdirectory(libwebthree)
+add_subdirectory(libweb3jsonrpc)
+add_subdirectory(libwhisper)
 
-add_subdirectory(libweb3core)
-add_subdirectory(libethereum)
-add_subdirectory(webthree)
+# other libs
+add_subdirectory(libjsengine)
+add_subdirectory(libjsconsole)
 
-if (SOLIDITY)
-	add_subdirectory(solidity)
-endif()
+# executables
+add_subdirectory(eth)
+add_subdirectory(exp)
+add_subdirectory(flu)
 
-if (GUI)
-	add_subdirectory(alethzero)
-	if (SOLIDITY)
-		add_subdirectory(mix)
-	endif()
-	eth_appdmg()
-	eth_nsis()
-endif()
+# test stuff
+add_subdirectory(test)
