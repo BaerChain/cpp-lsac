@@ -8,7 +8,7 @@ include(EthPolicy)
 eth_policy()
 
 # project name and version should be set after cmake_policy CMP0048
-project(ethereum VERSION "1.1.4")
+project(ethereum VERSION "1.2.0")
 
 include(EthCompilerSettings)
 
@@ -26,7 +26,7 @@ if (EVMJIT)
 		if (DEFINED MSVC)
 			set(LLVM_DIR "${ETH_CMAKE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
 		elseif (DEFINED APPLE)
-			set(LLVM_DIR "/usr/local/opt/llvm/share/llvm/cmake")
+			set(LLVM_DIR "/usr/local/opt/llvm37/lib/llvm-3.7/share/llvm/cmake")
 		endif()
 	endif()
 

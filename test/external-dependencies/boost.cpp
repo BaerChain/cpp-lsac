@@ -14,30 +14,27 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file BlockDetails.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
+/** @file boost.cpp
+ * @author Lefteris Karapetsas <lefteris@ethdev.com>
+ * @date 2015
+ * Tests for external dependencies: Boost
  */
 
-#include "BlockDetails.h"
-
+#include <boost/test/unit_test.hpp>
 #include <libdevcore/Common.h>
-using namespace std;
-using namespace dev;
-using namespace dev::eth;
+#include <test/TestHelper.h>
 
-BlockDetails::BlockDetails(RLP const& _r)
+using namespace dev::test;
+
+BOOST_FIXTURE_TEST_SUITE(ExtDepBoost, TestOutputHelper)
+
+// test that reproduces issue https://github.com/ethereum/cpp-ethereum/issues/1977
+BOOST_AUTO_TEST_CASE(u256_overflow_test)
 {
-	number = _r[0].toInt<unsigned>();
-	totalDifficulty = _r[1].toInt<u256>();
-	parent = _r[2].toHash<h256>();
-	children = _r[3].toVector<h256>();
-	size = _r.size();
+	dev::u256 a = 14;
+	dev::bigint b = dev::bigint("115792089237316195423570985008687907853269984665640564039457584007913129639948");
+	// to fix cast `a` to dev::bigint
+	BOOST_CHECK(a < b);
 }
 
-bytes BlockDetails::rlp() const
-{
-	auto ret = rlpList(number, totalDifficulty, parent, children);
-	size = ret.size();
-	return ret;
-}
+BOOST_AUTO_TEST_SUITE_END()
