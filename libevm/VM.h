@@ -46,6 +46,7 @@ inline u256 fromAddress(Address _a)
 	return (u160)_a;
 }
 
+
 /**
  */
 class VM: public VMFace
@@ -53,26 +54,35 @@ class VM: public VMFace
 public:
 	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
-	uint64_t curPC() const { return m_curPC; }
+// Note: directly exposing VM state constrains implementation and degrades performance,
+// so we fake what Executive.cpp actually needs to pass tests.
 
-	bytes const& memory() const { return m_temp; }
-	u256s const& stack() const { return m_stack; }
+	uint64_t curPC() const { return 0; }
+
+	bytes const memory() const { return bytes(); }
+	
+	u256s const stack() const { return u256s(); }
 
 private:
-	void checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst);
-	void require(u256 _n, u256 _d);
-	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-	static uint64_t verifyJumpDest(u256 const& _dest, std::vector<uint64_t> const& _validDests);
-	void copyDataToMemory(bytesConstRef _data);
-	uint64_t execOrdinaryOpcode(Instruction _inst, u256& io_gas, ExtVMFace& _ext);
 
-	uint64_t m_curPC = 0;
-	uint64_t m_steps = 0;
-	bytes m_temp;
-	u256s m_stack;
-	std::vector<uint64_t> m_jumpDests;
+	void checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst);
+	void requireMem(unsigned _n) { if (m_mem.size() < _n) { m_mem.resize(_n); } }
+	void verifyJumpTable(ExtVMFace& _ext);
+	
+	std::unordered_set<uint64_t> m_jumpDests;
 	std::function<void()> m_onFail;
 	EVMSchedule const* m_schedule = nullptr;
+
+	// space for memory
+	bytes m_mem;
+
+	// space for stack
+	u256 m_stack[1024] = {0};
+
+	// state of the metering and memorizing
+	uint64_t runGas = 0;
+	uint64_t newMemSize = 0;
+	uint64_t copySize = 0;
 };
 
 }

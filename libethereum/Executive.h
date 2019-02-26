@@ -19,7 +19,6 @@
 #pragma once
 
 #include <functional>
-#include <json/json.h>
 #include <libdevcore/Log.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
@@ -64,8 +63,7 @@ public:
 private:
 	bool m_showMnemonics = false;
 	std::vector<Instruction> m_lastInst;
-	bytes m_lastCallData;
-	Json::Value m_trace;
+	std::shared_ptr<Json::Value> m_trace;
 };
 
 /**
