@@ -4,40 +4,60 @@ macro (add_sources)
 	foreach (_src ${ARGN})
 		file (RELATIVE_PATH _relPath "${CMAKE_CURRENT_SOURCE_DIR}/.." "${CMAKE_CURRENT_LIST_DIR}")
 		list (APPEND SRC "./${_relPath}/${_src}")
-		set(SRCTEST ${SRCTEST} ${SRC} PARENT_SCOPE)
+		set(SRC ${SRC} PARENT_SCOPE)
 	endforeach()
 endmacro()
 
-add_subdirectory(libdevcore)
-add_subdirectory(libdevcrypto)
-add_subdirectory(libp2p)
+add_subdirectory(fuzzTesting)
+add_subdirectory(libethcore)
+add_subdirectory(libethereum)
+add_subdirectory(libweb3core)
+add_subdirectory(libevm)
+add_subdirectory(libnatspec)
+add_subdirectory(external-dependencies)
 
-set(SRC_LIST ${SRC_LIST} ${SRCTEST})
-MESSAGE(${SRC_LIST})
+set(SRC_LIST ${SRC_LIST} ${SRC})
 
-set(EXECUTABLE testweb3core)
+set(EXECUTABLE testeth)
+
+# search for test names and create ctest tests
+enable_testing()
+foreach(file ${SRC_LIST})
+	file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/${file} test_list_raw REGEX "BOOST_.*TEST_(SUITE|CASE)")
+	set(TestSuite "DEFAULT")
+	foreach(test_raw ${test_list_raw})
+		string(REGEX REPLACE ".*TEST_(SUITE|CASE)\\(([^ ,\\)]*).*" "\\1 \\2" test ${test_raw})
+		if(test MATCHES "^SUITE .*")
+			string(SUBSTRING ${test} 6 -1 TestSuite)
+		elseif(test MATCHES "^CASE .*")
+			string(SUBSTRING ${test} 5 -1 TestCase)
+			add_test(NAME ${TestSuite}/${TestCase} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND ${EXECUTABLE} -t ${TestSuite}/${TestCase})
+		endif(test MATCHES "^SUITE .*")
+	endforeach(test_raw)
+endforeach(file)
 
 file(GLOB HEADERS "*.h")
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-eth_use(${EXECUTABLE} REQUIRED Dev::devcrypto Dev::devcore Dev::p2p)
 
-# Disable Boost auto-linking, where boost libraries are automatically
-# added to the link step for platforms which support that feature, which
-# in our case appears only to be for Windows.   Presumably this is
-# implemented using #pragma comment(lib ...)
-#
-# See https://support.microsoft.com/en-us/kb/153901.
-#
-# We don't want this automatic behavior, because it can add libraries
-# to the link step which we don't actually need or want, depending on
-# how cleanly #include dependencies have been managed, sometimes within
-# header files which we don't even author.  It is much better for us
-# just to manage these dependencies explicitly ourselves.
-#
-# See http://www.boost.org/doc/libs/1_40_0/more/getting_started/windows.html#auto-linking
-#
-add_definitions(-DBOOST_ALL_NO_LIB)
-
-target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
+eth_use(${EXECUTABLE} REQUIRED Eth::ethashseal Eth::ethereum Eth::testutils)
 target_link_libraries(${EXECUTABLE} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+
+enable_testing()
+set(CTEST_OUTPUT_ON_FAILURE TRUE)
+
+include(EthUtils)
+
+eth_add_test(ClientBase
+	ARGS --eth_testfile=BlockTests/bcJS_API_Test --eth_threads=1
+	ARGS --eth_testfile=BlockTests/bcJS_API_Test --eth_threads=3
+	ARGS --eth_testfile=BlockTests/bcJS_API_Test --eth_threads=10
+	ARGS --eth_testfile=BlockTests/bcValidBlockTest --eth_threads=1
+	ARGS --eth_testfile=BlockTests/bcValidBlockTest --eth_threads=3
+	ARGS --eth_testfile=BlockTests/bcValidBlockTest --eth_threads=10
+)
+
+eth_add_test(JsonRpc
+	ARGS --eth_testfile=BlockTests/bcJS_API_Test 
+	ARGS --eth_testfile=BlockTests/bcValidBlockTest
+)
+

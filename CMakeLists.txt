@@ -8,7 +8,7 @@ include(EthPolicy)
 eth_policy()
 
 # project name and version should be set after cmake_policy CMP0048
-project(dev VERSION "1.2.4")
+project(ethereum VERSION "1.2.4")
 
 include(EthCompilerSettings)
 
@@ -19,19 +19,50 @@ include(EthDependencies)
 include(EthUtils)
 
 include(EthOptions)
-configure_project(PARANOID TOOLS TESTS MINIUPNPC)
+configure_project(CPUID CURL VMTRACE ROCKSDB OLYMPIC PARANOID TESTS ETHASHCL EVMJIT FATDB)
 
-add_subdirectory(libdevcore)
-add_subdirectory(libdevcrypto)
-if (NOT EMSCRIPTEN)
-	add_subdirectory(libp2p)
-
-	if (TOOLS)
-		add_subdirectory(rlp)
-		add_subdirectory(bench)
+if (EVMJIT)
+	if (DEFINED MSVC AND NOT DEFINED LLVM_DIR)
+		set(LLVM_DIR "${ETH_CMAKE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
 	endif()
+	add_subdirectory(evmjit)
+	if (DEFINED MSVC)
+		set(EVMJIT_DLLS_LOCAL $<TARGET_FILE:evmjit>)
+		set(EVMJIT_DLLS optimized ${EVMJIT_DLLS_LOCAL} debug ${EVMJIT_DLLS_LOCAL} PARENT_SCOPE)
+	endif()
+
+endif()
+
+# core libraries
+if (NOT EMSCRIPTEN)
+	add_subdirectory(libethcore)
+	add_subdirectory(libevm)
+	add_subdirectory(libethereum)
+
+	add_subdirectory(libethash)
+	add_subdirectory(libethashseal)
+endif()
+add_subdirectory(libevmcore)
+
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
+endif()
+
+# other libraries
+add_subdirectory(libnatspec)
+if (NOT EMSCRIPTEN)
+	add_subdirectory(libtestutils)
+endif()
+
+# executables
+
+if (TOOLS)
+	add_subdirectory(ethkey)
+	add_subdirectory(ethminer)
+	add_subdirectory(ethvm)
 endif()
 
 if (TESTS)
+	# test
 	add_subdirectory(test)
 endif()
