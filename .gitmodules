@@ -1,3 +1,4 @@
-[submodule "deps"]
-	path = deps
-	url = https://github.com/ethereum/cpp-dependencies
+[submodule "evmjit"]
+	path = evmjit
+	url = https://github.com/ethereum/evmjit
+	branch = master
