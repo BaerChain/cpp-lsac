@@ -338,7 +338,6 @@
         "expect" : {
             "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
                 "storage" : {
-			"0x01" : "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 }
             }
         },
@@ -346,7 +345,7 @@
         "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
             "balance" : "100000000000000000000000",
             "nonce" : "0",
-            "code" : "{ (MSTORE 1 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ) [[ 1 ]] (MLOAD 1) } ",
+            "code" : "{ (MSTORE 1 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff23 ) [[ 1 ]] (MLOAD 1) } ",
             "storage": {}
         }
         },
@@ -596,7 +595,6 @@
         "expect" : {
             "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
                 "storage" : {
-			"0x01" : "0xff00000000000000000000000000000000000000000000000000000000000000"
                 }
             }
         },
@@ -604,7 +602,7 @@
         "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
             "balance" : "100000000000000000000000",
             "nonce" : "0",
-            "code" : "{ (MSTORE8 1 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) [[ 1 ]] (MLOAD 1) } ",
+            "code" : "{ (MSTORE8 1 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff23 ) [[ 1 ]] (MLOAD 1) } ",
             "storage": {}
         }
         },
@@ -946,7 +944,6 @@
         "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
             "balance" : "100000000000000000000000",
             "nonce" : "0",
-	    "code" : "(JUMP 0x01000000000000000b) (JUMPDEST) (JUMPDEST) (SSTORE 1 1)",
             "code" : "0x6801000000000000000b565b5b6001600155",
             "storage": {}
         }
@@ -982,7 +979,6 @@
         "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
             "balance" : "100000000000000000000000",
             "nonce" : "0",
-	    "code" : "(JUMPI 0x0100000009 0x01) (JUMPDEST) (JUMPDEST) (SSTORE 1 1)",
             "code" : "0x6001640100000009575b5b6001600155",
             "storage": {}
         }

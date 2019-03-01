@@ -74,7 +74,7 @@ strings Ethash::sealers() const
 
 h256 Ethash::seedHash(BlockHeader const& _bi)
 {
-	return EthashAux::seedHash((unsigned)_bi.number());
+	return EthashAux::seedHash(_bi.number().convert_to<unsigned>());
 }
 
 StringHashMap Ethash::jsInfo(BlockHeader const& _bi) const
@@ -101,9 +101,6 @@ void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _p
 
 		if (_bi.gasLimit() < chainParams().u256Param("minGasLimit"))
 			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(chainParams().u256Param("minGasLimit")), bigint(_bi.gasLimit())) );
-
-		if (_bi.gasLimit() > u256("9223372036854775807"))
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint("9223372036854775807"), bigint(_bi.gasLimit())) );
 
 		if (_bi.number() && _bi.extraData().size() > chainParams().maximumExtraDataSize)
 			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(chainParams().maximumExtraDataSize), bigint(_bi.extraData().size())) << errinfo_extraData(_bi.extraData()));
@@ -198,7 +195,7 @@ u256 Ethash::calculateDifficulty(BlockHeader const& _bi, BlockHeader const& _par
 		target = _parent.difficulty() + _parent.difficulty() / 2048 * max<bigint>(1 - (bigint(_bi.timestamp()) - _parent.timestamp()) / 10, -99);
 
 	bigint o = target;
-	unsigned periodCount = unsigned(_parent.number() + 1) / c_expDiffPeriod;
+	unsigned periodCount = (_parent.number() + 1).convert_to<unsigned>() / c_expDiffPeriod;
 	if (periodCount > 1)
 		o += (bigint(1) << (periodCount - 2));	// latter will eventually become huge, so ensure it's a bigint.
 
@@ -224,7 +221,7 @@ bool Ethash::quickVerifySeal(BlockHeader const& _bi) const
 	auto b = boundary(_bi);
 	bool ret = !!ethash_quick_check_difficulty(
 		(ethash_h256_t const*)h.data(),
-		(uint64_t)(u64)n,
+		((u64)n).convert_to<uint64_t>(),
 		(ethash_h256_t const*)m.data(),
 		(ethash_h256_t const*)b.data());
 	return ret;
@@ -269,7 +266,7 @@ void Ethash::generateSeal(BlockHeader const& _bi)
 	m_farm.setWork(m_sealing);		// TODO: take out one before or one after...
 	bytes shouldPrecompute = option("precomputeDAG");
 	if (!shouldPrecompute.empty() && shouldPrecompute[0] == 1)
-		ensurePrecomputed((unsigned)_bi.number());
+		ensurePrecomputed(_bi.number().convert_to<unsigned>());
 }
 
 void Ethash::onSealGenerated(std::function<void(bytes const&)> const& _f)
@@ -277,9 +274,27 @@ void Ethash::onSealGenerated(std::function<void(bytes const&)> const& _f)
 	m_onSealGenerated = _f;
 }
 
-bool Ethash::shouldSeal(Interface*)
+static const Addresses c_canaries =
 {
-	return true;
+	Address("539dd9aaf45c3feb03f9c004f4098bd3268fef6b"),		// gav
+	Address("c8158da0b567a8cc898991c2c2a073af67dc03a9"),		// vitalik
+	Address("959c33de5961820567930eccce51ea715c496f85"),		// jeff
+	Address("7a19a893f91d5b6e2cdf941b6acbba2cbcf431ee")			// christoph
+};
+
+template <class T> T fromRLP(bytes const& _b, RLP::Strictness _s = RLP::LaissezFaire)
+{
+	return RLP(&_b).convert<T>(_s);
+}
+
+bool Ethash::shouldSeal(Interface* _i)
+{
+	unsigned numberBad = 0;
+	for (auto const& a: c_canaries)
+		if (!!_i->stateAt(a, 0))
+			numberBad++;
+	bool isChainBad = numberBad >= 2;
+	return (!isChainBad || fromRLP<bool>(option("sealOnBadChain"))) /*&& (forceMining() || transactionsWaiting())*/;
 }
 
 void Ethash::ensurePrecomputed(unsigned _number)
