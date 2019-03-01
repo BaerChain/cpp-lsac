@@ -74,7 +74,7 @@ strings Ethash::sealers() const
 
 h256 Ethash::seedHash(BlockHeader const& _bi)
 {
-	return EthashAux::seedHash(_bi.number().convert_to<unsigned>());
+	return EthashAux::seedHash((unsigned)_bi.number());
 }
 
 StringHashMap Ethash::jsInfo(BlockHeader const& _bi) const
@@ -195,7 +195,7 @@ u256 Ethash::calculateDifficulty(BlockHeader const& _bi, BlockHeader const& _par
 		target = _parent.difficulty() + _parent.difficulty() / 2048 * max<bigint>(1 - (bigint(_bi.timestamp()) - _parent.timestamp()) / 10, -99);
 
 	bigint o = target;
-	unsigned periodCount = (_parent.number() + 1).convert_to<unsigned>() / c_expDiffPeriod;
+	unsigned periodCount = unsigned(_parent.number() + 1) / c_expDiffPeriod;
 	if (periodCount > 1)
 		o += (bigint(1) << (periodCount - 2));	// latter will eventually become huge, so ensure it's a bigint.
 
@@ -221,7 +221,7 @@ bool Ethash::quickVerifySeal(BlockHeader const& _bi) const
 	auto b = boundary(_bi);
 	bool ret = !!ethash_quick_check_difficulty(
 		(ethash_h256_t const*)h.data(),
-		((u64)n).convert_to<uint64_t>(),
+		(uint64_t)(u64)n,
 		(ethash_h256_t const*)m.data(),
 		(ethash_h256_t const*)b.data());
 	return ret;
@@ -266,7 +266,7 @@ void Ethash::generateSeal(BlockHeader const& _bi)
 	m_farm.setWork(m_sealing);		// TODO: take out one before or one after...
 	bytes shouldPrecompute = option("precomputeDAG");
 	if (!shouldPrecompute.empty() && shouldPrecompute[0] == 1)
-		ensurePrecomputed(_bi.number().convert_to<unsigned>());
+		ensurePrecomputed((unsigned)_bi.number());
 }
 
 void Ethash::onSealGenerated(std::function<void(bytes const&)> const& _f)
@@ -274,27 +274,9 @@ void Ethash::onSealGenerated(std::function<void(bytes const&)> const& _f)
 	m_onSealGenerated = _f;
 }
 
-static const Addresses c_canaries =
+bool Ethash::shouldSeal(Interface*)
 {
-	Address("539dd9aaf45c3feb03f9c004f4098bd3268fef6b"),		// gav
-	Address("c8158da0b567a8cc898991c2c2a073af67dc03a9"),		// vitalik
-	Address("959c33de5961820567930eccce51ea715c496f85"),		// jeff
-	Address("7a19a893f91d5b6e2cdf941b6acbba2cbcf431ee")			// christoph
-};
-
-template <class T> T fromRLP(bytes const& _b, RLP::Strictness _s = RLP::LaissezFaire)
-{
-	return RLP(&_b).convert<T>(_s);
-}
-
-bool Ethash::shouldSeal(Interface* _i)
-{
-	unsigned numberBad = 0;
-	for (auto const& a: c_canaries)
-		if (!!_i->stateAt(a, 0))
-			numberBad++;
-	bool isChainBad = numberBad >= 2;
-	return (!isChainBad || fromRLP<bool>(option("sealOnBadChain"))) /*&& (forceMining() || transactionsWaiting())*/;
+	return true;
 }
 
 void Ethash::ensurePrecomputed(unsigned _number)

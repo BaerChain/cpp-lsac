@@ -197,6 +197,7 @@ public:
 	/// Rescue the chain.
 	void rescue() { bc().rescue(m_stateDB); }
 
+	void doWorkInternal();
 protected:
 	/// Perform critical setup functions.
 	/// Must be called in the constructor of the finally derived class.
@@ -227,7 +228,7 @@ protected:
 	void noteChanged(h256Hash const& _filters);
 
 	/// Submit
-	bool submitSealed(bytes const& _s);
+	virtual bool submitSealed(bytes const& _s);
 
 protected:
 	/// Called when Worker is starting.
@@ -247,7 +248,7 @@ protected:
 	void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called on chain changes
-	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
+	virtual void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called after processing blocks by onChainChanged(_ir)
 	void resyncStateFromChain();
@@ -309,7 +310,6 @@ protected:
 	Handler<> m_bqReady;
 
 	bool m_wouldSeal = false;				///< True if we /should/ be sealing.
-	bool m_sealOnBadChain = false;			///< Seal even when the canary says it's a bad chain.
 	bool m_wouldButShouldnot = false;		///< True if the last time we called rejigSealing wouldSeal() was true but sealer's shouldSeal() was false.
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
