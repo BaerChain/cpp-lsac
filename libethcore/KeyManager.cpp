@@ -36,7 +36,14 @@ namespace fs = boost::filesystem;
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
 	m_keysFile(_keysFile), m_store(_secretsPath)
-{}
+{
+	for (auto const& uuid: m_store.keys())
+	{
+		auto addr = m_store.address(uuid);
+		m_addrLookup[addr] = uuid;
+		m_uuidLookup[uuid] = addr;
+	}
+}
 
 KeyManager::~KeyManager()
 {}
@@ -141,9 +148,6 @@ bool KeyManager::load(string const& _pass)
 
 Secret KeyManager::secret(Address const& _address, function<string()> const& _pass, bool _usePasswordCache) const
 {
-	auto it = m_keyInfo.find(_address);
-	if (it == m_keyInfo.end())
-		return Secret();
 	if (m_addrLookup.count(_address))
 		return secret(m_addrLookup.at(_address), _pass, _usePasswordCache);
 	else
@@ -326,16 +330,25 @@ KeyPair KeyManager::presaleSecret(std::string const& _json, function<string(bool
 
 Addresses KeyManager::accounts() const
 {
-	Addresses ret;
-	ret.reserve(m_keyInfo.size());
+	set<Address> addresses;
 	for (auto const& i: m_keyInfo)
-		ret.push_back(i.first);
-	return ret;
+		addresses.insert(i.first);
+	for (auto const& key: m_store.keys())
+		addresses.insert(m_store.address(key));
+	// Remove the zero address if present
+	return Addresses{addresses.upper_bound(Address()), addresses.end()};
 }
 
 bool KeyManager::hasAccount(Address const& _address) const
 {
-	return m_keyInfo.count(_address);
+	if (!_address)
+		return false;
+	if (m_keyInfo.count(_address))
+		return true;
+	for (auto const& key: m_store.keys())
+		if (m_store.address(key) == _address)
+			return true;
+	return false;
 }
 
 string const& KeyManager::accountName(Address const& _address) const
@@ -409,13 +422,15 @@ void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile)
 {
 	RLPStream s(4);
 	s << 1; // version
-	s.appendList(accounts().size());
-	for (auto const& address: accounts())
+
+	s.appendList(m_keyInfo.size());
+	for (auto const& info: m_keyInfo)
 	{
-		h128 id = uuid(address);
-		auto const& ki = m_keyInfo.at(address);
-		s.appendList(5) << address << id << ki.passHash << ki.accountName << ki.passwordHint;
+		h128 id = uuid(info.first);
+		auto const& ki = info.second;
+		s.appendList(5) << info.first << id << ki.passHash << ki.accountName << ki.passwordHint;
 	}
+
 	s.appendList(m_passwordHint.size());
 	for (auto const& i: m_passwordHint)
 		s.appendList(2) << i.first << i.second;

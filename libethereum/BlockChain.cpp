@@ -611,7 +611,10 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 	// done here.
 	details(_block.info.parentHash());
 	DEV_WRITE_GUARDED(x_details)
-		m_details[_block.info.parentHash()].children.push_back(_block.info.hash());
+	{
+		if (!dev::contains(m_details[_block.info.parentHash()].children, _block.info.hash()))
+			m_details[_block.info.parentHash()].children.push_back(_block.info.hash());
+	}
 
 	blocksBatch.Put(toSlice(_block.info.hash()), ldb::Slice(_block.block));
 	DEV_READ_GUARDED(x_details)
@@ -807,21 +810,10 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
 		if (common != last)
-		{
-			// Erase the number-lookup cache for the segment of the chain that we're reverting (if any).
-			unsigned n = number(route.front());
-			DEV_WRITE_GUARDED(x_blockHashes)
-				for (auto i = route.begin(); i != route.end() && *i != common; ++i, --n)
-					m_blockHashes.erase(n);
-			DEV_WRITE_GUARDED(x_transactionAddresses)
-				m_transactionAddresses.clear();	// TODO: could perhaps delete them individually?
+			clearCachesDuringChainReversion(number(common) + 1);
 
-			// If we are reverting previous blocks, we need to clear their blooms (in particular, to
-			// rebuild any higher level blooms that they contributed to).
-			clearBlockBlooms(number(common) + 1, number(last) + 1);
-		}
-
-		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
+		// Go through ret backwards (i.e. from new head to common) until hash != last.parent and
+		// update m_transactionAddresses, m_blockHashes
 		for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i)
 		{
 			BlockHeader tbi;
@@ -1073,6 +1065,7 @@ void BlockChain::rewind(unsigned _newHead)
 	{
 		if (_newHead >= m_lastBlockNumber)
 			return;
+		clearCachesDuringChainReversion(_newHead + 1);
 		m_lastBlockHash = numberHash(_newHead);
 		m_lastBlockNumber = _newHead;
 		auto o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
@@ -1083,6 +1076,7 @@ void BlockChain::rewind(unsigned _newHead)
 			cwarn << "Fail writing to extras database. Bombing out.";
 			exit(-1);
 		}
+		noteCanonChanged();
 	}
 }
 
@@ -1245,6 +1239,20 @@ void BlockChain::checkConsistency()
 			}
 		}
 	delete it;
+}
+
+void BlockChain::clearCachesDuringChainReversion(unsigned _firstInvalid)
+{
+	unsigned end = number() + 1;
+	DEV_WRITE_GUARDED(x_blockHashes)
+		for (auto i = _firstInvalid; i < end; ++i)
+			m_blockHashes.erase(i);
+	DEV_WRITE_GUARDED(x_transactionAddresses)
+		m_transactionAddresses.clear();	// TODO: could perhaps delete them individually?
+
+	// If we are reverting previous blocks, we need to clear their blooms (in particular, to
+	// rebuild any higher level blooms that they contributed to).
+	clearBlockBlooms(_firstInvalid, end);
 }
 
 static inline unsigned upow(unsigned a, unsigned b) { if (!b) return 1; while (--b > 0) a *= a; return a; }
@@ -1421,18 +1429,19 @@ bytes BlockChain::headerData(h256 const& _hash) const
 Block BlockChain::genesisBlock(OverlayDB const& _db) const
 {
 	h256 r = BlockHeader(m_params.genesisBlock()).stateRoot();
-	if (_db.exists(r))
-		return Block(*this, _db, r);
 	Block ret(*this, _db, BaseState::Empty);
-	ret.noteChain(*this);
-	dev::eth::commit(m_params.genesisState, ret.mutableState().m_state);	// bit horrible. maybe consider a better way of constructing it?
-	ret.mutableState().db().commit();										// have to use this db() since it's the one that has been altered with the above commit.
-	if (ret.mutableState().rootHash() != r)
+	if (!_db.exists(r))
 	{
-		cwarn << "Hinted genesis block's state root hash is incorrect!";
-		cwarn << "Hinted" << r << ", computed" << ret.mutableState().rootHash();
-		// TODO: maybe try to fix it by altering the m_params's genesis block?
-		exit(-1);
+		ret.noteChain(*this);
+		dev::eth::commit(m_params.genesisState, ret.mutableState().m_state);		// bit horrible. maybe consider a better way of constructing it?
+		ret.mutableState().db().commit();											// have to use this db() since it's the one that has been altered with the above commit.
+		if (ret.mutableState().rootHash() != r)
+		{
+			cwarn << "Hinted genesis block's state root hash is incorrect!";
+			cwarn << "Hinted" << r << ", computed" << ret.mutableState().rootHash();
+			// TODO: maybe try to fix it by altering the m_params's genesis block?
+			exit(-1);
+		}
 	}
 	ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
 	ret.resetCurrent();

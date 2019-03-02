@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <list>
+#include <queue>
 #include <atomic>
 #include <string>
 #include <array>
@@ -138,7 +139,7 @@ public:
 	std::tuple<ImportRoute, bool, unsigned> syncQueue(unsigned _max = 1);
 
 	// Sealing stuff:
-	// Note: "sealing"/"miner" is deprecated. Use "sealing"/"sealer".
+	// Note: "mining"/"miner" is deprecated. Use "sealing"/"sealer".
 
 	virtual Address author() const override { ReadGuard l(x_preSeal); return m_preSeal.author(); }
 	virtual void setAuthor(Address const& _us) override { WriteGuard l(x_preSeal); m_preSeal.setAuthor(_us); }
@@ -155,11 +156,9 @@ public:
 	bool setSealOption(std::string const& _name, bytes const& _value) { auto ret = sealEngine()->setOption(_name, _value); if (wouldSeal()) startSealing(); return ret; }
 
 	/// Start sealing.
-	/// NOT thread-safe - call it & stopSealing only from a single thread
 	void startSealing() override;
 	/// Stop sealing.
-	/// NOT thread-safe
-	void stopSealing() override { m_wouldSeal = false; rejigSealing(); }
+	void stopSealing() override { m_wouldSeal = false; }
 	/// Are we sealing now?
 	bool wouldSeal() const override { return m_wouldSeal; }
 
@@ -197,7 +196,9 @@ public:
 	/// Rescue the chain.
 	void rescue() { bc().rescue(m_stateDB); }
 
-	void doWorkInternal();
+	/// Queues a function to be executed in the main thread (that owns the blockchain, etc).
+	void executeInMainThread(std::function<void()> const& _function);
+
 protected:
 	/// Perform critical setup functions.
 	/// Must be called in the constructor of the finally derived class.
@@ -269,7 +270,7 @@ protected:
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
 	void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
 
-	/// Magically called when m_tq needs syncing. Be nice and don't block.
+	/// Magically called when m_bq needs syncing. Be nice and don't block.
 	void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're sealing on a new block).
@@ -285,6 +286,9 @@ protected:
 	/// Called when we have attempted to import a bad block.
 	/// @warning May be called from any thread.
 	void onBadBlock(Exception& _ex) const;
+
+	/// Executes the pending functions in m_functionQueue
+	void callQueuedFunctions();
 
 	BlockChain m_bc;						///< Maintains block database and owns the seal engine.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
@@ -320,6 +324,9 @@ protected:
 	unsigned m_syncAmount = 50;				///< Number of blocks to sync in each go.
 
 	ActivityReport m_report;
+
+	SharedMutex x_functionQueue;
+	std::queue<std::function<void()>> m_functionQueue;	///< Functions waiting to be executed in the main thread.
 
 	std::condition_variable m_signalled;
 	Mutex x_signalled;

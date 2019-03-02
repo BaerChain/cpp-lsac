@@ -77,26 +77,24 @@ bool ClientTest::addBlock(string const& _rlp)
 	return (m_bq.import(blockRLP.data(), true) == ImportResult::Success);
 }
 
-void ClientTest::rewindToBlock(unsigned _number)
-{
-	bc().rewind(_number);
-}
-
 void ClientTest::modifyTimestamp(u256 const& _timestamp)
 {
 	Block block(chainParams().accountStartNonce);
 	DEV_READ_GUARDED(x_preSeal)
 		block = m_preSeal;
 
-	Transactions transactions = block.pending();
+	Transactions transactions;
+	DEV_READ_GUARDED(x_postSeal)
+		transactions = m_postSeal.pending();
 	block.resetCurrent(_timestamp);
+
+	DEV_WRITE_GUARDED(x_preSeal)
+		m_preSeal = block;
 
 	auto lastHashes = bc().lastHashes();
 	for (auto const& t: transactions)
 		block.execute(lastHashes, t);
 
-	DEV_WRITE_GUARDED(x_preSeal)
-		m_preSeal = block;
 	DEV_WRITE_GUARDED(x_working)
 		m_working = block;
 	DEV_READ_GUARDED(x_postSeal)
@@ -116,9 +114,5 @@ void ClientTest::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 	Client::onNewBlocks(_blocks, io_changed);
 
 	if(--m_blocksToMine <= 0)
-	{
-		//stop mining
-		m_wouldSeal = false;
-		rejigSealing();
-	}
+		stopSealing();
 }
