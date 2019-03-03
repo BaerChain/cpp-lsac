@@ -1,13 +1,8 @@
-
-#pragma GCC diagnostic ignored "-Wconversion"
-
 #include "JitVM.h"
 
 #include <libdevcore/Log.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
-
-#include "JitUtils.h"
 
 namespace dev
 {
@@ -100,7 +95,7 @@ evm_variant evm_query(
 		v.uint256 = toEvmC(env.envInfo().difficulty());
 		break;
 	case EVM_GAS_LIMIT:
-		v.uint256 = toEvmC(env.envInfo().gasLimit());
+		v.int64 = env.envInfo().gasLimit();
 		break;
 	case EVM_NUMBER:
 		// TODO: Handle overflow / exception
@@ -114,7 +109,7 @@ evm_variant evm_query(
 	{
 		auto addr = fromEvmC(_arg.address);
 		auto &code = env.codeAt(addr);
-		v.data = reinterpret_cast<char const*>(code.data());
+		v.data = code.data();
 		v.data_size = code.size();
 		break;
 	}
@@ -127,7 +122,7 @@ evm_variant evm_query(
 	case EVM_BLOCKHASH:
 		v.hash256 = toEvmC(env.blockHash(_arg.int64));
 		break;
-	case EVM_STORAGE:
+	case EVM_SLOAD:
 	{
 		auto key = fromEvmC(_arg.uint256);
 		v.uint256 = toEvmC(env.store(key));
@@ -159,10 +154,9 @@ void evm_update(
 	}
 	case EVM_LOG:
 	{
-		bytesConstRef data{reinterpret_cast<byte const*>(_arg1.data), _arg1.data_size};
 		size_t numTopics = _arg2.data_size / sizeof(h256);
 		h256 const* pTopics = reinterpret_cast<h256 const*>(_arg2.data);
-		env.log({pTopics, pTopics + numTopics}, data);
+		env.log({pTopics, pTopics + numTopics}, {_arg1.data, _arg1.data_size});
 		break;
 	}
 	case EVM_SELFDESTRUCT:
@@ -178,16 +172,16 @@ int64_t evm_call(
 	int64_t _gas,
 	evm_hash160 _address,
 	evm_uint256 _value,
-	char const* _inputData,
+	uint8_t const* _inputData,
 	size_t _inputSize,
-	char* _outputData,
+	uint8_t* _outputData,
 	size_t _outputSize
 ) noexcept
 {
 	assert(_gas >= 0 && "Invalid gas value");
 	auto &env = *reinterpret_cast<ExtVMFace*>(_opaqueEnv);
 	auto value = fromEvmC(_value);
-	bytesConstRef input{reinterpret_cast<byte const*>(_inputData), _inputSize};
+	bytesConstRef input{_inputData, _inputSize};
 
 	if (_kind == EVM_CREATE)
 	{
@@ -215,7 +209,7 @@ int64_t evm_call(
 	params.codeAddress = fromEvmC(_address);
 	params.receiveAddress = _kind == EVM_CALL ? params.codeAddress : env.myAddress;
 	params.data = input;
-	params.out = {reinterpret_cast<byte*>(_outputData), _outputSize};
+	params.out = {_outputData, _outputSize};
 	params.onOp = {};
 
 	if (params.valueTransfer)
@@ -248,23 +242,117 @@ int64_t evm_call(
 	return cost;
 }
 
+
+/// RAII wrapper for an evm instance.
+class EVM
+{
+public:
+	EVM(evm_query_fn _queryFn, evm_update_fn _updateFn, evm_call_fn _callFn):
+		m_interface(evmjit_get_interface()),
+		m_instance(m_interface.create(_queryFn, _updateFn, _callFn))
+	{}
+
+	~EVM()
+	{
+		m_interface.destroy(m_instance);
+	}
+
+	EVM(EVM const&) = delete;
+	EVM& operator=(EVM) = delete;
+
+	class Result
+	{
+	public:
+		Result(evm_result const& _result, evm_release_result_fn _release):
+			m_result(_result),
+			m_release(_release)
+		{}
+
+		~Result()
+		{
+			m_release(&m_result);
+		}
+
+		Result(Result&& _other):
+			m_result(_other.m_result)
+		{
+			// FIXME: It is not perfect as we must know what will be released
+			//        by evm_release_result().
+			_other.m_result.internal_memory = nullptr;
+		}
+
+		Result(Result const&) = delete;
+		Result& operator=(Result const&) = delete;
+
+		int64_t gasLeft() const
+		{
+			return m_result.gas_left;
+		}
+
+		bytesConstRef output() const
+		{
+			return {m_result.output_data, m_result.output_size};
+		}
+
+	private:
+		evm_result m_result;
+		evm_release_result_fn m_release;
+	};
+
+	/// Handy wrapper for evm_execute().
+	Result execute(ExtVMFace& _ext, int64_t gas)
+	{
+		auto env = reinterpret_cast<evm_env*>(&_ext);
+		auto mode = _ext.evmSchedule().haveDelegateCall ? EVM_HOMESTEAD
+		                                                : EVM_FRONTIER;
+		return {m_interface.execute(
+			m_instance, env, mode, toEvmC(_ext.codeHash), _ext.code.data(),
+			_ext.code.size(), gas, _ext.data.data(), _ext.data.size(),
+			toEvmC(_ext.value)
+		), m_interface.release_result};
+	}
+
+	bool isCodeReady(evm_mode _mode, h256 _codeHash)
+	{
+		return m_interface.get_code_status(m_instance, _mode, toEvmC(_codeHash)) == EVM_READY;
+	}
+
+	void compile(evm_mode _mode, bytesConstRef _code, h256 _codeHash)
+	{
+		m_interface.prepare_code(
+			m_instance, _mode, _code.data(), _code.size(), toEvmC(_codeHash)
+		);
+	}
+
+private:
+	/// VM interface -- contains pointers to VM's methods.
+	///
+	/// @internal
+	/// This field does not have initializer because old versions of GCC emit
+	/// invalid warning about `= {}`. The field is initialized in ctors.
+	evm_interface m_interface;
+
+	/// The VM instance created with m_interface.create().
+	evm_instance* m_instance = nullptr;
+};
+
+EVM& getJit()
+{
+	// Create EVM JIT instance by using EVM-C interface.
+	static EVM jit(evm_query, evm_update, evm_call);
+	return jit;
+}
+
 }
 
 bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
-	evmjit::JIT::init(evm_query, evm_update, evm_call);
-
 	auto rejected = false;
 	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
-	rejected |= io_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
+	rejected |= io_gas > std::numeric_limits<int64_t>::max(); // Do not accept requests with gas > 2^63 (int64 max)
 	rejected |= _ext.envInfo().number() > std::numeric_limits<int64_t>::max();
 	rejected |= _ext.envInfo().timestamp() > std::numeric_limits<int64_t>::max();
 	rejected |= _ext.envInfo().gasLimit() > std::numeric_limits<int64_t>::max();
-	if (!toJITSchedule(_ext.evmSchedule(), m_schedule))
-	{
-		cwarn << "Schedule changed, not suitable for JIT!";
-		rejected = true;
-	}
 	if (rejected)
 	{
 		cwarn << "Execution rejected by EVM JIT (gas limit: " << io_gas << "), executing with interpreter";
@@ -272,23 +360,26 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 		return m_fallbackVM->execImpl(io_gas, _ext, _onOp);
 	}
 
-	m_data.gas 			= static_cast<decltype(m_data.gas)>(io_gas);
-	m_data.callData 	= _ext.data.data();
-	m_data.callDataSize = _ext.data.size();
-	m_data.apparentValue = eth2jit(_ext.value);
-	m_data.code     	= _ext.code.data();
-	m_data.codeSize 	= _ext.code.size();
-	m_data.codeHash		= eth2jit(_ext.codeHash);
-
-	// Pass pointer to ExtVMFace casted to evmjit::Env* opaque type.
-	// JIT will do nothing with the pointer, just pass it to Env callback functions implemented in Env.cpp.
-	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
-	auto exitCode = evmjit::JIT::exec(m_context, m_schedule);
-	if (exitCode == evmjit::ReturnCode::OutOfGas)
+	auto gas = static_cast<int64_t>(io_gas);
+	auto r = getJit().execute(_ext, gas);
+	if (r.gasLeft() < 0)
 		BOOST_THROW_EXCEPTION(OutOfGas());
 
-	io_gas = m_data.gas;
-	return {std::get<0>(m_context.returnData), std::get<1>(m_context.returnData)};
+	io_gas = r.gasLeft();
+	// FIXME: Copy the output for now, but copyless version possible.
+	auto output = r.output();
+	m_output.assign(output.begin(), output.end());
+	return {m_output.data(), m_output.size()};
+}
+
+bool JitVM::isCodeReady(evm_mode _mode, h256 _codeHash)
+{
+	return getJit().isCodeReady(_mode, _codeHash);
+}
+
+void JitVM::compile(evm_mode _mode, bytesConstRef _code, h256 _codeHash)
+{
+	getJit().compile(_mode, _code, _codeHash);
 }
 
 }
