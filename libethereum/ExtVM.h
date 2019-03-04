@@ -45,7 +45,7 @@ public:
 	ExtVM(State& _s, EnvInfo const& _envInfo, SealEngineFace* _sealEngine, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, unsigned _depth = 0):
 		ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _codeHash, _depth), m_s(_s), m_origCache(_s.m_cache), m_sealEngine(_sealEngine)
 	{
-		m_s.ensureCached(_myAddress, true, true);
+		m_s.ensureAccountExists(_myAddress);
 	}
 
 	/// Read storage location.
@@ -56,6 +56,9 @@ public:
 
 	/// Read address's code.
 	virtual bytes const& codeAt(Address _a) override final { return m_s.code(_a); }
+
+	/// @returns the size of the code in  bytes at the given address.
+	virtual size_t codeSizeAt(Address _a) override final;
 
 	/// Create a new contract.
 	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final;
