@@ -222,7 +222,9 @@ void ImportTest::importEnv(json_spirit::mObject& _o)
 	BOOST_REQUIRE(_o.count("currentNumber") > 0);
 	BOOST_REQUIRE(_o.count("currentTimestamp") > 0);
 	BOOST_REQUIRE(_o.count("currentCoinbase") > 0);
-	m_envInfo.setGasLimit(toInt(_o["currentGasLimit"]));
+	auto gasLimit = toInt(_o["currentGasLimit"]);
+	BOOST_REQUIRE(gasLimit <= std::numeric_limits<int64_t>::max());
+	m_envInfo.setGasLimit(gasLimit.convert_to<int64_t>());
 	m_envInfo.setDifficulty(toInt(_o["currentDifficulty"]));
 	m_envInfo.setNumber(toInt(_o["currentNumber"]));
 	m_envInfo.setTimestamp(toInt(_o["currentTimestamp"]));
@@ -953,8 +955,8 @@ Options::Options(int argc, char** argv)
 				rCheckTest += argv[j];
 			break;
 		}
-		else if (arg == "--mininglimit" && i + 1 < argc)
-			testMiningTimeout = atoi(argv[i + 1]);
+		else if (arg == "--nonetwork")
+			nonetwork = true;
 	}
 
 	//Default option
@@ -1087,27 +1089,6 @@ bool TestOutputHelper::passTest(json_spirit::mObject& _o, std::string& _testName
 	_testName = (m_currentTestFileName == "n/a") ? "(" + _testName + ") " : "(" + m_currentTestFileName + "/" +  _testName + ") ";
 	m_currentTestName = _testName;
 	return true;
-}
-
-void testMiningFunc(void(*_testFunc)())
-{
-	bool success = false;
-	int timeout = Options::get().testMiningTimeout;
-	for (int i=0; i<3; i++)
-	{
-		std::thread threadTest(_testFunc);
-		auto future = std::async(std::launch::async, &std::thread::join, &threadTest);
-		if (future.wait_for(std::chrono::seconds(timeout)) == std::future_status::timeout)
-			cerr << "Mining timeout! Trying again...";
-		else
-		{
-			success = true;
-			break;
-		}
-	}
-
-	if (!success)
-		BOOST_ERROR("Mining Timeout!");
 }
 
 } } // namespaces
