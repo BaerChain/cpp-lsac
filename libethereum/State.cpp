@@ -44,8 +44,6 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-#define ETH_TIMED_ENACTMENTS 0
-
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
@@ -66,6 +64,7 @@ State::State(State const& _s):
 	m_db(_s.m_db),
 	m_state(&m_db, _s.m_state.root(), Verification::Skip),
 	m_cache(_s.m_cache),
+	m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
 	m_touched(_s.m_touched),
 	m_accountStartNonce(_s.m_accountStartNonce)
 {
@@ -116,7 +115,7 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 void State::populateFrom(AccountMap const& _map)
 {
 	eth::commit(_map, m_state);
-	commit();
+	commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
 
 u256 const& State::requireAccountStartNonce() const
@@ -132,6 +131,13 @@ void State::noteAccountStartNonce(u256 const& _actual)
 		m_accountStartNonce = _actual;
 	else if (m_accountStartNonce != _actual)
 		BOOST_THROW_EXCEPTION(IncorrectAccountStartNonceInState());
+}
+
+void State::removeEmptyAccounts()
+{
+	for (auto& i: m_cache)
+		if (i.second.isDirty() && i.second.isEmpty())
+			i.second.kill();
 }
 
 void State::paranoia(std::string const& _when, bool _enforceRefs) const
@@ -158,6 +164,7 @@ State& State::operator=(State const& _s)
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
 	m_cache = _s.m_cache;
+	m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
 	m_touched = _s.m_touched;
 	m_accountStartNonce = _s.m_accountStartNonce;
 	paranoia("after state cloning (assignment op)", true);
@@ -259,8 +266,10 @@ void State::clearCacheIfTooLarge() const
 	}
 }
 
-void State::commit()
+void State::commit(CommitBehaviour _commitBehaviour)
 {
+	if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
+		removeEmptyAccounts();
 	m_touched += dev::eth::commit(m_cache, m_state);
 	m_cache.clear();
 }
@@ -294,6 +303,14 @@ bool State::addressInUse(Address const& _id) const
 	return !!account(_id);
 }
 
+bool State::accountNonemptyAndExisting(Address const& _address) const
+{
+	if (Account const* a = account(_address))
+		return !a->isEmpty();
+	else
+		return false;
+}
+
 bool State::addressHasCode(Address const& _id) const
 {
 	if (auto a = account(_id))
@@ -310,17 +327,13 @@ u256 State::balance(Address const& _id) const
 		return 0;
 }
 
-void State::noteSending(Address const& _id)
+void State::incNonce(Address const& _addr)
 {
-	Account* a = account(_id);
-	if (asserts(a != nullptr))
-	{
-		cwarn << "Sending from non-existant account. How did it pay!?!";
-		// this is impossible. but we'll continue regardless...
-		m_cache[_id] = Account(requireAccountStartNonce() + 1, 0);
-	}
-	else
+	if (Account* a = account(_addr))
 		a->incNonce();
+	else
+		// This is possible if a transaction has gas price 0.
+		m_cache[_addr] = Account(requireAccountStartNonce() + 1, 0);
 }
 
 void State::addBalance(Address const& _id, u256 const& _amount)
@@ -333,6 +346,9 @@ void State::addBalance(Address const& _id, u256 const& _amount)
 
 void State::subBalance(Address const& _id, bigint const& _amount)
 {
+	if (_amount == 0)
+		return;
+
 	Account* a = account(_id);
 	if (!a || a->balance() < _amount)
 		BOOST_THROW_EXCEPTION(NotEnoughCash());
@@ -340,9 +356,13 @@ void State::subBalance(Address const& _id, bigint const& _amount)
 		a->addBalance(-_amount);
 }
 
-void State::createContract(Address const& _address)
+void State::createContract(Address const& _address, bool _incrementNonce)
 {
-	m_cache[_address] = Account(requireAccountStartNonce(), balance(_address), Account::ContractConception);
+	m_cache[_address] = Account(
+		requireAccountStartNonce() + (_incrementNonce ? 1 : 0),
+		balance(_address),
+		Account::ContractConception
+	);
 }
 
 void State::ensureAccountExists(const Address& _address)
@@ -358,9 +378,9 @@ void State::kill(Address _addr)
 	// If the account is not in the db, nothing to kill.
 }
 
-u256 State::transactionsFrom(Address const& _id) const
+u256 State::getNonce(Address const& _addr) const
 {
-	if (auto a = account(_id))
+	if (auto a = account(_addr))
 		return a->nonce();
 	else
 		return m_accountStartNonce;
@@ -496,7 +516,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
+std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
 	auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -536,7 +556,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 		m_cache.clear();
 	else
 	{
-		commit();
+		bool removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().u256Param("EIP158ForkBlock");
+		commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
 
 #if ETH_PARANOIA && !ETH_FATDB
 		ctrace << "Executed; now" << rootHash();
@@ -634,40 +655,4 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 		}
 	}
 	return _out;
-}
-
-#if ETH_FATDB
-static std::string minHex(h256 const& _h)
-{
-	unsigned i = 0;
-	for (; i < 31 && !_h[i]; ++i) {}
-	return toHex(_h.ref().cropped(i));
-}
-#endif
-
-void State::streamJSON(ostream& _f) const
-{
-	_f << "{" << endl;
-#if ETH_FATDB
-	int fi = 0;
-	for (pair<Address, u256> const& i: addresses())
-	{
-		_f << (fi++ ? "," : "") << "\"" << i.first.hex() << "\": { ";
-		_f << "\"balance\": \"" << toString(i.second) << "\", ";
-		if (codeHash(i.first) != EmptySHA3)
-		{
-			_f << "\"codeHash\": \"" << codeHash(i.first).hex() << "\", ";
-			_f << "\"storage\": {";
-			int fj = 0;
-			for (pair<u256, u256> const& j: storage(i.first))
-				_f << (fj++ ? "," : "") << "\"" << minHex(j.first) << "\":\"" << minHex(j.second) << "\"";
-			_f << "}, ";
-		}
-		_f << "\"nonce\": \"" << toString(transactionsFrom(i.first)) << "\"";
-		_f << "}" << endl;	// end account
-		if (!(fi % 100))
-			_f << flush;
-	}
-#endif
-	_f << "}";
 }

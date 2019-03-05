@@ -112,6 +112,12 @@ class State
 	friend class BlockChain;
 
 public:
+	enum class CommitBehaviour
+	{
+		KeepEmptyAccounts,
+		RemoveEmptyAccounts
+	};
+
 	/// Default constructor; creates with a blank database prepopulated with the genesis block.
 	explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
 
@@ -135,9 +141,6 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
-	/// Stream into a JSON representation.
-	void streamJSON(std::ostream& _f) const;
-
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
 	static OverlayDB openDB(std::string const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
 	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _genesisHash, _we); }
@@ -154,10 +157,14 @@ public:
 
 	/// Execute a given transaction.
 	/// This will change the state accordingly.
-	std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
+	std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Check if the address is in use.
 	bool addressInUse(Address const& _address) const;
+
+	/// Check if the account exists in the state and is non empty (nonce > 0 || balance > 0 || code nonempty).
+	/// These two notions are equivalent after EIP158.
+	bool accountNonemptyAndExisting(Address const& _address) const;
 
 	/// Check if the address contains executable code.
 	bool addressHasCode(Address const& _address) const;
@@ -195,7 +202,8 @@ public:
 	void setStorage(Address const& _contract, u256 const& _location, u256 const& _value) { m_cache[_contract].setStorage(_location, _value); }
 
 	/// Create a contract at the given address (with unset code and unchanged balance).
-	void createContract(Address const& _address);
+	/// If @a _incrementNonce is true, increment the nonce upon creation.
+	void createContract(Address const& _address, bool _incrementNonce);
 
 	/// Similar to `createContract`, but used in a normal transaction that targets _address.
 	void ensureAccountExists(Address const& _address);
@@ -223,12 +231,16 @@ public:
 	/// @returns code(_contract).size(), but utilizes CodeSizeHash.
 	size_t codeSize(Address const& _contract) const;
 
-	/// Note that the given address is sending a transaction and thus increment the associated ticker.
-	void noteSending(Address const& _id);
+	/// Increament the account nonce.
+	void incNonce(Address const& _id);
 
-	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
+	/// Set the account nonce to the given value. Is used to revert account
+	/// changes.
+	void setNonce(Address const& _addr, u256 const& _nonce);
+
+	/// Get the account nonce -- the number of transactions it has sent.
 	/// @returns 0 if the address has never been used.
-	u256 transactionsFrom(Address const& _address) const;
+	u256 getNonce(Address const& _addr) const;
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
@@ -239,7 +251,8 @@ public:
 	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
-	void commit();
+	/// @param _commitBehaviour whether or not to remove empty accounts during commit.
+	void commit(CommitBehaviour _commitBehaviour);
 
 	/// Resets any uncommitted changes to the cache.
 	void setRoot(h256 const& _root);
@@ -250,6 +263,9 @@ public:
 	void noteAccountStartNonce(u256 const& _actual);
 
 private:
+	/// Turns all "touched" empty accounts into non-alive accounts.
+	void removeEmptyAccounts();
+
 	/// @returns the account at the given address or a null pointer if it does not exist.
 	/// The pointer is valid until the next access to the state or account.
 	Account const* account(Address const& _a, bool _requireCode = false) const;
@@ -274,8 +290,6 @@ private:
 	AddressHash m_touched;						///< Tracks all addresses touched so far.
 
 	u256 m_accountStartNonce;
-
-	static std::string c_defaultPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

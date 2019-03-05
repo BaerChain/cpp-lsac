@@ -33,7 +33,7 @@ namespace // anonymous
 static unsigned const c_depthLimit = 1024;
 
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
-static size_t const c_singleExecutionStackSize = 9 * 1024;
+static size_t const c_singleExecutionStackSize = 11 * 1024;
 
 /// Standard thread stack size.
 static size_t const c_defaultStackSize =
@@ -113,9 +113,6 @@ size_t ExtVM::codeSizeAt(dev::Address _a)
 
 h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
 {
-	// Increment associated nonce for sender.
-	m_s.noteSending(myAddress);
-
 	Executive e(m_s, envInfo(), m_sealEngine, depth + 1);
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
 	{

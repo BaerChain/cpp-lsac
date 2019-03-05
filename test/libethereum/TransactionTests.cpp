@@ -73,8 +73,14 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
 				se->verifyTransaction(ImportRequirements::Everything, txFromFields, bh);
 
-				o["sender"] = toString(txFromFields.sender());				
+				if (o.count("sender") > 0)
+				{
+					string expectSender = toString(o["sender"].get_str());
+					BOOST_CHECK_MESSAGE(toString(txFromFields.sender()) == expectSender, "Error filling transaction test " + TestOutputHelper::testName() + ": expected another sender address! (got: " + toString(txFromFields.sender()) + "), expected: (" + expectSender + ")");
+				}
+				o["sender"] = toString(txFromFields.sender());
 				o["transaction"] = ImportTest::makeAllFieldsHex(tObj);
+				o["hash"] = toString(txFromFields.sha3());
 			}
 			catch(Exception const& _e)
 			{
@@ -106,7 +112,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			}
 		}
 		else
-		{			
+		{
 			BOOST_REQUIRE(o.count("rlp") > 0);
 			Transaction txFromRlp;
 			try
@@ -134,6 +140,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			BOOST_REQUIRE_MESSAGE(o.count("transaction") > 0, testname + "Expected a valid transaction!");
 
 			mObject tObj = o["transaction"].get_obj();
+			h256 txSha3Expected = h256(o["hash"].get_str());
 			Transaction txFromFields(createRLPStreamFromTransactionFields(tObj).out(), CheckTransaction::Everything);
 
 			//Check the fields restored from RLP to original fields
@@ -144,6 +151,8 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			BOOST_CHECK_MESSAGE(txFromFields.nonce() == txFromRlp.nonce(), testname + "Nonce in given RLP not matching the Transaction nonce!");
 			BOOST_CHECK_MESSAGE(txFromFields.receiveAddress() == txFromRlp.receiveAddress(), testname + "Receive address in given RLP not matching the Transaction 'to' address!");
 			BOOST_CHECK_MESSAGE(txFromFields.sender() == txFromRlp.sender(), testname + "Transaction sender address in given RLP not matching the Transaction 'vrs' signature!");
+			BOOST_CHECK_MESSAGE(txFromFields.sha3() == txFromRlp.sha3(), testname + "Transaction sha3 hash in given RLP not matching the Transaction 'vrs' signature!");
+			BOOST_CHECK_MESSAGE(txFromFields.sha3() == txSha3Expected, testname + "Expected different transaction hash!");
 			BOOST_CHECK_MESSAGE(txFromFields == txFromRlp, testname + "However, txFromFields != txFromRlp!");
 			BOOST_REQUIRE (o.count("sender") > 0);
 
@@ -158,22 +167,41 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 BOOST_AUTO_TEST_SUITE(TransactionTests)
 
+BOOST_AUTO_TEST_CASE(ttTransactionTestEip155VitaliksTests)
+{
+	dev::test::executeTests("ttTransactionTestEip155VitaliksTests", "/TransactionTests/EIP155", "/TransactionTestsFiller/EIP155", dev::test::doTransactionTests);
+}
+
+BOOST_AUTO_TEST_CASE(ttTransactionTestEip155VCheck)
+{
+	dev::test::executeTests("ttTransactionTestVRule", "/TransactionTests/EIP155", "/TransactionTestsFiller/EIP155", dev::test::doTransactionTests);
+}
+
+BOOST_AUTO_TEST_CASE(ttTransactionTestEip155)
+{
+	dev::test::executeTests("ttTransactionTest", "/TransactionTests/EIP155", "/TransactionTestsFiller/EIP155", dev::test::doTransactionTests);
+}
+
+BOOST_AUTO_TEST_CASE(ttTransactionTestEip155VitaliksTestsHomestead)
+{
+	dev::test::executeTests("ttTransactionTestEip155VitaliksTests", "/TransactionTests/Homestead", "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
+}
+
 BOOST_AUTO_TEST_CASE(ttTransactionTestHomestead)
 {
-	dev::test::executeTests("ttTransactionTest", "/TransactionTests/Homestead",dev::test::getFolder(__FILE__) + "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
+	dev::test::executeTests("ttTransactionTest", "/TransactionTests/Homestead", "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
 }
 
 BOOST_AUTO_TEST_CASE(ttTransactionTest)
 {
-	dev::test::executeTests("ttTransactionTest", "/TransactionTests",dev::test::getFolder(__FILE__) + "/TransactionTestsFiller", dev::test::doTransactionTests);
+	dev::test::executeTests("ttTransactionTest", "/TransactionTests", "/TransactionTestsFiller", dev::test::doTransactionTests);
 }
 
 BOOST_AUTO_TEST_CASE(ttWrongRLPTransactionHomestead)
 {
-	std::string fillersPath = dev::test::getFolder(__FILE__) + "/TransactionTestsFiller/Homestead";
-
+	std::string fillersPath =  dev::test::getTestPath() + "/src/TransactionTestsFiller/Homestead";
 	if (!dev::test::Options::get().fillTests)
-		dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", fillersPath, dev::test::doTransactionTests);
+		dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
 	else
 	{
 		dev::test::TestOutputHelper::initTest();
@@ -183,10 +211,9 @@ BOOST_AUTO_TEST_CASE(ttWrongRLPTransactionHomestead)
 
 BOOST_AUTO_TEST_CASE(ttWrongRLPTransaction)
 {
-	std::string fillersPath = dev::test::getFolder(__FILE__) + "/TransactionTestsFiller";
-
+	std::string fillersPath = dev::test::getTestPath() + "/src/TransactionTestsFiller";
 	if (!dev::test::Options::get().fillTests)
-		dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", fillersPath, dev::test::doTransactionTests);
+		dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", "/TransactionTestsFiller", dev::test::doTransactionTests);
 	else
 	{
 		dev::test::TestOutputHelper::initTest();
@@ -200,7 +227,7 @@ BOOST_AUTO_TEST_CASE(tt10mbDataFieldHomestead)
 	{
 		auto start = chrono::steady_clock::now();
 
-		dev::test::executeTests("tt10mbDataField", "/TransactionTests/Homestead",dev::test::getFolder(__FILE__) + "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
+		dev::test::executeTests("tt10mbDataField", "/TransactionTests/Homestead", "/TransactionTestsFiller/Homestead", dev::test::doTransactionTests);
 
 		auto end = chrono::steady_clock::now();
 		auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
@@ -214,45 +241,11 @@ BOOST_AUTO_TEST_CASE(tt10mbDataField)
 	{
 		auto start = chrono::steady_clock::now();
 
-		dev::test::executeTests("tt10mbDataField", "/TransactionTests",dev::test::getFolder(__FILE__) + "/TransactionTestsFiller", dev::test::doTransactionTests);
+		dev::test::executeTests("tt10mbDataField", "/TransactionTests", "/TransactionTestsFiller", dev::test::doTransactionTests);
 
 		auto end = chrono::steady_clock::now();
 		auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
 		cnote << "test duration: " << duration.count() << " milliseconds.\n";
-	}
-}
-
-BOOST_AUTO_TEST_CASE(ttCreateTest)
-{
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--createtest")
-		{
-			if (boost::unit_test::framework::master_test_suite().argc <= i + 2)
-			{
-				cnote << "usage: ./testeth --createtest <PathToConstructor> <PathToDestiny>\n";
-				return;
-			}
-			try
-			{
-				cnote << "Populating tests...";
-				json_spirit::mValue v;
-				string s = asString(dev::contents(boost::unit_test::framework::master_test_suite().argv[i + 1]));
-				BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + (string)boost::unit_test::framework::master_test_suite().argv[i + 1] + " is empty.");
-				json_spirit::read_string(s, v);
-				dev::test::doTransactionTests(v, true);
-				writeFile(boost::unit_test::framework::master_test_suite().argv[i + 2], asBytes(json_spirit::write_string(v, true)));
-			}
-			catch (Exception const& _e)
-			{
-				BOOST_ERROR("Failed transaction test with Exception: " << diagnostic_information(_e));
-			}
-			catch (std::exception const& _e)
-			{
-				BOOST_ERROR("Failed transaction test with Exception: " << _e.what());
-			}
-		}
 	}
 }
 
