@@ -44,6 +44,8 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
+#define ETH_TIMED_ENACTMENTS 0
+
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
@@ -327,13 +329,17 @@ u256 State::balance(Address const& _id) const
 		return 0;
 }
 
-void State::incNonce(Address const& _addr)
+void State::noteSending(Address const& _id)
 {
-	if (Account* a = account(_addr))
-		a->incNonce();
+	Account* a = account(_id);
+	if (a == nullptr)
+	{
+		cwarn << "Sending from non-existant account. How did it pay!?!";
+		// this is only possible if transaction has gaspirce = 0
+		m_cache[_id] = Account(requireAccountStartNonce() + 1, 0);
+	}
 	else
-		// This is possible if a transaction has gas price 0.
-		m_cache[_addr] = Account(requireAccountStartNonce() + 1, 0);
+		a->incNonce();
 }
 
 void State::addBalance(Address const& _id, u256 const& _amount)
@@ -349,7 +355,7 @@ void State::subBalance(Address const& _id, bigint const& _amount)
 	if (_amount == 0)
 		return;
 
-	Account* a = account(_id);
+	Account* a = account(_id);	
 	if (!a || a->balance() < _amount)
 		BOOST_THROW_EXCEPTION(NotEnoughCash());
 	else
@@ -378,9 +384,9 @@ void State::kill(Address _addr)
 	// If the account is not in the db, nothing to kill.
 }
 
-u256 State::getNonce(Address const& _addr) const
+u256 State::transactionsFrom(Address const& _id) const
 {
-	if (auto a = account(_addr))
+	if (auto a = account(_id))
 		return a->nonce();
 	else
 		return m_accountStartNonce;
@@ -405,9 +411,9 @@ u256 State::storage(Address const& _id, u256 const& _key) const
 		return 0;
 }
 
-unordered_map<u256, u256> State::storage(Address const& _id) const
+map<u256, u256> State::storage(Address const& _id) const
 {
-	unordered_map<u256, u256> ret;
+	map<u256, u256> ret;
 
 	if (Account const* a = account(_id))
 	{
@@ -655,4 +661,40 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 		}
 	}
 	return _out;
+}
+
+#if ETH_FATDB
+static std::string minHex(h256 const& _h)
+{
+	unsigned i = 0;
+	for (; i < 31 && !_h[i]; ++i) {}
+	return toHex(_h.ref().cropped(i));
+}
+#endif
+
+void State::streamJSON(ostream& _f) const
+{
+	_f << "{" << endl;
+#if ETH_FATDB
+	int fi = 0;
+	for (pair<Address, u256> const& i: addresses())
+	{
+		_f << (fi++ ? "," : "") << "\"" << i.first.hex() << "\": { ";
+		_f << "\"balance\": \"" << toString(i.second) << "\", ";
+		if (codeHash(i.first) != EmptySHA3)
+		{
+			_f << "\"codeHash\": \"" << codeHash(i.first).hex() << "\", ";
+			_f << "\"storage\": {";
+			int fj = 0;
+			for (pair<u256, u256> const& j: storage(i.first))
+				_f << (fj++ ? "," : "") << "\"" << minHex(j.first) << "\":\"" << minHex(j.second) << "\"";
+			_f << "}, ";
+		}
+		_f << "\"nonce\": \"" << toString(transactionsFrom(i.first)) << "\"";
+		_f << "}" << endl;	// end account
+		if (!(fi % 100))
+			_f << flush;
+	}
+#endif
+	_f << "}";
 }

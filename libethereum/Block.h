@@ -136,7 +136,7 @@ public:
 
 	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
 	/// @returns 0 if the address has never been used.
-	u256 transactionsFrom(Address const& _address) const { return m_state.getNonce(_address); }
+	u256 transactionsFrom(Address const& _address) const { return m_state.transactionsFrom(_address); }
 
 	/// Check if the address is in use.
 	bool addressInUse(Address const& _address) const { return m_state.addressInUse(_address); }
@@ -153,8 +153,8 @@ public:
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
-	std::unordered_map<u256, u256> storage(Address const& _contract) const { return m_state.storage(_contract); }
+	/// @returns std::map<u256, u256> if no account exists at that address.
+	std::map<u256, u256> storage(Address const& _contract) const { return m_state.storage(_contract); }
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
