@@ -111,6 +111,8 @@ public:
 	/// @returns true if the account is unchanged from creation.
 	bool isDirty() const { return !m_isUnchanged; }
 
+	void untouch() { m_isUnchanged = true; }
+
 	/// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
 	/// during creation phase.
 	bool isEmpty() const { return nonce() == 0 && balance() == 0 && (isFreshCode() ? code().empty() : codeHash() == EmptySHA3); }
@@ -124,14 +126,15 @@ public:
 	/// Increments the balance of this account by the given amount. It's a bigint, so can be negative.
 	void addBalance(bigint _i) { m_balance = (u256)((bigint)m_balance + _i); changed(); }
 
-	/// @returns the nonce of the account. Can be altered in place.
-	u256& nonce() { return m_nonce; }
-
 	/// @returns the nonce of the account.
-	u256 const& nonce() const { return m_nonce; }
+	u256 nonce() const { return m_nonce; }
 
 	/// Increment the nonce of the account by one.
-	void incNonce() { m_nonce++; changed(); }
+	void incNonce() { ++m_nonce; changed(); }
+
+	/// Set nonce to a new value. This is used when reverting changes made to
+	/// the account.
+	void setNonce(u256 const& _nonce) { m_nonce = _nonce; changed(); }
 
 
 	/// @returns the root of the trie (whose nodes are stored in the state db externally to this class)
@@ -140,6 +143,9 @@ public:
 
 	/// @returns the storage overlay as a simple hash map.
 	std::unordered_map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
+
+	/// Clear all changes made to the storage since last commit.
+	void clearStorageChanges() { m_storageOverlay.clear(); }
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.
@@ -159,8 +165,9 @@ public:
 	/// @returns the hash of the account's code. Must only be called when isFreshCode() returns false.
 	h256 codeHash() const { assert(!isFreshCode()); return m_codeHash; }
 
-	/// Sets the code of the account. Must only be called when isFreshCode() returns true.
-	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = std::move(_code); changed(); }
+	/// Sets the code of the account.
+	/// Used by "create" transactions and for reverting changes.
+	void setCode(bytes&& _code) { m_codeCache = std::move(_code); changed(); }
 
 	/// @returns true if the account's code is available through code().
 	bool codeCacheValid() const { return m_codeHash == EmptySHA3 || m_codeHash == c_contractConceptionCodeHash || m_codeCache.size(); }

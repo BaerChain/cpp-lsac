@@ -35,7 +35,6 @@
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
-#include "AccountDiff.h"
 #include "GasPricer.h"
 
 namespace dev
@@ -141,9 +140,6 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
-	/// Stream into a JSON representation.
-	void streamJSON(std::ostream& _f) const;
-
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
 	static OverlayDB openDB(std::string const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
 	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _genesisHash, _we); }
@@ -164,6 +160,13 @@ public:
 
 	/// Check if the address is in use.
 	bool addressInUse(Address const& _address) const;
+
+	bool isTouched(Address const& _address) const { auto a = account(_address); return !a || a->isDirty(); }
+	void untouch(Address const& _address)
+	{
+		m_cache[_address].untouch();
+		m_unchangedCacheEntries.emplace_back(_address);
+	}
 
 	/// Check if the account exists in the state and is non empty (nonce > 0 || balance > 0 || code nonempty).
 	/// These two notions are equivalent after EIP158.
@@ -214,8 +217,12 @@ public:
 	/// Sets the code of the account. Must only be called during / after contract creation.
 	void setCode(Address const& _address, bytes&& _code) { m_cache[_address].setCode(std::move(_code)); }
 
+	void clearStorageChanges(Address const& _addr) { m_cache[_addr].clearStorageChanges(); }
+
 	/// Delete an account (used for processing suicides).
 	void kill(Address _a);
+
+	bool isAlive(Address const& _addr) const { auto a = account(_addr); return a && a->isAlive(); }
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
@@ -234,20 +241,19 @@ public:
 	/// @returns code(_contract).size(), but utilizes CodeSizeHash.
 	size_t codeSize(Address const& _contract) const;
 
-	/// Note that the given address is sending a transaction and thus increment the associated ticker.
-	void noteSending(Address const& _id);
+	/// Increament the account nonce.
+	void incNonce(Address const& _id);
 
-	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
+	/// Set the account nonce to the given value. Is used to revert account
+	/// changes.
+	void setNonce(Address const& _addr, u256 const& _nonce);
+
+	/// Get the account nonce -- the number of transactions it has sent.
 	/// @returns 0 if the address has never been used.
-	u256 transactionsFrom(Address const& _address) const;
+	u256 getNonce(Address const& _addr) const;
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
-
-	/// @return the difference between this state (origin) and @a _c (destination).
-	/// @param _quick if true doesn't check all addresses possible (/very/ slow for a full chain)
-	/// but rather only those touched by the transactions in creating the two States.
-	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	/// @param _commitBehaviour whether or not to remove empty accounts during commit.
@@ -285,12 +291,10 @@ private:
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
-	mutable std::set<Address> m_unchangedCacheEntries;	///< Tracks entries in m_cache that can potentially be purged if it grows too large.
+	mutable std::vector<Address> m_unchangedCacheEntries;	///< Tracks entries in m_cache that can potentially be purged if it grows too large.
 	AddressHash m_touched;						///< Tracks all addresses touched so far.
 
 	u256 m_accountStartNonce;
-
-	static std::string c_defaultPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

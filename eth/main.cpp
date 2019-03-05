@@ -89,7 +89,7 @@ void help()
 		<< endl;
 	cout
 		<< "Client mode (default):" << endl
-		<< "    --frontier  Use the Frontier (1.0) protocol." << endl
+		<< "    --mainnet  Use the main network protocol." << endl
 		<< "    --ropsten  Use the Ropsten testnet." << endl
 		<< "    --private <name>  Use a private chain." << endl
 		<< "    --test  Testing mode: Disable PoW and provide test rpc interface." << endl
@@ -113,10 +113,7 @@ void help()
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< endl
 		<< "    --import-presale <file>  Import a pre-sale key; you'll need to specify the password to this key." << endl
-		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
-		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
-		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
-		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl
+		<< "    -s,--import-secret <secret>  Import a secret key into the key store." << endl
 		<< "    --master <password>  Give the master password for the key store. Use --master \"\" to show a prompt." << endl
 		<< "    --password <password>  Give a password for a private key." << endl
 		<< endl
@@ -355,7 +352,7 @@ int main(int argc, char** argv)
 #endif // ETH_JSONRPC
 
 	string jsonAdmin;
-	ChainParams chainParams(genesisInfo(eth::Network::Frontier), genesisStateRoot(eth::Network::Frontier));
+	ChainParams chainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 	u256 gasFloor = Invalid256;
 	string privateChain;
 
@@ -383,9 +380,7 @@ int main(int argc, char** argv)
 
 	/// Mining params
 	unsigned mining = 0;
-	Address signingKey;
-	Address sessionKey;
-	Address author = signingKey;
+	Address author;
 	strings presaleImports;
 	bytes extraData;
 
@@ -415,7 +410,6 @@ int main(int argc, char** argv)
 		try
 		{
 			RLP config(b);
-			signingKey = config[0].toHash<Address>();
 			author = config[1].toHash<Address>();
 		}
 		catch (...) {}
@@ -573,18 +567,12 @@ int main(int argc, char** argv)
 		{
 			Secret s(fromHex(argv[++i]));
 			toImport.emplace_back(s);
-			signingKey = toAddress(s);
 		}
 		else if ((arg == "-S" || arg == "--import-session-secret") && i + 1 < argc)
 		{
 			Secret s(fromHex(argv[++i]));
 			toImport.emplace_back(s);
-			sessionKey = toAddress(s);
 		}
-		else if ((arg == "--sign-key") && i + 1 < argc)
-			sessionKey = Address(fromHex(argv[++i]));
-		else if ((arg == "--session-sign-key") && i + 1 < argc)
-			sessionKey = Address(fromHex(argv[++i]));
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path" || arg == "--datadir") && i + 1 < argc)
 			setDataDir(argv[++i]);
 		else if (arg == "--ipcpath" && i + 1 < argc )
@@ -627,13 +615,13 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "--gas-floor" && i + 1 < argc)
 			gasFloor = u256(argv[++i]);
-		else if (arg == "--frontier")
-			chainParams = ChainParams(genesisInfo(eth::Network::Frontier), genesisStateRoot(eth::Network::Frontier));
+		else if (arg == "--mainnet")
+			chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 		else if (arg == "--ropsten" || arg == "--testnet")
 			chainParams = ChainParams(genesisInfo(eth::Network::Ropsten), genesisStateRoot(eth::Network::Ropsten));
 		else if (arg == "--oppose-dao-fork")
 		{
-			chainParams = ChainParams(genesisInfo(eth::Network::Frontier), genesisStateRoot(eth::Network::Frontier));
+			chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 			chainParams.otherParams["daoHardforkBlock"] = toHex(u256(-1) - 10, HexPrefix::Add);
 		}
 		else if (arg == "--support-dao-fork")
@@ -962,10 +950,8 @@ int main(int argc, char** argv)
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
 
-	writeFile(configFile, rlpList(signingKey, author));
-
-	if (sessionKey)
-		signingKey = sessionKey;
+	// the first value is deprecated (never used)
+	writeFile(configFile, rlpList(author, author));
 
 	if (!clientName.empty())
 		clientName += "/";
@@ -1172,18 +1158,6 @@ int main(int argc, char** argv)
 	for (auto const& s: toImport)
 	{
 		keyManager.import(s, "Imported key (UNSAFE)");
-		if (!signingKey)
-			signingKey = toAddress(s);
-	}
-
-	if (keyManager.accounts().empty())
-	{
-		h128 uuid = keyManager.import(ICAP::createDirect(), "Default key");
-		if (!author)
-			author = keyManager.address(uuid);
-		if (!signingKey)
-			signingKey = keyManager.address(uuid);
-		writeFile(configFile, rlpList(signingKey, author));
 	}
 
 	cout << ethCredits();
@@ -1207,9 +1181,8 @@ int main(int argc, char** argv)
 		return ICAP(_a).encoded() + " (" + toUUID(keyManager.uuid(_a)) + " - " + toHex(_a.ref().cropped(0, 4)) + ")";
 	};
 
-	cout << "Transaction Signer: " << renderFullAddress(signingKey) << endl;
-	cout << "Mining Beneficiary: " << renderFullAddress(author) << endl;
-	cout << "Foundation: " << renderFullAddress(Address("de0b295669a9fd93d5f28d9ec85e40f4cb697bae")) << endl;
+	if (author)
+		cout << "Mining Beneficiary: " << renderFullAddress(author) << endl;
 
 	if (bootstrap || !remoteHost.empty() || enableDiscovery)
 	{

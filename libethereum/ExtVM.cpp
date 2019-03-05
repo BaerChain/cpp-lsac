@@ -22,7 +22,6 @@
 #include "ExtVM.h"
 #include <exception>
 #include <boost/thread.hpp>
-#include "Executive.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -33,7 +32,7 @@ namespace // anonymous
 static unsigned const c_depthLimit = 1024;
 
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
-static size_t const c_singleExecutionStackSize = 11 * 1024;
+static size_t const c_singleExecutionStackSize = 14 * 1024;
 
 /// Standard thread stack size.
 static size_t const c_defaultStackSize =
@@ -95,7 +94,7 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 
 bool ExtVM::call(CallParameters& _p)
 {
-	Executive e(m_s, envInfo(), m_sealEngine, depth + 1);
+	Executive e{m_s, envInfo(), m_sealEngine, depth + 1};
 	if (!e.call(_p, gasPrice, origin))
 	{
 		go(depth, e, _p.onOp);
@@ -103,7 +102,12 @@ bool ExtVM::call(CallParameters& _p)
 	}
 	_p.gas = e.gas();
 
-	return !e.excepted();
+	if (e.excepted())
+		return false;
+
+	// FIXME: Make sure move constructor is really used.
+	m_orig.children.emplace_back(e.takeSnapshot());
+	return true;
 }
 
 size_t ExtVM::codeSizeAt(dev::Address _a)
@@ -111,14 +115,40 @@ size_t ExtVM::codeSizeAt(dev::Address _a)
 	return m_s.codeSize(_a);
 }
 
+void ExtVM::setStore(u256 _n, u256 _v)
+{
+	if (!m_orig.storage.count(_n))
+	{
+		m_orig.storage.emplace(_n, store(_n));
+//		clog(ExecutiveWarnChannel) << "ORIG STORAGE " << myAddress << _n << _v << &m_orig;
+	}
+	m_s.setStorage(myAddress, _n, _v);
+}
+
 h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
 {
-	Executive e(m_s, envInfo(), m_sealEngine, depth + 1);
+	// Every CREATE increases this account nonce, no matter if it succeeds.
+	++m_orig.nonceInc;
+
+	Executive e{m_s, envInfo(), m_sealEngine, depth + 1};
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
 	{
 		go(depth, e, _onOp);
 		e.accrueSubState(sub);
 	}
 	io_gas = e.gas();
+	if (!e.newAddress())
+		return {};
+	m_orig.children.emplace_back(e.takeSnapshot());
 	return e.newAddress();
+}
+
+void ExtVM::suicide(Address _a)
+{
+	if (!m_s.isTouched(_a))
+		m_orig.selfdestructBeneficiary = _a;
+	// TODO: Why transfer is no used here?
+	m_s.addBalance(_a, m_s.balance(myAddress));
+	m_s.subBalance(myAddress, m_s.balance(myAddress));
+	ExtVMFace::suicide(_a);
 }

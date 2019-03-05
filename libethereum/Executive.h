@@ -47,7 +47,7 @@ class SealEngineFace;
 struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
-struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 6; };
+struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 class StandardTrace
 {
@@ -77,6 +77,21 @@ private:
 	Json::Value m_trace;
 	DebugOptions m_options;
 };
+
+
+struct AccountSnapshot
+{
+	bool exists = false;
+	bool isCreation = false;
+	int nonceInc = 0;
+	Address address;
+	Address caller;
+	u256 transfer;
+	std::unordered_map<u256, u256> storage;
+	Address selfdestructBeneficiary;
+	std::vector<AccountSnapshot> children;
+};
+
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
@@ -172,12 +187,17 @@ public:
 	u256 gas() const { return m_gas; }
 
 	/// @returns the new address for the created contract in the CREATE operation.
-	h160 newAddress() const { return m_newAddress; }
+	h160 newAddress() const { return m_orig.address; }
 	/// @returns true iff the operation ended with a VM exception.
 	bool excepted() const { return m_excepted != TransactionException::None; }
 
 	/// Collect execution results in the result storage provided.
 	void setResultRecipient(ExecutionResult& _res) { m_res = &_res; }
+
+	/// Revert all changes made to the state by this execution.
+	void revert();
+
+	AccountSnapshot takeSnapshot() { return std::move(m_orig); }
 
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
@@ -186,10 +206,8 @@ private:
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
 	bytesRef m_outRef;					///< Reference to "expected output" buffer.
 	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
-	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
 
 	unsigned m_depth = 0;				///< The context's call-depth.
-	bool m_isCreation = false;			///< True if the transaction creates a contract, or if create() is called.
 	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
 	bigint m_baseGasRequired;				///< The base amount of gas requried for executing this transactions.
 	u256 m_gas = 0;						///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
@@ -200,6 +218,8 @@ private:
 
 	bigint m_gasCost;
 	SealEngineFace const& m_sealEngine;
+
+	AccountSnapshot m_orig;
 };
 
 }

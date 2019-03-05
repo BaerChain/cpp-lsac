@@ -35,7 +35,6 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 #include "Executive.h"
-#include "CachedAddressState.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 
@@ -43,8 +42,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
-
-#define ETH_TIMED_ENACTMENTS 0
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
@@ -173,50 +170,6 @@ State& State::operator=(State const& _s)
 	return *this;
 }
 
-StateDiff State::diff(State const& _c, bool _quick) const
-{
-	StateDiff ret;
-
-	std::unordered_set<Address> ads;
-	std::unordered_set<Address> trieAds;
-	std::unordered_set<Address> trieAdsD;
-
-	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
-	auto trieD = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
-
-	if (_quick)
-	{
-		trieAds = m_touched;
-		trieAdsD = _c.m_touched;
-		(ads += m_touched) += _c.m_touched;
-	}
-	else
-	{
-		for (auto const& i: trie)
-			ads.insert(i.first), trieAds.insert(i.first);
-		for (auto const& i: trieD)
-			ads.insert(i.first), trieAdsD.insert(i.first);
-	}
-
-	for (auto const& i: m_cache)
-		ads.insert(i.first);
-	for (auto const& i: _c.m_cache)
-		ads.insert(i.first);
-
-	for (auto const& i: ads)
-	{
-		auto it = m_cache.find(i);
-		auto itD = _c.m_cache.find(i);
-		CachedAddressState source(trieAds.count(i) ? trie.at(i) : "", it != m_cache.end() ? &it->second : nullptr, &m_db);
-		CachedAddressState dest(trieAdsD.count(i) ? trieD.at(i) : "", itD != _c.m_cache.end() ? &itD->second : nullptr, &_c.m_db);
-		AccountDiff acd = source.diff(dest);
-		if (acd.changed())
-			ret.accounts[i] = acd;
-	}
-
-	return ret;
-}
-
 Account const* State::account(Address const& _a, bool _requireCode) const
 {
 	return const_cast<State*>(this)->account(_a, _requireCode);
@@ -239,7 +192,7 @@ Account* State::account(Address const& _a, bool _requireCode)
 
 		RLP state(stateBack);
 		m_cache[_a] = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), Account::Unchanged);
-		m_unchangedCacheEntries.insert(_a);
+		m_unchangedCacheEntries.push_back(_a);
 		a = &m_cache[_a];
 	}
 	if (_requireCode && a && !a->isFreshCode() && !a->codeCacheValid())
@@ -256,13 +209,13 @@ void State::clearCacheIfTooLarge() const
 	while (m_unchangedCacheEntries.size() > 1000)
 	{
 		// Remove a random element
-		// TODO: This can be exploited, an attacker can only access low-address
-		// accounts which would result in those never being removed from the cache.
-		auto addr = m_unchangedCacheEntries.lower_bound(Address::random());
-		if (addr == m_unchangedCacheEntries.end())
-			addr = m_unchangedCacheEntries.begin();
-		auto cacheEntry = m_cache.find(*addr);
-		m_unchangedCacheEntries.erase(addr);
+		size_t const randomIndex = boost::random::uniform_int_distribution<size_t>(0, m_unchangedCacheEntries.size() - 1)(dev::s_fixedHashEngine);
+
+		Address const addr = m_unchangedCacheEntries[randomIndex];
+		swap(m_unchangedCacheEntries[randomIndex], m_unchangedCacheEntries.back());
+		m_unchangedCacheEntries.pop_back();
+
+		auto cacheEntry = m_cache.find(addr);
 		if (cacheEntry != m_cache.end() && !cacheEntry->second.isDirty())
 			m_cache.erase(cacheEntry);
 	}
@@ -274,6 +227,7 @@ void State::commit(CommitBehaviour _commitBehaviour)
 		removeEmptyAccounts();
 	m_touched += dev::eth::commit(m_cache, m_state);
 	m_cache.clear();
+	m_unchangedCacheEntries.clear();
 }
 
 unordered_map<Address, u256> State::addresses() const
@@ -295,6 +249,7 @@ unordered_map<Address, u256> State::addresses() const
 void State::setRoot(h256 const& _r)
 {
 	m_cache.clear();
+	m_unchangedCacheEntries.clear();
 //	m_touched.clear();
 	m_state.setRoot(_r);
 	paranoia("begin setRoot", true);
@@ -329,17 +284,20 @@ u256 State::balance(Address const& _id) const
 		return 0;
 }
 
-void State::noteSending(Address const& _id)
+void State::incNonce(Address const& _addr)
 {
-	Account* a = account(_id);
-	if (a == nullptr)
-	{
-		cwarn << "Sending from non-existant account. How did it pay!?!";
-		// this is only possible if transaction has gaspirce = 0
-		m_cache[_id] = Account(requireAccountStartNonce() + 1, 0);
-	}
-	else
+	if (Account* a = account(_addr))
 		a->incNonce();
+	else
+		// This is possible if a transaction has gas price 0.
+		m_cache[_addr] = Account(requireAccountStartNonce() + 1, 0);
+}
+
+void State::setNonce(Address const& _addr, u256 const& _nonce)
+{
+	Account* a = account(_addr);
+	assert(a);
+	a->setNonce(_nonce);
 }
 
 void State::addBalance(Address const& _id, u256 const& _amount)
@@ -355,7 +313,7 @@ void State::subBalance(Address const& _id, bigint const& _amount)
 	if (_amount == 0)
 		return;
 
-	Account* a = account(_id);	
+	Account* a = account(_id);
 	if (!a || a->balance() < _amount)
 		BOOST_THROW_EXCEPTION(NotEnoughCash());
 	else
@@ -384,9 +342,9 @@ void State::kill(Address _addr)
 	// If the account is not in the db, nothing to kill.
 }
 
-u256 State::transactionsFrom(Address const& _id) const
+u256 State::getNonce(Address const& _addr) const
 {
-	if (auto a = account(_id))
+	if (auto a = account(_addr))
 		return a->nonce();
 	else
 		return m_accountStartNonce;
@@ -661,40 +619,4 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 		}
 	}
 	return _out;
-}
-
-#if ETH_FATDB
-static std::string minHex(h256 const& _h)
-{
-	unsigned i = 0;
-	for (; i < 31 && !_h[i]; ++i) {}
-	return toHex(_h.ref().cropped(i));
-}
-#endif
-
-void State::streamJSON(ostream& _f) const
-{
-	_f << "{" << endl;
-#if ETH_FATDB
-	int fi = 0;
-	for (pair<Address, u256> const& i: addresses())
-	{
-		_f << (fi++ ? "," : "") << "\"" << i.first.hex() << "\": { ";
-		_f << "\"balance\": \"" << toString(i.second) << "\", ";
-		if (codeHash(i.first) != EmptySHA3)
-		{
-			_f << "\"codeHash\": \"" << codeHash(i.first).hex() << "\", ";
-			_f << "\"storage\": {";
-			int fj = 0;
-			for (pair<u256, u256> const& j: storage(i.first))
-				_f << (fj++ ? "," : "") << "\"" << minHex(j.first) << "\":\"" << minHex(j.second) << "\"";
-			_f << "}, ";
-		}
-		_f << "\"nonce\": \"" << toString(transactionsFrom(i.first)) << "\"";
-		_f << "}" << endl;	// end account
-		if (!(fi % 100))
-			_f << flush;
-	}
-#endif
-	_f << "}";
 }
