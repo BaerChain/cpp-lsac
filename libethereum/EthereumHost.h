@@ -48,6 +48,7 @@ namespace eth
 class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
+class EthereumPeerObserverFace;
 
 struct EthereumHostTrace: public LogChannel { static const char* name(); static const int verbosity = 6; };
 
@@ -94,12 +95,17 @@ public:
 	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes);
 	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
 	void onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerNodeData(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerReceipts(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
 	void onPeerAborting();
+
+protected:
+	std::shared_ptr<p2p::Capability> newPeerCapability(std::shared_ptr<p2p::SessionFace> const& _s, unsigned _idOffset, p2p::CapDesc const& _cap, uint16_t _capID) override;
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 
-	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::Session>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::SessionFace>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	virtual void doWork() override;
@@ -136,6 +142,8 @@ private:
 	mutable Mutex x_transactions;
 	std::unique_ptr<BlockChainSync> m_sync;
 	std::atomic<time_t> m_lastTick = { 0 };
+
+	std::shared_ptr<EthereumPeerObserverFace> m_peerObserver;
 };
 
 }

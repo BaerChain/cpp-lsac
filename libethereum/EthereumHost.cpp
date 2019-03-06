@@ -49,6 +49,63 @@ const char* EthereumHostTrace::name() { return EthPurple "^" EthGray "  "; }
 const char* EthereumHostTrace::name() { return EthPurple "⧫" EthGray " "; }
 #endif
 
+namespace
+{
+class EthereumPeerObserver : public EthereumPeerObserverFace
+{
+public:
+	explicit EthereumPeerObserver(EthereumHost& _host) : m_host(_host) {}
+
+	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer) override
+	{
+		m_host.onPeerStatus(_peer);
+	}
+
+	void onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override
+	{
+		m_host.onPeerTransactions(_peer, _r);
+	}
+
+	void onPeerAborting() override
+	{
+		m_host.onPeerAborting();
+	}
+
+	void onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP const& _headers) override
+	{
+		m_host.onPeerBlockBodies(_peer, _headers);
+	}
+
+	void onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override
+	{
+		m_host.onPeerBlockBodies(_peer, _r);
+	}
+
+	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes) override
+	{
+		m_host.onPeerNewHashes(_peer, _hashes);
+	}
+
+	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override
+	{
+		m_host.onPeerNewBlock(_peer, _r);
+	}
+
+	void onPeerNodeData(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override
+	{
+		m_host.onPeerNodeData(_peer, _r);
+	}
+
+	void onPeerReceipts(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override
+	{
+		m_host.onPeerReceipts(_peer, _r);
+	}
+
+private:
+	EthereumHost& m_host;
+};
+}
+
 EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
 	Worker		("ethsync"),
@@ -56,7 +113,8 @@ EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, Transact
 	m_db(_db),
 	m_tq		(_tq),
 	m_bq		(_bq),
-	m_networkId	(_networkId)
+	m_networkId	(_networkId),
+	m_peerObserver(make_shared<EthereumPeerObserver>(*this))
 {
 	// TODO: Composition would be better. Left like that to avoid initialization
 	//       issues as BlockChainSync accesses other EthereumHost members.
@@ -172,26 +230,26 @@ void EthereumHost::foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)
 {
 	//order peers by protocol, rating, connection age
 	auto sessions = peerSessions();
-	auto sessionLess = [](std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _left, std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _right)
+	auto sessionLess = [](std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _left, std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _right)
 		{ return _left.first->rating() == _right.first->rating() ? _left.first->connectionTime() < _right.first->connectionTime() : _left.first->rating() > _right.first->rating(); };
 
 	std::sort(sessions.begin(), sessions.end(), sessionLess);
 	for (auto s: sessions)
-		if (!_f(s.first->cap<EthereumPeer>()))
+		if (!_f(capabilityFromSession<EthereumPeer>(*s.first)))
 			return;
 
 	sessions = peerSessions(c_oldProtocolVersion); //TODO: remove once v61+ is common
 	std::sort(sessions.begin(), sessions.end(), sessionLess);
 	for (auto s: sessions)
-		if (!_f(s.first->cap<EthereumPeer>(c_oldProtocolVersion)))
+		if (!_f(capabilityFromSession<EthereumPeer>(*s.first, c_oldProtocolVersion)))
 			return;
 }
 
-tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<Session>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<SessionFace>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
 	vector<shared_ptr<EthereumPeer>> chosen;
 	vector<shared_ptr<EthereumPeer>> allowed;
-	vector<shared_ptr<Session>> sessions;
+	vector<shared_ptr<SessionFace>> sessions;
 	
 	size_t peerCount = 0;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
@@ -347,6 +405,18 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 	m_tq.enqueue(_r, _peer->session()->id());
 }
 
+void EthereumHost::onPeerNodeData(std::shared_ptr<EthereumPeer> /* _peer */, RLP const& _r)
+{
+	unsigned itemCount = _r.itemCount();
+	clog(EthereumHostTrace) << "Node Data (" << dec << itemCount << "entries)";
+}
+
+void EthereumHost::onPeerReceipts(std::shared_ptr<EthereumPeer> /* _peer */, RLP const& _r)
+{
+	unsigned itemCount = _r.itemCount();
+	clog(EthereumHostTrace) << "Receipts (" << dec << itemCount << "entries)";
+}
+
 void EthereumHost::onPeerAborting()
 {
 	RecursiveGuard l(x_sync);
@@ -377,9 +447,9 @@ void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 
 	if (!session)
 		return;
 
-	std::shared_ptr<EthereumPeer> peer = session->cap<EthereumPeer>();
+	std::shared_ptr<EthereumPeer> peer = capabilityFromSession<EthereumPeer>(*session);
 	if (!peer)
-		peer = session->cap<EthereumPeer>(c_oldProtocolVersion);
+		peer = capabilityFromSession<EthereumPeer>(*session, c_oldProtocolVersion);
 	if (!peer)
 		return;
 
@@ -401,4 +471,13 @@ void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 
 		break;
 	default:;
 	}
+}
+
+shared_ptr<Capability> EthereumHost::newPeerCapability(shared_ptr<SessionFace> const& _s, unsigned _idOffset, p2p::CapDesc const& _cap, uint16_t _capID)
+{
+	auto ret = HostCapability<EthereumPeer>::newPeerCapability(_s, _idOffset, _cap, _capID);
+
+	capabilityFromSession<EthereumPeer>(*_s)->init(m_peerObserver);
+
+	return ret;
 }

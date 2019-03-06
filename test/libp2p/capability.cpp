@@ -27,7 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Session.h>
 #include <libp2p/Capability.h>
 #include <libp2p/HostCapability.h>
-#include <test/test.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -43,7 +43,7 @@ struct P2PFixture: public TestOutputHelper
 class TestCapability: public Capability
 {
 public:
-	TestCapability(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&, uint16_t _capID): Capability(_s, _h, _idOffset, _capID), m_cntReceivedMessages(0), m_testSum(0) {}
+	TestCapability(std::shared_ptr<SessionFace> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&, uint16_t _capID): Capability(_s, _h, _idOffset, _capID), m_cntReceivedMessages(0), m_testSum(0) {}
 	virtual ~TestCapability() {}
 	int countReceivedMessages() { return m_cntReceivedMessages; }
 	int testSum() { return m_testSum; }
@@ -78,7 +78,7 @@ public:
 	{
 		for (auto i: peerSessions())
 			if (_id == i.second->id)
-				i.first->cap<TestCapability>()->sendTestMessage(_x);
+				capabilityFromSession<TestCapability>(*i.first)->sendTestMessage(_x);
 	}
 
 	std::pair<int, int> retrieveTestData(NodeID const& _id)
@@ -88,8 +88,8 @@ public:
 		for (auto i: peerSessions())
 			if (_id == i.second->id)
 			{
-				cnt += i.first->cap<TestCapability>()->countReceivedMessages();
-				checksum += i.first->cap<TestCapability>()->testSum();
+				cnt += capabilityFromSession<TestCapability>(*i.first)->countReceivedMessages();
+				checksum += capabilityFromSession<TestCapability>(*i.first)->testSum();
 			}
 
 		return std::pair<int, int>(cnt, checksum);
@@ -133,8 +133,8 @@ BOOST_AUTO_TEST_CASE(capability)
 	BOOST_REQUIRE(host1.isStarted() && host2.isStarted());
 	host1.requirePeer(host2.id(), NodeIPEndpoint(bi::address::from_string(localhost), port2, port2));
 
-	// Wait for up to 6 seconds, to give the hosts time to connect to each other.
-	for (unsigned i = 0; i < 6000; i += step)
+	// Wait for up to 12 seconds, to give the hosts time to connect to each other.
+	for (unsigned i = 0; i < 12000; i += step)
 	{
 		this_thread::sleep_for(chrono::milliseconds(step));
 
