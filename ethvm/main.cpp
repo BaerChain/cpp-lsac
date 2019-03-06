@@ -335,9 +335,8 @@ int main(int argc, char** argv)
 		// in YAML-like dictionaly format.
 		auto exception = res.excepted != TransactionException::None;
 		cout << "output: '" << toHex(output) << "'\n";
-		cout << "exception: " << boolalpha << exception << '\n';
 		cout << "gas used: " << res.gasUsed << '\n';
-		cout << "gas/sec: " << scientific << setprecision(3) << uint64_t(res.gasUsed)/execTime << '\n';
+		cout << "exception: " << boolalpha << exception << '\n';
 		cout << "exec time: " << fixed << setprecision(6) << execTime << '\n';
 	}
 

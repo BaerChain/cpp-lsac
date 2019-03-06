@@ -1,5 +1,3 @@
-pragma solidity ^0.4.0;
-
 contract rng {
 
 	 // not a good RNG, just enough 256-bit operations to dominate loop overhead

@@ -1,5 +1,3 @@
-pragma solidity ^0.4.0;
-
 contract base {
 
 	function nada(uint u) internal returns (uint) {
