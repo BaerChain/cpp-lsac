@@ -30,7 +30,7 @@
 #include <libp2p/RLPxHandshake.h>
 #include <libp2p/RLPXFrameWriter.h>
 #include <libp2p/RLPXFrameReader.h>
-#include <test/test.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -46,11 +46,6 @@ struct RLPXTestFixture: public TestOutputHelper {
 	Secp256k1PP* s_secp256k1;
 };
 BOOST_FIXTURE_TEST_SUITE(rlpx, RLPXTestFixture)
-
-static CryptoPP::AutoSeededRandomPool s_rng;
-static CryptoPP::OID s_curveOID(CryptoPP::ASN1::secp256k1());
-static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> s_params(s_curveOID);
-static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP>::EllipticCurve s_curve(s_params.GetCurve());
 
 BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 {
@@ -68,8 +63,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
 	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
-	CryptoPP::SHA3_256 m_egressMac;
-	CryptoPP::SHA3_256 m_ingressMac;
+	CryptoPP::Keccak_256 m_egressMac;
+	CryptoPP::Keccak_256 m_ingressMac;
 	
 	// when originated is true, agreement is with init secrets
 	// when originated is true, remoteNonce = recvNonce
@@ -98,8 +93,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 	// test that keyMaterial = ecdhe-shared-secret || sha3(nonce || initiator-nonce)
 	{
 		BOOST_REQUIRE(ephemeralShared == *(Secret*)keyMaterialBytes.data());
-		
-		SHA3_256 ctx;
+
+		Keccak_256 ctx;
 		ctx.Update(leftNonce.data(), h256::size);
 		ctx.Update(rightNonce.data(), h256::size);
 		bytes expected(32);
@@ -120,8 +115,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 	// test that keyMaterial = ecdhe-shared-secret || shared-secret
 	{
 		BOOST_REQUIRE(ephemeralShared == *(Secret*)keyMaterialBytes.data());
-		
-		SHA3_256 ctx;
+
+		Keccak_256 ctx;
 		ctx.Update(preImage.data(), preImage.size());
 		bytes expected(32);
 		ctx.Final(expected.data());
@@ -164,7 +159,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 	
 	{
 		bytes egressMac;
-		SHA3_256 h(m_egressMac);
+		Keccak_256 h(m_egressMac);
 		bytes digest(16);
 		h.TruncatedFinal(digest.data(), 16);
 		BOOST_REQUIRE(digest == fromHex("23e5e8efb6e3765ecae1fca9160b18df"));
@@ -180,7 +175,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_cpp_vectors)
 	
 	{
 		bytes ingressMac;
-		SHA3_256 h(m_ingressMac);
+		Keccak_256 h(m_ingressMac);
 		bytes digest(16);
 		h.TruncatedFinal(digest.data(), 16);
 		BOOST_REQUIRE(digest == fromHex("ceed64135852064cbdde86e7ea05e8f5"));
@@ -211,8 +206,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
 	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
-	CryptoPP::SHA3_256 m_egressMac;
-	CryptoPP::SHA3_256 m_ingressMac;
+	CryptoPP::Keccak_256 m_egressMac;
+	CryptoPP::Keccak_256 m_ingressMac;
 	
 	// when originated is true, agreement is with init secrets
 	// when originated is true, remoteNonce = recvNonce
@@ -242,7 +237,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	{
 		BOOST_REQUIRE(ephemeralShared == *(Secret*)keyMaterialBytes.data());
 		
-		SHA3_256 ctx;
+		Keccak_256 ctx;
 		ctx.Update(leftNonce.data(), h256::size);
 		ctx.Update(rightNonce.data(), h256::size);
 		bytes expected(32);
@@ -261,7 +256,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	{
 		BOOST_REQUIRE(ephemeralShared == *(Secret*)keyMaterialBytes.data());
 		
-		SHA3_256 ctx;
+		Keccak_256 ctx;
 		ctx.Update(preImage.data(), preImage.size());
 		bytes expected(32);
 		ctx.Final(expected.data());
@@ -304,7 +299,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	
 	{
 		bytes egressMac;
-		SHA3_256 h(m_egressMac);
+		Keccak_256 h(m_egressMac);
 		bytes digest(32);
 		h.Final(digest.data());
 		BOOST_REQUIRE(digest == fromHex("0x09771e93b1a6109e97074cbe2d2b0cf3d3878efafe68f53c41bb60c0ec49097e"));
@@ -324,7 +319,7 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 
 	{
 		bytes ingressMac;
-		SHA3_256 h(m_ingressMac);
+		Keccak_256 h(m_ingressMac);
 		bytes digest(32);
 		h.Final(digest.data());
 		BOOST_CHECK(digest == fromHex("0x75823d96e23136c89666ee025fb21a432be906512b3dd4a3049e898adb433847"));
@@ -336,8 +331,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 
 	/// test macs of frame headers
 	{
-		SHA3_256 egressmac(m_egressMac);
-		SHA3_256 prevDigest(egressmac);
+		Keccak_256 egressmac(m_egressMac);
+		Keccak_256 prevDigest(egressmac);
 		h128 prevDigestOut;
 		prevDigest.TruncatedFinal(prevDigestOut.data(), h128::size);
 		h128 encDigest;
@@ -352,8 +347,8 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	}
 	
 	{
-		SHA3_256 ingressmac(m_ingressMac);
-		SHA3_256 prevDigest(ingressmac);
+		Keccak_256 ingressmac(m_ingressMac);
+		Keccak_256 prevDigest(ingressmac);
 		h128 prevDigestOut;
 		prevDigest.TruncatedFinal(prevDigestOut.data(), h128::size);
 		h128 encDigest;
@@ -372,6 +367,10 @@ BOOST_AUTO_TEST_CASE(test_secrets_from_go)
 	m_frameDec.ProcessData(plaintext.data(), recvHello.data(), h128::size);
 	
 }
+
+#if defined(__GNUC__)
+  	#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
 
 BOOST_AUTO_TEST_CASE(ecies_interop_test_primitives)
 {

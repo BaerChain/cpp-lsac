@@ -48,7 +48,6 @@ namespace eth
 class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
-class EthereumPeerObserverFace;
 
 struct EthereumHostTrace: public LogChannel { static const char* name(); static const int verbosity = 6; };
 
@@ -88,16 +87,6 @@ public:
 
 	static unsigned const c_oldProtocolVersion;
 	void foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const;
-
-	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer);
-	void onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP const& _headers);
-	void onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
-	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes);
-	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
-	void onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
-	void onPeerNodeData(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
-	void onPeerReceipts(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
-	void onPeerAborting();
 
 protected:
 	std::shared_ptr<p2p::Capability> newPeerCapability(std::shared_ptr<p2p::SessionFace> const& _s, unsigned _idOffset, p2p::CapDesc const& _cap, uint16_t _capID) override;
@@ -143,6 +132,7 @@ private:
 	std::unique_ptr<BlockChainSync> m_sync;
 	std::atomic<time_t> m_lastTick = { 0 };
 
+	std::shared_ptr<EthereumHostDataFace> m_hostData;
 	std::shared_ptr<EthereumPeerObserverFace> m_peerObserver;
 };
 

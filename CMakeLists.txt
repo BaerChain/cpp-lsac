@@ -44,8 +44,9 @@ include(EthOptions)
 
 include(deps/jsoncpp.cmake)
 include(deps/jsonrpc.cmake)
+include(deps/cryptopp.cmake)
 
-configure_project(CPUID CURL ETHASHCL EVMJIT FATDB MINIUPNPC ROCKSDB PARANOID TESTS VMTRACE)
+configure_project(CPUID CURL EVMJIT FATDB MINIUPNPC ROCKSDB PARANOID TESTS VMTRACE)
 
 add_subdirectory(eth)
 add_subdirectory(libdevcore)
@@ -62,10 +63,6 @@ endif()
 add_subdirectory(libweb3jsonrpc)
 add_subdirectory(libwebthree)
 add_subdirectory(libwhisper)
-
-if (ETHASHCL)
-    add_subdirectory(libethash-cl)
-endif()
 
 if (EVMJIT)
     add_subdirectory(evmjit)

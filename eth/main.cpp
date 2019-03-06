@@ -130,9 +130,6 @@ void help()
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)." << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
-		<< "    -G,--opencl  When mining, use the GPU via OpenCL." << endl
-		<< "    --opencl-platform <n>  When mining using -G/--opencl, use OpenCL platform n (default: 0)." << endl
-		<< "    --opencl-device <n>  When mining using -G/--opencl, use OpenCL device n (default: 0)." << endl
 		<< "    -t, --mining-threads <n>  Limit number of CPU/GPU miners to n (default: use everything available on selected platform)." << endl
 		<< endl
 		<< "Client networking:" << endl
@@ -424,6 +421,7 @@ int main(int argc, char** argv)
 
 	MinerCLI m(MinerCLI::OperationMode::None);
 
+	bool listenSet = false;
 	string configJSON;
 	string genesisJSON;
 	for (int i = 1; i < argc; ++i)
@@ -433,10 +431,14 @@ int main(int argc, char** argv)
 		{
 		}
 		else if (arg == "--listen-ip" && i + 1 < argc)
+		{
 			listenIP = argv[++i];
+			listenSet = true;
+		}
 		else if ((arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 		{
 			listenPort = (short)atoi(argv[++i]);
+			listenSet = true;
 		}
 		else if ((arg == "--public-ip" || arg == "--public") && i + 1 < argc)
 		{
@@ -874,6 +876,7 @@ int main(int argc, char** argv)
 			testingMode = true;
 			enableDiscovery = false;
 			disableDiscovery = true;
+			noPinning = true;
 			bootstrap = false;
 		}
 		else
@@ -892,7 +895,7 @@ int main(int argc, char** argv)
 		catch (...)
 		{
 			cerr << "provided configuration is not well formatted" << endl;
-			cerr << "sample: " << endl << genesisInfo(eth::Network::Ropsten) << endl;
+			cerr << "sample: " << endl << genesisInfo(eth::Network::MainNetworkTest) << endl;
 			return 0;
 		}
 	}
@@ -1184,7 +1187,7 @@ int main(int argc, char** argv)
 	if (author)
 		cout << "Mining Beneficiary: " << renderFullAddress(author) << endl;
 
-	if (bootstrap || !remoteHost.empty() || enableDiscovery)
+	if (bootstrap || !remoteHost.empty() || enableDiscovery || listenSet)
 	{
 		web3.startNetwork();
 		cout << "Node ID: " << web3.enode() << endl;

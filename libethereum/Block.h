@@ -98,12 +98,6 @@ public:
 	/// You can also set the author address.
 	Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root, Address const& _author = Address());
 
-#if ETH_ALLOW_EMPTY_BLOCK_AND_STATE
-	Block(): Block(Block::Null) {}
-	explicit Block(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address const& _author = Address()): Block(Invalid256, _db, _bs, _author) {}
-	Block(OverlayDB const& _db, h256 const& _root, Address const& _author = Address()): Block(Invalid256, _db, _root, _author) {}
-#endif
-
 	enum NullType { Null };
 	Block(NullType): m_state(0, OverlayDB(), BaseState::Empty), m_precommit(0) {}
 
@@ -152,8 +146,8 @@ public:
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::map<u256, u256> if no account exists at that address.
-	std::map<u256, u256> storage(Address const& _contract) const { return m_state.storage(_contract); }
+	/// @returns map of hashed keys to key-value pairs or empty map if no account exists at that address.
+	std::map<h256, std::pair<u256, u256>> storage(Address const& _contract) const { return m_state.storage(_contract); }
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.

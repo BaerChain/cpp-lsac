@@ -60,6 +60,7 @@ void printHelp()
 	cout << setw(30) << "--vm <interpreter|jit|smart>" << setw(25) << "Set VM type for VMTests suite" << std::endl;
 	cout << setw(30) << "--vmtrace" << setw(25) << "Enable VM trace for the test. (Require build with VMTRACE=1)" << std::endl;
 	cout << setw(30) << "--stats <OutFile>" << setw(25) << "Output debug stats to the file" << std::endl;
+	cout << setw(30) << "--exectimelog" << setw(25) << "Output execution time for each test suite" << std::endl;
 	cout << setw(30) << "--filltest <FileData>" << setw(25) << "Try fill tests from the given json stream" << std::endl;
 	cout << setw(30) << "--checktest <FileData>" << setw(25) << "Try run tests from the given json stream" << std::endl;
 
@@ -476,16 +477,16 @@ int ImportTest::compareStates(State const& _stateExpect, State const& _statePost
 
 			if (addressOptions.hasStorage())
 			{
-				map<u256, u256> stateStorage = _statePost.storage(a.first);
+				map<h256, pair<u256, u256>> stateStorage = _statePost.storage(a.first);
 				for (auto const& s: _stateExpect.storage(a.first))
 					CHECK((stateStorage[s.first] == s.second),
-					TestOutputHelper::testName() + "Check State: " << a.first <<  ": incorrect storage [" << s.first << "] = " << toHex(stateStorage[s.first]) << ", expected [" << s.first << "] = " << toHex(s.second));
+					TestOutputHelper::testName() + "Check State: " << a.first << ": incorrect storage [" << s.second.first << "] = " << toHex(stateStorage[s.first].second) << ", expected [" << s.second.first << "] = " << toHex(s.second.second));
 
 				//Check for unexpected storage values
-				map<u256, u256> expectedStorage = _stateExpect.storage(a.first);
+				map<h256, pair<u256, u256>> expectedStorage = _stateExpect.storage(a.first);
 				for (auto const& s: _statePost.storage(a.first))
 					CHECK((expectedStorage[s.first] == s.second),
-					TestOutputHelper::testName() + "Check State: " << a.first <<  ": incorrect storage [" << s.first << "] = " << toHex(s.second) << ", expected [" << s.first << "] = " << toHex(expectedStorage[s.first]));
+					TestOutputHelper::testName() + "Check State: " << a.first <<  ": incorrect storage [" << s.second.first << "] = " << toHex(s.second.second) << ", expected [" << s.second.first << "] = " << toHex(expectedStorage[s.first].second));
 			}
 
 			if (addressOptions.hasCode())
@@ -706,7 +707,7 @@ json_spirit::mObject fillJsonWithState(State const& _state)
 		{
 			json_spirit::mObject store;
 			for (auto const& s: _state.storage(a.first))
-				store[toCompactHex(s.first, HexPrefix::Add, 1)] = toCompactHex(s.second, HexPrefix::Add, 1);
+				store[toCompactHex(s.second.first, HexPrefix::Add, 1)] = toCompactHex(s.second.second, HexPrefix::Add, 1);
 			o["storage"] = store;
 		}
 		o["code"] = toHex(_state.code(a.first), 2, HexPrefix::Add);
@@ -1104,6 +1105,8 @@ Options::Options(int argc, char** argv)
 			stats = true;
 			statsOutFile = argv[i + 1];
 		}
+		else if (arg == "--exectimelog")
+			exectimelog = true;
 		else if (arg == "--performance")
 			performance = true;
 		else if (arg == "--quadratic")
@@ -1260,18 +1263,20 @@ void Listener::notifyTestFinished(int64_t _gasUsed)
 		g_listener->testFinished(_gasUsed);
 }
 
+using namespace boost;
+Timer TestOutputHelper::m_timer;
 size_t TestOutputHelper::m_currTest = 0;
 size_t TestOutputHelper::m_maxTests = 0;
 string TestOutputHelper::m_currentTestName = "n/a";
 string TestOutputHelper::m_currentTestCaseName = "n/a";
 string TestOutputHelper::m_currentTestFileName = "n/a";
-
-using namespace boost;
+std::vector<TestOutputHelper::execTimeName> TestOutputHelper::m_execTimeResults;
 void TestOutputHelper::initTest(int _maxTests)
 {
 	Ethash::init();
 	BasicAuthority::init();
 	NoProof::init();
+	m_timer.restart();
 	m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;
 	std::cout << "Test Case \"" + m_currentTestCaseName + "\": " << std::endl;
 	m_maxTests = _maxTests;
@@ -1283,6 +1288,7 @@ void TestOutputHelper::initTest(json_spirit::mValue& _v)
 	Ethash::init();
 	BasicAuthority::init();
 	NoProof::init();
+	m_timer.restart();
 	m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;
 	std::cout << "Test Case \"" + m_currentTestCaseName + "\": " << std::endl;
 	m_maxTests = _v.get_obj().size();
@@ -1310,9 +1316,33 @@ bool TestOutputHelper::passTest(json_spirit::mObject& _o, std::string& _testName
 	}
 
 	cnote << _testName;
+	//Test name for old State Tests
 	//_testName = (m_currentTestFileName == "n/a") ? "(" + _testName + ") " : "(" + m_currentTestFileName + "/" +  _testName + ") ";
 	m_currentTestName = _testName + " ";
 	return true;
+}
+
+void TestOutputHelper::finishTest()
+{
+	if (Options::get().exectimelog)
+	{
+		execTimeName res;
+		res.first = m_timer.elapsed();
+		res.second = caseName();
+		std::cout << res.second + " time: " + toString(res.first) << std::endl;
+		m_execTimeResults.push_back(res);
+	}
+}
+
+void TestOutputHelper::printTestExecStats()
+{
+	if (Options::get().exectimelog)
+	{
+		std::cout << std::left;
+		std::sort(m_execTimeResults.begin(), m_execTimeResults.end(), [](execTimeName _a, execTimeName _b) { return (_b.first < _a.first); });
+		for (size_t i = 0; i < m_execTimeResults.size(); i++)
+			std::cout << setw(45) << m_execTimeResults[i].second << setw(25) << " time: " + toString(m_execTimeResults[i].first) << std::endl;
+	}
 }
 
 } } // namespaces

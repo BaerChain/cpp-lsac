@@ -44,6 +44,40 @@ template <class S> S modWorkaround(S const& _a, S const& _b)
 
 
 //
+// for decoding destinations of JUMPTO, JUMPV, JUMPSUB and JUMPSUBV
+//
+
+uint64_t VM::decodeJumpDest(const byte* const _code, uint64_t& _pc)
+{
+	// turn 4 MSB-first bytes in the code into a native-order integer
+	uint64_t dest      = _code[_pc++];
+	dest = (dest << 8) | _code[_pc++];
+	dest = (dest << 8) | _code[_pc++];
+	dest = (dest << 8) | _code[_pc++];
+	return dest;
+}
+
+uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, u256*& _sp)
+{
+	// Layout of jump table in bytecode...
+	//     byte opcode
+	//     byte n_jumps
+	//     byte table[n_jumps][4]
+	//	
+	uint64_t i = uint64_t(*_sp--);  // byte on stack indexes into jump table
+	uint64_t pc = _pc;
+	byte n = _code[++pc];           // byte after opcode is number of jumps
+	if (i >= n) i = n - 1;          // if index overflow use default jump
+	pc += 1 + i * 4;                // adjust pc to index destination in table
+	
+	uint64_t dest = decodeJumpDest(_code, pc);
+	
+	_pc += 1 + n * 4;               // adust input _pc to opcode after table 
+	return dest;
+}
+
+
+//
 // for tracing, checking, metering, measuring ...
 //
 void VM::onOperation()
@@ -53,7 +87,6 @@ void VM::onOperation()
 			m_newMemSize > m_mem.size() ? (m_newMemSize - m_mem.size()) / 32 : uint64_t(0),
 			m_runGas, m_io_gas, this, m_ext);
 }
-
 
 void VM::checkStack(unsigned _removed, unsigned _added)
 {
@@ -108,11 +141,20 @@ void VM::fetchInstruction()
 	checkStack(metric.args, metric.ret);
 
 	// FEES...
-	m_runGas = toUint64(m_schedule->tierStepGas[metric.gasPriceTier]);
+	m_runGas = toUint64(m_schedule->tierStepGas[static_cast<unsigned>(metric.gasPriceTier)]);
 	m_newMemSize = m_mem.size();
 	m_copyMemSize = 0;
 }
 
+#if EVM_HACK_ON_OPERATION
+	#define onOperation()
+#endif
+#if EVM_HACK_UPDATE_IO_GAS
+	#define updateIOGas()
+#endif
+#if EVM_HACK_STACK
+	#define checkStack(r,a)
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -352,7 +394,11 @@ void VM::interpretCases()
 			updateIOGas();
 
 			//pops two items and pushes S[-1] * S[-2] mod 2^256.
+#if EVM_HACK_MUL_64
+			*(uint64_t*)(m_sp - 1) *= *(uint64_t*)m_sp;
+#else
 			*(m_sp - 1) *= *m_sp;
+#endif
 			--m_sp;
 			++m_pc;
 		CASE_END
@@ -815,7 +861,67 @@ void VM::interpretCases()
 			m_sp -= 2;
 		CASE_END
 
+#if EVM_JUMPS_AND_SUBS
+		CASE_BEGIN(JUMPTO)
+			ON_OP();
+			updateIOGas();
+			m_pc = decodeJumpDest(m_code, m_pc);
+		CASE_END
+
+		CASE_BEGIN(JUMPIF)
+			ON_OP();
+			updateIOGas();
+			if (*m_sp)
+				m_pc = decodeJumpDest(m_code, m_pc);
+			else
+				++m_pc;
+			--m_sp;
+		CASE_END
+
 		CASE_BEGIN(JUMPV)
+			ON_OP();
+			updateIOGas();			
+			m_pc = decodeJumpvDest(m_code, m_pc, m_sp);
+		CASE_END
+
+		CASE_BEGIN(JUMPSUB)
+			ON_OP();
+			updateIOGas();
+			{
+				*++m_rp = m_pc++;
+				m_pc = decodeJumpDest(m_code, m_pc);
+			}
+		CASE_END
+
+		CASE_BEGIN(JUMPSUBV)
+			ON_OP();
+			updateIOGas();
+			{
+				*++m_rp = m_pc;
+				m_pc = 
+				jumpvDest(m_code, m_pc, m_sp);
+			}
+		CASE_END
+
+		CASE_BEGIN(RETURNSUB)
+			ON_OP();
+			updateIOGas();
+			
+			m_pc = *m_rp--;
+			++m_pc;
+		CASE_END
+#else
+		CASE_BEGIN(JUMPTO)
+		CASE_BEGIN(JUMPIF)
+		CASE_BEGIN(JUMPV)
+		CASE_BEGIN(JUMPSUB)
+		CASE_BEGIN(JUMPSUBV)
+		CASE_BEGIN(RETURNSUB)
+			throwBadInstruction();
+		CASE_END
+#endif
+
+		CASE_BEGIN(JUMPC)
 #ifdef EVM_REPLACE_CONST_JUMP
 			ON_OP();
 			updateIOGas();
@@ -827,7 +933,7 @@ void VM::interpretCases()
 #endif
 		CASE_END
 
-		CASE_BEGIN(JUMPVI)
+		CASE_BEGIN(JUMPCI)
 #ifdef EVM_REPLACE_CONST_JUMP
 			ON_OP();
 			updateIOGas();
@@ -863,7 +969,11 @@ void VM::interpretCases()
 			updateIOGas();
 
 			unsigned n = 1 + (unsigned)m_op - (unsigned)Instruction::DUP1;
+#if EVM_HACK_DUP_64
+			*(uint64_t*)(m_sp+1) = *(uint64_t*)&m_stack[(1 + m_sp - m_stack) - n];
+#else
 			*(m_sp+1) = m_stack[(1 + m_sp - m_stack) - n];
+#endif
 			++m_sp;
 			++m_pc;
 		}
@@ -956,6 +1066,24 @@ void VM::interpretCases()
 			updateIOGas();
 			++m_pc;
 		CASE_END
+
+#if EVM_JUMPS_AND_SUBS
+		CASE_BEGIN(BEGINSUB)
+			m_runGas = 1;
+			ON_OP();
+			updateIOGas();
+			++m_pc;
+		CASE_END
+
+		CASE_BEGIN(BEGINDATA)
+			throwBadInstruction();
+		CASE_END
+#else
+		CASE_BEGIN(BEGINSUB)
+		CASE_BEGIN(BEGINDATA)
+			throwBadInstruction();
+		CASE_END
+#endif
 
 		CASE_BEGIN(BAD)
 			throwBadInstruction();
