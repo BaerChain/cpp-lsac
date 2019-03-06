@@ -1,20 +1,13 @@
 #!/usr/bin/env sh
 
-# This script downloads the CMake binary and installs it in $PREFIX directory
-# (the cmake executable will be in $PREFIX/bin). By default $PREFIX is
-# ~/.local but can we changes with --prefix <PREFIX> argument.
-
+# This script downloads the CMake binary and installs it in ~/.local directory
+# (the cmake executable will be in ~/.local/bin).
 # This is mostly suitable for CIs, not end users.
 
 set -e
 
 VERSION=3.7.1
-
-if [ "$1" = "--prefix" ]; then
-    PREFIX="$2"
-else
-    PREFIX=~/.local
-fi
+PREFIX=~/.local
 
 OS=$(uname -s)
 case $OS in
@@ -33,7 +26,7 @@ else
     ERROR=0
     TMPFILE=$(mktemp --tmpdir cmake-$VERSION-$OS-x86_64.XXXXXXXX.tar.gz)
     echo "Downloading CMake ($URL)..."
-    curl -s "$URL" > "$TMPFILE"
+    wget "$URL" -O "$TMPFILE" -nv
     if ! (shasum -a256 "$TMPFILE" | grep -q "$SHA256"); then
         echo "Checksum mismatch ($TMPFILE)"
         exit 1
