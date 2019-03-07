@@ -48,10 +48,6 @@
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <boost/version.hpp>
-#if (BOOST_VERSION == 105800)
-	#include "boost_multiprecision_number_compare_bug_workaround.hpp"
-#endif
 #include <boost/multiprecision/cpp_int.hpp>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
@@ -66,7 +62,6 @@ using byte = uint8_t;
 
 #define DEV_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
-#define DEV_IF_NO_ELSE(X) if(!(X)){}else
 #define DEV_IF_THROWS(X) try{X;}catch(...)
 
 namespace dev
