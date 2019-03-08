@@ -67,12 +67,19 @@ bool dev::SignatureStruct::isValid() const noexcept
 	return true;
 }
 
+bool dev::SignatureStruct::zeroSignature() const noexcept
+{
+	return (r == h256(0) && s == h256(0) && v == 0);
+}
+
 Public SignatureStruct::recover(h256 const& _hash) const
 {
 	return dev::recover((Signature)*this, _hash);
 }
 
 Address dev::ZeroAddress = Address();
+
+Address dev::LastAddress = Address("0xffffffffffffffffffffffffffffffffffffffff");
 
 Public dev::toPublic(Secret const& _secret)
 {

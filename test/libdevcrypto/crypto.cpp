@@ -46,8 +46,6 @@ using namespace dev::test;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-BOOST_AUTO_TEST_SUITE(Crypto)
-
 struct DevcryptoTestFixture: public TestOutputHelper {
 	DevcryptoTestFixture() : s_secp256k1(Secp256k1PP::get()) {}
 	~DevcryptoTestFixture() {}
@@ -155,7 +153,7 @@ BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
 		
 		h256 he(sha3(e));
 		Integer heInt(he.asBytes().data(), 32);
-		h256 k(kdf(secret, he));
+		h256 k(crypto::kdf(secret, he));
 		Integer kInt(k.asBytes().data(), 32);
 		kInt %= params().GetSubgroupOrder()-1;
 
@@ -770,6 +768,9 @@ BOOST_AUTO_TEST_CASE(recoverVgt3)
 	}
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+#if defined(__GNUC__)
+  	#pragma GCC diagnostic pop
+#endif // defined(__GNUC__)
+
 BOOST_AUTO_TEST_SUITE_END()
 

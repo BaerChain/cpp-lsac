@@ -421,12 +421,6 @@ void EthereumHost::reset()
 	m_transactionsSent.clear();
 }
 
-void EthereumHost::completeSync()
-{
-	RecursiveGuard l(x_sync);
-	m_sync->completeSync();
-}
-
 void EthereumHost::doWork()
 {
 	bool netChange = ensureInitialised();
