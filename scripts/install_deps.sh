@@ -181,14 +181,14 @@ Linux)
 # It would be good to add armel, armhf and arm64.
 # See https://github.com/ethereum/webthree-umbrella/issues/228.
 #------------------------------------------------------------------------------
-        Ubuntu|LinuxMint)
+        Ubuntu|"Linux Mint")
             echo "Installing cpp-ethereum dependencies on Ubuntu."
             if [ "$TRAVIS" ]; then
                 # Setup prebuilt LLVM on Travis CI:
                 $SUDO apt-get -qy remove llvm  # Remove confilicting package.
                 echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main" | \
                     $SUDO tee -a /etc/apt/sources.list > /dev/null
-                LLVM_PACKAGES="llvm-3.9-dev libz-dev"
+                TRAVIS_PACKAGES="llvm-3.9-dev libz-dev"
             fi
             $SUDO apt-get -q update
             $SUDO apt-get install -qy --no-install-recommends --allow-unauthenticated \
@@ -198,7 +198,7 @@ Linux)
                 libleveldb-dev \
                 libmicrohttpd-dev \
                 libminiupnpc-dev \
-                $LLVM_PACKAGES
+                $TRAVIS_PACKAGES
             ;;
 
         CentOS*)

@@ -20,7 +20,7 @@
  */
 
 #include <libdevcore/RangeMask.h>
-#include <test/test.h>
+#include <test/libtesteth/TestHelper.h>
 
 using namespace std;
 using namespace dev;

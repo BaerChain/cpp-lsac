@@ -190,37 +190,32 @@ void Executive::initialize(Transaction const& _transaction)
 	}
 
 	// Check gas cost is enough.
-	m_baseGasRequired = m_t.gasRequired(m_sealEngine.evmSchedule(m_envInfo));
+	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
 	if (m_baseGasRequired > m_t.gas())
 	{
 		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_baseGasRequired << " Got" << m_t.gas();
 		m_excepted = TransactionException::OutOfGasBase;
-		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_baseGasRequired, (bigint)m_t.gas()));
+		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError((bigint)m_baseGasRequired, (bigint)m_t.gas()));
 	}
 
-	if (!m_t.hasZeroSignature())
+	// Avoid invalid transactions.
+	u256 nonceReq;
+	try
 	{
-		// Avoid invalid transactions.
-		u256 nonceReq;
-		try
-		{
-			nonceReq = m_s.getNonce(m_t.sender());
-		}
-		catch (...)
-		{
-			clog(ExecutiveWarnChannel) << "Invalid Signature";
-			m_excepted = TransactionException::InvalidSignature;
-			throw;
-		}
-		if (m_t.nonce() != nonceReq)
-		{
-			clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
-			m_excepted = TransactionException::InvalidNonce;
-			BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
-		}
+		nonceReq = m_s.getNonce(m_t.sender());
 	}
-	else
-		m_t.forceSender(LastAddress); // https://github.com/ethereum/EIPs/issues/86
+	catch (...)
+	{
+		clog(ExecutiveWarnChannel) << "Invalid Signature";
+		m_excepted = TransactionException::InvalidSignature;
+		throw;
+	}
+	if (m_t.nonce() != nonceReq)
+	{
+		clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		m_excepted = TransactionException::InvalidNonce;
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
+	}
 
 	// Avoid unaffordable transactions.
 	bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
@@ -267,9 +262,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
 	m_savepoint = m_s.savepoint();
 
-	if (m_sealEngine.isPrecompiled(_p.codeAddress))
+	if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
 	{
-		bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data);
+		bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
 		if (_p.gas < g)
 		{
 			m_excepted = TransactionException::OutOfGasBase;
@@ -279,7 +274,14 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else
 		{
 			m_gas = (u256)(_p.gas - g);
-			bytes output = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data);
+			bytes output;
+			bool success;
+			tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+			if (!success)
+			{
+				m_gas = 0;
+				m_excepted = TransactionException::OutOfGas;
+			}
 			size_t outputSize = output.size();
 			m_output = owning_bytes_ref{std::move(output), 0, outputSize};
 		}

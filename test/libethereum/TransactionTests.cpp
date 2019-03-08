@@ -24,7 +24,7 @@
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
 #include <test/libtestutils/Common.h>
-#include <test/TestHelper.h>
+#include <test/libtesteth/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>
 
 using namespace std;
@@ -63,7 +63,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			try
 			{
 				Transaction txFromFields(rlpStream.out(), CheckTransaction::Everything);
-				if (!txFromFields.signature().isValid() && !txFromFields.signature().zeroSignature())
+				if (!txFromFields.signature().isValid())
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
 				se->verifyTransaction(ImportRequirements::Everything, txFromFields, bh);
 
@@ -115,7 +115,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				RLP rlp(stream);
 				txFromRlp = Transaction(rlp.data(), CheckTransaction::Everything);
 				se->verifyTransaction(ImportRequirements::Everything, txFromRlp, bh);
-				if (!txFromRlp.signature().isValid() && !txFromRlp.signature().zeroSignature())
+				if (!txFromRlp.signature().isValid())
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
 			}
 			catch(Exception const& _e)

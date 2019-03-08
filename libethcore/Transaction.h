@@ -142,15 +142,13 @@ public:
 	/// @returns the signature of the transaction. Encodes the sender.
 	SignatureStruct const& signature() const { return m_vrs; }
 
-	bool hasZeroSignature() const { return m_vrs.zeroSignature(); }
-
 	void sign(Secret const& _priv);			///< Sign the transaction.
 
-	/// @returns true if the transaction contains enough gas for the basic payment.
-	bigint gasRequired(EVMSchedule const& _es, u256 const& _gas = 0) const { return gasRequired(m_type == TransactionBase::ContractCreation, &m_data, _es, _gas); }
+	/// @returns amount of gas required for the basic payment.
+	int64_t baseGasRequired(EVMSchedule const& _es) const { return baseGasRequired(isCreation(), &m_data, _es); }
 
 	/// Get the fee associated for a transaction with the given data.
-	static bigint gasRequired(bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es, u256 const& _gas = 0);
+	static int64_t baseGasRequired(bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es);
 
 protected:
 	/// Type of transaction.

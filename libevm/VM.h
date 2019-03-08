@@ -62,8 +62,14 @@ class VM: public VMFace
 public:
 	virtual owning_bytes_ref exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
+#if EVM_JUMPS_AND_SUBS
+	// invalid code will throw an exeption
+	void validate(ExtVMFace& _ext);
+	void validateSubroutine(uint64_t _PC, uint64_t* _RP, u256* _SP);
+#endif
+
 	bytes const& memory() const { return m_mem; }
-	u256s stack() const { assert(m_stack <= m_sp + 1); return u256s(m_stack, m_sp + 1); };
+	u256s stack() const { assert(m_stack <= m_SP + 1); return u256s(m_stack, m_SP + 1); };
 
 private:
 
@@ -98,22 +104,26 @@ private:
 	// space for stack and pointer to data
 	u256 m_stackSpace[1025];
 	u256* m_stack = m_stackSpace + 1;
+	ptrdiff_t stackSize() { return m_SP - m_stack; }
 	
 #if EVM_JUMPS_AND_SUBS
 	// space for return stack and pointer to data
 	uint64_t m_returnSpace[1025];
 	uint64_t* m_return = m_returnSpace + 1;
+	
+	// mark PCs with frame size to detect cycles and stack mismatch
+	std::vector<size_t> m_frameSize;
 #endif
 
 	// constant pool
 	u256 m_pool[256];
 
 	// interpreter state
-	Instruction m_op;                   // current operator
-	uint64_t    m_pc = 0;               // program counter
-	u256*       m_sp = m_stack - 1;     // stack pointer
+	Instruction m_OP;                   // current operator
+	uint64_t    m_PC = 0;               // program counter
+	u256*       m_SP = m_stack - 1;     // stack pointer
 #if EVM_JUMPS_AND_SUBS
-	uint64_t*   m_rp = m_return - 1;    // return pointer
+	uint64_t*   m_RP = m_return - 1;    // return pointer
 #endif
 
 	// metering and memory state
@@ -133,7 +143,7 @@ private:
 	bool caseCallSetup(CallParameters*, bytesRef& o_output);
 	void caseCall();
 
-	void copyDataToMemory(bytesConstRef _data, u256*& m_sp);
+	void copyDataToMemory(bytesConstRef _data, u256*& m_SP);
 	uint64_t memNeed(u256 _offset, u256 _size);
 
 	void throwOutOfGas();
@@ -161,7 +171,7 @@ private:
 	uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);
 	uint64_t decodeJumpvDest(const byte* const _code, uint64_t& _pc, u256*& _sp);
 
-	template<class T> uint64_t toUint64(T v)
+	template<class T> uint64_t toInt63(T v)
 	{
 		// check for overflow
 		if (v > 0x7FFFFFFFFFFFFFFF)
