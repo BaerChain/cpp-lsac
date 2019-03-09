@@ -28,7 +28,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Exceptions.h>
-#include <libdevcore/FileSystem.h>
 
 namespace dev
 {
@@ -53,9 +52,6 @@ struct SignatureStruct
 	/// @returns true if r,s,v values are valid, otherwise false
 	bool isValid() const noexcept;
 
-	/// @returns the public part of the key that signed @a _hash to give this sig.
-	Public recover(h256 const& _hash) const;
-
 	h256 r;
 	h256 s;
 	byte v = 0;
@@ -67,6 +63,9 @@ using Address = h160;
 
 /// The zero address.
 extern Address ZeroAddress;
+
+/// The last address.
+extern Address MaxAddress;
 
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
@@ -155,10 +154,12 @@ class KeyPair
 {
 public:
 	/// Null constructor.
-	KeyPair() {}
+	KeyPair() = default;
 
 	/// Normal constructor - populates object from the given secret key.
-	KeyPair(Secret const& _k) { populateFromSecret(_k); }
+	/// If the secret key is invalid the constructor succeeds, but public key
+	/// and address stay "null".
+	KeyPair(Secret const& _sec);
 
 	/// Create a new, randomly generated object.
 	static KeyPair create();
@@ -166,10 +167,7 @@ public:
 	/// Create from an encrypted seed.
 	static KeyPair fromEncryptedSeed(bytesConstRef _seed, std::string const& _password);
 
-	/// Retrieve the secret key.
 	Secret const& secret() const { return m_secret; }
-	/// Retrieve the secret key.
-	Secret const& sec() const { return m_secret; }
 
 	/// Retrieve the public key.
 	Public const& pub() const { return m_public; }
@@ -181,8 +179,6 @@ public:
 	bool operator!=(KeyPair const& _c) const { return m_public != _c.m_public; }
 
 private:
-	void populateFromSecret(Secret const& _k);
-
 	Secret m_secret;
 	Public m_public;
 	Address m_address;
@@ -221,6 +217,18 @@ private:
 	Secret m_value;
 };
 
+namespace ecdh
+{
+
+void agree(Secret const& _s, Public const& _r, Secret& o_s);
+
 }
 
+namespace ecies
+{
+
+bytes kdf(Secret const& _z, bytes const& _s1, unsigned kdByteLen);
+
+}
+}
 }

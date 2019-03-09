@@ -43,9 +43,11 @@ void SealEngineFace::populateFromParent(BlockHeader& _bi, BlockHeader const& _pa
 	_bi.populateFromParent(_parent);
 }
 
-void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const&) const
+void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _bi) const
 {
-	if (_ir & ImportRequirements::TransactionSignatures)
+	if ((_ir & ImportRequirements::TransactionSignatures) && _bi.number() < chainParams().u256Param("metropolisForkBlock") && _t.hasZeroSignature())
+		BOOST_THROW_EXCEPTION(InvalidSignature());
+	if (_bi.number() >= chainParams().u256Param("homsteadForkBlock") && (_ir & ImportRequirements::TransactionSignatures))
 		_t.checkLowS();
 }
 
@@ -60,7 +62,7 @@ SealEngineFace* SealEngineRegistrar::create(ChainOperationParams const& _params)
 
 EVMSchedule const& SealEngineBase::evmSchedule(EnvInfo const& _envInfo) const
 {
-	if (_envInfo.number() >= chainParams().u256Param("MetropolistForkBlock"))
+	if (_envInfo.number() >= chainParams().u256Param("metropolisForkBlock"))
 		return MetropolisSchedule;
 	if (_envInfo.number() >= chainParams().u256Param("EIP158ForkBlock"))
 		return EIP158Schedule;
