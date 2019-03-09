@@ -19,8 +19,8 @@
  */
 
 #pragma once
-#include <test/libtestutils/Common.h>
-#include <test/libtesteth/JsonSpiritHeaders.h>
+#include <test/tools/libtestutils/Common.h>
+#include <test/tools/libtesteth/JsonSpiritHeaders.h>
 
 namespace dev
 {
@@ -48,6 +48,7 @@ public:
 	bool checkstate = false;///< Throw error when checking test states
 	bool fulloutput = false;///< Replace large output to just it's length
 	bool createRandomTest = false; ///< Generate random test
+	std::string testpath;	///< Custom test folder path
 	Verbosity logVerbosity = Verbosity::NiceReport;
 
 	/// Test selection
@@ -56,12 +57,12 @@ public:
 	std::string singleTestFile;
 	std::string singleTestName;
 	std::string singleTestNet;
-	int trDataIndex; ///< GeneralState data
-	int trGasIndex; ///< GeneralState gas
-	int trValueIndex; ///< GeneralState value
+	int trDataIndex;	///< GeneralState data
+	int trGasIndex;		///< GeneralState gas
+	int trValueIndex;	///< GeneralState value
 	bool performance = false;
 	bool nonetwork = false;///< For libp2p
-	bool quadratic = false;
+	bool quadratic = false;///< Time consuming tests
 	bool memory = false;
 	bool inputLimits = false;
 	bool bigData = false;

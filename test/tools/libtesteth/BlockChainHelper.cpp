@@ -14,9 +14,9 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file BlockChainHelper.cpp
- * @author Dimitry Khokhlov <dimitry@ethdev.com>
- * @date 2015
+/** @file
+ * Incapsulation of libetehreum blockchain logic into test classes
+ * that manage block/transaction import and test mining
  */
 
 #include <libdevcore/TransientDirectory.h>
@@ -25,8 +25,8 @@
 #include <libethereum/TransactionQueue.h>
 #include <libethereum/GenesisInfo.h>
 #include <libethashseal/GenesisInfo.h>
-#include <test/BlockChainHelper.h>
-#include <test/TestHelper.h>
+#include <test/tools/libtesteth/BlockChainHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
@@ -541,6 +541,22 @@ TestTransaction TestTransaction::defaultTransaction(u256 const& _nonce, u256 con
 	txObj["secretKey"] = "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8";
 	txObj["to"] = "095e7baea6a6c7c4c2dfeb977efac326af552d87";
 	txObj["value"] = "100";
+
+	return TestTransaction(txObj);
+}
+
+TestTransaction TestTransaction::defaultZeroTransaction(u256 const& _gasLimit, bytes const& _data)
+{
+	json_spirit::mObject txObj;
+	txObj["data"] = toHex(_data);
+	txObj["gasLimit"] = toString(_gasLimit);
+	txObj["gasPrice"] = toString(0);
+	txObj["nonce"] = toString(0);
+	txObj["v"] = toString(1);
+	txObj["r"] = toString(0);
+	txObj["s"] = toString(0);
+	txObj["to"] = "095e7baea6a6c7c4c2dfeb977efac326af552d87";
+	txObj["value"] = "0";
 
 	return TestTransaction(txObj);
 }

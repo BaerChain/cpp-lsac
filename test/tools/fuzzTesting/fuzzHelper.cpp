@@ -23,8 +23,8 @@
 #include <boost/random.hpp>
 #include <boost/filesystem/path.hpp>
 #include <libevmcore/Instruction.h>
-#include <test/fuzzTesting/fuzzHelper.h>
-#include <test/libtesteth/TestOutputHelper.h>
+#include <test/tools/fuzzTesting/fuzzHelper.h>
+#include <test/tools/libtesteth/TestOutputHelper.h>
 
 namespace dev
 {
@@ -347,6 +347,7 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 			code += getPushCode(toString(_options.getRandomAddress()));
 		break;
 		case dev::eth::Instruction::RETURN:  //(RETURN memlen1 memlen2)
+		case dev::eth::Instruction::REVERT:  //(REVERT memlen1 memlen2)
 			code += getPushCode(randUniIntGen() % 128);  //memlen1
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 		break;

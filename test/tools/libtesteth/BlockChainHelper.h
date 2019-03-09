@@ -14,9 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file BlockChainHelper.h
- * @author Dimitry Khokhlov <dimitry@ethdev.com>
- * @date 2015
+/** @file
  */
 
 #pragma once
@@ -48,6 +46,7 @@ public:
 	Transaction const& transaction() const { return m_transaction; }
 	json_spirit::mObject& jsonObject() { return m_jsonTransaction; }
 	static TestTransaction defaultTransaction(u256 const& _nonce = 1, u256 const& _gasPrice = 1, u256 const& _gasLimit = 50000, bytes const& _data = bytes());
+	static TestTransaction defaultZeroTransaction(u256 const& _gasLimit = 50000, bytes const& _data = bytes());
 
 private:
 	json_spirit::mObject m_jsonTransaction;

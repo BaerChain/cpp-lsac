@@ -23,9 +23,9 @@
 #include <libethcore/SealEngine.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
-#include <test/libtestutils/Common.h>
-#include <test/libtesteth/TestHelper.h>
-#include <test/fuzzTesting/fuzzHelper.h>
+#include <test/tools/libtestutils/Common.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/fuzzTesting/fuzzHelper.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -50,6 +50,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 		u256 transactionBlock = toInt(o["blocknumber"].get_str());
 		BlockHeader bh;
 		bh.setNumber(transactionBlock);
+		bool onMetropolis = (transactionBlock >= se->chainParams().u256Param("metropolisForkBlock"));
 
 		if (_fillin)
 		{
@@ -63,9 +64,12 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			try
 			{
 				Transaction txFromFields(rlpStream.out(), CheckTransaction::Everything);
+				bool onMetropolisAndZeroSig = onMetropolis && txFromFields.hasZeroSignature();
+
 				if (!txFromFields.signature().isValid())
+				if (!onMetropolisAndZeroSig)
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
-				se->verifyTransaction(ImportRequirements::Everything, txFromFields, bh);
+				se->verifyTransaction(ImportRequirements::Everything, txFromFields, EnvInfo(bh));
 
 				if (o.count("sender") > 0)
 				{
@@ -81,13 +85,15 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				//Transaction is InValid
 				cnote << "Transaction Exception: " << diagnostic_information(_e);
 				o.erase(o.find("transaction"));
+				if (o.count("sender") > 0)
+					o.erase(o.find("sender"));
 				if (o.count("expect") > 0)
 				{
 					bool expectInValid = (o["expect"].get_str() == "invalid");
 					if (Options::get().checkstate)
-							BOOST_CHECK_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");
+							BOOST_CHECK_MESSAGE(expectInValid, testname + " Check state: Transaction '" << i.first << "' is expected to be valid!");
 						else
-							BOOST_WARN_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");
+							BOOST_WARN_MESSAGE(expectInValid, testname + " Check state: Transaction '" << i.first << "' is expected to be valid!");
 
 					o.erase(o.find("expect"));
 				}
@@ -98,9 +104,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				bool expectValid = (o["expect"].get_str() == "valid");
 				if (Options::get().checkstate)
-						BOOST_CHECK_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");
+						BOOST_CHECK_MESSAGE(expectValid, testname + " Check state: Transaction '" << i.first << "' is expected to be invalid!");
 					else
-						BOOST_WARN_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");
+						BOOST_WARN_MESSAGE(expectValid, testname + " Check state: Transaction '" << i.first << "' is expected to be invalid!");
 
 				o.erase(o.find("expect"));
 			}
@@ -114,8 +120,10 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				bytes stream = importByteArray(o["rlp"].get_str());
 				RLP rlp(stream);
 				txFromRlp = Transaction(rlp.data(), CheckTransaction::Everything);
-				se->verifyTransaction(ImportRequirements::Everything, txFromRlp, bh);
+				bool onMetropolisAndZeroSig = onMetropolis && txFromRlp.hasZeroSignature();
+				se->verifyTransaction(ImportRequirements::Everything, txFromRlp, EnvInfo(bh));
 				if (!txFromRlp.signature().isValid())
+				if (!onMetropolisAndZeroSig)
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
 			}
 			catch(Exception const& _e)
@@ -161,6 +169,17 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 
 BOOST_AUTO_TEST_SUITE(TransactionTests)
+
+
+BOOST_AUTO_TEST_CASE(ttTransactionTestZeroSig)
+{
+	dev::test::executeTests("ttTransactionTestZeroSig", "/TransactionTests/Metropolis", "/TransactionTestsFiller/Metropolis", dev::test::doTransactionTests);
+}
+
+BOOST_AUTO_TEST_CASE(ttTransactionTestMetropolis)
+{
+	dev::test::executeTests("ttTransactionTest", "/TransactionTests/Metropolis", "/TransactionTestsFiller/Metropolis", dev::test::doTransactionTests);
+}
 
 BOOST_AUTO_TEST_CASE(ttMetropolisTests)
 {
