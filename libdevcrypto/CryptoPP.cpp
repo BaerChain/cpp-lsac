@@ -144,8 +144,7 @@ bool Secp256k1PP::decryptECIES(Secret const& _k, bytesConstRef _sharedMacData, b
 		return false;
 
 	Secret z;
-	if (!ecdh::agree(_k, *(Public*)(io_text.data() + 1), z))
-		return false;  // Invalid pubkey or seckey.
+	ecdh::agree(_k, *(Public*)(io_text.data() + 1), z);
 	auto key = ecies::kdf(z, bytes(), 64);
 	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 16);
 	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);

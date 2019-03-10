@@ -26,12 +26,11 @@ using namespace dev::crypto;
 
 void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret) const
 {
-	if (m_agreed)
+	if (m_remoteEphemeral)
 		// agreement can only occur once
 		BOOST_THROW_EXCEPTION(InvalidState());
 	
-	m_agreed = true;
-	if (!ecdh::agree(m_ephemeral.secret(), _remote, o_sharedSecret))
-		BOOST_THROW_EXCEPTION(InvalidState());
+	m_remoteEphemeral = _remote;
+	ecdh::agree(m_ephemeral.secret(), m_remoteEphemeral, o_sharedSecret);
 }
 

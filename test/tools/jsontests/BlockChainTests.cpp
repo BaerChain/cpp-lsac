@@ -17,7 +17,8 @@
 /** @file blockchain.cpp
  * @author Christoph Jentzsch <cj@ethdev.com>, Dimitry Khokhlov <dimitry@ethdev.com>
  * @date 2015
- * BlockChain test functions.
+ * Generation of a blockchain tests. Parse blockchain test fillers.
+ * Simulating block import checking the post state.
  */
 
 #include <boost/filesystem/operations.hpp>
@@ -25,10 +26,10 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
 #include <libethashseal/Ethash.h>
-#include <test/libtesteth/TestHelper.h>
-#include <test/libtesteth/BlockChainHelper.h>
-#include <test/libtesteth/JsonSpiritHeaders.h>
-#include <test/fuzzTesting/fuzzHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/BlockChainHelper.h>
+#include <test/tools/libtesteth/JsonSpiritHeaders.h>
+#include <test/tools/fuzzTesting/fuzzHelper.h>
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
@@ -682,10 +683,10 @@ void checkExpectedException(mObject& _blObj, Exception const& _e)
 		return;
 
 	string exWhat {	_e.what() };
-	BOOST_REQUIRE_MESSAGE(_blObj.count("expectException") > 0, TestOutputHelper::testName() + "block import thrown unexpected Excpetion! (" + exWhat + ")");
+	BOOST_REQUIRE_MESSAGE(_blObj.count("expectException") > 0, TestOutputHelper::testName() + " block import thrown unexpected Excpetion! (" + exWhat + ")");
 
 	string exExpect = _blObj.at("expectException").get_str();
-	BOOST_REQUIRE_MESSAGE(exWhat.find(exExpect) != string::npos, TestOutputHelper::testName() + "block import expected another exeption: " + exExpect);
+	BOOST_REQUIRE_MESSAGE(exWhat.find(exExpect) != string::npos, TestOutputHelper::testName() + " block import expected another exeption: " + exExpect);
 	_blObj.erase(_blObj.find("expectException"));
 }
 
@@ -699,7 +700,7 @@ void checkJsonSectionForInvalidBlock(mObject& _blObj)
 void eraseJsonSectionForInvalidBlock(mObject& _blObj)
 {
 	// if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle list should be given
-	cnote << TestOutputHelper::testName() + "block is invalid!\n";
+	cnote << TestOutputHelper::testName() + " block is invalid!\n";
 	_blObj.erase(_blObj.find("blockHeader"));
 	_blObj.erase(_blObj.find("uncleHeaders"));
 	_blObj.erase(_blObj.find("transactions"));
