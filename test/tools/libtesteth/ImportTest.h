@@ -19,9 +19,9 @@
  */
 
 #pragma once
-#include <test/libtestutils/Common.h>
+#include <test/tools/libtestutils/Common.h>
 #include <libethashseal/GenesisInfo.h>
-#include <test/libtesteth/JsonSpiritHeaders.h>
+#include <test/tools/libtesteth/JsonSpiritHeaders.h>
 #include <libethereum/State.h>
 
 namespace dev
@@ -48,7 +48,7 @@ public:
 	static void importState(json_spirit::mObject const& _o, eth::State& _state, eth::AccountMaskMap& o_mask);
 	static void importTransaction (json_spirit::mObject const& _o, eth::Transaction& o_tr);
 	void importTransaction(json_spirit::mObject const& _o);
-	static json_spirit::mObject& makeAllFieldsHex(json_spirit::mObject& _o);
+	static json_spirit::mObject& makeAllFieldsHex(json_spirit::mObject& _o, bool _isHeader = false);
 
 	bytes executeTest();
 	int exportTest(bytes const& _output);

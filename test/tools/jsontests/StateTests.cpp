@@ -17,7 +17,7 @@
 /** @file StateTests.cpp
  * @author Dimitry Khokhlov <dimitry@ethereum.org>
  * @date 2016
- * State test functions.
+ * General State Tests parser.
  */
 
 #include <boost/filesystem/operations.hpp>
@@ -30,7 +30,7 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/Defaults.h>
 #include <libevm/VM.h>
-#include <test/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -39,7 +39,7 @@ using namespace dev::eth;
 
 namespace dev {  namespace test {
 
-void doStateTests2(json_spirit::mValue& _v, bool _fillin)
+void doStateTests(json_spirit::mValue& _v, bool _fillin)
 {
 	for (auto& i: _v.get_obj())
 	{
@@ -128,7 +128,7 @@ public:
 			if (boost::filesystem::is_regular_file(iterator->path()) && iterator->path().extension() == ".json")
 			{
 				string fileboost = iterator->path().filename().string();
-				dev::test::executeTests(fileboost, "/GeneralStateTests/"+_folder, "/GeneralStateTestsFiller/"+_folder, dev::test::doStateTests2);
+				dev::test::executeTests(fileboost, "/GeneralStateTests/"+_folder, "/GeneralStateTestsFiller/"+_folder, dev::test::doStateTests);
 			}
 		dev::test::TestOutputHelper::finishTest();
 	}
@@ -137,7 +137,6 @@ public:
 BOOST_FIXTURE_TEST_SUITE(StateTestsGeneral, generaltestfixture)
 
 //Frontier Tests
-BOOST_AUTO_TEST_CASE(stBlockHashTest){}
 BOOST_AUTO_TEST_CASE(stBoundsTest){}
 BOOST_AUTO_TEST_CASE(stCallCodes){}
 BOOST_AUTO_TEST_CASE(stCallCreateCallCodeTest){}

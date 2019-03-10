@@ -178,16 +178,16 @@ void Executive::accrueSubState(SubState& _parentContext)
 
 void Executive::initialize(Transaction const& _transaction)
 {
+	m_t = _transaction;
+	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
 	try
 	{
-		m_t = _transaction;
 		m_sealEngine.verifyTransaction(ImportRequirements::Everything, m_t, m_envInfo);
-		m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
 	}
 	catch (Exception const& ex)
 	{
 		m_excepted = toTransactionException(ex);
-		BOOST_THROW_EXCEPTION(ex);
+		throw;
 	}
 
 	if (!m_t.hasZeroSignature())
