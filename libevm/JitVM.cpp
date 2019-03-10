@@ -73,8 +73,7 @@ void evm_query(
 		o_result->uint256be = toEvmC(env.envInfo().difficulty());
 		break;
 	case EVM_GAS_LIMIT:
-		// TODO: Handle overflow / exception
-		o_result->int64 = static_cast<int64_t>(env.envInfo().gasLimit());
+		o_result->int64 = env.envInfo().gasLimit();
 		break;
 	case EVM_NUMBER:
 		// TODO: Handle overflow / exception

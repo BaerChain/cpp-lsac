@@ -114,11 +114,11 @@ void TestBlock::addTransaction(TestTransaction const& _tr)
 	{
 		m_testTransactions.push_back(_tr);
 		if (m_transactionQueue.import(_tr.transaction().rlp()) != ImportResult::Success)
-			cnote << TestOutputHelper::testName() + " Test block failed importing transaction\n";
+			cnote << TestOutputHelper::testName() + "Test block failed importing transaction\n";
 	}
 	catch (Exception const& _e)
 	{
-		BOOST_ERROR(TestOutputHelper::testName() + " Failed transaction constructor with Exception: " << diagnostic_information(_e));
+		BOOST_ERROR(TestOutputHelper::testName() + "Failed transaction constructor with Exception: " << diagnostic_information(_e));
 	}
 	catch (exception const& _e)
 	{
@@ -196,31 +196,25 @@ void TestBlock::mine(TestBlockChain const& _bc)
 		premineUpdate(blockInfo);
 
 		size_t transactionsOnImport = m_transactionQueue.topTransactions(100).size();
-		block.sync(blockchain, m_transactionQueue, gp); //!!! Invalid transactions could be dropped from queue here!!!
-		//if (transactionsOnImport >  m_transactionQueue.topTransactions(1000).size())
-			//BOOST_ERROR(TestOutputHelper::testName() + " Dropped invalid Transactions before mining!");
+		block.sync(blockchain, m_transactionQueue, gp); //!!! Invalid transactions are dropped here
+		if (transactionsOnImport >  m_transactionQueue.topTransactions(100).size())
+			cnote << "Dropped invalid Transactions when mining!";
+
 		dev::eth::mine(block, blockchain, blockchain.sealEngine());
 		blockchain.sealEngine()->verify(JustSeal, block.info());
-		if (transactionsOnImport >  block.pending().size())
-			cnote << TestOutputHelper::testName() + " Dropped invalid Transactions when mining!";
-
-		//renew the TestBlock transactions
-		m_transactionQueue.clear();
-		for (size_t i = 0; i < block.pending().size(); i++)
-			m_transactionQueue.import(block.pending()[i]);
 	}
 	catch (Exception const& _e)
 	{
-		cnote << TestOutputHelper::testName() + " block sync or mining did throw an exception: " << diagnostic_information(_e);
+		cnote << TestOutputHelper::testName() + "block sync or mining did throw an exception: " << diagnostic_information(_e);
 		return;
 	}
 	catch (std::exception const& _e)
 	{
-		cnote << TestOutputHelper::testName() + " block sync or mining did throw an exception: " << _e.what();
+		cnote << TestOutputHelper::testName() + "block sync or mining did throw an exception: " << _e.what();
 		return;
 	}
 
-	size_t validTransactions = block.pending().size();
+	size_t validTransactions = m_transactionQueue.topTransactions(100).size();
 	m_receipts = RLPStream(validTransactions);
 	for (size_t i = 0; i < validTransactions; i++)
 	{
@@ -270,15 +264,15 @@ BlockHeader TestBlock::constructBlock(mObject const& _o, h256 const& _stateRoot)
 	}
 	catch (Exception const& _e)
 	{
-		cnote << TestOutputHelper::testName() + " block population did throw an exception: " << diagnostic_information(_e);
+		cnote << TestOutputHelper::testName() + "block population did throw an exception: " << diagnostic_information(_e);
 	}
 	catch (std::exception const& _e)
 	{
-		BOOST_ERROR(TestOutputHelper::testName() + " Failed block population with Exception: " << _e.what());
+		BOOST_ERROR(TestOutputHelper::testName() + "Failed block population with Exception: " << _e.what());
 	}
 	catch(...)
 	{
-		BOOST_ERROR(TestOutputHelper::testName() + " block population did throw an unknown exception\n");
+		BOOST_ERROR(TestOutputHelper::testName() + "block population did throw an unknown exception\n");
 	}
 	return ret;
 }
@@ -374,7 +368,7 @@ void TestBlock::verify(TestBlockChain const& _bc) const
 	}
 	catch (...)
 	{
-		BOOST_ERROR(TestOutputHelper::testName() + " BlockHeader Verification failed: " <<  boost::current_exception_diagnostic_information());
+		BOOST_ERROR(TestOutputHelper::testName() + "BlockHeader Verification failed: " <<  boost::current_exception_diagnostic_information());
 	}
 }
 
@@ -544,8 +538,8 @@ TestTransaction TestTransaction::defaultTransaction(u256 const& _nonce, u256 con
 	txObj["gasLimit"] = toString(_gasLimit);
 	txObj["gasPrice"] = toString(_gasPrice);
 	txObj["nonce"] = toString(_nonce);
-	txObj["secretKey"] = "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8";
-	txObj["to"] = "0x095e7baea6a6c7c4c2dfeb977efac326af552d87";
+	txObj["secretKey"] = "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8";
+	txObj["to"] = "095e7baea6a6c7c4c2dfeb977efac326af552d87";
 	txObj["value"] = "100";
 
 	return TestTransaction(txObj);
@@ -561,7 +555,7 @@ TestTransaction TestTransaction::defaultZeroTransaction(u256 const& _gasLimit, b
 	txObj["v"] = toString(1);
 	txObj["r"] = toString(0);
 	txObj["s"] = toString(0);
-	txObj["to"] = "0x095e7baea6a6c7c4c2dfeb977efac326af552d87";
+	txObj["to"] = "095e7baea6a6c7c4c2dfeb977efac326af552d87";
 	txObj["value"] = "0";
 
 	return TestTransaction(txObj);
