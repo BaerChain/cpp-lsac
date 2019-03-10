@@ -41,16 +41,16 @@ public:
 	ECDHE(): m_ephemeral(KeyPair::create()) {};
 
 	/// Public key sent to remote.
-	Public pubkey() { return m_ephemeral.pub(); }
+	Public pub() const { return m_ephemeral.pub(); }
 	
-	Secret seckey() { return m_ephemeral.secret(); }
+	Secret secret() const { return m_ephemeral.secret(); }
 	
 	/// Input public key for dh agreement, output generated shared secret.
 	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret) const;
 	
 protected:
-	KeyPair m_ephemeral;					///< Ephemeral keypair; generated.
-	mutable Public m_remoteEphemeral;		///< Public key of remote; parameter. Set once when agree is called, otherwise immutable.
+	KeyPair m_ephemeral;  ///< Ephemeral keypair; generated.
+	mutable bool m_agreed = false;
 };
 
 }

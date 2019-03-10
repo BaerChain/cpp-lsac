@@ -22,7 +22,7 @@
  */
 
 #include <libdevcore/Guards.h>
-#include <secp256k1/include/secp256k1.h>
+#include <secp256k1.h>
 #include <cryptopp/keccak.h>
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
@@ -37,8 +37,9 @@
 #include <boost/test/unit_test.hpp>
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/ECDHE.h>
+#include <libdevcrypto/Hash.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <test/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -46,11 +47,12 @@ using namespace dev::test;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
+namespace utf = boost::unit_test;
+
 BOOST_AUTO_TEST_SUITE(Crypto)
 
 struct DevcryptoTestFixture: public TestOutputHelper {
 	DevcryptoTestFixture() : s_secp256k1(Secp256k1PP::get()) {}
-	~DevcryptoTestFixture() {}
 
 	Secp256k1PP* s_secp256k1;
 };
@@ -93,42 +95,75 @@ BOOST_AUTO_TEST_CASE(pubkeyOfZero)
 {
 	auto pub = toPublic({});
 	BOOST_REQUIRE_EQUAL(pub, Public{});
-
-	Secp256k1PP::get()->toPublic({}, pub);
-	BOOST_REQUIRE_EQUAL(pub, Public{});
 }
 
-BOOST_AUTO_TEST_CASE(createPublic_cryptopp_vs_libsecp256k1)
-{
-	Secret sec{"0x0000000000000000000000000000000000000000000000000000000000000001"};
-
-	Public cryptoppPub;
-	Public libsecpPub;
-	BOOST_REQUIRE_EQUAL(cryptoppPub, libsecpPub);
-
-	Secp256k1PP::get()->toPublic(sec, cryptoppPub);
-	BOOST_REQUIRE_NE(cryptoppPub, Public{});
-
-	libsecpPub = toPublic(sec);
-	BOOST_REQUIRE_NE(cryptoppPub, Public{});
-
-	BOOST_CHECK_EQUAL(cryptoppPub, libsecpPub);
-}
-
-BOOST_AUTO_TEST_CASE(secp256k1lib)
+BOOST_AUTO_TEST_CASE(KeyPairMix)
 {
 	KeyPair k = KeyPair::create();
-	BOOST_REQUIRE(!!k.sec());
+	BOOST_REQUIRE(!!k.secret());
 	BOOST_REQUIRE(!!k.pub());
-	Public test = toPublic(k.sec());
-	BOOST_REQUIRE(k.pub() == test);
+	Public test = toPublic(k.secret());
+	BOOST_CHECK_EQUAL(k.pub(), test);
+}
+
+BOOST_AUTO_TEST_CASE(keypairs)
+{
+	KeyPair p(Secret(fromHex("3ecb44df2159c26e0f995712d4f39b6f6e499b40749b1cf1246c37f9516cb6a4")));
+	BOOST_REQUIRE(p.pub() == Public(fromHex("97466f2b32bc3bb76d4741ae51cd1d8578b48d3f1e68da206d47321aec267ce78549b514e4453d74ef11b0cd5e4e4c364effddac8b51bcfc8de80682f952896f")));
+	BOOST_REQUIRE(p.address() == Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075")));
+	eth::Transaction t(1000, 0, 0, h160(fromHex("944400f4b88ac9589a0f17ed4671da26bddb668b")), {}, 0, p.secret());
+	auto rlp = t.rlp(eth::WithoutSignature);
+	auto expectedRlp = "dc80808094944400f4b88ac9589a0f17ed4671da26bddb668b8203e880";
+	BOOST_CHECK_EQUAL(toHex(rlp), expectedRlp);
+	rlp = t.rlp(eth::WithSignature);
+	auto expectedRlp2 = "f85f80808094944400f4b88ac9589a0f17ed4671da26bddb668b8203e8801ca0bd2402a510c9c9afddf2a3f63c869573bd257475bea91d6f164638134a3386d6a0609ad9775fd2715e6a359c627e9338478e4adba65dd0dc6ef2bcbe6398378984";
+	BOOST_CHECK_EQUAL(toHex(rlp), expectedRlp2);
+	BOOST_CHECK_EQUAL(t.sender(), p.address());
+}
+
+BOOST_AUTO_TEST_CASE(KeyPairVerifySecret)
+{
+	auto keyPair = KeyPair::create();
+	auto* ctx = secp256k1_context_create(SECP256K1_CONTEXT_NONE);
+	BOOST_CHECK(secp256k1_ec_seckey_verify(ctx, keyPair.secret().data()));
+	secp256k1_context_destroy(ctx);
+}
+
+BOOST_AUTO_TEST_CASE(SignAndRecover)
+{
+	// This basic test that compares **fixed** results. Useful to test new
+	// implementations or changes to implementations.
+	auto sec = Secret{sha3("sec")};
+	auto msg = sha3("msg");
+	auto sig = sign(sec, msg);
+	auto expectedSig = "b826808a8c41e00b7c5d71f211f005a84a7b97949d5e765831e1da4e34c9b8295d2a622eee50f25af78241c1cb7cfff11bcf2a13fe65dee1e3b86fd79a4e3ed000";
+	BOOST_CHECK_EQUAL(sig.hex(), expectedSig);
+
+	auto pub = recover(sig, msg);
+	auto expectedPub = "e40930c838d6cca526795596e368d16083f0672f4ab61788277abfa23c3740e1cc84453b0b24f49086feba0bd978bb4446bae8dff1e79fcc1e9cf482ec2d07c3";
+	BOOST_CHECK_EQUAL(pub.hex(), expectedPub);
+}
+
+BOOST_AUTO_TEST_CASE(SignAndRecoverLoop)
+{
+	auto num = 13;
+	auto msg = h256::random();
+	while (--num)
+	{
+		msg = sha3(msg);
+		auto kp = KeyPair::create();
+		auto sig = sign(kp.secret(), msg);
+		BOOST_CHECK(verify(kp.pub(), sig, msg));
+		auto pub = recover(sig, msg);
+		BOOST_CHECK_EQUAL(kp.pub(), pub);
+	}
 }
 
 BOOST_AUTO_TEST_CASE(cryptopp_patch)
 {
 	KeyPair k = KeyPair::create();
 	bytes io_text;
-	s_secp256k1->decrypt(k.sec(), io_text);
+	s_secp256k1->decrypt(k.secret(), io_text);
 	BOOST_REQUIRE_EQUAL(io_text.size(), 0);
 }
 
@@ -153,65 +188,10 @@ BOOST_AUTO_TEST_CASE(common_encrypt_decrypt)
 	BOOST_REQUIRE(cipher != asBytes(message) && cipher.size() > 0);
 	
 	bytes plain;
-	decrypt(k.sec(), bytesConstRef(&cipher), plain);
+	decrypt(k.secret(), bytesConstRef(&cipher), plain);
 	
 	BOOST_REQUIRE(asString(plain) == message);
 	BOOST_REQUIRE(plain == asBytes(message));
-}
-
-BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
-{
-	secp256k1_context_t* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-
-	// base secret
-	Secret secret(sha3("privacy"));
-	
-	// we get ec params from signer
-	ECDSA<ECP, Keccak_256>::Signer signer;
-	
-	// e := sha3(msg)
-	bytes e(fromHex("0x01"));
-	e.resize(32);
-	int tests = 2;
-	while (sha3(&e, &e), secret = sha3(secret), tests--)
-	{
-		KeyPair key(secret);
-		Public pkey = key.pub();
-		signer.AccessKey().Initialize(params(), Integer(secret.data(), Secret::size));
-		
-		h256 he(sha3(e));
-		Integer heInt(he.asBytes().data(), 32);
-		h256 k(kdf(secret, he));
-		Integer kInt(k.asBytes().data(), 32);
-		kInt %= params().GetSubgroupOrder()-1;
-
-		ECP::Point rp = params().ExponentiateBase(kInt);
-		Integer const& q = params().GetGroupOrder();
-		Integer r = params().ConvertElementToInteger(rp);
-
-		Integer kInv = kInt.InverseMod(q);
-		Integer s = (kInv * (Integer(secret.data(), 32) * r + heInt)) % q;
-		BOOST_REQUIRE(!!r && !!s);
-
-		Signature sig;
-		sig[64] = rp.y.IsOdd() ? 1 : 0;
-		r.Encode(sig.data(), 32);
-		s.Encode(sig.data() + 32, 32);
-
-		Public p = dev::recover(sig, he);
-		BOOST_REQUIRE(p == pkey);
-		
-		// verify w/cryptopp
-		BOOST_REQUIRE(s_secp256k1->verify(pkey, sig, bytesConstRef(&e)));
-		
-		// verify with secp256k1lib
-		byte encpub[65] = {0x04};
-		memcpy(&encpub[1], pkey.data(), 64);
-		byte dersig[72];
-		size_t cssz = DSAConvertSignatureFormat(dersig, 72, DSA_DER, sig.data(), 64, DSA_P1363);
-		BOOST_CHECK(cssz <= 72);
-		BOOST_REQUIRE(1 == secp256k1_ecdsa_verify(ctx, he.data(), dersig, cssz, encpub, 65));
-	}
 }
 
 BOOST_AUTO_TEST_CASE(sha3_norestart)
@@ -251,15 +231,15 @@ BOOST_AUTO_TEST_CASE(ecies_kdf)
 	KeyPair remote = KeyPair::create();
 	// nonce
 	Secret z1;
-	ecdh::agree(local.sec(), remote.pub(), z1);
-	auto key1 = s_secp256k1->eciesKDF(z1, bytes(), 64);
+	BOOST_CHECK(ecdh::agree(local.secret(), remote.pub(), z1));
+	auto key1 = ecies::kdf(z1, bytes(), 64);
 	bytesConstRef eKey1 = bytesConstRef(&key1).cropped(0, 32);
 	bytesRef mKey1 = bytesRef(&key1).cropped(32, 32);
 	sha3(mKey1, mKey1);
 	
 	Secret z2;
-	ecdh::agree(remote.sec(), local.pub(), z2);
-	auto key2 = s_secp256k1->eciesKDF(z2, bytes(), 64);
+	BOOST_CHECK(ecdh::agree(remote.secret(), local.pub(), z2));
+	auto key2 = ecies::kdf(z2, bytes(), 64);
 	bytesConstRef eKey2 = bytesConstRef(&key2).cropped(0, 32);
 	bytesRef mKey2 = bytesRef(&key2).cropped(32, 32);
 	sha3(mKey2, mKey2);
@@ -274,6 +254,22 @@ BOOST_AUTO_TEST_CASE(ecies_kdf)
 	BOOST_REQUIRE(key1 == key2);
 }
 
+BOOST_AUTO_TEST_CASE(ecdh_agree_invalid_pubkey)
+{
+	KeyPair ok = KeyPair::create();
+	Public pubkey;
+	~pubkey;  // Create a pubkey of all 1s.
+	Secret z;
+	BOOST_CHECK(!ecdh::agree(ok.secret(), pubkey, z));
+}
+
+BOOST_AUTO_TEST_CASE(ecdh_agree_invalid_seckey)
+{
+	KeyPair ok = KeyPair::create();
+	Secret seckey;  // "Null" seckey is invalid.
+	BOOST_CHECK(!ecdh::agree(seckey, ok.pub(), seckey));
+}
+
 BOOST_AUTO_TEST_CASE(ecies_standard)
 {
 	KeyPair k = KeyPair::create();
@@ -286,7 +282,7 @@ BOOST_AUTO_TEST_CASE(ecies_standard)
 	BOOST_REQUIRE(b != asBytes(original));
 	BOOST_REQUIRE(b.size() > 0 && b[0] == 0x04);
 	
-	s_secp256k1->decryptECIES(k.sec(), b);
+	s_secp256k1->decryptECIES(k.secret(), b);
 	BOOST_REQUIRE(bytesConstRef(&b).cropped(0, original.size()).toBytes() == asBytes(original));
 }
 
@@ -295,25 +291,22 @@ BOOST_AUTO_TEST_CASE(ecies_sharedMacData)
 	KeyPair k = KeyPair::create();
 
 	string message("Now is the time for all good persons to come to the aid of humanity.");
-	string original = message;
-	bytes b = asBytes(message);
+	bytes original = asBytes(message);
+	bytes b = original;
 
 	string shared("shared MAC data");
 	string wrongShared("wrong shared MAC data");
 
 	s_secp256k1->encryptECIES(k.pub(), shared, b);
-	BOOST_REQUIRE(b != asBytes(original));
+	BOOST_REQUIRE(b != original);
 	BOOST_REQUIRE(b.size() > 0 && b[0] == 0x04);
 
-	BOOST_REQUIRE(!s_secp256k1->decryptECIES(k.sec(), wrongShared, b));
+	BOOST_REQUIRE(!s_secp256k1->decryptECIES(k.secret(), wrongShared, b));
 
-	s_secp256k1->decryptECIES(k.sec(), shared, b);
+	s_secp256k1->decryptECIES(k.secret(), shared, b);
 
-	// Temporary disable this assertion, which is failing in TravisCI only for Ubuntu Trusty.		
-	// See https://travis-ci.org/bobsummerwill/cpp-ethereum/jobs/143250866.
-	#if !defined(DISABLE_BROKEN_UNIT_TESTS_UNTIL_WE_FIX_THEM)
-		BOOST_REQUIRE(bytesConstRef(&b).cropped(0, original.size()).toBytes() == asBytes(original));
-	#endif // !defined(DISABLE_BROKEN_UNIT_TESTS_UNTIL_WE_FIX_THEM)
+	auto decrypted = bytesConstRef(&b).cropped(0, original.size()).toBytes();
+	BOOST_CHECK_EQUAL(toHex(decrypted), toHex(original));
 }
 
 BOOST_AUTO_TEST_CASE(ecies_eckeypair)
@@ -327,14 +320,12 @@ BOOST_AUTO_TEST_CASE(ecies_eckeypair)
 	s_secp256k1->encrypt(k.pub(), b);
 	BOOST_REQUIRE(b != asBytes(original));
 
-	s_secp256k1->decrypt(k.sec(), b);
+	s_secp256k1->decrypt(k.secret(), b);
 	BOOST_REQUIRE(b == asBytes(original));
 }
 
-BOOST_AUTO_TEST_CASE(ecdh)
+BOOST_AUTO_TEST_CASE(ecdhCryptopp)
 {
-	cnote << "Testing ecdh...";
-
 	ECDH<ECP>::Domain dhLocal(curveOID());
 	SecByteBlock privLocal(dhLocal.PrivateKeyLength());
 	SecByteBlock pubLocal(dhLocal.PublicKeyLength());
@@ -377,31 +368,38 @@ BOOST_AUTO_TEST_CASE(ecdh)
 	
 	ECDH<ECP>::Domain dhA(curveOID());
 	Secret shared;
-	BOOST_REQUIRE(dhA.Agree(shared.writable().data(), a.sec().data(), pubb));
+	BOOST_REQUIRE(dhA.Agree(shared.writable().data(), a.secret().data(), pubb));
 	BOOST_REQUIRE(shared);
 }
 
 BOOST_AUTO_TEST_CASE(ecdhe)
 {
-	cnote << "Testing ecdhe...";
-	
-	ECDHE a, b;
-	BOOST_CHECK_NE(a.pubkey(), b.pubkey());
-	
 	ECDHE local;
 	ECDHE remote;
-	
+	BOOST_CHECK_NE(local.pub(), remote.pub());
+
 	// local tx pubkey -> remote
 	Secret sremote;
-	remote.agree(local.pubkey(), sremote);
+	remote.agree(local.pub(), sremote);
 	
 	// remote tx pbukey -> local
 	Secret slocal;
-	local.agree(remote.pubkey(), slocal);
+	local.agree(remote.pub(), slocal);
 
 	BOOST_REQUIRE(sremote);
 	BOOST_REQUIRE(slocal);
-	BOOST_REQUIRE_EQUAL(sremote, slocal);
+	BOOST_CHECK_EQUAL(sremote, slocal);
+}
+
+BOOST_AUTO_TEST_CASE(ecdhAgree)
+{
+	auto sec = Secret{sha3("ecdhAgree")};
+	auto pub = toPublic(sec);
+	Secret sharedSec;
+	BOOST_CHECK(ecdh::agree(sec, pub, sharedSec));
+	BOOST_CHECK(sharedSec);
+	auto expectedSharedSec = "8ac7e464348b85d9fdfc0a81f2fdc0bbbb8ee5fb3840de6ed60ad9372e718977";
+	BOOST_CHECK_EQUAL(sharedSec.makeInsecure().hex(), expectedSharedSec);
 }
 
 BOOST_AUTO_TEST_CASE(handshakeNew)
@@ -420,7 +418,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 	KeyPair nodeB(nodeBsecret);
 	BOOST_REQUIRE(nodeB.pub());
 	
-	BOOST_REQUIRE_NE(nodeA.sec(), nodeB.sec());
+	BOOST_REQUIRE_NE(nodeA.secret(), nodeB.secret());
 	
 	// Initiator is Alice (nodeA)
 	ECDHE eA;
@@ -434,9 +432,9 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		bytesRef pubk(&auth[Signature::size + h256::size], Public::size);
 		bytesRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
 		
-		crypto::ecdh::agree(nodeA.sec(), nodeB.pub(), ssA);
-		sign(eA.seckey(), (ssA ^ nonceA).makeInsecure()).ref().copyTo(sig);
-		sha3(eA.pubkey().ref(), hepubk);
+		BOOST_CHECK(crypto::ecdh::agree(nodeA.secret(), nodeB.pub(), ssA));
+		sign(eA.secret(), (ssA ^ nonceA).makeInsecure()).ref().copyTo(sig);
+		sha3(eA.pub().ref(), hepubk);
 		nodeA.pub().ref().copyTo(pubk);
 		nonceA.ref().copyTo(nonce);
 		auth[auth.size() - 1] = 0x0;
@@ -454,15 +452,15 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		// todo: replace nodeA.pub() in encrypt()
 		// decrypt public key from auth
 		bytes authdecrypted;
-		decrypt(nodeB.sec(), &authcipher, authdecrypted);
+		decrypt(nodeB.secret(), &authcipher, authdecrypted);
 		Public node;
 		bytesConstRef pubk(&authdecrypted[Signature::size + h256::size], Public::size);
 		pubk.copyTo(node.ref());
 		
 		bytesRef epubk(&ack[0], Public::size);
 		bytesRef nonce(&ack[Public::size], h256::size);
-		
-		eB.pubkey().ref().copyTo(epubk);
+
+		eB.pub().ref().copyTo(epubk);
 		nonceB.ref().copyTo(nonce);
 		auth[auth.size() - 1] = 0x0;
 	}
@@ -470,9 +468,9 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 	encrypt(nodeA.pub(), &ack, ackcipher);
 	BOOST_REQUIRE_EQUAL(ackcipher.size(), 182);
 	
-	BOOST_REQUIRE(eA.pubkey());
-	BOOST_REQUIRE(eB.pubkey());
-	BOOST_REQUIRE_NE(eA.seckey(), eB.seckey());
+	BOOST_REQUIRE(eA.pub());
+	BOOST_REQUIRE(eB.pub());
+	BOOST_REQUIRE_NE(eA.secret(), eB.secret());
 	
 	/// Alice (after receiving ack)
 	Secret aEncryptK;
@@ -481,14 +479,14 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 	Secret aIngressMac;
 	{
 		bytes ackdecrypted;
-		decrypt(nodeA.sec(), &ackcipher, ackdecrypted);
+		decrypt(nodeA.secret(), &ackcipher, ackdecrypted);
 		BOOST_REQUIRE(ackdecrypted.size());
 		bytesConstRef ackRef(&ackdecrypted);
 		Public eBAck;
 		h256 nonceBAck;
 		ackRef.cropped(0, Public::size).copyTo(bytesRef(eBAck.data(), Public::size));
 		ackRef.cropped(Public::size, h256::size).copyTo(nonceBAck.ref());
-		BOOST_REQUIRE_EQUAL(eBAck, eB.pubkey());
+		BOOST_REQUIRE_EQUAL(eBAck, eB.pub());
 		BOOST_REQUIRE_EQUAL(nonceBAck, nonceB);
 		
 		// TODO: export ess and require equal to b
@@ -522,7 +520,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 	
 	/// Bob (after sending ack)
 	Secret ssB;
-	crypto::ecdh::agree(nodeB.sec(), nodeA.pub(), ssB);
+	BOOST_CHECK(crypto::ecdh::agree(nodeB.secret(), nodeA.pub(), ssB));
 	BOOST_REQUIRE_EQUAL(ssA, ssB);
 	
 	Secret bEncryptK;
@@ -531,7 +529,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 	Secret bIngressMac;
 	{
 		bytes authdecrypted;
-		decrypt(nodeB.sec(), &authcipher, authdecrypted);
+		decrypt(nodeB.secret(), &authcipher, authdecrypted);
 		BOOST_REQUIRE(authdecrypted.size());
 		bytesConstRef ackRef(&authdecrypted);
 		Signature sigAuth;
@@ -554,11 +552,11 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		sig.copyTo(sigAuth.ref());
 		
 		Secret ss;
-		s_secp256k1->agree(nodeB.sec(), nodeAAuth, ss);
+		BOOST_CHECK(ecdh::agree(nodeB.secret(), nodeAAuth, ss));
 		eAAuth = recover(sigAuth, (ss ^ nonceAAuth).makeInsecure());
 		// todo: test when this fails; means remote is bad or packet bits were flipped
 		BOOST_REQUIRE_EQUAL(heA, sha3(eAAuth));
-		BOOST_REQUIRE_EQUAL(eAAuth, eA.pubkey());
+		BOOST_REQUIRE_EQUAL(eAAuth, eA.pub());
 		
 		bytes keyMaterialBytes(512);
 		bytesRef keyMaterial(&keyMaterialBytes);
@@ -759,7 +757,7 @@ BOOST_AUTO_TEST_CASE(recoverVgt3)
 	// e := sha3(msg)
 	bytes e(fromHex("0x01"));
 	e.resize(32);
-	int tests = 2;
+	int tests = 13;
 	while (sha3(&e, &e), secret = sha3(secret), tests--)
 	{
 		KeyPair key(secret);
@@ -796,6 +794,35 @@ BOOST_AUTO_TEST_CASE(recoverVgt3)
 				BOOST_REQUIRE(p != pkey);
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(PerfSHA256_32, *utf::disabled() *utf::label("perf"))
+{
+	if (!test::Options::get().performance)
+		return;
+
+	h256 hash;
+	for (auto i = 0; i < 1000000; ++i)
+		hash = sha256(hash.ref());
+
+	BOOST_CHECK_EQUAL(hash[0], 0x2a);
+}
+
+BOOST_AUTO_TEST_CASE(PerfSHA256_4000, *utf::disabled() *utf::label("perf"))
+{
+	if (!test::Options::get().performance)
+		return;
+
+	static const size_t dataSize = 4097;
+	bytes data(dataSize);
+	for (auto i = 0; i < 100000; ++i)
+	{
+		auto hash = sha256(&data);
+		auto idx = ((hash[1] << 8) | hash[2]) % (dataSize - hash.size);
+		std::copy(hash.data(), hash.data() + hash.size, data.begin() + idx);
+	}
+
+	BOOST_CHECK_EQUAL(data[0], 0x4d);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
