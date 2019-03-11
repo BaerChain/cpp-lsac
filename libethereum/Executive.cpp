@@ -157,8 +157,8 @@ Executive::Executive(Block& _s, LastHashes const& _lh, unsigned _level):
 {
 }
 
-Executive::Executive(State& _s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level):
-	m_s(_s = _block.fromPending(_txIndex)),
+Executive::Executive(State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level):
+	m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
 	m_envInfo(_block.info(), _bc.lastHashes(_block.info().parentHash()), _txIndex ? _block.receipt(_txIndex - 1).gasUsed() : 0),
 	m_depth(_level),
 	m_sealEngine(*_bc.sealEngine())
@@ -179,33 +179,15 @@ void Executive::accrueSubState(SubState& _parentContext)
 void Executive::initialize(Transaction const& _transaction)
 {
 	m_t = _transaction;
-
+	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
 	try
 	{
-		m_sealEngine.verifyTransaction(ImportRequirements::Everything, _transaction, m_envInfo);
+		m_sealEngine.verifyTransaction(ImportRequirements::Everything, m_t, m_envInfo);
 	}
 	catch (Exception const& ex)
 	{
 		m_excepted = toTransactionException(ex);
 		throw;
-	}
-
-	// Avoid transactions that would take us beyond the block gas limit.
-	u256 startGasUsed = m_envInfo.gasUsed();
-	if (startGasUsed + (bigint)m_t.gas() > m_envInfo.gasLimit())
-	{
-		clog(ExecutiveWarnChannel) << "Cannot fit tx in block" << m_envInfo.number() << ": Require <" << (m_envInfo.gasLimit() - startGasUsed) << " Got" << m_t.gas();
-		m_excepted = TransactionException::BlockGasLimitReached;
-		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_envInfo.gasLimit() - startGasUsed), (bigint)m_t.gas()));
-	}
-
-	// Check gas cost is enough.
-	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
-	if (m_baseGasRequired > m_t.gas())
-	{
-		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_baseGasRequired << " Got" << m_t.gas();
-		m_excepted = TransactionException::OutOfGasBase;
-		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError((bigint)m_baseGasRequired, (bigint)m_t.gas()));
 	}
 
 	if (!m_t.hasZeroSignature())

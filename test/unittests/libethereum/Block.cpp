@@ -22,9 +22,9 @@
 
 #include <libethereum/BlockQueue.h>
 #include <libethereum/Block.h>
-#include <test/libtesteth/TestHelper.h>
-#include <test/libtesteth/BlockChainHelper.h>
-#include <test/libtesteth/JsonSpiritHeaders.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/BlockChainHelper.h>
+#include <test/tools/libtesteth/JsonSpiritHeaders.h>
 
 using namespace std;
 using namespace dev;
@@ -50,14 +50,20 @@ BOOST_AUTO_TEST_CASE(bStructures)
 
 BOOST_AUTO_TEST_CASE(bStates)
 {
+	// this test does full Ethash mining
+	if (!dev::test::Options::get().quadratic)
+		return;
 	try
 	{
+		TestBlockChain::s_sealEngineNetwork = Network::FrontierTest;
+
 		TestBlockChain testBlockchain(TestBlockChain::defaultGenesisBlock());
 		TestBlock const& genesisBlock = testBlockchain.testGenesis();
 		OverlayDB const& genesisDB = genesisBlock.state().db();
 		BlockChain const& blockchain = testBlockchain.interface();
 
-		State stateBofore = testBlockchain.topBlock().state();
+		h256 stateRootBefore = testBlockchain.topBlock().state().rootHash();
+		BOOST_REQUIRE(stateRootBefore != h256());
 
 		TestBlock testBlock;
 		TestTransaction transaction1 = TestTransaction::defaultTransaction(1);
@@ -74,15 +80,18 @@ BOOST_AUTO_TEST_CASE(bStates)
 
 		Block block2 = blockchain.genesisBlock(genesisDB);
 		block2.populateFromChain(blockchain, testBlock.blockHeader().hash());
-		State stateAfterInsert = block2.fromPending(0); //get the state of blockchain on previous block
-		BOOST_REQUIRE(ImportTest::compareStates(stateBofore, stateAfterInsert) == 0);
+		h256 stateRootAfterInsert = block2.stateRootBeforeTx(0); //get the state of blockchain on previous block
+		BOOST_REQUIRE(stateRootAfterInsert != h256());
+		BOOST_REQUIRE_EQUAL(stateRootBefore, stateRootAfterInsert);
 
-		State stateAfterInsert1 = block2.fromPending(1); //get the state of blockchain on current block executed
-		BOOST_REQUIRE(ImportTest::compareStates(stateAfterInsert, stateAfterInsert1, eth::AccountMaskMap(), WhenError::DontThrow) == 1);
+		h256 stateRootAfterInsert1 = block2.stateRootBeforeTx(1); //get the state of blockchain on current block executed
+		BOOST_REQUIRE(stateRootAfterInsert1 != h256());
+		BOOST_REQUIRE(stateRootAfterInsert != stateRootAfterInsert1);
 
-		State stateAfterInsert2 = block2.fromPending(2); //get the state of blockchain on current block executed
-		BOOST_REQUIRE(ImportTest::compareStates(stateBofore, stateAfterInsert2, eth::AccountMaskMap(), WhenError::DontThrow) == 1);
-		BOOST_REQUIRE(ImportTest::compareStates(stateAfterInsert1, stateAfterInsert2, eth::AccountMaskMap(), WhenError::DontThrow) == 1);
+		h256 stateRootAfterInsert2 = block2.stateRootBeforeTx(2); //get the state of blockchain on current block executed
+		BOOST_REQUIRE(stateRootAfterInsert2 != h256());
+		BOOST_REQUIRE(stateRootBefore != stateRootAfterInsert2);
+		BOOST_REQUIRE(stateRootAfterInsert1 != stateRootAfterInsert2);
 
 		//Block2 will start a new block on top of blockchain
 		BOOST_REQUIRE(block1.info() == block2.info());
@@ -107,10 +116,6 @@ BOOST_AUTO_TEST_CASE(bStates)
 	catch (std::exception const& _e)
 	{
 		BOOST_ERROR("Failed test with Exception: " << _e.what());
-	}
-	catch(...)
-	{
-		BOOST_ERROR("Exception thrown when trying to mine or import a block!");
 	}
 }
 
@@ -245,10 +250,16 @@ BOOST_AUTO_TEST_CASE(bCopyOperator)
 	{
 		BOOST_ERROR("Failed test with Exception: " << _e.what());
 	}
-	catch(...)
-	{
-		BOOST_ERROR("Exception thrown when trying to mine or import a block!");
-	}
+}
+
+BOOST_AUTO_TEST_CASE(bGetReceiptOverflow)
+{
+	TestBlockChain bc;
+	TestBlock const& genesisBlock = bc.testGenesis();
+	OverlayDB const& genesisDB = genesisBlock.state().db();
+	BlockChain const& blockchain = bc.interface();
+	Block block = blockchain.genesisBlock(genesisDB);
+	BOOST_CHECK_THROW(block.receipt(123), std::out_of_range);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
