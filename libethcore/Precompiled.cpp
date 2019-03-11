@@ -24,6 +24,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/Hash.h>
 #include <libdevcrypto/Common.h>
+#include <libdevcrypto/LibSnark.h>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
@@ -99,37 +100,66 @@ ETH_REGISTER_PRECOMPILED(identity)(bytesConstRef _in)
 
 // Parse _count bytes of _in starting with _begin offset as big endian int.
 // If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
-bigint parseBigEndianRightPadded(bytesConstRef _in, size_t _begin, size_t _count)
+bigint parseBigEndianRightPadded(bytesConstRef _in, bigint const& _begin, bigint const& _count)
 {
 	if (_begin > _in.count())
 		return 0;
+	assert(_count <= numeric_limits<size_t>::max() / 8); // Otherwise, the return value would not fit in the memory.
+
+	size_t const begin{_begin};
+	size_t const count{_count};
 
 	// crop _in, not going beyond its size
-	bytesConstRef cropped = _in.cropped(_begin, min(_count, _in.count() - _begin));
+	bytesConstRef cropped = _in.cropped(begin, min(count, _in.count() - begin));
 
 	bigint ret = fromBigEndian<bigint>(cropped);
 	// shift as if we had right-padding zeroes
-	ret <<= 8 * (_count - cropped.count());
-	
+	assert(count - cropped.count() <= numeric_limits<size_t>::max() / 8);
+	ret <<= 8 * (count - cropped.count());
+
 	return ret;
 }
 
 ETH_REGISTER_PRECOMPILED(modexp)(bytesConstRef _in)
 {
-	size_t const baseLength(parseBigEndianRightPadded(_in, 0, 32));
-	size_t const expLength(parseBigEndianRightPadded(_in, 32, 32));
-	size_t const modLength(parseBigEndianRightPadded(_in, 64, 32));
+	bigint const baseLength(parseBigEndianRightPadded(_in, 0, 32));
+	bigint const expLength(parseBigEndianRightPadded(_in, 32, 32));
+	bigint const modLength(parseBigEndianRightPadded(_in, 64, 32));
+	assert(modLength <= numeric_limits<size_t>::max() / 8); // Otherwise gas should be too expensive.
+	assert(baseLength <= numeric_limits<size_t>::max() / 8); // Otherwise, gas should be too expensive.
+	if (modLength == 0 && baseLength == 0)
+		return {true, bytes{}}; // This is a special case where expLength can be very big.
+	assert(expLength <= numeric_limits<size_t>::max() / 8);
 
 	bigint const base(parseBigEndianRightPadded(_in, 96, baseLength));
 	bigint const exp(parseBigEndianRightPadded(_in, 96 + baseLength, expLength));
 	bigint const mod(parseBigEndianRightPadded(_in, 96 + baseLength + expLength, modLength));
 
 	bigint const result = mod != 0 ? boost::multiprecision::powm(base, exp, mod) : bigint{0};
-	
-	bytes ret(modLength); 
+
+	size_t const retLength(modLength);
+	bytes ret(retLength);
 	toBigEndian(result, ret);
 
 	return {true, ret};
+}
+
+namespace
+{
+	bigint expLengthAdjust(bigint const& _expOffset, bigint const& _expLength, bytesConstRef _in)
+	{
+		if (_expLength <= 32)
+		{
+			bigint const exp(parseBigEndianRightPadded(_in, _expOffset, _expLength));
+			return exp ? msb(exp) : 0;
+		}
+		else
+		{
+			bigint const expFirstWord(parseBigEndianRightPadded(_in, _expOffset, 32));
+			size_t const highestBit(expFirstWord ? msb(expFirstWord) : 0);
+			return 8 * (_expLength - 32) + highestBit;
+		}
+	}
 }
 
 ETH_REGISTER_PRECOMPILED_PRICER(modexp)(bytesConstRef _in)
@@ -138,9 +168,30 @@ ETH_REGISTER_PRECOMPILED_PRICER(modexp)(bytesConstRef _in)
 	bigint const expLength(parseBigEndianRightPadded(_in, 32, 32));
 	bigint const modLength(parseBigEndianRightPadded(_in, 64, 32));
 
-	bigint const maxLength = max(modLength, baseLength);
+	bigint const maxLength(max(modLength, baseLength));
+	bigint const adjustedExpLength(expLengthAdjust(baseLength + 96, expLength, _in));
 
-	return maxLength * maxLength * max<bigint>(expLength, 1) / 20;
+	return maxLength * maxLength * max<bigint>(adjustedExpLength, 1) / 100;
+}
+
+ETH_REGISTER_PRECOMPILED(alt_bn128_G1_add)(bytesConstRef _in)
+{
+	return dev::crypto::alt_bn128_G1_add(_in);
+}
+
+ETH_REGISTER_PRECOMPILED(alt_bn128_G1_mul)(bytesConstRef _in)
+{
+	return dev::crypto::alt_bn128_G1_mul(_in);
+}
+
+ETH_REGISTER_PRECOMPILED(alt_bn128_pairing_product)(bytesConstRef _in)
+{
+	return dev::crypto::alt_bn128_pairing_product(_in);
+}
+
+ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_pairing_product)(bytesConstRef _in)
+{
+	return 100000 + (_in.size() / 192) * 80000;
 }
 
 }

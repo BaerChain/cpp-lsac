@@ -28,8 +28,8 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/Block.h>
 #include <libethereum/GenesisInfo.h>
-#include <test/libtesteth/TestHelper.h>
-#include <test/libtesteth/BlockChainHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/BlockChainHelper.h>
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(bcBasicInsert)
 	Transaction t(1000, 10000, 100000, me.address(), bytes(), block.transactionsFrom(myMiner.address()), myMiner.secret());
 	assert(t.sender() == myMiner.address());
 	cnote << "Execute transaction";
-	block.execute(tcFull.bc().lastHashes(), t);
+	block.execute(tcFull.bc().lastBlockHashes(), t);
 	cnote << block.state();
 
 	// Seal and import into both.

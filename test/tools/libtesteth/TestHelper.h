@@ -121,15 +121,18 @@ protected:
 };
 
 // helping functions
+std::vector<boost::filesystem::path> getJsonFiles(std::string const& _dirPath, std::string const& _particularFile = {});
 std::string netIdToString(eth::Network _netId);
 eth::Network stringToNetId(std::string const& _netname);
 u256 toInt(json_spirit::mValue const& _v);
 byte toByte(json_spirit::mValue const& _v);
 void replaceLLLinState(json_spirit::mObject& _o);
 std::string compileLLL(std::string const& _code);
+std::string executeCmd(std::string const& _command);
 bytes importCode(json_spirit::mObject& _o);
 bytes importData(json_spirit::mObject const& _o);
 bytes importByteArray(std::string const& _str);
+void checkHexHasEvenLength(std::string const&);
 void copyFile(std::string const& _source, std::string const& _destination);
 eth::LogEntries importLog(json_spirit::mArray& _o);
 json_spirit::mArray exportLog(eth::LogEntries _logs);
@@ -166,8 +169,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin);
 void doStateTests(json_spirit::mValue& v, bool _fillin);
 void doVMTests(json_spirit::mValue& v, bool _fillin);
 void doBlockchainTests(json_spirit::mValue& _v, bool _fillin);
+void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin);
 void doRlpTests(json_spirit::mValue& v, bool _fillin);
-
+void addClientInfo(json_spirit::mValue& v, std::string const& _testSource);
 
 /// Allows observing test execution process.
 /// This class also provides methods for registering and notifying the listener

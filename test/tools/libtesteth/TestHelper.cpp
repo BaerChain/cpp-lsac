@@ -18,6 +18,7 @@
  * Helper functions to work with json::spirit and test files
  */
 
+#include <include/BuildInfo.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/Options.h>
@@ -170,6 +171,7 @@ byte toByte(json_spirit::mValue const& _v)
 
 bytes importByteArray(std::string const& _str)
 {
+	checkHexHasEvenLength(_str);
 	return fromHex(_str.substr(0, 2) == "0x" ? _str.substr(2) : _str, WhenError::Throw);
 }
 
@@ -198,34 +200,73 @@ void replaceLLLinState(json_spirit::mObject& _o)
 	}
 }
 
+std::vector<boost::filesystem::path> getJsonFiles(std::string const& _dirPath, std::string const& _particularFile)
+{
+	vector<boost::filesystem::path> jsonFiles;
+	if (!_particularFile.empty())
+	{
+		boost::filesystem::path file = boost::filesystem::path(_dirPath) / (_particularFile + ".json");
+		if (boost::filesystem::exists(file))
+			jsonFiles.push_back(file);
+	}
+	else
+	{
+		using Bdit = boost::filesystem::directory_iterator;
+		for (Bdit it(_dirPath); it != Bdit(); ++it)
+			if (boost::filesystem::is_regular_file(it->path()) && it->path().extension() == ".json")
+					jsonFiles.push_back(it->path());
+	}
+	return jsonFiles;
+}
+
+std::string executeCmd(std::string const& _command)
+{
+#if defined(_WIN32)
+	BOOST_ERROR("executeCmd() has not been implemented for Windows.");
+	return "";
+#else
+	char output[1024];
+	FILE *fp = popen(_command.c_str(), "r");
+	if (fp == NULL)
+		BOOST_ERROR("Failed to run " + _command);
+	if (fgets(output, sizeof(output) - 1, fp) == NULL)
+		BOOST_ERROR("Reading empty result for " + _command);
+	int exitCode = pclose(fp);
+	if (exitCode != 0)
+		BOOST_ERROR("The command '" + _command + "' exited with " + toString(exitCode) + " code.");
+	return boost::trim_copy(string(output));
+#endif
+}
+
 string compileLLL(string const& _code)
 {
 	if (_code == "")
 		return "0x";
 	if (_code.substr(0,2) == "0x" && _code.size() >= 2)
+	{
+		checkHexHasEvenLength(_code);
 		return _code;
+	}
 
 #if defined(_WIN32)
 	BOOST_ERROR("LLL compilation only supported on posix systems.");
 	return "";
 #else
-	char input[1024];
 	boost::filesystem::path path(boost::filesystem::temp_directory_path() / boost::filesystem::unique_path());
 	string cmd = string("lllc ") + path.string();
 	writeFile(path.string(), _code);
-
-	FILE *fp = popen(cmd.c_str(), "r");
-	if (fp == NULL)
-		BOOST_ERROR("Failed to run lllc");
-	if (fgets(input, sizeof(input) - 1, fp) == NULL)
-		BOOST_ERROR("Reading empty file for lllc");
-	pclose(fp);
-
+	string result = executeCmd(cmd);
 	boost::filesystem::remove(path);
-	string result(input);
-	result = "0x" + boost::trim_copy(result);
+	result = "0x" + result;
+	checkHexHasEvenLength(result);
 	return result;
 #endif
+}
+
+void checkHexHasEvenLength(string const& _str)
+{
+	if (_str.size() % 2)
+		BOOST_ERROR(TestOutputHelper::testName() + " An odd-length hex string represents a byte sequence: " + _str);
 }
 
 bytes importCode(json_spirit::mObject& _o)
@@ -235,7 +276,7 @@ bytes importCode(json_spirit::mObject& _o)
 		if (_o["code"].get_str().find("0x") != 0)
 			code = fromHex(compileLLL(_o["code"].get_str()));
 		else
-			code = fromHex(_o["code"].get_str().substr(2));
+			code = importByteArray(_o["code"].get_str());
 	else if (_o["code"].type() == json_spirit::array_type)
 	{
 		code.clear();
@@ -384,7 +425,7 @@ void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 void executeTests(const string& _name, const string& _testPathAppendix, const string& _fillerPathAppendix, std::function<void(json_spirit::mValue&, bool)> doTests, bool _addFillerSuffix)
 {
 	string testPath = getTestPath() + _testPathAppendix;
-	string testFillerPath = getTestPath() + "/src/" + _fillerPathAppendix;
+	string testFillerPath = getTestPath() + "/src" + _fillerPathAppendix;
 
 	if (Options::get().stats)
 		Listener::registerListener(Stats::get());
@@ -409,6 +450,7 @@ void executeTests(const string& _name, const string& _testPathAppendix, const st
 
 			json_spirit::read_string(s, v);
 			doTests(v, true);
+			addClientInfo(v, testfilename);
 			writeFile(testPath + "/" + name + ".json", asBytes(json_spirit::write_string(v, true)));
 		}
 		catch (Exception const& _e)
@@ -439,6 +481,41 @@ void executeTests(const string& _name, const string& _testPathAppendix, const st
 	catch (std::exception const& _e)
 	{
 		BOOST_ERROR(TestOutputHelper::testName() + " Failed test with Exception: " << _e.what());
+	}
+}
+
+string prepareVersionString()
+{
+	//cpp-1.3.0+commit.6be76b64.Linux.g++
+	string commit(DEV_QUOTED(ETH_COMMIT_HASH));
+	string version = "cpp-" + string(ETH_PROJECT_VERSION);
+	version += "+commit." + commit.substr(0, 8);
+	version += "." + string(DEV_QUOTED(ETH_BUILD_OS)) + "." + string(DEV_QUOTED(ETH_BUILD_COMPILER));
+	return version;
+}
+
+void addClientInfo(json_spirit::mValue& _v, std::string const& _testSource)
+{
+	for (auto& i: _v.get_obj())
+	{
+		json_spirit::mObject& o = i.second.get_obj();
+		json_spirit::mObject clientinfo;
+
+		string comment;
+		if (o.count("_info"))
+		{
+			json_spirit::mObject& existingInfo = o["_info"].get_obj();
+			if (existingInfo.count("comment"))
+				comment = existingInfo["comment"].get_str();
+		}
+
+		//prepare the relative src path
+		string source = _testSource.substr(_testSource.rfind("/src/"), _testSource.length());
+
+		clientinfo["filledwith"] = prepareVersionString();
+		clientinfo["source"] = source;
+		clientinfo["comment"] = comment;
+		o["_info"] = clientinfo;
 	}
 }
 

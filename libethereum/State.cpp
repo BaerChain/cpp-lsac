@@ -448,10 +448,10 @@ bytes const& State::code(Address const& _addr) const
 	return a->code();
 }
 
-void State::setNewCode(Address const& _address, bytes&& _code)
+void State::setCode(Address const& _address, bytes&& _code)
 {
-	m_cache[_address].setNewCode(std::move(_code));
-	m_changeLog.emplace_back(Change::NewCode, _address);
+	m_changeLog.emplace_back(_address, code(_address));
+	m_cache[_address].setCode(std::move(_code));
 }
 
 h256 State::codeHash(Address const& _a) const
@@ -511,8 +511,8 @@ void State::rollback(size_t _savepoint)
 		case Change::Create:
 			m_cache.erase(change.address);
 			break;
-		case Change::NewCode:
-			account.resetCode();
+		case Change::Code:
+			account.setCode(std::move(change.oldCode));
 			break;
 		case Change::Touch:
 			account.untouch();
@@ -560,7 +560,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	return make_pair(res, receipt);
 }
 
-void State::executeBlockTransactions(Block const& _block, unsigned _txCount, LastHashes const& _lastHashes, SealEngineFace const& _sealEngine)
+void State::executeBlockTransactions(Block const& _block, unsigned _txCount, LastBlockHashesFace const& _lastHashes, SealEngineFace const& _sealEngine)
 {
 	u256 gasUsed = 0;
 	for (unsigned i = 0; i < _txCount; ++i)
@@ -659,7 +659,7 @@ State& dev::eth::createIntermediateState(State& o_s, Block const& _block, unsign
 	else
 	{
 		o_s.setRoot(_block.stateRootBeforeTx(0));
-		o_s.executeBlockTransactions(_block, _txIndex, _bc.lastHashes(_block.info().parentHash()), *_bc.sealEngine());
+		o_s.executeBlockTransactions(_block, _txIndex, _bc.lastBlockHashes(), *_bc.sealEngine());
 	}
 	return o_s;
 }

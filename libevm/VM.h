@@ -15,8 +15,6 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file VM.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
  */
 
 #pragma once
@@ -54,7 +52,6 @@ struct InstructionMetric
 	int ret;
 };
 
-
 /**
  */
 class VM: public VMFace
@@ -88,7 +85,6 @@ private:
 	void copyCode(int);
 	const void* const* c_jumpTable = 0;
 	bool m_caseInit = false;
-	
 	typedef void (VM::*MemFnPtr)();
 	MemFnPtr m_bounce = 0;
 	MemFnPtr m_onFail = 0;
@@ -121,7 +117,7 @@ private:
 #endif
 
 	// constant pool
-	u256 m_pool[256];
+	std::vector<u256> m_pool;
 
 	// interpreter state
 	Instruction m_OP;                   // current operation
@@ -158,6 +154,7 @@ private:
 	void throwBadStack(unsigned _removed, unsigned _added);
 	void throwRevertInstruction(owning_bytes_ref&& _output);
 	void throwDisallowedStateChange();
+	void throwBufferOverrun(bigint const& _enfOfAccess);
 
 	void reportStackUse();
 

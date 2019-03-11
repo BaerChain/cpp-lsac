@@ -21,8 +21,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <test/libtesteth/TestHelper.h>
-#include <test/fuzzTesting/fuzzHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/fuzzTesting/fuzzHelper.h>
 #include <libethashseal/Ethash.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
@@ -113,9 +113,8 @@ void fillDifficulty(string const& _testFileFullName, Ethash& _sealEngine)
 		for (u256 blockNumber = 1; blockNumber < 1500000; blockNumber += 25000)
 		{
 			testN++;
-			json_spirit::mObject m;
 			string testName = "DifficultyTest"+toString(testN);
-			if (!dev::test::TestOutputHelper::passTest(m, testName))
+			if (!dev::test::TestOutputHelper::passTest(testName))
 				continue;
 
 			u256 pStamp = dev::test::RandomCode::randomUniInt();
@@ -165,8 +164,11 @@ void testDifficulty(string const& _testFileFullName, Ethash& _sealEngine, Networ
 	{
 		js::mObject o = i.second.get_obj();
 		string testname = i.first;
-		if (!dev::test::TestOutputHelper::passTest(o, testname))
+		if (!dev::test::TestOutputHelper::passTest(testname))
+		{
+			o.clear();
 			continue;
+		}
 
 		BlockHeader parent;
 		parent.setTimestamp(test::toInt(o["parentTimestamp"]));

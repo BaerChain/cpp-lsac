@@ -43,8 +43,11 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 		string testname = i.first;
 		json_spirit::mObject& o = i.second.get_obj();
 
-		if (!TestOutputHelper::passTest(o, testname))
+		if (!TestOutputHelper::passTest(testname))
+		{
+			o.clear(); //don't add irrelevant tests to the final file when filling
 			continue;
+		}
 
 		BOOST_REQUIRE(o.count("blocknumber") > 0);
 		u256 transactionBlock = toInt(o["blocknumber"].get_str());
@@ -70,7 +73,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				if (!txFromFields.signature().isValid())
 				if (!onMetropolisAndZeroSig)
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );
-				se->verifyTransaction(ImportRequirements::Everything, txFromFields, EnvInfo(bh));
+				se->verifyTransaction(ImportRequirements::Everything, txFromFields, bh, 0);
 
 				if (o.count("sender") > 0)
 				{
@@ -122,7 +125,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				RLP rlp(stream);
 				txFromRlp = Transaction(rlp.data(), CheckTransaction::Everything);
 				bool onMetropolisAndZeroSig = onMetropolis && txFromRlp.hasZeroSignature();
-				se->verifyTransaction(ImportRequirements::Everything, txFromRlp, EnvInfo(bh));
+				se->verifyTransaction(ImportRequirements::Everything, txFromRlp, bh, 0);
 				if (!txFromRlp.signature().isValid())
 				if (!onMetropolisAndZeroSig)
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid") );

@@ -21,8 +21,8 @@
 #include <boost/test/unit_test.hpp>
 #include <libethashseal/Ethash.h>
 #include <libethcore/BasicAuthority.h>
-#include <test/libtesteth/TestOutputHelper.h>
-#include <test/libtesteth/Options.h>
+#include <test/tools/libtesteth/TestOutputHelper.h>
+#include <test/tools/libtesteth/Options.h>
 
 using namespace std;
 using namespace dev;
@@ -61,7 +61,7 @@ void TestOutputHelper::initTest(json_spirit::mValue& _v)
 	m_currTest = 0;
 }
 
-bool TestOutputHelper::passTest(json_spirit::mObject& _o, std::string& _testName)
+bool TestOutputHelper::passTest(std::string const& _testName)
 {
 	m_currTest++;
 	int m_testsPerProgs = std::max(1, (int)(m_maxTests / 4));
@@ -75,14 +75,9 @@ bool TestOutputHelper::passTest(json_spirit::mObject& _o, std::string& _testName
 	}
 
 	if (test::Options::get().singleTest && test::Options::get().singleTestName != _testName)
-	{
-		_o.clear();
 		return false;
-	}
 
 	cnote << _testName;
-	//Test name for old State Tests
-	//_testName = (m_currentTestFileName == "n/a") ? "(" + _testName + ") " : "(" + m_currentTestFileName + "/" +  _testName + ") ";
 	m_currentTestName = _testName;
 	return true;
 }

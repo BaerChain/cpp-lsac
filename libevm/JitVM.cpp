@@ -1,6 +1,7 @@
 #include "JitVM.h"
 
 #include <libdevcore/Log.h>
+#include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 
@@ -8,9 +9,9 @@ namespace dev
 {
 namespace eth
 {
+	
 namespace
-{
-
+{	
 static_assert(sizeof(Address) == sizeof(evm_uint160be),
               "Address types size mismatch");
 static_assert(alignof(Address) == alignof(evm_uint160be),
@@ -43,8 +44,7 @@ void queryState(
 	evm_variant* o_result,
 	evm_env* _opaqueEnv,
 	evm_query_key _key,
-	evm_uint160be const* _addr,
-	evm_uint256be const* _storageKey
+	evm_uint160be const* _addr
 ) noexcept
 {
 	auto &env = reinterpret_cast<ExtVMFace&>(*_opaqueEnv);
@@ -64,53 +64,71 @@ void queryState(
 	case EVM_BALANCE:
 		o_result->uint256be = toEvmC(env.balance(addr));
 		break;
-	case EVM_SLOAD:
-	{
-		auto storageKey = fromEvmC(*_storageKey);
-		o_result->uint256be = toEvmC(env.store(storageKey));
-		break;
-	}
 	case EVM_ACCOUNT_EXISTS:
 		o_result->int64 = env.exists(addr);
 		break;
 	}
 }
 
-void updateState(
+void getStorage(
+	evm_uint256be* o_result,
 	evm_env* _opaqueEnv,
-	evm_update_key _key,
 	evm_uint160be const* _addr,
-	evm_variant const* _arg1,
-	evm_variant const* _arg2
+	evm_uint256be const* _key
 ) noexcept
 {
 	(void) _addr;
 	auto &env = reinterpret_cast<ExtVMFace&>(*_opaqueEnv);
 	assert(fromEvmC(*_addr) == env.myAddress);
-	switch (_key)
-	{
-	case EVM_SSTORE:
-	{
-		u256 index = fromEvmC(_arg1->uint256be);
-		u256 value = fromEvmC(_arg2->uint256be);
-		if (value == 0 && env.store(index) != 0)                   // If delete
-			env.sub.refunds += env.evmSchedule().sstoreRefundGas;  // Increase refund counter
+	u256 key = fromEvmC(*_key);
+	*o_result = toEvmC(env.store(key));
+}
 
-		env.setStore(index, value);    // Interface uses native endianness
-		break;
-	}
-	case EVM_LOG:
-	{
-		size_t numTopics = _arg2->data_size / sizeof(h256);
-		h256 const* pTopics = reinterpret_cast<h256 const*>(_arg2->data);
-		env.log({pTopics, pTopics + numTopics}, {_arg1->data, _arg1->data_size});
-		break;
-	}
-	case EVM_SELFDESTRUCT:
-		// Register selfdestruction beneficiary.
-		env.suicide(fromEvmC(_arg1->address));
-		break;
-	}
+void setStorage(
+	evm_env* _opaqueEnv,
+	evm_uint160be const* _addr,
+	evm_uint256be const* _key,
+	evm_uint256be const* _value
+) noexcept
+{
+	(void) _addr;
+	auto &env = reinterpret_cast<ExtVMFace&>(*_opaqueEnv);
+	assert(fromEvmC(*_addr) == env.myAddress);
+	u256 index = fromEvmC(*_key);
+	u256 value = fromEvmC(*_value);
+	if (value == 0 && env.store(index) != 0)                   // If delete
+		env.sub.refunds += env.evmSchedule().sstoreRefundGas;  // Increase refund counter
+
+	env.setStore(index, value);    // Interface uses native endianness
+}
+
+void selfdestruct(
+	evm_env* _opaqueEnv,
+	evm_uint160be const* _addr,
+	evm_uint160be const* _beneficiary
+) noexcept
+{
+	(void) _addr;
+	auto &env = reinterpret_cast<ExtVMFace&>(*_opaqueEnv);
+	assert(fromEvmC(*_addr) == env.myAddress);
+	env.suicide(fromEvmC(*_beneficiary));
+}
+
+
+void log(
+	evm_env* _opaqueEnv,
+	evm_uint160be const* _addr,
+	uint8_t const* _data,
+	size_t _dataSize,
+	evm_uint256be const _topics[],
+	size_t _numTopics
+) noexcept
+{
+	(void) _addr;
+	auto &env = reinterpret_cast<ExtVMFace&>(*_opaqueEnv);
+	assert(fromEvmC(*_addr) == env.myAddress);
+	h256 const* pTopics = reinterpret_cast<h256 const*>(_topics);
+	env.log(h256s{pTopics, pTopics + _numTopics}, bytesConstRef{_data, _dataSize});
 }
 
 void getTxContext(evm_tx_context* result, evm_env* _opaqueEnv) noexcept
@@ -142,7 +160,7 @@ void create(evm_result* o_result, ExtVMFace& _env, evm_message const* _msg) noex
 	// TODO: EVMJIT does not support RETURNDATA at the moment, so
 	//       the output is ignored here.
 	h160 addr;
-	std::tie(addr, std::ignore) = _env.create(value, gas, init, {});
+	std::tie(addr, std::ignore) = _env.create(value, gas, init, Instruction::CREATE, u256(0), {});
 	o_result->gas_left = static_cast<int64_t>(gas);
 	o_result->release = nullptr;
 	if (addr)
@@ -218,14 +236,27 @@ void call(evm_result* o_result, evm_env* _opaqueEnv, evm_message const* _msg) no
 class EVM
 {
 public:
-	EVM(evm_query_state_fn _queryFn, evm_update_state_fn _updateFn, evm_call_fn _callFn,
+	EVM(
+		evm_query_state_fn _queryFn,
+		evm_get_storage_fn _getStorageFn,
+		evm_set_storage_fn _setStorageFn,
+		evm_selfdestruct_fn _selfdestructFn,
+		evm_call_fn _callFn,
 		evm_get_tx_context_fn _getTxContextFn,
-		evm_get_block_hash_fn _getBlockHashFn
+		evm_get_block_hash_fn _getBlockHashFn,
+		evm_log_fn _logFn
 	)
 	{
 		auto factory = evmjit_get_factory();
 		m_instance = factory.create(
-				_queryFn, _updateFn, _callFn, _getTxContextFn, _getBlockHashFn
+			_queryFn,
+			_getStorageFn,
+			_setStorageFn,
+			_selfdestructFn,
+			_callFn,
+			_getTxContextFn,
+			_getBlockHashFn,
+			_logFn
 		);
 	}
 
@@ -313,7 +344,7 @@ private:
 EVM& getJit()
 {
 	// Create EVM JIT instance by using EVM-C interface.
-	static EVM jit(queryState, updateState, call, getTxContext, getBlockHash);
+	static EVM jit(queryState, getStorage, setStorage, selfdestruct, call, getTxContext, getBlockHash, log);
 	return jit;
 }
 

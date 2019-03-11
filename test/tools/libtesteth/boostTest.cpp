@@ -14,9 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file boostTest.cpp
- * @author Dimitry Khokhlov <dimitry@ethdev.com>
- * @date 2015
+/** @file
  * Stub for generating main boost.test module.
  * Original code taken from boost sources.
  */
@@ -40,7 +38,8 @@
 
 #include <clocale>
 #include <stdlib.h>
-#include <test/TestHelper.h>
+#include <iostream>
+#include <test/tools/libtesteth/TestHelper.h>
 #include <boost/version.hpp>
 
 using namespace boost::unit_test;
@@ -71,12 +70,7 @@ void createRandomTest()
 	if (dev::test::createRandomTest(parameters))
 		throw framework::internal_error("Create Random Test Error!");
 	else
-	{
-		//disable post output so the test json would be clean
-		if (dev::test::Options::get().rCheckTest.size() > 0)
-			std::cout << "correct" << std::endl;
 		exit(0);
-	}
 }
 
 static std::atomic_bool stopTravisOut;
@@ -119,46 +113,52 @@ void setDefaultOrCLocale()
 int main( int argc, char* argv[] )
 {
 	setDefaultOrCLocale();
-	//Initialize options
-	dev::test::Options const& opt = dev::test::Options::get(argc, argv);
-
-	if (opt.createRandomTest)
+	try
 	{
-		//disable initial output
-		oldCoutStreamBuf = std::cout.rdbuf();
-		oldCerrStreamBuf = std::cerr.rdbuf();
-		std::cout.rdbuf(strCout.rdbuf());
-		std::cerr.rdbuf(strCout.rdbuf());
-
-		for (int i = 0; i < argc; i++)
+		//Initialize options
+		dev::test::Options const& opt = dev::test::Options::get(argc, argv);
+		if (opt.createRandomTest)
 		{
-			std::string arg = std::string{argv[i]};
+			//disable initial output
+			oldCoutStreamBuf = std::cout.rdbuf();
+			oldCerrStreamBuf = std::cerr.rdbuf();
+			std::cout.rdbuf(strCout.rdbuf());
+			std::cerr.rdbuf(strCout.rdbuf());
 
-			//replace test suite to random tests
-			if (arg == "-t" && i+1 < argc)
-				argv[i+1] = (char*)std::string("RandomTestCreationSuite").c_str();
-
-			//don't pass long raw test input to boost
-			if (arg == "--checktest")
+			for (int i = 0; i < argc; i++)
 			{
-				argc = i + 1;
-				break;
-			}
-		}
+				std::string arg = std::string{argv[i]};
 
-		//add random tests suite
-		test_suite* ts1 = BOOST_TEST_SUITE("RandomTestCreationSuite");
-		ts1->add(BOOST_TEST_CASE(&createRandomTest));
-		framework::master_test_suite().add(ts1);
+				//replace test suite to random tests
+				if (arg == "-t" && i+1 < argc)
+					argv[i+1] = (char*)std::string("RandomTestCreationSuite").c_str();
+
+				//don't pass long raw test input to boost
+				if (arg == "--checktest")
+				{
+					argc = i + 1;
+					break;
+				}
+			}
+
+			//add random tests suite
+			test_suite* ts1 = BOOST_TEST_SUITE("RandomTestCreationSuite");
+			ts1->add(BOOST_TEST_CASE(&createRandomTest));
+			framework::master_test_suite().add(ts1);
+		}
+	}
+	catch (dev::test::Options::InvalidOption const& e)
+	{
+		std::cerr << e.what() << std::endl;
+		exit(1);
 	}
 
 	for (int i = 0; i < argc; i++)
 		parameters.push_back(argv[i]);
 
 	stopTravisOut = false;
-	std::future<int> ret = std::async(unit_test_main, fake_init_func, argc, argv);
 	std::thread outputThread(travisOut);
-	int result = ret.get();
+	int result = unit_test_main(fake_init_func, argc, argv);
 	stopTravisOut = true;
 	outputThread.join();
 	dev::test::TestOutputHelper::printTestExecStats();

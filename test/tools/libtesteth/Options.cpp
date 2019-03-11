@@ -45,8 +45,6 @@ void printHelp()
 	cout << setw(30) << "--vmtrace" << setw(25) << "Enable VM trace for the test. (Require build with VMTRACE=1)" << std::endl;
 	cout << setw(30) << "--stats <OutFile>" << setw(25) << "Output debug stats to the file" << std::endl;
 	cout << setw(30) << "--exectimelog" << setw(25) << "Output execution time for each test suite" << std::endl;
-	cout << setw(30) << "--filltest <FileData>" << setw(25) << "Try fill tests from the given json stream" << std::endl;
-	cout << setw(30) << "--checktest <FileData>" << setw(25) << "Try run tests from the given json stream" << std::endl;
 	cout << setw(30) << "--statediff" << setw(25) << "Trace state difference for state tests" << std::endl;
 
 	cout << std::endl << "Additional Tests" << std::endl;
@@ -73,17 +71,36 @@ Options::Options(int argc, char** argv)
 	trDataIndex = -1;
 	trGasIndex = -1;
 	trValueIndex = -1;
+	bool seenSeparator = false; // true if "--" has been seen.
 	for (auto i = 0; i < argc; ++i)
 	{
 		auto arg = std::string{argv[i]};
+		auto throwIfNoArgumentFollows = [&i, &argc, &arg]()
+		{
+			if (i + 1 >= argc)
+				BOOST_THROW_EXCEPTION(InvalidOption(arg + " option is missing an argument."));
+		};
+		auto throwIfAfterSeparator = [&seenSeparator, &arg]()
+		{
+			if (seenSeparator)
+				BOOST_THROW_EXCEPTION(InvalidOption(arg + " option appears after the separator --."));
+		};
+		if (arg == "--")
+		{
+			if (seenSeparator)
+				BOOST_THROW_EXCEPTION(InvalidOption("The separator -- appears more than once in the command line."));
+			seenSeparator = true;
+			continue;
+		}
 		if (arg == "--help")
 		{
 			printHelp();
 			exit(0);
 		}
 		else
-		if (arg == "--vm" && i + 1 < argc)
+		if (arg == "--vm")
 		{
+			throwIfNoArgumentFollows();
 			string vmKind = argv[++i];
 			if (vmKind == "interpreter")
 				VMFactory::setKind(VMKind::Interpreter);
@@ -105,10 +122,11 @@ Options::Options(int argc, char** argv)
 			filltests = true;
 		else if (arg == "--fillchain")
 			fillchain = true;
-		else if (arg == "--stats" && i + 1 < argc)
+		else if (arg == "--stats")
 		{
+			throwIfNoArgumentFollows();
 			stats = true;
-			statsOutFile = argv[i + 1];
+			statsOutFile = argv[++i];
 		}
 		else if (arg == "--exectimelog")
 			exectimelog = true;
@@ -135,15 +153,19 @@ Options::Options(int argc, char** argv)
 			bigData = true;
 			wallet = true;
 		}
-		else if (arg == "--singletest" && i + 1 < argc)
+		else if (arg == "--singletest")
 		{
+			throwIfNoArgumentFollows();
 			singleTest = true;
-			auto name1 = std::string{argv[i + 1]};
-			if (i + 2 < argc) // two params
+			auto name1 = std::string{argv[++i]};
+			if (i + 1 < argc) // two params
 			{
-				auto name2 = std::string{argv[i + 2]};
+				auto name2 = std::string{argv[++i]};
 				if (name2[0] == '-') // not param, another option
+				{
 					singleTestName = std::move(name1);
+					i--;
+				}
 				else
 				{
 					singleTestFile = std::move(name1);
@@ -153,14 +175,18 @@ Options::Options(int argc, char** argv)
 			else
 				singleTestName = std::move(name1);
 		}
-		else if (arg == "--singlenet" && i + 1 < argc)
-			singleTestNet = std::string{argv[i + 1]};
+		else if (arg == "--singlenet")
+		{
+			throwIfNoArgumentFollows();
+			singleTestNet = std::string{argv[++i]};
+		}
 		else if (arg == "--fulloutput")
 			fulloutput = true;
-		else if (arg == "--verbosity" && i + 1 < argc)
+		else if (arg == "--verbosity")
 		{
+			throwIfNoArgumentFollows();
 			static std::ostringstream strCout; //static string to redirect logs to
-			std::string indentLevel = std::string{argv[i + 1]};
+			std::string indentLevel = std::string{argv[++i]};
 			if (indentLevel == "0")
 			{
 				logVerbosity = Verbosity::None;
@@ -172,33 +198,44 @@ Options::Options(int argc, char** argv)
 			else
 				logVerbosity = Verbosity::Full;
 
-			int indentLevelInt = atoi(argv[i + 1]);
+			int indentLevelInt = atoi(argv[i]);
 			if (indentLevelInt > g_logVerbosity)
 				g_logVerbosity = indentLevelInt;
 		}
 		else if (arg == "--createRandomTest")
 			createRandomTest = true;
-		else if (arg == "-t" && i + 1 < argc)
-			rCurrentTestSuite = std::string{argv[i + 1]};
-		else if (arg == "--checktest" || arg == "--filltest")
+		else if (arg == "-t")
 		{
-			//read all line to the end
-			for (int j = i+1; j < argc; ++j)
-				rCheckTest += argv[j];
-			break;
+			throwIfAfterSeparator();
+			throwIfNoArgumentFollows();
+			rCurrentTestSuite = std::string{argv[++i]};
 		}
 		else if (arg == "--nonetwork")
 			nonetwork = true;
-		else if (arg == "-d" && i + 1 < argc)
-			trDataIndex = atoi(argv[i + 1]);
-		else if (arg == "-g" && i + 1 < argc)
-			trGasIndex = atoi(argv[i + 1]);
-		else if (arg == "-v" && i + 1 < argc)
-			trValueIndex = atoi(argv[i + 1]);
-		else if (arg == "--testpath" && i + 1 < argc)
-			testpath = std::string{argv[i + 1]};
+		else if (arg == "-d")
+		{
+			throwIfNoArgumentFollows();
+			trDataIndex = atoi(argv[++i]);
+		}
+		else if (arg == "-g")
+		{
+			throwIfNoArgumentFollows();
+			trGasIndex = atoi(argv[++i]);
+		}
+		else if (arg == "-v")
+		{
+			throwIfNoArgumentFollows();
+			trValueIndex = atoi(argv[++i]);
+		}
+		else if (arg == "--testpath")
+		{
+			throwIfNoArgumentFollows();
+			testpath = std::string{argv[++i]};
+		}
 		else if (arg == "--statediff")
 			statediff = true;
+		else if (seenSeparator)
+			BOOST_THROW_EXCEPTION(InvalidOption("Unknown option: " + arg));
 	}
 
 	//Default option

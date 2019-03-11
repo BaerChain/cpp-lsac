@@ -143,15 +143,15 @@ string StandardTrace::json(bool _styled) const
 
 Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s.mutableState()),
-	m_envInfo(_s.info(), _bc.lastHashes(_s.info().parentHash())),
+	m_envInfo(_s.info(), _bc.lastBlockHashes(), 0),
 	m_depth(_level),
 	m_sealEngine(*_bc.sealEngine())
 {
 }
 
-Executive::Executive(Block& _s, LastHashes const& _lh, unsigned _level):
+Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level):
 	m_s(_s.mutableState()),
-	m_envInfo(_s.info(), _lh),
+	m_envInfo(_s.info(), _lh, 0),
 	m_depth(_level),
 	m_sealEngine(*_s.sealEngine())
 {
@@ -159,7 +159,7 @@ Executive::Executive(Block& _s, LastHashes const& _lh, unsigned _level):
 
 Executive::Executive(State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level):
 	m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
-	m_envInfo(_block.info(), _bc.lastHashes(_block.info().parentHash()), _txIndex ? _block.receipt(_txIndex - 1).gasUsed() : 0),
+	m_envInfo(_block.info(), _bc.lastBlockHashes(), _txIndex ? _block.receipt(_txIndex - 1).gasUsed() : 0),
 	m_depth(_level),
 	m_sealEngine(*_bc.sealEngine())
 {
@@ -179,10 +179,10 @@ void Executive::accrueSubState(SubState& _parentContext)
 void Executive::initialize(Transaction const& _transaction)
 {
 	m_t = _transaction;
-	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo));
+	m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo.number()));
 	try
 	{
-		m_sealEngine.verifyTransaction(ImportRequirements::Everything, m_t, m_envInfo);
+		m_sealEngine.verifyTransaction(ImportRequirements::Everything, m_t, m_envInfo.header(), m_envInfo.gasUsed());
 	}
 	catch (Exception const& ex)
 	{
@@ -306,9 +306,30 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 	return !m_ext;
 }
 
-bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
+bool Executive::create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
+{
+	if (m_envInfo.number() < m_sealEngine.chainParams().u256Param("metropolisForkBlock"))
+		return createOpcode(_txSender, _endowment, _gasPrice, _gas, _init, _origin);
+
+	m_newAddress = right160(sha3(MaxAddress.asBytes() + sha3(_init).asBytes()));
+	return executeCreate(_txSender, _endowment, _gasPrice, _gas, _init, _origin);
+}
+
+bool Executive::createOpcode(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	u256 nonce = m_s.getNonce(_sender);
+	m_newAddress = right160(sha3(rlpList(_sender, nonce)));
+	return executeCreate(_sender, _endowment, _gasPrice, _gas, _init, _origin);
+}
+
+bool Executive::create2Opcode(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin, u256 _salt)
+{
+	m_newAddress = right160(sha3(_sender.asBytes() + toBigEndian(_salt) + sha3(_init).asBytes()));
+	return executeCreate(_sender, _endowment, _gasPrice, _gas, _init, _origin);
+}
+
+bool Executive::executeCreate(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
+{
 	if (_sender != MaxAddress) // EIP86
 		m_s.incNonce(_sender);
 
@@ -318,7 +339,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_orig.address, since
 	// we delete it explicitly if we decide we need to revert.
-	m_newAddress = right160(sha3(rlpList(_sender, nonce)));
+
 	m_gas = _gas;
 
 	// Transfer ether before deploying the code. This will also create new
@@ -331,12 +352,25 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// Schedule _init execution if not empty.
 	if (!_init.empty())
 		m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth);
-	else if (m_s.addressHasCode(m_newAddress))
-		// Overwrite with empty code in case the account already has a code
-		// (address collision -- not real life case but we can check it with
-		// synthetic tests).
-		m_s.setNewCode(m_newAddress, {});
-
+	
+	if (m_envInfo.number() < m_sealEngine.chainParams().u256Param("metropolisForkBlock"))
+	{
+		if (m_s.addressHasCode(m_newAddress))
+			// Overwrite with empty code in case the account already has a code
+			// (address collision -- not real life case but we can check it with
+			// synthetic tests).
+			m_s.setCode(m_newAddress, {});
+	}
+	else
+	{
+		if ((m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 1))
+		{
+			clog(StateSafeExceptions) << "Address already used: " << m_newAddress;
+			m_gas = 0;
+			m_excepted = TransactionException::AddressAlreadyUsed;
+			revert();
+		}
+	}
 	return !m_ext;
 }
 
@@ -400,7 +434,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 				}
 				if (m_res)
 					m_res->output = out.toVector(); // copy output to execution result
-				m_s.setNewCode(m_ext->myAddress, out.toVector());
+				m_s.setCode(m_ext->myAddress, out.toVector());
 			}
 			else
 				m_output = vm->exec(m_gas, *m_ext, _onOp);

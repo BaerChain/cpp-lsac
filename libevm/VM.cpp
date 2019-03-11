@@ -15,8 +15,6 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file VM.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
  */
 
 #include <libethereum/ExtVM.h>
@@ -58,10 +56,8 @@ template <class S> S modWorkaround(S const& _a, S const& _b)
 
 uint64_t VM::decodeJumpDest(const byte* const _code, uint64_t& _pc)
 {
-	// turn 4 MSB-first bytes in the code into a native-order integer
+	// turn 2 MSB-first bytes in the code into a native-order integer
 	uint64_t dest      = _code[_pc++];
-	dest = (dest << 8) | _code[_pc++];
-	dest = (dest << 8) | _code[_pc++];
 	dest = (dest << 8) | _code[_pc++];
 	return dest;
 }
@@ -71,16 +67,16 @@ uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
 	// Layout of jump table in bytecode...
 	//     byte opcode
 	//     byte n_jumps
-	//     byte table[n_jumps][4]
+	//     byte table[n_jumps][2]
 	//	
 	uint64_t pc = _pc;
 	byte n = _code[++pc];           // byte after opcode is number of jumps
 	if (_voff >= n) _voff = n - 1;  // if offset overflows use default jump
-	pc += _voff * 4;                // adjust inout pc before index destination in table
+	pc += _voff * 2;                // adjust inout pc before index destination in table
 	
 	uint64_t dest = decodeJumpDest(_code, pc);
 	
-	_pc += 1 + n * 4;               // adust inout _pc to opcode after table 
+	_pc += 1 + n * 2;               // adust inout _pc to opcode after table 
 	return dest;
 }
 
@@ -220,6 +216,14 @@ void VM::interpretCases()
 		//
 		// Call-related instructions
 		//
+
+		CASE(CREATE2)
+		{
+			if (!m_schedule->haveCreate2)
+				throwBadInstruction();
+			m_bounce = &VM::caseCreate;
+		}
+		BREAK
 		
 		CASE(CREATE)
 		{
@@ -763,6 +767,9 @@ void VM::interpretCases()
 		{
 			if (!m_schedule->haveReturnData)
 				throwBadInstruction();
+			bigint const endOfAccess = bigint(m_SP[1]) + bigint(m_SP[2]);
+			if (m_returnData.size() < endOfAccess)
+				throwBufferOverrun(endOfAccess);
 
 			m_copyMemSize = toInt63(m_SP[2]);
 			updateMem(memNeed(m_SP[0], m_SP[2]));
@@ -873,12 +880,19 @@ void VM::interpretCases()
 
 		CASE(PUSHC)
 		{
-#ifdef EVM_USE_CONSTANT_POOL
+#if EVM_USE_CONSTANT_POOL
 			ON_OP();
 			updateIOGas();
 
-			m_SPP[0] = m_pool[m_code[++m_PC]];
+			// get val at two-byte offset into const pool and advance pc by one-byte remainder
+			TRACE_OP(2, m_PC, m_OP);
+			unsigned off;
+			++m_PC;
+			off = m_code[m_PC++] << 8;
+			off |= m_code[m_PC++];
 			m_PC += m_code[m_PC];
+			m_SPP[0] = m_pool[off];
+			TRACE_VAL(2, "Retrieved pooled const", m_SPP[0]);
 #else
 			throwBadInstruction();
 #endif
@@ -1031,7 +1045,7 @@ void VM::interpretCases()
 
 		CASE(JUMPC)
 		{
-#ifdef EVM_REPLACE_CONST_JUMP
+#if EVM_REPLACE_CONST_JUMP
 			ON_OP();
 			updateIOGas();
 
@@ -1044,7 +1058,7 @@ void VM::interpretCases()
 
 		CASE(JUMPCI)
 		{
-#ifdef EVM_REPLACE_CONST_JUMP
+#if EVM_REPLACE_CONST_JUMP
 			ON_OP();
 			updateIOGas();
 
