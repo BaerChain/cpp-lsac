@@ -115,7 +115,7 @@ void ExtVM::setStore(u256 _n, u256 _v)
 	m_s.setStorage(myAddress, _n, _v);
 }
 
-h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
+std::pair<h160, owning_bytes_ref> ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
 {
 	Executive e{m_s, envInfo(), m_sealEngine, depth + 1};
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
@@ -124,7 +124,7 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 		e.accrueSubState(sub);
 	}
 	io_gas = e.gas();
-	return e.newAddress();
+	return {e.newAddress(), e.takeOutput()};
 }
 
 void ExtVM::suicide(Address _a)
@@ -133,4 +133,27 @@ void ExtVM::suicide(Address _a)
 	m_s.addBalance(_a, m_s.balance(myAddress));
 	m_s.subBalance(myAddress, m_s.balance(myAddress));
 	ExtVMFace::suicide(_a);
+}
+
+h256 ExtVM::blockHash(u256 _number)
+{
+	u256 const currentNumber = envInfo().number();
+
+	if (_number >= currentNumber || _number < (std::max<u256>(256, currentNumber) - 256))
+		return h256();
+
+	if (currentNumber < m_sealEngine.chainParams().u256Param("metropolisForkBlock") + 256)
+	{
+		assert(envInfo().lastHashes().size() > (unsigned)(currentNumber - 1 - _number));
+		return envInfo().lastHashes()[(unsigned)(currentNumber - 1 - _number)];
+	}
+
+	u256 const nonce = m_s.getNonce(caller);
+	u256 const gas = 1000000;
+	Transaction tx(0, 0, gas, c_blockhashContractAddress, toBigEndian(_number), nonce);
+	tx.forceSender(caller);
+
+	ExecutionResult res;
+	std::tie(res, std::ignore) = m_s.execute(envInfo(), m_sealEngine, tx, Permanence::Reverted);
+	return h256(res.output);
 }

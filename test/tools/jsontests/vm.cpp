@@ -37,13 +37,13 @@ FakeExtVM::FakeExtVM(EnvInfo const& _envInfo, unsigned _depth):			/// TODO: XXX:
 	ExtVMFace(_envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _depth)
 {}
 
-h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
+std::pair<h160, eth::owning_bytes_ref> FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
 {
 	Address na = right160(sha3(rlpList(myAddress, get<1>(addresses[myAddress]))));
 
 	Transaction t(_endowment, gasPrice, io_gas, _init.toBytes());
 	callcreates.push_back(t);
-	return na;
+	return {na, eth::owning_bytes_ref{}};
 }
 
 std::pair<bool, eth::owning_bytes_ref> FakeExtVM::call(CallParameters& _p)
@@ -51,6 +51,13 @@ std::pair<bool, eth::owning_bytes_ref> FakeExtVM::call(CallParameters& _p)
 	Transaction t(_p.valueTransfer, gasPrice, _p.gas, _p.receiveAddress, _p.data.toVector());
 	callcreates.push_back(t);
 	return {true, eth::owning_bytes_ref{}};  // Return empty output.
+}
+
+h256 FakeExtVM::blockHash(u256 _number)
+{
+	return _number < envInfo().number() && _number >= (std::max<u256>(256, envInfo().number()) - 256) ?
+		sha3(toString(_number)) :
+		h256();
 }
 
 void FakeExtVM::set(Address _a, u256 _myBalance, u256 _myNonce, map<u256, u256> const& _storage, bytes const& _code)
@@ -96,7 +103,6 @@ EnvInfo FakeExtVM::importEnv(mObject& _o)
 	info.setTimestamp(toInt(_o["currentTimestamp"]));
 	info.setAuthor(Address(_o["currentCoinbase"].get_str()));
 	info.setNumber(toInt(_o["currentNumber"]));
-	info.setLastHashes( lastHashes( info.number() ) );
 	return info;
 }
 

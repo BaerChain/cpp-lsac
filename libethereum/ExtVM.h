@@ -65,7 +65,7 @@ public:
 	virtual size_t codeSizeAt(Address _a) override final;
 
 	/// Create a new contract.
-	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final;
+	virtual std::pair<h160, owning_bytes_ref> create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final;
 
 	/// Create a new message call. Leave _myAddressOverride as the default to use the present address as caller.
 	/// @returns success flag and output data, if any.
@@ -90,6 +90,9 @@ public:
 	virtual EVMSchedule const& evmSchedule() const override final { return m_sealEngine.evmSchedule(envInfo()); }
 
 	State const& state() const { return m_s; }
+
+	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
+	h256 blockHash(u256 _number) override;
 
 private:
 	State& m_s;  ///< A reference to the base state.
