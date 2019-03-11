@@ -1,64 +1,61 @@
-// do not optimize
+// Do not optimize
 pragma solidity ^0.4.0;
 
 contract mul64 {
-	function mul64(){
-		uint j = 1;
-		for (uint i = 1; i <= 500000; ++i) {
+	function mul64() {
+		uint r;
+		for (uint i = 0; i < 2000000; ++i) { // 16 MULS to 63-bit result
 			assembly {
-				3
-				1
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul
+				0xd
+				0xd
+				0xd
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
 				pop
-				1
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
 				pop
-				1
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
 				pop
-				1
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
 				pop
-				1
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
-				dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
 				pop
-				=: j
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				pop
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				pop
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				pop
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				pop
+				dup2
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul dup2 mul
+				=: r
+				pop
+				pop
 			}
 		}
+		if (r != 0x780c7372621bd74d)
+			throw;
 	}
 }
+
+
+
