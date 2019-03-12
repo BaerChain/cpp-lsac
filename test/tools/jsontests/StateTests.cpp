@@ -41,10 +41,17 @@ namespace dev {  namespace test {
 
 void doStateTests(json_spirit::mValue& _v, bool _fillin)
 {
+	BOOST_REQUIRE_MESSAGE(!_fillin || _v.get_obj().size() == 1,
+		TestOutputHelper::testFileName() + " A GeneralStateTest filler should contain only one test.");
+
 	for (auto& i: _v.get_obj())
 	{
 		string testname = i.first;
 		json_spirit::mObject& o = i.second.get_obj();
+
+		if (_fillin)
+			BOOST_REQUIRE_MESSAGE(testname + "Filler.json" == TestOutputHelper::testFileName(),
+				TestOutputHelper::testFileName() + " contains a test with a different name '" + testname + "'" );
 
 		if (!TestOutputHelper::passTest(testname))
 			continue;
@@ -122,7 +129,10 @@ public:
 		test::TestOutputHelper::initTest(fileCount);
 
 		for (auto const& file: files)
+		{
+			test::TestOutputHelper::setCurrentTestFileName(file.filename().string());
 			test::executeTests(file.filename().string(), "/GeneralStateTests/"+_folder, "/GeneralStateTestsFiller/"+_folder, dev::test::doStateTests);
+		}
 
 		test::TestOutputHelper::finishTest();
 	}
