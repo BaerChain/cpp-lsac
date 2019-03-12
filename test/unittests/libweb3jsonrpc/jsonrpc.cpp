@@ -75,7 +75,7 @@ struct Setup
 string fromAscii(string _s)
 {
 	bytes b = asBytes(_s);
-	return toHexPrefix(b);
+	return toHex(b, 2, HexPrefix::Add);
 }
 
 BOOST_FIXTURE_TEST_SUITE(environment, Setup)

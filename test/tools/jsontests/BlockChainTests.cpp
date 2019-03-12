@@ -235,7 +235,7 @@ void fillBCTest(json_spirit::mObject& _o)
 	assert(testChain.interface().isKnown(genesisBlock.blockHeader().hash(WithSeal)));
 
 	_o["genesisBlockHeader"] = writeBlockHeaderToJson(genesisBlock.blockHeader());
-	_o["genesisRLP"] = toHexPrefix(genesisBlock.bytes());
+	_o["genesisRLP"] = toHex(genesisBlock.bytes(), 2, HexPrefix::Add);
 	BOOST_REQUIRE(_o.count("blocks"));
 
 	mArray blArray;
@@ -326,7 +326,7 @@ void fillBCTest(json_spirit::mObject& _o)
 		if (blObj.count("blockHeader"))
 			overwriteBlockHeaderForTest(blObj.at("blockHeader").get_obj(), alterBlock, *chainMap[chainname]);
 
-		blObj["rlp"] = toHexPrefix(alterBlock.bytes());
+		blObj["rlp"] = toHex(alterBlock.bytes(), 2, HexPrefix::Add);
 		blObj["blockHeader"] = writeBlockHeaderToJson(alterBlock.blockHeader());
 
 		mArray aUncleList;
@@ -456,13 +456,21 @@ void testBCTest(json_spirit::mObject& _o)
 		}
 
 		//block from RLP successfully imported. now compare this rlp to test sections
-		BOOST_REQUIRE(blObj.count("blockHeader"));
+		BOOST_REQUIRE_MESSAGE(blObj.count("blockHeader"),
+			"blockHeader field is not found. "
+			"filename: " + TestOutputHelper::testFileName() +
+			" testname: " + TestOutputHelper::testName()
+		);
 
 		//Check Provided Header against block in RLP
 		TestBlock blockFromFields(blObj["blockHeader"].get_obj());
 
 		//ImportTransactions
-		BOOST_REQUIRE(blObj.count("transactions"));
+		BOOST_REQUIRE_MESSAGE(blObj.count("transactions"),
+			"transactions field is not found. "
+			"filename: " + TestOutputHelper::testFileName() +
+			" testname: " + TestOutputHelper::testName()
+		);
 		for (auto const& txObj: blObj["transactions"].get_array())
 		{
 			TestTransaction transaction(txObj.get_obj());
@@ -812,12 +820,12 @@ mObject writeBlockHeaderToJson(BlockHeader const& _bi)
 	o["transactionsTrie"] = toString(_bi.transactionsRoot());
 	o["receiptTrie"] = toString(_bi.receiptsRoot());
 	o["bloom"] = toString(_bi.logBloom());
-	o["difficulty"] = toCompactHexPrefix(_bi.difficulty(), 1);
-	o["number"] = toCompactHexPrefix(_bi.number(), 1);
-	o["gasLimit"] = toCompactHexPrefix(_bi.gasLimit(), 1);
-	o["gasUsed"] = toCompactHexPrefix(_bi.gasUsed(), 1);
-	o["timestamp"] = toCompactHexPrefix(_bi.timestamp(), 1);
-	o["extraData"] = (_bi.extraData().size()) ? toHexPrefix(_bi.extraData()) : "";
+	o["difficulty"] = toCompactHex(_bi.difficulty(), HexPrefix::Add, 1);
+	o["number"] = toCompactHex(_bi.number(), HexPrefix::Add, 1);
+	o["gasLimit"] = toCompactHex(_bi.gasLimit(), HexPrefix::Add, 1);
+	o["gasUsed"] = toCompactHex(_bi.gasUsed(), HexPrefix::Add, 1);
+	o["timestamp"] = toCompactHex(_bi.timestamp(), HexPrefix::Add, 1);
+	o["extraData"] = (_bi.extraData().size()) ? toHex(_bi.extraData(), 2, HexPrefix::Add) : "";
 	o["mixHash"] = toString(Ethash::mixHash(_bi));
 	o["nonce"] = toString(Ethash::nonce(_bi));
 	o["hash"] = toString(_bi.hash());
@@ -847,9 +855,21 @@ void checkExpectedException(mObject& _blObj, Exception const& _e)
 
 void checkJsonSectionForInvalidBlock(mObject& _blObj)
 {
-	BOOST_CHECK(_blObj.count("blockHeader") == 0);
-	BOOST_CHECK(_blObj.count("transactions") == 0);
-	BOOST_CHECK(_blObj.count("uncleHeaders") == 0);
+	BOOST_CHECK_MESSAGE(_blObj.count("blockHeader") == 0,
+			"blockHeader field is found in the should-be invalid block. "
+			"filename: " + TestOutputHelper::testFileName() +
+			" testname: " + TestOutputHelper::testName()
+	);
+	BOOST_CHECK_MESSAGE(_blObj.count("transactions") == 0,
+			"transactions field is found in the should-be invalid block. "
+			"filename: " + TestOutputHelper::testFileName() +
+			" testname: " + TestOutputHelper::testName()
+	);
+	BOOST_CHECK_MESSAGE(_blObj.count("uncleHeaders") == 0,
+			"uncleHeaders field is found in the should-be invalid block. "
+			"filename: " + TestOutputHelper::testFileName() +
+			" testname: " + TestOutputHelper::testName()
+	);
 }
 
 void eraseJsonSectionForInvalidBlock(mObject& _blObj)

@@ -74,7 +74,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	if (!m_options.disableStack)
 	{
 		for (auto const& i: vm.stack())
-			stack.append(toCompactHexPrefix(i, 1));
+			stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
 		r["stack"] = stack;
 	}
 
@@ -112,7 +112,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 		for (unsigned i = 0; i < vm.memory().size(); i += 32)
 		{
 			bytesConstRef memRef(vm.memory().data() + i, 32);
-			memJson.append(toHex(memRef));
+			memJson.append(toHex(memRef, 2, HexPrefix::DontAdd));
 		}
 		r["memory"] = memJson;
 	}
@@ -121,7 +121,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	{
 		Json::Value storage(Json::objectValue);
 		for (auto const& i: ext.state().storage(ext.myAddress))
-			storage[toCompactHexPrefix(i.second.first, 1)] = toCompactHexPrefix(i.second.second, 1);
+			storage[toCompactHex(i.second.first, HexPrefix::Add, 1)] = toCompactHex(i.second.second, HexPrefix::Add, 1);
 		r["storage"] = storage;
 	}
 
@@ -308,11 +308,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
 bool Executive::create(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
-	if (m_envInfo.number() < m_sealEngine.chainParams().u256Param("metropolisForkBlock"))
-		return createOpcode(_txSender, _endowment, _gasPrice, _gas, _init, _origin);
-
-	m_newAddress = right160(sha3(MaxAddress.asBytes() + sha3(_init).asBytes()));
-	return executeCreate(_txSender, _endowment, _gasPrice, _gas, _init, _origin);
+	// Contract creation by an external account is the same as CREATE opcode
+	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _init, _origin);
 }
 
 bool Executive::createOpcode(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin)

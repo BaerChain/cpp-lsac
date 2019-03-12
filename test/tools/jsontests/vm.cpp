@@ -81,11 +81,11 @@ void FakeExtVM::reset(u256 _myBalance, u256 _myNonce, map<u256, u256> const& _st
 mObject FakeExtVM::exportEnv()
 {
 	mObject ret;
-	ret["currentDifficulty"] = toCompactHexPrefix(envInfo().difficulty(), 1);
-	ret["currentTimestamp"] =  toCompactHexPrefix(envInfo().timestamp(), 1);
+	ret["currentDifficulty"] = toCompactHex(envInfo().difficulty(), HexPrefix::Add, 1);
+	ret["currentTimestamp"] =  toCompactHex(envInfo().timestamp(), HexPrefix::Add, 1);
 	ret["currentCoinbase"] = "0x" + toString(envInfo().author());
-	ret["currentNumber"] = toCompactHexPrefix(envInfo().number(), 1);
-	ret["currentGasLimit"] = toCompactHexPrefix(envInfo().gasLimit(), 1);
+	ret["currentNumber"] = toCompactHex(envInfo().number(), HexPrefix::Add, 1);
+	ret["currentGasLimit"] = toCompactHex(envInfo().gasLimit(), HexPrefix::Add, 1);
 	return ret;
 }
 
@@ -115,15 +115,15 @@ mObject FakeExtVM::exportState()
 	for (auto const& a: addresses)
 	{
 		mObject o;
-		o["balance"] = toCompactHexPrefix(get<0>(a.second), 1);
-		o["nonce"] = toCompactHexPrefix(get<1>(a.second), 1);
+		o["balance"] = toCompactHex(get<0>(a.second), HexPrefix::Add, 1);
+		o["nonce"] = toCompactHex(get<1>(a.second), HexPrefix::Add, 1);
 		{
 			mObject store;
 			for (auto const& s: get<2>(a.second))
-				store[toCompactHexPrefix(s.first, 1)] = toCompactHexPrefix(s.second, 1);
+				store[toCompactHex(s.first, HexPrefix::Add, 1)] = toCompactHex(s.second, HexPrefix::Add, 1);
 			o["storage"] = store;
 		}
-		o["code"] = toHexPrefix(get<3>(a.second));
+		o["code"] = toHex(get<3>(a.second), 2, HexPrefix::Add);
 		ret["0x" + toString(a.first)] = o;
 	}
 	return ret;
@@ -156,11 +156,11 @@ mObject FakeExtVM::exportExec()
 	ret["address"] = "0x" + toString(myAddress);
 	ret["caller"] = "0x" + toString(caller);
 	ret["origin"] = "0x" + toString(origin);
-	ret["value"] = toCompactHexPrefix(value, 1);
-	ret["gasPrice"] = toCompactHexPrefix(gasPrice, 1);
-	ret["gas"] = toCompactHexPrefix(execGas, 1);
-	ret["data"] = toHexPrefix(data);
-	ret["code"] = toHexPrefix(code);
+	ret["value"] = toCompactHex(value, HexPrefix::Add, 1);
+	ret["gasPrice"] = toCompactHex(gasPrice, HexPrefix::Add, 1);
+	ret["gas"] = toCompactHex(execGas, HexPrefix::Add, 1);
+	ret["data"] = toHex(data, 2, HexPrefix::Add);
+	ret["code"] = toHex(code, 2, HexPrefix::Add);
 	return ret;
 }
 
@@ -203,9 +203,9 @@ mArray FakeExtVM::exportCallCreates()
 	{
 		mObject o;
 		o["destination"] = tx.isCreation() ? "" : "0x" + toString(tx.receiveAddress());
-		o["gasLimit"] = toCompactHexPrefix(tx.gas(), 1);
-		o["value"] = toCompactHexPrefix(tx.value(), 1);
-		o["data"] = toHexPrefix(tx.data());
+		o["gasLimit"] = toCompactHex(tx.gas(), HexPrefix::Add, 1);
+		o["value"] = toCompactHex(tx.value(), HexPrefix::Add, 1);
+		o["data"] = toHex(tx.data(), 2, HexPrefix::Add);
 		ret.push_back(o);
 	}
 	return ret;
@@ -394,7 +394,7 @@ void doVMTests(json_spirit::mValue& _v, bool _fillin)
 				}
 
 				o["callcreates"] = fev.exportCallCreates();
-				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHexPrefix(output);
+				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHex(output, 2, HexPrefix::Add);
 
 				// compare expected output with post output
 				if (o.count("expectOut") > 0)
@@ -408,7 +408,7 @@ void doVMTests(json_spirit::mValue& _v, bool _fillin)
 					o.erase(o.find("expectOut"));
 				}
 
-				o["gas"] = toCompactHexPrefix(fev.gas, 1);
+				o["gas"] = toCompactHex(fev.gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}
 		}
