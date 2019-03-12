@@ -23,11 +23,25 @@
 #include <boost/test/unit_test.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
-#include <test/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
 
 using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE(CoreLibTests, TestOutputHelper)
+
+BOOST_AUTO_TEST_CASE(toHex)
+{
+	dev::bytes b = dev::fromHex("f0e1d2c3b4a59687");
+	BOOST_CHECK_EQUAL(dev::toHex(b), "f0e1d2c3b4a59687");
+	BOOST_CHECK_EQUAL(dev::toHexPrefix(b), "0xf0e1d2c3b4a59687");
+}
+
+BOOST_AUTO_TEST_CASE(toCompactHex)
+{
+	dev::u256 i("0x123456789abcdef");
+	BOOST_CHECK_EQUAL(dev::toCompactHex(i), "0123456789abcdef");
+	BOOST_CHECK_EQUAL(dev::toCompactHexPrefix(i), "0x0123456789abcdef");
+}
 
 BOOST_AUTO_TEST_CASE(byteRef)
 {	
