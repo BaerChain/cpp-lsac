@@ -124,6 +124,7 @@ protected:
 std::vector<boost::filesystem::path> getJsonFiles(std::string const& _dirPath, std::string const& _particularFile = {});
 std::string netIdToString(eth::Network _netId);
 eth::Network stringToNetId(std::string const& _netname);
+std::vector<eth::Network> const& getNetworks();
 u256 toInt(json_spirit::mValue const& _v);
 byte toByte(json_spirit::mValue const& _v);
 void replaceLLLinState(json_spirit::mObject& _o);
@@ -135,7 +136,7 @@ bytes importByteArray(std::string const& _str);
 void checkHexHasEvenLength(std::string const&);
 void copyFile(std::string const& _source, std::string const& _destination);
 eth::LogEntries importLog(json_spirit::mArray& _o);
-json_spirit::mArray exportLog(eth::LogEntries _logs);
+json_spirit::mArray exportLog(eth::LogEntries const& _logs);
 void checkOutput(bytesConstRef _output, json_spirit::mObject& _o);
 void checkStorage(std::map<u256, u256> _expectedStore, std::map<u256, u256> _resultStore, Address _expectedAddr);
 void checkLog(eth::LogEntries _resultLogs, eth::LogEntries _expectedLogs);
@@ -170,6 +171,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin);
 void doVMTests(json_spirit::mValue& v, bool _fillin);
 void doBlockchainTests(json_spirit::mValue& _v, bool _fillin);
 void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin);
+void doTransitionTest(json_spirit::mValue& _v, bool _fillin);
 void doRlpTests(json_spirit::mValue& v, bool _fillin);
 void addClientInfo(json_spirit::mValue& v, std::string const& _testSource);
 

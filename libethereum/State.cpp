@@ -88,7 +88,7 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 
 	if (_we == WithExisting::Kill)
 	{
-		cnote << "Killing state database (WithExisting::Kill).";
+		clog(StateDetail) << "Killing state database (WithExisting::Kill).";
 		boost::filesystem::remove_all(path + "/state");
 	}
 
@@ -119,7 +119,7 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 		}
 	}
 
-	ctrace << "Opened state DB.";
+	clog(StateDetail) << "Opened state DB.";
 	return OverlayDB(db);
 }
 
@@ -286,12 +286,26 @@ void State::incNonce(Address const& _addr)
 {
 	if (Account* a = account(_addr))
 	{
+		auto oldNonce = a->nonce();
 		a->incNonce();
-		m_changeLog.emplace_back(Change::Nonce, _addr);
+		m_changeLog.emplace_back(_addr, oldNonce);
 	}
 	else
 		// This is possible if a transaction has gas price 0.
 		createAccount(_addr, Account(requireAccountStartNonce() + 1, 0));
+}
+
+void State::setNonce(Address const& _addr, u256 const& _newNonce)
+{
+	if (Account* a = account(_addr))
+	{
+		auto oldNonce = a->nonce();
+		a->setNonce(_newNonce);
+		m_changeLog.emplace_back(_addr, oldNonce);
+	}
+	else
+		// This is possible when a contract is being created.
+		createAccount(_addr, Account(_newNonce, 0));
 }
 
 void State::addBalance(Address const& _id, u256 const& _amount)
@@ -506,7 +520,7 @@ void State::rollback(size_t _savepoint)
 			account.addBalance(0 - change.value);
 			break;
 		case Change::Nonce:
-			account.setNonce(account.nonce() - 1);
+			account.setNonce(change.value);
 			break;
 		case Change::Create:
 			m_cache.erase(change.address);

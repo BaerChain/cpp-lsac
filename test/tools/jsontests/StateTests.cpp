@@ -64,8 +64,7 @@ void doStateTests(json_spirit::mValue& _v, bool _fillin)
 		BOOST_REQUIRE_MESSAGE(o.count("pre") > 0, testname + "pre not set!");
 		BOOST_REQUIRE_MESSAGE(o.count("transaction") > 0, testname + "transaction not set!");
 
-		ImportTest importer(o, _fillin, testType::GeneralStateTest);
-		const State importedStatePost = importer.m_statePost;
+		ImportTest importer(o, testType::GeneralStateTest);
 
 		Listener::ExecTimeGuard guard{i.first};
 		importer.executeTest();
@@ -116,7 +115,7 @@ public:
 		fillAllFilesInFolder(casename);
 	}
 
-	void fillAllFilesInFolder(string _folder)
+	void fillAllFilesInFolder(string const& _folder)
 	{
 		std::string fillersPath = test::getTestPath() + "/src/GeneralStateTestsFiller/" + _folder;
 

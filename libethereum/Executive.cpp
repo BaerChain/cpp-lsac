@@ -206,7 +206,7 @@ void Executive::initialize(Transaction const& _transaction)
 		}
 		if (m_t.nonce() != nonceReq)
 		{
-			clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+			clog(ExecutiveWarnChannel) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
 			m_excepted = TransactionException::InvalidNonce;
 			BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 		}
@@ -218,7 +218,7 @@ void Executive::initialize(Transaction const& _transaction)
 		{
 			clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << "=" << m_t.gas() << "*" << m_t.gasPrice() << "+" << m_t.value() << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
 			m_excepted = TransactionException::NotEnoughCash;
-			BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
+			BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().hex()));
 		}
 		m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
 	}
@@ -347,8 +347,10 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
 	// account if it does not exist yet.
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
 
+	u256 newNonce = m_s.requireAccountStartNonce();
 	if (m_envInfo.number() >= m_sealEngine.chainParams().u256Param("EIP158ForkBlock"))
-		m_s.incNonce(m_newAddress);
+		newNonce += 1;
+	m_s.setNonce(m_newAddress, newNonce);
 
 	// Schedule _init execution if not empty.
 	if (!_init.empty())

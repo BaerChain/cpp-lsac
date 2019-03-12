@@ -19,6 +19,7 @@
  */
 
 #include <include/BuildInfo.h>
+#include <libethashseal/EthashCPUMiner.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/Options.h>
@@ -64,6 +65,7 @@ void connectClients(Client& c1, Client& c2)
 
 void mine(Block& s, BlockChain const& _bc, SealEngineFace* _sealer)
 {
+	EthashCPUMiner::setNumInstances(1);
 	s.commitToSeal(_bc, s.info().extraData());
 	Notified<bytes> sealed;
 	_sealer->onSealGenerated([&](bytes const& sealedHeader){ sealed = sealedHeader; });
@@ -101,6 +103,11 @@ string netIdToString(eth::Network _netId)
 		case eth::Network::EIP150Test: return "EIP150";
 		case eth::Network::EIP158Test: return "EIP158";
 		case eth::Network::MetropolisTest: return "Metropolis";
+		case eth::Network::FrontierToHomesteadAt5: return "FrontierToHomesteadAt5";
+		case eth::Network::HomesteadToDaoAt5: return "HomesteadToDaoAt5";
+		case eth::Network::HomesteadToEIP150At5: return "HomesteadToEIP150At5";
+		case eth::Network::EIP158ToMetropolisAt5: return "EIP158ToMetropolisAt5";
+		case eth::Network::TransitionnetTest: return "TransitionNet";
 		default: return "other";
 	}
 	return "unknown";
@@ -108,23 +115,42 @@ string netIdToString(eth::Network _netId)
 
 eth::Network stringToNetId(string const& _netname)
 {
-	if (netIdToString(eth::Network::FrontierTest) == _netname)
-		return eth::Network::FrontierTest;
-	if (netIdToString(eth::Network::HomesteadTest) == _netname)
-		return eth::Network::HomesteadTest;
-	if (netIdToString(eth::Network::EIP150Test) == _netname)
-		return eth::Network::EIP150Test;
-	if (netIdToString(eth::Network::EIP158Test) == _netname)
-		return eth::Network::EIP158Test;
-	if (netIdToString(eth::Network::MetropolisTest) == _netname)
-		return eth::Network::MetropolisTest;
+	//Networks that used in .json tests
+	static std::vector<eth::Network> const networks {{
+		eth::Network::FrontierTest,
+		eth::Network::HomesteadTest,
+		eth::Network::EIP150Test,
+		eth::Network::EIP158Test,
+		eth::Network::MetropolisTest,
+		eth::Network::FrontierToHomesteadAt5,
+		eth::Network::HomesteadToDaoAt5,
+		eth::Network::HomesteadToEIP150At5,
+		eth::Network::EIP158ToMetropolisAt5,
+		eth::Network::TransitionnetTest
+	}};
+
+	for (auto const& net : networks)
+		if (netIdToString(net) == _netname)
+			return net;
+
 	BOOST_ERROR(TestOutputHelper::testName() + " network not found: " + _netname);
 	return eth::Network::FrontierTest;
 }
 
+std::vector<eth::Network> const& getNetworks()
+{
+	//Networks for the test case execution when filling the tests
+	static std::vector<eth::Network> const networks {{
+		eth::Network::FrontierTest,
+		eth::Network::HomesteadTest,
+		eth::Network::EIP150Test,
+		eth::Network::EIP158Test,
+		eth::Network::MetropolisTest
+	}};
+	return networks;
+}
 
-
-json_spirit::mArray exportLog(eth::LogEntries _logs)
+json_spirit::mArray exportLog(eth::LogEntries const& _logs)
 {
 	json_spirit::mArray ret;
 	if (_logs.size() == 0) return ret;
@@ -430,9 +456,12 @@ void executeTests(const string& _name, const string& _testPathAppendix, const st
 	if (Options::get().stats)
 		Listener::registerListener(Stats::get());
 
+	//Get the test name
 	string name = _name;
 	if (_name.rfind("Filler.json") != std::string::npos)
 		name = _name.substr(0, _name.rfind("Filler.json"));
+	else if (_name.rfind(".json") != std::string::npos)
+		name = _name.substr(0, _name.rfind(".json"));
 
 	if (Options::get().filltests)
 	{
