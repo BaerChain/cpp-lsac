@@ -51,13 +51,14 @@ const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 namespace
 {
 
-void executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
+/// @returns true when normally halted; false when exceptionally halted.
+bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
 {
 	_e.initialize(_t);
 
 	if (!_e.execute())
 		_e.go(_onOp);
-	_e.finalize();
+	return _e.finalize();
 }
 
 }
@@ -400,6 +401,15 @@ void State::setStorage(Address const& _contract, u256 const& _key, u256 const& _
 	m_cache[_contract].setStorage(_key, _value);
 }
 
+void State::clearStorage(Address const& _contract)
+{
+	h256 const& oldHash{m_cache[_contract].baseRoot()};
+	if (oldHash == EmptyTrie)
+		return;
+	m_changeLog.emplace_back(Change::StorageRoot, _contract, oldHash);
+	m_cache[_contract].clearStorage();
+}
+
 map<h256, pair<u256, u256>> State::storage(Address const& _id) const
 {
 	map<h256, pair<u256, u256>> ret;
@@ -516,6 +526,9 @@ void State::rollback(size_t _savepoint)
 		case Change::Storage:
 			account.setStorage(change.key, change.value);
 			break;
+		case Change::StorageRoot:
+			account.setStorageRoot(change.value);
+			break;
 		case Change::Balance:
 			account.addBalance(0 - change.value);
 			break;
@@ -552,7 +565,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	e.setResultRecipient(res);
 
 	u256 const startGasUsed = _envInfo.gasUsed();
-	executeTransaction(e, _t, onOp);
+	bool const statusCode = executeTransaction(e, _t, onOp);
 
 	bool removeEmptyAccounts = false;
 	switch (_p)
@@ -569,7 +582,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	}
 
 	TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().u256Param("metropolisForkBlock") ?
-		TransactionReceipt(startGasUsed + e.gasUsed(), e.logs()) :
+		TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
 		TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
 	return make_pair(res, receipt);
 }

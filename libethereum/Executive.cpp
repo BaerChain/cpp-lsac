@@ -74,7 +74,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	if (!m_options.disableStack)
 	{
 		for (auto const& i: vm.stack())
-			stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
+			stack.append(toCompactHexPrefixed(i, 1));
 		r["stack"] = stack;
 	}
 
@@ -112,7 +112,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 		for (unsigned i = 0; i < vm.memory().size(); i += 32)
 		{
 			bytesConstRef memRef(vm.memory().data() + i, 32);
-			memJson.append(toHex(memRef, 2, HexPrefix::DontAdd));
+			memJson.append(toHex(memRef));
 		}
 		r["memory"] = memJson;
 	}
@@ -121,7 +121,7 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	{
 		Json::Value storage(Json::objectValue);
 		for (auto const& i: ext.state().storage(ext.myAddress))
-			storage[toCompactHex(i.second.first, HexPrefix::Add, 1)] = toCompactHex(i.second.second, HexPrefix::Add, 1);
+			storage[toCompactHexPrefixed(i.second.first, 1)] = toCompactHexPrefixed(i.second.second, 1);
 		r["storage"] = storage;
 	}
 
@@ -435,6 +435,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 				}
 				if (m_res)
 					m_res->output = out.toVector(); // copy output to execution result
+				m_s.clearStorage(m_ext->myAddress);
 				m_s.setCode(m_ext->myAddress, out.toVector());
 			}
 			else
@@ -481,7 +482,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 	return true;
 }
 
-void Executive::finalize()
+bool Executive::finalize()
 {
 	// Accumulate refunds for suicides.
 	if (m_ext)
@@ -516,6 +517,7 @@ void Executive::finalize()
 		m_res->newAddress = m_newAddress;
 		m_res->gasRefunded = m_ext ? m_ext->sub.refunds : 0;
 	}
+	return (m_excepted == TransactionException::None);
 }
 
 void Executive::revert()
