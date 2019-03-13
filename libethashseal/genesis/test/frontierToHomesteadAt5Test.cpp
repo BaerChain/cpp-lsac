@@ -16,7 +16,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "../../GenesisInfo.h"
 
-static std::string const c_genesisInfoFrontierToMetropolisAt5Test = std::string() +
+static std::string const c_genesisInfoFrontierToHomesteadAt5Test = std::string() +
 R"E(
 {
 	"sealEngine": "Ethash",
@@ -26,7 +26,8 @@ R"E(
 		"daoHardforkBlock": "0xfffffffffffffff",
 		"EIP150ForkBlock": "0xfffffffffffffff",
 		"EIP158ForkBlock": "0xfffffffffffffff",
-		"metropolisForkBlock": "0xfffffffffffffff",
+		"byzantiumForkBlock": "0xfffffffffffffff",
+		"constantinopleForkBlock": "0xfffffffffffffff",
 		"networkID" : "0x1",
 		"chainID": "0x01",
 		"maximumExtraDataSize": "0x20",

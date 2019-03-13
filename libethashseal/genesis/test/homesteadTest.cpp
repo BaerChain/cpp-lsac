@@ -15,9 +15,8 @@
 		along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "../GenesisInfo.h"
+#include "../../GenesisInfo.h"
 
-static dev::h256 const c_genesisStateRootHomesteadTest;
 static std::string const c_genesisInfoHomesteadTest = std::string() +
 R"E(
 {
@@ -29,7 +28,8 @@ R"E(
 		"daoHardforkBlock": "0xfffffffffffffff",
 		"EIP150ForkBlock": "0xfffffffffffffff",
 		"EIP158ForkBlock": "0xfffffffffffffff",
-		"metropolisForkBlock": "0xfffffffffffffff",
+		"byzantiumForkBlock": "0xfffffffffffffff",
+		"constantinopleForkBlock": "0xfffffffffffffff",
 		"networkID" : "0x01",
 		"chainID": "0x01",
 		"minGasLimit": "0x1388",

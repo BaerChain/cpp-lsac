@@ -14,9 +14,8 @@
 		You should have received a copy of the GNU General Public License
 		along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "../GenesisInfo.h"
+#include "../../GenesisInfo.h"
 
-static dev::h256 const c_genesisStateRootEIP158Test;
 static std::string const c_genesisInfoEIP158Test = std::string() +
 R"E(
 {
@@ -28,7 +27,8 @@ R"E(
 		"daoHardforkBlock": "0xfffffffffffffff",
 		"EIP150ForkBlock": "0x00",
 		"EIP158ForkBlock": "0x00",
-		"metropolisForkBlock": "0xfffffffffffffff",
+		"byzantiumForkBlock": "0xfffffffffffffff",
+		"constantinopleForkBlock": "0xfffffffffffffff",
 		"minGasLimit": "0x1388",
 		"maxGasLimit": "7fffffffffffffff",
 		"tieBreakingGas": false,

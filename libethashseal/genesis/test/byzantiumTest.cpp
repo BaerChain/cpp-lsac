@@ -14,32 +14,31 @@
 		You should have received a copy of the GNU General Public License
 		along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "../../GenesisInfo.h"
 
-static std::string const c_genesisInfoFrontierTest =
+static std::string const c_genesisInfoByzantiumTest = std::string() +
 R"E(
 {
 	"sealEngine": "Ethash",
-	"params":{
+	"params": {
 		"accountStartNonce": "0x00",
-		"homsteadForkBlock": "0xffffffffffffffff",
-		"daoHardforkBlock": "0xfffffffffffffff",
-		"EIP150ForkBlock": "0xfffffffffffffff",
-		"EIP158ForkBlock": "0xfffffffffffffff",
-		"byzantiumForkBlock": "0xfffffffffffffff",
-		"constantinopleForkBlock": "0xfffffffffffffff",
-		"networkID" : "0x01",
-		"chainID": "0x01",
 		"maximumExtraDataSize": "0x20",
-		"tieBreakingGas": false,
+		"homsteadForkBlock": "0x00",
+		"daoHardforkBlock": "0xfffffffffffffff",
+		"EIP150ForkBlock": "0x00",
+		"EIP158ForkBlock": "0x00",
+		"byzantiumForkBlock": "0x00",
+		"constantinopleForkBlock": "0xfffffffffffffff",
 		"minGasLimit": "0x1388",
 		"maxGasLimit": "7fffffffffffffff",
+		"tieBreakingGas": false,
 		"gasLimitBoundDivisor": "0x0400",
 		"minimumDifficulty": "0x020000",
 		"difficultyBoundDivisor": "0x0800",
 		"durationLimit": "0x0d",
 		"blockReward": "0x4563918244F40000",
+		"networkID" : "0x1",
+		"chainID": "0x01",
 		"allowFutureBlocks" : true
 	},
 	"genesis": {
@@ -53,11 +52,14 @@ R"E(
 		"gasLimit": "0x1388"
 	},
 	"accounts": {
-		"0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
-		"0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
-		"0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-		"0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } }
+		"0000000000000000000000000000000000000001": { "wei": "1", "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+		"0000000000000000000000000000000000000002": { "wei": "1", "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+		"0000000000000000000000000000000000000003": { "wei": "1", "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+		"0000000000000000000000000000000000000004": { "wei": "1", "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+		"0000000000000000000000000000000000000005": { "wei": "1", "precompiled": { "name": "modexp" } },
+		"0000000000000000000000000000000000000006": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_add", "linear": { "base": 500, "word": 0 } } },
+		"0000000000000000000000000000000000000007": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_mul", "linear": { "base": 2000, "word": 0 } } },
+		"0000000000000000000000000000000000000008": { "wei": "1", "precompiled": { "name": "alt_bn128_pairing_product" } }
 	}
 }
 )E";
-

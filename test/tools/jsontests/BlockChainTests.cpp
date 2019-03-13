@@ -74,8 +74,10 @@ struct ChainBranch
 			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::EIP150Test;
 		else if (chainname == "TestFtoH5")
 			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::TransitionnetTest;
-		else if (chainname == "Metropolis")
-			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::MetropolisTest;
+		else if (chainname == "Byzantium")
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::ByzantiumTest;
+		else if (chainname == "Constantinople")
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::ConstantinopleTest;
 	}
 
 	static void resetBlockchain()
@@ -123,6 +125,8 @@ void doTransitionTest(json_spirit::mValue& _v, bool _fillin)
 		BOOST_REQUIRE(o.count("network"));
 
 		dev::test::TestBlockChain::s_sealEngineNetwork = stringToNetId(o["network"].get_str());
+		if (test::isDisabledNetwork(dev::test::TestBlockChain::s_sealEngineNetwork))
+			continue;
 
 		if (!TestOutputHelper::passTest(testname))
 		{
@@ -211,6 +215,8 @@ void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin)
 				" testname: " + TestOutputHelper::testName()
 			);
 			dev::test::TestBlockChain::s_sealEngineNetwork = stringToNetId(o["network"].get_str());
+			if (test::isDisabledNetwork(dev::test::TestBlockChain::s_sealEngineNetwork))
+				continue;
 			testBCTest(o);
 		}
 	}
