@@ -144,10 +144,13 @@ void doTransitionTest(json_spirit::mValue& _v, bool _fillin)
 void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin)
 {
 	map<string, json_spirit::mObject> tests;
-	for (auto& i: _v.get_obj())
+	vector<decltype(_v.get_obj().begin())> erase_list;
+
+	// range-for is not used because iterators are necessary for removing elements later.
+	for (auto i = _v.get_obj().begin(); i != _v.get_obj().end(); i++)
 	{
-		string testname = i.first;
-		json_spirit::mObject& o = i.second.get_obj();
+		string testname = i->first;
+		json_spirit::mObject& o = i->second.get_obj();
 
 		//Select test by name if --singletest is set and not filling state tests as blockchain
 		if (!Options::get().fillchain && !TestOutputHelper::passTest(testname))
@@ -205,8 +208,9 @@ void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin)
 				tests[newtestname] = jObj;
 			}
 
-			//delete source test from the json
-			_v.get_obj().erase(_v.get_obj().find(testname));
+			// will be deleted once after the loop.
+			// removing an element while in this loop causes memory corruption.
+			erase_list.push_back(i);
 		}
 		else
 		{
@@ -220,6 +224,10 @@ void doBlockchainTestNoLog(json_spirit::mValue& _v, bool _fillin)
 			testBCTest(o);
 		}
 	}
+
+	//Delete source test from the json
+	for (auto i: erase_list)
+		_v.get_obj().erase(i);
 
 	//Add generated tests to the result file
 	if (_fillin)
@@ -354,12 +362,10 @@ void fillBCTest(json_spirit::mObject& _o)
 			if (testChain.addBlock(alterBlock))
 				cnote << "The most recent best Block now is " <<  importBlockNumber << "in chain" << chainname << "at test " << testName;
 
-			if (test::Options::get().checkstate)
-			{
-				bool isException = (blObj.count("expectException"+test::netIdToString(test::TestBlockChain::s_sealEngineNetwork))
-									|| blObj.count("expectExceptionALL"));
-				BOOST_REQUIRE_MESSAGE(!isException, "block import expected exception, but no exception was thrown!");
-			}
+			bool isException = (blObj.count("expectException"+test::netIdToString(test::TestBlockChain::s_sealEngineNetwork))
+								|| blObj.count("expectExceptionALL"));
+			BOOST_REQUIRE_MESSAGE(!isException, "block import expected exception, but no exception was thrown!");
+
 			if (_o.count("noBlockChainHistory") == 0)
 			{
 				importedBlocks.push_back(alterBlock);
@@ -393,8 +399,7 @@ void fillBCTest(json_spirit::mObject& _o)
 		AccountMaskMap expectStateMap;
 		State stateExpect(State::Null);
 		ImportTest::importState(_o["expect"].get_obj(), stateExpect, expectStateMap);
-		if (ImportTest::compareStates(stateExpect, testChain.topBlock().state(), expectStateMap, Options::get().checkstate ? WhenError::Throw : WhenError::DontThrow))
-			if (Options::get().checkstate)
+		if (ImportTest::compareStates(stateExpect, testChain.topBlock().state(), expectStateMap, WhenError::Throw))
 				cerr << testName << endl;
 		_o.erase(_o.find("expect"));
 	}
@@ -841,9 +846,6 @@ mObject writeBlockHeaderToJson(BlockHeader const& _bi)
 
 void checkExpectedException(mObject& _blObj, Exception const& _e)
 {
-	if (!test::Options::get().checkstate)
-		return;
-
 	string exWhat {	_e.what() };
 	bool isNetException = (_blObj.count("expectException"+test::netIdToString(test::TestBlockChain::s_sealEngineNetwork)) > 0);
 	bool isAllNetException = (_blObj.count("expectExceptionALL") > 0);
