@@ -20,13 +20,14 @@
  * Peer Network test functions.
  */
 
-#include <boost/test/unit_test.hpp>
-#include <chrono>
-#include <thread>
+#include <test/tools/libtesteth/TestOutputHelper.h>
+#include <test/tools/libtesteth/Options.h>
 #include <libp2p/Host.h>
-#include <test/libtesteth/TestHelper.h>
 #include <libp2p/Capability.h>
 #include <libp2p/HostCapability.h>
+#include <chrono>
+#include <thread>
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace dev;
@@ -59,7 +60,7 @@ public:
 	virtual ~TestHostCap() {}
 };
 
-
+BOOST_AUTO_TEST_SUITE(libp2p)
 BOOST_FIXTURE_TEST_SUITE(p2p, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(host)
@@ -279,7 +280,7 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(peerTypes)
+BOOST_FIXTURE_TEST_SUITE(peerTypes, TestOutputHelper)
 
 BOOST_AUTO_TEST_CASE(emptySharedPeer)
 {
@@ -303,6 +304,7 @@ BOOST_AUTO_TEST_CASE(emptySharedPeer)
 	BOOST_REQUIRE(p);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
 
 int peerTest(int argc, char** argv)

@@ -106,6 +106,8 @@ include(ProjectJsonRpcCpp)
 include(ProjectSecp256k1)
 include(ProjectSnark)
 
+find_package(Threads)
+
 configure_project()
 
 add_subdirectory(eth)
@@ -129,7 +131,6 @@ if (TOOLS)
     add_subdirectory(ethkey)
     add_subdirectory(ethvm)
     add_subdirectory(rlp)
-    add_subdirectory(bench)
 endif()
 
 if (TESTS)

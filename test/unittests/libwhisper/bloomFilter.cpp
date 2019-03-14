@@ -22,7 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/test/unit_test.hpp>
 #include <libdevcore/SHA3.h>
 #include <libwhisper/BloomFilter.h>
-#include <test/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestOutputHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(dummyTest)
 	// Added this test such that the test executable has at least one test
 }
 
-//BOOST_AUTO_TEST_CASE(falsePositiveRate)
+//(falsePositiveRate)
 //{
 //	VerbosityHolder setTemporaryLevel(10);
 //	cnote << "Testing Bloom Filter False Positive Rate...";
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(dummyTest)
 //	}
 //}
 
-//BOOST_AUTO_TEST_CASE(bloomFilterRandom)
+//(bloomFilterRandom)
 //{
 //	VerbosityHolder setTemporaryLevel(10);
 //	cnote << "Testing Bloom Filter matching...";
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(dummyTest)
 //		testRemoveExistingBloom(f, vec[i]);
 //}
 
-//BOOST_AUTO_TEST_CASE(bloomFilterRaw)
+//(bloomFilterRaw)
 //{
 //	VerbosityHolder setTemporaryLevel(10);
 //	cnote << "Testing Raw Bloom matching...";
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(dummyTest)
 //				}
 //}
 
-//BOOST_AUTO_TEST_CASE(distributionRate)
+//(distributionRate)
 //{
 //	cnote << "Testing Bloom Filter Distribution Rate...";
 
