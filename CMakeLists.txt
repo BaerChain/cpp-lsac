@@ -40,7 +40,9 @@ set(CPP_ETHEREUM_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Path to the root di
 include(EthPolicy)
 eth_policy()
 
-set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
+if(CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
+endif()
 
 # Map current configuration to congigurations of imported targets.
 set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo Release)
@@ -50,8 +52,8 @@ set(HUNTER_CONFIGURATION_TYPES Release)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
 include(HunterGate)
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.19.62.tar.gz"
-    SHA1 "e15b764e94641968fe88db08dfb8e7f0f084c01c"
+    URL "https://github.com/ruslo/hunter/archive/v0.19.71.tar.gz"
+    SHA1 "8fe144d9490501d398777532e0c0f56bc7bb0ec7"
 )
 
 if(HUNTER_ENABLED)
@@ -96,8 +98,10 @@ include(EthUtils)
 hunter_add_package(Boost COMPONENTS filesystem random system thread test)
 find_package(Boost CONFIG REQUIRED filesystem random system thread unit_test_framework)
 
+hunter_add_package(jsoncpp)
+find_package(jsoncpp CONFIG REQUIRED)
+
 include(ProjectCryptopp)
-include(ProjectJsonCpp)
 include(ProjectJsonRpcCpp)
 include(ProjectSecp256k1)
 include(ProjectSnark)

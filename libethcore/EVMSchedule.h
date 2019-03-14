@@ -14,16 +14,10 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EVMSchedule.h
- * @author Gav <i@gavwood.com>
- * @author Christian <c@ethdev.com>
- * @date 2015
- */
 
 #pragma once
 
-#include <libevmcore/Instruction.h>
-#include <libdevcore/Common.h>
+#include <array>
 
 namespace dev
 {
@@ -112,7 +106,6 @@ static const EVMSchedule EIP158Schedule = []
 static const EVMSchedule ByzantiumSchedule = []
 {
 	EVMSchedule schedule = EIP158Schedule;
-	schedule.blockhashGas = 800;
 	schedule.haveRevert = true;
 	schedule.haveReturnData = true;
 	schedule.haveStaticCall = true;
@@ -122,6 +115,7 @@ static const EVMSchedule ByzantiumSchedule = []
 static const EVMSchedule ConstantinopleSchedule = []
 {
 	EVMSchedule schedule = ByzantiumSchedule;
+	schedule.blockhashGas = 800;
 	schedule.haveCreate2 = true;
 	return schedule;
 }();
