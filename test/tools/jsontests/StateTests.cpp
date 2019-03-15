@@ -36,11 +36,14 @@ using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 namespace dev {  namespace test {
 
 json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin)
 {
+	BOOST_REQUIRE_MESSAGE(_input.type() == obj_type,
+		TestOutputHelper::testFileName() + " A GeneralStateTest file should contain an object.");
 	BOOST_REQUIRE_MESSAGE(!_fillin || _input.get_obj().size() == 1,
 		TestOutputHelper::testFileName() + " A GeneralStateTest filler should contain only one test.");
 	json_spirit::mValue v = json_spirit::mObject();
@@ -48,6 +51,8 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 	for (auto& i: _input.get_obj())
 	{
 		string const testname = i.first;
+		BOOST_REQUIRE_MESSAGE(i.second.type() == obj_type,
+			TestOutputHelper::testFileName() + " should contain an object under a test name.");
 		json_spirit::mObject const& inputTest = i.second.get_obj();
 		v.get_obj()[testname] = json_spirit::mObject();
 		json_spirit::mObject& outputTest = v.get_obj()[testname].get_obj();
@@ -86,14 +91,17 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 		else
 		{
 			BOOST_REQUIRE_MESSAGE(inputTest.count("post") > 0, testname + " post not set!");
+			BOOST_REQUIRE_MESSAGE(inputTest.at("post").type() == obj_type, testname + " post field is not an object.");
 
 			//check post hashes against cpp client on all networks
 			mObject post = inputTest.at("post").get_obj();
 			vector<size_t> wrongTransactionsIndexes;
 			for (mObject::const_iterator i = post.begin(); i != post.end(); ++i)
 			{
+				BOOST_REQUIRE_MESSAGE(i->second.type() == array_type, testname + " post field should contain an array for each network.");
 				for (auto const& exp: i->second.get_array())
 				{
+					BOOST_REQUIRE_MESSAGE(exp.type() == obj_type, " post field should contain an array of objects for each network.");
 					if (!Options::get().singleTestNet.empty() && i->first != Options::get().singleTestNet)
 						continue;
 					if (test::isDisabledNetwork(test::stringToNetId(i->first)))
@@ -110,20 +118,23 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 }
 } }// Namespace Close
 
-class generaltestfixture
+class GeneralTestFixture
 {
 public:
-	generaltestfixture()
+	GeneralTestFixture()
 	{
 		string casename = boost::unit_test::framework::current_test_case().p_name;
-		if (casename == "stQuadraticComplexityTest" && !test::Options::get().quadratic)
+		if (casename == "stQuadraticComplexityTest" && !test::Options::get().all)
+		{
+			cnote << "Skipping " << casename << " because --all option is not specified.\n";
 			return;
+		}
 		fillAllFilesInFolder(casename);
 	}
 
 	void fillAllFilesInFolder(string const& _folder)
 	{
-		std::string fillersPath = test::getTestPath() + "/src/GeneralStateTestsFiller/" + _folder;
+		fs::path fillersPath = test::getTestPath() / fs::path("src/GeneralStateTestsFiller") / fs::path(_folder);
 
 		string filter = test::Options::get().singleTestName.empty() ? string() : test::Options::get().singleTestName + "Filler";
 		std::vector<boost::filesystem::path> files = test::getJsonFiles(fillersPath, filter);
@@ -131,20 +142,18 @@ public:
 
 		if (test::Options::get().filltests)
 			fileCount *= 2; //tests are checked when filled and after they been filled
-		test::TestOutputHelper::initTest(fileCount);
+		test::TestOutputHelper testOutputHelper(fileCount);
 
 		for (auto const& file: files)
 		{
 			test::TestOutputHelper::setCurrentTestFileName(file.filename().string());
 			test::executeTests(file.filename().string(), "/GeneralStateTests/"+_folder, "/GeneralStateTestsFiller/"+_folder, dev::test::doStateTests);
 		}
-
-		test::TestOutputHelper::finishTest();
 	}
 };
 
-std::string const test::c_StateTestsGeneral = "StateTestsGeneral";
-BOOST_FIXTURE_TEST_SUITE(StateTestsGeneral, generaltestfixture)
+std::string const test::c_GeneralStateTests = "GeneralStateTests";
+BOOST_FIXTURE_TEST_SUITE(GeneralStateTests, GeneralTestFixture)
 
 //Frontier Tests
 BOOST_AUTO_TEST_CASE(stCallCodes){}

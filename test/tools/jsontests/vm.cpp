@@ -27,13 +27,14 @@
 #include <libevm/VMFactory.h>
 #include <libevm/ExtVMFace.h>
 #include <boost/filesystem.hpp>
-
+#include <test/tools/libtesteth/TestSuite.h>
 
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+namespace fs = boost::filesystem;
 
 FakeExtVM::FakeExtVM(EnvInfo const& _envInfo, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
 	ExtVMFace(_envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, false, _depth)
@@ -96,6 +97,7 @@ EnvInfo FakeExtVM::importEnv(mObject const& _o, LastBlockHashesFace const& _last
 	assert(_o.count("currentDifficulty") > 0);
 	assert(_o.count("currentTimestamp") > 0);
 	assert(_o.count("currentCoinbase") > 0);
+	assert(_o.at("currentCoinbase").type() == str_type);
 	assert(_o.count("currentNumber") > 0);
 	auto gasLimit = toInt(_o.at("currentGasLimit"));
 	assert(gasLimit <= std::numeric_limits<int64_t>::max());
@@ -138,6 +140,7 @@ void FakeExtVM::importState(mObject const& _object)
 		assert(o.count("balance") > 0);
 		assert(o.count("nonce") > 0);
 		assert(o.count("storage") > 0);
+		assert(o.at("storage").type() == obj_type);
 		assert(o.count("code") > 0);
 
 		auto& a = addresses[Address(i.first)];
@@ -292,296 +295,214 @@ eth::OnOpFunc FakeExtVM::simpleTrace() const
 
 namespace dev { namespace test {
 
-json_spirit::mValue doVMTests(json_spirit::mValue const& _input, bool _fillin)
+class VmTestSuite: public TestSute
 {
-	if (string(boost::unit_test::framework::current_test_case().p_name) != "vmRandom")
-		TestOutputHelper::initTest(_input.get_obj().size());
-
-	json_spirit::mValue v = json_spirit::mObject();
-	json_spirit::mObject& output = v.get_obj();
-	for (auto& i: _input.get_obj())
+	json_spirit::mValue doTests(json_spirit::mValue const& _input, bool _fillin) const override
 	{
-		string const& testname = i.first;
-		json_spirit::mObject const& testInput = i.second.get_obj();
-		if (!TestOutputHelper::passTest(testname))
-			continue;
-
-		output[testname] = json_spirit::mObject();
-		json_spirit::mObject& testOutput = output[testname].get_obj(); // TODO: avoid copying and add valid fields one by one
-
-		BOOST_REQUIRE_MESSAGE(testInput.count("env") > 0, testname + " env not set!");
-		BOOST_REQUIRE_MESSAGE(testInput.count("pre") > 0, testname + " pre not set!");
-		BOOST_REQUIRE_MESSAGE(testInput.count("exec") > 0, testname + " exec not set!");
-		// testOutput["pre"], ["env"] and ["exec"] will be filled later
-		if (! _fillin)
-			BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 0, testname + " expect set!");
-
-		TestLastBlockHashes lastBlockHashes(h256s(256, h256()));
-		eth::EnvInfo env = FakeExtVM::importEnv(testInput.at("env").get_obj(), lastBlockHashes);
-		FakeExtVM fev(env);
-		fev.importState(testInput.at("pre").get_obj());
-
-		if (_fillin)
-			testOutput["pre"] = mValue(fev.exportState());
-
-		fev.importExec(testInput.at("exec").get_obj());
-		if (fev.code.empty())
+		json_spirit::mValue v = json_spirit::mObject();
+		json_spirit::mObject& output = v.get_obj();
+		for (auto& i: _input.get_obj())
 		{
-			fev.thisTxCode = get<3>(fev.addresses.at(fev.myAddress));
-			fev.code = fev.thisTxCode;
-		}
-		fev.codeHash = sha3(fev.code);
+			string const& testname = i.first;
+			json_spirit::mObject const& testInput = i.second.get_obj();
+			if (!TestOutputHelper::passTest(testname))
+				continue;
 
-		owning_bytes_ref output;
-		bool vmExceptionOccured = false;
-		try
-		{
-			auto vm = eth::VMFactory::create();
-			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
+			output[testname] = json_spirit::mObject();
+			json_spirit::mObject& testOutput = output[testname].get_obj(); // TODO: avoid copying and add valid fields one by one
+
+			BOOST_REQUIRE_MESSAGE(testInput.count("env") > 0, testname + " env not set!");
+			BOOST_REQUIRE_MESSAGE(testInput.count("pre") > 0, testname + " pre not set!");
+			BOOST_REQUIRE_MESSAGE(testInput.count("exec") > 0, testname + " exec not set!");
+			// testOutput["pre"], ["env"] and ["exec"] will be filled later
+			if (! _fillin)
+				BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 0, testname + " expect set!");
+
+			TestLastBlockHashes lastBlockHashes(h256s(256, h256()));
+			eth::EnvInfo env = FakeExtVM::importEnv(testInput.at("env").get_obj(), lastBlockHashes);
+			FakeExtVM fev(env);
+			fev.importState(testInput.at("pre").get_obj());
+
+			if (_fillin)
+				testOutput["pre"] = mValue(fev.exportState());
+
+			fev.importExec(testInput.at("exec").get_obj());
+			if (fev.code.empty())
 			{
-				Listener::ExecTimeGuard guard{i.first};
-				auto gas = static_cast<int64_t>(fev.gas);
-				output = vm->exec(fev.gas, fev, vmtrace);
-				gas -= static_cast<int64_t>(fev.gas);
-				guard.setGasUsed(gas);
+				fev.thisTxCode = get<3>(fev.addresses.at(fev.myAddress));
+				fev.code = fev.thisTxCode;
 			}
-		}
-		catch (VMException const&)
-		{
-			cnote << "    Safe VM Exception\n";
-			vmExceptionOccured = true;
-		}
-		catch (Exception const& _e)
-		{
-			cnote << "VM did throw an exception: " << diagnostic_information(_e);
-			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
-		}
-		catch (std::exception const& _e)
-		{
-			cnote << "VM did throw an exception: " << _e.what();
-			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
-		}
+			fev.codeHash = sha3(fev.code);
 
-		// delete null entries in storage for the sake of comparison
-
-		for (auto  &a: fev.addresses)
-		{
-			vector<u256> keystoDelete;
-			for (auto &s: get<2>(a.second))
+			owning_bytes_ref output;
+			bool vmExceptionOccured = false;
+			try
 			{
-				if (s.second == 0)
-					keystoDelete.push_back(s.first);
-			}
-			for (auto const key: keystoDelete )
-			{
-				get<2>(a.second).erase(key);
-			}
-		}
-
-		if (_fillin)
-		{
-			testOutput["env"] = mValue(fev.exportEnv());
-			testOutput["exec"] = mValue(fev.exportExec());
-			if (vmExceptionOccured)
-			{
-				if (testInput.count("expect") > 0)
+				auto vm = eth::VMFactory::create();
+				auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
 				{
-					BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 1, testname + " multiple expect set!");
-					State postState(State::Null);
-					State expectState(State::Null);
-					AccountMaskMap expectStateMap;
-					ImportTest::importState(mValue(fev.exportState()).get_obj(), postState);
-					ImportTest::importState(testInput.at("expect").get_obj(), expectState, expectStateMap);
-					ImportTest::compareStates(expectState, postState, expectStateMap, WhenError::Throw);
+					Listener::ExecTimeGuard guard{i.first};
+					auto gas = static_cast<int64_t>(fev.gas);
+					output = vm->exec(fev.gas, fev, vmtrace);
+					gas -= static_cast<int64_t>(fev.gas);
+					guard.setGasUsed(gas);
 				}
-				BOOST_REQUIRE_MESSAGE(testOutput.count("expect") == 0, testname + " expect should have been erased!");
+			}
+			catch (VMException const&)
+			{
+				cnote << "    Safe VM Exception\n";
+				vmExceptionOccured = true;
+			}
+
+			// delete null entries in storage for the sake of comparison
+
+			for (auto  &a: fev.addresses)
+			{
+				vector<u256> keystoDelete;
+				for (auto &s: get<2>(a.second))
+				{
+					if (s.second == 0)
+						keystoDelete.push_back(s.first);
+				}
+				for (auto const key: keystoDelete )
+				{
+					get<2>(a.second).erase(key);
+				}
+			}
+
+			if (_fillin)
+			{
+				testOutput["env"] = mValue(fev.exportEnv());
+				testOutput["exec"] = mValue(fev.exportExec());
+				if (vmExceptionOccured)
+				{
+					if (testInput.count("expect") > 0)
+					{
+						BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 1, testname + " multiple expect set!");
+						State postState(State::Null);
+						State expectState(State::Null);
+						AccountMaskMap expectStateMap;
+						ImportTest::importState(mValue(fev.exportState()).get_obj(), postState);
+						ImportTest::importState(testInput.at("expect").get_obj(), expectState, expectStateMap);
+						ImportTest::compareStates(expectState, postState, expectStateMap, WhenError::Throw);
+					}
+					BOOST_REQUIRE_MESSAGE(testOutput.count("expect") == 0, testname + " expect should have been erased!");
+				}
+				else
+				{
+					testOutput["post"] = mValue(fev.exportState());
+					BOOST_REQUIRE_MESSAGE(testOutput.at("post").type() == obj_type, testname + "fev.exportState returned something not an object.");
+
+					if (testInput.count("expect") > 0)
+					{
+						BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 1, testname + " multiple expect set!");
+
+						State postState(State::Null);
+						State expectState(State::Null);
+						AccountMaskMap expectStateMap;
+						ImportTest::importState(testOutput.at("post").get_obj(), postState);
+						ImportTest::importState(testInput.at("expect").get_obj(), expectState, expectStateMap);
+						ImportTest::compareStates(expectState, postState, expectStateMap, WhenError::Throw);
+					}
+
+					BOOST_REQUIRE_MESSAGE(testOutput.count("expect") == 0, testname + " expect should never been added to the output!");
+
+					testOutput["callcreates"] = fev.exportCallCreates();
+					testOutput["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHexPrefixed(output);
+
+					// compare expected output with post output
+					if (testInput.count("expectOut") > 0)
+					{
+						BOOST_REQUIRE_MESSAGE(testInput.at("expectOut").type() == str_type, testname + " expectOut field is not a string.");
+						std::string warning = " Check State: Error! Unexpected output: " + testOutput["out"].get_str() + " Expected: " + testInput.at("expectOut").get_str();
+						BOOST_CHECK_MESSAGE(testOutput["out"].get_str() == testInput.at("expectOut").get_str(), warning);
+					}
+
+					testOutput["gas"] = toCompactHexPrefixed(fev.gas, 1);
+					testOutput["logs"] = exportLog(fev.sub.logs);
+				}
 			}
 			else
 			{
-				testOutput["post"] = mValue(fev.exportState());
-
-				if (testInput.count("expect") > 0)
+				if (testInput.count("post") > 0)	// No exceptions expected
 				{
-					BOOST_REQUIRE_MESSAGE(testInput.count("expect") == 1, testname + " multiple expect set!");
+					BOOST_REQUIRE_MESSAGE(testInput.at("post").type() == obj_type, testname + " post field is not an object.");
+					BOOST_CHECK(!vmExceptionOccured);
+
+					BOOST_REQUIRE_MESSAGE(testInput.count("callcreates") > 0, testname + " callcreates field is missing.");
+					BOOST_REQUIRE_MESSAGE(testInput.at("callcreates").type() == array_type, testname + " callcreates field is not an array.");
+					BOOST_REQUIRE_MESSAGE(testInput.count("out") > 0, testname + " out field is missing.");
+					BOOST_REQUIRE_MESSAGE(testInput.count("gas") > 0, testname + " gas field is missing.");
+					BOOST_REQUIRE_MESSAGE(testInput.count("logs") > 0, testname + " logs field is missing.");
+					BOOST_REQUIRE_MESSAGE(testInput.at("logs").type() == str_type, testname + " logs field is not a string.");
+
+					dev::test::FakeExtVM test(eth::EnvInfo{BlockHeader{}, lastBlockHashes, 0});
+					test.importState(testInput.at("post").get_obj());
+					test.importCallCreates(testInput.at("callcreates").get_array());
+
+					checkOutput(output, testInput);
+
+					BOOST_CHECK_EQUAL(toInt(testInput.at("gas")), fev.gas);
 
 					State postState(State::Null);
 					State expectState(State::Null);
-					AccountMaskMap expectStateMap;
-					ImportTest::importState(testOutput.at("post").get_obj(), postState);
-					ImportTest::importState(testInput.at("expect").get_obj(), expectState, expectStateMap);
-					ImportTest::compareStates(expectState, postState, expectStateMap, WhenError::Throw);
+					mObject mPostState = fev.exportState();
+					ImportTest::importState(mPostState, postState);
+					ImportTest::importState(testInput.at("post").get_obj(), expectState);
+					ImportTest::compareStates(expectState, postState);
+
+					//checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
+
+					checkCallCreates(fev.callcreates, test.callcreates);
+
+					BOOST_CHECK_EQUAL(exportLog(fev.sub.logs), testInput.at("logs").get_str());
 				}
-
-				BOOST_REQUIRE_MESSAGE(testOutput.count("expect") == 0, testname + " expect should have been erased!");
-
-				testOutput["callcreates"] = fev.exportCallCreates();
-				testOutput["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHexPrefixed(output);
-
-				// compare expected output with post output
-				if (testInput.count("expectOut") > 0)
-				{
-					std::string warning = " Check State: Error! Unexpected output: " + testOutput["out"].get_str() + " Expected: " + testInput.at("expectOut").get_str();
-					BOOST_CHECK_MESSAGE(testOutput["out"].get_str() == testInput.at("expectOut").get_str(), warning);
-				}
-
-				testOutput["gas"] = toCompactHexPrefixed(fev.gas, 1);
-				testOutput["logs"] = exportLog(fev.sub.logs);
+				else	// Exception expected
+					BOOST_CHECK(vmExceptionOccured);
 			}
 		}
-		else
-		{
-			if (testInput.count("post") > 0)	// No exceptions expected
-			{
-				BOOST_CHECK(!vmExceptionOccured);
 
-				BOOST_REQUIRE(testInput.count("post") > 0);
-				BOOST_REQUIRE(testInput.count("callcreates") > 0);
-				BOOST_REQUIRE(testInput.count("out") > 0);
-				BOOST_REQUIRE(testInput.count("gas") > 0);
-				BOOST_REQUIRE(testInput.count("logs") > 0);
-
-				dev::test::FakeExtVM test(eth::EnvInfo{BlockHeader{}, lastBlockHashes, 0});
-				test.importState(testInput.at("post").get_obj());
-				test.importCallCreates(testInput.at("callcreates").get_array());
-				test.sub.logs = importLog(testInput.at("logs").get_array());
-
-
-				checkOutput(output, testInput);
-
-				BOOST_CHECK_EQUAL(toInt(testInput.at("gas")), fev.gas);
-
-				State postState(State::Null);
-				State expectState(State::Null);
-				mObject mPostState = fev.exportState();
-				ImportTest::importState(mPostState, postState);
-				ImportTest::importState(testInput.at("post").get_obj(), expectState);
-				ImportTest::compareStates(expectState, postState);
-
-				//checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
-
-				checkCallCreates(fev.callcreates, test.callcreates);
-
-				checkLog(fev.sub.logs, test.sub.logs);
-			}
-			else	// Exception expected
-				BOOST_CHECK(vmExceptionOccured);
-		}
+		return v;
 	}
 
-	TestOutputHelper::finishTest();
-	return v;
-}
+	std::string folder() const override
+	{
+		return "VMTests";
+	}
+};
+
+class VmTestFixture
+{
+public:
+	VmTestFixture()
+	{
+		string const& casename = boost::unit_test::framework::current_test_case().p_name;
+		if (casename == "vmPerformance" && !Options::get().all)
+		{
+			cnote << "Skipping " << casename << " because --all option is not specified.\n";
+			return;
+		}
+		VmTestSuite suite;
+		suite.runAllTestsInFolder(casename);
+	}
+};
 
 } } // namespace close
 
-BOOST_AUTO_TEST_SUITE(VMTests)
 
-BOOST_AUTO_TEST_CASE(vmtests)
-{
-	dev::test::executeTests("vmtests", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
+BOOST_FIXTURE_TEST_SUITE(VMTests, VmTestFixture)
 
-BOOST_AUTO_TEST_CASE(vmArithmeticTest)
-{
-	dev::test::executeTests("vmArithmeticTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmBitwiseLogicOperationTest)
-{
-	dev::test::executeTests("vmBitwiseLogicOperationTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmSha3Test)
-{
-	dev::test::executeTests("vmSha3Test", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmEnvironmentalInfoTest)
-{
-	dev::test::executeTests("vmEnvironmentalInfoTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmBlockInfoTest)
-{
-	dev::test::executeTests("vmBlockInfoTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmIOandFlowOperationsTest)
-{
-	dev::test::executeTests("vmIOandFlowOperationsTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmPushDupSwapTest)
-{
-	dev::test::executeTests("vmPushDupSwapTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmLogTest)
-{
-	dev::test::executeTests("vmLogTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmSystemOperationsTest)
-{
-	dev::test::executeTests("vmSystemOperationsTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmPerformanceTest)
-{
-	if (test::Options::get().performance)
-		dev::test::executeTests("vmPerformanceTest", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmInputLimitsTest)
-{
-	if (test::Options::get().inputLimits)
-		dev::test::executeTests("vmInputLimits", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmInputLimitsLightTest)
-{
-	if (test::Options::get().inputLimits)
-		dev::test::executeTests("vmInputLimitsLight", "/VMTests", "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmRandom)
-{
-	test::Options::get(); // parse command line options, e.g. to enable JIT
-
-	string testPath = getTestPath();
-	testPath += "/VMTests/RandomTests";
-
-	std::vector<boost::filesystem::path> testFiles = test::getJsonFiles(testPath);
-
-	test::TestOutputHelper::initTest();
-	test::TestOutputHelper::setMaxTests(testFiles.size());
-
-	for (auto& path: testFiles)
-	{
-		try
-		{
-			cnote << "TEST " << path.filename();
-			json_spirit::mValue v;
-			string s = asString(dev::contents(path.string()));
-			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
-			json_spirit::read_string(s, v);
-			test::Listener::notifySuiteStarted(path.filename().string());
-			doVMTests(v, false);
-		}
-		catch (Exception const& _e)
-		{
-			BOOST_ERROR(" Failed test with Exception: " << diagnostic_information(_e));
-		}
-		catch (std::exception const& _e)
-		{
-			BOOST_ERROR(" Failed test with Exception: " << _e.what());
-		}
-	}
-}
-
-BOOST_AUTO_TEST_CASE(userDefinedFile)
-{
-	dev::test::userDefinedTest(dev::test::doVMTests);
-}
+BOOST_AUTO_TEST_CASE(vmArithmeticTest){}
+BOOST_AUTO_TEST_CASE(vmBitwiseLogicOperation){}
+BOOST_AUTO_TEST_CASE(vmBlockInfoTest){}
+BOOST_AUTO_TEST_CASE(vmEnvironmentalInfo){}
+BOOST_AUTO_TEST_CASE(vmIOandFlowOperations){}
+BOOST_AUTO_TEST_CASE(vmLogTest){}
+BOOST_AUTO_TEST_CASE(vmPerformance){}
+BOOST_AUTO_TEST_CASE(vmPushDupSwapTest){}
+BOOST_AUTO_TEST_CASE(vmRandomTest){}
+BOOST_AUTO_TEST_CASE(vmSha3Test){}
+BOOST_AUTO_TEST_CASE(vmSystemOperations){}
+BOOST_AUTO_TEST_CASE(vmTests){}
 
 BOOST_AUTO_TEST_SUITE_END()

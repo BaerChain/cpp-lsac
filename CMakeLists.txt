@@ -49,6 +49,7 @@ set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo Release)
 set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo Release)
 
 set(HUNTER_CONFIGURATION_TYPES Release)
+set(HUNTER_JOBS_NUMBER 4)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
 include(HunterGate)
 HunterGate(
@@ -89,14 +90,15 @@ endif()
 
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY On)
 
+include(EthCcache)
 include(EthOptions)
 include(EthCompilerSettings)
 include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-hunter_add_package(Boost COMPONENTS filesystem random system thread test)
-find_package(Boost CONFIG REQUIRED filesystem random system thread unit_test_framework)
+hunter_add_package(Boost COMPONENTS filesystem system thread)
+find_package(Boost CONFIG REQUIRED filesystem system thread)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -108,24 +110,32 @@ include(ProjectSnark)
 
 find_package(Threads)
 
+if(MINIUPNPC)
+    find_package(Miniupnpc 1.8.2013 REQUIRED)
+endif()
+
 configure_project()
 
-add_subdirectory(eth)
 add_subdirectory(libdevcore)
 add_subdirectory(libdevcrypto)
-add_subdirectory(libethash)
-add_subdirectory(libethashseal)
-add_subdirectory(libethcore)
-add_subdirectory(libethereum)
-add_subdirectory(libevm)
 add_subdirectory(libp2p)
-add_subdirectory(libweb3jsonrpc)
-add_subdirectory(libwebthree)
+
+add_subdirectory(libethash)
+
+add_subdirectory(libethcore)
+add_subdirectory(libevm)
+add_subdirectory(libethereum)
+add_subdirectory(libethashseal)
+
 add_subdirectory(libwhisper)
+add_subdirectory(libwebthree)
+add_subdirectory(libweb3jsonrpc)
 
 if (EVMJIT)
     add_subdirectory(evmjit)
 endif()
+
+add_subdirectory(eth)
 
 if (TOOLS)
     add_subdirectory(ethkey)

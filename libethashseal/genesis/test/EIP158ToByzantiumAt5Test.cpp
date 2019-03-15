@@ -16,17 +16,18 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "../../GenesisInfo.h"
 
-static std::string const c_genesisInfoEIP158ToMetropolisAt5Test = std::string() +
+static std::string const c_genesisInfoEIP158ToByzantiumAt5Test = std::string() +
 R"E(
 {
 	"sealEngine": "Ethash",
 	"params": {
 		"accountStartNonce": "0x00",
-		"homsteadForkBlock": "0x00",
+		"homesteadForkBlock": "0x00",
 		"daoHardforkBlock": "0xfffffffffffffff",
 		"EIP150ForkBlock": "0x00",
 		"EIP158ForkBlock": "0x00",
-		"metropolisForkBlock": "0x05",
+		"byzantiumForkBlock": "0x05",
+		"constantinopleForkBlock" : "0xfffffffffffffff",
 		"networkID" : "0x1",
 		"chainID": "0x01",
 		"maximumExtraDataSize": "0x20",

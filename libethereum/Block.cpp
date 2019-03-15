@@ -516,7 +516,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	if (receiptsRoot != m_currentBlock.receiptsRoot())
 	{
 		InvalidReceiptsStateRoot ex;
-		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot());
+		ex << Hash256RequirementError(m_currentBlock.receiptsRoot(), receiptsRoot);
 		ex << errinfo_receipts(receipts);
 //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
 		BOOST_THROW_EXCEPTION(ex);
@@ -525,7 +525,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	if (m_currentBlock.logBloom() != logBloom())
 	{
 		InvalidLogBloom ex;
-		ex << LogBloomRequirementError(logBloom(), m_currentBlock.logBloom());
+		ex << LogBloomRequirementError(m_currentBlock.logBloom(), logBloom());
 		ex << errinfo_receipts(receipts);
 		BOOST_THROW_EXCEPTION(ex);
 	}
@@ -631,7 +631,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 		applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
 	// Commit all cached state changes to the state trie.
-	bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().u256Param("EIP158ForkBlock"); // TODO: use EVMSchedule
+	bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use EVMSchedule
 	DEV_TIMED_ABOVE("commit", 500)
 		m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
 
@@ -640,14 +640,14 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	{
 		auto r = rootHash();
 		m_state.db().rollback();		// TODO: API in State for this?
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(r, m_currentBlock.stateRoot()));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
 	}
 
 	if (m_currentBlock.gasUsed() != gasUsed())
 	{
 		// Rollback the trie.
 		m_state.db().rollback();		// TODO: API in State for this?
-		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed())));
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
 	}
 
 	return tdIncrease;
@@ -688,7 +688,7 @@ void Block::applyRewards(vector<BlockHeader> const& _uncleBlockHeaders, u256 con
 
 void Block::performIrregularModifications()
 {
-	u256 daoHardfork = m_sealEngine->chainParams().u256Param("daoHardforkBlock");
+	u256 const& daoHardfork = m_sealEngine->chainParams().daoHardforkBlock;
 	if (daoHardfork != 0 && info().number() == daoHardfork)
 	{
 		Address recipient("0xbf4ed7b27f1d666546e30d74d50d173d20bca754");
@@ -701,9 +701,9 @@ void Block::performIrregularModifications()
 
 void Block::updateBlockhashContract()
 {
-	u256 const blockNumber = info().number();
+	u256 const& blockNumber = info().number();
 
-	u256 const constantinopleForkBlock = m_sealEngine->chainParams().u256Param("constantinopleForkBlock");
+	u256 const& constantinopleForkBlock = m_sealEngine->chainParams().constantinopleForkBlock;
 	if (blockNumber == constantinopleForkBlock)
 	{
 		m_state.createContract(c_blockhashContractAddress);
@@ -720,7 +720,7 @@ void Block::updateBlockhashContract()
 			e.go();
 		e.finalize();
 
-		m_state.commit(State::CommitBehaviour::KeepEmptyAccounts);
+		m_state.commit(State::CommitBehaviour::RemoveEmptyAccounts);
 	}
 }
 
@@ -801,7 +801,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
 	applyRewards(uncleBlockHeaders, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
-	bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().u256Param("EIP158ForkBlock"); // TODO: use EVMSchedule
+	bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use EVMSchedule
 	DEV_TIMED_ABOVE("commit", 500)
 		m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
 

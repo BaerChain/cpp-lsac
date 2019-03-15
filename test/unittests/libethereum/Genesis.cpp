@@ -23,18 +23,20 @@
 #include <fstream>
 #include <random>
 
-#include <boost/test/unit_test.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/CommonIO.h>
 #include <libethereum/BlockChain.h>
 #include <libethashseal/GenesisInfo.h>
-#include <test/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <boost/filesystem/path.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
+namespace fs = boost::filesystem;
 namespace js = json_spirit;
 
 BOOST_FIXTURE_TEST_SUITE(BasicTests, TestOutputHelper)
@@ -50,18 +52,17 @@ BOOST_AUTO_TEST_CASE(emptySHA3Types)
 
 BOOST_AUTO_TEST_CASE(genesis_tests)
 {
-	string testPath = test::getTestPath();
-	testPath += "/BasicTests";
+	fs::path const testPath = test::getTestPath() / fs::path("BasicTests");
 
 	cnote << "Testing Genesis block...";
 	js::mValue v;
-	string s = contentsString(testPath + "/genesishashestest.json");
+	string const s = contentsString(testPath / fs::path("genesishashestest.json"));
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'genesishashestest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 
 	js::mObject o = v.get_obj();
 
-	ChainParams p(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(Network::MainNetwork));
+	ChainParams p(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 	BOOST_CHECK_EQUAL(p.calculateStateRoot(), h256(o["genesis_state_root"].get_str()));
 	BOOST_CHECK_EQUAL(toHex(p.genesisBlock()), toHex(fromHex(o["genesis_rlp_hex"].get_str())));
 	BOOST_CHECK_EQUAL(BlockHeader(p.genesisBlock()).hash(), h256(o["genesis_hash"].get_str()));

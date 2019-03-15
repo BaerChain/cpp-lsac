@@ -14,14 +14,6 @@
 #
 # These settings then end up spanning all POSIX platforms (Linux, OS X, BSD, etc)
 
-# Setup ccache.
-# ccache is auto-enabled if the tool is found. To disable set -DCCACHE=Off option.
-find_program(CCACHE ccache)
-if(CCACHE)
-	set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
-	message(STATUS "ccache enabled (${CCACHE})")
-endif()
-
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
 	# Enables all the warnings about constructions that some users consider questionable,
 	# and that are easy to avoid.  Also enable some extra warning flags that are not
@@ -70,6 +62,14 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 	# Additional Clang-specific compiler settings.
 	elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
+		# Stop if buggy clang compiler detected.
+		if("${CMAKE_CXX_COMPILER_ID}" MATCHES AppleClang)
+			if("${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 8.4)
+				message(FATAL_ERROR "This compiler ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} is not able to compile required libff. Install clang 4+ from Homebrew.")
+			endif()
+		endif()
+
+
 		add_compile_options(-fstack-protector)
 
 		# Enable strong stack protection only on Mac and only for OS X Yosemite
@@ -88,7 +88,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 		# See https://github.com/ethereum/webthree-umbrella/issues/594
 
 		if (APPLE)
-			if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+			if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
 				add_compile_options(-fstack-protector-strong)
 			endif()
 		else()

@@ -253,7 +253,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		// FIXME: changelog contains unrevertable balance change that paid
 		//        for the transaction.
 		// Increment associated nonce for sender.
-		if (_p.senderAddress != MaxAddress) // EIP86
+		if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
 			m_s.incNonce(_p.senderAddress);
 	}
 
@@ -271,7 +271,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 			// because the bug in both Geth and Parity led to deleting RIPEMD precompiled in this case
 			// see https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
 			// We mark the account as touched here, so that is can be removed among other touched empty accounts (after tx finalization)
-			if (m_envInfo.number() >= m_sealEngine.chainParams().u256Param("EIP158ForkBlock"))
+			if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
 				m_s.addBalance(_p.codeAddress, 0);
 			
 			return true;	// true actually means "all finished - nothing more to be done regarding go().
@@ -282,13 +282,14 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 			bytes output;
 			bool success;
 			tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+			size_t outputSize = output.size();
+			m_output = owning_bytes_ref{std::move(output), 0, outputSize};
 			if (!success)
 			{
 				m_gas = 0;
 				m_excepted = TransactionException::OutOfGas;
+				return true;	// true means no need to run go().
 			}
-			size_t outputSize = output.size();
-			m_output = owning_bytes_ref{std::move(output), 0, outputSize};
 		}
 	}
 	else
@@ -328,7 +329,7 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
-	if (_sender != MaxAddress) // EIP86
+	if (_sender != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
 		m_s.incNonce(_sender);
 
 	m_savepoint = m_s.savepoint();
@@ -340,39 +341,29 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
 
 	m_gas = _gas;
 	bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
+	if (accountAlreadyExist)
+	{
+		clog(StateSafeExceptions) << "Address already used: " << m_newAddress;
+		m_gas = 0;
+		m_excepted = TransactionException::AddressAlreadyUsed;
+		revert();
+		m_ext = {}; // cancel the _init execution if there are any scheduled.
+		return !m_ext;
+	}
 
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
 
 	u256 newNonce = m_s.requireAccountStartNonce();
-	if (m_envInfo.number() >= m_sealEngine.chainParams().u256Param("EIP158ForkBlock"))
+	if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
 		newNonce += 1;
 	m_s.setNonce(m_newAddress, newNonce);
 
 	// Schedule _init execution if not empty.
 	if (!_init.empty())
 		m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth);
-	
-	if (m_envInfo.number() < m_sealEngine.chainParams().u256Param("constantinopleForkBlock"))
-	{
-		if (m_s.addressHasCode(m_newAddress))
-			// Overwrite with empty code in case the account already has a code
-			// (address collision -- not real life case but we can check it with
-			// synthetic tests).
-			m_s.setCode(m_newAddress, {});
-	}
-	else
-	{
-		if (accountAlreadyExist)
-		{
-			clog(StateSafeExceptions) << "Address already used: " << m_newAddress;
-			m_gas = 0;
-			m_excepted = TransactionException::AddressAlreadyUsed;
-			revert();
-			m_ext = {}; // cancel the _init execution if there are any scheduled.
-		}
-	}
+
 	return !m_ext;
 }
 

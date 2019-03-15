@@ -28,11 +28,14 @@
 #include <stdio.h>
 #endif
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/filesystem/path.hpp>
 #include <libethereum/Client.h>
 #include <test/tools/libtesteth/Stats.h>
+#include <string>
 
 using namespace std;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 namespace dev
 {
@@ -141,12 +144,18 @@ eth::Network stringToNetId(string const& _netname)
 
 bool isDisabledNetwork(eth::Network _net)
 {
-	if (Options::get().performance || Options::get().filltests)
+	Options const& opt = Options::get();
+	if (opt.all || opt.filltests || opt.createRandomTest || !opt.singleTestNet.empty())
+	{
+		if (_net == eth::Network::ConstantinopleTest)
+			return true;
 		return false;
+	}
 	switch (_net)
 	{
 		case eth::Network::FrontierTest:
 		case eth::Network::HomesteadTest:
+		case eth::Network::ConstantinopleTest:
 		case eth::Network::FrontierToHomesteadAt5:
 		case eth::Network::HomesteadToDaoAt5:
 		case eth::Network::HomesteadToEIP150At5:
@@ -237,12 +246,12 @@ void replaceLLLinState(json_spirit::mObject& _o)
 	}
 }
 
-std::vector<boost::filesystem::path> getJsonFiles(std::string const& _dirPath, std::string const& _particularFile)
+std::vector<boost::filesystem::path> getJsonFiles(boost::filesystem::path const& _dirPath, std::string const& _particularFile)
 {
 	vector<boost::filesystem::path> jsonFiles;
 	if (!_particularFile.empty())
 	{
-		boost::filesystem::path file = boost::filesystem::path(_dirPath) / (_particularFile + ".json");
+		boost::filesystem::path file = _dirPath / (_particularFile + ".json");
 		if (boost::filesystem::exists(file))
 			jsonFiles.push_back(file);
 	}
@@ -387,18 +396,6 @@ void checkStorage(map<u256, u256> const& _expectedStore, map<u256, u256> const& 
 	}
 }
 
-void checkLog(LogEntries const& _resultLogs, LogEntries const& _expectedLogs)
-{
-	BOOST_REQUIRE_EQUAL(_resultLogs.size(), _expectedLogs.size());
-
-	for (size_t i = 0; i < _resultLogs.size(); ++i)
-	{
-		BOOST_CHECK_EQUAL(_resultLogs[i].address, _expectedLogs[i].address);
-		BOOST_CHECK_EQUAL(_resultLogs[i].topics, _expectedLogs[i].topics);
-		BOOST_CHECK(_resultLogs[i].data == _expectedLogs[i].data);
-	}
-}
-
 void checkCallCreates(eth::Transactions const& _resultCallCreates, eth::Transactions const& _expectedCallCreates)
 {
 	BOOST_REQUIRE_EQUAL(_resultCallCreates.size(), _expectedCallCreates.size());
@@ -412,58 +409,9 @@ void checkCallCreates(eth::Transactions const& _resultCallCreates, eth::Transact
 	}
 }
 
-void userDefinedTest(std::function<json_spirit::mValue(json_spirit::mValue const&, bool)> doTests)
+void executeTests(const string& _name, fs::path const& _testPathAppendix, fs::path const& _fillerPathAppendix, std::function<json_spirit::mValue(json_spirit::mValue const&, bool)> doTests)
 {
-	if (!Options::get().singleTest)
-		return;
-
-	if (Options::get().singleTestFile.empty() || Options::get().singleTestName.empty())
-	{
-		cnote << "Missing user test specification\nUsage: testeth --singletest <filename> <testname>\n";
-		return;
-	}
-
-	auto& filename = Options::get().singleTestFile;
-	auto& testname = Options::get().singleTestName;
-
-	if (g_logVerbosity != -1)
-		VerbosityHolder sentinel(12);
-
-	try
-	{
-		cnote << "Testing user defined test: " << filename;
-		json_spirit::mValue v;
-		string s = contentsString(filename);
-		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + filename + " is empty. ");
-		json_spirit::read_string(s, v);
-		json_spirit::mObject oSingleTest;
-
-		json_spirit::mObject::const_iterator pos = v.get_obj().find(testname);
-		if (pos == v.get_obj().end())
-		{
-			cnote << "Could not find test: " << testname << " in " << filename << "\n";
-			return;
-		}
-		else
-			oSingleTest[pos->first] = pos->second;
-
-		json_spirit::mValue v_singleTest(oSingleTest);
-		doTests(v_singleTest, test::Options::get().filltests);
-	}
-	catch (Exception const& _e)
-	{
-		BOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
-	}
-	catch (std::exception const& _e)
-	{
-		BOOST_ERROR("Failed Test with Exception: " << _e.what());
-	}
-}
-
-void executeTests(const string& _name, const string& _testPathAppendix, const string& _fillerPathAppendix, std::function<json_spirit::mValue(json_spirit::mValue const&, bool)> doTests, bool _addFillerSuffix)
-{
-	string testPath = getTestPath() + _testPathAppendix;
-	string testFillerPath = getTestPath() + "/src" + _fillerPathAppendix;
+	fs::path const testPath = getTestPath() / _testPathAppendix;
 
 	if (Options::get().stats)
 		Listener::registerListener(Stats::get());
@@ -477,53 +425,33 @@ void executeTests(const string& _name, const string& _testPathAppendix, const st
 
 	if (Options::get().filltests)
 	{
-		try
-		{
-			if (!Options::get().singleTest)
-				cnote << "Populating tests...";
-			json_spirit::mValue v;
-			boost::filesystem::path p(__FILE__);
-
-			string nameEnding = _addFillerSuffix ? "Filler.json" : ".json";
-			string testfilename = testFillerPath + "/" + name + nameEnding;
-			string 	s = asString(dev::contents(testfilename));
-			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + testfilename + " is empty.");
-
-			json_spirit::read_string(s, v);
-			removeComments(v);
-			json_spirit::mValue output = doTests(v, true);
-			addClientInfo(output, testfilename);
-			writeFile(testPath + "/" + name + ".json", asBytes(json_spirit::write_string(output, true)));
-		}
-		catch (Exception const& _e)
-		{
-			BOOST_ERROR(TestOutputHelper::testName() + " Failed filling test with Exception: " << diagnostic_information(_e));
-		}
-		catch (std::exception const& _e)
-		{
-			BOOST_ERROR(TestOutputHelper::testName() + " Failed filling test with Exception: " << _e.what());
-		}
-	}
-	try
-	{
-		if ((Options::get().singleTest && Options::get().singleTestName == name) || !Options::get().singleTest)
-			cnote << "TEST " << name << ":";
-
+		if (!Options::get().singleTest)
+			cnote << "Populating tests...";
 		json_spirit::mValue v;
-		string s = asString(dev::contents(testPath + "/" + name + ".json"));
-		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + testPath + "/" + name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+		boost::filesystem::path p(__FILE__);
+
+		string const nameEnding = "Filler.json";
+		fs::path const testfileUnderTestPath = fs::path ("src") / _fillerPathAppendix / fs::path(name + nameEnding);
+		fs::path const testfilename = getTestPath() / testfileUnderTestPath;
+		string s = asString(dev::contents(testfilename));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + testfilename.string() + " is empty.");
+
 		json_spirit::read_string(s, v);
-		Listener::notifySuiteStarted(name);
-		doTests(v, false);
+		removeComments(v);
+		json_spirit::mValue output = doTests(v, true);
+		addClientInfo(output, testfileUnderTestPath);
+		writeFile(testPath / fs::path(name + ".json"), asBytes(json_spirit::write_string(output, true)));
 	}
-	catch (Exception const& _e)
-	{
-		BOOST_ERROR(TestOutputHelper::testName() + " Failed test with Exception: " << diagnostic_information(_e));
-	}
-	catch (std::exception const& _e)
-	{
-		BOOST_ERROR(TestOutputHelper::testName() + " Failed test with Exception: " << _e.what());
-	}
+
+	if ((Options::get().singleTest && Options::get().singleTestName == name) || !Options::get().singleTest)
+		cnote << "TEST " << name << ":";
+
+	json_spirit::mValue v;
+	string s = asString(dev::contents(testPath / fs::path(name + ".json")));
+	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " << (testPath / fs::path(name + ".json")).string() << " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+	json_spirit::read_string(s, v);
+	Listener::notifySuiteStarted(name);
+	doTests(v, false);
 }
 
 void removeComments(json_spirit::mValue& _obj)
@@ -561,7 +489,7 @@ string prepareVersionString()
 	return version;
 }
 
-void addClientInfo(json_spirit::mValue& _v, std::string const& _testSource)
+void addClientInfo(json_spirit::mValue& _v, fs::path const& _testSource)
 {
 	for (auto& i: _v.get_obj())
 	{
@@ -576,20 +504,17 @@ void addClientInfo(json_spirit::mValue& _v, std::string const& _testSource)
 				comment = existingInfo["comment"].get_str();
 		}
 
-		//prepare the relative src path
-		string source = _testSource.substr(_testSource.rfind("/src/"), _testSource.length());
-
 		clientinfo["filledwith"] = prepareVersionString();
-		clientinfo["source"] = source;
+		clientinfo["source"] = _testSource.string();
 		clientinfo["comment"] = comment;
 		o["_info"] = clientinfo;
 	}
 }
 
-void copyFile(std::string const& _source, std::string const& _destination)
+void copyFile(fs::path const& _source, fs::path const& _destination)
 {
-	std::ifstream src(_source, std::ios::binary);
-	std::ofstream dst(_destination, std::ios::binary);
+	fs::ifstream src(_source, std::ios::binary);
+	fs::ofstream dst(_destination, std::ios::binary);
 	dst << src.rdbuf();
 }
 
@@ -657,7 +582,7 @@ dev::eth::BlockHeader constructHeader(
 	rlpStream.appendList(15);
 
 	rlpStream << _parentHash << _sha3Uncles << _author << _stateRoot << _transactionsRoot << _receiptsRoot << _logBloom
-		<< _difficulty << _number << _gasLimit << _gasUsed << _timestamp << _extraData << h256{} << Nonce{};
+		<< _difficulty << _number << _gasLimit << _gasUsed << _timestamp << _extraData << h256{} << eth::Nonce{};
 
 	return BlockHeader(rlpStream.out(), HeaderData);
 }

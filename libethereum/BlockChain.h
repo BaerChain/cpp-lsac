@@ -41,6 +41,7 @@
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
+#include <boost/filesystem/path.hpp>
 
 namespace std
 {
@@ -67,6 +68,8 @@ class ImportPerformanceLogger;
 DEV_SIMPLE_EXCEPTION(AlreadyHaveBlock);
 DEV_SIMPLE_EXCEPTION(FutureTime);
 DEV_SIMPLE_EXCEPTION(TransientError);
+DEV_SIMPLE_EXCEPTION(FailedToWriteChainStart);
+DEV_SIMPLE_EXCEPTION(UnknownBlockNumber);
 
 struct BlockChainChat: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct BlockChainNote: public LogChannel { static const char* name(); static const int verbosity = 3; };
@@ -97,7 +100,7 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 class VersionChecker
 {
 public:
-	VersionChecker(std::string const& _dbPath, h256 const& _genesisHash);
+	VersionChecker(boost::filesystem::path const& _dbPath, h256 const& _genesisHash);
 };
 
 /**
@@ -109,7 +112,7 @@ class BlockChain
 public:
 	/// Doesn't open the database - if you want it open it's up to you to subclass this and open it
 	/// in the constructor there.
-	BlockChain(ChainParams const& _p, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+	BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
 	~BlockChain();
 
 	/// Reopen everything.
@@ -139,7 +142,7 @@ public:
 	void insert(bytes const& _block, bytesConstRef _receipts, bool _mustBeNew = true);
 	void insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew = true);
 	/// Insert that doesn't require parent to be imported, useful when we don't have the full blockchain (like restoring from partial snapshot).
-	ImportRoute insertWithoutParent(bytes const& _block, bytesConstRef _receipts, u256 const& _number, u256 const& _totalDifficulty);
+	ImportRoute insertWithoutParent(bytes const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash, bool _isCurrent = true) const;
@@ -240,7 +243,7 @@ public:
 
 	/// Run through database and verify all blocks by reevaluating.
 	/// Will call _progress with the progress in this operation first param done, second total.
-	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
+	void rebuild(boost::filesystem::path const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
 
 	/// Alter the head of the chain to some prior block along it.
 	void rewind(unsigned _newHead);
@@ -312,19 +315,24 @@ public:
 
 	BlockHeader const& genesis() const;
 
+	/// @returns first block number of the chain, non-zero when we have partial chain e.g. after snapshot import.
+	unsigned chainStartBlockNumber() const;
+	/// Change the chain start block.
+	void setChainStartBlockNumber(unsigned _number);
+
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
 	/// Initialise everything and ready for openning the database.
 	void init(ChainParams const& _p);
 	/// Open the database.
-	unsigned open(std::string const& _path, WithExisting _we);
+	unsigned open(boost::filesystem::path const& _path, WithExisting _we);
 	/// Open the database, rebuilding if necessary.
-	void open(std::string const& _path, WithExisting _we, ProgressCallback const& _pc);
+	void open(boost::filesystem::path const& _path, WithExisting _we, ProgressCallback const& _pc);
 	/// Finalise everything and close the database.
 	void close();
 
-	ImportRoute insertBlockAndExtras(VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _number, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger);
+	ImportRoute insertBlockAndExtras(VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger);
 	void checkBlockIsNew(VerifiedBlockRef const& _block) const;
 	void checkBlockTimestamp(BlockHeader const& _header) const;
 
@@ -413,7 +421,7 @@ private:
 	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 	std::function<void(BlockHeader const&)> m_onBlockImport;										///< Called if we have imported a new block into the db
 
-	std::string m_dbPath;
+	boost::filesystem::path m_dbPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };

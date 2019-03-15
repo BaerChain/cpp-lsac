@@ -26,9 +26,12 @@
 #include <test/tools/libtestutils/Common.h>
 #include <test/tools/libtestutils/TestLastBlockHashes.h>
 
+#include <boost/filesystem/path.hpp>
+
 using namespace dev;
 using namespace dev::test;
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace
 {
@@ -117,13 +120,14 @@ bytes ImportTest::executeTest()
 				vector<size_t> stateIndexesToPrint; //not used
 				json_spirit::mArray expetSectionArray;
 
-				//gather the expect sections for such a transaction on all networks (if defined)
-				std::vector<string> checkedNetworks;
 				for (auto const& net : networks)
 				{
 					tr.netId = net;
-					if (std::find(checkedNetworks.begin(), checkedNetworks.end(), test::netIdToString(net)) != checkedNetworks.end())
-						continue;
+
+					// Calculate the block reward
+					ChainParams const chainParams{genesisInfo(net)};
+					EVMSchedule const schedule = chainParams.scheduleForBlockNumber(1);
+					u256 const blockReward = chainParams.blockReward(schedule);
 
 					TrExpectSection search {tr, smap};
 					for (auto const& exp: m_testInputObject.at("expect").get_array())
@@ -141,18 +145,14 @@ bytes ImportTest::executeTest()
 									if (adr.second.get_obj().count("balance"))
 									{
 										u256 expectCoinbaseBalance = toInt(adr.second.get_obj()["balance"]);
-										expectCoinbaseBalance += u256("5000000000000000000");
+										expectCoinbaseBalance += blockReward;
 										adr.second.get_obj()["balance"] = toCompactHexPrefixed(expectCoinbaseBalance);
 									}
 								}
 							}
 
 							json_spirit::mObject expetSectionObj;
-							expetSectionObj["network"] = exp.get_obj().at("network");
-							std::vector<string> networks;
-							ImportTest::parseJsonStrValueIntoVector(exp.get_obj().at("network"), networks);
-							for(auto const& netname : networks)
-								checkedNetworks.push_back(netname);
+							expetSectionObj["network"] = test::netIdToString(net);
 							expetSectionObj["result"] = obj;
 							expetSectionArray.push_back(expetSectionObj);
 							break;
@@ -182,7 +182,7 @@ bytes ImportTest::executeTest()
 			json[testname] = testObj;
 
 			//testName() is changed during the execution of bctest!!!
-			string tmpFillerName = getTestPath() + "/src/GenStateTestAsBcTemp/" + TestOutputHelper::caseName() + "/" + testname + "Filler.json";
+			fs::path const tmpFillerName = getTestPath() / fs::path("src/GenStateTestAsBcTemp") / fs::path(TestOutputHelper::caseName()) / fs::path(testname + "Filler.json");
 			writeFile(tmpFillerName, asBytes(json_spirit::write_string((json_spirit::mValue)json, true)));
 			dev::test::executeTests(testname, "/BlockchainTests/GeneralStateTests/" + TestOutputHelper::caseName(),
 											 "/GenStateTestAsBcTemp/" + TestOutputHelper::caseName(), dev::test::doBlockchainTestNoLog);
@@ -192,9 +192,6 @@ bytes ImportTest::executeTest()
 
 	m_transactions.clear();
 	m_transactions = transactionResults;
-	return bytes();
-
-	BOOST_ERROR("Error when executing test ImportTest::executeTest()");
 	return bytes();
 }
 
@@ -235,7 +232,7 @@ std::tuple<eth::State, ImportTest::ExecOutput, eth::ChangeLog> ImportTest::execu
 		ImportTest::checkBalance(_preState, initialState);
 
 		//Finalize the state manually (clear logs)
-		bool removeEmptyAccounts = m_envInfo->number() >= se->chainParams().u256Param("EIP158ForkBlock");
+		bool removeEmptyAccounts = m_envInfo->number() >= se->chainParams().EIP158ForkBlock;
 		initialState.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
 		return std::make_tuple(initialState, out, changeLog);
 	}
@@ -497,7 +494,7 @@ int ImportTest::compareStates(State const& _stateExpect, State const& _statePost
 
 			if (addressOptions.hasCode())
 				CHECK((_stateExpect.code(a.first) == _statePost.code(a.first)),
-				TestOutputHelper::testName() + " Check State: " << a.first <<  ": incorrect code '" << toHex(_statePost.code(a.first)) << "', expected '" << toHex(_stateExpect.code(a.first)) << "'");
+				TestOutputHelper::testName() + " Check State: " << a.first <<  ": incorrect code '" << toHexPrefixed(_statePost.code(a.first)) << "', expected '" << toHexPrefixed(_stateExpect.code(a.first)) << "'");
 		}
 	}
 
@@ -643,7 +640,7 @@ void ImportTest::checkGeneralTestSectionSearch(json_spirit::mObject const& _expe
 			{
 				//checking filled state test against client
 				BOOST_CHECK_MESSAGE(_expects.at("hash").get_str() == toHexPrefixed(tr.postState.rootHash().asBytes()),
-									TestOutputHelper::testName() + " on " + test::netIdToString(tr.netId) + ": Expected another postState hash! expected: " + _expects.at("hash").get_str() + " actual: " + toHex(tr.postState.rootHash().asBytes()) + " in " + trInfo);
+									TestOutputHelper::testName() + " on " + test::netIdToString(tr.netId) + ": Expected another postState hash! expected: " + _expects.at("hash").get_str() + " actual: " + toHexPrefixed(tr.postState.rootHash().asBytes()) + " in " + trInfo);
 				if (_expects.count("logs"))
 					BOOST_CHECK_MESSAGE(_expects.at("logs").get_str() == exportLog(tr.output.second.log()),
 									TestOutputHelper::testName() + " on " + test::netIdToString(tr.netId) + " Transaction log mismatch! expected: " + _expects.at("logs").get_str() + " actual: " + exportLog(tr.output.second.log()) + " in " + trInfo);

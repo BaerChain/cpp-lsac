@@ -14,21 +14,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "../GenesisInfo.h"
+#include "../../GenesisInfo.h"
 
-static dev::h256 const c_genesisStateRootMetropolisTransitionTest;
-static std::string const c_genesisInfoMetropolisTransitionTest = std::string() +
+static std::string const c_genesisInfoByzantiumTransitionTest = std::string() +
 R"E(
 {
 	"sealEngine": "NoProof",
 	"params": {
 		"accountStartNonce": "0x00",
 		"maximumExtraDataSize": "0x20",
-		"homsteadForkBlock": "0x00",
+		"homesteadForkBlock": "0x00",
 		"daoHardforkBlock": "0xfffffffffffffff",
 		"EIP150ForkBlock": "0x00",
 		"EIP158ForkBlock": "0x00",
-		"metropolisForkBlock": "0x02",
+		"byzantiumForkBlock": "0x02",
+		"constantinopleForkBlock": "0xfffffffffffffff",
 		"minGasLimit": "0x1388",
 		"maxGasLimit": "7fffffffffffffff",
 		"tieBreakingGas": false,

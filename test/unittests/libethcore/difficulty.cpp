@@ -20,16 +20,17 @@
  * difficulty calculation tests.
  */
 
-#include <boost/test/unit_test.hpp>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/fuzzTesting/fuzzHelper.h>
 #include <libethashseal/Ethash.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
+#include <boost/filesystem/path.hpp>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+namespace fs = boost::filesystem;
 namespace js = json_spirit;
 std::string const c_testDifficulty = R"(
  "DifficultyTest[N]" : {
@@ -41,15 +42,15 @@ std::string const c_testDifficulty = R"(
 	},
 )";
 
-void checkCalculatedDifficulty(BlockHeader const& _bi, BlockHeader const& _parent, Network _n, ChainOperationParams const& _p, string const& _testName = "")
+void checkCalculatedDifficulty(BlockHeader const& _bi, BlockHeader const& _parent, eth::Network _n, ChainOperationParams const& _p, string const& _testName = "")
 {
 	u256 difficulty = _bi.difficulty();
-	u256 frontierDiff = _p.u256Param("homsteadForkBlock");
+	u256 const& frontierDiff = _p.homesteadForkBlock;
 
 	//The ultimate formula (Homestead)
 	if (_bi.number() > frontierDiff)
 	{
-		u256 minimumDifficulty = _p.u256Param("minimumDifficulty");
+		u256 const& minimumDifficulty = _p.minimumDifficulty;
 		bigint block_diff = _parent.difficulty();
 
 		bigint a = (_parent.difficulty() / 2048);
@@ -69,20 +70,20 @@ void checkCalculatedDifficulty(BlockHeader const& _bi, BlockHeader const& _paren
 	u256 difficultyBoundDivisor;
 	switch(_n)
 	{
-	case Network::MainNetwork:
-	case Network::FrontierTest:
-	case Network::HomesteadTest:
-	case Network::Ropsten:
-	case Network::TransitionnetTest:
+	case eth::Network::MainNetwork:
+	case eth::Network::FrontierTest:
+	case eth::Network::HomesteadTest:
+	case eth::Network::Ropsten:
+	case eth::Network::TransitionnetTest:
 		durationLimit = 13;
 		minimumDifficulty = 131072;
 		difficultyBoundDivisor = 2048;
 	break;
 	default:
 		cerr << "testing undefined network difficulty";
-		durationLimit = _p.u256Param("durationLimit");
-		minimumDifficulty = _p.u256Param("minimumDifficulty");
-		difficultyBoundDivisor = _p.u256Param("difficultyBoundDivisor");
+		durationLimit = _p.durationLimit;
+		minimumDifficulty = _p.minimumDifficulty;
+		difficultyBoundDivisor = _p.difficultyBoundDivisor;
 		break;
 	}
 
@@ -101,12 +102,12 @@ void checkCalculatedDifficulty(BlockHeader const& _bi, BlockHeader const& _paren
 	return;
 }
 
-void fillDifficulty(string const& _testFileFullName, Ethash& _sealEngine)
+void fillDifficulty(boost::filesystem::path const& _testFileFullName, Ethash& _sealEngine)
 {
 	int testN = 0;
 	ostringstream finalTest;
 	finalTest << "{\n";
-	dev::test::TestOutputHelper::initTest(900);
+	dev::test::TestOutputHelper testOutputHelper(900);
 
 	for (int stampDelta = 0; stampDelta < 45; stampDelta+=2)
 	{
@@ -151,14 +152,14 @@ void fillDifficulty(string const& _testFileFullName, Ethash& _sealEngine)
 	writeFile(_testFileFullName, asBytes(testFile));
 }
 
-void testDifficulty(string const& _testFileFullName, Ethash& _sealEngine, Network _n)
+void testDifficulty(fs::path const& _testFileFullName, Ethash& _sealEngine, eth::Network _n)
 {
 	//Test File
 	js::mValue v;
 	string s = contentsString(_testFileFullName);
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of '" << _testFileFullName << "' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
-	dev::test::TestOutputHelper::initTest(v.get_obj().size());
+	dev::test::TestOutputHelper testOutputHelper(v.get_obj().size());
 
 	for (auto& i: v.get_obj())
 	{
@@ -186,79 +187,73 @@ void testDifficulty(string const& _testFileFullName, Ethash& _sealEngine, Networ
 		//Manual formula test
 		checkCalculatedDifficulty(current, parent, _n, _sealEngine.chainParams(), "(" + i.first + ")");
 	}
-	dev::test::TestOutputHelper::finishTest();
 }
 
 BOOST_AUTO_TEST_SUITE(DifficultyTests)
 
 BOOST_AUTO_TEST_CASE(difficultyTestsFrontier)
 {
-	string testFileFullName = test::getTestPath();
-	testFileFullName += "/BasicTests/difficultyFrontier.json";
+	fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyFrontier.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::FrontierTest)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::FrontierTest)));
 
 	if (dev::test::Options::get().filltests)
 		fillDifficulty(testFileFullName, sealEngine);
 
-	testDifficulty(testFileFullName, sealEngine, Network::FrontierTest);
+	testDifficulty(testFileFullName, sealEngine, eth::Network::FrontierTest);
 }
 
 BOOST_AUTO_TEST_CASE(difficultyTestsRopsten)
 {
-	string testFileFullName = test::getTestPath();
-	testFileFullName += "/BasicTests/difficultyRopsten.json";
+	fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyRopsten.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::Ropsten)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::Ropsten)));
 
 	if (dev::test::Options::get().filltests)
 		fillDifficulty(testFileFullName, sealEngine);
 
-	testDifficulty(testFileFullName, sealEngine, Network::Ropsten);
+	testDifficulty(testFileFullName, sealEngine, eth::Network::Ropsten);
 }
 
 BOOST_AUTO_TEST_CASE(difficultyTestsHomestead)
 {
-	string testFileFullName = test::getTestPath();
-	testFileFullName += "/BasicTests/difficultyHomestead.json";
+	fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyHomestead.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::HomesteadTest)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::HomesteadTest)));
 
 	if (dev::test::Options::get().filltests)
 		fillDifficulty(testFileFullName, sealEngine);
 
-	testDifficulty(testFileFullName, sealEngine, Network::HomesteadTest);
+	testDifficulty(testFileFullName, sealEngine, eth::Network::HomesteadTest);
 }
 
 BOOST_AUTO_TEST_CASE(difficultyTestsMainNetwork)
 {
-	string testFileFullName = test::getTestPath();
-	testFileFullName += "/BasicTests/difficultyMainNetwork.json";
+	fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyMainNetwork.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::MainNetwork)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::MainNetwork)));
 
 	if (dev::test::Options::get().filltests)
 		fillDifficulty(testFileFullName, sealEngine);
 
-	testDifficulty(testFileFullName, sealEngine, Network::MainNetwork);
+	testDifficulty(testFileFullName, sealEngine, eth::Network::MainNetwork);
 }
 
 BOOST_AUTO_TEST_CASE(difficultyTestsCustomMainNetwork)
 {
-	string testFileFullName = test::getTestPath();
-	testFileFullName += "/BasicTests/difficultyCustomMainNetwork.json";
+	fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyCustomMainNetwork.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::MainNetwork)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::MainNetwork)));
 
 	if (dev::test::Options::get().filltests)
 	{
-		u256 homsteadBlockNumber = 1000000;
-		std::vector<u256> blockNumberVector = {homsteadBlockNumber - 100000, homsteadBlockNumber, homsteadBlockNumber + 100000};
+		u256 homesteadBlockNumber = 1000000;
+		std::vector<u256> blockNumberVector = {homesteadBlockNumber - 100000, homesteadBlockNumber, homesteadBlockNumber + 100000};
 		std::vector<u256> parentDifficultyVector = {1000, 2048, 4000, 1000000};
 		std::vector<int> timestampDeltaVector = {0, 1, 8, 10, 13, 20, 100, 800, 1000, 1500};
 
@@ -307,18 +302,17 @@ BOOST_AUTO_TEST_CASE(difficultyTestsCustomMainNetwork)
 		writeFile(testFileFullName, asBytes(testFile));
 	}
 
-	testDifficulty(testFileFullName, sealEngine, Network::MainNetwork);
+	testDifficulty(testFileFullName, sealEngine, eth::Network::MainNetwork);
 }
 
 BOOST_AUTO_TEST_CASE(basicDifficultyTest)
 {
-	string testPath = test::getTestPath();
-	testPath += "/BasicTests/difficulty.json";
+	fs::path const testPath = test::getTestPath() / fs::path("BasicTests/difficulty.json");
 
 	Ethash sealEngine;
-	sealEngine.setChainParams(ChainParams(genesisInfo(Network::MainNetwork)));
+	sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::MainNetwork)));
 
-	testDifficulty(testPath, sealEngine, Network::MainNetwork);
+	testDifficulty(testPath, sealEngine, eth::Network::MainNetwork);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
