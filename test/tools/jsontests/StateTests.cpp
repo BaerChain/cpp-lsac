@@ -31,6 +31,8 @@
 #include <libethereum/Defaults.h>
 #include <libevm/VM.h>
 #include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestSuite.h>
+#include <test/tools/jsontests/StateTests.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -40,7 +42,7 @@ namespace fs = boost::filesystem;
 
 namespace dev {  namespace test {
 
-json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin)
+json_spirit::mValue StateTestSuite::doTests(json_spirit::mValue const& _input, bool _fillin) const
 {
 	BOOST_REQUIRE_MESSAGE(_input.type() == obj_type,
 		TestOutputHelper::testFileName() + " A GeneralStateTest file should contain an object.");
@@ -61,7 +63,7 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 			BOOST_REQUIRE_MESSAGE(testname + "Filler.json" == TestOutputHelper::testFileName(),
 				TestOutputHelper::testFileName() + " contains a test with a different name '" + testname + "'" );
 
-		if (!TestOutputHelper::passTest(testname))
+		if (!TestOutputHelper::checkTest(testname))
 			continue;
 
 		//For 100% at the log output when making blockchain tests out of state tests
@@ -73,11 +75,8 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 		BOOST_REQUIRE_MESSAGE(inputTest.count("transaction") > 0, testname + " transaction not set!");
 
 		ImportTest importer(inputTest, outputTest);
-
 		Listener::ExecTimeGuard guard{i.first};
 		importer.executeTest();
-		if (Options::get().fillchain)
-			continue;
 
 		if (_fillin)
 		{
@@ -116,6 +115,17 @@ json_spirit::mValue doStateTests(json_spirit::mValue const& _input, bool _fillin
 	}
 	return v;
 }
+
+std::string StateTestSuite::suiteFolder() const
+{
+	return "GeneralStateTests";
+}
+
+std::string StateTestSuite::suiteFillerFolder() const
+{
+	return "GeneralStateTestsFiller";
+}
+
 } }// Namespace Close
 
 class GeneralTestFixture
@@ -126,33 +136,14 @@ public:
 		string casename = boost::unit_test::framework::current_test_case().p_name;
 		if (casename == "stQuadraticComplexityTest" && !test::Options::get().all)
 		{
-			cnote << "Skipping " << casename << " because --all option is not specified.\n";
+			std::cout << "Skipping " << casename << " because --all option is not specified.\n";
 			return;
 		}
-		fillAllFilesInFolder(casename);
-	}
-
-	void fillAllFilesInFolder(string const& _folder)
-	{
-		fs::path fillersPath = test::getTestPath() / fs::path("src/GeneralStateTestsFiller") / fs::path(_folder);
-
-		string filter = test::Options::get().singleTestName.empty() ? string() : test::Options::get().singleTestName + "Filler";
-		std::vector<boost::filesystem::path> files = test::getJsonFiles(fillersPath, filter);
-		int fileCount = files.size();
-
-		if (test::Options::get().filltests)
-			fileCount *= 2; //tests are checked when filled and after they been filled
-		test::TestOutputHelper testOutputHelper(fileCount);
-
-		for (auto const& file: files)
-		{
-			test::TestOutputHelper::setCurrentTestFileName(file.filename().string());
-			test::executeTests(file.filename().string(), "/GeneralStateTests/"+_folder, "/GeneralStateTestsFiller/"+_folder, dev::test::doStateTests);
-		}
+		test::StateTestSuite suite;
+		suite.runAllTestsInFolder(casename);
 	}
 };
 
-std::string const test::c_GeneralStateTests = "GeneralStateTests";
 BOOST_FIXTURE_TEST_SUITE(GeneralStateTests, GeneralTestFixture)
 
 //Frontier Tests
@@ -199,6 +190,7 @@ BOOST_AUTO_TEST_CASE(stStackTests){}
 BOOST_AUTO_TEST_CASE(stStaticCall){}
 BOOST_AUTO_TEST_CASE(stReturnDataTest){}
 BOOST_AUTO_TEST_CASE(stZeroKnowledge){}
+BOOST_AUTO_TEST_CASE(stCodeCopyTest){}
 
 //Stress Tests
 BOOST_AUTO_TEST_CASE(stAttackTest){}

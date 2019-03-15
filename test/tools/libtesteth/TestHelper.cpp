@@ -271,16 +271,27 @@ std::string executeCmd(std::string const& _command)
 	BOOST_ERROR("executeCmd() has not been implemented for Windows.");
 	return "";
 #else
+	string out;
 	char output[1024];
 	FILE *fp = popen(_command.c_str(), "r");
 	if (fp == NULL)
 		BOOST_ERROR("Failed to run " + _command);
 	if (fgets(output, sizeof(output) - 1, fp) == NULL)
 		BOOST_ERROR("Reading empty result for " + _command);
+	else
+	{
+		while(true)
+		{
+			out += string(output);
+			if (fgets(output, sizeof(output) - 1, fp) == NULL)
+				break;
+		}
+	}
+
 	int exitCode = pclose(fp);
 	if (exitCode != 0)
 		BOOST_ERROR("The command '" + _command + "' exited with " + toString(exitCode) + " code.");
-	return boost::trim_copy(string(output));
+	return boost::trim_copy(out);
 #endif
 }
 
@@ -454,31 +465,6 @@ void executeTests(const string& _name, fs::path const& _testPathAppendix, fs::pa
 	doTests(v, false);
 }
 
-void removeComments(json_spirit::mValue& _obj)
-{
-	if (_obj.type() == json_spirit::obj_type)
-	{
-		std::list<string> removeList;
-		for (auto& i: _obj.get_obj())
-		{
-			if (i.first.substr(0, 2) == "//")
-			{
-				removeList.push_back(i.first);
-				continue;
-			}
-
-			removeComments(i.second);
-		}
-		for (auto& i: removeList)
-			_obj.get_obj().erase(_obj.get_obj().find(i));
-	}
-	else if (_obj.type() == json_spirit::array_type)
-	{
-		for (auto& i: _obj.get_array())
-			removeComments(i);
-	}
-}
-
 string prepareVersionString()
 {
 	//cpp-1.3.0+commit.6be76b64.Linux.g++
@@ -489,26 +475,13 @@ string prepareVersionString()
 	return version;
 }
 
-void addClientInfo(json_spirit::mValue& _v, fs::path const& _testSource)
+string prepareLLLCVersionString()
 {
-	for (auto& i: _v.get_obj())
-	{
-		json_spirit::mObject& o = i.second.get_obj();
-		json_spirit::mObject clientinfo;
-
-		string comment;
-		if (o.count("_info"))
-		{
-			json_spirit::mObject& existingInfo = o["_info"].get_obj();
-			if (existingInfo.count("comment"))
-				comment = existingInfo["comment"].get_str();
-		}
-
-		clientinfo["filledwith"] = prepareVersionString();
-		clientinfo["source"] = _testSource.string();
-		clientinfo["comment"] = comment;
-		o["_info"] = clientinfo;
-	}
+	string result = test::executeCmd("lllc --version");
+	string::size_type pos = result.rfind("Version");
+	if (pos != string::npos)
+		return result.substr(pos, result.length());
+	return "Error getting LLLC Version";
 }
 
 void copyFile(fs::path const& _source, fs::path const& _destination)

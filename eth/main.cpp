@@ -37,7 +37,8 @@
 #include <libevm/VMFactory.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Defaults.h>
-#include <libethereum/BlockChainSync.h>
+#include <libethereum/SnapshotImporter.h>
+#include <libethereum/SnapshotStorage.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libwebthree/WebThree.h>
@@ -148,6 +149,7 @@ void help()
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'.\n"
 		<< "    --only <n>  Equivalent to --export-from n --export-to n.\n"
 		<< "    --dont-check  Prevent checking some block aspects. Faster importing, but to apply only when the data is known to be valid.\n\n"
+		<< "    --import-snapshot <path>  Import blockchain and state data from the Parity Warp Sync snapshot." << endl
 		<< "General Options:\n"
 		<< "    -d,--db-path,--datadir <path>  Load database from path (default: " << getDataDir() << ").\n"
 #if ETH_EVMJIT
@@ -245,6 +247,7 @@ enum class OperationMode
 {
 	Node,
 	Import,
+	ImportSnapshot,
 	Export
 };
 
@@ -327,7 +330,7 @@ int main(int argc, char** argv)
 	std::string rpcCorsDomain = "";
 
 	string jsonAdmin;
-	ChainParams chainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
+	ChainParams chainParams;
 	u256 gasFloor = Invalid256;
 	string privateChain;
 
@@ -400,6 +403,7 @@ int main(int argc, char** argv)
 	MinerCLI m(MinerCLI::OperationMode::None);
 
 	bool listenSet = false;
+	bool chainConfigIsSet = false;
 	string configJSON;
 	string genesisJSON;
 	for (int i = 1; i < argc; ++i)
@@ -596,9 +600,15 @@ int main(int argc, char** argv)
 		else if (arg == "--gas-floor" && i + 1 < argc)
 			gasFloor = u256(argv[++i]);
 		else if (arg == "--mainnet")
+		{
 			chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
+			chainConfigIsSet = true;
+		}
 		else if (arg == "--ropsten" || arg == "--testnet")
+		{
 			chainParams = ChainParams(genesisInfo(eth::Network::Ropsten), genesisStateRoot(eth::Network::Ropsten));
+			chainConfigIsSet = true;
+		}
 		else if (arg == "--ask" && i + 1 < argc)
 		{
 			try
@@ -781,6 +791,11 @@ int main(int argc, char** argv)
 			noPinning = true;
 			bootstrap = false;
 		}
+		else if ((arg == std::string("--import-snapshot")) && i + 1 < argc)
+		{
+			mode = OperationMode::ImportSnapshot;
+			filename = argv[++i];
+		}
 		else
 		{
 			cerr << "Invalid argument: " << arg << "\n";
@@ -793,6 +808,7 @@ int main(int argc, char** argv)
 		try
 		{
 			chainParams = chainParams.loadConfig(configJSON);
+			chainConfigIsSet = true;
 		}
 		catch (...)
 		{
@@ -808,6 +824,7 @@ int main(int argc, char** argv)
 		try
 		{
 			chainParams = chainParams.loadGenesis(genesisJSON);
+			chainConfigIsSet = true;
 		}
 		catch (...)
 		{
@@ -840,6 +857,10 @@ int main(int argc, char** argv)
 	// TODO: Open some other API path
 //	if (gasFloor != Invalid256)
 //		c_gasFloorTarget = gasFloor;
+
+	if (!chainConfigIsSet)
+		// default to mainnet if not already set with any of `--mainnet`, `--testnet`, `--genesis`, `--config`
+		chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 
 	if (g_logVerbosity > 0)
 		cout << EthGrayBold "cpp-ethereum, a C++ Ethereum client" EthReset << "\n";
@@ -1048,6 +1069,27 @@ int main(int argc, char** argv)
 	}
 
 	cout << ethCredits();
+
+	if (mode == OperationMode::ImportSnapshot)
+	{
+		try
+		{
+			auto stateImporter = web3.ethereum()->createStateImporter();
+			auto blockChainImporter = web3.ethereum()->createBlockChainImporter();
+			SnapshotImporter importer(*stateImporter, *blockChainImporter);
+			
+			auto snapshotStorage(createSnapshotStorage(filename));
+			importer.import(*snapshotStorage);
+			// continue with regular sync from the snapshot block
+		}
+		catch (...)
+		{
+			cerr << "Error during importing the snapshot: " << boost::current_exception_diagnostic_information() << endl;
+			return -1;
+		}
+	}
+
+
 	web3.setIdealPeerCount(peers);
 	web3.setPeerStretch(peerStretch);
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));

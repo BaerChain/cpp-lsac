@@ -19,6 +19,7 @@
  */
 
 #pragma once
+#include <boost/filesystem/path.hpp>
 #include <test/tools/libtesteth/JsonSpiritHeaders.h>
 
 namespace dev
@@ -26,13 +27,33 @@ namespace dev
 namespace test
 {
 
-class TestSute
+class TestSuite
 {
+protected:
+	// A folder of the test suite. like "VMTests". should be implemented for each test suite.
+	virtual std::string suiteFolder() const = 0;
+
+	// A folder of the test suite in src folder. like "VMTestsFiller". should be implemented for each test suite.
+	virtual std::string suiteFillerFolder() const = 0;
+
 public:
-	virtual ~TestSute() {}
+	virtual ~TestSuite() {}
+
+	// Main test executive function. should be declared for each test suite. it fills and runs the test .json file
 	virtual json_spirit::mValue doTests(json_spirit::mValue const&, bool) const = 0;
-	virtual std::string folder() const = 0;
-	void runAllTestsInFolder(std::string const& _folder) const;
+
+	// Execute all tests from _folder
+	void runAllTestsInFolder(std::string const& _testFolder) const;
+
+	// Copy .json tests from the src folder to the dest folder because such test is crafted manually and could not be filled.
+	// Used in bcForgedTest, ttWrongRLP tests and such.
+	void copyAllTestsFromFolder(std::string const& _testFolder) const;
+
+	// Return full path to folder for tests from _testFolder
+	boost::filesystem::path getFullPathFiller(std::string const& _testFolder) const;
+
+	// Structure  <suiteFolder>/<testFolder>/<test>.json
+	boost::filesystem::path getFullPath(std::string const& _testFolder) const;
 };
 
 }

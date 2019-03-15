@@ -7,19 +7,22 @@ LABEL description="Build environment for C++ Ethereum projects"
 
 RUN export DEBIAN_FRONTEND=noninteractive \
   && apt-get -qq update && apt-get install -yq --no-install-recommends \
+    sudo \
     # Build tools
     git \
-    ssh \
+    ssh-client \
     curl \
     cmake \
     ninja-build \
     g++ \
     gnupg2 \
+    python-pip \
     python-requests \
     # Dependencies
     libleveldb-dev \
     libmicrohttpd-dev \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && pip install codecov
 
 RUN export DEBIAN_FRONTEND=noninteractive \
   && echo 'deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main' >> /etc/apt/sources.list \

@@ -44,10 +44,6 @@ if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
 endif()
 
-# Map current configuration to congigurations of imported targets.
-set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo Release)
-set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo Release)
-
 set(HUNTER_CONFIGURATION_TYPES Release)
 set(HUNTER_JOBS_NUMBER 4)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
@@ -102,6 +98,9 @@ find_package(Boost CONFIG REQUIRED filesystem system thread)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
+
+hunter_add_package(Snappy)
+find_package(Snappy CONFIG)
 
 include(ProjectCryptopp)
 include(ProjectJsonRpcCpp)

@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(modexpCostFermatTheorem)
 		"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f");
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE_EQUAL(static_cast<int>(res), 2611);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(res), 13056);
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostTooLarge)
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(modexpCostTooLarge)
 		"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd");
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"9485687950320942729098935091911713411339877143809275006112365281928243580103464"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"47428439751604713645494675459558567056699385719046375030561826409641217900517324"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostEmptyExponent)
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(modexpCostEmptyExponent)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"2"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"12"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostZeroExponent)
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE(modexpCostZeroExponent)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"1"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"5"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostApproximated)
@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE(modexpCostApproximated)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"263"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"1315"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostApproximatedPartialByte)
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE(modexpCostApproximatedPartialByte)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"257"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"1285"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostApproximatedGhost)
@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_CASE(modexpCostApproximatedGhost)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == bigint{"8"});
+	BOOST_REQUIRE_MESSAGE(res == bigint{"40"}, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostMidRange)
@@ -318,7 +318,7 @@ BOOST_AUTO_TEST_CASE(modexpCostMidRange)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == ((74 * 74 / 4 + 96 * 74 - 3072) * 8) / 100);
+	BOOST_REQUIRE_MESSAGE(res == ((74 * 74 / 4 + 96 * 74 - 3072) * 8) / 20, "Got: " + toString(res));
 }
 
 BOOST_AUTO_TEST_CASE(modexpCostHighRange)
@@ -335,7 +335,7 @@ BOOST_AUTO_TEST_CASE(modexpCostHighRange)
 	);
 	auto res = cost(bytesConstRef(in.data(), in.size()));
 
-	BOOST_REQUIRE(res == ((1025 * 1025 / 16 + 480 * 1025 - 199680) * 8) / 100);
+	BOOST_REQUIRE_MESSAGE(res == ((1025 * 1025 / 16 + 480 * 1025 - 199680) * 8) / 20, "Got: " + toString(res));
 }
 
 /// @defgroup PrecompiledTests Test cases for precompiled contracts.
@@ -656,6 +656,12 @@ namespace
 {
 void benchmarkPrecompiled(char const name[], vector_ref<const PrecompiledTest> tests, int n)
 {
+	if (!Options::get().all)
+	{
+		std::cout << "Skipping benchmark test because --all option is not specified.\n";
+		return;
+	}
+
 	PrecompiledExecutor exec = PrecompiledRegistrar::executor(name);
 	Timer timer;
 
@@ -681,31 +687,31 @@ void benchmarkPrecompiled(char const name[], vector_ref<const PrecompiledTest> t
 
 /// @}
 
-BOOST_AUTO_TEST_CASE(bench_ecrecover, *ut::label("bench") *ut::disabled())
+BOOST_AUTO_TEST_CASE(bench_ecrecover, *ut::label("bench"))
 {
 	vector_ref<const PrecompiledTest> tests{ecrecoverTests, sizeof(ecrecoverTests) / sizeof(ecrecoverTests[0])};
 	benchmarkPrecompiled("ecrecover", tests, 100000);
 }
 
-BOOST_AUTO_TEST_CASE(bench_modexp, *ut::label("bench") *ut::disabled())
+BOOST_AUTO_TEST_CASE(bench_modexp, *ut::label("bench"))
 {
 	vector_ref<const PrecompiledTest> tests{modexpTests, sizeof(modexpTests) / sizeof(modexpTests[0])};
 	benchmarkPrecompiled("modexp", tests, 10000);
 }
 
-BOOST_AUTO_TEST_CASE(bench_bn256Add, *ut::label("bench") *ut::disabled())
+BOOST_AUTO_TEST_CASE(bench_bn256Add, *ut::label("bench"))
 {
 	vector_ref<const PrecompiledTest> tests{bn256AddTests, sizeof(bn256AddTests) / sizeof(bn256AddTests[0])};
 	benchmarkPrecompiled("alt_bn128_G1_add", tests, 1000000);
 }
 
-BOOST_AUTO_TEST_CASE(bench_bn256ScalarMul, *ut::label("bench") *ut::disabled())
+BOOST_AUTO_TEST_CASE(bench_bn256ScalarMul, *ut::label("bench"))
 {
 	vector_ref<const PrecompiledTest> tests{bn256ScalarMulTests, sizeof(bn256ScalarMulTests) / sizeof(bn256ScalarMulTests[0])};
 	benchmarkPrecompiled("alt_bn128_G1_mul", tests, 10000);
 }
 
-BOOST_AUTO_TEST_CASE(bench_bn256Pairing, *ut::label("bench") *ut::disabled())
+BOOST_AUTO_TEST_CASE(bench_bn256Pairing, *ut::label("bench"))
 {
 	vector_ref<const PrecompiledTest> tests{bn256PairingTests, sizeof(bn256PairingTests) / sizeof(bn256PairingTests[0])};
 	benchmarkPrecompiled("alt_bn128_pairing_product", tests, 1000);
