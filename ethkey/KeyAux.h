@@ -31,7 +31,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
 #include <libethcore/KeyManager.h>
-#include <libethcore/Transaction.h>
+#include <libethcore/TransactionBase.h>
 
 using namespace std;
 using namespace dev;
@@ -667,6 +667,7 @@ public:
 				}
 			for (auto const& u: bare)
 				cout << toUUID(u) << " (Bare)" << endl;
+			break;
 		}
 		default: break;
 		}
