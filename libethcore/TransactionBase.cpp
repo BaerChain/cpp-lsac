@@ -23,7 +23,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
-#include "Transaction.h"
+#include "TransactionBase.h"
 #include "EVMSchedule.h"
 
 using namespace std;
@@ -46,42 +46,43 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
 
 TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
-	int field = 0;
-	RLP rlp(_rlpData);
+	RLP const rlp(_rlpData);
 	try
 	{
 		if (!rlp.isList())
 			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction RLP must be a list"));
 
-		m_nonce = rlp[field = 0].toInt<u256>();
-		m_gasPrice = rlp[field = 1].toInt<u256>();
-		m_gas = rlp[field = 2].toInt<u256>();
-		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
-		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
-		m_value = rlp[field = 4].toInt<u256>();
+		m_nonce = rlp[0].toInt<u256>();
+		m_gasPrice = rlp[1].toInt<u256>();
+		m_gas = rlp[2].toInt<u256>();
+		m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+		m_receiveAddress = rlp[3].isEmpty() ? Address() : rlp[3].toHash<Address>(RLP::VeryStrict);
+		m_value = rlp[4].toInt<u256>();
 
-		if (!rlp[field = 5].isData())
+		if (!rlp[5].isData())
 			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction data RLP must be an array"));
 
-		m_data = rlp[field = 5].toBytes();
+		m_data = rlp[5].toBytes();
 
-		byte v = rlp[field = 6].toInt<byte>();
-		h256 r = rlp[field = 7].toInt<u256>();
-		h256 s = rlp[field = 8].toInt<u256>();
+		int const v = rlp[6].toInt<int>();
+		h256 const r = rlp[7].toInt<u256>();
+		h256 const s = rlp[8].toInt<u256>();
 
-		m_vrs = SignatureStruct{ r, s, v };
-
-		if (hasZeroSignature())
-			m_chainId = m_vrs->v;
+		if (isZeroSignature(r, s))
+		{
+			m_chainId = v;
+			m_vrs = SignatureStruct{r, s, 0};
+		}
 		else
 		{
 			if (v > 36)
-				m_chainId = (v - 35) / 2;
+				m_chainId = (v - 35) / 2; 
 			else if (v == 27 || v == 28)
 				m_chainId = -4;
 			else
 				BOOST_THROW_EXCEPTION(InvalidSignature());
-			m_vrs->v = v - (m_chainId * 2 + 35);
+
+			m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
 
 			if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
 				BOOST_THROW_EXCEPTION(InvalidSignature());
@@ -166,8 +167,14 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
 		if (!m_vrs)
 			BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
 
-		int vOffset = m_chainId*2 + 35;
-		_s << (m_vrs->v + vOffset) << (u256)m_vrs->r << (u256)m_vrs->s;
+		if (hasZeroSignature())
+			_s << m_chainId;
+		else
+		{
+			int const vOffset = m_chainId * 2 + 35;
+			_s << (m_vrs->v + vOffset);
+		}
+		_s << (u256)m_vrs->r << (u256)m_vrs->s;
 	}
 	else if (_forEip155hash)
 		_s << m_chainId << 0 << 0;

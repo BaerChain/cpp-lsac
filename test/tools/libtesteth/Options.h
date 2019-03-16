@@ -59,11 +59,12 @@ public:
 	eth::StandardTrace::DebugOptions jsontraceOptions; ///< output config for jsontrace
 	std::string testpath;	///< Custom test folder path
 	Verbosity logVerbosity = Verbosity::NiceReport;
+	boost::optional<boost::filesystem::path> randomCodeOptionsPath; ///< Options for random code generation in fuzz tests
 
 	/// Test selection
 	/// @{
 	bool singleTest = false;
-	std::string singleTestFile;
+	boost::optional<std::string> singleTestFile;
 	std::string singleTestName;
 	std::string singleTestNet;
 	int trDataIndex;	///< GeneralState data

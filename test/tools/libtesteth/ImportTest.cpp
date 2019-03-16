@@ -225,12 +225,14 @@ std::tuple<eth::State, ImportTest::ExecOutput, eth::ChangeLog> ImportTest::execu
 			StandardTrace st;
 			st.setShowMnemonics();
 			st.setOptions(Options::get().jsontraceOptions);
-			out = initialState.execute(_env, *se.get(), _tr, Permanence::Uncommitted, st.onOp());
+			out = initialState.execute(_env, *se.get(), _tr, Permanence::Committed, st.onOp());
 			cout << st.json();
+			cout << "{\"stateRoot\": \"" << initialState.rootHash().hex() << "\"}";
 		}
 		else
 			out = initialState.execute(_env, *se.get(), _tr, Permanence::Uncommitted);
 
+		// the changeLog might be broken under --jsontrace, because it uses intialState.execute with Permanence::Committed rather than Permanence::Uncommitted
 		eth::ChangeLog changeLog = initialState.changeLog();
 		ImportTest::checkBalance(_preState, initialState);
 
@@ -528,15 +530,6 @@ void parseJsonIntValueIntoVector(json_spirit::mValue const& _json, vector<int>& 
 	}
 	else
 		_out.push_back(_json.get_int());
-}
-
-template<class T>
-bool inArray(vector<T> const& _array, const T _val)
-{
-	for (auto const& obj  : _array)
-		if (obj == _val)
-			return true;
-	return false;
 }
 
 void ImportTest::checkAllowedNetwork(std::vector<std::string> const& _networks)

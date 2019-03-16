@@ -36,6 +36,7 @@
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/ImportTest.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
+#include <test/tools/libtesteth/TestSuite.h>
 
 namespace dev
 {

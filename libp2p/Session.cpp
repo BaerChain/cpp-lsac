@@ -257,6 +257,21 @@ void Session::write()
 	});
 }
 
+namespace
+{
+	void halveAtomicInt(atomic<int>& i)
+	{
+		int oldInt = 0;
+		int newInt = 0;
+		do
+		{
+			oldInt = i;
+			newInt = oldInt / 2;
+		}
+		while (i.atomic::compare_exchange_weak(oldInt, newInt));
+	}
+}
+
 void Session::drop(DisconnectReason _reason)
 {
 	if (m_dropped)
@@ -275,8 +290,8 @@ void Session::drop(DisconnectReason _reason)
 	m_peer->m_lastDisconnect = _reason;
 	if (_reason == BadProtocol)
 	{
-		m_peer->m_rating /= 2;
-		m_peer->m_score /= 2;
+		halveAtomicInt(m_peer->m_rating);
+		halveAtomicInt(m_peer->m_score);
 	}
 	m_dropped = true;
 }
@@ -367,11 +382,8 @@ void Session::doRead()
 				auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
 				RLP r(frame.cropped(1));
 				bool ok = readPacket(hProtocolId, packetType, r);
-				(void)ok;
-#if ETH_DEBUG
 				if (!ok)
 					clog(NetWarn) << "Couldn't interpret packet." << RLP(r);
-#endif
 			}
 			doRead();
 		});

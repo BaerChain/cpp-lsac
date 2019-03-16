@@ -53,8 +53,8 @@ set(HUNTER_JOBS_NUMBER 4)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
 include(HunterGate)
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.19.105.tar.gz"
-    SHA1 "b96750beadc41207e88abf1bcdbe3baeb38f09c4"
+    URL "https://github.com/ruslo/hunter/archive/v0.19.173.tar.gz"
+    SHA1 "750fb1d621af971fad6f303356b13017ad9f5e15"
     LOCAL
 )
 
@@ -98,8 +98,8 @@ include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-hunter_add_package(Boost COMPONENTS filesystem system thread)
-find_package(Boost CONFIG REQUIRED filesystem system thread)
+hunter_add_package(Boost COMPONENTS program_options filesystem system thread)
+find_package(Boost CONFIG REQUIRED program_options filesystem system thread)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -120,7 +120,12 @@ if(MINIUPNPC)
     find_package(Miniupnpc 1.8.2013 REQUIRED)
 endif()
 
+set(UTILS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/utils")
+
 configure_project()
+
+#Global include path for all libs.
+include_directories("${CMAKE_SOURCE_DIR}")
 
 add_subdirectory(libdevcore)
 add_subdirectory(libdevcrypto)
@@ -133,7 +138,6 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(libethashseal)
 
-add_subdirectory(libwhisper)
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
 
