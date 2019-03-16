@@ -304,7 +304,7 @@ class VmTestSuite: public TestSuite
 		{
 			string const& testname = i.first;
 			json_spirit::mObject const& testInput = i.second.get_obj();
-			if (!TestOutputHelper::checkTest(testname))
+			if (!TestOutputHelper::get().checkTest(testname))
 				continue;
 
 			output[testname] = json_spirit::mObject();
@@ -323,7 +323,11 @@ class VmTestSuite: public TestSuite
 			fev.importState(testInput.at("pre").get_obj());
 
 			if (_fillin)
+			{
 				testOutput["pre"] = mValue(fev.exportState());
+				if (testInput.count("_info"))
+					testOutput["_info"] = testInput.at("_info");
+			}
 
 			fev.importExec(testInput.at("exec").get_obj());
 			if (fev.code.empty())

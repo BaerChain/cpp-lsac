@@ -34,7 +34,7 @@ using namespace dev;
 using namespace dev::test;
 using namespace dev::p2p;
 
-struct P2PPeerFixture: public TestOutputHelper
+struct P2PPeerFixture: public TestOutputHelperFixture
 {
 	P2PPeerFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = true; }
 	~P2PPeerFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
@@ -43,7 +43,7 @@ struct P2PPeerFixture: public TestOutputHelper
 class TestCap: public Capability
 {
 public:
-	TestCap(std::shared_ptr<SessionFace> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&, uint16_t _capID): Capability(_s, _h, _idOffset, _capID) {}
+	TestCap(std::shared_ptr<SessionFace> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&): Capability(_s, _h, _idOffset) {}
 	virtual ~TestCap() {}
 	static std::string name() { return "p2pTestCapability"; }
 	static u256 version() { return 2; }
@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_FIXTURE_TEST_SUITE(peerTypes, TestOutputHelper)
+BOOST_FIXTURE_TEST_SUITE(peerTypes, TestOutputHelperFixture)
 
 BOOST_AUTO_TEST_CASE(emptySharedPeer)
 {

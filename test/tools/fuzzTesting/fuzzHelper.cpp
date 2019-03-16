@@ -82,19 +82,7 @@ namespace dev
 namespace test
 {
 
-std::mt19937_64 RandomCode::gen;
-IntDistrib RandomCode::percentDist = IntDistrib (0, 100);
-IntDistrib RandomCode::opCodeDist = IntDistrib (0, 255);
-IntDistrib RandomCode::opLengDist = IntDistrib (1, 32);
-IntDistrib RandomCode::opMemrDist = IntDistrib (0, 10485760);
-IntDistrib RandomCode::uniIntDist = IntDistrib (0, 0x7fffffff);
-
-IntGenerator RandomCode::randOpCodeGen = std::bind(opCodeDist, gen);
-IntGenerator RandomCode::randOpLengGen = std::bind(opLengDist, gen);
-IntGenerator RandomCode::randOpMemrGen = std::bind(opMemrDist, gen);
-IntGenerator RandomCode::randUniIntGen = std::bind(uniIntDist, gen);
-
-int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _debug)
+int RandomCodeBase::recursiveRLP(std::string& _result, int _depth, std::string& _debug)
 {
 	bool genValidRlp = true;
 	int bugProbability = randomPercent();
@@ -104,7 +92,7 @@ int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _deb
 	if (_depth > 1)
 	{
 		//create rlp blocks
-		int size = 1 + randUniIntGen() % 4;
+		int size = 1 + randomSmallUniInt() % 4;
 		for (auto i = 0; i < size; i++)
 		{
 			std::string blockstr;
@@ -167,13 +155,13 @@ int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _deb
 		std::string emptyZeros = genValidRlp ? "" : genbug ? "00" : "";
 		std::string emptyZeros2 = genValidRlp ? "" : genbug2 ? "00" : "";
 
-		int rnd = randUniIntGen() % 5;
+		int rnd = randomSmallUniInt() % 5;
 		switch (rnd)
 		{
 		case 0:
 		{
 			//single byte [0x00, 0x7f]
-			std::string rlp = emptyZeros + toCompactHex(genbug ? randUniIntGen() % 255 : randUniIntGen() % 128, 1);
+			std::string rlp = emptyZeros + toCompactHex(genbug ? randomSmallUniInt() % 255 : randomSmallUniInt() % 128, 1);
 			_result.insert(0, rlp);
 			_debug.insert(0, "[" + rlp + "]");
 			return 1;
@@ -181,7 +169,7 @@ int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _deb
 		case 1:
 		{
 			//string 0-55 [0x80, 0xb7] + string
-			int len = genbug ? randUniIntGen() % 255 : randUniIntGen() % 55;
+			int len = genbug ? randomSmallUniInt() % 255 : randomSmallUniInt() % 55;
 			std::string hex = rndByteSequence(len);
 			if (len == 1)
 			if (genValidRlp && fromHex(hex)[0] < 128)
@@ -208,7 +196,7 @@ int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _deb
 		case 3:
 		{
 			//list 0-55 [0xc0, 0xf7] + data
-			int len = genbug ? randUniIntGen() % 255 : randUniIntGen() % 55;
+			int len = genbug ? randomSmallUniInt() % 255 : randomSmallUniInt() % 55;
 			std::string hex = emptyZeros + rndByteSequence(len);
 			_result.insert(0, toCompactHex(192 + len) + hex);
 			_debug.insert(0, "[" + toCompactHex(192 + len) + "(" + toString(len) + "){3}]" + hex);
@@ -231,62 +219,65 @@ int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _deb
 	return 0;
 }
 
-std::string RandomCode::rndRLPSequence(int _depth, std::string& _debug)
+std::string RandomCodeBase::rndRLPSequence(int _depth, std::string& _debug)
 {
-	refreshSeed();
 	std::string hash;
 	_depth = std::min(std::max(1, _depth), 7); //limit depth to avoid overkill
 	recursiveRLP(hash, _depth, _debug);
 	return hash;
 }
 
-std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
+std::string RandomCodeBase::rndByteSequence(int _length, SizeStrictness _sizeType)
 {
-	refreshSeed();
 	std::string hash;
 	_length = (_sizeType == SizeStrictness::Strict) ? std::max(0, _length) : (int)randomUniInt(0, _length);
 	for (auto i = 0; i < _length; i++)
 	{
-		uint8_t byte = static_cast<uint8_t>(randOpCodeGen());
+		uint8_t byte = randomOpcode();
 		hash += toCompactHex(byte, 1);
 	}
 	return hash;
 }
 
-//generate smart random code
-std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions const& _options)
+bool isOpcodeDefined(uint8_t _opcode)
 {
-	refreshSeed();
-	std::string code;
+	eth::Instruction inst = (eth::Instruction) _opcode;
+	eth::InstructionInfo info = eth::instructionInfo(inst);
+	return (info.gasPriceTier != dev::eth::Tier::Invalid && !info.name.empty()
+		&& std::find(invalidOpcodes.begin(), invalidOpcodes.end(), inst) == invalidOpcodes.end());
+}
 
-	if (test::RandomCode::randomPercent() < _options.emptyCodeProbability)
+uint8_t makeOpcodeDefined(uint8_t _opcode)
+{
+	while (!isOpcodeDefined(_opcode))
+		_opcode++; //Byte code is yet not implemented. Try next one.
+	return _opcode;
+}
+
+//generate smart random code
+std::string RandomCodeBase::generate(int _maxOpNumber, RandomCodeOptions const& _options)
+{
+	std::string code;
+	if (test::RandomCode::get().randomPercent() < _options.emptyCodeProbability)
 		return code;
 
-	//random opCode amount
-	IntDistrib sizeDist (1, _maxOpNumber);
-	IntGenerator rndSizeGen = std::bind(sizeDist, gen);
-	int size = rndSizeGen();
+	//generate [0 ... _maxOpNumber] opcodes.
+	int size = (int)(test::RandomCode::get().randomPercent() * _maxOpNumber / 100);
+	assert(size <= _maxOpNumber);
 
 	for (auto i = 0; i < size; i++)
 	{
 		uint8_t opcode = _options.getWeightedRandomOpcode();
-		eth::Instruction inst = (eth::Instruction) opcode;
-		eth::InstructionInfo info = eth::instructionInfo(inst);
-
-		if (info.name.find("INVALID_INSTRUCTION") != std::string::npos || info.name.empty()
-			|| std::find(invalidOpcodes.begin(), invalidOpcodes.end(), inst) != invalidOpcodes.end())
+		if (!isOpcodeDefined(opcode) && _options.useUndefinedOpCodes)
 		{
-			if (_options.useUndefinedOpCodes)
-				code += toCompactHex(opcode, 1);
-			else
-			{
-				//Byte code is yet not implemented. do not count it.
-				i--;
-				continue;
-			}
+			code += toCompactHex(opcode, 1);
+			continue;
 		}
 		else
 		{
+			opcode = makeOpcodeDefined(opcode);
+			eth::Instruction inst = (eth::Instruction) opcode;
+			eth::InstructionInfo info = eth::instructionInfo(inst);
 			if (info.name.find("PUSH") != std::string::npos)
 			{
 				code += toCompactHex(opcode);
@@ -299,31 +290,16 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions const& _opt
 			}
 		}
 	}
+
 	return "0x" + code;
 }
 
-std::string RandomCode::randomUniIntHex(u256 const& _minVal, u256 const& _maxVal)
+std::string RandomCodeBase::randomUniIntHex(u256 const& _minVal, u256 const& _maxVal)
 {
-	return toCompactHexPrefixed(RandomCode::randomUniInt(_minVal, _maxVal), 1);
+	return toCompactHexPrefixed(randomUniInt(_minVal, _maxVal), 1);
 }
 
-u256 RandomCode::randomUniInt(u256 const& _minVal, u256 const& _maxVal)
-{
-	assert(_minVal <= _maxVal);
-	refreshSeed();
-	std::uniform_int_distribution<uint64_t> uint64Dist{0, std::numeric_limits<uint64_t>::max()};
-	u256 value = _minVal + (u256)uint64Dist(gen) % (_maxVal - _minVal);
-	return value;
-}
-
-void RandomCode::refreshSeed()
-{
-	auto now = std::chrono::steady_clock::now().time_since_epoch();
-	auto timeSinceEpoch = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
-	gen.seed(static_cast<unsigned int>(timeSinceEpoch));
-}
-
-std::string RandomCode::getPushCode(std::string const& _hex)
+std::string RandomCodeBase::getPushCode(std::string const& _hex)
 {
 	assert(_hex.length() % 2 == 0);
 	std::string hexVal = _hex;
@@ -334,13 +310,13 @@ std::string RandomCode::getPushCode(std::string const& _hex)
 	return toCompactHex(pushCode) + hexVal;
 }
 
-std::string RandomCode::getPushCode(int _value)
+std::string RandomCodeBase::getPushCode(unsigned _value)
 {
 	std::string hexString = toCompactHex(_value, 1);
 	return getPushCode(hexString);
 }
 
-std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOptions const& _options)
+std::string RandomCodeBase::fillArguments(eth::Instruction _opcode, RandomCodeOptions const& _options)
 {
 	eth::InstructionInfo info = eth::instructionInfo(_opcode);
 
@@ -369,7 +345,7 @@ std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOption
 				times = int(_opcode) - int(eth::Instruction::DUP1) + 1;
 
 			for (int i = 0; i < times; i ++)
-				code += getPushCode(rndByteSequence(randOpLengGen()));
+				code += getPushCode(rndByteSequence(randomLength32()));
 
 			return code;
 		}
@@ -377,13 +353,19 @@ std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOption
 		switch (_opcode)
 		{
 		case eth::Instruction::MSTORE:
-			code += getPushCode(rndByteSequence(randOpLengGen()));	//code
-			code += getPushCode(randOpMemrGen());					//index
+			code += getPushCode(rndByteSequence(randomLength32()));	//code
+			code += getPushCode(randomSmallMemoryLength());					//index
+			return code;
+		// case eth::Instruction::RETURNDATASIZE:  // returndatasize takes no args
+		case eth::Instruction::RETURNDATACOPY:  //(REVERT memlen1 memlen2)
+			code += getPushCode(randomSmallMemoryLength());	// memory position
+			code += getPushCode(randomSmallMemoryLength());	// returndata position
+			code += getPushCode(randomSmallMemoryLength());	// size/num of bytes to copy
 			return code;
 		case eth::Instruction::EXTCODECOPY:
-			code += getPushCode(randOpMemrGen());	//memstart2
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randOpMemrGen());	//memstart1
+			code += getPushCode(randomMemoryLength());	//memstart2
+			code += getPushCode(randomMemoryLength());	//memlen1
+			code += getPushCode(randomMemoryLength());	//memstart1
 			code += getPushCode(toString(_options.getRandomAddress()));//address
 			return code;
 		case eth::Instruction::EXTCODESIZE:
@@ -391,40 +373,40 @@ std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOption
 			return code;
 		case eth::Instruction::CREATE:
 			//(CREATE value mem1 mem2)
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randUniIntGen());	//value
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
+			code += getPushCode((unsigned)randomUniInt());	//value
 			return code;
 		case eth::Instruction::CALL:
 		case eth::Instruction::CALLCODE:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
 			//(CALLCODE gaslimit address value memstart1 memlen1 memstart2 memlen2)
-			code += getPushCode(randOpMemrGen());	//memlen2
-			code += getPushCode(randOpMemrGen());	//memstart2
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randOpMemrGen());	//memstart1
-			code += getPushCode(randUniIntGen());	//value
-			code += getPushCode(toString(_options.getRandomAddress()));//address
-			code += getPushCode(randUniIntGen());	//gaslimit
+			code += getPushCode(randomSmallMemoryLength());	//memlen2
+			code += getPushCode(randomSmallMemoryLength());	//memstart2
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
+			code += getPushCode(randomSmallMemoryLength());	//memstart1
+			code += getPushCode((unsigned)randomUniInt());	//value
+			code += getPushCode(toString(_options.getRandomAddress(RandomCodeOptions::AddressType::PrecompiledOrState)));//address
+			code += getPushCode((unsigned)randomUniInt());	//gaslimit
 			return code;
 		case eth::Instruction::STATICCALL:
 		case eth::Instruction::DELEGATECALL:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
 			//(CALLCODE gaslimit address value memstart1 memlen1 memstart2 memlen2)
-			code += getPushCode(randOpMemrGen());	//memlen2
-			code += getPushCode(randOpMemrGen());	//memstart2
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randOpMemrGen());	//memstart1
-			code += getPushCode(toString(_options.getRandomAddress()));//address
-			code += getPushCode(randUniIntGen());	//gaslimit
+			code += getPushCode(randomSmallMemoryLength());	//memlen2
+			code += getPushCode(randomSmallMemoryLength());	//memstart2
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
+			code += getPushCode(randomSmallMemoryLength());	//memstart1
+			code += getPushCode(toString(_options.getRandomAddress(RandomCodeOptions::AddressType::PrecompiledOrState)));//address
+			code += getPushCode((unsigned)randomUniInt());	//gaslimit
 			return code;
 		case eth::Instruction::SUICIDE: //(SUICIDE address)
 			code += getPushCode(toString(_options.getRandomAddress()));
 			return code;
 		case eth::Instruction::RETURN:  //(RETURN memlen1 memlen2)
 		case eth::Instruction::REVERT:  //(REVERT memlen1 memlen2)
-			code += getPushCode(randOpMemrGen());	//memlen1
-			code += getPushCode(randOpMemrGen());	//memlen1
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
+			code += getPushCode(randomSmallMemoryLength());	//memlen1
 			return code;
 		default:
 			break;
@@ -433,7 +415,7 @@ std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOption
 
 	//generate random parameters
 	for (int i = 0; i < info.args; i++)
-		code += getPushCode(rndByteSequence(randOpLengGen()));
+		code += getPushCode(rndByteSequence(randomLength32()));
 
 	return code;
 }
@@ -442,23 +424,26 @@ std::string RandomCode::fillArguments(eth::Instruction _opcode, RandomCodeOption
 //Default Random Code Options
 RandomCodeOptions::RandomCodeOptions() :
 	useUndefinedOpCodes(false),			//spawn undefined bytecodes in code
-	smartCodeProbability(90),			//spawn correct opcodes (with correct argument stack and reasonable arguments)
-	randomAddressProbability(10),		//probability of generating a random address instead of defined from list
-	emptyCodeProbability(20),			//probability of code being empty (empty code mean empty account)
-	emptyAddressProbability(40),		//probability of generating an empty address for transaction creation
-	precompiledAddressProbability(20)	//probability of generating a precompiled address in transaction or code calls
+	smartCodeProbability(99),			//spawn correct opcodes (with correct argument stack and reasonable arguments)
+	randomAddressProbability(3),		//probability of generating a random address instead of defined from list
+	emptyCodeProbability(2),			//probability of code being empty (empty code mean empty account)
+	emptyAddressProbability(15),		//probability of generating an empty address for transaction creation
+	precompiledAddressProbability(5),	//probability of generating a precompiled address for calls
+	byzPrecompiledAddressProbability(10),	//probability of generating a precompiled address for calls
+	precompiledDestProbability(2),	// probability of generating a precompiled address as tx destination
+	sendingAddressProbability(3)	// probability of calling to the tx sending account
 {
 	//each op code with same weight-probability
-	for (auto i = 0; i < 255; i++)
-		mapWeights.insert(std::pair<int, int>(i, 40));
+	for (uint8_t i = 0; i < 255; i++)
+		mapWeights.insert(std::pair<uint8_t, int>(i, 40));
 
 	//Probability of instructions
 	setWeight(eth::Instruction::STOP, 1);
-	for (int i = (int)(eth::Instruction::PUSH1); i < 32; i++)
+	for (uint8_t i = static_cast<uint8_t>(eth::Instruction::PUSH1); i <= static_cast<uint8_t>(eth::Instruction::PUSH32); i++)
 		setWeight((eth::Instruction) i, 1);
-	for (int i = (int)(eth::Instruction::SWAP1); i < 16; i++)
+	for (uint8_t i = static_cast<uint8_t>(eth::Instruction::SWAP1); i <= static_cast<uint8_t>(eth::Instruction::SWAP16); i++)
 		setWeight((eth::Instruction) i, 10);
-	for (int i = (int)(eth::Instruction::DUP1); i < 16; i++)
+	for (uint8_t i = static_cast<uint8_t>(eth::Instruction::DUP1); i <= static_cast<uint8_t>(eth::Instruction::DUP16); i++)
 		setWeight((eth::Instruction) i, 10);
 
 	setWeight(eth::Instruction::SIGNEXTEND, 100);
@@ -469,15 +454,18 @@ RandomCodeOptions::RandomCodeOptions() :
 	setWeight(eth::Instruction::MSTORE, 400);
 	setWeight(eth::Instruction::MSTORE8, 400);
 	setWeight(eth::Instruction::SSTORE, 170);
-	setWeight(eth::Instruction::CALL, 170);
+	setWeight(eth::Instruction::CALL, 350);
 	setWeight(eth::Instruction::CALLCODE, 170);
-	setWeight(eth::Instruction::DELEGATECALL, 170);
-	setWeight(eth::Instruction::STATICCALL, 170);
-	setWeight(eth::Instruction::EXTCODECOPY, 170);
-	setWeight(eth::Instruction::EXTCODESIZE, 170);
+	setWeight(eth::Instruction::DELEGATECALL, 300);
+	setWeight(eth::Instruction::STATICCALL, 300);
+	setWeight(eth::Instruction::CREATE, 350);
+
+	setWeight(eth::Instruction::RETURNDATASIZE, 500);
+	setWeight(eth::Instruction::RETURNDATACOPY, 500);
+	setWeight(eth::Instruction::REVERT, 500);
 
 	//some smart addresses for calls
-	addAddress(Address("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"), AddressType::StateAccount);
+	addAddress(Address("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"), AddressType::SendingAccount);
 	addAddress(Address("0xffffffffffffffffffffffffffffffffffffffff"), AddressType::StateAccount);
 	addAddress(Address("0x1000000000000000000000000000000000000000"), AddressType::StateAccount);
 	addAddress(Address("0xb94f5374fce5edbc8e2a8697c15331677e6ebf0b"), AddressType::StateAccount);
@@ -491,66 +479,94 @@ RandomCodeOptions::RandomCodeOptions() :
 	addAddress(Address("0x0000000000000000000000000000000000000006"), AddressType::Precompiled);
 	addAddress(Address("0x0000000000000000000000000000000000000007"), AddressType::Precompiled);
 	addAddress(Address("0x0000000000000000000000000000000000000008"), AddressType::Precompiled);
+	addAddress(Address("0x0000000000000000000000000000000000000005"), AddressType::ByzantiumPrecompiled);
+	addAddress(Address("0x0000000000000000000000000000000000000006"), AddressType::ByzantiumPrecompiled);
+	addAddress(Address("0x0000000000000000000000000000000000000007"), AddressType::ByzantiumPrecompiled);
+	addAddress(Address("0x0000000000000000000000000000000000000008"), AddressType::ByzantiumPrecompiled);
 }
 
 void RandomCodeOptions::setWeight(eth::Instruction _opCode, int _weight)
 {
-	mapWeights.at((int)_opCode) = _weight;
+	mapWeights.at((uint8_t)_opCode) = _weight;
 }
 
 void RandomCodeOptions::addAddress(Address const& _address, AddressType _type)
 {
-	switch(_type)
-	{
-		case AddressType::Precompiled:
-			precompiledAddressList.push_back(_address);
-			break;
-		case AddressType::StateAccount:
-			stateAddressList.push_back(_address);
-			break;
-		default:
-			BOOST_ERROR("RandomCodeOptions::addAddress: Unexpected AddressType!");
-		break;
-	}
+	if (_type != Precompiled && _type != ByzantiumPrecompiled && _type != StateAccount && _type != SendingAccount)
+		BOOST_ERROR("RandomCodeOptions::addAddress: address type could not be added! " + toString(_type));
+	std::pair<Address, AddressType> record;
+	record.first = _address;
+	record.second = _type;
+	testAccounts.push_back(record);
 }
 
 Address RandomCodeOptions::getRandomAddress(AddressType _type) const
 {
-	switch(_type)
+	if (_type == Precompiled)
+		return getRandomAddressPriv(AddressType::Precompiled);
+	if (_type == ByzantiumPrecompiled)
+		return getRandomAddressPriv(AddressType::ByzantiumPrecompiled);
+	if (_type == StateAccount)
+		return getRandomAddressPriv(AddressType::StateAccount);
+	if (_type == SendingAccount)
+		return getRandomAddressPriv(AddressType::SendingAccount);
+
+	// Return Precompiled address
+	if (_type == PrecompiledOrStateOrCreate || _type == PrecompiledOrState || _type == All)
 	{
-		case AddressType::Precompiled:
-			return precompiledAddressList[(int)RandomCode::randomUniInt(0, precompiledAddressList.size())];
-		case AddressType::PrecompiledOrStateOrCreate:
-			if (RandomCode::randomPercent() < emptyAddressProbability)
-				return ZeroAddress;
-			if (test::RandomCode::randomPercent() < precompiledAddressProbability)
-				return precompiledAddressList[(int)RandomCode::randomUniInt(0, precompiledAddressList.size())];
+		if (RandomCode::get().randomPercent() < precompiledDestProbability)
+		{
+			if (RandomCode::get().randomPercent() < byzPrecompiledAddressProbability)
+				return getRandomAddressPriv(AddressType::ByzantiumPrecompiled);
 			else
-				return stateAddressList[(int)RandomCode::randomUniInt(0, stateAddressList.size())];
-		case AddressType::StateAccount:
-			return stateAddressList[(int)RandomCode::randomUniInt(0, stateAddressList.size())];
-		case AddressType::All:
-			//if not random address then chose from both lists
-			if (test::RandomCode::randomPercent() > randomAddressProbability)
-			{
-				if (test::RandomCode::randomPercent() < precompiledAddressProbability)
-					return precompiledAddressList[(int)RandomCode::randomUniInt(0, precompiledAddressList.size())];
-				else
-					return stateAddressList[(int)RandomCode::randomUniInt(0, stateAddressList.size())];
-			}
-			else
-				return Address(RandomCode::rndByteSequence(20));
-		default:
-			BOOST_ERROR("RandomCodeOptions::getRandomAddress: Unexpected AddressType!");
+				return getRandomAddressPriv(AddressType::Precompiled);
+		}
+
+		// ZeroAddress means empty account (create)
+		if (_type != PrecompiledOrState)
+		if (RandomCode::get().randomPercent() < emptyAddressProbability)
 			return ZeroAddress;
+
+		// Return random address
+		if (test::RandomCode::get().randomPercent() < randomAddressProbability)
+			return Address(RandomCode::get().rndByteSequence(20));
+
+		// Return address of the sender (sender is  a part of state acount list)
+		if (RandomCode::get().randomPercent() < sendingAddressProbability)
+			return getRandomAddressPriv(AddressType::SendingAccount);
+		return getRandomAddressPriv(AddressType::StateAccount);
 	}
+
+	return Address(RandomCode::get().rndByteSequence(20));
 }
 
-int RandomCode::weightedOpcode(std::vector<int>& _weights)
+Address RandomCodeOptions::getRandomAddressPriv(AddressType _type) const
 {
-	refreshSeed();
-	DescreteDistrib opCodeProbability = DescreteDistrib{_weights.begin(), _weights.end()};
-	return opCodeProbability(gen);
+	if (_type != Precompiled && _type != ByzantiumPrecompiled && _type != StateAccount && _type != SendingAccount)
+		BOOST_ERROR("RandomCodeOptions::getRandomAddressPriv: address type could not be found! " + toString(_type));
+
+	int random = test::RandomCode::get().randomPercent();
+	bool found = false;
+	while (random >= 0)
+	{
+		for (auto& i : testAccounts)
+		{
+			if (i.second == _type)
+			{
+				found = true;
+				if (random-- < 0)
+					return i.first;
+			}
+		}
+		if (!found)
+		{
+			BOOST_WARN("Can not find account of the specidied type. Return random instead.");
+			return Address(RandomCode::get().rndByteSequence(20));
+		}
+	}
+
+	BOOST_WARN("Can not find account of the specidied type. Return random instead.");
+	return Address(RandomCode::get().rndByteSequence(20));
 }
 
 int RandomCodeOptions::getWeightedRandomOpcode() const
@@ -558,10 +574,10 @@ int RandomCodeOptions::getWeightedRandomOpcode() const
 	std::vector<int> weights;
 	for (auto const& element: mapWeights)
 		weights.push_back(element.second);
-	return RandomCode::weightedOpcode(weights);
+	return RandomCode::get().weightedOpcode(weights);
 }
 
-BOOST_FIXTURE_TEST_SUITE(RandomCodeTests, TestOutputHelper)
+BOOST_FIXTURE_TEST_SUITE(RandomCodeTests, TestOutputHelperFixture)
 
 BOOST_AUTO_TEST_CASE(rndCode)
 {
@@ -569,7 +585,7 @@ BOOST_AUTO_TEST_CASE(rndCode)
 	{
 		test::RandomCodeOptions options;
 		options.emptyCodeProbability = 0;
-		std::string code = test::RandomCode::generate(1000, options);
+		std::string code = test::RandomCode::get().generate(1000, options);
 		BOOST_REQUIRE(!code.empty());
 	}
 	catch(dev::Exception const& _e)
@@ -582,9 +598,11 @@ BOOST_AUTO_TEST_CASE(rndStateTest)
 {
 	try
 	{
+		//Mac os bug is here
 		test::StateTestSuite suite;
 		test::RandomCodeOptions options;
-		std::string test = dev::test::RandomCode::fillRandomTest(suite, c_testExampleStateTest, options);
+		test::TestOutputHelper::get().setCurrentTestFileName(std::string());
+		std::string test = test::RandomCode::get().fillRandomTest(suite, c_testExampleStateTest, options);
 		BOOST_REQUIRE(!test.empty());
 	}
 	catch(dev::Exception const& _e)
