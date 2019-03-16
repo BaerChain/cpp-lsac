@@ -123,22 +123,21 @@ json_spirit::mValue BlockchainTestSuite::doTests(json_spirit::mValue const& _inp
 
 	return tests;
 }
-std::string BlockchainTestSuite::suiteFolder() const
+fs::path BlockchainTestSuite::suiteFolder() const
 {
 	return "BlockchainTests";
 }
-std::string BlockchainTestSuite::suiteFillerFolder() const
+fs::path BlockchainTestSuite::suiteFillerFolder() const
 {
 	return "BlockchainTestsFiller";
 }
-std::string BCGeneralStateTestsSuite::suiteFolder() const
+fs::path BCGeneralStateTestsSuite::suiteFolder() const
 {
-	fs::path folder = fs::path("BlockchainTests") / "GeneralStateTests";
-	return folder.string();
+	return fs::path("BlockchainTests") / "GeneralStateTests";
 }
-std::string BCGeneralStateTestsSuite::suiteFillerFolder() const
+fs::path BCGeneralStateTestsSuite::suiteFillerFolder() const
 {
-	return "GenStateTestAsBcTemp";
+	return fs::path("BlockchainTestsFiller") / "GeneralStateTests";
 }
 json_spirit::mValue TransitionTestsSuite::doTests(json_spirit::mValue const& _input, bool _fillin) const
 {
@@ -170,14 +169,12 @@ json_spirit::mValue TransitionTestsSuite::doTests(json_spirit::mValue const& _in
 	return output;
 }
 
-std::string TransitionTestsSuite::suiteFolder() const {
-	fs::path folder = fs::path("BlockchainTests") / "TransitionTests";
-	return folder.string();
+fs::path TransitionTestsSuite::suiteFolder() const {
+	return fs::path("BlockchainTests") / "TransitionTests";
 }
 
-std::string TransitionTestsSuite::suiteFillerFolder() const {
-	fs::path folder = fs::path("BlockchainTestsFiller") / "TransitionTests";
-	return folder.string();
+fs::path TransitionTestsSuite::suiteFillerFolder() const {
+	return fs::path("BlockchainTestsFiller") / "TransitionTests";
 }
 
 ChainBranch::ChainBranch(TestBlock const& _genesis): blockchain(_genesis)
@@ -963,12 +960,6 @@ class bcTestFixture {
 		test::BlockchainTestSuite suite;
 		string const& casename = boost::unit_test::framework::current_test_case().p_name;
 
-		if (casename == "bcForgedTest" && test::Options::get().filltests)
-		{
-			suite.copyAllTestsFromFolder(casename);
-			return;
-		}
-
 		//skip wallet test as it takes too much time (250 blocks) run it with --all flag
 		if (casename == "bcWalletTest" && !test::Options::get().all)
 		{
@@ -995,15 +986,13 @@ class bcGeneralTestsFixture
 	public:
 	bcGeneralTestsFixture()
 	{
-		//general tests are filled from state tests
-		//skip this test suite if not run with --all flag (cases are already tested in state tests)
-		if (test::Options::get().filltests || !test::Options::get().all)
-			return;
-
 		string const& casename = boost::unit_test::framework::current_test_case().p_name;
 		//skip this test suite if not run with --all flag (cases are already tested in state tests)
 		if (!test::Options::get().all)
+		{
 			cnote << "Skipping hive test " << casename << ". Use --all to run it.\n";
+			return;
+		}
 
 		test::BCGeneralStateTestsSuite suite;
 		suite.runAllTestsInFolder(casename);

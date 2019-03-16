@@ -66,10 +66,6 @@ json_spirit::mValue StateTestSuite::doTests(json_spirit::mValue const& _input, b
 		if (!TestOutputHelper::checkTest(testname))
 			continue;
 
-		//For 100% at the log output when making blockchain tests out of state tests
-		if (_fillin == false && Options::get().fillchain)
-			continue;
-
 		BOOST_REQUIRE_MESSAGE(inputTest.count("env") > 0, testname + " env not set!");
 		BOOST_REQUIRE_MESSAGE(inputTest.count("pre") > 0, testname + " pre not set!");
 		BOOST_REQUIRE_MESSAGE(inputTest.count("transaction") > 0, testname + " transaction not set!");
@@ -116,12 +112,12 @@ json_spirit::mValue StateTestSuite::doTests(json_spirit::mValue const& _input, b
 	return v;
 }
 
-std::string StateTestSuite::suiteFolder() const
+fs::path StateTestSuite::suiteFolder() const
 {
 	return "GeneralStateTests";
 }
 
-std::string StateTestSuite::suiteFillerFolder() const
+fs::path StateTestSuite::suiteFillerFolder() const
 {
 	return "GeneralStateTestsFiller";
 }

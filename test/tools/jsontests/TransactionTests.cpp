@@ -27,12 +27,14 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/fuzzTesting/fuzzHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
+#include <boost/filesystem/path.hpp>
 #include <string>
 
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 namespace dev {  namespace test {
 
@@ -62,7 +64,7 @@ class TransactionTestSuite: public TestSuite
 
 			if (_fillin)
 			{
-				BOOST_REQUIRE(o.count("transaction") > 0);
+				BOOST_REQUIRE_MESSAGE(o.count("transaction") > 0, "transaction section not found! " + TestOutputHelper::testFileName());
 				mObject tObj = o["transaction"].get_obj();
 
 				//Construct Rlp of the given transaction
@@ -165,12 +167,12 @@ class TransactionTestSuite: public TestSuite
 		return v;
 	}//doTransactionTests
 
-	std::string suiteFolder() const override
+	fs::path suiteFolder() const override
 	{
 		return "TransactionTests";
 	}
 
-	std::string suiteFillerFolder() const override
+	fs::path suiteFillerFolder() const override
 	{
 		return "TransactionTestsFiller";
 	}
@@ -185,13 +187,6 @@ public:
 	{
 		string const& casename = boost::unit_test::framework::current_test_case().p_name;
 		test::TransactionTestSuite suite;
-
-		if ((casename == "ttWrongRLPFrontier" || casename == "ttWrongRLPHomestead") && test::Options::get().filltests)
-		{
-			suite.copyAllTestsFromFolder(casename);
-			return;
-		}
-
 		suite.runAllTestsInFolder(casename);
 	}
 };
