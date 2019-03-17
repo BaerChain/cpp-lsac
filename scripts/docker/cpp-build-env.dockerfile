@@ -25,6 +25,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     git \
     ssh-client \
     cmake \
+    make \
     ninja-build \
     python-pip \
     python-requests \
@@ -34,6 +35,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     # g++-7 \
     clang-5.0 \
     llvm-5.0 \
+    llvm-5.0-dev \
     # Dependencies
     libleveldb-dev \
   && rm -rf /var/lib/apt/lists/* \
