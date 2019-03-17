@@ -42,10 +42,12 @@ namespace dev {  namespace test {
 
 mObject getExpectSection(mValue const& _expect, eth::Network _network)
 {
-	mObject obj;
-	for (auto const& value : _expect.get_array())
+	std::vector<mObject> objVector;
+	BOOST_REQUIRE(_expect.type() == json_spirit::array_type);
+	for (auto const& value: _expect.get_array())
 	{
 		BOOST_REQUIRE(value.type() == json_spirit::obj_type);
+		mObject obj;
 		obj = value.get_obj();
 		BOOST_REQUIRE_MESSAGE(obj.count("network"), "network section not set in expect section!");
 		vector<string> networks;
@@ -54,10 +56,10 @@ mObject getExpectSection(mValue const& _expect, eth::Network _network)
 		ImportTest::checkAllowedNetwork(networks);
 
 		if (test::inArray(networks, test::netIdToString(_network)) || test::inArray(networks, string("ALL")))
-			return obj;
+			objVector.push_back(obj);
 	}
-	BOOST_ERROR("Network not found in expect section of transaction test filler! (" + test::netIdToString(_network) + ")");
-	return obj;
+	BOOST_REQUIRE_MESSAGE(objVector.size() == 1, "Expect network should occur once in expect section of transaction test filler! (" + test::netIdToString(_network) + ")");
+	return objVector.at(0);
 }
 
 json_spirit::mObject FillTransactionTest(json_spirit::mObject const& _o)
@@ -76,10 +78,14 @@ json_spirit::mObject FillTransactionTest(json_spirit::mObject const& _o)
 	bh.setGasLimit(u256("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 
 	mValue expectObj = _o.at("expect");
-	for (auto const network : test::getNetworks())
+	for (auto const network: test::getNetworks())
 	{
-		unique_ptr<SealEngineFace> se(ChainParams(genesisInfo(network)).createSealEngine());
-		bool onConstantinople = (network == eth::Network::ConstantinopleTest);
+		ChainParams params(genesisInfo(network));
+		unique_ptr<SealEngineFace> se(params.createSealEngine());
+
+		// Test networks has forkblocks set to 0 if rules are enabled
+		bool onConstantinople = (bh.number() >= params.constantinopleForkBlock);
+
 		out[test::netIdToString(network)] = mObject();
 		mObject expectSection = getExpectSection(expectObj, network);
 		try
@@ -98,11 +104,10 @@ json_spirit::mObject FillTransactionTest(json_spirit::mObject const& _o)
 
 			mObject resultObject;
 			resultObject["sender"] = toString(txFromFields.sender());
-			//resultObject["transaction"] = ImportTest::makeAllFieldsHex(tObj);
 			resultObject["hash"] = toString(txFromFields.sha3());
 			out[test::netIdToString(network)] = resultObject;
 		}
-		catch(Exception const& _e)
+		catch (Exception const& _e)
 		{
 			//Transaction is InValid
 			cnote << "Transaction Exception: " << diagnostic_information(_e);
@@ -121,9 +126,6 @@ json_spirit::mObject FillTransactionTest(json_spirit::mObject const& _o)
 void TestTransactionTest(json_spirit::mObject const& _o)
 {
 	BOOST_REQUIRE(_o.count("rlp") > 0);
-	Transaction txFromRlp;
-	bytes stream = importByteArray(_o.at("rlp").get_str());
-	RLP rlp(stream);
 	string const& testname = TestOutputHelper::get().testName();
 
 	// Theoretical block for transaction check
@@ -131,40 +133,38 @@ void TestTransactionTest(json_spirit::mObject const& _o)
 	bh.setNumber(1);	//Seal engine below enables network rules from block 0
 	bh.setGasLimit(u256("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 
-	for (auto const network : test::getNetworks())
+	for (auto const network: test::getNetworks())
 	{
+		Transaction txFromRlp;
 		string networkname = test::netIdToString(network);
 		BOOST_REQUIRE_MESSAGE(_o.count(networkname) > 0, testname + " Transaction test missing network results! (" + networkname + ")");
 		BOOST_REQUIRE(_o.at(networkname).type() == json_spirit::obj_type);
+		ChainParams params(genesisInfo(network));
+		unique_ptr<SealEngineFace> se(params.createSealEngine());
+		bool onConstantinople = (bh.number() >= params.constantinopleForkBlock);
 		mObject obj = _o.at(networkname).get_obj();
 		try
 		{
+			bytes stream = importByteArray(_o.at("rlp").get_str());
+			RLP rlp(stream);
 			txFromRlp = Transaction(rlp.data(), CheckTransaction::Everything);
-			bool onConstantinople = (network == eth::Network::ConstantinopleTest);
 			bool onConstantinopleAndZeroSig = onConstantinople && txFromRlp.hasZeroSignature();
-			unique_ptr<SealEngineFace> se(ChainParams(genesisInfo(network)).createSealEngine());
 			se->verifyTransaction(ImportRequirements::Everything, txFromRlp, bh, 0);
 			if (!(txFromRlp.signature().isValid() || onConstantinopleAndZeroSig))
 				BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "transaction from RLP signature is invalid (" + networkname + ")") );
 		}
-		catch(Exception const& _e)
+		catch (Exception const& _e)
 		{
 			cnote << testname;
 			cnote << "Transaction Exception: " << diagnostic_information(_e);
 			BOOST_CHECK_MESSAGE(obj.count("hash") == 0,
-			 testname + "A transaction object should not be defined because the RLP is invalid! (" + networkname + ")");
-			continue;
-		}
-		catch(...)
-		{
-			BOOST_CHECK_MESSAGE(obj.count("hash") == 0,
-			 testname + "A transaction object should not be defined because the RLP is invalid! (" + networkname + ")");
+				testname + "A transaction object should not be defined because the RLP is invalid! (" + networkname + ")");
 			continue;
 		}
 
 		BOOST_REQUIRE(obj.count("sender") > 0);
-		Address addressReaded = Address(obj["sender"].get_str());
-		BOOST_CHECK_MESSAGE(txFromRlp.sender() == addressReaded, testname + "Signature address of sender does not match given sender address! (" + networkname + ")");
+		Address addressExpected = Address(obj["sender"].get_str());
+		BOOST_CHECK_MESSAGE(txFromRlp.sender() == addressExpected, testname + "Signature address of sender does not match given sender address! (" + networkname + ")");
 
 		BOOST_REQUIRE_MESSAGE(obj.count("hash") > 0, testname + "Expected a valid transaction! (" + networkname + ")");
 		h256 txSha3Expected = h256(obj["hash"].get_str());
@@ -175,9 +175,9 @@ void TestTransactionTest(json_spirit::mObject const& _o)
 json_spirit::mValue TransactionTestSuite::doTests(json_spirit::mValue const& _input, bool _fillin) const
 {
 	BOOST_REQUIRE_MESSAGE(_input.type() == obj_type,
-	TestOutputHelper::get().get().testFileName() + " TransactionTest file should contain an object.");
+		TestOutputHelper::get().get().testFileName() + " TransactionTest file should contain an object.");
 	BOOST_REQUIRE_MESSAGE(!_fillin || _input.get_obj().size() == 1,
-	TestOutputHelper::get().testFileName() + " TransactionTest filler should contain only one test.");
+		TestOutputHelper::get().testFileName() + " TransactionTest filler should contain only one test.");
 
 	json_spirit::mObject v;
 	for (auto const& i: _input.get_obj())
@@ -207,7 +207,6 @@ fs::path TransactionTestSuite::suiteFillerFolder() const
 	return "TransactionTestsFiller";
 }
 
-
 } }// Namespace Close
 
 class TransactionTestFixture
@@ -223,15 +222,15 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE(TransactionTests, TransactionTestFixture)
 
-BOOST_AUTO_TEST_CASE(ttConstantinople){}
-BOOST_AUTO_TEST_CASE(ttEip155VitaliksEip158){}
-BOOST_AUTO_TEST_CASE(ttEip155VitaliksHomesead){}
-BOOST_AUTO_TEST_CASE(ttEip158){}
-BOOST_AUTO_TEST_CASE(ttFrontier){}
-BOOST_AUTO_TEST_CASE(ttHomestead){}
-BOOST_AUTO_TEST_CASE(ttSpecConstantinople){}
-BOOST_AUTO_TEST_CASE(ttVRuleEip158){}
-BOOST_AUTO_TEST_CASE(ttWrongRLPFrontier){}
-BOOST_AUTO_TEST_CASE(ttWrongRLPHomestead){}
+BOOST_AUTO_TEST_CASE(ttAddress){}
+BOOST_AUTO_TEST_CASE(ttData){}
+BOOST_AUTO_TEST_CASE(ttGasLimit){}
+BOOST_AUTO_TEST_CASE(ttGasPrice){}
+BOOST_AUTO_TEST_CASE(ttNonce){}
+BOOST_AUTO_TEST_CASE(ttRSValue){}
+BOOST_AUTO_TEST_CASE(ttValue){}
+BOOST_AUTO_TEST_CASE(ttVValue){}
+BOOST_AUTO_TEST_CASE(ttSignature){}
+BOOST_AUTO_TEST_CASE(ttWrongRLP){}
 
 BOOST_AUTO_TEST_SUITE_END()
