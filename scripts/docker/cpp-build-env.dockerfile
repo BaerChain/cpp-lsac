@@ -36,6 +36,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     clang-5.0 \
     llvm-5.0 \
     llvm-5.0-dev \
+    libncurses-dev \
+    libz-dev \
     # Dependencies
     libleveldb-dev \
   && rm -rf /var/lib/apt/lists/* \
