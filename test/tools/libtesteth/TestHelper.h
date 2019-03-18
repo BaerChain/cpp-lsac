@@ -60,6 +60,7 @@ namespace test
 struct ValueTooLarge: virtual Exception {};
 struct MissingFields : virtual Exception {};
 bigint const c_max256plus1 = bigint(1) << 256;
+typedef json_spirit::Value_type jsonVType;
 
 class ZeroGasPricer: public eth::GasPricer
 {
@@ -75,16 +76,20 @@ std::vector<boost::filesystem::path> getFiles(boost::filesystem::path const& _di
 std::string netIdToString(eth::Network _netId);
 eth::Network stringToNetId(std::string const& _netname);
 bool isDisabledNetwork(eth::Network _net);
-std::vector<eth::Network> const& getNetworks();
+std::set<eth::Network> const& getNetworks();
 u256 toInt(json_spirit::mValue const& _v);
 byte toByte(json_spirit::mValue const& _v);
-void replaceLLLinState(json_spirit::mObject& _o);
+bytes processDataOrCode(json_spirit::mObject const& _o, std::string const& nodeName);
+std::string replaceCode(std::string const& _code);
+void replaceCodeInState(json_spirit::mObject& _o);
 std::string compileLLL(std::string const& _code);
 std::string executeCmd(std::string const& _command);
 json_spirit::mValue parseYamlToJson(std::string const& _string);
 bytes importCode(json_spirit::mObject const& _o);
 bytes importData(json_spirit::mObject const& _o);
 bytes importByteArray(std::string const& _str);
+void requireJsonFields(json_spirit::mObject const& _o, std::string const& _section,
+    std::map<std::string, json_spirit::Value_type> const& _validationMap);
 void checkHexHasEvenLength(std::string const&);
 void copyFile(boost::filesystem::path const& _source, boost::filesystem::path const& _destination);
 eth::LogEntries importLog(json_spirit::mArray const& _o);

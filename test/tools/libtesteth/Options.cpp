@@ -22,6 +22,7 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/fuzzTesting/fuzzHelper.h>
+#include <boost/program_options.hpp>
 
 using namespace std;
 using namespace dev::test;
@@ -43,7 +44,7 @@ void printHelp()
 	cout << setw(30) << "--singletest <TestName>" << setw(25) << "Run on a single test\n";
 	cout << setw(30) << "--singletest <TestFile> <TestName>\n";
 	cout << setw(30) << "--verbosity <level>" << setw(25) << "Set logs verbosity. 0 - silent, 1 - only errors, 2 - informative, >2 - detailed\n";
-	cout << setw(30) << "--vm <interpreter|jit|smart>" << setw(25) << "Set VM type for VMTests suite\n";
+	cout << setw(30) << "--vm <interpreter|jit|smart|hera>" << setw(25) << "Set VM type for VMTests suite\n";
 	cout << setw(30) << "--vmtrace" << setw(25) << "Enable VM trace for the test. (Require build with VMTRACE=1)\n";
 	cout << setw(30) << "--jsontrace <Options>" << setw(25) << "Enable VM trace to stdout in json format. Argument is a json config: '{ \"disableStorage\" : false, \"disableMemory\" : false, \"disableStack\" : false, \"fullStorage\" : true }'\n";
 	cout << setw(30) << "--stats <OutFile>" << setw(25) << "Output debug stats to the file\n";
@@ -72,8 +73,29 @@ void printVersion()
 	cout << prepareVersionString() << "\n";
 }
 
-Options::Options(int argc, char** argv)
+Options::Options(int argc, const char** argv)
 {
+    {
+        namespace po = boost::program_options;
+
+        // For some reason boost is confused by -- separator. This extra parser "skips" the --.
+        auto skipDoubleDash = [](const std::string& s) -> std::pair<std::string, std::string> {
+            if (s == "--")
+                return {"--", {}};
+            return {};
+        };
+
+        auto vmOpts = vmProgramOptions();
+        po::parsed_options parsed = po::command_line_parser(argc, argv)
+                                        .options(vmOpts)
+                                        .extra_parser(skipDoubleDash)
+                                        .allow_unregistered()
+                                        .run();
+        po::variables_map vm;
+        po::store(parsed, vm);
+        po::notify(vm);
+    }
+
 	trDataIndex = -1;
 	trGasIndex = -1;
 	trValueIndex = -1;
@@ -108,21 +130,12 @@ Options::Options(int argc, char** argv)
 			printVersion();
 			exit(0);
 		}
-		else if (arg == "--vm")
+		else if (arg == "--vm" || arg == "--evmc")
 		{
+			// Skip VM options because they are handled by vmProgramOptions().
 			throwIfNoArgumentFollows();
-			string vmKind = argv[++i];
-			if (vmKind == "interpreter")
-				VMFactory::setKind(VMKind::Interpreter);
-			else if (vmKind == "jit")
-				VMFactory::setKind(VMKind::JIT);
-			else if (vmKind == "smart")
-				VMFactory::setKind(VMKind::Smart);
-			else
-				cerr << "Unknown VM kind: " << vmKind << "\n";
+			++i;
 		}
-		else if (arg == "--jit") // TODO: Remove deprecated option "--jit"
-			VMFactory::setKind(VMKind::JIT);
 		else if (arg == "--vmtrace")
 		{
 #if ETH_VMTRACE
@@ -317,7 +330,7 @@ Options::Options(int argc, char** argv)
 		g_logVerbosity = -1;	//disable cnote but leave cerr and cout
 }
 
-Options const& Options::get(int argc, char** argv)
+Options const& Options::get(int argc, const char** argv)
 {
 	static Options instance(argc, argv);
 	return instance;
