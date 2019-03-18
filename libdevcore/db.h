@@ -21,16 +21,63 @@
 
 #pragma once
 
+#include "Exceptions.h"
 #include "dbfwd.h"
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#if ETH_ROCKSDB
-#include <rocksdb/db.h>
-#include <rocksdb/write_batch.h>
-#else
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
-#endif
-#pragma warning(pop)
-#define DEV_LDB 1
+#include <memory>
+#include <string>
+
+namespace dev
+{
+namespace db
+{
+
+// WriteBatchFace implements database write batch for a specific concrete
+// database implementation.
+class WriteBatchFace
+{
+public:
+	virtual ~WriteBatchFace() = default;
+
+	virtual void insert(Slice _key, Slice _value) = 0;
+	virtual void kill(Slice _key) = 0;
+
+protected:
+	WriteBatchFace() = default;
+	// Noncopyable
+	WriteBatchFace(const WriteBatchFace&) = delete;
+	WriteBatchFace& operator=(const WriteBatchFace&) = delete;
+	// Movable
+	WriteBatchFace(WriteBatchFace&&) = default;
+	WriteBatchFace& operator=(WriteBatchFace&&) = default;
+};
+
+class DatabaseFace
+{
+public:
+	virtual ~DatabaseFace() = default;
+	virtual std::string lookup(Slice _key) const = 0;
+	virtual bool exists(Slice _key) const = 0;
+	virtual void insert(Slice _key, Slice _value) = 0;
+	virtual void kill(Slice _key) = 0;
+
+	virtual std::unique_ptr<WriteBatchFace> createWriteBatch() const = 0;
+	virtual void commit(std::unique_ptr<WriteBatchFace>&& _batch) = 0;
+
+	// A database must implement the `forEach` method that allows the caller
+	// to pass in a function `f`, which will be called with the key and value
+	// of each record in the database. If `f` returns false, the `forEach`
+	// method must return immediately.
+	virtual void forEach(std::function<bool(Slice, Slice)> f) const = 0;
+};
+
+struct FailedToOpenDB: virtual Exception { using Exception::Exception; };
+struct FailedInsertInDB: virtual Exception { using Exception::Exception; };
+struct FailedLookupInDB: virtual Exception { using Exception::Exception; };
+struct FailedDeleteInDB: virtual Exception { using Exception::Exception; };
+struct FailedCommitInDB: virtual Exception { using Exception::Exception; };
+struct FailedRollbackInDB: virtual Exception { using Exception::Exception; };
+struct FailedIterateDB: virtual Exception { using Exception::Exception; };
+
+}
+}
