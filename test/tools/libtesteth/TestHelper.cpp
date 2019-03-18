@@ -181,6 +181,75 @@ set<eth::Network> const& getNetworks()
     return networks;
 }
 
+/// translate network names in expect section field
+/// >Homestead to EIP150, EIP158, Byzantium, ...
+/// <=Homestead to Frontier, Homestead
+set<string> translateNetworks(set<string> const& _networks)
+{
+    // construct vector with test network names in a right order (from Frontier to Homestead ... to
+    // Constantinople)
+    vector<string> forks;
+    for (auto const& net : getNetworks())
+        forks.push_back(test::netIdToString(net));
+
+    set<string> out;
+    for (auto const& net : _networks)
+    {
+        bool isNetworkTranslated = false;
+        string possibleNet = net.substr(1, net.length() - 1);
+        vector<string>::iterator it = std::find(forks.begin(), forks.end(), possibleNet);
+
+        if (it != forks.end() && net.size() > 1)
+        {
+            if (net[0] == '>')
+            {
+                while (++it != forks.end())
+                {
+                    out.emplace(*it);
+                    isNetworkTranslated = true;
+                }
+            }
+            else if (net[0] == '<')
+            {
+                while (it != forks.begin())
+                {
+                    out.emplace(*(--it));
+                    isNetworkTranslated = true;
+                }
+            }
+        }
+
+        possibleNet = net.substr(2, net.length() - 2);
+        it = std::find(forks.begin(), forks.end(), possibleNet);
+        if (it != forks.end() && net.size() > 2)
+        {
+            if (net[0] == '>' && net[1] == '=')
+            {
+                while (it != forks.end())
+                {
+                    out.emplace(*(it++));
+                    isNetworkTranslated = true;
+                }
+            }
+            else if (net[0] == '<' && net[1] == '=')
+            {
+                out.emplace(*it);
+                isNetworkTranslated = true;
+                while (it != forks.begin())
+                    out.emplace(*(--it));
+            }
+        }
+
+        // if nothing has been inserted, just push the untranslated network as is
+        if (!isNetworkTranslated)
+        {
+            ImportTest::checkAllowedNetwork(net);
+            out.emplace(net);
+        }
+    }
+    return out;
+}
+
 string exportLog(eth::LogEntries const& _logs)
 {
     RLPStream s;
@@ -206,6 +275,27 @@ u256 toInt(json_spirit::mValue const& _v)
         cwarn << "Bad type for scalar: " << _v.type();
     }
     return 0;
+}
+
+int64_t toPositiveInt64(const json_spirit::mValue& _v)
+{
+    int64_t n = 0;
+    switch (_v.type())
+    {
+    case json_spirit::str_type:
+        n = std::stoll(_v.get_str(), nullptr, 0);
+        break;
+    case json_spirit::int_type:
+        n = _v.get_int64();
+        break;
+    default:
+        cwarn << "Bad type for scalar: " << _v.type();
+    }
+
+    if (n < 0)
+        throw std::out_of_range{"unexpected negative value: " + std::to_string(n)};
+
+    return n;
 }
 
 byte toByte(json_spirit::mValue const& _v)
@@ -520,7 +610,7 @@ void requireJsonFields(json_spirit::mObject const& _o, string const& _section,
 {
     // check for unexpected fiedls
     for (auto const field : _o)
-        BOOST_REQUIRE_MESSAGE(_validationMap.count(field.first),
+        BOOST_CHECK_MESSAGE(_validationMap.count(field.first),
             field.first + " should not be declared in " + _section + " section!");
 
     // check field types with validation map

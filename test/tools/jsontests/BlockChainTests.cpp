@@ -69,39 +69,43 @@ json_spirit::mValue BlockchainTestSuite::doTests(json_spirit::mValue const& _inp
 
 		if (_fillin)
 		{
-			//create a blockchain test for each network
-			for (auto& network : test::getNetworks())
-			{
-				if (!Options::get().singleTestNet.empty() && Options::get().singleTestNet != test::netIdToString(network))
+            BOOST_REQUIRE(inputTest.count("expect") > 0);
+            set<eth::Network> allnetworks = ImportTest::getAllNetworksFromExpectSections(
+                inputTest.at("expect").get_array(), ImportTest::testType::BlockchainTest);
+
+            //create a blockchain test for each network
+            for (auto& network : allnetworks)
+            {
+                if (test::isDisabledNetwork(network))
+                    continue;
+                if (!Options::get().singleTestNet.empty() && Options::get().singleTestNet != test::netIdToString(network))
 					continue;
 
 				dev::test::TestBlockChain::s_sealEngineNetwork = network;
 				string newtestname = testname + "_" + test::netIdToString(network);
 
 				json_spirit::mObject jObjOutput = inputTest;
-				if (inputTest.count("expect"))
-				{
-					//prepare the corresponding expect section for the test
-					json_spirit::mArray const& expects = inputTest.at("expect").get_array();
-					bool found = false;
+                // prepare the corresponding expect section for the test
+                json_spirit::mArray const& expects = inputTest.at("expect").get_array();
+                bool found = false;
 
-					for (auto& expect : expects)
-					{
-                        set<string> netlist;
-                        json_spirit::mObject const& expectObj = expect.get_obj();
-                        ImportTest::parseJsonStrValueIntoSet(expectObj.at("network"), netlist);
+                for (auto& expect : expects)
+                {
+                    set<string> netlist;
+                    json_spirit::mObject const& expectObj = expect.get_obj();
+                    ImportTest::parseJsonStrValueIntoSet(expectObj.at("network"), netlist);
 
-                        if (netlist.count(test::netIdToString(network)) || netlist.count("ALL"))
-                        {
-							jObjOutput["expect"] = expectObj.at("result");
-							found = true;
-							break;
-						}
-					}
-					if (!found)
-						jObjOutput.erase(jObjOutput.find("expect"));
+                    if (netlist.count(test::netIdToString(network)) || netlist.count("ALL"))
+                    {
+                        jObjOutput["expect"] = expectObj.at("result");
+                        found = true;
+                        break;
+                    }
 				}
-				TestOutputHelper::get().setCurrentTestName(newtestname);
+                if (!found)
+                    jObjOutput.erase(jObjOutput.find("expect"));
+
+                TestOutputHelper::get().setCurrentTestName(newtestname);
 				jObjOutput = fillBCTest(jObjOutput);
 				jObjOutput["network"] = test::netIdToString(network);
 				if (inputTest.count("_info"))
@@ -639,7 +643,7 @@ void overwriteBlockHeaderForTest(mObject const& _blObj, TestBlock& _block, Chain
 		if (ho.count("RelTimestamp"))
 		{
 			BlockHeader parentHeader = importedBlocks.at(importedBlocks.size() - 1).blockHeader();
-			tmp.setTimestamp(toInt(ho["RelTimestamp"]) + parentHeader.timestamp());
+			tmp.setTimestamp(toPositiveInt64(ho["RelTimestamp"]) + parentHeader.timestamp());
 			tmp.setDifficulty(((const Ethash*)sealEngine)->calculateDifficulty(tmp, parentHeader));
 		}
 
@@ -736,7 +740,7 @@ void overwriteUncleHeaderForTest(mObject& uncleHeaderObj, TestBlock& uncle, std:
 	BlockHeader uncleHeader;
 	if (uncleHeaderObj.count("populateFromBlock"))
 	{
-		uncleHeader.setTimestamp((u256)time(0));
+		uncleHeader.setTimestamp(time(0));
 		size_t number = (size_t)toInt(uncleHeaderObj.at("populateFromBlock"));
 		uncleHeaderObj.erase("populateFromBlock");
 		if (number < importedBlocks.size())
@@ -753,7 +757,8 @@ void overwriteUncleHeaderForTest(mObject& uncleHeaderObj, TestBlock& uncle, std:
 			if (uncleHeaderObj.count("RelTimestamp"))
 			{
 				BlockHeader parentHeader = importedBlocks.at(number).blockHeader();
-				uncleHeader.setTimestamp(toInt(uncleHeaderObj["RelTimestamp"]) + parentHeader.timestamp());
+				uncleHeader.setTimestamp(
+                    toPositiveInt64(uncleHeaderObj["RelTimestamp"]) + parentHeader.timestamp());
 				uncleHeader.setDifficulty(((const Ethash*)sealEngine)->calculateDifficulty(uncleHeader, parentHeader));
 				uncleHeaderObj.erase("RelTimestamp");
 			}

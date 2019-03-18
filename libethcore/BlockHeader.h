@@ -142,11 +142,11 @@ public:
 
 	void setParentHash(h256 const& _v) { m_parentHash = _v; noteDirty(); }
 	void setSha3Uncles(h256 const& _v) { m_sha3Uncles = _v; noteDirty(); }
-	void setTimestamp(u256 const& _v) { m_timestamp = _v; noteDirty(); }
+	void setTimestamp(int64_t _v) { m_timestamp = _v; noteDirty(); }
 	void setAuthor(Address const& _v) { m_author = _v; noteDirty(); }
 	void setRoots(h256 const& _t, h256 const& _r, h256 const& _u, h256 const& _s) { m_transactionsRoot = _t; m_receiptsRoot = _r; m_stateRoot = _s; m_sha3Uncles = _u; noteDirty(); }
 	void setGasUsed(u256 const& _v) { m_gasUsed = _v; noteDirty(); }
-	void setNumber(u256 const& _v) { m_number = _v; noteDirty(); }
+	void setNumber(int64_t _v) { m_number = _v; noteDirty(); }
 	void setGasLimit(u256 const& _v) { m_gasLimit = _v; noteDirty(); }
 	void setExtraData(bytes const& _v) { m_extraData = _v; noteDirty(); }
 	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
@@ -157,13 +157,13 @@ public:
 	h256 const& parentHash() const { return m_parentHash; }
 	h256 const& sha3Uncles() const { return m_sha3Uncles; }
 	bool hasUncles() const { return m_sha3Uncles != EmptyListSHA3; }
-	u256 const& timestamp() const { return m_timestamp; }
+	int64_t timestamp() const { return m_timestamp; }
 	Address const& author() const { return m_author; }
 	h256 const& stateRoot() const { return m_stateRoot; }
 	h256 const& transactionsRoot() const { return m_transactionsRoot; }
 	h256 const& receiptsRoot() const { return m_receiptsRoot; }
 	u256 const& gasUsed() const { return m_gasUsed; }
-	u256 const& number() const { return m_number; }
+	int64_t number() const { return m_number; }
 	u256 const& gasLimit() const { return m_gasLimit; }
 	bytes const& extraData() const { return m_extraData; }
 	LogBloom const& logBloom() const { return m_logBloom; }
@@ -195,11 +195,11 @@ private:
 	h256 m_transactionsRoot;
 	h256 m_receiptsRoot;
 	LogBloom m_logBloom;
-	u256 m_number;
+	int64_t m_number = 0;
 	u256 m_gasLimit;
 	u256 m_gasUsed;
 	bytes m_extraData;
-	u256 m_timestamp = Invalid256;
+	int64_t m_timestamp = -1;
 
 	Address m_author;
 	u256 m_difficulty;
