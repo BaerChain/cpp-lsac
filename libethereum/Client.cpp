@@ -273,7 +273,6 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         WriteGuard l2(x_preSeal);
         WriteGuard l3(x_working);
 
-        auto author = m_preSeal.author();   // backup and restore author.
         m_preSeal = Block(chainParams().accountStartNonce);
         m_postSeal = Block(chainParams().accountStartNonce);
         m_working = Block(chainParams().accountStartNonce);
@@ -283,7 +282,7 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
         m_preSeal = bc().genesisBlock(m_stateDB);
-        m_preSeal.setAuthor(author);
+        m_preSeal.setAuthor(_p.author);
         m_postSeal = m_preSeal;
         m_working = Block(chainParams().accountStartNonce);
     }
@@ -696,7 +695,7 @@ void Client::doWork(bool _doWait)
     if (!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed))
     {
         std::unique_lock<std::mutex> l(x_signalled);
-        m_signalled.wait_for(l, chrono::seconds(1));
+        m_signalled.wait_for(l, chrono::milliseconds(30));
     }
 }
 
