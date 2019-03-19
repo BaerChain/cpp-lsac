@@ -24,16 +24,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-//
-// turn these on to emulate minimal interpreter overhead and native 64-bit int
-//
-#define EVM_HACK_ON_OPERATION 0
-#define EVM_HACK_STACK 0
-#define EVM_HACK_UPDATE_IO_GAS 0
-#define EVM_HACK_MUL_64 0
-#define EVM_HACK_DUP_64 0
-
-
 uint64_t VM::memNeed(u256 _offset, u256 _size)
 {
 	return toInt63(_size ? u512(_offset) + _size : u512(0));
@@ -68,15 +58,15 @@ uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
 	//     byte opcode
 	//     byte n_jumps
 	//     byte table[n_jumps][2]
-	//	
+	//
 	uint64_t pc = _pc;
 	byte n = _code[++pc];           // byte after opcode is number of jumps
 	if (_voff >= n) _voff = n - 1;  // if offset overflows use default jump
 	pc += _voff * 2;                // adjust inout pc before index destination in table
-	
+
 	uint64_t dest = decodeJumpDest(_code, pc);
-	
-	_pc += 1 + n * 2;               // adust inout _pc to opcode after table 
+
+	_pc += 1 + n * 2;               // adust inout _pc to opcode after table
 	return dest;
 }
 
@@ -91,9 +81,6 @@ void VM::onOperation()
 			m_newMemSize > m_mem.size() ? (m_newMemSize - m_mem.size()) / 32 : uint64_t(0),
 			m_runGas, m_io_gas, this, m_ext);
 }
-#if EVM_HACK_ON_OPERATION
-	#define onOperation()
-#endif
 
 //
 // set current SP to SP', adjust SP' per _removed and _added items
@@ -101,10 +88,7 @@ void VM::onOperation()
 void VM::adjustStack(unsigned _removed, unsigned _added)
 {
 	m_SP = m_SPP;
-#if EVM_HACK_STACK
-	m_SPP += _removed;
-	m_SPP -= _added;
-#else
+
 	// adjust stack and check bounds
 	m_SPP += _removed;
 	if (m_stackEnd < m_SPP)
@@ -112,7 +96,6 @@ void VM::adjustStack(unsigned _removed, unsigned _added)
 	m_SPP -= _added;
 	if (m_SPP < m_stack)
 		throwBadStack(_removed, _added);
-#endif
 }
 
 void VM::updateSSGas()
@@ -178,12 +161,6 @@ void VM::fetchInstruction()
 	m_copyMemSize = 0;
 }
 
-#if EVM_HACK_ON_OPERATION
-	#define onOperation()
-#endif
-#if EVM_HACK_UPDATE_IO_GAS
-	#define updateIOGas()
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -206,7 +183,7 @@ owning_bytes_ref VM::exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		do
 			(this->*m_bounce)();
 		while (m_bounce);
-		
+
 	}
 	catch (...)
 	{
@@ -225,7 +202,7 @@ void VM::interpretCases()
 {
 	INIT_CASES
 	DO_CASES
-	{	
+	{
 		//
 		// Call-related instructions
 		//
@@ -239,7 +216,7 @@ void VM::interpretCases()
 			m_bounce = &VM::caseCreate;
 		}
 		BREAK
-		
+
 		CASE(CREATE)
 		{
 			ON_OP();
@@ -296,7 +273,7 @@ void VM::interpretCases()
 			owning_bytes_ref output{move(m_mem), b, s};
 			throwRevertInstruction(move(output));
 		}
-		BREAK; 
+		BREAK;
 
 		CASE(SUICIDE)
 		{
@@ -327,12 +304,12 @@ void VM::interpretCases()
 			m_bounce = 0;
 		}
 		BREAK
-			
-			
+
+
 		//
 		// instructions potentially expanding memory
 		//
-		
+
 		CASE(MLOAD)
 		{
 			ON_OP();
@@ -439,7 +416,7 @@ void VM::interpretCases()
 
 			m_ext->log({m_SP[2], m_SP[3], m_SP[4], m_SP[5]}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
 		}
-		NEXT	
+		NEXT
 
 		CASE(EXP)
 		{
@@ -472,12 +449,8 @@ void VM::interpretCases()
 			ON_OP();
 			updateIOGas();
 
-#if EVM_HACK_MUL_64
-			*(uint64_t*)&m_SP[1] *= *(uint64_t*)&m_SP[0];
-#else
 			//pops two items and pushes their product mod 2^256.
 			m_SPP[0] = m_SP[0] * m_SP[1];
-#endif
 		}
 		NEXT
 
@@ -626,6 +599,69 @@ void VM::interpretCases()
 		}
 		NEXT
 
+		CASE(SHL)
+		{
+			// Pre-constantinople
+			if (!m_schedule->haveBitwiseShifting)
+				throwBadInstruction();
+
+			ON_OP();
+			updateIOGas();
+
+			if (m_SP[0] >= 256)
+				m_SPP[0] = 0;
+			else
+				m_SPP[0] = m_SP[1] << unsigned(m_SP[0]);
+		}
+		NEXT
+
+		CASE(SHR)
+		{
+			// Pre-constantinople
+			if (!m_schedule->haveBitwiseShifting)
+				throwBadInstruction();
+
+			ON_OP();
+			updateIOGas();
+
+			if (m_SP[0] >= 256)
+				m_SPP[0] = 0;
+			else
+				m_SPP[0] = m_SP[1] >> unsigned(m_SP[0]);
+		}
+		NEXT
+
+		CASE(SAR)
+		{
+			// Pre-constantinople
+			if (!m_schedule->haveBitwiseShifting)
+				throwBadInstruction();
+
+			ON_OP();
+			updateIOGas();
+
+			static u256 const hibit = u256(1) << 255;
+			static u256 const allbits =
+				u256("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+			u256 shiftee = m_SP[1];
+			if (m_SP[0] >= 256)
+			{
+				if (shiftee & hibit)
+					m_SPP[0] = allbits;
+				else
+					m_SPP[0] = 0;
+			}
+			else
+			{
+				unsigned amount = unsigned(m_SP[0]);
+				m_SPP[0] = shiftee >> amount;
+				if (shiftee & hibit)
+					m_SPP[0] |= allbits << (256 - amount);
+			}
+		}
+		NEXT
+
 		CASE(ADDMOD)
 		{
 			ON_OP();
@@ -660,14 +696,14 @@ void VM::interpretCases()
 					number &= mask;
 			}
 		}
-		NEXT		
+		NEXT
 
 #if EIP_615
 		CASE(JUMPTO)
 		{
 			ON_OP();
 			updateIOGas();
-			
+
 			m_PC = decodeJumpDest(m_code.data(), m_PC);
 		}
 		CONTINUE
@@ -676,7 +712,7 @@ void VM::interpretCases()
 		{
 			ON_OP();
 			updateIOGas();
-			
+
 			if (m_SP[0])
 				m_PC = decodeJumpDest(m_code.data(), m_PC);
 			else
@@ -714,7 +750,7 @@ void VM::interpretCases()
 		{
 			ON_OP();
 			updateIOGas();
-			
+
 			m_PC = *m_RP--;
 		}
 		NEXT
@@ -725,7 +761,7 @@ void VM::interpretCases()
 			updateIOGas();
 		}
 		NEXT
-		
+
 
 		CASE(BEGINDATA)
 		{
@@ -766,7 +802,7 @@ void VM::interpretCases()
 #endif
 
 #if EIP_616
-		
+
 		CASE(XADD)
 		{
 			ON_OP();
@@ -775,7 +811,7 @@ void VM::interpretCases()
 			xadd(simdType());
 		}
 		CONTINUE
-	         
+
 		CASE(XMUL)
 		{
 			ON_OP();
@@ -784,7 +820,7 @@ void VM::interpretCases()
 			xmul(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSUB)
 		{
 			ON_OP();
@@ -793,7 +829,7 @@ void VM::interpretCases()
 			xsub(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XDIV)
 		{
 			ON_OP();
@@ -802,7 +838,7 @@ void VM::interpretCases()
 			xdiv(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSDIV)
 		{
 			ON_OP();
@@ -811,7 +847,7 @@ void VM::interpretCases()
 			xsdiv(simdType());
 		}
 		CONTINUE
-        
+
 		CASE(XMOD)
 		{
 			ON_OP();
@@ -820,7 +856,7 @@ void VM::interpretCases()
 			xmod(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSMOD)
 		{
 			ON_OP();
@@ -829,7 +865,7 @@ void VM::interpretCases()
 			xsmod(simdType());
 		}
 		CONTINUE
-        
+
 		CASE(XLT)
 		{
 			ON_OP();
@@ -838,7 +874,7 @@ void VM::interpretCases()
 			xlt(simdType());
 		}
 		CONTINUE
-          
+
 		CASE(XGT)
 		{
 			ON_OP();
@@ -847,7 +883,7 @@ void VM::interpretCases()
 			xgt(simdType());
 		}
 		CONTINUE
-          
+
 		CASE(XSLT)
 		{
 			ON_OP();
@@ -856,7 +892,7 @@ void VM::interpretCases()
 			xslt(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSGT)
 		{
 			ON_OP();
@@ -865,7 +901,7 @@ void VM::interpretCases()
 			xsgt(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XEQ)
 		{
 			ON_OP();
@@ -874,7 +910,7 @@ void VM::interpretCases()
 			xeq(simdType());
 		}
 		CONTINUE
-          
+
 		CASE(XISZERO)
 		{
 			ON_OP();
@@ -883,7 +919,7 @@ void VM::interpretCases()
 			xzero(simdType());
 		}
 		CONTINUE
-      
+
 		CASE(XAND)
 		{
 			ON_OP();
@@ -892,7 +928,7 @@ void VM::interpretCases()
 			xand(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XOOR)
 		{
 			ON_OP();
@@ -901,7 +937,7 @@ void VM::interpretCases()
 			xoor(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XXOR)
 		{
 			ON_OP();
@@ -910,7 +946,7 @@ void VM::interpretCases()
 			xxor(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XNOT)
 		{
 			ON_OP();
@@ -919,7 +955,7 @@ void VM::interpretCases()
 			xnot(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSHL)
 		{
 			ON_OP();
@@ -928,7 +964,7 @@ void VM::interpretCases()
 			xshl(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSHR)
 		{
 			ON_OP();
@@ -937,7 +973,7 @@ void VM::interpretCases()
 			xshr(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XSAR)
 		{
 			ON_OP();
@@ -946,7 +982,7 @@ void VM::interpretCases()
 			xsar(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XROL)
 		{
 			ON_OP();
@@ -955,7 +991,7 @@ void VM::interpretCases()
 			xrol(simdType());
 		}
 		CONTINUE
-         
+
 		CASE(XROR)
 		{
 			ON_OP();
@@ -1003,7 +1039,7 @@ void VM::interpretCases()
 			updateSSGas();
 			ON_OP();
 			updateIOGas();
-	
+
 			xsstore(simdType());
 		}
 		CONTINUE
@@ -1494,13 +1530,11 @@ void VM::interpretCases()
 			updateIOGas();
 
 			unsigned n = (unsigned)m_OP - (unsigned)Instruction::DUP1;
-#if EVM_HACK_DUP_64
 			*(uint64_t*)m_SPP = *(uint64_t*)(m_SP + n);
-#else
+
 			// the stack slot being copied into may no longer hold a u256
 			// so we construct a new one in the memory, rather than assign
 			new(m_SPP) u256(m_SP[n]);
-#endif
 		}
 		NEXT
 
@@ -1546,10 +1580,10 @@ void VM::interpretCases()
 			ON_OP();
 			if (m_ext->staticCall)
 				throwDisallowedStateChange();
-				
+
 			updateSSGas();
 			updateIOGas();
-	
+
 			m_ext->setStore(m_SP[0], m_SP[1]);
 		}
 		NEXT
@@ -1594,6 +1628,6 @@ void VM::interpretCases()
 		{
 			throwBadInstruction();
 		}
-	}	
+	}
 	WHILE_CASES
 }
