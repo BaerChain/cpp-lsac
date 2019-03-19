@@ -80,6 +80,7 @@ Client::Client(ChainParams const& _params, int _networkID, p2p::Host* _host,
 
 Client::~Client()
 {
+    m_signalled.notify_all(); // to wake up the thread from Client::doWork()
     stopWorking();
     terminate();
 }
@@ -259,6 +260,7 @@ void Client::reopenChain(WithExisting _we)
 
 void Client::reopenChain(ChainParams const& _p, WithExisting _we)
 {
+    m_signalled.notify_all(); // to wake up the thread from Client::doWork()
     bool wasSealing = wouldSeal();
     if (wasSealing)
         stopSealing();
@@ -692,10 +694,10 @@ void Client::doWork(bool _doWait)
         isSealed = m_working.isSealed();
     // If the block is sealed, we have to wait for it to tickle through the block queue
     // (which only signals as wanting to be synced if it is ready).
-    if (!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed))
+    if (!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())
     {
         std::unique_lock<std::mutex> l(x_signalled);
-        m_signalled.wait_for(l, chrono::milliseconds(30));
+        m_signalled.wait_for(l, chrono::seconds(1));
     }
 }
 
@@ -827,6 +829,8 @@ void Client::rewind(unsigned _n)
     auto h = m_host.lock();
     if (h)
         h->reset();
+    m_tq.clear();
+    m_bq.clear();
 }
 
 pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)

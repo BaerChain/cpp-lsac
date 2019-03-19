@@ -161,7 +161,7 @@ Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level)
 
 Executive::Executive(State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level):
     m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
-    m_envInfo(_block.info(), _bc.lastBlockHashes(), _txIndex ? _block.receipt(_txIndex - 1).gasUsed() : 0),
+    m_envInfo(_block.info(), _bc.lastBlockHashes(), _txIndex ? _block.receipt(_txIndex - 1).cumulativeGasUsed() : 0),
     m_depth(_level),
     m_sealEngine(*_bc.sealEngine())
 {
@@ -234,6 +234,7 @@ bool Executive::execute()
     clog(StateDetail) << "Paying" << formatBalance(m_gasCost) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
     m_s.subBalance(m_t.sender(), m_gasCost);
 
+    assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
     else
@@ -458,6 +459,12 @@ bool Executive::go(OnOpFunc const& _onOp)
             m_gas = 0;
             m_excepted = toTransactionException(_e);
             revert();
+        }
+        catch (InternalVMError const& _e)
+        {
+            cwarn << "Internal VM Error (" << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")\n"
+                  << diagnostic_information(_e);
+            throw;
         }
         catch (Exception const& _e)
         {
