@@ -11,19 +11,17 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Executive.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #pragma once
 
-#include <functional>
-#include <json/json.h>
+#include "Transaction.h"
+
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libevm/VMFace.h>
-#include "Transaction.h"
+
+#include <json/json.h>
+#include <functional>
 
 namespace Json
 {
@@ -60,19 +58,25 @@ public:
     };
 
     StandardTrace();
-    void operator()(uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM);
+    void operator()(uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM);
 
     void setShowMnemonics() { m_showMnemonics = true; }
     void setOptions(DebugOptions _options) { m_options = _options; }
 
     std::string json(bool _styled = false) const;
 
-    OnOpFunc onOp() { return [=](uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { (*this)(_steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); }; }
+    OnOpFunc onOp()
+    {
+        return [=](uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+                   bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM) {
+            (*this)(_steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM);
+        };
+    }
 
 private:
     bool m_showMnemonics = false;
     std::vector<Instruction> m_lastInst;
-    bytes m_lastCallData;
     Json::Value m_trace;
     DebugOptions m_options;
 };
@@ -167,9 +171,6 @@ public:
 
     /// Operation function for providing a simple trace of the VM execution.
     static OnOpFunc simpleTrace();
-
-    /// Operation function for providing a simple trace of the VM execution.
-    static OnOpFunc standardTrace(std::ostream& o_output);
 
     /// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
     u256 gas() const { return m_gas; }

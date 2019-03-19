@@ -26,19 +26,8 @@ namespace
 
 static_assert(sizeof(Address) == sizeof(evm_address), "Address types size mismatch");
 static_assert(alignof(Address) == alignof(evm_address), "Address types alignment mismatch");
-
-inline Address fromEvmC(evm_address const& _addr)
-{
-	return reinterpret_cast<Address const&>(_addr);
-}
-
 static_assert(sizeof(h256) == sizeof(evm_uint256be), "Hash types size mismatch");
 static_assert(alignof(h256) == alignof(evm_uint256be), "Hash types alignment mismatch");
-
-inline u256 fromEvmC(evm_uint256be const& _n)
-{
-	return fromBigEndian<u256>(_n.bytes);
-}
 
 int accountExists(evm_context* _context, evm_address const* _addr) noexcept
 {
@@ -174,7 +163,8 @@ void create(evm_result* o_result, ExtVMFace& _env, evm_message const* _msg) noex
 	}
 	else
 	{
-		o_result->status_code = EVM_REVERT;
+		// FIXME: detect and support revert properly
+		o_result->status_code = EVM_FAILURE;
 
 		// Pass the output to the EVM without a copy. The EVM will delete it
 		// when finished with it.
@@ -229,7 +219,9 @@ void call(evm_result* o_result, evm_context* _context, evm_message const* _msg) 
 	// In first case we want to keep the output, in the second one the output
 	// is optional and should not be passed to the contract, but can be useful
 	// for EVM in general.
-	o_result->status_code = success ? EVM_SUCCESS : EVM_REVERT;
+	//
+	// FIXME: detect and support revert properly
+	o_result->status_code = success ? EVM_SUCCESS : EVM_FAILURE;
 	o_result->gas_left = static_cast<int64_t>(params.gas);
 
 	// Pass the output to the EVM without a copy. The EVM will delete it
@@ -270,31 +262,22 @@ evm_context_fn_table const fnTable = {
 
 }
 
-ExtVMFace::ExtVMFace(
-	EnvInfo const& _envInfo,
-	Address _myAddress,
-	Address _caller,
-	Address _origin,
-	u256 _value,
-	u256 _gasPrice,
-	bytesConstRef _data,
-	bytes _code,
-	h256 const& _codeHash,
-	unsigned _depth,
-	bool _staticCall
-):
-	evm_context{&fnTable},
-	m_envInfo(_envInfo),
-	myAddress(_myAddress),
-	caller(_caller),
-	origin(_origin),
-	value(_value),
-	gasPrice(_gasPrice),
-	data(_data),
-	code(std::move(_code)),
-	codeHash(_codeHash),
-	depth(_depth),
-	staticCall(_staticCall)
+ExtVMFace::ExtVMFace(EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin,
+    u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash,
+    unsigned _depth, bool _isCreate, bool _staticCall)
+  : evm_context{&fnTable},
+    m_envInfo(_envInfo),
+    myAddress(_myAddress),
+    caller(_caller),
+    origin(_origin),
+    value(_value),
+    gasPrice(_gasPrice),
+    data(_data),
+    code(std::move(_code)),
+    codeHash(_codeHash),
+    depth(_depth),
+    isCreate(_isCreate),
+    staticCall(_staticCall)
 {}
 
 }

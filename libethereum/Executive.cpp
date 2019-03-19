@@ -11,24 +11,23 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Executive.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #include "Executive.h"
 
-#include <boost/timer.hpp>
-#include <json/json.h>
-#include <libdevcore/CommonIO.h>
-#include <libevm/VMFactory.h>
-#include <libevm/VM.h>
-#include <libethcore/CommonJS.h>
+#include "Block.h"
+#include "BlockChain.h"
+#include "ExtVM.h"
 #include "Interface.h"
 #include "State.h"
-#include "ExtVM.h"
-#include "BlockChain.h"
-#include "Block.h"
+
+#include <libdevcore/CommonIO.h>
+#include <libethcore/CommonJS.h>
+#include <libevm/LegacyVM.h>
+#include <libevm/VMFactory.h>
+
+#include <json/json.h>
+#include <boost/timer.hpp>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -61,19 +60,21 @@ bool changesStorage(Instruction _inst)
     return _inst == Instruction::SSTORE;
 }
 
-void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, bigint newMemSize,
+    bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt)
 {
     (void)_steps;
 
     ExtVM const& ext = dynamic_cast<ExtVM const&>(*voidExt);
-    VM& vm = *voidVM;
+    auto vm = dynamic_cast<LegacyVM const*>(_vm);
 
     Json::Value r(Json::objectValue);
 
     Json::Value stack(Json::arrayValue);
-    if (!m_options.disableStack)
+    if (vm && !m_options.disableStack)
     {
-        for (auto const& i: vm.stack())
+        // Try extracting information about the stack from the VM is supported.
+        for (auto const& i : vm->stack())
             stack.append(toCompactHexPrefixed(i, 1));
         r["stack"] = stack;
     }
@@ -107,11 +108,11 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
     }
 
     Json::Value memJson(Json::arrayValue);
-    if (!m_options.disableMemory && (changesMemory(lastInst) || newContext))
+    if (vm && !m_options.disableMemory && (changesMemory(lastInst) || newContext))
     {
-        for (unsigned i = 0; i < vm.memory().size(); i += 32)
+        for (unsigned i = 0; i < vm->memory().size(); i += 32)
         {
-            bytesConstRef memRef(vm.memory().data() + i, 32);
+            bytesConstRef memRef(vm->memory().data() + i, 32);
             memJson.append(toHex(memRef));
         }
         r["memory"] = memJson;
@@ -299,7 +300,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         {
             bytes const& c = m_s.code(_p.codeAddress);
             h256 codeHash = m_s.codeHash(_p.codeAddress);
-            m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress, _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash, m_depth, _p.staticCall);
+            m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
+                _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+                m_depth, false, _p.staticCall);
         }
     }
 
@@ -362,28 +365,38 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
 
     // Schedule _init execution if not empty.
     if (!_init.empty())
-        m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth);
+        m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin,
+            _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth, true, false);
 
     return !m_ext;
 }
 
 OnOpFunc Executive::simpleTrace()
 {
-    return [](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
-    {
+    return [](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost,
+               bigint gas, VMFace const* _vm, ExtVMFace const* voidExt) {
         ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-        VM& vm = *voidVM;
+        auto vm = dynamic_cast<LegacyVM const*>(_vm);
 
         ostringstream o;
-        o << endl << "    STACK" << endl;
-        for (auto i: vm.stack())
-            o << (h256)i << endl;
-        o << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
+        if (vm)
+        {
+            o << endl << "    STACK" << endl;
+            for (auto i : vm->stack())
+                o << (h256)i << endl;
+            o << "    MEMORY" << endl
+              << ((vm->memory().size() > 1000) ? " mem size greater than 1000 bytes " :
+                                                 memDump(vm->memory()));
+        }
         o << "    STORAGE" << endl;
         for (auto const& i: ext.state().storage(ext.myAddress))
             o << showbase << hex << i.second.first << ": " << i.second.second << endl;
         dev::LogOutputStream<VMTraceChannel, false>() << o.str();
-        dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << PC << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+        dev::LogOutputStream<VMTraceChannel, false>()
+            << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : "
+            << hex << setw(4) << setfill('0') << PC << " : " << instructionInfo(inst).name << " : "
+            << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+            << " >";
     };
 }
 
@@ -397,7 +410,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         try
         {
             // Create VM instance. Force Interpreter if tracing requested.
-            auto vm = _onOp ? VMFactory::create(VMKind::Interpreter) : VMFactory::create();
+            auto vm = VMFactory::create();
             if (m_isCreation)
             {
                 m_s.clearStorage(m_ext->myAddress);

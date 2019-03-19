@@ -36,10 +36,6 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
-#if ETH_PROFILING_GPERF
-#include <gperftools/profiler.h>
-#endif
-
 #include <boost/filesystem.hpp>
 
 using namespace std;
@@ -259,13 +255,7 @@ unsigned BlockChain::open(fs::path const& _path, WithExisting _we)
         m_blocksDB.reset(new db::DBImpl(chainPath / fs::path("blocks")));
         m_extrasDB.reset(new db::DBImpl(extrasPath / fs::path("extras")));
     }
-    catch (db::FailedToOpenDB const&)
-    {
-        // Do nothing, handled below
-    }
-
-
-    if (!m_blocksDB || !m_extrasDB)
+    catch (db::DBIOError const&)
     {
         if (fs::space(chainPath / fs::path("blocks")).available < 1024)
         {
@@ -356,10 +346,6 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
 
-#if ETH_PROFILING_GPERF
-    ProfilerStart("BlockChain_rebuild.log");
-#endif
-
     unsigned originalNumber = m_lastBlockNumber;
 
     ///////////////////////////////
@@ -428,10 +414,6 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
         if (_progress)
             _progress(d, originalNumber);
     }
-
-#if ETH_PROFILING_GPERF
-    ProfilerStop();
-#endif
 
     fs::remove_all(path / fs::path("extras.old"));
 }

@@ -28,6 +28,7 @@ enum class VMKind
     Interpreter,
     JIT,
     Hera,
+    Legacy,
 };
 
 /// Returns the EVM-C options parsed from command line.
@@ -44,6 +45,7 @@ class VMFactory
 {
 public:
 	VMFactory() = delete;
+	~VMFactory() = delete;
 
 	/// Creates a VM instance of global kind (controlled by setKind() function).
 	static std::unique_ptr<VMFace> create();

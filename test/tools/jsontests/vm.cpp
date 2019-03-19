@@ -25,6 +25,7 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/Executive.h>
 #include <libevm/VMFactory.h>
+#include <libevm/LegacyVM.h>
 #include <boost/filesystem.hpp>
 #include <test/tools/libtesteth/TestSuite.h>
 
@@ -36,7 +37,7 @@ using namespace dev::test;
 namespace fs = boost::filesystem;
 
 FakeExtVM::FakeExtVM(EnvInfo const& _envInfo, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
-    ExtVMFace(_envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, false, _depth)
+    ExtVMFace(_envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, false, false, _depth)
 {}
 
 std::pair<h160, eth::owning_bytes_ref> FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, Instruction , u256, OnOpFunc const&)
@@ -231,11 +232,10 @@ void FakeExtVM::importCallCreates(mArray const& _callcreates)
 
 eth::OnOpFunc FakeExtVM::simpleTrace() const
 {
-
-    return [](uint64_t steps, uint64_t pc, eth::Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
-    {
+    return [](uint64_t steps, uint64_t pc, eth::Instruction inst, bigint newMemSize, bigint gasCost,
+               bigint gas, dev::eth::VMFace const* _vm, dev::eth::ExtVMFace const* voidExt) {
         FakeExtVM const& ext = *static_cast<FakeExtVM const*>(voidExt);
-        eth::VM& vm = *voidVM;
+        auto const& vm = dynamic_cast<LegacyVM const&>(*_vm);
 
         std::ostringstream o;
         o << "\n    STACK\n";

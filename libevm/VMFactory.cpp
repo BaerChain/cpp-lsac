@@ -17,7 +17,8 @@
 
 #include "VMFactory.h"
 #include "EVMC.h"
-#include "VM.h"
+#include "LegacyVM.h"
+#include "interpreter.h"
 #include <evmjit.h>
 #include <hera.h>
 
@@ -29,7 +30,7 @@ namespace eth
 {
 namespace
 {
-auto g_kind = VMKind::Interpreter;
+auto g_kind = VMKind::Legacy;
 
 /// A helper type to build the tabled of VM implementations.
 ///
@@ -47,6 +48,7 @@ struct VMKindTableEntry
 /// so linear search only to parse command line arguments is not a problem.
 VMKindTableEntry vmKindsTable[] = {
     {VMKind::Interpreter, "interpreter"},
+    {VMKind::Legacy, "legacy"},
 #if ETH_EVMJIT
     {VMKind::JIT, "jit"},
 #endif
@@ -131,7 +133,7 @@ po::options_description vmProgramOptions(unsigned _lineLength)
     add("vm",
         po::value<VMKind>()
             ->value_name("<name>")
-            ->default_value(VMKind::Interpreter, "interpreter")
+            ->default_value(VMKind::Legacy, "legacy")
             ->notifier(VMFactory::setKind),
         description.data());
 
@@ -168,8 +170,10 @@ std::unique_ptr<VMFace> VMFactory::create(VMKind _kind)
         return std::unique_ptr<VMFace>(new EVMC{hera_create()});
 #endif
     case VMKind::Interpreter:
+        return std::unique_ptr<VMFace>(new EVMC{interpreter_create()});
+    case VMKind::Legacy:
     default:
-        return std::unique_ptr<VMFace>(new VM);
+        return std::unique_ptr<VMFace>(new LegacyVM);
     }
 }
 }
