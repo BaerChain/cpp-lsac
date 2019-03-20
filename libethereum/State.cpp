@@ -38,11 +38,6 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
-const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
-const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
-const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
-
 namespace
 {
 
@@ -84,7 +79,7 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
 
     if (_we == WithExisting::Kill)
     {
-        clog(StateDetail) << "Killing state database (WithExisting::Kill).";
+        clogSimple(14, "statedb") << "Killing state database (WithExisting::Kill).";
         fs::remove_all(path / fs::path("state"));
     }
 
@@ -95,7 +90,7 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
     try
     {
         std::unique_ptr<db::DatabaseFace> db(new db::DBImpl(path / fs::path("state")));
-        clog(StateDetail) << "Opened state DB.";
+        clogSimple(14, "statedb") << "Opened state DB.";
         return OverlayDB(std::move(db));
     }
     catch (boost::exception const& ex)
@@ -555,17 +550,16 @@ void State::rollback(size_t _savepoint)
 
 std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
-    auto onOp = _onOp;
-#if ETH_VMTRACE
-    if (isChannelVisible<VMTraceChannel>())
-        onOp = Executive::simpleTrace(); // override tracer
-#endif
-
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     Executive e(*this, _envInfo, _sealEngine);
     ExecutionResult res;
     e.setResultRecipient(res);
+
+    auto onOp = _onOp;
+#if ETH_VMTRACE
+    onOp = e.simpleTrace();  // override tracer
+#endif
 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);

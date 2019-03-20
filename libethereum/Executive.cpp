@@ -32,8 +32,31 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const char* VMTraceChannel::name() { return "EVM"; }
-const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
+namespace
+{
+std::string dumpStackAndMemory(LegacyVM const& _vm)
+{
+    ostringstream o;
+    o << "\n    STACK\n";
+    for (auto i : _vm.stack())
+        o << (h256)i << "\n";
+    o << "    MEMORY\n"
+      << ((_vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " :
+                                         memDump(_vm.memory()));
+    return o.str();
+};
+
+std::string dumpStorage(ExtVM const& _ext)
+{
+    ostringstream o;
+    o << "    STORAGE\n";
+    for (auto const& i : _ext.state().storage(_ext.myAddress))
+        o << showbase << hex << i.second.first << ": " << i.second.second << "\n";
+    return o.str();
+};
+
+
+}  // namespace
 
 StandardTrace::StandardTrace():
     m_trace(Json::arrayValue)
@@ -202,13 +225,14 @@ void Executive::initialize(Transaction const& _transaction)
         }
         catch (InvalidSignature const&)
         {
-            clog(ExecutiveWarnChannel) << "Invalid Signature";
+            LOG(m_execLogger) << "Invalid Signature";
             m_excepted = TransactionException::InvalidSignature;
             throw;
         }
         if (m_t.nonce() != nonceReq)
         {
-            clog(ExecutiveWarnChannel) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+            LOG(m_execLogger) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                              << nonceReq << " Got " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
         }
@@ -218,7 +242,10 @@ void Executive::initialize(Transaction const& _transaction)
         bigint totalCost = m_t.value() + gasCost;
         if (m_s.balance(m_t.sender()) < totalCost)
         {
-            clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << "=" << m_t.gas() << "*" << m_t.gasPrice() << "+" << m_t.value() << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
+            LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                              << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
+                              << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
+            m_excepted = TransactionException::NotEnoughCash;
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().hex()));
         }
@@ -231,7 +258,8 @@ bool Executive::execute()
     // Entry point for a user-executed transaction.
 
     // Pay...
-    clog(StateDetail) << "Paying" << formatBalance(m_gasCost) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+    LOG(m_detailsLogger) << "Paying " << formatBalance(m_gasCost) << " from sender for gas ("
+                         << m_t.gas() << " gas at " << formatBalance(m_t.gasPrice()) << ")";
     m_s.subBalance(m_t.sender(), m_gasCost);
 
     assert(m_t.gas() >= (u256)m_baseGasRequired);
@@ -347,7 +375,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
     if (accountAlreadyExist)
     {
-        clog(StateSafeExceptions) << "Address already used: " << m_newAddress;
+        LOG(m_detailsLogger) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -374,30 +402,22 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
 
 OnOpFunc Executive::simpleTrace()
 {
-    return [](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost,
-               bigint gas, VMFace const* _vm, ExtVMFace const* voidExt) {
+    Logger& traceLogger = m_vmTraceLogger;
+
+    return [&traceLogger](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
+               bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt) {
         ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
 
         ostringstream o;
         if (vm)
-        {
-            o << endl << "    STACK" << endl;
-            for (auto i : vm->stack())
-                o << (h256)i << endl;
-            o << "    MEMORY" << endl
-              << ((vm->memory().size() > 1000) ? " mem size greater than 1000 bytes " :
-                                                 memDump(vm->memory()));
-        }
-        o << "    STORAGE" << endl;
-        for (auto const& i: ext.state().storage(ext.myAddress))
-            o << showbase << hex << i.second.first << ": " << i.second.second << endl;
-        dev::LogOutputStream<VMTraceChannel, false>() << o.str();
-        dev::LogOutputStream<VMTraceChannel, false>()
-            << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : "
-            << hex << setw(4) << setfill('0') << PC << " : " << instructionInfo(inst).name << " : "
-            << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32"
-            << " >";
+            LOG(traceLogger) << dumpStackAndMemory(*vm);
+        LOG(traceLogger) << dumpStorage(ext);
+        LOG(traceLogger) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
+                         << " : " << hex << setw(4) << setfill('0') << PC << " : "
+                         << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec
+                         << gasCost << " : " << newMemSize << "x32"
+                         << " >";
     };
 }
 
@@ -455,7 +475,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         }
         catch (VMException const& _e)
         {
-            clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
+            LOG(m_detailsLogger) << "Safe VM Exception. " << diagnostic_information(_e);
             m_gas = 0;
             m_excepted = toTransactionException(_e);
             revert();
