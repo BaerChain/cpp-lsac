@@ -21,13 +21,13 @@ defaults:
       # (ninja is using relative paths otherwise).
       working_directory: ~/build
       command: |
-        cmake ../project -G "$GENERATOR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCOVERAGE=ON $CMAKE_OPTIONS
+        cmake ../project -G "$GENERATOR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTIONS
 
   build: &build
     run:
       name: "Build"
       working_directory: ~/build
-      command: cmake --build . -- -j $BUILD_PARALLEL_JOBS
+      command: cmake --build . --target package -- -j $BUILD_PARALLEL_JOBS
 
   test: &test
     run:
@@ -47,15 +47,18 @@ defaults:
 
         ctest --output-on-failure -j $TEST_PARALLEL_JOBS
 
-  store-eth: &store-eth
-    store_artifacts:
-      path: ~/build/eth/eth
-      destination: eth
+  test-evmc-interpreter: &test-evmc-interpreter
+    run:
+      name: "Test EVMC Interpreter"
+      working_directory: ~/build
+      command: |
+        ETHEREUM_TEST_PATH=~/project/test/jsontests \
+        test/testeth -t GeneralStateTests -- --vm interpreter
 
-  store-testeth: &store-testeth
+  store-package: &store-package
     store_artifacts:
-      path: ~/build/test/testeth
-      destination: testeth
+      path: ~/build/cpp-ethereum.tar.gz
+      destination: cpp-ethereum.tar.gz
 
   store-randomcode-seed: &store-randomcode-seed
     store_artifacts:
@@ -65,9 +68,9 @@ defaults:
   save-deps-cache: &save-deps-cache
     cache-save:
       name: "Save dependencies cache"
-      key: &deps-cache-key deps-2-{{arch}}-{{checksum "compiler.version"}}-{{checksum "cmake/ProjectLibFF.cmake"}}
+      key: &deps-cache-key deps-4-{{arch}}-{{checksum "compiler.version"}}-{{checksum "cmake/ProjectLibFF.cmake"}}
       paths:
-        - build/deps
+        - ~/build/deps
 
   restore-deps-cache: &restore-deps-cache
     cache-restore:
@@ -94,26 +97,36 @@ defaults:
         $GCOV --version
         codecov --required --gcov-exec "$GCOV" --gcov-root ~/build
 
-  linux-steps: &linux-steps
-    - checkout
-    - *update-submodules
-    - *environment-info
-    - *restore-deps-cache
-    - *configure
-    - *build
-    - *save-deps-cache
-    - *store-eth
-    - *store-testeth
-    - *restore-ethash-dag
-    - *test
-    - run:
-        name: "Test EVM-C Interpreter"
-        working_directory: ~/build
-        command: |
-          ETHEREUM_TEST_PATH=~/project/test/jsontests \
-          test/testeth -t GeneralStateTests -- --vm interpreter
-    - *save-ethash-dag
-    - *upload-coverage-data
+  save-ccache: &save-ccache
+    save_cache:
+      name: "Save ccache"
+      key: ccache-1-{{arch}}-{{checksum "compiler.version"}}-{{.Branch}}-{{epoch}}
+      paths:
+        - ~/.ccache
+
+  restore-ccache: &restore-ccache
+    restore_cache:
+      name: "Restore ccache"
+      keys:
+        - ccache-1-{{arch}}-{{checksum "compiler.version"}}-{{.Branch}}
+        - ccache-1-{{arch}}-{{checksum "compiler.version"}}
+      paths:
+        - ~/.ccache
+
+  setup-ccache: &setup-ccache
+    run:
+      name: "Setup ccache"
+      command: |
+        ccache --version
+        ccache --show-stats
+        ccache --zero-stats
+        ccache --max-size=3G
+
+  stat-ccache: &stat-ccache
+    run:
+      name: "Show ccache stats"
+      command: |
+        ccache --show-stats
 
 
 version: 2
@@ -121,6 +134,7 @@ jobs:
 
   linux-clang6:
     environment:
+      - BUILD_TYPE: Release
       - CXX: clang++-6.0
       - CC:  clang-6.0
       - GCOV: llvm-cov-6.0 gcov
@@ -128,8 +142,24 @@ jobs:
       - BUILD_PARALLEL_JOBS: 8
       - TEST_PARALLEL_JOBS: 8
     docker:
-      - image: ethereum/cpp-build-env
-    steps: *linux-steps
+      - image: ethereum/cpp-build-env:2
+    steps:
+      - checkout
+      - *update-submodules
+      - *environment-info
+      - *restore-deps-cache
+      - *restore-ccache
+      - *setup-ccache
+      - *configure
+      - *build
+      - *stat-ccache
+      - *save-ccache
+      - *save-deps-cache
+      - *store-package
+      - *restore-ethash-dag
+      - *test
+      - *test-evmc-interpreter
+      - *save-ethash-dag
 
   linux-gcc6:
     environment:
@@ -140,12 +170,30 @@ jobs:
       - GENERATOR: Ninja
       - BUILD_PARALLEL_JOBS: 3
       - TEST_PARALLEL_JOBS: 4
+      - CMAKE_OPTIONS: -DCOVERAGE=ON
       # TODO: Fix memory leaks reported in leveldb.
       # - CMAKE_OPTIONS: -DSANITIZE=address
       # - ASAN_OPTIONS: detect_leaks=0
     docker:
-      - image: ethereum/cpp-build-env
-    steps: *linux-steps
+      - image: ethereum/cpp-build-env:2
+    steps:
+      - checkout
+      - *update-submodules
+      - *environment-info
+      - *restore-deps-cache
+      - *restore-ccache
+      - *setup-ccache
+      - *configure
+      - *build
+      - *stat-ccache
+      - *save-ccache
+      - *save-deps-cache
+      - *store-package
+      - *restore-ethash-dag
+      - *test
+      - *test-evmc-interpreter
+      - *save-ethash-dag
+      - *upload-coverage-data
 
   macos-xcode90:
     environment:
@@ -165,18 +213,16 @@ jobs:
           # Python3 and requests are needed for Hunter upload.
           command: |
             HOMEBREW_NO_AUTO_UPDATE=1 brew install -q cmake ninja python3 leveldb
-            pip3 install -q requests codecov
+            pip3 install -q requests gitpython
       - *restore-deps-cache
       - *configure
       - *build
       - *save-deps-cache
-      - *store-eth
-      - *store-testeth
+      - *store-package
       - *restore-ethash-dag
       - *test
       - *store-randomcode-seed
       - *save-ethash-dag
-      - *upload-coverage-data
 
 # TODO: Run GCC6 build only in develop branch.
 # TODO: Enabled nightly builds and add more configs.

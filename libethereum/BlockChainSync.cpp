@@ -246,7 +246,7 @@ void BlockChainSync::syncPeer(std::shared_ptr<EthereumPeer> _peer, bool _force)
 {
     if (_peer->m_asking != Asking::Nothing)
     {
-        LOG(m_loggerVerbose) << "Can't sync with this peer - outstanding asks.";
+        LOG(m_loggerDetail) << "Can't sync with this peer - outstanding asks.";
         return;
     }
 
@@ -291,7 +291,7 @@ void BlockChainSync::requestBlocks(std::shared_ptr<EthereumPeer> _peer)
     clearPeerDownload(_peer);
     if (host().bq().knownFull())
     {
-        LOG(m_loggerVerbose) << "Waiting for block queue before downloading blocks";
+        LOG(m_loggerDetail) << "Waiting for block queue before downloading blocks";
         pauseSync();
         return;
     }
@@ -467,12 +467,12 @@ void BlockChainSync::onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP
     }
     if (m_state == SyncState::Waiting)
     {
-        LOG(m_loggerVerbose) << "Ignored blocks while waiting";
+        LOG(m_loggerDetail) << "Ignored blocks while waiting";
         return;
     }
     if (itemCount == 0)
     {
-        LOG(m_loggerVerbose) << "Peer does not have the blocks requested";
+        LOG(m_loggerDetail) << "Peer does not have the blocks requested";
         _peer->addRating(-1);
     }
     for (unsigned i = 0; i < itemCount; i++)
@@ -509,7 +509,7 @@ void BlockChainSync::onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP
             {
                 // Start of the header chain in m_headers doesn't match our known chain,
                 // probably we've downloaded other fork
-                clogSimple(0, "sync")
+                clog(VerbosityWarning, "sync")
                     << "Unknown parent of the downloaded headers, restarting sync";
                 restartSync();
                 return;
@@ -527,8 +527,8 @@ void BlockChainSync::onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP
                 if ((prevBlock && prevBlock->hash != info.parentHash()) || (blockNumber == m_lastImportedBlock + 1 && info.parentHash() != m_lastImportedBlockHash))
                 {
                     // mismatching parent id, delete the previous block and don't add this one
-                    clogSimple(0, "sync") << "Unknown block header " << blockNumber << " "
-                                          << info.hash() << " (Restart syncing)";
+                    clog(VerbosityWarning, "sync") << "Unknown block header " << blockNumber << " "
+                                                   << info.hash() << " (Restart syncing)";
                     _peer->addRating(-1);
                     restartSync();
                     return ;
@@ -598,12 +598,12 @@ void BlockChainSync::onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP 
     }
     if (m_state == SyncState::Waiting)
     {
-        LOG(m_loggerVerbose) << "Ignored blocks while waiting";
+        LOG(m_loggerDetail) << "Ignored blocks while waiting";
         return;
     }
     if (itemCount == 0)
     {
-        LOG(m_loggerVerbose) << "Peer does not have the blocks requested";
+        LOG(m_loggerDetail) << "Peer does not have the blocks requested";
         _peer->addRating(-1);
     }
     for (unsigned i = 0; i < itemCount; i++)
@@ -617,7 +617,7 @@ void BlockChainSync::onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP 
         auto iter = m_headerIdToNumber.find(id);
         if (iter == m_headerIdToNumber.end() || !haveItem(m_headers, iter->second))
         {
-            LOG(m_loggerVerbose) << "Ignored unknown block body";
+            LOG(m_loggerDetail) << "Ignored unknown block body";
             continue;
         }
         unsigned blockNumber = iter->second;
@@ -697,7 +697,7 @@ void BlockChainSync::collectBlocks()
 
     if (host().bq().unknownFull())
     {
-        clogSimple(0, "sync") << "Too many unknown blocks, restarting sync";
+        clog(VerbosityWarning, "sync") << "Too many unknown blocks, restarting sync";
         restartSync();
         return;
     }
@@ -740,7 +740,7 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
     unsigned blockNumber = static_cast<unsigned>(info.number());
     if (blockNumber > (m_lastImportedBlock + 1))
     {
-        LOG(m_loggerVerbose) << "Received unknown new block";
+        LOG(m_loggerDetail) << "Received unknown new block";
         syncPeer(_peer, true);
         return;
     }

@@ -13,31 +13,16 @@
 
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/** @file Common.h
- * @author Marek Kotewicz <marek@ethdev.com>
- * @date 2015
- */
+*/
 
 #pragma once
 
-#include <string>
-#include <json/json.h>
-#include <libdevcore/Log.h>
-
-#include <boost/filesystem.hpp>
+#include "Log.h"
+#include <boost/program_options/options_description.hpp>
 
 namespace dev
 {
-namespace test
-{
+boost::program_options::options_description createLoggingProgramOptions(
+    unsigned _lineLength, LoggingOptions& _options);
 
-boost::filesystem::path getTestPath();
-int randomNumber();
-Json::Value loadJsonFromFile(boost::filesystem::path const& _path);
-boost::filesystem::path toTestFilePath(std::string const& _filename);
-boost::filesystem::path getRandomPath();
-
-}
-
-}
+}  // namespace dev

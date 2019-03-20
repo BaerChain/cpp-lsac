@@ -19,6 +19,7 @@
 /// EVM Execution tool.
 
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/LoggingProgramOptions.h>
 #include <libdevcore/SHA3.h>
 #include <libethashseal/Ethash.h>
 #include <libethashseal/GenesisInfo.h>
@@ -29,6 +30,8 @@
 #include <libethereum/LastBlockHashesFace.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
+
+#include <eth-buildinfo.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -55,10 +58,9 @@ int64_t maxBlockGasLimit()
 
 void version()
 {
-    cout << "ethvm version " << dev::Version << "\n";
-    cout << "By Gav Wood, 2015.\n";
-    cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE)
-         << "\n";
+    const auto* buildinfo = eth_get_buildinfo();
+    cout << "ethvm " << buildinfo->project_version << "\n";
+    cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
     exit(0);
 }
 
@@ -159,6 +161,10 @@ int main(int argc, char** argv)
     addTraceOption("flat", "Minimal whitespace in the JSON.");
     addTraceOption("mnemonics", "Show instruction mnemonics in the trace (non-standard).\n");
 
+    LoggingOptions loggingOptions;
+    po::options_description loggingProgramOptions(
+        createLoggingProgramOptions(c_lineWidth, loggingOptions));
+
     po::options_description generalOptions("General options", c_lineWidth);
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption("version,v", "Show the version and exit.");
@@ -182,6 +188,7 @@ int main(int argc, char** argv)
     allowedOptions.add(vmProgramOptions(c_lineWidth))
         .add(networkOptions)
         .add(optionsForTrace)
+        .add(loggingProgramOptions)
         .add(generalOptions)
         .add(transactionOptions);
     po::parsed_options parsed =
@@ -191,6 +198,8 @@ int main(int argc, char** argv)
     po::variables_map vm;
     po::store(parsed, vm);
     po::notify(vm);
+
+    setupLogging(loggingOptions);
 
     // handling mode and input file options separately, as they don't have option name
     for (auto const& arg : unrecognisedOptions)
@@ -265,7 +274,6 @@ int main(int argc, char** argv)
         data = fromHex(vm["input"].as<string>());
     if (vm.count("code"))
         code = fromHex(vm["code"].as<string>());
-
 
     // Read code from input file.
     if (!inputFile.empty())

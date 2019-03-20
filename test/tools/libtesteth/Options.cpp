@@ -20,14 +20,18 @@
 
 #include <libevm/VMFactory.h>
 #include <libweb3jsonrpc/Debug.h>
-#include <test/tools/libtesteth/Options.h>
 #include <test/tools/fuzzTesting/fuzzHelper.h>
+#include <test/tools/libtesteth/Options.h>
+#include <boost/iostreams/device/null.hpp>
+#include <boost/iostreams/stream.hpp>
 #include <boost/program_options.hpp>
 
 using namespace std;
 using namespace dev::test;
 using namespace dev::eth;
 
+namespace
+{
 void printHelp()
 {
     cout << "Usage: \n";
@@ -71,6 +75,25 @@ void printHelp()
 void printVersion()
 {
     cout << prepareVersionString() << "\n";
+}
+}
+
+void Options::setVerbosity(int _level)
+{
+    static boost::iostreams::stream<boost::iostreams::null_sink> nullOstream(
+        (boost::iostreams::null_sink()));
+    dev::LoggingOptions logOptions;
+    verbosity = _level;
+    logOptions.verbosity = verbosity;
+    if (_level <= 0)
+    {
+        logOptions.verbosity = VerbositySilent;
+        std::cout.rdbuf(nullOstream.rdbuf());
+        std::cerr.rdbuf(nullOstream.rdbuf());
+    }
+    else if (_level == 1 || _level == 2)
+        logOptions.verbosity = VerbositySilent;
+    dev::setupLogging(logOptions);
 }
 
 Options::Options(int argc, const char** argv)
@@ -144,7 +167,7 @@ Options::Options(int argc, const char** argv)
         {
 #if ETH_VMTRACE
             vmtrace = true;
-            g_logVerbosity = 13;
+            verbosity = VerbosityTrace;
 #else
             cerr << "--vmtrace option requires a build with cmake -DVMTRACE=1\n";
             exit(1);
@@ -206,22 +229,7 @@ Options::Options(int argc, const char** argv)
         else if (arg == "--verbosity")
         {
             throwIfNoArgumentFollows();
-            static std::ostringstream strCout; //static string to redirect logs to
-            std::string indentLevel = std::string{argv[++i]};
-            if (indentLevel == "0")
-            {
-                logVerbosity = Verbosity::None;
-                std::cout.rdbuf(strCout.rdbuf());
-                std::cerr.rdbuf(strCout.rdbuf());
-            }
-            else if (indentLevel == "1")
-                logVerbosity = Verbosity::NiceReport;
-            else
-                logVerbosity = Verbosity::Full;
-
-            int indentLevelInt = atoi(argv[i]);
-            if (indentLevelInt > g_logVerbosity)
-                g_logVerbosity = indentLevelInt;
+            verbosity = std::max(verbosity, atoi(argv[++i]));
         }
         else if (arg == "--options")
         {
@@ -241,8 +249,6 @@ Options::Options(int argc, const char** argv)
             throwIfNoArgumentFollows();
             rCurrentTestSuite = std::string{argv[++i]};
         }
-        else if (arg == "--nonetwork")
-            nonetwork = true;
         else if (arg == "-d")
         {
             throwIfNoArgumentFollows();
@@ -264,7 +270,10 @@ Options::Options(int argc, const char** argv)
             testpath = std::string{argv[++i]};
         }
         else if (arg == "--statediff")
+        {
             statediff = true;
+            verbosity = VerbosityTrace;
+        }
         else if (arg == "--randomcode")
         {
             throwIfNoArgumentFollows();
@@ -316,11 +325,11 @@ Options::Options(int argc, const char** argv)
     //check restrickted options
     if (createRandomTest)
     {
-        if (trValueIndex >= 0 || trGasIndex >= 0 || trDataIndex >= 0 || nonetwork || singleTest
-            || all || stats || filltests || fillchain)
+        if (trValueIndex >= 0 || trGasIndex >= 0 || trDataIndex >= 0 || singleTest || all ||
+            stats || filltests || fillchain)
         {
             cerr << "--createRandomTest cannot be used with any of the options: " <<
-                    "trValueIndex, trGasIndex, trDataIndex, nonetwork, singleTest, all, " <<
+                    "trValueIndex, trGasIndex, trDataIndex, singleTest, all, " <<
                     "stats, filltests, fillchain \n";
             exit(1);
         }
@@ -333,11 +342,8 @@ Options::Options(int argc, const char** argv)
                     "--seed <uint> could be used only with --createRandomTest \n"));
     }
 
-    //Default option
-    if (logVerbosity == Verbosity::NiceReport)
-        g_logVerbosity = -1;    //disable cnote but leave cerr and cout
-
-    setupLogging(g_logVerbosity);
+    // If no verbosity is set. use default
+    setVerbosity(verbosity == -1 ? 1 : verbosity);
 }
 
 Options const& Options::get(int argc, const char** argv)

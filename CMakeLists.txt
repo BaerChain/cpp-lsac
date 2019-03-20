@@ -24,25 +24,18 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
-if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    # The default toolchain file configures compilers and build environment.
-    # This configuration is also used by hunter to build dependencies.
-    # CMake will cache this value, not need to explictly specify CACHE param.
-    set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
-endif()
+include(evmc/cmake/cable/bootstrap.cmake)
+include(CableBuildInfo)
+include(CableBuildType)
+include(CableToolchains)
+include(GNUInstallDirs)
+
+cable_configure_toolchain(DEFAULT cxx11)
 
 set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 
 set(CPP_ETHEREUM_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Path to the root directory for cpp-ethereum")
-
-# set cmake_policies
-include(EthPolicy)
-eth_policy()
-
-if(CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
-endif()
 
 # Map current configuration to configurations of imported targets.
 set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release)
@@ -64,17 +57,21 @@ option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
 
 include(HunterGate)
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.20.9.tar.gz"
-    SHA1 "8f7cf6d719d05c49224a4ebeba90c6bb90b90f4a"
+    URL "https://github.com/ruslo/hunter/archive/v0.21.16.tar.gz"
+    SHA1 "aa1faccd24f33dd2c368f85a4e9ca2e5d9c249cb"
     LOCAL
 )
 
-# project name and version should be set after cmake_policy CMP0048
-project(cpp-ethereum VERSION "1.3.0")
+project(cpp-ethereum)
+set(PROJECT_VERSION 1.4.0.dev0)
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmjit/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 endif()
+
+cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
+
+cable_add_buildinfo_library(PREFIX eth)
 
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY On)
 
@@ -104,6 +101,9 @@ find_package(libjson-rpc-cpp CONFIG REQUIRED)
 
 hunter_add_package(libscrypt)
 find_package(libscrypt CONFIG REQUIRED)
+
+hunter_add_package(ethash)
+find_package(ethash CONFIG REQUIRED)
 
 include(ProjectSecp256k1)
 include(ProjectLibFF)
@@ -160,3 +160,14 @@ if (TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
+
+
+if(WIN32)
+    set(CPACK_GENERATOR ZIP)
+else()
+    set(CPACK_GENERATOR TGZ)
+endif()
+set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_CHECKSUM SHA256)
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
+include(CPack)

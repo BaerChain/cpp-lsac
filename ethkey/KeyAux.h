@@ -22,16 +22,17 @@
  * CLI module for key management.
  */
 
-#include <thread>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/FileSystem.h>
+#include <libdevcore/SHA3.h>
+#include <libethcore/KeyManager.h>
+#include <libethcore/TransactionBase.h>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/trim_all.hpp>
 #include <chrono>
 #include <fstream>
 #include <iosfwd>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/trim_all.hpp>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
-#include <libethcore/KeyManager.h>
-#include <libethcore/TransactionBase.h>
+#include <thread>
 
 using namespace std;
 using namespace dev;
@@ -105,9 +106,9 @@ public:
 		DecodeTx,
 	};
 
-	KeyCLI(OperationMode _mode = OperationMode::None): m_mode(_mode) {}
+    KeyCLI(OperationMode _mode = OperationMode::None) : m_mode(_mode) { m_toSign.creation = true; }
 
-	bool interpretOption(size_t& i, vector<string> const& argv)
+    bool interpretOption(size_t& i, vector<string> const& argv)
 	{
 		size_t argc = argv.size();
 		string arg = argv[i];
