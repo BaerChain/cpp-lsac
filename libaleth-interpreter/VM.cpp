@@ -20,16 +20,11 @@
 
 #include <aleth-buildinfo.h>
 
-extern "C" evmc_instance* evmc_create_interpreter() noexcept
-{
-    return new (std::nothrow) dev::eth::VM;
-}
-
 namespace
 {
 void destroy(evmc_instance* _instance)
 {
-    delete static_cast<dev::eth::VM*>(_instance);
+    (void)_instance;
 }
 
 void delete_output(const evmc_result* result)
@@ -40,7 +35,9 @@ void delete_output(const evmc_result* result)
 evmc_result execute(evmc_instance* _instance, evmc_context* _context, evmc_revision _rev,
     const evmc_message* _msg, uint8_t const* _code, size_t _codeSize) noexcept
 {
-    auto vm = static_cast<dev::eth::VM*>(_instance);
+    (void)_instance;
+    std::unique_ptr<dev::eth::VM> vm{new dev::eth::VM};
+
     evmc_result result = {};
     dev::eth::owning_bytes_ref output;
 
@@ -55,6 +52,14 @@ evmc_result execute(evmc_instance* _instance, evmc_context* _context, evmc_revis
         result.status_code = EVMC_REVERT;
         result.gas_left = vm->m_io_gas;
         output = ex.output();  // This moves the output from the exception!
+    }
+    catch (dev::eth::BadInstruction const&)
+    {
+        result.status_code = EVMC_UNDEFINED_INSTRUCTION;
+    }
+    catch (dev::eth::DisallowedStateChange const&)
+    {
+        result.status_code = EVMC_STATIC_MODE_VIOLATION;
     }
     catch (dev::eth::VMException const&)
     {
@@ -77,6 +82,20 @@ evmc_result execute(evmc_instance* _instance, evmc_context* _context, evmc_revis
 
     return result;
 }
+}  // namespace
+
+extern "C" evmc_instance* evmc_create_interpreter() noexcept
+{
+    // TODO: Allow creating multiple instances with different configurations.
+    static evmc_instance s_instance{
+        EVMC_ABI_VERSION,
+        "interpreter",
+        aleth_get_buildinfo()->project_version,
+        ::destroy,
+        ::execute,
+        nullptr,
+    };
+    return &s_instance;
 }
 
 
@@ -84,28 +103,19 @@ namespace dev
 {
 namespace eth
 {
-VM::VM()
-  : evmc_instance{
-        EVMC_ABI_VERSION,
-        "interpreter",
-        aleth_get_buildinfo()->project_version,
-        ::destroy,
-        ::execute,
-        nullptr,
-    }
-{}
-
 uint64_t VM::memNeed(u256 _offset, u256 _size)
 {
     return toInt63(_size ? u512(_offset) + _size : u512(0));
 }
 
-template <class S> S divWorkaround(S const& _a, S const& _b)
+template <class S>
+S divWorkaround(S const& _a, S const& _b)
 {
     return (S)(s512(_a) / s512(_b));
 }
 
-template <class S> S modWorkaround(S const& _a, S const& _b)
+template <class S>
+S modWorkaround(S const& _a, S const& _b)
 {
     return (S)(s512(_a) % s512(_b));
 }
@@ -270,8 +280,10 @@ void VM::interpretCases()
         CASE(CREATE2)
         {
             ON_OP();
-            // TODO: Bring back support for CREATE2.
-            throwBadInstruction();
+            if (m_rev < EVMC_CONSTANTINOPLE)
+                throwBadInstruction();
+            if (m_message->flags & EVMC_STATIC)
+                throwDisallowedStateChange();
 
             m_bounce = &VM::caseCreate;
         }
@@ -801,93 +813,6 @@ void VM::interpretCases()
         }
         NEXT
 
-#if EIP_615
-        CASE(JUMPTO)
-        {
-            ON_OP();
-            updateIOGas();
-
-            m_PC = decodeJumpDest(m_code.data(), m_PC);
-        }
-        CONTINUE
-
-        CASE(JUMPIF)
-        {
-            ON_OP();
-            updateIOGas();
-
-            if (m_SP[0])
-                m_PC = decodeJumpDest(m_code.data(), m_PC);
-            else
-                ++m_PC;
-        }
-        CONTINUE
-
-        CASE(JUMPV)
-        {
-            ON_OP();
-            updateIOGas();
-            m_PC = decodeJumpvDest(m_code.data(), m_PC, byte(m_SP[0]));
-        }
-        CONTINUE
-
-        CASE(JUMPSUB)
-        {
-            ON_OP();
-            updateIOGas();
-            *m_RP++ = m_PC++;
-            m_PC = decodeJumpDest(m_code.data(), m_PC);
-        }
-        CONTINUE
-
-        CASE(JUMPSUBV)
-        {
-            ON_OP();
-            updateIOGas();
-            *m_RP++ = m_PC;
-            m_PC = decodeJumpvDest(m_code.data(), m_PC, byte(m_SP[0]));
-        }
-        CONTINUE
-
-        CASE(RETURNSUB)
-        {
-            ON_OP();
-            updateIOGas();
-
-            m_PC = *m_RP--;
-        }
-        NEXT
-
-        CASE(BEGINSUB)
-        {
-            ON_OP();
-            updateIOGas();
-        }
-        NEXT
-
-
-        CASE(BEGINDATA)
-        {
-            ON_OP();
-            updateIOGas();
-        }
-        NEXT
-
-        CASE(GETLOCAL)
-        {
-            ON_OP();
-            updateIOGas();
-        }
-        NEXT
-
-        CASE(PUTLOCAL)
-        {
-            ON_OP();
-            updateIOGas();
-        }
-        NEXT
-
-#else
         CASE(JUMPTO)
         CASE(JUMPIF)
         CASE(JUMPV)
@@ -902,320 +827,7 @@ void VM::interpretCases()
             throwBadInstruction();
         }
         CONTINUE
-#endif
 
-#if EIP_616
-
-        CASE(XADD)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xadd(simdType());
-        }
-        CONTINUE
-
-        CASE(XMUL)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xmul(simdType());
-        }
-        CONTINUE
-
-        CASE(XSUB)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xsub(simdType());
-        }
-        CONTINUE
-
-        CASE(XDIV)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xdiv(simdType());
-        }
-        CONTINUE
-
-        CASE(XSDIV)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xsdiv(simdType());
-        }
-        CONTINUE
-
-        CASE(XMOD)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xmod(simdType());
-        }
-        CONTINUE
-
-        CASE(XSMOD)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xsmod(simdType());
-        }
-        CONTINUE
-
-        CASE(XLT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xlt(simdType());
-        }
-        CONTINUE
-
-        CASE(XGT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xgt(simdType());
-        }
-        CONTINUE
-
-        CASE(XSLT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xslt(simdType());
-        }
-        CONTINUE
-
-        CASE(XSGT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xsgt(simdType());
-        }
-        CONTINUE
-
-        CASE(XEQ)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xeq(simdType());
-        }
-        CONTINUE
-
-        CASE(XISZERO)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xzero(simdType());
-        }
-        CONTINUE
-
-        CASE(XAND)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xand(simdType());
-        }
-        CONTINUE
-
-        CASE(XOOR)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xoor(simdType());
-        }
-        CONTINUE
-
-        CASE(XXOR)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xxor(simdType());
-        }
-        CONTINUE
-
-        CASE(XNOT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xnot(simdType());
-        }
-        CONTINUE
-
-        CASE(XSHL)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xshl(simdType());
-        }
-        CONTINUE
-
-        CASE(XSHR)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xshr(simdType());
-        }
-        CONTINUE
-
-        CASE(XSAR)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xsar(simdType());
-        }
-        CONTINUE
-
-        CASE(XROL)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xrol(simdType());
-        }
-        CONTINUE
-
-        CASE(XROR)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xror(simdType());
-        }
-        CONTINUE
-
-        CASE(XMLOAD)
-        {
-            updateMem(toInt63(m_SP[0]) + 32);
-            ON_OP();
-            updateIOGas();
-
-            xmload(simdType());
-        }
-        CONTINUE
-
-        CASE(XMSTORE)
-        {
-            updateMem(toInt63(m_SP[0]) + 32);
-            ON_OP();
-            updateIOGas();
-
-            xmstore(simdType());
-        }
-        CONTINUE
-
-        CASE(XSLOAD)
-        {
-            m_runGas = toInt63(m_schedule->sloadGas);
-            ON_OP();
-            updateIOGas();
-
-            xsload(simdType());
-        }
-        CONTINUE
-
-        CASE(XSSTORE)
-        {
-            if (m_message->flags & EVMC_STATIC)
-                throwDisallowedStateChange();
-
-            updateSSGas();
-            ON_OP();
-            updateIOGas();
-
-            xsstore(simdType());
-        }
-        CONTINUE
-
-        CASE(XVTOWIDE)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xvtowide(simdType());
-        }
-        CONTINUE
-
-        CASE(XWIDETOV)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xwidetov(simdType());
-        }
-        CONTINUE
-
-        CASE(XPUSH)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xpush(simdType());
-        }
-        CONTINUE
-
-        CASE(XPUT)
-        {
-            ON_OP();
-            updateIOGas();
-
-            uint8_t b = ++m_PC;
-            uint8_t c = ++m_PC;
-            xput(m_code[b], m_code[c]);
-            ++m_PC;
-        }
-        CONTINUE
-
-        CASE(XGET)
-        {
-            ON_OP();
-            updateIOGas();
-
-            uint8_t b = ++m_PC;
-            uint8_t c = ++m_PC;
-            xget(m_code[b], m_code[c]);
-            ++m_PC;
-        }
-        CONTINUE
-
-        CASE(XSWIZZLE)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xswizzle(simdType());
-        }
-        CONTINUE
-
-        CASE(XSHUFFLE)
-        {
-            ON_OP();
-            updateIOGas();
-
-            xshuffle(simdType());
-        }
-        CONTINUE
-#else
         CASE(XADD)
         CASE(XMUL)
         CASE(XSUB)
@@ -1253,7 +865,6 @@ void VM::interpretCases()
             throwBadInstruction();
         }
         CONTINUE
-#endif
 
         CASE(ADDRESS)
         {
