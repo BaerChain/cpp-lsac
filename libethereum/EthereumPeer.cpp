@@ -133,13 +133,8 @@ void EthereumPeer::requestStatus(u256 _hostNetworkId, u256 _chainTotalDifficulty
     setAsking(Asking::State);
     m_requireTransactions = true;
     RLPStream s;
-    bool latest = m_peerCapabilityVersion == m_hostProtocolVersion;
-    prep(s, StatusPacket, 5)
-                    << (latest ? m_hostProtocolVersion : EthereumHost::c_oldProtocolVersion)
-                    << _hostNetworkId
-                    << _chainTotalDifficulty
-                    << _chainCurrentHash
-                    << _chainGenesisHash;
+    prep(s, StatusPacket, 5) << m_hostProtocolVersion << _hostNetworkId << _chainTotalDifficulty
+                             << _chainCurrentHash << _chainGenesisHash;
     sealAndSend(s);
 }
 
@@ -147,13 +142,13 @@ void EthereumPeer::requestBlockHeaders(unsigned _startNumber, unsigned _count, u
 {
     if (m_asking != Asking::Nothing)
     {
-        cnetlog << "Asking headers while requesting " << ::toString(m_asking);
+        LOG(m_logger) << "Asking headers while requesting " << ::toString(m_asking);
     }
     setAsking(Asking::BlockHeaders);
     RLPStream s;
     prep(s, GetBlockHeadersPacket, 4) << _startNumber << _count << _skip << (_reverse ? 1 : 0);
-    cnetlog << "Requesting " << _count << " block headers starting from " << _startNumber
-            << (_reverse ? " in reverse" : "");
+    LOG(m_logger) << "Requesting " << _count << " block headers starting from " << _startNumber
+                  << (_reverse ? " in reverse" : "");
     m_lastAskedHeaders = _count;
     sealAndSend(s);
 }
@@ -162,13 +157,13 @@ void EthereumPeer::requestBlockHeaders(h256 const& _startHash, unsigned _count, 
 {
     if (m_asking != Asking::Nothing)
     {
-        cnetlog << "Asking headers while requesting " << ::toString(m_asking);
+        LOG(m_logger) << "Asking headers while requesting " << ::toString(m_asking);
     }
     setAsking(Asking::BlockHeaders);
     RLPStream s;
     prep(s, GetBlockHeadersPacket, 4) << _startHash << _count << _skip << (_reverse ? 1 : 0);
-    cnetlog << "Requesting " << _count << " block headers starting from " << _startHash
-            << (_reverse ? " in reverse" : "");
+    LOG(m_logger) << "Requesting " << _count << " block headers starting from " << _startHash
+                  << (_reverse ? " in reverse" : "");
     m_lastAskedHeaders = _count;
     sealAndSend(s);
 }
@@ -193,7 +188,8 @@ void EthereumPeer::requestByHashes(h256s const& _hashes, Asking _asking, Subprot
 {
     if (m_asking != Asking::Nothing)
     {
-        cnetlog << "Asking " << ::toString(_asking) << " while requesting " << ::toString(m_asking);
+        LOG(m_logger) << "Asking " << ::toString(_asking) << " while requesting "
+                      << ::toString(m_asking);
     }
     setAsking(_asking);
     if (_hashes.size())
@@ -262,8 +258,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
         if (m_peerCapabilityVersion == m_hostProtocolVersion)
             m_protocolVersion = m_hostProtocolVersion;
 
-        cnetlog << "Status: " << m_protocolVersion << " / " << m_networkId << " / " << m_genesisHash
-                << ", TD: " << m_totalDifficulty << " = " << m_latestHash;
+        LOG(m_logger) << "Status: " << m_protocolVersion << " / " << m_networkId << " / "
+                      << m_genesisHash << ", TD: " << m_totalDifficulty << " = " << m_latestHash;
         setIdle();
         observer->onPeerStatus(dynamic_pointer_cast<EthereumPeer>(dynamic_pointer_cast<EthereumPeer>(shared_from_this())));
         break;

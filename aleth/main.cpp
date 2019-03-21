@@ -34,14 +34,12 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LoggingProgramOptions.h>
-#include <libethashseal/EthashAux.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/SnapshotImporter.h>
 #include <libethereum/SnapshotStorage.h>
-#include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libwebthree/WebThree.h>
 
@@ -62,7 +60,7 @@
 #include "MinerAux.h"
 #include "AccountManager.h"
 
-#include <eth-buildinfo.h>
+#include <aleth-buildinfo.h>
 
 using namespace std;
 using namespace dev;
@@ -77,19 +75,10 @@ namespace
 std::atomic<bool> g_silence = {false};
 unsigned const c_lineWidth = 160;
 
-string ethCredits(bool _interactive = false)
-{
-    std::ostringstream cout;
-    if (_interactive)
-        cout
-            << "Type 'exit' to quit\n\n";
-    return credits() + cout.str();
-}
-
 void version()
 {
-    const auto* buildinfo = eth_get_buildinfo();
-    cout << "eth " << buildinfo->project_version << "\n";
+    const auto* buildinfo = aleth_get_buildinfo();
+    cout << "aleth " << buildinfo->project_version << "\n";
     cout << "eth network protocol version: " << dev::eth::c_protocolVersion << "\n";
     cout << "Client database version: " << dev::eth::c_databaseVersion << "\n";
     cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
@@ -761,9 +750,9 @@ int main(int argc, char** argv)
     if (vm.count("help"))
     {
         cout << "NAME:\n"
-             << credits() << '\n'
+             << "   aleth " << Version << '\n'
              << "USAGE:\n"
-             << "   eth [options]\n\n"
+             << "   aleth [options]\n\n"
              << "WALLET USAGE:\n";
         AccountManager::streamAccountHelp(cout);
         AccountManager::streamWalletHelp(cout);
@@ -803,7 +792,7 @@ int main(int argc, char** argv)
         chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
 
     if (loggingOptions.verbosity > 0)
-        cout << EthGrayBold "cpp-ethereum, a C++ Ethereum client" EthReset << "\n";
+        cout << EthGrayBold "aleth, a C++ Ethereum client" EthReset << "\n";
 
     m.execute();
 
@@ -858,12 +847,9 @@ int main(int argc, char** argv)
     auto caps = set<string>{"eth"};
 
     if (testingMode)
-    {
-        chainParams.sealEngineName = "NoProof";
         chainParams.allowFutureBlocks = true;
-    }
 
-    dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("eth"), getDataDir(),
+    dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), getDataDir(),
         snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
         netPrefs, &nodesState, testingMode);
 
@@ -999,7 +985,7 @@ int main(int argc, char** argv)
         keyManager.import(s, "Imported key (UNSAFE)");
     }
 
-    cout << ethCredits();
+    cout << "aleth " << Version << "\n";
 
     if (mode == OperationMode::ImportSnapshot)
     {
@@ -1029,7 +1015,6 @@ int main(int argc, char** argv)
     if (c)
     {
         c->setGasPricer(gasPricer);
-        DEV_IGNORE_EXCEPTIONS(asEthashClient(c)->setShouldPrecomputeDAG(m.shouldPrecompute()));
         c->setSealer(m.minerType());
         c->setAuthor(author);
         if (networkID != NoNetworkID)

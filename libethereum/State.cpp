@@ -38,21 +38,6 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-namespace
-{
-
-/// @returns true when normally halted; false when exceptionally halted.
-bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
-{
-    _e.initialize(_t);
-
-    if (!_e.execute())
-        _e.go(_onOp);
-    return _e.finalize();
-}
-
-}
-
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs):
     m_db(_db),
     m_state(&m_db),
@@ -611,15 +596,9 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 
     auto onOp = _onOp;
 #if ETH_VMTRACE
-	// Run the existing onOp function and the tracer
-	onOp = [&_onOp, &e](uint64_t _steps, uint64_t PC, Instruction inst, bigint
-			newMemSize, bigint gasCost, bigint gas, VMFace const* _vm,
-			ExtVMFace const* voidExt) {
-		_onOp(_steps, PC, inst, newMemSize, gasCost, gas, _vm, voidExt);
-		e.simpleTrace();
-	};
+    if (!onOp)
+        onOp = e.simpleTrace();
 #endif
-
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);
 
@@ -654,6 +633,26 @@ void State::executeBlockTransactions(Block const& _block, unsigned _txCount, Las
         executeTransaction(e, _block.pending()[i], OnOpFunc());
 
         gasUsed += e.gasUsed();
+    }
+}
+
+/// @returns true when normally halted; false when exceptionally halted; throws when internal VM
+/// exception occurred.
+bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
+{
+    size_t const savept = savepoint();
+    try
+    {
+        _e.initialize(_t);
+
+        if (!_e.execute())
+            _e.go(_onOp);
+        return _e.finalize();
+    }
+    catch (Exception const&)
+    {
+        rollback(savept);
+        throw;
     }
 }
 

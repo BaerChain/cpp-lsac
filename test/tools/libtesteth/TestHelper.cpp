@@ -43,29 +43,24 @@ namespace dev
 {
 namespace eth
 {
-
-void mine(Client& c, int numBlocks)
+void mine(Client& _c, int _numBlocks)
 {
-    auto startBlock = c.blockChain().details().number;
+    int sealedBlocks = 0;
+    auto sealHandler = _c.setOnBlockSealed([_numBlocks, &sealedBlocks, &_c](bytes const&) {
+        if (++sealedBlocks == _numBlocks)
+            _c.stopSealing();
+    });
 
-    c.startSealing();
-    while (c.blockChain().details().number < startBlock + numBlocks)
-        this_thread::sleep_for(chrono::milliseconds(100));
-    c.stopSealing();
-}
+    int importedBlocks = 0;
+    std::promise<void> allBlocksImported;
+    auto importHandler =
+        _c.setOnBlockImport([_numBlocks, &importedBlocks, &allBlocksImported](BlockHeader const&) {
+            if (++importedBlocks == _numBlocks)
+                allBlocksImported.set_value();
+        });
 
-void connectClients(Client& c1, Client& c2)
-{
-    (void)c1;
-    (void)c2;
-// TODO: Move to WebThree. eth::Client no longer handles networking.
-#if 0
-	short c1Port = 20000;
-	short c2Port = 21000;
-	c1.startNetwork(c1Port);
-	c2.startNetwork(c2Port);
-	c2.connect("127.0.0.1", c1Port);
-#endif
+    _c.startSealing();
+    allBlocksImported.get_future().wait();
 }
 
 void mine(Block& s, BlockChain const& _bc, SealEngineFace* _sealer)

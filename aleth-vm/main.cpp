@@ -28,10 +28,9 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/Executive.h>
 #include <libethereum/LastBlockHashesFace.h>
-#include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 
-#include <eth-buildinfo.h>
+#include <aleth-buildinfo.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -58,8 +57,8 @@ int64_t maxBlockGasLimit()
 
 void version()
 {
-    const auto* buildinfo = eth_get_buildinfo();
-    cout << "ethvm " << buildinfo->project_version << "\n";
+    const auto* buildinfo = aleth_get_buildinfo();
+    cout << "aleth-vm " << buildinfo->project_version << "\n";
     cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
     exit(0);
 }

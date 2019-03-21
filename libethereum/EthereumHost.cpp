@@ -38,7 +38,6 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
-unsigned const EthereumHost::c_oldProtocolVersion = 62; //TODO: remove this once v63+ is common
 static unsigned const c_maxSendTransactions = 256;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"NotSynced", "Idle", "Waiting", "Blocks", "State"};
@@ -367,14 +366,15 @@ private:
 
 }
 
-EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
-    HostCapability<EthereumPeer>(),
-    Worker		("ethsync"),
-    m_chain		(_ch),
+EthereumHost::EthereumHost(Host const& _host, BlockChain const& _ch, OverlayDB const& _db,
+    TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId)
+  : HostCapability<EthereumPeer>(_host),
+    Worker("ethsync"),
+    m_chain(_ch),
     m_db(_db),
-    m_tq		(_tq),
-    m_bq		(_bq),
-    m_networkId	(_networkId),
+    m_tq(_tq),
+    m_bq(_bq),
+    m_networkId(_networkId),
     m_hostData(make_shared<EthereumHostData>(m_chain, m_db))
 {
     // TODO: Composition would be better. Left like that to avoid initialization
@@ -505,12 +505,6 @@ void EthereumHost::foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)
     for (auto s: sessions)
         if (!_f(capabilityFromSession<EthereumPeer>(*s.first)))
             return;
-
-    sessions = peerSessions(c_oldProtocolVersion); //TODO: remove once v61+ is common
-    std::sort(sessions.begin(), sessions.end(), sessionLess);
-    for (auto s: sessions)
-        if (!_f(capabilityFromSession<EthereumPeer>(*s.first, c_oldProtocolVersion)))
-            return;
 }
 
 tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<SessionFace>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
@@ -604,13 +598,11 @@ SyncStatus EthereumHost::status() const
 
 void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId)
 {
-    auto session = host()->peerSession(_nodeId);
+    auto session = peerSession(_nodeId);
     if (!session)
         return;
 
     std::shared_ptr<EthereumPeer> peer = capabilityFromSession<EthereumPeer>(*session);
-    if (!peer)
-        peer = capabilityFromSession<EthereumPeer>(*session, c_oldProtocolVersion);
     if (!peer)
         return;
 

@@ -209,24 +209,32 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
     std::shared_ptr<SessionFace> session = _peer->session();
     if (!session)
         return; // Expired
+    char const* disconnectReason = nullptr;
     if (_peer->m_genesisHash != host().chain().genesisHash())
-        _peer->disable("Invalid genesis hash");
-    else if (_peer->m_protocolVersion != host().protocolVersion() && _peer->m_protocolVersion != EthereumHost::c_oldProtocolVersion)
-        _peer->disable("Invalid protocol version.");
+        disconnectReason = "Invalid genesis hash.";
+    else if (_peer->m_protocolVersion != host().protocolVersion())
+        disconnectReason = "Invalid protocol version.";
     else if (_peer->m_networkId != host().networkId())
-        _peer->disable("Invalid network identifier.");
+        disconnectReason = "Invalid network identifier.";
     else if (session->info().clientVersion.find("/v0.7.0/") != string::npos)
-        _peer->disable("Blacklisted client version.");
+        disconnectReason = "Blacklisted client version.";
     else if (host().isBanned(session->id()))
-        _peer->disable("Peer banned for previous bad behaviour.");
+        disconnectReason = "Peer banned for previous bad behaviour.";
     else if (_peer->m_asking != Asking::State && _peer->m_asking != Asking::Nothing)
-        _peer->disable("Peer banned for unexpected status message.");
-    else
+        disconnectReason = "Peer banned for unexpected status message.";
+
+    if (disconnectReason)
     {
-        // Before starting to exchange the data with the node, let's verify that it's on our chain
-        if (!requestDaoForkBlockHeader(_peer))
-            // DAO challenge not needed
-            syncPeer(_peer, true); 
+        LOG(m_logger) << "Peer not suitable for sync: " << disconnectReason;
+        _peer->disconnect();
+        return;
+    }
+
+    // Before starting to exchange the data with the node, let's verify that it's on our chain
+    if (!requestDaoForkBlockHeader(_peer))
+    {
+        // DAO challenge not needed
+        syncPeer(_peer, false);
     }
 }
 
@@ -492,12 +500,12 @@ void BlockChainSync::onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP
         }
         if (haveItem(m_headers, blockNumber))
         {
-            LOG(m_logger) << "Skipping header " << blockNumber;
+            LOG(m_logger) << "Skipping header " << blockNumber << " (already downloaded)";
             continue;
         }
         if (blockNumber <= m_lastImportedBlock && m_haveCommonHeader)
         {
-            LOG(m_logger) << "Skipping header " << blockNumber;
+            LOG(m_logger) << "Skipping header " << blockNumber << " (already imported)";
             continue;
         }
         if (blockNumber > m_highestBlock)
@@ -675,7 +683,12 @@ void BlockChainSync::collectBlocks()
             }
             break;
         case ImportResult::Malformed:
+            LOG(m_logger) << "Malformed block #" << headers.first + i << ". Restarting sync.";
+            restartSync();
+            return;
         case ImportResult::BadChain:
+            LOG(m_logger) << "Block from the bad chain, block #" << headers.first + i
+                          << ". Restarting sync.";
             restartSync();
             return;
 
@@ -689,6 +702,10 @@ void BlockChainSync::collectBlocks()
         case ImportResult::UnknownParent:
             if (headers.first + i > m_lastImportedBlock)
             {
+                logImported(success, future, got, unknown);
+                LOG(m_logger)
+                    << "Already known or future time & unknown parent or unknown parent, block #"
+                    << headers.first + i << ". Resetting sync.";
                 resetSync();
                 m_haveCommonHeader = false; // fork detected, search for common header again
             }
@@ -698,8 +715,7 @@ void BlockChainSync::collectBlocks()
         }
     }
 
-    LOG(m_logger) << dec << success << "imported OK, " << unknown << " with unknown parents, "
-                  << future << " with future timestamps, " << got << " already known received.";
+    logImported(success, future, got, unknown);
 
     if (host().bq().unknownFull())
     {
@@ -729,6 +745,13 @@ void BlockChainSync::collectBlocks()
     DEV_INVARIANT_CHECK_HERE;
 }
 
+void BlockChainSync::logImported(
+    unsigned _success, unsigned _future, unsigned _got, unsigned _unknown)
+{
+    LOG(m_logger) << dec << _success << " imported OK, " << _unknown << " with unknown parents, "
+                  << _future << " with future timestamps, " << _got << " already known received.";
+}
+
 void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
     RecursiveGuard l(x_sync);
@@ -747,6 +770,9 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
     if (blockNumber > (m_lastImportedBlock + 1))
     {
         LOG(m_loggerDetail) << "Received unknown new block";
+        // Update the hash of highest known block of the peer.
+        // syncPeer will then request the highest block header to properly restart syncing
+        _peer->m_latestHash = h;
         syncPeer(_peer, true);
         return;
     }

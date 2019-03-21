@@ -39,6 +39,7 @@ using errinfo_target = boost::error_info<struct tag_target, h256>;
 using errinfo_seedHash = boost::error_info<struct tag_seedHash, h256>;
 using errinfo_mixHash = boost::error_info<struct tag_mixHash, h256>;
 using errinfo_ethashResult = boost::error_info<struct tag_ethashResult, std::tuple<h256, h256>>;
+using errinfo_importResult = boost::error_info<struct tag_importResult, ImportResult>;
 using BadFieldError = boost::tuple<errinfo_field, errinfo_data>;
 
 DEV_SIMPLE_EXCEPTION(OutOfGasBase);
@@ -78,9 +79,14 @@ DEV_SIMPLE_EXCEPTION(InvalidNumber);
 DEV_SIMPLE_EXCEPTION(InvalidZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(InvalidTransactionReceiptFormat);
 DEV_SIMPLE_EXCEPTION(TransactionReceiptVersionError);
+DEV_SIMPLE_EXCEPTION(PendingTransactionAlreadyExists);
+DEV_SIMPLE_EXCEPTION(TransactionAlreadyInChain);
 DEV_SIMPLE_EXCEPTION(BlockNotFound);
 DEV_SIMPLE_EXCEPTION(UnknownParent);
 DEV_SIMPLE_EXCEPTION(AddressAlreadyUsed);
+DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
+DEV_SIMPLE_EXCEPTION(UnknownTransactionValidationError);
+DEV_SIMPLE_EXCEPTION(UnknownError);
 
 DEV_SIMPLE_EXCEPTION(DatabaseAlreadyOpen);
 DEV_SIMPLE_EXCEPTION(DAGCreationFailure);

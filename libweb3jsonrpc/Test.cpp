@@ -45,22 +45,25 @@ string logEntriesToLogHash(eth::LogEntries const& _logs)
         l.streamRLP(s);
     return toJS(sha3(s.out()));
 }
+
+h256 stringToHash(string const& _hashString)
+{
+    try
+    {
+        return h256(_hashString);
+    }
+    catch (BadHexCharacter const&)
+    {
+        throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
+    }
+}
 }
 
 string Test::test_getLogHash(string const& _txHash)
 {
     try
     {
-        h256 txHash;
-        try
-        {
-            txHash = h256(_txHash);
-        }
-        catch (BadHexCharacter const&)
-        {
-            throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
-        }
-
+        h256 txHash = stringToHash(_txHash);
         if (m_eth.blockChain().isKnownTransaction(txHash))
         {
             LocalisedTransaction t = m_eth.localisedTransaction(txHash);
@@ -73,7 +76,7 @@ string Test::test_getLogHash(string const& _txHash)
     catch (std::exception const& ex)
     {
         cwarn << ex.what();
-        throw JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR);
+        throw JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR, ex.what());
     }
 }
 
@@ -85,13 +88,13 @@ bool Test::test_setChainParams(Json::Value const& param1)
         std::string output = fastWriter.write(param1);
         asClientTest(m_eth).setChainParams(output);
         asClientTest(m_eth).completeSync();  // set sync state to idle for mining
+        return true;
     }
-    catch (std::exception const&)
+    catch (std::exception const& ex)
     {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR));
+        cwarn << ex.what();
+        throw JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR, ex.what());
     }
-
-    return true;
 }
 
 bool Test::test_mineBlocks(int _number)
@@ -122,19 +125,6 @@ bool Test::test_modifyTimestamp(int _timestamp)
     return true;
 }
 
-bool Test::test_addBlock(std::string const& _rlp)
-{
-    try
-    {
-        asClientTest(m_eth).addBlock(_rlp);
-    }
-    catch (std::exception const&)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR));
-    }
-    return true;
-}
-
 bool Test::test_rewindToBlock(int _number)
 {
     try
@@ -147,4 +137,17 @@ bool Test::test_rewindToBlock(int _number)
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR));
     }
     return true;
+}
+
+std::string Test::test_importRawBlock(string const& _blockRLP)
+{
+    try
+    {
+        ClientTest& client = asClientTest(m_eth);
+        return toJS(client.importRawBlock(_blockRLP));
+    }
+    catch (std::exception const& ex)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR, ex.what()));
+    }
 }
