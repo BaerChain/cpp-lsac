@@ -25,6 +25,7 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/GenesisInfo.h>
 #include <libethereum/TransactionQueue.h>
+#include <libethereum/ValidationSchemes.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 #include <test/tools/libtesteth/TestHelper.h>
 using namespace std;
@@ -106,6 +107,12 @@ void TestBlock::initBlockFromJsonHeader(mObject const& _blockHeader, mObject con
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState(state);
+
+    for (auto const& account : state)
+    {
+        auto const& accountJson = account.second.get_obj();
+        validation::validateAccountObj(accountJson);
+    }
     m_accountMap = jsonToAccountMap(json_spirit::write_string(json_spirit::mValue(state), false));
 
     m_blockHeader =
@@ -513,7 +520,7 @@ bool TestBlockChain::addBlock(TestBlock const& _block)
             m_blockChain.get()->import(_block.bytes(), m_genesisBlock.state().db());
             break;
         }
-        catch (FutureTime)
+        catch (FutureTime const&)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             break;

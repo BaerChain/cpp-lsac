@@ -23,10 +23,11 @@
 #include "TestOutputHelper.h"
 #include "wast2wasm.h"
 
+#include <libdevcore/JsonUtils.h>
 #include <libethashseal/EthashCPUMiner.h>
 #include <libethereum/Client.h>
 
-#include <eth-buildinfo.h>
+#include <aleth-buildinfo.h>
 
 #include <yaml-cpp/yaml.h>
 #include <boost/algorithm/string/trim.hpp>
@@ -581,29 +582,6 @@ void checkCallCreates(
     }
 }
 
-string jsonTypeAsString(json_spirit::Value_type _type)
-{
-    switch (_type)
-    {
-    case json_spirit::obj_type:
-        return "json Object";
-    case json_spirit::array_type:
-        return "json Array";
-    case json_spirit::str_type:
-        return "json String";
-    case json_spirit::bool_type:
-        return "json Bool";
-    case json_spirit::int_type:
-        return "json Int";
-    case json_spirit::real_type:
-        return "json Real";
-    case json_spirit::null_type:
-        return "json Null";
-    default:
-        return "json n/a";
-    }
-}
-
 void requireJsonFields(json_spirit::mObject const& _o, string const& _section,
     map<string, json_spirit::Value_type> const& _validationMap)
 {
@@ -625,7 +603,7 @@ void requireJsonFields(json_spirit::mObject const& _o, string const& _section,
 
 string prepareVersionString()
 {
-    return string{"testeth "} + eth_get_buildinfo()->project_version;
+    return string{"testeth "} + aleth_get_buildinfo()->project_version;
 }
 
 string prepareLLLCVersionString()

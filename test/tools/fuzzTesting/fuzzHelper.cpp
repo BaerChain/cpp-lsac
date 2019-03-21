@@ -245,7 +245,7 @@ bool isOpcodeDefined(uint8_t _opcode)
 {
 	eth::Instruction inst = (eth::Instruction) _opcode;
 	eth::InstructionInfo info = eth::instructionInfo(inst);
-	return (info.gasPriceTier != dev::eth::Tier::Invalid && !info.name.empty()
+	return (info.gasPriceTier != dev::eth::Tier::Invalid && info.name != nullptr
 		&& std::find(invalidOpcodes.begin(), invalidOpcodes.end(), inst) == invalidOpcodes.end());
 }
 
@@ -280,7 +280,7 @@ std::string RandomCodeBase::generate(int _maxOpNumber, RandomCodeOptions const& 
 			opcode = makeOpcodeDefined(opcode);
 			eth::Instruction inst = (eth::Instruction) opcode;
 			eth::InstructionInfo info = eth::instructionInfo(inst);
-			if (info.name.find("PUSH") != std::string::npos)
+			if (std::string{info.name}.find("PUSH") != std::string::npos)
 			{
 				code += toCompactHex(opcode);
 				code += fillArguments(inst, _options);
@@ -618,26 +618,5 @@ int RandomCodeOptions::getWeightedRandomOpcode() const
 	return RandomCode::get().weightedOpcode(weights);
 }
 
-BOOST_FIXTURE_TEST_SUITE(RandomCodeTests, TestOutputHelperFixture)
-
-BOOST_AUTO_TEST_CASE(rndStateTest)
-{
-	try
-	{
-		//Mac os bug is here
-		test::StateTestSuite suite;
-		test::RandomCodeOptions options;
-		test::TestOutputHelper::get().setCurrentTestFile(std::string());
-		std::string test = test::RandomCode::get().fillRandomTest(suite, c_testExampleStateTest, options);
-		BOOST_REQUIRE(!test.empty());
-	}
-	catch(dev::Exception const& _e)
-	{
-		BOOST_ERROR("Exception thrown when generating random code! " + diagnostic_information(_e));
-	}
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-}
-}
+}  // namespace test
+}  // namespace dev

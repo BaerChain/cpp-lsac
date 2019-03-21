@@ -396,7 +396,7 @@ void Client::syncBlockQueue()
     if (count)
     {
         LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                      << (count / elapsed) << "blocks/s) in #" << bc().number();
+                      << (count / elapsed) << " blocks/s) in #" << bc().number();
     }
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
@@ -844,6 +844,10 @@ pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Sec
 {
     prepareForTransaction();
 
+    // Default gas value meets the intrinsic gas requirements of both
+    // send value and create contract transactions and is the same default
+    // value used by geth and testrpc.
+    const u256 defaultTransactionGas = 90000;
     TransactionSkeleton ts(_t);
     ts.from = toAddress(_secret);
     if (_t.nonce == Invalid256)
@@ -851,7 +855,7 @@ pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Sec
     if (ts.gasPrice == Invalid256)
         ts.gasPrice = gasBidPrice();
     if (ts.gas == Invalid256)
-        ts.gas = min<u256>(gasLimitRemaining() / 5, balanceAt(ts.from) / ts.gasPrice);
+        ts.gas = defaultTransactionGas;
 
     Transaction t(ts, _secret);
     m_tq.import(t.rlp());
@@ -865,7 +869,7 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
     ExecutionResult ret;
     try
     {
-        Block temp = block(_blockNumber);
+        Block temp = blockByNumber(_blockNumber);
         u256 nonce = max<u256>(temp.transactionsFrom(_from), m_tq.maxNonce(_from));
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;

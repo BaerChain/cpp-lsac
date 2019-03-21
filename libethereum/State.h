@@ -176,6 +176,8 @@ public:
         RemoveEmptyAccounts
     };
 
+    using AddressMap = std::map<h256, Address>;
+
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
 
@@ -206,6 +208,10 @@ public:
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds or minutes at a time.
     /// @throws InterfaceNotSupported if compiled without ETH_FATDB.
     std::unordered_map<Address, u256> addresses() const;
+
+    /// @returns the map with maximum _maxResults elements containing hash->addresses and the next
+    /// address hash. This method faster then addresses() const;
+    std::pair<AddressMap, h256> addresses(h256 const& _begin, size_t _maxResults) const;
 
     /// Execute a given transaction.
     /// This will change the state accordingly.

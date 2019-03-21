@@ -234,6 +234,59 @@ unordered_map<Address, u256> State::addresses() const
 #endif
 }
 
+std::pair<State::AddressMap, h256> State::addresses(
+    h256 const& _beginHash, size_t _maxResults) const
+{
+    AddressMap addresses;
+    h256 nextKey;
+
+    for (auto it = m_state.hashedLowerBound(_beginHash); it != m_state.hashedEnd(); ++it)
+    {
+        auto const address = Address(it.key());
+        auto const itCachedAddress = m_cache.find(address);
+
+        // skip if deleted in cache
+        if (itCachedAddress != m_cache.end() && itCachedAddress->second.isDirty() &&
+            !itCachedAddress->second.isAlive())
+            continue;
+
+        // break when _maxResults fetched
+        if (addresses.size() == _maxResults)
+        {
+            nextKey = h256((*it).first);
+            break;
+        }
+
+        h256 const hashedAddress((*it).first);
+        addresses[hashedAddress] = address;
+    }
+
+    // get addresses from cache with hash >= _beginHash (both new and old touched, we can't
+    // distinguish them) and order by hash
+    AddressMap cacheAddresses;
+    for (auto const& addressAndAccount : m_cache)
+    {
+        auto const& address = addressAndAccount.first;
+        auto const addressHash = sha3(address);
+        auto const& account = addressAndAccount.second;
+        if (account.isDirty() && account.isAlive() && addressHash >= _beginHash)
+            cacheAddresses.emplace(addressHash, address);
+    }
+
+    // merge addresses from DB and addresses from cache
+    addresses.insert(cacheAddresses.begin(), cacheAddresses.end());
+
+    // if some new accounts were created in cache we need to return fewer results
+    if (addresses.size() > _maxResults)
+    {
+        auto itEnd = std::next(addresses.begin(), _maxResults);
+        nextKey = itEnd->first;
+        addresses.erase(itEnd, addresses.end());
+    }
+
+    return {addresses, nextKey};
+}
+
 void State::setRoot(h256 const& _r)
 {
     m_cache.clear();
@@ -558,7 +611,13 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 
     auto onOp = _onOp;
 #if ETH_VMTRACE
-    onOp = e.simpleTrace();  // override tracer
+	// Run the existing onOp function and the tracer
+	onOp = [&_onOp, &e](uint64_t _steps, uint64_t PC, Instruction inst, bigint
+			newMemSize, bigint gasCost, bigint gas, VMFace const* _vm,
+			ExtVMFace const* voidExt) {
+		_onOp(_steps, PC, inst, newMemSize, gasCost, gas, _vm, voidExt);
+		e.simpleTrace();
+	};
 #endif
 
     u256 const startGasUsed = _envInfo.gasUsed();
