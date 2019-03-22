@@ -23,7 +23,7 @@
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/Ethash.h>
 
-#include <aleth-buildinfo.h>
+#include <aleth/buildinfo.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
@@ -39,7 +39,7 @@ static_assert(BOOST_VERSION >= 106400, "Wrong boost headers version");
 WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
     boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
     eth::ChainParams const& _params, WithExisting _we, std::set<std::string> const& _interfaces,
-    NetworkPreferences const& _n, bytesConstRef _network, bool _testing)
+    NetworkConfig const& _n, bytesConstRef _network, bool _testing)
   : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network)
 {
     if (_dbPath.size())
@@ -96,17 +96,17 @@ std::string WebThreeDirect::composeClientVersion(std::string const& _client)
            buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
 }
 
-p2p::NetworkPreferences const& WebThreeDirect::networkPreferences() const
+p2p::NetworkConfig const& WebThreeDirect::networkConfig() const
 {
-    return m_net.networkPreferences();
+    return m_net.networkConfig();
 }
 
-void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
+void WebThreeDirect::setNetworkConfig(p2p::NetworkConfig const& _n, bool _dropPeers)
 {
     auto had = isNetworkStarted();
     if (had)
         stopNetwork();
-    m_net.setNetworkPreferences(_n, _dropPeers);
+    m_net.setNetworkConfig(_n, _dropPeers);
     if (had)
         startNetwork();
 }

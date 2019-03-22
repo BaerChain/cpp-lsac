@@ -20,7 +20,7 @@
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libethcore/KeyManager.h>
 
-#include <eth-buildinfo.h>
+#include <aleth/buildinfo.h>
 
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -37,8 +37,8 @@ namespace po = boost::program_options;
 
 void version()
 {
-    const auto* buildinfo = eth_get_buildinfo();
-    cout << "ethkey " << buildinfo->project_version << "\nBuild: " << buildinfo->system_name << "/"
+    const auto* buildinfo = aleth_get_buildinfo();
+    cout << "aleth-key " << buildinfo->project_version << "\nBuild: " << buildinfo->system_name << "/"
          << buildinfo->build_type << endl;
     exit(0);
 }
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     if (vm.count("help"))
     {
         cout
-            << "Usage ethkey [OPTIONS]" << endl
+            << "Usage aleth-key [OPTIONS]" << endl
             << "Options:" << endl << endl;
         KeyCLI::streamHelp(cout);
         cout << allowedOptions;
