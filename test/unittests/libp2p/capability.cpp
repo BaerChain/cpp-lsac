@@ -25,7 +25,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Common.h>
 #include <libp2p/Host.h>
 #include <libp2p/Session.h>
-#include <libp2p/Capability.h>
+#include <libp2p/PeerCapability.h>
 #include <libp2p/HostCapability.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/Options.h>
@@ -41,11 +41,13 @@ struct P2PFixture: public TestOutputHelperFixture
     ~P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
 };
 
-class TestCapability: public Capability
+class TestCapability : public PeerCapability
 {
 public:
-    TestCapability(std::shared_ptr<SessionFace> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
-    virtual ~TestCapability() {}
+    TestCapability(weak_ptr<SessionFace> _s, std::string const& _name,
+        unsigned _messageCount, unsigned _idOffset, CapDesc const&)
+      : PeerCapability(move(_s), _name, _messageCount, _idOffset), m_cntReceivedMessages(0), m_testSum(0)
+    {}
     int countReceivedMessages() { return m_cntReceivedMessages; }
     int testSum() { return m_testSum; }
     static std::string name() { return "test"; }
@@ -54,13 +56,13 @@ public:
     void sendTestMessage(int _i) { RLPStream s; sealAndSend(prep(s, UserPacket, 1) << _i); }
 
 protected:
-    virtual bool interpret(unsigned _id, RLP const& _r) override;
+    bool interpretCapabilityPacket(unsigned _id, RLP const& _r) override;
 
     int m_cntReceivedMessages;
     int m_testSum;
 };
 
-bool TestCapability::interpret(unsigned _id, RLP const& _r) 
+bool TestCapability::interpretCapabilityPacket(unsigned _id, RLP const& _r)
 {
     //cnote << "Capability::interpret(): custom message received";
     ++m_cntReceivedMessages;
@@ -107,8 +109,8 @@ BOOST_AUTO_TEST_CASE(capability)
 
     int const step = 10;
     const char* const localhost = "127.0.0.1";
-    NetworkPreferences prefs1(localhost, 0, false);
-    NetworkPreferences prefs2(localhost, 0, false);
+    NetworkConfig prefs1(localhost, 0, false);
+    NetworkConfig prefs2(localhost, 0, false);
     Host host1("Test", prefs1);
     Host host2("Test", prefs2);
     auto thc1 = make_shared<TestHostCapability>(host1);

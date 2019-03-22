@@ -123,7 +123,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture
 {
     JsonRpcFixture()
     {
-        dev::p2p::NetworkPreferences nprefs;
+        dev::p2p::NetworkConfig nprefs;
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -162,7 +162,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture
         rpcServer->addConnector(ipcServer);
         ipcServer->StartListening();
 
-        auto client = new TestIpcClient{*ipcServer};
+        client = unique_ptr<TestIpcClient>(new TestIpcClient{*ipcServer});
         rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*client));
     }
 
@@ -187,6 +187,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture
     std::shared_ptr<eth::TrivialGasPricer> gasPricer;
     KeyManager keyManager{KeyManager::defaultPath(), SecretStore::defaultPath()};
     unique_ptr<ModularServer<>> rpcServer;
+    unique_ptr<TestIpcClient> client;
     unique_ptr<WebThreeStubClient> rpcClient;
     std::string adminSession;
 };
@@ -548,7 +549,7 @@ BOOST_AUTO_TEST_CASE(contract_storage)
      // }
 
 
-    string compiled =
+    const string compiled =
         "6080604052341561000f57600080fd5b60c28061001d6000396000f3006"
         "08060405260043610603f576000357c0100000000000000000000000000"
         "000000000000000000000000000000900463ffffffff16806315b2eec31"
@@ -557,6 +558,8 @@ BOOST_AUTO_TEST_CASE(contract_storage)
         "0200191505060405180910390f35b600081600081905550600190509190"
         "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
         "5ee8909b83094a3f856b9051274500029";
+
+    const string runtimeCode = compiled.substr(58);
 
     Json::Value create;
     create["code"] = compiled;
@@ -574,6 +577,18 @@ BOOST_AUTO_TEST_CASE(contract_storage)
 
     string storage = rpcClient->eth_getStorageAt(contractAddress, "0", "latest");
     BOOST_CHECK_EQUAL(storage, "0x0000000000000000000000000000000000000000000000000000000000000003");
+
+    auto code = rpcClient->eth_getCode(contractAddress, "latest");
+    BOOST_CHECK_EQUAL(code, "0x" + runtimeCode);
+}
+
+BOOST_AUTO_TEST_CASE(eth_getCode_emptyAccount)
+{
+    auto code = rpcClient->eth_getCode(toJS(coinbase.address()), "latest");
+    BOOST_CHECK_EQUAL(code, "");
+
+    code = rpcClient->eth_getCode("0xaabbccddeeff0000000011223344556677889900", "pending");
+    BOOST_CHECK_EQUAL(code, "");
 }
 
 BOOST_AUTO_TEST_CASE(web3_sha3)
@@ -653,6 +668,57 @@ BOOST_AUTO_TEST_CASE(debugStorageRangeAtFinalBlockState)
     BOOST_CHECK(!result["storage"][keyHash].empty());
     BOOST_CHECK_EQUAL(result["storage"][keyHash]["key"].asString(), "0x00");
     BOOST_CHECK_EQUAL(result["storage"][keyHash]["value"].asString(), "0x07");
+}
+
+BOOST_AUTO_TEST_CASE(debugTraceTransaction)
+{
+    // mine to get some balance at coinbase
+    dev::eth::mine(*(web3->ethereum()), 1);
+
+    // send some transaction requiring execution
+    string initCode =
+        "608060405260076000553415601357600080fd5b60358060206000396000"
+        "f3006080604052600080fd00a165627a7a7230582006db0551577963b544"
+        "3e9501b4b10880e186cff876cd360e9ad6e4181731fcdd0029";
+
+    Json::Value tx;
+    tx["code"] = initCode;
+    tx["from"] = toJS(coinbase.address());
+    string txHash = rpcClient->eth_sendTransaction(tx);
+    BOOST_REQUIRE(!txHash.empty());
+
+    dev::eth::mine(*(web3->ethereum()), 1);
+
+    Json::Value result = rpcClient->debug_traceTransaction(txHash, Json::Value(Json::objectValue));
+    BOOST_REQUIRE(result.isObject());
+    BOOST_REQUIRE(result["structLogs"].isArray());
+    BOOST_REQUIRE_GT(result["structLogs"].size(), 0u);
+}
+
+BOOST_AUTO_TEST_CASE(adminEthVmTrace)
+{
+    // mine to get some balance at coinbase
+    dev::eth::mine(*(web3->ethereum()), 1);
+
+    // send some transaction requiring execution
+    string initCode =
+        "608060405260076000553415601357600080fd5b60358060206000396000"
+        "f3006080604052600080fd00a165627a7a7230582006db0551577963b544"
+        "3e9501b4b10880e186cff876cd360e9ad6e4181731fcdd0029";
+
+    Json::Value tx;
+    tx["code"] = initCode;
+    tx["from"] = toJS(coinbase.address());
+    string txHash = rpcClient->eth_sendTransaction(tx);
+    BOOST_REQUIRE(!txHash.empty());
+
+    dev::eth::mine(*(web3->ethereum()), 1);
+
+    // get trace for 0th transaction in 2nd block
+    Json::Value result = rpcClient->admin_eth_vmTrace("2", 0, adminSession);
+    BOOST_REQUIRE(result.isObject());
+    BOOST_REQUIRE(result["structLogs"].isArray());
+    BOOST_REQUIRE_GT(result["structLogs"].size(), 0u);
 }
 
 BOOST_AUTO_TEST_CASE(test_setChainParams)

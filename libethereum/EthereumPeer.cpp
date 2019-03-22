@@ -54,9 +54,9 @@ static string toString(Asking _a)
     return "?";
 }
 
-EthereumPeer::EthereumPeer(std::shared_ptr<SessionFace> _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap):
-    Capability(_s, _h, _i),
-    m_peerCapabilityVersion(_cap.second)
+EthereumPeer::EthereumPeer(std::weak_ptr<SessionFace> _s, std::string const& _name,
+    unsigned _messageCount, unsigned _offset, CapDesc const& _cap)
+  : PeerCapability(move(_s), _name, _messageCount, _offset), m_peerCapabilityVersion(_cap.second)
 {
     session()->addNote("manners", isRude() ? "RUDE" : "nice");
 }
@@ -236,7 +236,7 @@ bool EthereumPeer::isCriticalSyncing() const
     return m_asking == Asking::BlockHeaders || m_asking == Asking::State || (m_asking == Asking::BlockBodies && m_protocolVersion == 62);
 }
 
-bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
+bool EthereumPeer::interpretCapabilityPacket(unsigned _id, RLP const& _r)
 {
     auto observer = m_observer.lock();
     auto hostData = m_hostData.lock();

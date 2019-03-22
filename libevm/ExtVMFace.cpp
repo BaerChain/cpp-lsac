@@ -17,6 +17,8 @@
 
 #include "ExtVMFace.h"
 
+#include <evmc/helpers.h>
+
 namespace dev
 {
 namespace eth
@@ -50,22 +52,31 @@ void getStorage(
     *o_result = toEvmC(env.store(key));
 }
 
-void setStorage(
-    evmc_context* _context,
-    evmc_address const* _addr,
-    evmc_uint256be const* _key,
-    evmc_uint256be const* _value
-) noexcept
+evmc_storage_status setStorage(evmc_context* _context, evmc_address const* _addr,
+    evmc_uint256be const* _key, evmc_uint256be const* _value) noexcept
 {
-    (void) _addr;
+    (void)_addr;
     auto& env = static_cast<ExtVMFace&>(*_context);
     assert(fromEvmC(*_addr) == env.myAddress);
     u256 index = fromEvmC(*_key);
     u256 value = fromEvmC(*_value);
-    if (value == 0 && env.store(index) != 0)                   // If delete
-        env.sub.refunds += env.evmSchedule().sstoreRefundGas;  // Increase refund counter
+    u256 oldValue = env.store(index);
 
-    env.setStore(index, value);    // Interface uses native endianness
+    if (value == oldValue)
+        return EVMC_STORAGE_UNCHANGED;
+
+    auto status = EVMC_STORAGE_MODIFIED;
+    if (oldValue == 0)
+        status = EVMC_STORAGE_ADDED;
+    else if (value == 0)
+    {
+        status = EVMC_STORAGE_DELETED;
+        env.sub.refunds += env.evmSchedule().sstoreRefundGas;
+    }
+
+    env.setStore(index, value);  // Interface uses native endianness
+
+    return status;
 }
 
 void getBalance(
@@ -82,6 +93,12 @@ size_t getCodeSize(evmc_context* _context, evmc_address const* _addr)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.codeSizeAt(fromEvmC(*_addr));
+}
+
+void getCodeHash(evmc_uint256be* o_result, evmc_context* _context, evmc_address const* _addr)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    *o_result = toEvmC(env.codeHashAt(fromEvmC(*_addr)));
 }
 
 size_t copyCode(evmc_context* _context, evmc_address const* _addr, size_t _codeOffset,
@@ -182,13 +199,13 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
         o_result->output_size = result.output.size();
 
         // Place a new vector of bytes containing output in result's reserved memory.
-        auto* data = evmc_get_optional_data(o_result);
+        auto* data = evmc_get_optional_storage(o_result);
         static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
         new(data) bytes(result.output.takeBytes());
         // Set the destructor to delete the vector.
         o_result->release = [](evmc_result const* _result)
         {
-            auto* data = evmc_get_const_optional_data(_result);
+            auto* data = evmc_get_const_optional_storage(_result);
             auto& output = reinterpret_cast<bytes const&>(*data);
             // Explicitly call vector's destructor to release its data.
             // This is normal pattern when placement new operator is used.
@@ -232,13 +249,13 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
     o_result->output_size = result.output.size();
 
     // Place a new vector of bytes containing output in result's reserved memory.
-    auto* data = evmc_get_optional_data(o_result);
+    auto* data = evmc_get_optional_storage(o_result);
     static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
     new(data) bytes(result.output.takeBytes());
     // Set the destructor to delete the vector.
     o_result->release = [](evmc_result const* _result)
     {
-        auto* data = evmc_get_const_optional_data(_result);
+        auto* data = evmc_get_const_optional_storage(_result);
         auto& output = reinterpret_cast<bytes const&>(*data);
         // Explicitly call vector's destructor to release its data.
         // This is normal pattern when placement new operator is used.
@@ -252,6 +269,7 @@ evmc_context_fn_table const fnTable = {
     setStorage,
     getBalance,
     getCodeSize,
+    getCodeHash,
     copyCode,
     selfdestruct,
     eth::call,

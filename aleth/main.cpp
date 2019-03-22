@@ -42,7 +42,7 @@
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
 #include <libwebthree/WebThree.h>
-
+#include <libethashseal/Ethash.h>
 #include <libdevcrypto/LibSnark.h>
 
 #include <libweb3jsonrpc/AccountHolder.h>
@@ -82,6 +82,16 @@ void version()
     cout << "eth network protocol version: " << dev::eth::c_protocolVersion << "\n";
     cout << "Client database version: " << dev::eth::c_databaseVersion << "\n";
     cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
+}
+
+bool isTrue(std::string const& _m)
+{
+    return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
+}
+
+bool isFalse(std::string const& _m)
+{
+    return _m == "off" || _m == "no" || _m == "false" || _m == "0";
 }
 
 /*
@@ -260,7 +270,7 @@ int main(int argc, char** argv)
     }
 
 
-    MinerCLI m(MinerCLI::OperationMode::None);
+    MinerCLI miner(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
     bool chainConfigIsSet = false;
@@ -390,12 +400,13 @@ int main(int argc, char** argv)
     addGeneralOption("help,h", "Show this help message and exit\n");
 
     po::options_description vmOptions = vmProgramOptions(c_lineWidth);
-
+    po::options_description minerOptions = MinerCLI::createProgramOptions(c_lineWidth);
 
     po::options_description allowedOptions("Allowed options");
     allowedOptions.add(clientDefaultMode)
         .add(clientTransacting)
         .add(clientMining)
+        .add(minerOptions)
         .add(clientNetworking)
         .add(importExportMode)
         .add(vmOptions)
@@ -403,25 +414,20 @@ int main(int argc, char** argv)
         .add(generalOptions);
 
     po::variables_map vm;
-    vector<string> unrecognisedOptions;
+
     try
     {
-        po::parsed_options parsed = po::command_line_parser(argc, argv).options(allowedOptions).allow_unregistered().run();
-        unrecognisedOptions = collect_unrecognized(parsed.options, po::include_positional);
+        po::parsed_options parsed = po::parse_command_line(argc, argv, allowedOptions);
         po::store(parsed, vm);
         po::notify(vm);
     }
     catch (po::error const& e)
     {
-        cerr << e.what();
+        cerr << e.what() << "\n";
         return -1;
     }
-    for (size_t i = 0; i < unrecognisedOptions.size(); ++i)
-        if (!m.interpretOption(i, unrecognisedOptions))
-        {
-            cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
-            return -1;
-        }
+
+    miner.interpretOptions(vm);
 
     if (vm.count("import-snapshot"))
     {
@@ -560,6 +566,12 @@ int main(int argc, char** argv)
         {
             configPath = vm["config"].as<string>();
             configJSON = contentsString(configPath.string());
+
+            if (configJSON.empty())
+            {
+                cerr << "Config file not found or empty (" << configPath.string() << ")\n";
+                return -1;
+            }
         }
         catch (...)
         {
@@ -756,12 +768,10 @@ int main(int argc, char** argv)
              << "WALLET USAGE:\n";
         AccountManager::streamAccountHelp(cout);
         AccountManager::streamWalletHelp(cout);
-        cout << clientDefaultMode << clientTransacting << clientMining << clientNetworking;
-        MinerCLI::streamHelp(cout);
+        cout << clientDefaultMode << clientTransacting << clientNetworking << clientMining << minerOptions;
         cout << importExportMode << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
-
 
     if (!configJSON.empty())
     {
@@ -794,7 +804,7 @@ int main(int argc, char** argv)
     if (loggingOptions.verbosity > 0)
         cout << EthGrayBold "aleth, a C++ Ethereum client" EthReset << "\n";
 
-    m.execute();
+    miner.execute();
 
     fs::path secretsPath;
     if (testingMode)
@@ -839,7 +849,7 @@ int main(int argc, char** argv)
         return getPassword("Enter password for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
     };
 
-    auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP, listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
+    auto netPrefs = publicIP.empty() ? NetworkConfig(listenIP, listenPort, upnp) : NetworkConfig(publicIP, listenIP ,listenPort, upnp);
     netPrefs.discovery = (privateChain.empty() && !disableDiscovery) || enableDiscovery;
     netPrefs.pin = vm.count("pin") != 0;
 
@@ -1015,7 +1025,7 @@ int main(int argc, char** argv)
     if (c)
     {
         c->setGasPricer(gasPricer);
-        c->setSealer(m.minerType());
+        c->setSealer(miner.minerType());
         c->setAuthor(author);
         if (networkID != NoNetworkID)
             c->setNetworkId(networkID);

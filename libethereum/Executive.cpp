@@ -163,14 +163,17 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
     m_trace.append(r);
 }
 
-string StandardTrace::json(bool _styled) const
+std::string StandardTrace::styledJson() const
+{
+    return Json::StyledWriter().write(m_trace);
+}
+
+string StandardTrace::multilineTrace() const
 {
     if (m_trace.empty())
         return {};
 
-    if (_styled)
-        return Json::StyledWriter().write(m_trace);
-
+    // Each opcode trace on a separate line
     return std::accumulate(std::next(m_trace.begin()), m_trace.end(),
         Json::FastWriter().write(m_trace[0]),
         [](std::string a, Json::Value b) { return a + Json::FastWriter().write(b); });
@@ -366,7 +369,7 @@ bool Executive::createOpcode(Address const& _sender, u256 const& _endowment, u25
 
 bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin, u256 const& _salt)
 {
-    m_newAddress = right160(sha3(_sender.asBytes() + toBigEndian(_salt) + _init));
+    m_newAddress = right160(sha3(bytes{0xff} +_sender.asBytes() + toBigEndian(_salt) + sha3(_init)));
     return executeCreate(_sender, _endowment, _gasPrice, _gas, _init, _origin);
 }
 
@@ -494,15 +497,16 @@ bool Executive::go(OnOpFunc const& _onOp)
         }
         catch (InternalVMError const& _e)
         {
-            cwarn << "Internal VM Error (" << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")\n"
-                  << diagnostic_information(_e);
+            cerror << "Internal VM Error (EVMC status code: "
+                 << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")";
             revert();
             throw;
         }
         catch (Exception const& _e)
         {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-            cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
+            cerror << "Unexpected exception in VM. There may be a bug in this implementation. "
+                 << diagnostic_information(_e);
             exit(1);
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -510,7 +514,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         catch (std::exception const& _e)
         {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-            cwarn << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
+            cerror << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
             exit(1);
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.

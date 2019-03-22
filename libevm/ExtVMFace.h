@@ -218,6 +218,9 @@ public:
     /// Write a value in storage.
     virtual void setStore(u256, u256) {}
 
+    /// Read original storage value (before modifications in the current transaction).
+    virtual u256 originalStorageValue(u256 const&) { return 0; }
+
     /// Read address's balance.
     virtual u256 balance(Address) { return 0; }
 
@@ -226,6 +229,9 @@ public:
 
     /// @returns the size of the code in bytes at the given address.
     virtual size_t codeSizeAt(Address) { return 0; }
+
+    /// @returns the hash of the code at the given address.
+    virtual h256 codeHashAt(Address) { return h256{}; }
 
     /// Does the account exist?
     virtual bool exists(Address) { return false; }

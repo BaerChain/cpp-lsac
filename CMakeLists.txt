@@ -4,19 +4,13 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
-include(evmc/cmake/cable/bootstrap.cmake)
+include(cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
 include(GNUInstallDirs)
 
-if(UNIX)
-    # Build deps with PIC to allow building shared libraries.
-    set(toolchain cxx11-pic)
-else()
-    set(toolchain cxx11)
-endif()
-cable_configure_toolchain(DEFAULT ${toolchain})
+cable_configure_toolchain(DEFAULT cxx11-pic)
 
 set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
@@ -25,10 +19,10 @@ list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release)
 set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
 
-set(HUNTER_CONFIGURATION_TYPES Release)
-set(HUNTER_JOBS_NUMBER 4)
-set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
-set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake)
+set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
+set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
+set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
+set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
 
 # In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
 # (only for branches and internal PRs).
@@ -47,7 +41,7 @@ HunterGate(
 )
 
 project(aleth)
-set(PROJECT_VERSION 1.4.0.dev1)
+set(PROJECT_VERSION 1.5.0.dev2)
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmjit/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
@@ -92,9 +86,6 @@ find_package(ethash CONFIG REQUIRED)
 include(ProjectSecp256k1)
 include(ProjectLibFF)
 
-# Import binaryen library before hera to make it available also to testeth.
-include(hera/cmake/ProjectBinaryen.cmake)
-
 find_package(Threads)
 
 if(MINIUPNPC)
@@ -104,6 +95,11 @@ endif()
 set(UTILS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/utils")
 
 configure_project()
+
+if(TESTS)
+    # Import binaryen library before hera to make it available also to testeth.
+    include(hera/cmake/ProjectBinaryen.cmake)
+endif()
 
 add_subdirectory(evmc)
 
@@ -145,6 +141,9 @@ if (TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
+
+
+install(FILES ${PROJECT_BINARY_DIR}/aleth/buildinfo.json DESTINATION ${CMAKE_INSTALL_DATADIR}/aleth)
 
 
 if(WIN32)

@@ -33,11 +33,13 @@ struct EVMSchedule
     bool haveDelegateCall = true;
     bool eip150Mode = false;
     bool eip158Mode = false;
+    bool eip1283Mode = false;
     bool haveBitwiseShifting = false;
     bool haveRevert = false;
     bool haveReturnData = false;
     bool haveStaticCall = false;
     bool haveCreate2 = false;
+    bool haveExtcodehash = false;
     std::array<unsigned, 8> tierStepGas;
     unsigned expGas = 10;
     unsigned expByteGas = 10;
@@ -46,7 +48,9 @@ struct EVMSchedule
     unsigned sloadGas = 50;
     unsigned sstoreSetGas = 20000;
     unsigned sstoreResetGas = 5000;
+    unsigned sstoreUnchangedGas = 200;
     unsigned sstoreRefundGas = 15000;
+    unsigned sstoreRefundNonzeroGas = 4800;
     unsigned jumpdestGas = 1;
     unsigned logGas = 375;
     unsigned logDataGas = 8;
@@ -68,6 +72,7 @@ struct EVMSchedule
 
     unsigned extcodesizeGas = 20;
     unsigned extcodecopyGas = 20;
+    unsigned extcodehashGas = 400;
     unsigned balanceGas = 20;
     unsigned suicideGas = 0;
     unsigned blockhashGas = 20;
@@ -132,6 +137,8 @@ static const EVMSchedule ConstantinopleSchedule = []
     schedule.blockhashGas = 800;
     schedule.haveCreate2 = true;
     schedule.haveBitwiseShifting = true;
+    schedule.haveExtcodehash = true;
+    schedule.eip1283Mode = true;
     return schedule;
 }();
 
