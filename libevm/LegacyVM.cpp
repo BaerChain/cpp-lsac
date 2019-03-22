@@ -1284,23 +1284,10 @@ void LegacyVM::interpretCases()
 
 			copyDataToMemory(&m_returnData, m_SP);
 		}
-        NEXT
+		NEXT
 
-        CASE(EXTCODEHASH)
-        {
-            ON_OP();
-            if (!m_schedule->haveExtcodehash)
-                throwBadInstruction();
-
-            m_runGas = toInt63(m_schedule->extcodehashGas);
-            updateIOGas();
-
-            m_SPP[0] = u256{m_ext->codeHashAt(asAddress(m_SP[0]))};
-        }
-        NEXT
-
-        CASE(CODECOPY)
-        {
+		CASE(CODECOPY)
+		{
 			ON_OP();
 			m_copyMemSize = toInt63(m_SP[2]);
 			updateMem(memNeed(m_SP[0], m_SP[2]));

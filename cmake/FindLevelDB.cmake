@@ -16,25 +16,22 @@ find_path(
 	DOC "leveldb include dir"
 )
 
-if(LEVELDB_USE_STATIC_LIBS)
-	set(names ${CMAKE_STATIC_LIBRARY_PREFIX}leveldb${CMAKE_STATIC_LIBRARY_SUFFIX})
-else()
-	set(names leveldb)
-endif()
-
 find_library(
 	LEVELDB_LIBRARY
-	NAMES ${names}
+	NAMES leveldb
 	DOC "leveldb library"
 )
 
 set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR})
 set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
 
-# When linking statically we should include also the snappy static lib.
-if(LEVELDB_LIBRARY MATCHES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+# When we're static linking (at least on OS X), leveldb also drags in snappy.
+# This might be due to some dependency within leveldb which would be dead-code
+# stripped if we were using a static lib for leveldb.   We aren't (yet), because
+# we only have partial static-linkage on OS X so far.
+if (NOT BUILD_SHARED_LIBS AND APPLE)
 	find_path(SNAPPY_INCLUDE_DIR snappy.h PATH_SUFFIXES snappy)
-	find_library(SNAPPY_LIBRARY ${CMAKE_STATIC_LIBRARY_PREFIX}snappy${CMAKE_STATIC_LIBRARY_SUFFIX})
+	find_library(SNAPPY_LIBRARY snappy)
 	set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR} ${SNAPPY_INCLUDE_DIR})
 	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY} ${SNAPPY_LIBRARY})
 endif()
@@ -61,3 +58,4 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(leveldb DEFAULT_MSG
 	LEVELDB_LIBRARY LEVELDB_INCLUDE_DIR)
 mark_as_advanced (LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)
+

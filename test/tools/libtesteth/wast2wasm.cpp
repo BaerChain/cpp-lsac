@@ -42,7 +42,6 @@ string wast2wasm(string const& input, bool debug)
 
     wasm::BufferWithRandomAccess buffer(debug);
     wasm::WasmBinaryWriter writer(&module, buffer, debug);
-    writer.setNamesSection(false);
     writer.write();
 
     ostringstream output;

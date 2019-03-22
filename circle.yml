@@ -27,11 +27,7 @@ defaults:
     run:
       name: "Build"
       working_directory: ~/build
-      command: |
-        cmake --build . --target package -- -j $BUILD_PARALLEL_JOBS
-        mkdir -p ~/package
-        . aleth/buildinfo.sh
-        mv aleth.tar.gz ~/package/$PROJECT_NAME-$PROJECT_VERSION-$SYSTEM_NAME-$SYSTEM_PROCESSOR.tar.gz
+      command: cmake --build . --target package -- -j $BUILD_PARALLEL_JOBS
 
   test: &test
     run:
@@ -54,14 +50,8 @@ defaults:
 
   store-package: &store-package
     store_artifacts:
-      path: ~/package
-      destination: package
-
-  add-package-to-workspace: &add-package-to-workspace
-      persist_to_workspace:
-        root: ~/package
-        paths:
-          - "*"
+      path: ~/build/aleth.tar.gz
+      destination: aleth.tar.gz
 
   store-randomcode-seed: &store-randomcode-seed
     store_artifacts:
@@ -132,7 +122,7 @@ jobs:
       - GENERATOR: Ninja
       - BUILD_PARALLEL_JOBS: 8
       - TEST_PARALLEL_JOBS: 8
-      - CMAKE_OPTIONS: -DALETH_INTERPRETER_SHARED=ON -DSTATIC_LIBSTDCPP=ON -DLEVELDB_USE_STATIC_LIBS=ON
+      - CMAKE_OPTIONS: -DALETH_INTERPRETER_SHARED=ON
     docker:
       - image: ethereum/cpp-build-env:2
     steps:
@@ -148,7 +138,6 @@ jobs:
       - *save-ccache
       - *save-deps-cache
       - *store-package
-      - *add-package-to-workspace
       - *test
       - *test-evmc-interpreter
 
@@ -207,26 +196,8 @@ jobs:
       - *build
       - *save-deps-cache
       - *store-package
-      - *add-package-to-workspace
       - *test
       - *store-randomcode-seed
-
-  # The job collects built packages (available in the workspace) and
-  # uploads them to the GitHub release matching the git tag.
-  deploy:
-    docker:
-      - image: circleci/golang
-    steps:
-      - run:
-          name: "Install ghr"
-          command: go get -u github.com/tcnksm/ghr
-      - attach_workspace:
-          at: ~/package
-      - run:
-          name: "Create GitHub release"
-          command: |
-            prerelease_flag=$([[ $CIRCLE_TAG =~ ^v[0-9\.]+$ ]] || echo '-prerelease')
-            ghr -u ethereum -r cpp-ethereum $prerelease_flag $CIRCLE_TAG ~/package
 
 # TODO: Run GCC6 build only in develop branch.
 # TODO: Enabled nightly builds and add more configs.
@@ -235,21 +206,6 @@ workflows:
   version: 2
   aleth:
     jobs:
-      - macos-xcode90:
-          filters:
-            tags:
-              only: /.*/
-      - linux-clang6:
-          filters:
-            tags:
-              only: /.*/
+      - macos-xcode90
+      - linux-clang6
       - linux-gcc6
-      - deploy:
-          requires:
-            - macos-xcode90
-            - linux-clang6
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/

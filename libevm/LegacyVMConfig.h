@@ -160,7 +160,7 @@ namespace dev
 //
 #elif EVM_JUMP_DISPATCH
 
-#define INIT_CASES                              \
+        #define INIT_CASES                              \
                                                 \
     static const void* const jumpTable[256] = { \
         &&STOP, /* 00 */                        \
@@ -226,7 +226,7 @@ namespace dev
         &&EXTCODECOPY,                          \
         &&RETURNDATASIZE,                       \
         &&RETURNDATACOPY,                       \
-        &&EXTCODEHASH,                         \
+        &&INVALID,                              \
         &&BLOCKHASH, /* 40, */                  \
         &&COINBASE,                             \
         &&TIMESTAMP,                            \
