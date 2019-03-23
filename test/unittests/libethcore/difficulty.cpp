@@ -87,10 +87,11 @@ void fillDifficulty(boost::filesystem::path const& _testFileFullName, Ethash& _s
 				replaceMap["[PUNCLS]"] = toCompactHexPrefixed(parent.sha3Uncles());
 				replaceMap["[СSTAMP]"] = toCompactHexPrefixed(cStamp);
 				replaceMap["[CNUM]"] = toCompactHexPrefixed(cNum);
-				replaceMap["[CDIFF]"] = toCompactHexPrefixed(_sealEngine.calculateDifficulty(current, parent));
+                replaceMap["[CDIFF]"] = toCompactHexPrefixed(
+                    calculateEthashDifficulty(_sealEngine.chainParams(), current, parent));
 
-				test::RandomCodeOptions defaultOptions;
-				test::RandomCode::get().parseTestWithTypes(tmptest, replaceMap, defaultOptions);
+                test::RandomCodeOptions defaultOptions;
+                test::RandomCode::get().parseTestWithTypes(tmptest, replaceMap, defaultOptions);
 				finalTest << tmptest;
 			}
 		}
@@ -128,17 +129,17 @@ void testDifficulty(fs::path const& _testFileFullName, Ethash& _sealEngine)
 
 		BlockHeader parent;
 		parent.setTimestamp(test::toPositiveInt64(o["parentTimestamp"]));
-		parent.setDifficulty(test::toInt(o["parentDifficulty"]));
-		parent.setNumber(test::toPositiveInt64(o["currentBlockNumber"]) - 1);
+        parent.setDifficulty(test::toU256(o["parentDifficulty"]));
+        parent.setNumber(test::toPositiveInt64(o["currentBlockNumber"]) - 1);
 		parent.setSha3Uncles(h256(o["parentUncles"].get_str()));
 
 		BlockHeader current;
 		current.setTimestamp(test::toPositiveInt64(o["currentTimestamp"]));
 		current.setNumber(test::toPositiveInt64(o["currentBlockNumber"]));
 
-		u256 difficulty = _sealEngine.calculateDifficulty(current, parent);
-		BOOST_CHECK_EQUAL(difficulty, test::toInt(o["currentDifficulty"]));
-	}
+        u256 difficulty = calculateEthashDifficulty(_sealEngine.chainParams(), current, parent);
+        BOOST_CHECK_EQUAL(difficulty, test::toU256(o["currentDifficulty"]));
+    }
 }
 
 BOOST_AUTO_TEST_SUITE(DifficultyTests)
@@ -259,10 +260,11 @@ BOOST_AUTO_TEST_CASE(difficultyTestsCustomMainNetwork)
 						replaceMap["[PUNCLS]"] = toCompactHexPrefixed(parent.sha3Uncles());
 						replaceMap["[СSTAMP]"] = toCompactHexPrefixed(cStamp);
 						replaceMap["[CNUM]"] = toCompactHexPrefixed(cNum);
-						replaceMap["[CDIFF]"] = toCompactHexPrefixed(sealEngine.calculateDifficulty(current, parent));
+                        replaceMap["[CDIFF]"] = toCompactHexPrefixed(
+                            calculateEthashDifficulty(sealEngine.chainParams(), current, parent));
 
-						test::RandomCodeOptions defaultOptions;
-						test::RandomCode::get().parseTestWithTypes(tmptest, replaceMap, defaultOptions);
+                        test::RandomCodeOptions defaultOptions;
+                        test::RandomCode::get().parseTestWithTypes(tmptest, replaceMap, defaultOptions);
 						finalTest << tmptest;
 					}
 

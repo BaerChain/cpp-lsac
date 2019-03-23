@@ -28,7 +28,6 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/State.h>
 #include <libethereum/ExtVM.h>
-#include <libethereum/Defaults.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
 #include <test/tools/jsontests/StateTests.h>
@@ -208,6 +207,7 @@ BOOST_AUTO_TEST_CASE(stBugs){}
 
 //Constantinople Tests
 BOOST_AUTO_TEST_CASE(stShift){}
+BOOST_AUTO_TEST_CASE(stCreate2){}
 
 //Stress Tests
 BOOST_AUTO_TEST_CASE(stAttackTest){}
