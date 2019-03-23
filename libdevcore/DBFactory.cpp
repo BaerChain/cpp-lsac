@@ -18,6 +18,7 @@
 #include "DBFactory.h"
 #include "FileSystem.h"
 #include "LevelDB.h"
+#include "RocksDB.h"
 #include "MemoryDB.h"
 #include "libethcore/Exceptions.h"
 
@@ -47,10 +48,11 @@ struct DBKindTableEntry
 /// so linear search only to parse command line arguments is not a problem.
 DBKindTableEntry dbKindsTable[] = {
     {DatabaseKind::LevelDB, "leveldb"},
+    {DatabaseKind::RocksDB, "rocksdb"},
     {DatabaseKind::MemoryDB, "memorydb"},
 };
 
-void setDatabaseKind(std::string const& _name)
+void setDatabaseKindByName(std::string const& _name)
 {
     for (auto& entry : dbKindsTable)
     {
@@ -61,8 +63,13 @@ void setDatabaseKind(std::string const& _name)
         }
     }
 
-    BOOST_THROW_EXCEPTION(eth::InvalidDatabaseKind()
-                          << errinfo_comment("invalid database kind supplied: " + _name));
+    BOOST_THROW_EXCEPTION(
+        eth::InvalidDatabaseKind() << errinfo_comment("invalid database name supplied: " + _name));
+}
+
+void setDatabaseKind(DatabaseKind _kind)
+{
+    g_kind = _kind;
 }
 
 void setDatabasePath(std::string const& _path)
@@ -70,9 +77,16 @@ void setDatabasePath(std::string const& _path)
     g_dbPath = fs::path(_path);
 }
 
-bool isMemoryDB()
+bool isDiskDatabase()
 {
-    return g_kind == DatabaseKind::MemoryDB;
+    switch (g_kind)
+    {
+        case DatabaseKind::LevelDB:
+        case DatabaseKind::RocksDB:
+            return true;
+        default:
+            return false;
+    }
 }
 
 DatabaseKind databaseKind()
@@ -105,7 +119,7 @@ po::options_description databaseProgramOptions(unsigned _lineLength)
 
     add("db",
         po::value<std::string>()->value_name("<name>")->default_value("leveldb")->notifier(
-            setDatabaseKind),
+            setDatabaseKindByName),
         description.data());
 
     add("db-path",
@@ -139,6 +153,9 @@ std::unique_ptr<DatabaseFace> DBFactory::create(DatabaseKind _kind, fs::path con
     {
     case DatabaseKind::LevelDB:
         return std::unique_ptr<DatabaseFace>(new LevelDB(_path));
+        break;
+    case DatabaseKind::RocksDB:
+        return std::unique_ptr<DatabaseFace>(new RocksDB(_path));
         break;
     case DatabaseKind::MemoryDB:
         // Silently ignore path since the concept of a db path doesn't make sense

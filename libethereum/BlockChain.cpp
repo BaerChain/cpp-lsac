@@ -216,7 +216,7 @@ unsigned BlockChain::open(fs::path const& _path, WithExisting _we)
     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
     unsigned lastMinor = c_minorProtocolVersion;
 
-    if (!db::isMemoryDB())
+    if (db::isDiskDatabase())
     {
         fs::create_directories(extrasPath);
         DEV_IGNORE_EXCEPTIONS(fs::permissions(extrasPath, fs::owner_all));
@@ -253,7 +253,7 @@ unsigned BlockChain::open(fs::path const& _path, WithExisting _we)
         if (*boost::get_error_info<db::errinfo_dbStatusCode>(ex) != db::DatabaseStatus::IOError)
             throw;
 
-        if (!db::isMemoryDB())
+        if (db::isDiskDatabase())
         {
             if (fs::space(chainPath / fs::path("blocks")).available < 1024)
             {
@@ -340,7 +340,7 @@ void BlockChain::close()
 
 void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, unsigned)> const& _progress)
 {
-    if (db::isMemoryDB())
+    if (!db::isDiskDatabase())
     {
         cwarn <<"In-memory database detected, skipping rebuild (since there's no existing database to rebuild)";
         return;
@@ -425,10 +425,18 @@ string BlockChain::dumpDatabase() const
 {
     ostringstream oss;
     oss << m_lastBlockHash << '\n';
-    m_extrasDB->forEach([&oss](db::Slice key, db::Slice value) {
-        oss << toHex(key) << "/" << toHex(value) << '\n';
+
+    // We need to first insert the db data into an ordered map so that the string returned from this function
+    // always has data in the same order, regardless of the underlying database implementation
+    std::map<std::string, std::string> dbData;
+    m_extrasDB->forEach([&dbData](db::Slice key, db::Slice value) {
+        dbData[key.toString()] = value.toString();
         return true;
     });
+
+    for (auto const& it : dbData)
+        oss << toHex(it.first) << "/" << toHex(it.second) << '\n';
+
     return oss.str();
 }
 
