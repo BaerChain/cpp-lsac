@@ -128,14 +128,14 @@ void testDifficulty(fs::path const& _testFileFullName, Ethash& _sealEngine)
 		BOOST_REQUIRE_MESSAGE(o.count("currentDifficulty") > 0, testname + " missing currentDifficulty field");
 
 		BlockHeader parent;
-		parent.setTimestamp(test::toPositiveInt64(o["parentTimestamp"]));
+        parent.setTimestamp(test::toUint64(o["parentTimestamp"]));
         parent.setDifficulty(test::toU256(o["parentDifficulty"]));
-        parent.setNumber(test::toPositiveInt64(o["currentBlockNumber"]) - 1);
-		parent.setSha3Uncles(h256(o["parentUncles"].get_str()));
+        parent.setNumber(test::toUint64(o["currentBlockNumber"]) - 1);
+        parent.setSha3Uncles(h256(o["parentUncles"].get_str()));
 
-		BlockHeader current;
-		current.setTimestamp(test::toPositiveInt64(o["currentTimestamp"]));
-		current.setNumber(test::toPositiveInt64(o["currentBlockNumber"]));
+        BlockHeader current;
+        current.setTimestamp(test::toUint64(o["currentTimestamp"]));
+        current.setNumber(test::toUint64(o["currentBlockNumber"]));
 
         u256 difficulty = calculateEthashDifficulty(_sealEngine.chainParams(), current, parent);
         BOOST_CHECK_EQUAL(difficulty, test::toU256(o["currentDifficulty"]));
@@ -194,6 +194,19 @@ BOOST_AUTO_TEST_CASE(difficultyByzantium)
 		fillDifficulty(testFileFullName, sealEngine);
 
 	testDifficulty(testFileFullName, sealEngine);
+}
+
+BOOST_AUTO_TEST_CASE(difficultyConstantinople)
+{
+    fs::path const testFileFullName = test::getTestPath() / fs::path("BasicTests/difficultyConstantinople.json");
+
+    Ethash sealEngine;
+    sealEngine.setChainParams(ChainParams(genesisInfo(eth::Network::ConstantinopleTest)));
+
+    if (dev::test::Options::get().filltests)
+        fillDifficulty(testFileFullName, sealEngine);
+
+    testDifficulty(testFileFullName, sealEngine);
 }
 
 BOOST_AUTO_TEST_CASE(difficultyTestsMainNetwork)
