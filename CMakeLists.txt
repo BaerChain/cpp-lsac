@@ -2,7 +2,7 @@
 # Copyright 2018 Aleth Autors.
 # Licensed under the GNU General Public License, Version 3. See the LICENSE file.
 
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.9.3)
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
@@ -45,7 +45,7 @@ HunterGate(
 )
 
 project(aleth)
-set(PROJECT_VERSION 1.5.0-alpha.5)
+set(PROJECT_VERSION 1.5.0-alpha.6)
 
 cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
@@ -97,9 +97,9 @@ set(UTILS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/utils")
 configure_project()
 
 if(TESTS)
-    # Import binaryen library from hera for testeth.
-    # TODO: remove this and the submodule once testeth uses binaryen as a CLI tool.
-    include(hera/cmake/ProjectBinaryen.cmake)
+    # Import binaryen library for testeth.
+    # TODO: remove this once testeth uses binaryen as a CLI tool.
+    include(ProjectBinaryen)
 endif()
 
 add_subdirectory(evmc)

@@ -23,7 +23,6 @@
 #include "Session.h"
 
 #include "Host.h"
-#include "PeerCapability.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Exceptions.h>
@@ -59,7 +58,7 @@ Session::~Session()
     // Read-chain finished for one reason or another.
     for (auto& i : m_capabilities)
     {
-        i.second->onDisconnect();
+        i.second->onDisconnect(id());
         i.second.reset();
     }
 
@@ -127,9 +126,17 @@ bool Session::readPacket(uint16_t _capId, PacketType _packetType, RLP const& _r)
         if (_capId == 0 && _packetType < UserPacket)
             return interpret(_packetType, _r);
 
-        for (auto const& i: m_capabilities)
-            if (i.second->canHandle(_packetType))
-                return i.second->enabled() ? i.second->interpret(_packetType, _r) : true;
+        for (auto const& cap : m_capabilities)
+        {
+            auto const& name = cap.first.first;
+            auto const& capability = cap.second;
+
+            if (canHandle(name, capability->messageCount(), _packetType))
+                return capabilityEnabled(name) ?
+                           capability->interpretCapabilityPacket(
+                               id(), _packetType - m_peer->capabilityOffset(name), _r) :
+                           true;
+        }
 
         return false;
     }
@@ -431,7 +438,7 @@ bool Session::checkRead(std::size_t _expected, boost::system::error_code _ec, st
     return true;
 }
 
-void Session::registerCapability(CapDesc const& _desc, std::shared_ptr<PeerCapabilityFace> _p)
+void Session::registerCapability(CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p)
 {
     DEV_GUARDED(x_framing)
     {

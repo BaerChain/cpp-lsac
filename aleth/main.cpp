@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 
     unsigned peers = 11;
     unsigned peerStretch = 7;
-    std::map<NodeID, pair<NodeIPEndpoint,bool>> preferredNodes;
+    std::map<p2p::NodeID, pair<NodeIPEndpoint, bool>> preferredNodes;
     bool bootstrap = true;
     bool disableDiscovery = false;
     bool enableDiscovery = false;
@@ -1038,9 +1038,10 @@ int main(int argc, char** argv)
     else
         cout << "Networking disabled. To start, use netstart or pass --bootstrap or a remote host.\n";
 
-    unique_ptr<ModularServer<>> jsonrpcIpcServer;
     unique_ptr<rpc::SessionManager> sessionManager;
     unique_ptr<SimpleAccountHolder> accountHolder;
+    unique_ptr<ModularServer<>> jsonrpcIpcServer;
+
 
     AddressHash allowedDestinations;
 

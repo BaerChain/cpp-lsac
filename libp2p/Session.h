@@ -22,19 +22,19 @@
 
 #pragma once
 
-#include <mutex>
-#include <array>
-#include <deque>
-#include <set>
-#include <memory>
-#include <utility>
-
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
+#include "Common.h"
+#include "HostCapability.h"
 #include "RLPXFrameCoder.h"
 #include "RLPXSocket.h"
-#include "Common.h"
+#include <libdevcore/Common.h>
+#include <libdevcore/Guards.h>
+#include <libdevcore/RLP.h>
+#include <array>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <utility>
 
 namespace dev
 {
@@ -70,15 +70,18 @@ public:
     virtual std::chrono::steady_clock::time_point connectionTime() = 0;
 
     virtual void registerCapability(
-        CapDesc const& _desc, std::shared_ptr<PeerCapabilityFace> _p) = 0;
+        CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p) = 0;
 
-    virtual std::map<CapDesc, std::shared_ptr<PeerCapabilityFace>> const& capabilities() const = 0;
+    virtual std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> const& capabilities() const = 0;
 
     virtual std::shared_ptr<Peer> peer() const = 0;
 
     virtual std::chrono::steady_clock::time_point lastReceived() const = 0;
 
     virtual ReputationManager& repMan() = 0;
+
+    virtual void disableCapability(
+        std::string const& _capabilityName, std::string const& _problem) = 0;
 };
 
 /**
@@ -110,9 +113,10 @@ public:
     PeerSessionInfo info() const override { Guard l(x_info); return m_info; }
     std::chrono::steady_clock::time_point connectionTime() override { return m_connect; }
 
-    void registerCapability(CapDesc const& _desc, std::shared_ptr<PeerCapabilityFace> _p) override;
+    void registerCapability(CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p) override;
 
-    std::map<CapDesc, std::shared_ptr<PeerCapabilityFace>> const& capabilities() const override
+    // TODO try to return set<CapDesc>
+    std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> const& capabilities() const override
     {
         return m_capabilities;
     }
@@ -122,6 +126,13 @@ public:
     std::chrono::steady_clock::time_point lastReceived() const override { return m_lastReceived; }
 
     ReputationManager& repMan() override;
+
+    void disableCapability(std::string const& _capabilityName, std::string const& _problem) override
+    {
+        cnetdetails << "DISABLE: Disabling capability '" << _capabilityName
+                    << "'. Reason: " << _problem;
+        m_disabledCapabilities.insert(_capabilityName);
+    }
 
 private:
     static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
@@ -149,6 +160,20 @@ private:
     /// @returns true iff the _msg forms a valid message for sending or receiving on the network.
     static bool checkPacket(bytesConstRef _msg);
 
+    bool capabilityEnabled(std::string const& _capability) const
+    {
+        return m_disabledCapabilities.find(_capability) == m_disabledCapabilities.end();
+    }
+
+    bool canHandle(
+        std::string const& _capability, unsigned _messageCount, unsigned _packetType) const
+    {
+        // TODO can not exist
+        auto const offset = m_peer->capabilityOffset(_capability);
+
+        return _packetType >= offset  && _packetType < _messageCount + offset;
+    }
+
     Host* m_server;							///< The host that owns us. Never null.
 
     std::unique_ptr<RLPXFrameCoder> m_io;	///< Transport over which packets are sent.
@@ -168,24 +193,13 @@ private:
     std::chrono::steady_clock::time_point m_ping;			///< Time point of last ping.
     std::chrono::steady_clock::time_point m_lastReceived;	///< Time point of last message.
 
-    std::map<CapDesc, std::shared_ptr<PeerCapabilityFace>> m_capabilities;  ///< The peer's
-                                                                            ///< capability set.
+    /// The peer's capability set.
+    std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;
+
+    std::set<std::string> m_disabledCapabilities;
 
     std::string const m_logContext;
 };
-
-template <class PeerCap>
-std::shared_ptr<PeerCap> capabilityFromSession(SessionFace const& _session, u256 const& _version = PeerCap::version())
-{ 
-    try 
-    { 
-        return std::static_pointer_cast<PeerCap>(_session.capabilities().at(std::make_pair(PeerCap::name(), _version)));
-    }
-    catch (...)
-    {
-        return nullptr;
-    }
-}
 
 }
 }
