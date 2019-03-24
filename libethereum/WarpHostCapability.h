@@ -19,6 +19,7 @@
 
 #include "CommonNet.h"
 #include <libdevcore/Worker.h>
+#include <libp2p/CapabilityHost.h>
 #include <libp2p/HostCapability.h>
 
 namespace dev
@@ -51,7 +52,7 @@ struct WarpPeerStatus
     /// What, if anything, we last asked the other peer for.
     Asking m_asking = Asking::Nothing;
     /// When we asked for it. Allows a time out.
-    std::atomic<time_t> m_lastAsk;
+    time_t m_lastAsk;
 
     /// These are determined through either a Status message.
     h256 m_latestHash;       ///< Peer's latest block's hash.
@@ -79,7 +80,7 @@ public:
 };
 
 
-class WarpHostCapability : public p2p::HostCapability, Worker
+class WarpHostCapability : public p2p::HostCapabilityFace, Worker
 {
 public:
     WarpHostCapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
@@ -88,19 +89,19 @@ public:
         std::shared_ptr<SnapshotStorageFace> _snapshotStorage);
     ~WarpHostCapability();
 
+    std::string name() const override { return "par"; }
+    u256 version() const override { return c_WarpProtocolVersion; }
+    unsigned messageCount() const override { return WarpSubprotocolPacketCount; }
+
+    void onStarting() override {}
+    void onStopping() override {}
+
     unsigned protocolVersion() const { return c_WarpProtocolVersion; }
     u256 networkId() const { return m_networkId; }
 
     void onConnect(NodeID const& _peerID, u256 const& _peerCapabilityVersion) override;
     bool interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const&) override;
     void onDisconnect(NodeID const& _peerID) override;
-
-    /*
-    protected:
-        std::shared_ptr<p2p::PeerCapabilityFace> newPeerCapability(
-            std::shared_ptr<p2p::SessionFace> const& _s, unsigned _idOffset,
-            p2p::CapDesc const& _cap) override;
-    */
 
     p2p::CapabilityHostFace& capabilityHost() { return *m_host; }
 

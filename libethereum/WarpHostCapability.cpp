@@ -315,8 +315,7 @@ WarpHostCapability::WarpHostCapability(std::shared_ptr<p2p::CapabilityHostFace> 
     BlockChain const& _blockChain, u256 const& _networkId,
     boost::filesystem::path const& _snapshotDownloadPath,
     std::shared_ptr<SnapshotStorageFace> _snapshotStorage)
-  : HostCapability("par", c_WarpProtocolVersion, WarpSubprotocolPacketCount),
-    m_host(std::move(_host)),
+  : m_host(std::move(_host)),
     m_blockChain(_blockChain),
     m_networkId(_networkId),
     m_snapshot(_snapshotStorage),
@@ -345,6 +344,7 @@ void WarpHostCapability::doWork()
     {
         m_lastTick = now;
 
+        // TODO this is not thread-safe, move this code to a fiber
         for (auto const& peer : m_peers)
         {
             time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -360,8 +360,7 @@ void WarpHostCapability::doWork()
 
 void WarpHostCapability::onConnect(NodeID const& _peerID, u256 const& /* _peerCapabilityVersion */)
 {
-    // TODO hack to work around moving std::atomic
-    m_peers[_peerID].m_asking = Asking::Nothing;
+    m_peers.emplace(_peerID, WarpPeerStatus{});
 
     u256 snapshotBlockNumber;
     h256 snapshotBlockHash;
@@ -452,19 +451,19 @@ bool WarpHostCapability::interpretCapabilityPacket(
         case BlockHeadersPacket:
         {
             setIdle(_peerID);
-            m_peerObserver->onPeerBlockHeaders((_peerID), _r);
+            m_peerObserver->onPeerBlockHeaders(_peerID, _r);
             break;
         }
         case SnapshotManifest:
         {
             setIdle(_peerID);
-            m_peerObserver->onPeerManifest((_peerID), _r);
+            m_peerObserver->onPeerManifest(_peerID, _r);
             break;
         }
         case SnapshotData:
         {
             setIdle(_peerID);
-            m_peerObserver->onPeerData((_peerID), _r);
+            m_peerObserver->onPeerData(_peerID, _r);
             break;
         }
         default:

@@ -59,7 +59,7 @@ namespace dev
 
 namespace p2p
 {
-
+class CapabilityHostFace;
 class Host;
 class HostCapabilityFace;
 class SessionFace;
@@ -116,33 +116,6 @@ struct NodeInfo
     std::string address;
     unsigned port;
     std::string version;
-};
-
-class CapabilityHostFace
-{
-public:
-    virtual ~CapabilityHostFace() = default;
-
-    virtual boost::optional<PeerSessionInfo> peerSessionInfo(NodeID const& _nodeID) const = 0;
-
-    virtual void disableCapability(
-        NodeID const& _nodeID, std::string const& _capabilityName, std::string const& _problem) = 0;
-
-    virtual void disconnect(NodeID const& _nodeID, DisconnectReason _reason) = 0;
-
-    virtual void addRating(NodeID const& _nodeID, int _r) = 0;
-
-    virtual RLPStream& prep(NodeID const& _nodeID, std::string const& _capabilityName,
-        RLPStream& _s, unsigned _id, unsigned _args = 0) = 0;
-
-    virtual void sealAndSend(NodeID const& _nodeID, RLPStream& _s) = 0;
-
-    virtual void addNote(NodeID const& _nodeID, std::string const& _k, std::string const& _v) = 0;
-
-    virtual bool isRude(NodeID const& _nodeID, std::string const& _capability) const = 0;
-
-    virtual void foreachPeer(std::string const& _name, u256 const& _version,
-        std::function<bool(NodeID const& _nodeID)> _f) const = 0;
 };
 
 /**
@@ -274,10 +247,9 @@ public:
     /// Get the node information.
     p2p::NodeInfo nodeInfo() const { return NodeInfo(id(), (networkConfig().publicIPAddress.empty() ? m_tcpPublic.address().to_string() : networkConfig().publicIPAddress), m_tcpPublic.port(), m_clientVersion); }
 
-    /// Get sessions by capability name and version
-    // TODO delete
-    std::vector<std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>>> peerSessions(
-        std::string const& _name, u256 const& _version) const;
+    /// Apply function to each session
+    void forEachPeer(
+        std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const;
 
     std::shared_ptr<CapabilityHostFace> capabilityHost() const { return m_capabilityHost; }
 

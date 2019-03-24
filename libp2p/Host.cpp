@@ -21,6 +21,7 @@
  */
 
 #include "Host.h"
+#include "CapabilityHost.h"
 #include "Common.h"
 #include "HostCapability.h"
 #include "RLPxHandshake.h"
@@ -83,8 +84,11 @@ public:
         if (!session)
             return _s;
 
-        unsigned const offset = session->peer()->capabilityOffset(_capabilityName);
-        return _s.appendRaw(bytes(1, _id + offset)).appendList(_args);
+        auto const offset = session->capabilityOffset(_capabilityName);
+        if (!offset)
+            return _s;
+
+        return _s.appendRaw(bytes(1, _id + *offset)).appendList(_args);
     }
 
     void sealAndSend(NodeID const& _nodeID, RLPStream& _s) override
@@ -109,23 +113,19 @@ public:
         return false;
     }
 
-    void foreachPeer(std::string const& _name, u256 const& _version,
-        std::function<bool(NodeID const&)> _f) const override
+    void setRude(NodeID const& _nodeID, std::string const& _capability) override
     {
-        // order peers by protocol, rating, connection age
-        auto sessions = m_host.peerSessions(_name, _version);
-        auto sessionLess =
-            [](std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _left,
-                std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _right) {
-                return _left.first->rating() == _right.first->rating() ?
-                           _left.first->connectionTime() < _right.first->connectionTime() :
-                           _left.first->rating() > _right.first->rating();
-            };
+        auto s = m_host.peerSession(_nodeID);
+        if (!s)
+            return;
 
-        std::sort(sessions.begin(), sessions.end(), sessionLess);
-        for (auto s : sessions)
-            if (!_f(s.first->id()))
-                return;
+        s->repMan().noteRude(*s, _capability);
+    }
+
+    void foreachPeer(
+        std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const override
+    {
+        m_host.forEachPeer(_capabilityName, _f);
     }
 
 private:
@@ -419,6 +419,8 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
             return;
         }
 
+        m_sessions[_id] = session;
+
         unsigned offset = (unsigned)UserPacket;
 
         // todo: mutex Session::m_capabilities and move for(:caps) out of mutex.
@@ -428,8 +430,9 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
             if (!pcap)
                 return session->disconnect(IncompatibleProtocol);
 
-            peer->setCapabilityOffset(capDesc.first, offset);
-            session->registerCapability(capDesc, pcap);
+            session->registerCapability(capDesc, offset, pcap);
+
+            cnetlog << "New session for capability " << capDesc.first << "; idOffset: " << offset;
 
             pcap->onConnect(_id, capDesc.second);
 
@@ -437,7 +440,6 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
         }
 
         session->start();
-        m_sessions[_id] = session;
     }
     
     LOG(m_logger) << "p2p.host.peer.register " << _id;
@@ -1116,14 +1118,31 @@ bool Host::addNodeToNodeTable(Node const& _node, NodeTable::NodeRelation _relati
     return true;
 }
 
-std::vector<std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>>> Host::peerSessions(
-    std::string const& _name, u256 const& _version) const
+void Host::forEachPeer(
+    std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const
 {
     RecursiveGuard l(x_sessions);
-    std::vector<std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>>> ret;
+    std::vector<std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>>> sessions;
     for (auto const& i : m_sessions)
         if (std::shared_ptr<SessionFace> s = i.second.lock())
-            if (s->capabilities().count(std::make_pair(_name, _version)))
-                ret.push_back(make_pair(s, s->peer()));
-    return ret;
+        {
+            std::vector<CapDesc> capabilities = s->capabilities();
+            for (auto const& cap : capabilities)
+                if (cap.first == _capabilityName)
+                    sessions.push_back(make_pair(s, s->peer()));
+        }
+
+    // order peers by rating, connection age
+    auto sessionLess =
+        [](std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _left,
+            std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _right) {
+            return _left.first->rating() == _right.first->rating() ?
+                       _left.first->connectionTime() < _right.first->connectionTime() :
+                       _left.first->rating() > _right.first->rating();
+        };
+    std::sort(sessions.begin(), sessions.end(), sessionLess);
+
+    for (auto s : sessions)
+        if (!_f(s.first->id()))
+            return;
 }

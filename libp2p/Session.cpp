@@ -132,10 +132,14 @@ bool Session::readPacket(uint16_t _capId, PacketType _packetType, RLP const& _r)
             auto const& capability = cap.second;
 
             if (canHandle(name, capability->messageCount(), _packetType))
-                return capabilityEnabled(name) ?
-                           capability->interpretCapabilityPacket(
-                               id(), _packetType - m_peer->capabilityOffset(name), _r) :
-                           true;
+            {
+                if (!capabilityEnabled(name))
+                    return true;
+
+                auto offset = capabilityOffset(name);
+                assert(offset);
+                return capability->interpretCapabilityPacket(id(), _packetType - *offset, _r);
+            }
         }
 
         return false;
@@ -438,10 +442,32 @@ bool Session::checkRead(std::size_t _expected, boost::system::error_code _ec, st
     return true;
 }
 
-void Session::registerCapability(CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p)
+void Session::registerCapability(CapDesc const& _desc, unsigned _offset, std::shared_ptr<HostCapabilityFace> _p)
 {
     DEV_GUARDED(x_framing)
     {
         m_capabilities[_desc] = move(_p);
+        m_capabilityOffsets[_desc.first] = _offset;
     }
+}
+
+bool Session::canHandle(
+    std::string const& _capability, unsigned _messageCount, unsigned _packetType) const
+{
+    auto const offset = capabilityOffset(_capability);
+
+    return offset && _packetType >= *offset && _packetType < _messageCount + *offset;
+}
+
+void Session::disableCapability(std::string const& _capabilityName, std::string const& _problem)
+{
+    cnetdetails << "DISABLE: Disabling capability '" << _capabilityName
+                << "'. Reason: " << _problem;
+    m_disabledCapabilities.insert(_capabilityName);
+}
+
+boost::optional<unsigned> Session::capabilityOffset(std::string const& _capabilityName) const
+{
+    auto it = m_capabilityOffsets.find(_capabilityName);
+    return it == m_capabilityOffsets.end() ? boost::optional<unsigned>{} : it->second;
 }

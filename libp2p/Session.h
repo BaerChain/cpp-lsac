@@ -70,9 +70,9 @@ public:
     virtual std::chrono::steady_clock::time_point connectionTime() = 0;
 
     virtual void registerCapability(
-        CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p) = 0;
+        CapDesc const& _desc, unsigned _offset, std::shared_ptr<HostCapabilityFace> _p) = 0;
 
-    virtual std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> const& capabilities() const = 0;
+    virtual std::vector<CapDesc> capabilities() const = 0;
 
     virtual std::shared_ptr<Peer> peer() const = 0;
 
@@ -82,6 +82,9 @@ public:
 
     virtual void disableCapability(
         std::string const& _capabilityName, std::string const& _problem) = 0;
+
+    virtual boost::optional<unsigned> capabilityOffset(
+        std::string const& _capabilityName) const = 0;
 };
 
 /**
@@ -113,13 +116,9 @@ public:
     PeerSessionInfo info() const override { Guard l(x_info); return m_info; }
     std::chrono::steady_clock::time_point connectionTime() override { return m_connect; }
 
-    void registerCapability(CapDesc const& _desc, std::shared_ptr<HostCapabilityFace> _p) override;
+    void registerCapability(CapDesc const& _desc, unsigned _offset, std::shared_ptr<HostCapabilityFace> _p) override;
 
-    // TODO try to return set<CapDesc>
-    std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> const& capabilities() const override
-    {
-        return m_capabilities;
-    }
+    std::vector<CapDesc> capabilities() const override { return keysOf(m_capabilities); }
 
     std::shared_ptr<Peer> peer() const override { return m_peer; }
 
@@ -127,12 +126,10 @@ public:
 
     ReputationManager& repMan() override;
 
-    void disableCapability(std::string const& _capabilityName, std::string const& _problem) override
-    {
-        cnetdetails << "DISABLE: Disabling capability '" << _capabilityName
-                    << "'. Reason: " << _problem;
-        m_disabledCapabilities.insert(_capabilityName);
-    }
+    void disableCapability(
+        std::string const& _capabilityName, std::string const& _problem) override;
+
+    boost::optional<unsigned> capabilityOffset(std::string const& _capabilityName) const override;
 
 private:
     static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
@@ -166,13 +163,7 @@ private:
     }
 
     bool canHandle(
-        std::string const& _capability, unsigned _messageCount, unsigned _packetType) const
-    {
-        // TODO can not exist
-        auto const offset = m_peer->capabilityOffset(_capability);
-
-        return _packetType >= offset  && _packetType < _messageCount + offset;
-    }
+        std::string const& _capability, unsigned _messageCount, unsigned _packetType) const;
 
     Host* m_server;							///< The host that owns us. Never null.
 
@@ -195,6 +186,9 @@ private:
 
     /// The peer's capability set.
     std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;
+
+    /// Map of capability to packet id offset in the session
+    std::unordered_map<std::string, unsigned> m_capabilityOffsets;
 
     std::set<std::string> m_disabledCapabilities;
 
