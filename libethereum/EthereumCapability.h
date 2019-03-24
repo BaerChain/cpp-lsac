@@ -14,23 +14,19 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthereumHost.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #pragma once
 
 #include "CommonNet.h"
+#include "EthereumPeer.h"
 #include <libdevcore/Guards.h>
 #include <libdevcore/OverlayDB.h>
-#include <libdevcore/Worker.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethereum/BlockChainSync.h>
+#include <libp2p/Capability.h>
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Common.h>
-#include <libp2p/HostCapability.h>
 #include <memory>
 #include <mutex>
 #include <random>
@@ -52,42 +48,12 @@ class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
 
-struct EthereumPeerStatus
-{
-    /// What, if anything, we last asked the other peer for.
-    Asking m_asking = Asking::Nothing;
-    /// When we asked for it. Allows a time out.
-    std::atomic<time_t> m_lastAsk;
-    /// Peer's protocol version.
-    unsigned m_protocolVersion;
-    /// Peer's network id.
-    u256 m_networkId;
-    /// These are determined through either a Status message or from NewBlock.
-    /// Peer's latest block's hash that we know about or default null value if no need to sync.
-    h256 m_latestHash;
-    /// Peer's latest block's total difficulty.
-    u256 m_totalDifficulty;
-    h256 m_genesisHash;            ///< Peer's genesis hash
-    /// Protocol version this peer supports received as capability
-    u256 m_peerCapabilityVersion;
-    /// Have we received a GetTransactions packet that we haven't yet answered?
-    bool m_requireTransactions = false;
-
-    mutable Mutex x_knownBlocks;
-    /// Blocks that the peer already knows about (that don't need to be sent to them).
-    h256Hash m_knownBlocks;
-    mutable Mutex x_knownTransactions;
-    h256Hash m_knownTransactions;     ///< Transactions that the peer already knows of.
-    unsigned m_unknownNewBlocks = 0;  ///< Number of unknown NewBlocks received from this peer
-    unsigned m_lastAskedHeaders = 0;  ///< Number of hashes asked
-};
-
 class EthereumPeerObserverFace
 {
 public:
     virtual ~EthereumPeerObserverFace() = default;
 
-    virtual void onPeerStatus(NodeID const& _peerID, EthereumPeerStatus const& _status) = 0;
+    virtual void onPeerStatus(EthereumPeer const& _peer) = 0;
 
     virtual void onPeerTransactions(NodeID const& _peerID, RLP const& _r) = 0;
 
@@ -124,23 +90,23 @@ public:
 
 
 /**
- * @brief The EthereumHost class
+ * @brief The EthereumCapability class
  * @warning None of this is thread-safe. You have been warned.
  * @doWork Syncs to peers and sends new blocks and transactions.
  */
-class EthereumHost : public p2p::HostCapabilityFace, Worker
+class EthereumCapability : public p2p::CapabilityFace
 {
 public:
     /// Start server, but don't listen.
-    EthereumHost(std::shared_ptr<p2p::CapabilityHostFace> _host, BlockChain const& _ch,
+    EthereumCapability(std::shared_ptr<p2p::CapabilityHostFace> _host, BlockChain const& _ch,
         OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
-
-    /// Will block on network process events.
-    ~EthereumHost() override;
 
     std::string name() const override { return "eth"; }
     u256 version() const override { return c_protocolVersion; }
     unsigned messageCount() const override { return PacketCount; }
+
+    void onStarting() override;
+    void onStopping() override;
 
     unsigned protocolVersion() const { return c_protocolVersion; }
     u256 networkId() const { return m_networkId; }
@@ -161,7 +127,7 @@ public:
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
     SyncStatus status() const;
-    h256 latestBlockSent() { return m_latestBlockSent; }
+
     static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
 
     static unsigned const c_oldProtocolVersion;
@@ -172,55 +138,26 @@ public:
 
     p2p::CapabilityHostFace& capabilityHost() { return *m_host; }
 
-    EthereumPeerStatus const& peerStatus(NodeID const& _peerID) const;
-    bool isPeerConversing(NodeID const& _peerID) const;
-
-    void markPeerAsWaitingForTransactions(NodeID const& _peerID);
-    void markBlockAsKnownToPeer(NodeID const& _peerID, h256 const& _hash);
-    void setPeerLatestHash(NodeID const& _peerID, h256 const& _hash);
-    void incrementPeerUnknownNewBlocks(NodeID const& _peerID);
+    EthereumPeer const& peer(NodeID const& _peerID) const;
+    EthereumPeer& peer(NodeID const& _peerID);
     void disablePeer(NodeID const& _peerID, std::string const& _problem);
-
-    void requestStatus(NodeID const& _peerID, u256 _hostNetworkId, u256 _chainTotalDifficulty,
-        h256 _chainCurrentHash, h256 _chainGenesPeersh);
-
-    /// Request hashes for given parent hash.
-    void requestBlockHeaders(NodeID const& _nodeID, h256 const& _startHash, unsigned _count,
-        unsigned _skip, bool _reverse);
-    void requestBlockHeaders(NodeID const& _nodeID, unsigned _startNumber, unsigned _count,
-        unsigned _skip, bool _reverse);
-
-    /// Request specified blocks from peer.
-    void requestBlockBodies(NodeID const& _nodeID, h256s const& _blocks);
-
-    /// Request values for specified keys from peer.
-    void requestNodeData(NodeID const& _nodeID, h256s const& _hashes);
-
-    /// Request receipts for specified blocks from peer.
-    void requestReceipts(NodeID const& _nodeID, h256s const& _blocks);
 
 private:
     static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 
-    std::tuple<std::vector<NodeID>, std::vector<NodeID>> randomSelection(
-        unsigned _percent = 25, std::function<bool(EthereumPeerStatus const&)> const& _allow =
-                                    [](EthereumPeerStatus const&) { return true; });
+    std::tuple<std::vector<NodeID>, std::vector<NodeID>> randomSelection(unsigned _percent = 25,
+        std::function<bool(EthereumPeer const&)> const& _allow = [](EthereumPeer const&) {
+            return true;
+        });
 
-    /// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-    virtual void doWork() override;
+    void doBackgroundWork();
 
     void maintainTransactions();
     void maintainBlocks(h256 const& _currentBlock);
     void onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId);
 
-    ///	Check to see if the network peer-state initialisation has happened.
-    bool isInitialised() const { return (bool)m_latestBlockSent; }
-
     /// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
     bool ensureInitialised();
-
-    virtual void onStarting() override { startWorking(); }
-    virtual void onStopping() override { stopWorking(); }
 
     void setIdle(NodeID const& _peerID);
     void setAsking(NodeID const& _peerID, Asking _a);
@@ -230,10 +167,6 @@ private:
 
     /// Do we presently need syncing with this peer?
     bool needsSyncing(NodeID const& _peerID) const;
-
-    // Request of type _packetType with _hashes as input parameters
-    void requestByHashes(NodeID const& _peerID, h256s const& _hashes, Asking _asking,
-        SubprotocolPacketType _packetType);
 
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
 
@@ -247,22 +180,22 @@ private:
     h256 m_latestBlockSent;
     h256Hash m_transactionsSent;
 
-    bool m_newTransactions = false;
-    bool m_newBlocks = false;
+    std::atomic<bool> m_newTransactions = {false};
+    std::atomic<bool> m_newBlocks = {false};
 
-    mutable Mutex x_transactions;
     std::shared_ptr<BlockChainSync> m_sync;
     std::atomic<time_t> m_lastTick = { 0 };
 
     std::unique_ptr<EthereumHostDataFace> m_hostData;
     std::unique_ptr<EthereumPeerObserverFace> m_peerObserver;
 
-    std::unordered_map<NodeID, EthereumPeerStatus> m_peers;
+    std::unordered_map<NodeID, EthereumPeer> m_peers;
 
-    std::mt19937_64 m_urng; // Mersenne Twister psuedo-random number generator
+    std::atomic<bool> m_backgroundWorkEnabled = {false};
 
+    std::mt19937_64 m_urng;  // Mersenne Twister psuedo-random number generator
 
-    Logger m_logger{createLogger(VerbosityDebug, "ethhost")};
+    Logger m_logger{createLogger(VerbosityDebug, "ethcap")};
     /// Logger for messages about impolite behaivour of peers.
     Logger m_loggerImpolite{createLogger(VerbosityDebug, "impolite")};
 };
