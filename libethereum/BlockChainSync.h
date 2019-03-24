@@ -37,11 +37,9 @@ class RLPStream;
 
 namespace eth
 {
-
-class EthereumHost;
+class EthereumCapability;
 class BlockQueue;
 class EthereumPeer;
-struct EthereumPeerStatus;
 
 /**
  * @brief Base BlockChain synchronization strategy class.
@@ -50,7 +48,7 @@ struct EthereumPeerStatus;
 class BlockChainSync final: public HasInvariants
 {
 public:
-    BlockChainSync(EthereumHost& _host);
+    explicit BlockChainSync(EthereumCapability& _host);
     ~BlockChainSync();
     void abortSync(); ///< Abort all sync activity
 
@@ -65,7 +63,7 @@ public:
     void completeSync();
 
     /// Called by peer to report status
-    void onPeerStatus(NodeID const& _peerID, EthereumPeerStatus const& _status);
+    void onPeerStatus(EthereumPeer const& _peer);
 
     /// Called by peer once it has new block headers during sync
     void onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r);
@@ -96,8 +94,8 @@ private:
     /// Enter waiting state
     void pauseSync();
 
-    EthereumHost& host() { return m_host; }
-    EthereumHost const& host() const { return m_host; }
+    EthereumCapability& host() { return m_host; }
+    EthereumCapability const& host() const { return m_host; }
 
     void resetSync();
     void syncPeer(NodeID const& _peerID, bool _force);
@@ -141,7 +139,7 @@ private:
         }
     };
 
-    EthereumHost& m_host;
+    EthereumCapability& m_host;
     Handler<> m_bqRoomAvailable;				///< Triggered once block queue has space for more blocks
     mutable RecursiveMutex x_sync;
     /// Peers to which we've sent DAO request
@@ -155,9 +153,9 @@ private:
     std::unordered_set<unsigned> m_downloadingBodies;		///< Set of block header numbers being downloaded
     std::map<unsigned, std::vector<Header>> m_headers;	    ///< Downloaded headers
     std::map<unsigned, std::vector<bytes>> m_bodies;	    ///< Downloaded block bodies
-    /// Peers m_downloadingSubchain number map
+    /// Peers to m_downloadingHeaders number map
     std::map<NodeID, std::vector<unsigned>> m_headerSyncPeers;
-    /// Peers m_downloadingSubchain number map
+    /// Peers to m_downloadingBodies number map
     std::map<NodeID, std::vector<unsigned>> m_bodySyncPeers;
     std::unordered_map<HeaderId, unsigned, HeaderIdHash> m_headerIdToNumber;
     bool m_haveCommonHeader = false;			///< True if common block for our and remote chain has been found

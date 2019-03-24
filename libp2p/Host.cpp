@@ -14,16 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Host.cpp
- * @author Alex Leverington <nessence@gmail.com>
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #include "Host.h"
+#include "Capability.h"
 #include "CapabilityHost.h"
 #include "Common.h"
-#include "HostCapability.h"
 #include "RLPxHandshake.h"
 #include "Session.h"
 #include "UPnP.h"
@@ -42,96 +37,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-namespace
-{
-class CapabilityHost : public CapabilityHostFace
-{
-public:
-    explicit CapabilityHost(Host& _host) : m_host{_host} {}
-
-    boost::optional<PeerSessionInfo> peerSessionInfo(NodeID const& _nodeID) const override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        return session ? session->info() : boost::optional<PeerSessionInfo>{};
-    }
-
-    void disconnect(NodeID const& _nodeID, DisconnectReason _reason) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (session)
-            session->disconnect(_reason);
-    }
-
-    void disableCapability(NodeID const& _nodeID, std::string const& _capabilityName,
-        std::string const& _problem) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (session)
-            session->disableCapability(_capabilityName, _problem);
-    }
-
-    void addRating(NodeID const& _nodeID, int _r) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (session)
-            session->addRating(_r);
-    }
-
-    RLPStream& prep(NodeID const& _nodeID, std::string const& _capabilityName, RLPStream& _s,
-        unsigned _id, unsigned _args = 0) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (!session)
-            return _s;
-
-        auto const offset = session->capabilityOffset(_capabilityName);
-        if (!offset)
-            return _s;
-
-        return _s.appendRaw(bytes(1, _id + *offset)).appendList(_args);
-    }
-
-    void sealAndSend(NodeID const& _nodeID, RLPStream& _s) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (session)
-            session->sealAndSend(_s);
-    }
-
-    void addNote(NodeID const& _nodeID, std::string const& _k, std::string const& _v) override
-    {
-        auto session = m_host.peerSession(_nodeID);
-        if (session)
-            session->addNote(_k, _v);
-    }
-
-    bool isRude(NodeID const& _nodeID, std::string const& _capability) const override
-    {
-        auto s = m_host.peerSession(_nodeID);
-        if (s)
-            return s->repMan().isRude(*s, _capability);
-        return false;
-    }
-
-    void setRude(NodeID const& _nodeID, std::string const& _capability) override
-    {
-        auto s = m_host.peerSession(_nodeID);
-        if (!s)
-            return;
-
-        s->repMan().noteRude(*s, _capability);
-    }
-
-    void foreachPeer(
-        std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const override
-    {
-        m_host.forEachPeer(_capabilityName, _f);
-    }
-
-private:
-    Host& m_host;
-};
-}  // namespace
 
 /// Interval at which Host::run will call keepAlivePeers to ping peers.
 std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
@@ -198,7 +103,7 @@ Host::Host(string const& _clientVersion, KeyPair const& _alias, NetworkConfig co
     m_tcp4Acceptor(m_ioService),
     m_alias(_alias),
     m_lastPing(chrono::steady_clock::time_point::min()),
-    m_capabilityHost(make_shared<CapabilityHost>(*this))
+    m_capabilityHost(createCapabilityHost(*this))
 {
     cnetnote << "Id: " << id();
 }
@@ -333,8 +238,9 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
     shared_ptr<Peer> peer;
     DEV_RECURSIVE_GUARDED(x_sessions)
     {
-        if (m_peers.count(_id))
-            peer = m_peers[_id];
+        auto itPeer = m_peers.find(_id);
+        if (itPeer != m_peers.end())
+            peer = itPeer->second;
         else
         {
             // peer doesn't exist, try to get port info from node table
@@ -426,17 +332,18 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
         // todo: mutex Session::m_capabilities and move for(:caps) out of mutex.
         for (auto const& capDesc : caps)
         {
-            auto pcap = m_capabilities[capDesc];
-            if (!pcap)
+            auto itCap = m_capabilities.find(capDesc);
+            if (itCap == m_capabilities.end())
                 return session->disconnect(IncompatibleProtocol);
 
-            session->registerCapability(capDesc, offset, pcap);
+            auto capability = itCap->second;
+            session->registerCapability(capDesc, offset, capability);
 
             cnetlog << "New session for capability " << capDesc.first << "; idOffset: " << offset;
 
-            pcap->onConnect(_id, capDesc.second);
+            capability->onConnect(_id, capDesc.second);
 
-            offset += pcap->messageCount();
+            offset += capability->messageCount();
         }
 
         session->start();
@@ -599,13 +506,13 @@ std::unordered_map<Public, std::string> Host::pocHosts()
     };
 }
 
-void Host::registerCapability(std::shared_ptr<HostCapabilityFace> const& _cap)
+void Host::registerCapability(std::shared_ptr<CapabilityFace> const& _cap)
 {
     registerCapability(_cap, _cap->name(), _cap->version());
 }
 
 void Host::registerCapability(
-    std::shared_ptr<HostCapabilityFace> const& _cap, std::string const& _name, u256 const& _version)
+    std::shared_ptr<CapabilityFace> const& _cap, std::string const& _name, u256 const& _version)
 {
     m_capabilities[std::make_pair(_name, _version)] = _cap;
 }
@@ -679,16 +586,10 @@ void Host::requirePeer(NodeID const& _n, NodeIPEndpoint const& _endpoint)
     {
         if (!addNodeToNodeTable(node))
             return;
-        auto t = make_shared<boost::asio::deadline_timer>(m_ioService);
-        t->expires_from_now(boost::posix_time::milliseconds(600));
-        t->async_wait([this, _n](boost::system::error_code const& _ec)
-        {
-            if (!_ec)
-                if (auto n = nodeFromNodeTable(_n))
-                    requirePeer(n.id, n.endpoint);
+        scheduleExecution(600, [this, _n]() {
+            if (auto n = nodeFromNodeTable(_n))
+                requirePeer(n.id, n.endpoint);
         });
-        DEV_GUARDED(x_timers)
-            m_timers.push_back(t);
     }
 }
 
@@ -804,10 +705,9 @@ void Host::run(boost::system::error_code const&)
     DEV_GUARDED(x_connecting)
         m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.expired(); });
     DEV_GUARDED(x_timers)
-        m_timers.remove_if([](std::shared_ptr<boost::asio::deadline_timer> t)
-        {
-            return t->expires_from_now().total_milliseconds() < 0;
-        });
+    m_timers.remove_if([](std::unique_ptr<boost::asio::deadline_timer> const& t) {
+        return t->expires_from_now().total_milliseconds() < 0;
+    });
 
     keepAlivePeers();
     
@@ -1122,27 +1022,37 @@ void Host::forEachPeer(
     std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const
 {
     RecursiveGuard l(x_sessions);
-    std::vector<std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>>> sessions;
+    std::vector<std::shared_ptr<SessionFace>> sessions;
     for (auto const& i : m_sessions)
         if (std::shared_ptr<SessionFace> s = i.second.lock())
         {
             std::vector<CapDesc> capabilities = s->capabilities();
             for (auto const& cap : capabilities)
                 if (cap.first == _capabilityName)
-                    sessions.push_back(make_pair(s, s->peer()));
+                    sessions.emplace_back(std::move(s));
         }
 
     // order peers by rating, connection age
-    auto sessionLess =
-        [](std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _left,
-            std::pair<std::shared_ptr<SessionFace>, std::shared_ptr<Peer>> const& _right) {
-            return _left.first->rating() == _right.first->rating() ?
-                       _left.first->connectionTime() < _right.first->connectionTime() :
-                       _left.first->rating() > _right.first->rating();
-        };
+    auto sessionLess = [](std::shared_ptr<SessionFace> const& _left,
+                           std::shared_ptr<SessionFace> const& _right) {
+        return _left->rating() == _right->rating() ?
+                   _left->connectionTime() < _right->connectionTime() :
+                   _left->rating() > _right->rating();
+    };
     std::sort(sessions.begin(), sessions.end(), sessionLess);
 
-    for (auto s : sessions)
-        if (!_f(s.first->id()))
+    for (auto const& s : sessions)
+        if (!_f(s->id()))
             return;
+}
+
+void Host::scheduleExecution(int _delayMs, std::function<void()> _f)
+{
+    std::unique_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
+    t->expires_from_now(boost::posix_time::milliseconds(_delayMs));
+    t->async_wait([_f](boost::system::error_code const& _ec) {
+        if (!_ec)
+            _f();
+    });
+    DEV_GUARDED(x_timers) { m_timers.emplace_back(std::move(t)); }
 }
