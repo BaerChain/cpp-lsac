@@ -39,6 +39,8 @@
 #include <libethashseal/GenesisInfo.h>
 #include <libpoaseal/PoaClient.h>
 #include <libpoaseal/Poa.h>
+#include <libdposseal/Dpos.h>
+#include <libdposseal/DposClient.h>
 #include <libethcore/KeyManager.h>
 #include <libdevcore/DBFactory.h>
 #include <libethereum/SnapshotImporter.h>
@@ -189,6 +191,7 @@ int main(int argc, char** argv)
     Ethash::init();
     NoProof::init();
     Poa::init();
+	bacd::Dpos::init();
 
     /// Operating mode.
     OperationMode mode = OperationMode::Node;

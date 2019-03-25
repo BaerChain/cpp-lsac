@@ -20,11 +20,16 @@ void dev::eth::Poa::initEnv(std::weak_ptr<PoaHostCapability> _host)
 {
 	m_host = _host; 
 	m_lastChange_valitor_time = 0;
-	Worker::startWorking();
 }
-
+/*
+    验证人更新 
+	_address： 更新地址 
+	_flag ： true 添加
+	_time ：更新时间
+*/
 bool dev::eth::Poa::updateValitor(Address const & _address, bool _flag, int64_t _time)
 {
+	//cdebug << "updateValitor: _address:" << _address << "|_flag:" << _flag << "|time:"<<_time;
 	Address address(_address);
 	Guard l(m_mutex);
 	if(_flag)
@@ -42,19 +47,88 @@ bool dev::eth::Poa::updateValitor(Address const & _address, bool _flag, int64_t 
 	else
 	{
         //删除
+		unsigned int index = 0;
 		std::vector<Address>::iterator iter = m_poaValidatorAccount.begin();
 		for(; iter != m_poaValidatorAccount.end(); ++iter)
 		{
 			if(address == *iter)
 			{
+				//添加删除缓存
+				DelPoaValitor delva;
+				delva.m_del_address = Address(*iter);
+				unsigned int next_index = (index + 1) >= m_poaValidatorAccount.size() ? 0 : index + 1; //考虑最后一个元素
+				delva.m_next_address = Address(m_poaValidatorAccount[next_index]);
+				m_del_poaValitors.push_back(delva);
+                //删除 广播通知
 				m_poaValidatorAccount.erase(iter);
 				set_valitor_change_time(_time);
 				sendAllUpdateValitor(address, _flag);
 				return true;
 			}
+			index++;
 		}
 	}
 	return true;
+}
+
+void dev::eth::Poa::initPoaValidatorAccounts(std::vector<Address> const & _addresses)
+{
+	if(_addresses.empty())
+		return;
+	m_poaValidatorAccount.clear();
+	m_poaValidatorAccount.assign(_addresses.begin(), _addresses.end());
+
+	m_del_poaValitors.clear();
+}
+
+bool dev::eth::Poa::isvalidators(Address const & _our_address, Address const & _currBlock_address)
+{
+	if(m_poaValidatorAccount.empty())
+	{
+		cwarn << "POA:"
+			<< "don't have validators !";
+		return false;
+	}
+	//暂时验证 指定出块的验证人
+	int curr_site = 1;  //定位验证人
+	for(auto const& val : m_poaValidatorAccount)
+	{
+		if(val == _our_address)
+			break;
+		curr_site++;
+	}
+	int validators_size = m_poaValidatorAccount.size();
+	if(curr_site > validators_size)
+	{
+		cdebug << "the autor not is Validator";
+		return false;
+	}
+	// 验证 验证
+	// 判断addressCurr的下一个是否为自己, 也就是 我自己位置上一个是否为addressCurr
+	int last_index = (curr_site - 1) == 0 ? validators_size - 1 : curr_site - 2;
+
+	if(m_poaValidatorAccount[last_index] == _currBlock_address )
+		return true;
+	else
+	{
+        //存在 当前块的验证人刚刚被删除 在m_poaValidatorAccount 中不存在，应该在 m_del_poaValitors 中
+		cdebug << " have delVator ...";
+		auto find_ret = find(m_del_poaValitors.begin(), m_del_poaValitors.end(), _currBlock_address);
+		bool ret = false;
+		if(find_ret != m_del_poaValitors.end())
+		{
+            //当前块的验证人已经被撤销 检验它下一个验证人是否为our
+			if((*find_ret).m_next_address == _our_address)
+				ret = true;
+			//已经删除的验证人缓存 用一次就可以删除
+			m_del_poaValitors.erase(find_ret);
+		}
+		if(ret)
+			return true;
+	}
+	cdebug << " this turns not is mine: autor[" << _our_address << "]"
+		<< "site:" << curr_site - 1;
+	return false;
 }
 
 void dev::eth::Poa::sendAllUpdateValitor(Address const & _address, bool _flag)
@@ -63,7 +137,7 @@ void dev::eth::Poa::sendAllUpdateValitor(Address const & _address, bool _flag)
 	pmsg.address.push_back(Address(_address));
 	pmsg.curr_valitor_index = m_poaValidatorAccount.size();
 	pmsg.v_type = _flag ? VATITOR_ADD : VATITOR_DEL;
-	pmsg.change_time = m_lastChange_valitor_time;
+	pmsg.last_time = m_lastChange_valitor_time;
 
 	RLPStream _s;
 	pmsg.streamRLPFields(_s);
@@ -100,7 +174,7 @@ void dev::eth::Poa::requestStatus(NodeID const & _nodeID, u256 const & /*_peerCa
 }
 void dev::eth::Poa::brocastMsg(PoapPacketType _type, RLPStream & _msg_s)
 {
-	// 广播发送
+	// 广播发送  将 sealAndSend() 回调使用
 	auto h = m_host.lock();
 	h->hostFace()->foreachPeer(h->name(), 
 		[&](NodeID const& _nodeId){
@@ -121,6 +195,7 @@ void dev::eth::Poa::sealAndSend(NodeID const & _nodeid, PoapPacketType _type, RL
 }
 
 void dev::eth::Poa::updateValitor(PoaMsg const & _poadata)
+
 {
 	if(_poadata.address.empty())
 	{
@@ -157,7 +232,6 @@ void dev::eth::Poa::updateValitor(PoaMsg const & _poadata)
 
 void dev::eth::Poa::generateSeal(BlockHeader const& _bi)
 {
-    cdebug << "Poa: into generateSeal";
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
     header.setSeal(MixHashField, h256{0});
@@ -175,7 +249,6 @@ bool dev::eth::Poa::shouldSeal(Interface*)
 
 void dev::eth::Poa::workLoop()
 {
-	cdebug << "Poa::workLoop()";
 	while(isWorking())
 	{
 		std::pair<bool, PoaMsgPacket> ret = m_msg_queue.tryPop(5);
@@ -186,7 +259,7 @@ void dev::eth::Poa::workLoop()
 		}
 		else
 		{
-			cdebug << " get mesg: PoaStatusPacket||"<< ret.second.packet_id << ret.second.node_id;
+			cdebug << " get mesg: ||"<< ret.second.packet_id << ret.second.node_id;
 			switch(ret.second.packet_id)
 			{
 			case PoaStatusPacket:
@@ -209,7 +282,6 @@ void dev::eth::Poa::workLoop()
 			case PoaRequestValitor:
 			{
                 //收到请求valitor 数据
-				cdebug << " get mesg: PoaRequestValitor||" << ret.second.packet_id << ret.second.node_id;
 				PoaMsg p_msg;
 				p_msg.address.assign(m_poaValidatorAccount.begin(), m_poaValidatorAccount.end());
 				p_msg.v_type = VATITOR_FULL;
@@ -223,13 +295,14 @@ void dev::eth::Poa::workLoop()
 			}
 			case PoaValitorData:
 			{
-				cdebug << " get mesg: PoaValitorData||" << ret.second.packet_id << ret.second.node_id;
 				PoaMsg retMsg;
 				retMsg.populate(RLP(ret.second.data));
                 //检查自己本地数据状态
+				retMsg.printLog();
 				if(retMsg.last_time != m_lastChange_valitor_time)
 				{
                     //不一致需要更新
+					cdebug << "updateValitor ......";
 					updateValitor(retMsg);
 				}
 				break;

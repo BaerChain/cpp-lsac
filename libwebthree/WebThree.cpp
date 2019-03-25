@@ -25,6 +25,9 @@
 #include <libpoaseal/Poa.h>
 #include <libpoaseal/PoaClient.h>
 
+#include <libdposseal/Dpos.h>
+#include <libdposseal/DposClient.h>
+
 #include <aleth/buildinfo.h>
 
 #include <boost/filesystem.hpp>
@@ -60,6 +63,12 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
             else if (_params.sealEngineName == Poa::name())
                 m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+			else if(_params.sealEngineName == Poa::name())
+				m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
+					shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+			else if(_params.sealEngineName ==bacd::Dpos::name())
+				m_ethereum.reset(new bacd::PoaClient(_params, (int)_params.networkID, m_net,
+					shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
                                           "Unknown seal engine: " + _params.sealEngineName));

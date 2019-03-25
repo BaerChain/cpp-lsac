@@ -32,8 +32,6 @@ dev::eth::PoaClient::PoaClient(ChainParams const& _params, int _networkID, p2p::
     asPoaClient(*this);
     m_timespace = 5000;
     m_params = _params;
-    m_poaValidatorAccount.clear();
-    m_poaValidatorAccount.assign(m_params.poaValidatorAccount.begin(), m_params.poaValidatorAccount.end());
 	init(_host, _networkID);
 }
 
@@ -58,10 +56,9 @@ void dev::eth::PoaClient::init(p2p::Host& _host, int _networkID)
 		}
 		);
 	_host.registerCapability(ethCapability);
+	poa()->initPoaValidatorAccounts(m_params.poaValidatorAccount);
 	poa()->initEnv(ethCapability);
-
-
-
+	poa()->startGeneration();
 }
 
 Poa* dev::eth::PoaClient::poa() const
@@ -110,10 +107,9 @@ void dev::eth::PoaClient::doWork(bool _doWait)
 
 void dev::eth::PoaClient::startSealing()
 {
-    setName("Client");
+    setName("PoaClient");
     // TODO PoaCLient func
     // cdebug << "PoaClient: into startSealing";
-	poa()->startGeneration();
     Client::startSealing();
 }
 
@@ -135,7 +131,7 @@ void dev::eth::PoaClient::rejigSealing()
         return;
     }
     //验证 验证人
-    if (!isvalidators())
+	if(!poa()->isvalidators(author(), m_bc.info().author()))
         return;
     m_lastBlock = chrono::system_clock::now();
     // cdebug << "PoaClient: into rejigSealing";
@@ -147,41 +143,6 @@ void dev::eth::PoaClient::syncBlockQueue()
     // cdebug << "PoaClient: into syncBlockQueue";
     Client::syncBlockQueue();
     // TODO dposClient func
-}
-
-bool dev::eth::PoaClient::isvalidators()
-{
-    if (m_poaValidatorAccount.empty())
-    {
-        cwarn << "POA:"
-              << "don't have validators !";
-        return false;
-    }
-    //暂时验证 指定出块的验证人
-    int curr_site = 1;  //定位验证人
-    for (auto const& val : m_poaValidatorAccount)
-    {
-        // cdebug << val;
-        if (val == author())
-            break;
-        curr_site++;
-    }
-    int validators_size = m_poaValidatorAccount.size();
-	if (curr_site > validators_size)
-	{
-        cdebug << "the autor not is Validator";
-        return false;
-	}
-    // 验证 验证人出块顺序
-    auto const addressCurr = m_bc.info().author();  // 得到当前块 验证人
-
-    // 判断addressCurr的下一个是否为自己, 也就是 我自己位置上一个是否为addressCurr
-    int last_index = (curr_site - 1) == 0 ? validators_size - 1 : curr_site - 2;
-    if (m_poaValidatorAccount[last_index] == addressCurr)
-        return true;
-    cdebug << " this turns not is mine: autor[" << author() << "]"
-           << "site:" << curr_site - 1;
-    return false;
 }
 
 bool dev::eth::PoaClient::setValidator(const std::string& _address, bool _ret)

@@ -33,6 +33,7 @@ public:
     static void         init();
 	void                initEnv(std::weak_ptr<PoaHostCapability> _host);
 	inline void         startGeneration()   {setName("Poa"); startWorking(); }   //loop 开启
+
 	inline void         set_valitor_change_time( int64_t _time){ m_lastChange_valitor_time = _time; }
     inline void         cancelGeneration() override { stopWorking(); }
     bool                verifySeal(BlockHeader const& ) const { return true; }
@@ -40,9 +41,12 @@ public:
 
 public:
 	bool                updateValitor(Address const& _address, bool _flag, int64_t _time);
+	inline std::vector<Address>& getPoaValidatorAccounts() { return m_poaValidatorAccount; }
+	void                initPoaValidatorAccounts(std::vector<Address> const& _addresses);
+
+	bool                isvalidators(Address const& _our_address, Address const& _currBlock_address);
 private:
 	void                sendAllUpdateValitor(Address const& _address, bool _flag);
-
 public:
 	void                onPoaMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
 	void                requestStatus(NodeID const& _nodeID, u256 const& _peerCapabilityVersion);
@@ -61,6 +65,7 @@ private:
     std::weak_ptr<PoaHostCapability>    m_host;
 	PoaMsgQueue                         m_msg_queue;	// msg queue 消息队列
 	bool                                m_cfg_err;
+	std::vector<DelPoaValitor>          m_del_poaValitors;       //被删除验证人集合，主要是验证轮流出块时 使用一次，使用后删除
 };
 
 }  // namespace eth

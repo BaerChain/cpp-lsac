@@ -45,7 +45,6 @@ protected:
     void syncBlockQueue();
 
 private:
-    bool isvalidators();
     bool setValidator(const std::string& _address, bool _ret);
 
 private:
@@ -54,7 +53,7 @@ private:
     //上次出块时间
     mutable std::chrono::system_clock::time_point m_lastBlock = std::chrono::system_clock::now();
     ChainParams m_params;          //配置
-    std::vector<Address> m_poaValidatorAccount; // 验证人数组 按顺序出块
+    //std::vector<Address> m_poaValidatorAccount; // 验证人数组 按顺序出块
 
 };
 
