@@ -95,6 +95,7 @@ public:
     /// Submits the given transaction.
     /// @returns the new transaction's hash.
     h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) override;
+    h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag) override;
     
     /// Imports the given transaction into the transaction queue
     h256 importTransaction(Transaction const& _t) override;

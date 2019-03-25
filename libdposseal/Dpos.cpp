@@ -1,190 +1,520 @@
 #include "Dpos.h"
+#include <libethcore/TransactionBase.h>
+#include <cstdlib>
 
 dev::bacd::Dpos::Dpos()
 {
-	m_varlitor_vote.clear();
-	m_vote_varlitor.clear();
-	m_curr_valitor.clear();
-	m_curr_valitors.clear();
-	m_canditate.clear();
-	m_prveslot = 0;
-	m_currslot = 0;
+    m_dpos_cleint =nullptr;
+    m_last_dposDataMsg_time = 0;
+    m_last_create_block_time = 0;
+}
+
+dev::bacd::Dpos::~Dpos()
+{
+    m_dpos_cleint = nullptr;
+    stopWorking();
 }
 
 void dev::bacd::Dpos::generateSeal(BlockHeader const & _bi)
 {
-	BlockHeader header(_bi);
-	header.setSeal(NonceField, h64{ 0 });
-	header.setSeal(MixHashField, h256{ 0 });
-	RLPStream ret;
-	header.streamRLP(ret);
-	if(m_onSealGenerated)
-		m_onSealGenerated(ret.out());
+    BlockHeader header(_bi);
+    header.setSeal(NonceField, h64{ 0 });
+    header.setSeal(MixHashField, h256{ 0 });
+    RLPStream ret;     
+    header.streamRLP(ret);
+    if(m_onSealGenerated)
+    {
+        m_onSealGenerated(ret.out());
+    }
+    // ÂêåÊ≠•dposÊï∞ÊçÆ
+    syncVoteData();
 }
 
-void dev::bacd::Dpos::workLoop()
+void dev::bacd::Dpos::initGenesieVarlitors(ChainParams const & m_params)
 {
-    
+    m_genesis_varlitor.assign(m_params.poaValidatorAccount.begin(), m_params.poaValidatorAccount.end());
 }
 
 void dev::bacd::Dpos::init()
 {
-	ETH_REGISTER_SEAL_ENGINE(Dpos);
+    ETH_REGISTER_SEAL_ENGINE(Dpos);
 }
 
 void dev::bacd::Dpos::initEnv(std::weak_ptr<DposHostcapality> _host)
 {
-	m_host = _host;
+    m_host = _host;
 }
 
-void dev::bacd::Dpos::onPoaMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
+void dev::bacd::Dpos::workLoop()
 {
-	if(_id < DposPacketCount && _id >= DposStatuspacket)
-	{
-		cdebug << "onRaftMsg: id=" << _id << ",from=" << _nodeid;
-		m_msg_queue.push(DposMsgPacket(_nodeid, _id, _r[0].data()));
+    while(isWorking())
+    {
+        std::pair<bool, DposMsgPacket> ret = m_msg_queue.tryPop(5);
+        if(!ret.first)
+        {
+            continue;
+        }
+        cdebug <<EthBlue " get mesg: ||" << ret.second.packet_id << ret.second.node_id << EthBlue;
+        switch(ret.second.packet_id)
+        {
+        case DposStatuspacket:
+        {
+            DposDataMsg dataMsg;
+            dataMsg.populate(RLP(ret.second.data));
+            LOG(m_logger) <<EthYellow "recved DposStatuspacket msg : " << dataMsg << EthYellow;
+            if(!isVarlitor(dataMsg.m_addr))
+            {
+                LOG(m_logger) << "node_id:" << ret.second.node_id << "|addrss:" << dataMsg.m_addr << " is not varlitor";
+                return;
+            }
+            if(dataMsg.m_now == m_last_dposDataMsg_time )
+                return;
+            else if(dataMsg.m_now > m_last_dposDataMsg_time)
+            {
+                for(auto val : dataMsg.m_transation_ret)
+                    updateVoteData(val);
+                m_last_dposDataMsg_time = dataMsg.m_now;
+            }
+            else
+            {
+                requestStatus(ret.second.node_id, 0);
+            }
 
-	}
-	else
-	{
-		cwarn << "Recv an illegal msg, id=" << _id << "  and the max_id:" << DposPacketCount - 1;
-	}
+            break;
+        }
+        case DposDataPacket:
+        {
+            DposDataMsg msg;
+            msg.populate(RLP(ret.second.data));
+            LOG(m_logger) << EthYellow "recved msg : " << msg << EthYellow;
+            if(!isVarlitor(m_dpos_cleint->author()))
+                return;
+            for(auto val: msg.m_transation_ret)
+            {
+                updateVoteData(val);
+            }
+            if(msg.m_now != m_last_dposDataMsg_time)
+            {
+                m_last_dposDataMsg_time = msg.m_now;
+                RLPStream _s;
+                msg.streamRLPFields(_s);
+                brocastMsg(DposDataPacket, _s);
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
 }
 
-void dev::bacd::Dpos::requestStatus(NodeID const & /*_nodeID*/, u256 const & /*_peerCapabilityVersion*/)
+void dev::bacd::Dpos::requestStatus(NodeID const & _nodeID, u256 const & /*_peerCapabilityVersion*/)
 {
-
+    LOG(m_logger) << "*******Dpos: requestStatus*********";
+    if(!m_dpos_cleint->dposVoteState()->isVerifyVoteTransation())
+        return;
+    LOG(m_logger) << "send status to:" << _nodeID;
+    DposDataMsg msg;
+    msg.m_addr = m_dpos_cleint->author();
+    msg.m_now = m_last_dposDataMsg_time;
+    std::vector<DposTransaTionResult> ret = m_dpos_cleint->dposVoteState()->getTransationResult();
+    for(auto val : ret)
+    {
+        OnDealTransationResult result(EDPosResult::e_Add, false, val);
+        msg.m_transation_ret.push_back(result);
+    }
+    LOG(m_logger) << msg;
+    RLPStream _s;
+    msg.streamRLPFields(_s);
+    sealAndSend(_nodeID, DposStatuspacket, _s);
 }
 
-void dev::bacd::Dpos::brocastMsg(DposPacketType _type, RLPStream & _msg_s)
+void dev::bacd::Dpos::onDposMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
 {
-	// π„≤•∑¢ÀÕ  Ω´ sealAndSend() ªÿµ˜ π”√
-	auto h = m_host.lock();
-	h->hostFace()->foreachPeer(h->name(),
-		[&](NodeID const& _nodeId){
-		sealAndSend(_nodeId, _type, _msg_s);
-		cdebug << "brocastMsg ... NodeId:" << _nodeId << "type" << _type;
-		return true;
-	});
+    if(_id < DposPacketCount && _id >= DposStatuspacket)
+    {
+        cdebug << EthRed "onRaftMsg: id=" << _id << ",from=" << _nodeid << EthRed;
+        m_msg_queue.push(DposMsgPacket(_nodeid, _id, _r[0].data()));
+    }
+    else
+    {
+        cwarn << "Recv an illegal msg, id=" << _id << "  and the max_id:" << DposPacketCount - 1;
+    }
 }
 
 void dev::bacd::Dpos::sealAndSend(NodeID const & _nodeid, DposPacketType _type, RLPStream const & _msg_s)
 {
-	// ∑‚◊∞∑¢ÀÕ
-	RLPStream msg_ts; //Õ¯¬Á≤„ ˝æ›∞¸ £¨ª·Ω´“µŒÒ¬ﬂº≠◊∑º”∞¸∑‚◊∞µΩ◊Ó∫Û
-	auto h = m_host.lock(); //weak_ptr –Ë“™ lock£®)Ω‚À¯Œ™ share_ptr≤≈ƒ‹µ˜”√
-	h->hostFace()->prep(_nodeid, name(), msg_ts, _type, 1).append(_msg_s.out()); // ∑‚◊∞œ˚œ¢ID£¨µ»µ»
-	h->hostFace()->sealAndSend(_nodeid, msg_ts);
-	cdebug << " Poa Send[" << _type << "] to " << _nodeid;
+    // Â∞ÅË£ÖÂèëÈÄÅ
+    RLPStream msg_ts;
+    auto h = m_host.lock(); //weak_ptr ÈúÄË¶Å lockÔºà)Ëß£ÈîÅ‰∏∫ share_ptrÊâçËÉΩË∞ÉÁî®
+    h->hostFace()->prep(_nodeid, name(), msg_ts, _type, 1).append(_msg_s.out()); // Â∞ÅË£ÖÊ∂àÊÅØIDÔºåÁ≠âÁ≠â
+    h->hostFace()->sealAndSend(_nodeid, msg_ts);
+    cdebug << " Dpos Send[" << _type << "] to " << _nodeid;
 }
 
-void dev::bacd::Dpos::updateDposData(EDposDataType _type, Address const & _addr_source, Address const & _addr_target)
+bool dev::bacd::Dpos::isBolckSeal(uint64_t _now)
 {
-    //dpos —°æŸ»À/—È÷§»À ∏¸–¬
-	Debug << "updateDposData|" << "type:" << _type << " _addr_source:" << _addr_source << " _addr_target" << _addr_target;
-	switch(_type)
-	{
-	case dev::bacd::e_loginCandidate:
-		break;
-	case dev::bacd::e_logoutCandidate:
-		break;
-	case dev::bacd::e_delegate:
-		break;
-	case dev::bacd::e_unDelegate:
-		break;
-	case dev::bacd::e_max:
-		break;
-	default:
-		break;
-	}
+    if(!CheckValidator(_now))
+    {
+        return false;
+    } 
+    //ÂêåÊ≠•Êú¨Âú∞dpos
+    initDataByCurrBlock();
+
+    printDposData(m_dpos_context);
+    return true;
 }
 
-bool dev::bacd::Dpos::isBolckSeal(uint64_t _last_time, uint64_t _now)
-{
-	Debug << "isBolckSeal: _last_time:" << _last_time << "||_now:" << _now;
-	if(!CheckValidator(_now))
-		return false;
-	if(_last_time == 0)
-		return true;
-	if(tryElect(_last_time, _now))
-		return false; //Ω¯»Îœ¬“ª¬÷
-	return true;
-}
-
-bool dev::bacd::Dpos::checkDeadline(uint64_t _last_block_time, uint64_t _now)
+bool dev::bacd::Dpos::checkDeadline(uint64_t _now)
 {  
-	if(m_curr_valitors.empty())
-		return false;
-    if(_last_block_time <=0)
-	{
-	    //»Áπ˚Œ™0 ø…ƒ‹ «¥¥ ¿«¯øÈ
-		return false;
-	}
-	//µ√µΩ√ø¥Œ≥ˆøÈµƒ’˚ ˝ ±º‰øÃ∂»£¨±»Ωœ…œ¥Œ£¨œ÷‘⁄∫Õœ¬¥Œ
-	// int64((now+blockInterval-1)/blockInterval) * blockInterval
-	int next_slot = (_now + blockInterval - 1) / blockInterval * blockInterval;
-    //nt64((now-1)/blockInterval) * blockInterval
-	int prve_slot = (_now - 1) / blockInterval * blockInterval;
-	int last_slot = (_last_block_time - 1) / blockInterval * blockInterval;
+    //LOG(m_logger) <<"the curr and genesis hash:"<< m_dpos_cleint->getCurrBlockhash() << "||" << m_dpos_cleint->getGenesisHash();
+    if(m_dpos_cleint->getCurrBlockhash() == m_dpos_cleint->getGenesisHash())
+    {
+        //parent Âàõ‰∏ñÂå∫Âùó ‰∏çËøõË°åÊó∂Èó¥È™åËØÅ
+        //È™åËØÅ‰∫∫‰∏∫ÊåáÂÆöÈ™åËØÅ‰∫∫
+        //initVarlitorByGenesis();
+        return true;
+    }
+    const BlockHeader _h = m_dpos_cleint->getCurrHeader();
+    int64_t _last_time = _h.timestamp();
+    if(_last_time <=0)
+    {
+        cwarn << " error! the block time is 0!";
+        return false;
+    }
+    // Áî±‰∫éËΩÆËØ¢Êó∂Èó¥ËøáÂø´Ôºå10ms Á±ªÂ§öÊ¨°ËøõÂÖ•
+    int64_t comp_time = _now - 10;
+    if(_last_time >= comp_time )
+    {
+        LOG(m_warnlog) << "the time is error ..";
+        return false;
+    }
+    //ÂæóÂà∞ÊØèÊ¨°Âá∫ÂùóÁöÑÊï¥Êï∞Êó∂Èó¥ÂàªÂ∫¶ÔºåÊØîËæÉ‰∏äÊ¨°ÔºåÁé∞Âú®Âíå‰∏ãÊ¨°
+    //Á≥ªÁªüÊó∂Èó¥ÁÆóÂá∫ÁöÑ‰∏ã‰∏Ä‰∏™Âá∫ÂùóÊó∂Èó¥ÁÇπ
+	uint64_t next_slot = (_now + blockInterval - 1) / blockInterval * blockInterval;
+    //ÂΩìÂâçÂùóÁÆóÂá∫ÁöÑ‰∏ä‰∏Ä‰∏™Âá∫ÂùóÊó∂Èó¥ÁÇπ
+	uint64_t last_slot = (_last_time - 1) / blockInterval * blockInterval;
+    //ÂΩìÂâçÂùóÁÆóÂá∫Âç≥Â∞ÜÂá∫ÂùóÊó∂Èó¥ÁÇπ
+	uint64_t curr_slot = last_slot + blockInterval;
 
-    if(last_slot >= next_slot)
-	{
-		cwarn << "waring :" << "last_slot:"<<last_slot<<" >= next_slot:"<<next_slot;
-		return false;
-	}
-	if(last_slot == prve_slot || (next_slot - _now) <= 1)
-		return true;
-	return false;
+	/*cdebug << "_now:      " << _now;
+	cdebug << "_last_time:" << _last_time;
+	cdebug << "next_slot: " << next_slot;
+	cdebug << "last_slot: " << last_slot;
+	cdebug << "curr_slot: " << curr_slot;*/
+
+    if(curr_slot <= _now || (next_slot - _now) <= 1)
+    {
+        return true;
+    }
+    LOG(m_logger) << EthYellow"the slot time have some error! _now:"<< _now<< EthReset;
+    return false;
+}
+
+void dev::bacd::Dpos::initVarlitorByGenesis()
+{
+    m_dpos_context.curr_varlitor.assign(m_genesis_varlitor.begin(), m_genesis_varlitor.end());
 }
 
 bool dev::bacd::Dpos::CheckValidator(uint64_t _now)
 {
-	if(m_curr_valitors.empty())
-		return false;
-
-	int offet = _now % epochInterval;       // µ±«∞¬÷ Ω¯»Î¡À∂‡ ±º‰
-	if(offet % blockInterval != 0)
-		return false;   //¥À ±º‰‘⁄≥ˆøÈ◊Ó∂Ã ±º‰ ∑µªÿ
-
-	offet /= blockInterval;
-	offet %= m_curr_valitors.size();
-	Address const& curr_valitor = m_curr_valitors[offet]; //µ√µΩµ±—È÷§»À
-	if(m_curr_valitor == curr_valitor)
-		return true;
-	return false;
+    cdebug << " into CheckValidator...";
+    const BlockHeader _h = m_dpos_cleint->getCurrHeader();
+    std::vector<Address> const& _currvar= _h.dposContext().curr_varlitor;
+    std::vector<Address> const& _gennesis_var = m_dpos_cleint->getGenesisHeader().dposContext().curr_varlitor;
+    std::vector<Address> varlitors;
+    varlitors.clear();
+    varlitors.assign(_currvar.begin(), _currvar.end());
+    if(_currvar.empty())
+    {
+        LOG(m_warnlog) << "the m_dpos_context's curr_varlitor is empty and try to use genesis varlitor...";
+        if(_gennesis_var.empty())
+        {
+            LOG(m_logger) << " the genesis varlitor is empty, can't to create block ...";
+            return false;
+        }
+        varlitors.clear();
+        varlitors.assign(_gennesis_var.begin(), _gennesis_var.end());
+    }
+	LOG(m_logger) << EthYellow << "_now:" << _now;
+    uint64_t offet = _now % epochInterval;       // ÂΩìÂâçËΩÆ ËøõÂÖ•‰∫ÜÂ§öÊó∂Èó¥
+    //if(offet % blockInterval != 0)
+    //{
+    //    LOG(m_logger) << "this time not is create block time!";
+    //    return false;   //Ê≠§Êó∂Èó¥Âú®Âá∫ÂùóÊúÄÁü≠Êó∂Èó¥ ËøîÂõû
+    //}
+	LOG(m_logger) << "offet = _now % epochInterval:" << offet;
+    offet /= varlitorInterval;
+	LOG(m_logger) << "offet /= varlitorInterval:" << offet;
+    offet %= varlitors.size();
+	LOG(m_logger) << "offet %= varlitors.size():" << offet;
+    Address const& curr_valitor = varlitors[offet]; //ÂæóÂà∞ÂΩìÈ™åËØÅ‰∫∫
+    for (auto val : varlitors)
+    {
+        cdebug << val << "offet:"<< offet;
+    }
+    if(m_dpos_cleint->author() == curr_valitor)
+    {
+        m_last_create_block_time = _now;
+        return true;
+    }
+    return false;
 }
 
-bool dev::bacd::Dpos::tryElect(uint64_t _last_time, uint64_t _now)
+void dev::bacd::Dpos::tryElect(uint64_t _now)
 {
-    //’‚¿Ô —È÷§»À“—æ≠Õ®π˝ ≥¢ ‘Õ≥º∆Õ∂∆±Ω¯»Îœ¬“ª¬÷ 
-    // ß∞‹ ‘ÚºÃ–¯≥ˆøÈ
-	unsigned int prveslot = _last_time / epochInterval; //…œ“ª∏ˆøÈµƒ÷‹∆⁄
-	unsigned int currslot = _now / epochInterval;   //µ±«∞º¥Ω´≥ˆøÈµƒ÷‹∆⁄
-	cdebug << "prveslot:" prveslot << " |currslot" << currslot;
+    //ËøôÈáå È™åËØÅ‰∫∫Â∑≤ÁªèÈÄöËøá Â∞ùËØïÁªüËÆ°ÊäïÁ•® 
+    //Â∞ùËØïÂêéÁªßÁª≠Âá∫Âùó ÂàôÁªßÁª≠Âá∫Âùó
+    const BlockHeader _h = m_dpos_cleint->getCurrHeader();
+    uint64_t _last_time = _h.timestamp();
+    unsigned int prveslot = _last_time / epochInterval; //‰∏ä‰∏Ä‰∏™ÂùóÁöÑÂë®Êúü
+    unsigned int currslot = _now / epochInterval;   //ÂΩìÂâçÂç≥Â∞ÜÂá∫ÂùóÁöÑÂë®Êúü
+    //cdebug << EthYellow"ÔºüÔºüÔºüÔºüprveslot:"<< prveslot << " |currslot" << currslot;
+	//cdebug << EthYellow"parent hash:" << m_dpos_cleint->getCurrBlockhash();
+	cdebug << EthYellow"_last_time: " << _last_time << "|now:"<<_now;
     if(prveslot == currslot)
-	{
-	    //¥¶”⁄œ‡Õ¨÷‹∆⁄ ≥ˆøÈ
-		return false;
-	}
-    // ¥•∑¢Ã·≥ˆ≤ª∫œ∏Ò—È÷§»À
-	kickoutValidator(prveslot);
-    //Õ≥º∆Õ∂∆±
-	countVotes();
-    //¥Ú¬“—È÷§»ÀÀ≥–Ú
-	disorganizeVotes();
-    //π„≤•Õ¨≤Ω–¬“ª¬÷µƒ—È÷§»À
-    //brocastMsg(DposDataPacket, )
-	return true;
+    {
+        //Â§Ñ‰∫éÁõ∏ÂêåÂë®Êúü Âá∫Âùó
+        return ;
+    }
+   // LOG(m_logger) << "start new epoch...";
+
+    // Ëß¶ÂèëÊèêÂá∫‰∏çÂêàÊ†ºÈ™åËØÅ‰∫∫
+    kickoutValidator();
+    //ÁªüËÆ°ÊäïÁ•®
+    countVotes();
+    //Êâì‰π±È™åËØÅ‰∫∫È°∫Â∫è
+    disorganizeVotes();
+    
+    LOG(m_logger) <<EthYellow "******Come to new epoch, prevEpoch:"<< prveslot << "nextEpoch:" << currslot<< EthYellow;
 }
 
-void dev::bacd::Dpos::kickoutValidator(unsigned int _prveslot)
+void dev::bacd::Dpos::kickoutValidator()
 {
-    //Ãﬁ≥˝≤ª∫œ∏Ò
-	cdebug << "kickoutValidator:" << _prveslot;
-    //…œ“ª∏ˆ¬÷¥¥ ¿ ≤ªÃﬂ
-	if(m_prveslot == 0 && m_canditate.size() <=maxValitorNum)
-		return;
-	unsigned int kickout_num = m_canditate.size() - maxValitorNum; // Ã·≥ˆ—È÷§»À»À ˝
+    //ÂâîÈô§‰∏çÂêàÊ†º ÂΩì‰∏ã‰∏ÄËΩÆÈ™åËØÅ‰∫∫+ Âàõ‰∏ñÈÖçÁΩÆÈ™åËØÅ‰∫∫ > maxValitorNum Ëß¶Âèë
+    BlockHeader const& genesisHeader = m_dpos_cleint->getGenesisHeader();
+    DposContext const& genesis_dpos_data = genesisHeader.dposContext();
+    int varlitor_num = maxValitorNum - genesis_dpos_data.curr_varlitor.size();
+    if(varlitor_num <=0)
+    {
+        LOG(m_logger) << "next slot varlitor num <" << maxValitorNum << " and not to kickout...";
+        return;
+    }
+    //Ë∏¢‰∫∫ÈÄªËæë
+
+}
+
+void dev::bacd::Dpos::countVotes()
+{
+    //ÁªüËÆ°ÊäïÁ•®
+    std::vector<DposVarlitorVote> varlitor_vote;
+    for (auto var_vote : m_dpos_context.varlitors_votes.m_varlitor_voter)
+    {
+        if(var_vote.second.size() ==0)
+            continue;
+        //Ê£ÄÊü•ÊòØÂê¶‰∏∫ÂÄôÈÄâ‰∫∫
+        if(m_dpos_context.canlidates.find(var_vote.first) == m_dpos_context.canlidates.end())
+            continue;
+        //Ê£ÄÊü•ÊäïÁ•®‰∫∫ÊòØÂê¶‰∏∫ÂΩìÂâçÈ™åËØÅ‰∫∫
+        size_t num = 0;
+        for(auto val : var_vote.second)
+        {
+            auto voter = m_dpos_context.vote_varlitor.find(val);
+            if(voter == m_dpos_context.vote_varlitor.end())
+                continue;
+            if(voter->second == var_vote.first)
+                ++num;
+        }
+        varlitor_vote.push_back(DposVarlitorVote(var_vote.first, num));
+    }
+    if(varlitor_vote.size() > 1)
+    {
+        std::sort(varlitor_vote.begin(), varlitor_vote.end());
+    }
+
+    //insert to curr_varlitor
+    m_dpos_context.curr_varlitor.clear();
+    DposContext const& genesis_dpos_data =m_dpos_cleint->getGenesisHeader().dposContext();
+    size_t varlitor_num = maxValitorNum - genesis_dpos_data.curr_varlitor.size();
+    for (size_t i=0; i< varlitor_num; i++)
+    {   if(varlitor_vote.size() > i)
+            m_dpos_context.curr_varlitor.push_back(varlitor_vote[i].m_addr);
+    }
+    //Âä†ÂÖ•Âàõ‰∏ñÈÖçÁΩÆÈ™åËØÅ‰∫∫
+    for(auto val : genesis_dpos_data.curr_varlitor)
+    {
+        cdebug << "genesis_dpos_data:" << val;
+        m_dpos_context.curr_varlitor.push_back(Address(val));
+    }
+    for(auto val: m_dpos_context.curr_varlitor)
+    {
+        cdebug << val;
+    }
+
+    //Ê∏ÖÁ©∫Áõ∏ÂÖ≥Êï∞ÊçÆ
+    m_dpos_context.varlitor_block_num.clear();
+    m_dpos_context.vote_varlitor.clear();
+	m_dpos_context.varlitors_votes.clear();
+    //ÂæÖËÄÉËôëÂÄôÈÄâ‰∫∫Êó∂ÂÄôÊ∏ÖÁ©∫
+}
+
+void dev::bacd::Dpos::disorganizeVotes()
+{
+    //ÈöèÊú∫Êâì‰π±È™åËØÅ‰∫∫
+
+    int range = m_dpos_context.curr_varlitor.size();
+    // rand()%(Y-X+1)+X [X,Y]
+    //rand()%range
+    //‰ΩøÁî® parent hash ÁßçÂ≠ê
+    //size_t parent_hash =(size_t)m_dpos_cleint->getCurrBlockhash();
+    srand(time(NULL));
+    for(int i=0; i < range; i++)
+    {
+        int j = rand() % range;
+        Address temp_addr = m_dpos_context.curr_varlitor[i];
+        m_dpos_context.curr_varlitor[i] = m_dpos_context.curr_varlitor[j];
+        m_dpos_context.curr_varlitor[j] = temp_addr;
+    }
+}
+
+void dev::bacd::Dpos::updateVoteData(OnDealTransationResult const & _ret)
+{
+    m_dpos_cleint->dposVoteState()->updateVoteTransation(_ret);
+}
+
+void dev::bacd::Dpos::dealVoteDatas()
+{
+    LOG(m_logger) << EthRed "************deal dealVoteDatas :" << EthRed;
+    std::vector<OnDealTransationResult> const& ret = m_dpos_cleint->dposVoteState()->getOnTransationResult();
+    if(ret.empty())
+        return;
+    for(auto val : ret)
+    {
+        if(!val.m_is_deal_vote)
+            continue;
+        dealVoteData(val);
+    }
+}
+
+void dev::bacd::Dpos::dealVoteData(OnDealTransationResult const& _ret)
+{
+    LOG(m_logger) << EthRed "************deal dpos vote :" << _ret << EthRed;
+    //Â§ÑÁêÜÊäïÁ•®
+    EDposDataType type = _ret.m_type;
+
+    Address const& addr_from = _ret.m_form;
+    Address const& addr_sender_to = _ret.m_send_to;
+    switch(type)
+    {
+    case dev::bacd::e_loginCandidate:
+    {
+        m_dpos_context.canlidates.insert(addr_sender_to);
+    }
+    break;
+    case dev::bacd::e_logoutCandidate:
+    {
+        auto ret = std::find(m_dpos_context.canlidates.begin(), m_dpos_context.canlidates.end(), addr_sender_to); //m_dpos_context.canlidates.find( _t.sender());
+        if(ret != m_dpos_context.canlidates.end())
+            m_dpos_context.canlidates.erase(ret);
+    }
+    break;
+    case dev::bacd::e_delegate:
+    {
+        //Êé®Ëçê‰∏∫È™åËØÅ‰∫∫
+        //Âà†Èô§ÂéüÊù•ÁöÑ ÊäïÁ•®‰∫∫-È™åËØÅ‰∫∫
+        auto vote_ret = m_dpos_context.vote_varlitor.find(addr_from);
+        if(vote_ret != m_dpos_context.vote_varlitor.end())
+            m_dpos_context.vote_varlitor.erase(vote_ret);
+        //Âà†Èô§ÊóßÁöÑ È™åËØÅ‰∫∫-ÊäïÁ•®‰∫∫s
+        m_dpos_context.varlitors_votes.del_old_varlitor(addr_sender_to, addr_from);
+        //Ê∑ªÂä†Êñ∞ÁöÑ È™åËØÅ‰∫∫-ÊäïÁ•®‰∫∫s
+        m_dpos_context.varlitors_votes.add_vartor_vote(addr_sender_to, addr_from);
+        //Ê∑ªÂä†Êñ∞ÁöÑ ÊäïÁ•®‰∫∫-È™åËØÅ‰∫∫
+        m_dpos_context.vote_varlitor.insert(std::make_pair(addr_from, addr_sender_to));
+    }
+    break;
+    case dev::bacd::e_unDelegate:
+    {
+        auto vote_ret = m_dpos_context.vote_varlitor.find(addr_from);
+        if(vote_ret != m_dpos_context.vote_varlitor.end())
+            m_dpos_context.vote_varlitor.erase(vote_ret);
+        //Âà†Èô§ÊóßÁöÑ È™åËØÅ‰∫∫-ÊäïÁ•®‰∫∫s
+        m_dpos_context.varlitors_votes.del_old_varlitor(addr_sender_to, addr_from);
+    }
+    break;
+    case dev::bacd::e_max:
+    break;
+    default:
+    break;
+    }
+    printDposData(m_dpos_context);
+}
+
+void dev::bacd::Dpos::syncVoteData()
+{
+    LOG(m_logger) << EthYellow " start to syncVoteData ..." << EthYellow;
+    if(!m_dpos_cleint->dposVoteState()->isSyncVoteTransation())
+        return;
+    m_last_dposDataMsg_time = utcTimeMilliSec();
+    std::vector<OnDealTransationResult> const& ret = m_dpos_cleint->dposVoteState()->getOnTransationResult();
+    DposDataMsg msg;
+    msg.m_addr = m_dpos_cleint->author();
+    msg.m_now = m_last_dposDataMsg_time;
+    msg.m_transation_ret.assign(ret.begin(), ret.end());
+    LOG(m_logger) << EthYellow<< msg<< EthYellow;
+    RLPStream _s;
+    msg.streamRLPFields(_s);
+    brocastMsg(DposDataPacket, _s);
+}
 
 
+void dev::bacd::Dpos::verifyTransationVote(BlockHeader const& _bi)
+{
+    //Â§ÑÁêÜÊäïÁ•®‰∫§ÊòìÁ°ÆËÆ§
+    m_dpos_cleint->dposVoteState()->currReset();
+    size_t curr_num = _bi.number();
+    LOG(m_logger) << EthYellow "************verifyTransationVote curr BlockNum:" << m_dpos_cleint->getCurrHeader().number() << "| create BlockNum:" << curr_num << EthYellow;
+    if(curr_num > verifyVoteNum && m_dpos_cleint->dposVoteState()->isVerifyVoteTransation())
+    {
+        h256s _hash_t = m_dpos_cleint->getTransationsHashByBlockNum(size_t(curr_num - verifyVoteNum));
+        if(_hash_t.empty())
+            return;
+        LOG(m_logger) << "************get transationHashs size:" << _hash_t.size();
+        m_dpos_cleint->dposVoteState()->verifyVoteTransation(_bi, _hash_t);
+        dealVoteDatas();
+    }
+}
+
+void dev::bacd::Dpos::brocastMsg(DposPacketType _type, RLPStream & _msg_s)
+{
+    // ÂπøÊí≠ÂèëÈÄÅ  Â∞Ü sealAndSend() ÂõûË∞É‰ΩøÁî®
+    auto h = m_host.lock();
+    h->hostFace()->foreachPeer(h->name(),
+                               [&](NodeID const& _nodeId){
+                                   sealAndSend(_nodeId, _type, _msg_s);
+                                   cdebug << "brocastMsg ... NodeId:" << _nodeId << "type" << _type;
+                                   return true;
+                               });
+}
+
+void dev::bacd::Dpos::initDataByCurrBlock()
+{
+    BlockHeader const& _h = m_dpos_cleint->blockChain().info();
+    m_dpos_context.clear();
+    m_dpos_context = _h.dposContext();
+}
+
+bool dev::bacd::Dpos::isVarlitor(Address const & _addr)
+{
+    auto ret = std::find(m_dpos_context.curr_varlitor.begin(), m_dpos_context.curr_varlitor.end(), _addr);
+    if(ret != m_dpos_context.curr_varlitor.end())
+        return true;
+    return false;
+}
+
+void dev::bacd::Dpos::printDposData(DposContext const& _d)
+{
+    LOG(m_logger) << EthYellow" DposData:" << EthYellow;
+	_d.printData();
+    
 }

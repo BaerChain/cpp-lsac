@@ -209,7 +209,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     DEV_INVARIANT_CHECK;
 
     // Check it's not in the future
-    if (bi.timestamp() > utcTime() && !_isOurs)
+    if (bi.timestamp() > utcTimeMilliSec() && !_isOurs)
     {
         m_future.insert(static_cast<time_t>(bi.timestamp()), h, _block.toBytes());
         m_futureSet.insert(h);
@@ -217,7 +217,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         time_t bit = static_cast<time_t>(bi.timestamp());
         if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
             buf[0] = '\0'; // empty if case strftime fails
-        LOG(m_loggerDetail) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTime()
+        LOG(m_loggerDetail) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTimeMilliSec()
                          << "] - will wait until " << buf;
         m_difficulty += bi.difficulty();
         h256 const parentHash = bi.parentHash();
@@ -356,7 +356,7 @@ void BlockQueue::tick()
 
         LOG(m_logger) << "Checking past-future blocks...";
 
-        time_t t = utcTime();
+        time_t t = utcTimeMilliSec();   // utcTimeMilliSec
         if (t < m_future.firstKey())
             return;
 

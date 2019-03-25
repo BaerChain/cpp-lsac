@@ -119,6 +119,7 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(libethashseal)
 add_subdirectory(libpoaseal)
+add_subdirectory(libdposseal)
 
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
@@ -132,8 +133,8 @@ if (TOOLS)
 endif()
 
 #if (TESTS)
- #   enable_testing()
-  #  add_subdirectory(test)
+#    enable_testing()
+#    add_subdirectory(test)
 #endif()
 
 

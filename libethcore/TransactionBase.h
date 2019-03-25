@@ -54,6 +54,7 @@ public:
 
 	/// Constructs a transaction from a transaction skeleton & optional secret.
 	TransactionBase(TransactionSkeleton const& _ts, Secret const& _s = Secret());
+    TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
 	/// Constructs a signed message-call transaction.
 	TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
@@ -97,9 +98,11 @@ public:
 
 	/// @returns true if transaction is non-null.
 	explicit operator bool() const { return m_type != NullTransaction; }
-
 	/// @returns true if transaction is contract-creation.
 	bool isCreation() const { return m_type == ContractCreation; }
+
+    // 是否是投票消息
+	bool isVoteTranction() const { return m_type == VoteMassage; }
 
 	/// Serialises this transaction to an RLPStream.
 	/// @throws TransactionIsUnsigned if including signature was requested but it was not initialized
@@ -165,15 +168,18 @@ protected:
 	{
 		NullTransaction,				///< Null transaction.
 		ContractCreation,				///< Transaction to create contracts - receiveAddress() is ignored.
-		MessageCall						///< Transaction to invoke a message call - receiveAddress() is used.
+		MessageCall,						///< Transaction to invoke a message call - receiveAddress() is used.
+        VoteMassage
 	};
 
 	static bool isZeroSignature(u256 const& _r, u256 const& _s) { return !_r && !_s; }
 
 	/// Clears the signature.
 	void clearSignature() { m_vrs = SignatureStruct(); }
-
+public:
+	Type type() const { return m_type; }
 	Type m_type = NullTransaction;		///< Is this a contract-creation transaction or a message-call transaction?
+protected:
 	u256 m_nonce;						///< The transaction-count of the sender.
 	u256 m_value;						///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
 	Address m_receiveAddress;			///< The receiving address of the transaction.

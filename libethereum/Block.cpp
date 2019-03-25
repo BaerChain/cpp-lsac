@@ -122,10 +122,11 @@ void Block::resetCurrent(int64_t _timestamp)
     m_transactionSet.clear();
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
-    m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
+    m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
+    //m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
-
+	m_dposTransations.clear();
     // TODO: check.
 
     m_state.setRoot(m_previousBlock.stateRoot());
@@ -770,7 +771,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
 
     RLPStream txs;
     txs.appendList(m_transactions.size());
-
+	m_dposTransations.clear();
     for (unsigned i = 0; i < m_transactions.size(); ++i)
     {
         RLPStream k;
@@ -785,6 +786,12 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
         transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
         txs.appendRaw(txrlp.out());
+
+        //dpos 交易处理
+        if(m_transactions[i].isVoteTranction())
+		{
+			m_dposTransations.push_back(txrlp.out());
+		}
     }
 
     txs.swapOut(m_currentTxs);
@@ -803,6 +810,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
         LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
         LOG(m_loggerDetailed) << m_state;
 
+		m_currentBlock.setTimestamp(utcTimeMilliSec());
         m_currentBlock.setLogBloom(logBloom());
         m_currentBlock.setGasUsed(gasUsed());
         m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap),
@@ -816,6 +824,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
             ed.resize(32);
             m_currentBlock.setExtraData(ed);
     }
+		//m_currentBlock.setDposContext(m_previousBlock.dposContext());
 
     m_committedToSeal = true;
 }
@@ -833,9 +842,15 @@ bool Block::sealBlock(bytesConstRef _header)
 {
     if (!m_committedToSeal)
         return false;
-
-    if (BlockHeader(_header, HeaderData).hash(WithoutSeal) != m_currentBlock.hash(WithoutSeal))
-        return false;
+	if(BlockHeader(_header, HeaderData).hash(WithoutSeal) != m_currentBlock.hash(WithoutSeal))
+	{
+		/*cdebug << EthYellow << "bytesConstRef _header :";
+		BlockHeader(_header, HeaderData).dposContext().printData();
+		cdebug << EthYellow << "m_currentBlock _header:";
+		m_currentBlock.dposContext().printData();
+		cwarn << EthRed " verify BlockHeader hash failed ...";*/
+		return false;
+	}
 
     // Compile block:
     RLPStream ret;
@@ -845,7 +860,7 @@ bool Block::sealBlock(bytesConstRef _header)
     ret.appendRaw(m_currentUncles);
     ret.swapOut(m_currentBytes);
     m_currentBlock = BlockHeader(_header, HeaderData);
-//	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
+	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
     // TODO: move into SealEngine
 
     m_state = m_precommit;

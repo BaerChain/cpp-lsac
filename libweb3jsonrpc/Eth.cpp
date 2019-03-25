@@ -137,14 +137,14 @@ Json::Value Eth::eth_pendingTransactions()
 	Transactions ours;
 	for (Transaction const& pending:client()->pending())
 	{
-		for (Address const& account:m_ethAccounts.allAccounts())
-		{
-			if (pending.sender() == account)
-			{
+		//for (Address const& account:m_ethAccounts.allAccounts())
+		//{
+			//if (pending.sender() == account)
+			//{
 				ours.push_back(pending);
-				break;
-			}
-		}
+				//break;
+			//}
+		//}
 	}
 
 	return toJson(ours);

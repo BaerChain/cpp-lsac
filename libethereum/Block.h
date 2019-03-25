@@ -232,7 +232,7 @@ public:
 
     /// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock) and
     /// optionally modifies the timestamp.
-    void resetCurrent(int64_t _timestamp = utcTime());
+    void resetCurrent(int64_t _timestamp = utcTimeMilliSec());
 
     // Sealing
 
@@ -272,6 +272,11 @@ public:
     /// Get the header information on the present block.
     BlockHeader const& info() const { return m_currentBlock; }
 
+    //set Header dposData
+    void setDposData(BlockHeader const& _h) { m_currentBlock.setDposContext(_h.dposContext()); }
+    //get dposTransation cache
+	std::vector<bytes> const& getDposTransations() const { return m_dposTransations; }
+
 private:
     SealEngineFace* sealEngine() const;
 
@@ -294,23 +299,26 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    State m_state;								///< Our state tree, as an OverlayDB DB.
-    Transactions m_transactions;				///< The current list of transactions that we've included in the state.
-    TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
-    h256Hash m_transactionSet;					///< The set of transaction hashes that we've included in the state.
-    State m_precommit;							///< State at the point immediately prior to rewards.
+    State m_state;                                ///< Our state tree, as an OverlayDB DB.
+    Transactions m_transactions;                ///< The current list of transactions that we've included in the state.
+    TransactionReceipts m_receipts;                ///< The corresponding list of transaction receipts.
+    h256Hash m_transactionSet;                    ///< The set of transaction hashes that we've included in the state.
+    State m_precommit;                            ///< State at the point immediately prior to rewards.
 
-    BlockHeader m_previousBlock;				///< The previous block's information.
-    BlockHeader m_currentBlock;					///< The current block's information.
-    bytes m_currentBytes;						///< The current block's bytes.
-    bool m_committedToSeal = false;				///< Have we committed to mine on the present m_currentBlock?
+    BlockHeader m_previousBlock;                ///< The previous block's information.
+    BlockHeader m_currentBlock;                    ///< The current block's information.
+    bytes m_currentBytes;                        ///< The current block's bytes.
+    bool m_committedToSeal = false;                ///< Have we committed to mine on the present m_currentBlock?
 
-    bytes m_currentTxs;							///< The RLP-encoded block of transactions.
-    bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
-    Address m_author;							///< Our address (i.e. the address to which fees go).
+    bytes m_currentTxs;                            ///< The RLP-encoded block of transactions.
+    bytes m_currentUncles;                        ///< The RLP-encoded block of uncles.
 
-    SealEngineFace* m_sealEngine = nullptr;		///< The chain's seal engine.
+    Address m_author;                            ///< Our address (i.e. the address to which fees go).
+
+    SealEngineFace* m_sealEngine = nullptr;        ///< The chain's seal engine.
+     
+	std::vector<bytes>  m_dposTransations;          // the dpos vote transation cache
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};

@@ -18,6 +18,7 @@ namespace dev {
                     this->bindAndAddMethod(jsonrpc::Procedure("personal_unlockAccount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_INTEGER, NULL), &dev::rpc::PersonalFace::personal_unlockAccountI);
                     this->bindAndAddMethod(jsonrpc::Procedure("personal_signAndSendTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::PersonalFace::personal_signAndSendTransactionI);
                     this->bindAndAddMethod(jsonrpc::Procedure("personal_sendTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::PersonalFace::personal_sendTransactionI);
+                    this->bindAndAddMethod(jsonrpc::Procedure("personal_sendDelegatedTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::PersonalFace::personal_sendDelegatedTransactionI);
                     this->bindAndAddMethod(jsonrpc::Procedure("personal_listAccounts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &dev::rpc::PersonalFace::personal_listAccountsI);
                 }
 
@@ -37,6 +38,10 @@ namespace dev {
                 {
                     response = this->personal_sendTransaction(request[0u], request[1u].asString());
                 }
+                inline virtual void personal_sendDelegatedTransactionI(const Json::Value &request, Json::Value &response)
+                {
+                    response = this->personal_sendDelegatedTransaction(request[0u], request[1u].asString());
+                }
                 inline virtual void personal_listAccountsI(const Json::Value &request, Json::Value &response)
                 {
                     (void)request;
@@ -46,6 +51,7 @@ namespace dev {
                 virtual bool personal_unlockAccount(const std::string& param1, const std::string& param2, int param3) = 0;
                 virtual std::string personal_signAndSendTransaction(const Json::Value& param1, const std::string& param2) = 0;
                 virtual std::string personal_sendTransaction(const Json::Value& param1, const std::string& param2) = 0;
+                virtual std::string personal_sendDelegatedTransaction(const Json::Value& param1, const std::string& param2) = 0;
                 virtual Json::Value personal_listAccounts() = 0;
         };
 

@@ -302,4 +302,6 @@ enum class WithExisting: int
 /// Get the current time in seconds since the epoch in UTC
 int64_t utcTime();
 
+int64_t utcTimeMilliSec();
+
 }

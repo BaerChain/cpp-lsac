@@ -25,6 +25,7 @@
 
 #include <functional>
 #include <unordered_map>
+#include <chrono>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
 #include "BlockHeader.h"
@@ -84,6 +85,8 @@ public:
 	virtual bigint costOfPrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).cost(_in); }
 	virtual std::pair<bool, bytes> executePrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).execute(_in); }
 
+	virtual bool dealDposVote(TransactionBase const& _t);
+
 protected:
 	virtual bool onOptionChanging(std::string const&, bytes const&) { return true; }
 
@@ -140,6 +143,8 @@ public:
     void generateSeal(BlockHeader const& _bi) override;
     void populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const override;
     void verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const override;
+private:
+    std::chrono::high_resolution_clock::time_point m_lasttimesubmit;
 };
 
 u256 calculateEthashDifficulty(

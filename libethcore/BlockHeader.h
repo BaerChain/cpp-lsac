@@ -30,12 +30,12 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <algorithm>
+#include "DposData.h"
 
 namespace dev
 {
 namespace eth
 {
-
 enum IncludeSeal
 {
     WithoutSeal = 0,
@@ -98,7 +98,7 @@ class BlockHeader
 {
     friend class BlockChain;
 public:
-    static const unsigned BasicFields = 13;
+    static const unsigned BasicFields = 14;
 
     BlockHeader();
     explicit BlockHeader(bytesConstRef _data, BlockDataType _bdt = BlockData, h256 const& _hashWith = h256());
@@ -154,6 +154,7 @@ public:
     void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
     template <class T> void setSeal(unsigned _offset, T const& _value) { Guard l(m_sealLock); if (m_seal.size() <= _offset) m_seal.resize(_offset + 1); m_seal[_offset] = rlp(_value); noteDirty(); }
     template <class T> void setSeal(T const& _value) { setSeal(0, _value); }
+    void setDposContext(DposContext const& _v) { m_dposContext = _v; noteDirty(); }
 
     h256 const& parentHash() const { return m_parentHash; }
     h256 const& sha3Uncles() const { return m_sha3Uncles; }
@@ -170,7 +171,7 @@ public:
     LogBloom const& logBloom() const { return m_logBloom; }
     u256 const& difficulty() const { return m_difficulty; }
     template <class T> T seal(unsigned _offset = 0) const { T ret; Guard l(m_sealLock); if (_offset < m_seal.size()) ret = RLP(m_seal[_offset]).convert<T>(RLP::VeryStrict); return ret; }
-
+    DposContext const& dposContext() const { return m_dposContext; }
 private:
     void populate(RLP const& _header);
     void streamRLPFields(RLPStream& _s) const;
@@ -205,12 +206,14 @@ private:
     Address m_author;
     u256 m_difficulty;
 
-    std::vector<bytes> m_seal;		///< Additional (RLP-encoded) header fields.
+    std::vector<bytes> m_seal;        ///< Additional (RLP-encoded) header fields.
     mutable Mutex m_sealLock;
 
-    mutable h256 m_hash;			///< (Memoised) SHA3 hash of the block header with seal.
-    mutable h256 m_hashWithout;		///< (Memoised) SHA3 hash of the block header without seal.
-    mutable Mutex m_hashLock;		///< A lock for both m_hash and m_hashWithout.
+    mutable h256 m_hash;            ///< (Memoised) SHA3 hash of the block header with seal.
+    mutable h256 m_hashWithout;        ///< (Memoised) SHA3 hash of the block header without seal.
+    mutable Mutex m_hashLock;        ///< A lock for both m_hash and m_hashWithout.
+
+    DposContext m_dposContext;      //  dpos 
 
     mutable Logger m_logger{createLogger(VerbosityDebug, "blockhdr")};
 };

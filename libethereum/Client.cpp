@@ -410,7 +410,6 @@ void Client::syncBlockQueue()
 void Client::syncTransactionQueue()
 {
     resyncStateFromChain();
-
     Timer timer;
 
     h256Hash changeds;
@@ -451,7 +450,6 @@ void Client::syncTransactionQueue()
     // Tell network about the new transactions.
     if (auto h = m_host.lock())
         h->noteNewTransactions();
-
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in" << (timer.elapsed() * 1000) << "(" << (bool)m_syncTransactionQueue << ")";
 }
 
@@ -874,6 +872,14 @@ h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _sec
     TransactionSkeleton ts = populateTransactionWithDefaults(_t);
     ts.from = toAddress(_secret);
     Transaction t(ts, _secret);
+    return importTransaction(t);
+}
+
+h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag)
+{
+    TransactionSkeleton ts = populateTransactionWithDefaults(_t);
+    ts.from = toAddress(_secret);
+    Transaction t(ts, _secret, _flag);
     return importTransaction(t);
 }
 

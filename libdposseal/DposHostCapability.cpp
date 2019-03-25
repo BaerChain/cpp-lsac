@@ -11,11 +11,11 @@ dev::bacd::DposHostcapality::DposHostcapality(std::shared_ptr<p2p::CapabilityHos
 
 void dev::bacd::DposHostcapality::onConnect(NodeID const & _nodeID, u256 const & _peerCapabilityVersion)
 {
-	m_onconn_handler(_nodeID, _peerCapabilityVersion);
+    m_onconn_handler(_nodeID, _peerCapabilityVersion);
 }
 
 bool dev::bacd::DposHostcapality::interpretCapabilityPacket(NodeID const & _peerID, unsigned _id, RLP const & _r)
 {
-	m_msg_handler(_peerID, _id, _r);
-	return false;
+    m_msg_handler(_peerID, _id, _r);
+    return true;
 }

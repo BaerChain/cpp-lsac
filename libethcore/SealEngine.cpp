@@ -39,13 +39,21 @@ void NoProof::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) c
 
 void NoProof::generateSeal(BlockHeader const& _bi)
 {
+    chrono::high_resolution_clock::time_point v_timeNow = chrono::high_resolution_clock::now();
+    chrono::duration<double,std::ratio<1,1000>> duration_ms=chrono::duration_cast<chrono::duration<double,std::ratio<1,1000>>>(v_timeNow - m_lasttimesubmit);
+    
+    
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
     header.setSeal(MixHashField, h256{0});
     RLPStream ret;
     header.streamRLP(ret);
-    if (m_onSealGenerated)
+    //std::chrono::time_point<std::chrono::system_clock,std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    //auto tmp=std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+    if (m_onSealGenerated && duration_ms.count() > 10000 ){
         m_onSealGenerated(ret.out());
+        m_lasttimesubmit = chrono::high_resolution_clock::now();
+    }
 }
 
 void NoProof::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
@@ -68,11 +76,12 @@ void SealEngineFace::verify(Strictness _s, BlockHeader const& _bi, BlockHeader c
 
     if (_s != CheckNothingNew)
     {
+        //取消难度检查
         if (_bi.difficulty() < chainParams().minimumDifficulty)
             BOOST_THROW_EXCEPTION(
-                        InvalidDifficulty() << RequirementError(
-                            bigint(chainParams().minimumDifficulty), bigint(_bi.difficulty())));
-
+                InvalidDifficulty() << RequirementError(
+                    bigint(chainParams().minimumDifficulty), bigint(_bi.difficulty())));
+        //保留消耗验证
         if (_bi.gasLimit() < chainParams().minGasLimit)
             BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(
                                       bigint(chainParams().minGasLimit), bigint(_bi.gasLimit())));
@@ -122,6 +131,13 @@ void SealEngineFace::populateFromParent(BlockHeader& _bi, BlockHeader const& _pa
     _bi.populateFromParent(_parent);
 }
 
+bool SealEngineFace::dealDposVote(TransactionBase const & _t)
+{
+    if(_t.isVoteTranction()) 
+        return true;
+    return false;
+}
+
 void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t,
                                        BlockHeader const& _header, u256 const& _gasUsed) const
 {
@@ -152,6 +168,7 @@ void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, Transactio
         BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementErrorComment(
                                   (bigint)(_header.gasLimit() - _gasUsed), (bigint)_t.gas(),
                                   string("_gasUsed + (bigint)_t.gas() > _header.gasLimit()")));
+
 }
 
 SealEngineFace* SealEngineRegistrar::create(ChainOperationParams const& _params)
@@ -177,11 +194,13 @@ u256 SealEngineBase::blockReward(u256 const& _blockNumber) const
 u256 calculateEthashDifficulty(
     ChainOperationParams const& _chainParams, BlockHeader const& _bi, BlockHeader const& _parent)
 {
+    auto minimumDifficulty = _chainParams.minimumDifficulty;
+    minimumDifficulty += _parent.difficulty();
     const unsigned c_expDiffPeriod = 100000;
 
     if (!_bi.number())
         throw GenesisBlockCannotBeCalculated();
-    auto const& minimumDifficulty = _chainParams.minimumDifficulty;
+    //auto const& minimumDifficulty = _chainParams.minimumDifficulty;
     auto const& difficultyBoundDivisor = _chainParams.difficultyBoundDivisor;
     auto const& durationLimit = _chainParams.durationLimit;
 
@@ -230,6 +249,7 @@ u256 calculateEthashDifficulty(
 
     o = max<bigint>(minimumDifficulty, o);
     return u256(min<bigint>(o, std::numeric_limits<u256>::max()));
+    return 0;
 }
 
 u256 calculateGasLimit(

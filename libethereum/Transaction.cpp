@@ -99,4 +99,12 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, TransactionException cons
 Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig):
 	TransactionBase(_rlpData, _checkSig)
 {
+
+}
+
+Transaction::Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag):
+    TransactionBase(_ts, _s, _flag)
+{
+    m_type = VoteMassage;
+    m_value = _flag;
 }

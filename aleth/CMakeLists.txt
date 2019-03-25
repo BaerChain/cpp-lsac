@@ -8,7 +8,7 @@ set(
 add_executable(aleth ${sources})
 target_link_libraries(
     aleth
-    PRIVATE ethereum ethashseal poaseal evm web3jsonrpc webthree devcore Boost::program_options
+    PRIVATE ethereum ethashseal poaseal dposseal evm web3jsonrpc webthree devcore Boost::program_options
 )
 
 target_include_directories(aleth PRIVATE ../utils)

@@ -20,8 +20,10 @@
 #include "Log.h"
 
 #include <aleth/buildinfo.h>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 namespace dev
 {
@@ -52,6 +54,16 @@ int64_t utcTime()
     // time_t t = time(0);
     // return mktime(gmtime(&t));
     return time(0);
+}
+
+int64_t utcTimeMilliSec()
+{
+    //get systime MilliSec
+	std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = 
+		std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+	auto tmp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+	//std::time_t timestamp = tmp.count();
+	return  tmp.count();
 }
 
 string inUnits(bigint const& _b, strings const& _units)

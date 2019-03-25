@@ -130,6 +130,7 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     cp.gasUsed = genesis.count(c_gasUsed) ? u256(fromBigEndian<u256>(fromHex(genesis[c_gasUsed].get_str()))) : 0;
     cp.timestamp = u256(fromBigEndian<u256>(fromHex(genesis[c_timestamp].get_str())));
     cp.extraData = bytes(fromHex(genesis[c_extraData].get_str()));
+	cp.dposcontext.curr_varlitor.assign(cp.poaValidatorAccount.begin(), cp.poaValidatorAccount.end());
 
     // magic code for handling ethash stuff:
     if (genesis.count(c_mixHash) && genesis.count(c_nonce))
@@ -156,10 +157,10 @@ ChainParams dev::eth::ChainParams::loadpoaValidators(
     js::mArray::const_iterator iter;
     for (auto val : poaArray)
     {
-        std::cout << "Validator:" << val.get_str() <<std::endl;
         cp.poaValidatorAccount.push_back(Address(val.get_str()));
     }
-    cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();		
+    cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
+
     return cp;
 }
 
@@ -188,6 +189,7 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
     gasUsed = bi.gasUsed();
     timestamp = bi.timestamp();
     extraData = bi.extraData();
+	dposcontext = bi.dposContext();
     genesisState = _state;
     RLP r(_genesisRLP);
     sealFields = r[0].itemCount() - BlockHeader::BasicFields;
@@ -243,6 +245,8 @@ bytes ChainParams::genesisBlock() const
             << gasUsed			// gasUsed
             << timestamp
             << extraData;
+	dposcontext.streamRLPFields(block);
+
     block.appendRaw(sealRLP, sealFields);
     block.appendRaw(RLPEmptyList);
     block.appendRaw(RLPEmptyList);

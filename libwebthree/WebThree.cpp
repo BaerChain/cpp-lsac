@@ -63,18 +63,16 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
             else if (_params.sealEngineName == Poa::name())
                 m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
-			else if(_params.sealEngineName == Poa::name())
-				m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
-					shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
 			else if(_params.sealEngineName ==bacd::Dpos::name())
-				m_ethereum.reset(new bacd::PoaClient(_params, (int)_params.networkID, m_net,
+				m_ethereum.reset(new bacd::DposClient(_params, (int)_params.networkID, m_net,
 					shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
                                           "Unknown seal engine: " + _params.sealEngineName));
         }
+        std::cout << "start of startWorking" << std::endl;
         m_ethereum->startWorking();
-
+        std::cout << "end of startWorking" << std::endl;
         const auto* buildinfo = aleth_get_buildinfo();
         m_ethereum->setExtraData(rlpList(0, string{buildinfo->project_version}.substr(0, 5) + "++" +
                                                 string{buildinfo->git_commit_hash}.substr(0, 4) +

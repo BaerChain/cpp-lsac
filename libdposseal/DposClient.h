@@ -9,6 +9,7 @@
 #include <libethereum/Client.h>
 #include <boost/filesystem/path.hpp>
 #include "libethereum/Interface.h"
+#include "DposVoteState.h"
 
 namespace dev
 {
@@ -32,24 +33,28 @@ public:
 public:
     Dpos* dpos() const;
     void startSealing() override;
+    void doWork(bool _doWait) override;
 
-    //dpos消息 操作所有是自己，目标是 _targe_address
-	bool applyDposMassage(DposPacketType _type, Address _targe_address);
+    inline const BlockHeader    getCurrHeader()const     { return m_bc.info(); }
+    inline h256                 getCurrBlockhash()const  { return m_bc.currentHash(); }
+    inline h256                 getGenesisHash()const    { return m_bc.genesisHash(); }
+    inline BlockHeader const&   getGenesisHeader()const  { return m_bc.genesis(); }
 
+    inline h256s                getTransationsHashByBlockNum(size_t num) const { return transactionHashes(hashFromNumber(num)); }
+    inline DposVoteState*       dposVoteState()const { return  m_dpos_state.get(); }
 protected:
     void rejigSealing();
 
 private:
-	void init(p2p::Host& _host, int _netWorkId);
+    void init(p2p::Host & _host, int _netWorkId);
 
-	bool isBlockSeal(uint64_t _now);
+    bool isBlockSeal(uint64_t _now);
+
 
 private:
-    int m_timespace;  //出块时间间隔 毫秒
-    //上次出块时间
-    mutable std::chrono::system_clock::time_point m_lastBlock = std::chrono::system_clock::now();
-
-    ChainParams m_params;          //配置
+    ChainParams                     m_params;          //配置
+    std::shared_ptr<DposVoteState>  m_dpos_state;
+    Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
 };
 
 DposClient& asDposClient(Interface& _c);

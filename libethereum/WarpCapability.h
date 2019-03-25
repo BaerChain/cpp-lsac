@@ -89,6 +89,8 @@ public:
     std::string name() const override { return "par"; }
     u256 version() const override { return c_WarpProtocolVersion; }
     unsigned messageCount() const override { return WarpSubprotocolPacketCount; }
+    unsigned offset() const override { return GetSnapshotManifest + p2p::PacketType::UserPacket; }
+
 
     void onStarting() override;
     void onStopping() override;

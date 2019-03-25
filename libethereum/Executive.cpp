@@ -228,7 +228,7 @@ void Executive::initialize(Transaction const& _transaction)
         throw;
     }
 
-    if (!m_t.hasZeroSignature())
+    if (!m_t.hasZeroSignature() && !m_t.isVoteTranction())
     {
         // Avoid invalid transactions.
         u256 nonceReq;
@@ -264,6 +264,10 @@ void Executive::initialize(Transaction const& _transaction)
         }
         m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
     }
+    if (!m_t.hasZeroSignature() && m_t.isVoteTranction())
+    {
+        std::cout << "*******is Vote Transaction" << std::endl;
+    }
 }
 
 bool Executive::execute()
@@ -278,6 +282,11 @@ bool Executive::execute()
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+    else if(m_t.isVoteTranction())
+    {
+        std::cout << "***** execute is Vote Transaction" << std::endl;
+        return true;
+    }
     else
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
 }

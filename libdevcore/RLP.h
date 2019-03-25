@@ -422,7 +422,12 @@ public:
 	bytes&& invalidate() { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return std::move(m_out); }
 
 	/// Swap the contents of the output stream out for some other byte array.
-	void swapOut(bytes& _dest) { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); swap(m_out, _dest); }
+	void swapOut(bytes& _dest) { 
+        if(!m_listStack.empty()) 
+            BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); 
+            std::vector<unsigned char>::iterator it;
+            swap(m_out, _dest); 
+    }
 
 private:
 	void noteAppended(size_t _itemCount = 1);

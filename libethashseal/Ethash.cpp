@@ -35,6 +35,7 @@ void Ethash::init()
 
 Ethash::Ethash()
 {
+    std::cout << "Ethash::Ethash" << std::endl;
     map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
     sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
     m_farm.setSealers(sealers);
@@ -60,19 +61,21 @@ Ethash::Ethash()
 
 Ethash::~Ethash()
 {
+    std::cout << "Ethash::~Ethash" << std::endl;
     // onSolutionFound closure sometimes has references to destroyed members.
     m_farm.onSolutionFound({});
 }
 
 strings Ethash::sealers() const
 {
+    std::cout << "Ethash::Ethash" << std::endl;
     return {"cpu"};
 }
 
 h256 Ethash::seedHash(BlockHeader const& _bi)
 {
     // FIXME: Use ethash lib for this (function not exposed in 0.3).
-
+    std::cout << "Ethash::seedHash" << std::endl;
     unsigned epoch = static_cast<unsigned>(_bi.number()) / ETHASH_EPOCH_LENGTH;
 
     h256 seed;
@@ -83,11 +86,13 @@ h256 Ethash::seedHash(BlockHeader const& _bi)
 
 StringHashMap Ethash::jsInfo(BlockHeader const& _bi) const
 {
+    std::cout << "Ethash::jsInfo" << std::endl;
     return { { "nonce", toJS(nonce(_bi)) }, { "seedHash", toJS(seedHash(_bi)) }, { "mixHash", toJS(mixHash(_bi)) }, { "boundary", toJS(boundary(_bi)) }, { "difficulty", toJS(_bi.difficulty()) } };
 }
 
 void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
 {
+    std::cout << "Ethash::verify" << std::endl;
     SealEngineFace::verify(_s, _bi, _parent, _block);
 
     if (_parent)
@@ -131,6 +136,7 @@ void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _p
 
 void Ethash::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header, u256 const& _startGasUsed) const
 {
+    std::cout << "Ethash::verifyTransaction" << std::endl;
     SealEngineFace::verifyTransaction(_ir, _t, _header, _startGasUsed);
 
     if (_ir & ImportRequirements::TransactionSignatures)
@@ -147,11 +153,13 @@ void Ethash::verifyTransaction(ImportRequirements::value _ir, TransactionBase co
 
 void Ethash::manuallySubmitWork(const h256& _mixHash, Nonce _nonce)
 {
+    std::cout << "Ethash::manuallySubmitWork" << std::endl;
     m_farm.submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
 }
 
 void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const
 {
+    std::cout << "Ethash::populateFromParent" << std::endl;
     SealEngineFace::populateFromParent(_bi, _parent);
     _bi.setDifficulty(calculateEthashDifficulty(chainParams(), _bi, _parent));
     _bi.setGasLimit(calculateGasLimit(chainParams(), _bi));
@@ -159,6 +167,7 @@ void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) co
 
 bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
 {
+    std::cout << "Ethash::quickVerifySeal" << std::endl;
     h256 const h = _blockHeader.hash(WithoutSeal);
     h256 const b = boundary(_blockHeader);
     Nonce const n = nonce(_blockHeader);
@@ -169,6 +178,7 @@ bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
 
 bool Ethash::verifySeal(BlockHeader const& _blockHeader) const
 {
+    std::cout << "Ethash::verifySeal" << std::endl;
     h256 const h = _blockHeader.hash(WithoutSeal);
     h256 const b = boundary(_blockHeader);
     Nonce const n = nonce(_blockHeader);
@@ -181,6 +191,7 @@ bool Ethash::verifySeal(BlockHeader const& _blockHeader) const
 
 void Ethash::generateSeal(BlockHeader const& _bi)
 {
+    std::cout << "Ethash::generateSeal" << std::endl;
     Guard l(m_submitLock);
     m_sealing = _bi;
     m_farm.setWork(m_sealing);
@@ -190,5 +201,150 @@ void Ethash::generateSeal(BlockHeader const& _bi)
 
 bool Ethash::shouldSeal(Interface*)
 {
+    std::cout << "Ethash::shouldSeal" << std::endl;
     return true;
 }
+
+
+
+void Dpos::init()
+{
+    ETH_REGISTER_SEAL_ENGINE(Dpos);
+}
+
+void Dpos::generateSeal(BlockHeader const& _bi)
+{
+    chrono::high_resolution_clock::time_point v_timeNow = chrono::high_resolution_clock::now();
+    chrono::duration<double,std::ratio<1,1000>> duration_ms=chrono::duration_cast<chrono::duration<double,std::ratio<1,1000>>>(v_timeNow - m_lasttimesubmit);
+    BlockHeader header(_bi);
+    header.setSeal(NonceField, h64{0});
+    header.setSeal(MixHashField, h256{0});
+    RLPStream ret;
+    header.streamRLP(ret);
+    std::cout << "dpos generateSeal:" << std::endl;
+    if (m_onSealGenerated && duration_ms.count() > 10000 ){
+        m_onSealGenerated(ret.out());
+        m_lasttimesubmit = chrono::high_resolution_clock::now();
+    }
+}
+
+DposClient::DposClient(
+    ChainParams const& _params, 
+        int _networkID, 
+        p2p::Host& _host,
+        std::shared_ptr<GasPricer> _gpForAdoption, 
+        boost::filesystem::path const& _dbPath,
+        boost::filesystem::path const& _snapshotPath,
+        WithExisting _forceAction,
+        TransactionQueue::Limits const& _limits)
+        : Client(
+                _params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _limits)
+{
+	// will throw if we're not an Ethash seal engine.
+	//asEthashClient(*this);
+}
+
+
+
+/*
+void Dpos::init()
+{
+    ETH_REGISTER_SEAL_ENGINE(Dpos);
+}
+
+Dpos::Dpos()
+{
+    
+}
+
+Dpos::~Dpos()
+{
+    // onSolutionFound closure sometimes has references to destroyed members.
+    m_farm.onSolutionFound({});
+}
+
+strings Dpos::sealers() const
+{
+    return {"cpu"};
+}
+
+h256 Dpos::seedHash(BlockHeader const& _bi)
+{
+    // FIXME: Use ethash lib for this (function not exposed in 0.3).
+
+    unsigned epoch = static_cast<unsigned>(_bi.number()) / ETHASH_EPOCH_LENGTH;
+
+    h256 seed;
+    for (unsigned n = 0; n < epoch; ++n)
+        seed = sha3(seed);
+    return seed;
+}
+
+StringHashMap Dpos::jsInfo(BlockHeader const& _bi) const
+{
+    return { { "nonce", toJS(nonce(_bi)) }, { "seedHash", toJS(seedHash(_bi)) }, { "mixHash", toJS(mixHash(_bi)) }, { "boundary", toJS(boundary(_bi)) }, { "difficulty", toJS(_bi.difficulty()) } };
+}
+
+void Dpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
+{
+    SealEngineFace::verify(_s, _bi, _parent, _block);
+
+    
+}
+
+void Dpos::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header, u256 const& _startGasUsed) const
+{
+    SealEngineFace::verifyTransaction(_ir, _t, _header, _startGasUsed);
+
+    
+}
+
+void Dpos::manuallySubmitWork(const h256& _mixHash, Nonce _nonce)
+{
+    m_farm.submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
+}
+
+void Dpos::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const
+{
+    SealEngineFace::populateFromParent(_bi, _parent);
+    _bi.setDifficulty(calculateEthashDifficulty(chainParams(), _bi, _parent));
+    _bi.setGasLimit(calculateGasLimit(chainParams(), _bi));
+}
+
+bool Dpos::quickVerifySeal(BlockHeader const& _blockHeader) const
+{
+    h256 const h = _blockHeader.hash(WithoutSeal);
+    h256 const b = boundary(_blockHeader);
+    Nonce const n = nonce(_blockHeader);
+    h256 const m = mixHash(_blockHeader);
+
+    return ethash::verify_final_hash(toEthash(h), toEthash(m), toEthash(n), toEthash(b));
+}
+
+bool Dpos::verifySeal(BlockHeader const& _blockHeader) const
+{
+    h256 const h = _blockHeader.hash(WithoutSeal);
+    h256 const b = boundary(_blockHeader);
+    Nonce const n = nonce(_blockHeader);
+    h256 const m = mixHash(_blockHeader);
+
+    auto& context =
+        ethash::get_global_epoch_context(ethash::get_epoch_number(_blockHeader.number()));
+    return ethash::verify(context, toEthash(h), toEthash(m), toEthash(n), toEthash(b));
+}
+
+void Dpos::generateSeal(BlockHeader const& _bi)
+{
+    Guard l(m_submitLock);
+    m_sealing = _bi;
+    m_farm.setWork(m_sealing);
+    m_farm.start(m_sealer);
+    m_farm.setWork(m_sealing);
+}
+
+bool Dpos::shouldSeal(Interface*)
+{
+    return true;
+}
+*/
+

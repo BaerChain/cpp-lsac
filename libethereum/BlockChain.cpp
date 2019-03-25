@@ -443,7 +443,6 @@ string BlockChain::dumpDatabase() const
 tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //  _bq.tick(*this);
-
     VerifiedBlocks blocks;
     _bq.drain(blocks, _max);
 
@@ -755,10 +754,10 @@ void BlockChain::checkBlockIsNew(VerifiedBlockRef const& _block) const
 void BlockChain::checkBlockTimestamp(BlockHeader const& _header) const
 {
     // Check it's not crazy
-    if (_header.timestamp() > utcTime() && !m_params.allowFutureBlocks)
+    if (_header.timestamp() > utcTimeMilliSec() && !m_params.allowFutureBlocks)
     {
         LOG(m_loggerDetail) << _header.hash() << " : Future time " << _header.timestamp()
-                            << " (now at " << utcTime() << ")";
+                            << " (now at " << utcTimeMilliSec() << ")";
         // Block has a timestamp in the future. This is no good.
         BOOST_THROW_EXCEPTION(FutureTime());
     }
@@ -1040,7 +1039,6 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 
 void BlockChain::rescue(OverlayDB const& _db)
 {
-    cout << "Rescuing database..." << endl;
 
     unsigned u = 1;
     while (true)

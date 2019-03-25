@@ -42,7 +42,59 @@ string Personal::personal_sendTransaction(Json::Value const& _transaction, strin
 	if (Secret s = m_keyManager.secret(t.from, [&](){ return _password; }, false))
 	{
 		// return the tx hash
+        /*enum Type
+	    {
+		    NullTransaction, ContractCreation, MessageCall, VoteMassage
+	    }; */
+		u256 type;
+		u256 flag;
+		bool isVote = false;
+
+        try
+		{
+		    if(!_transaction["type"].empty() && !_transaction["value"].empty())
+			{
+			    type = jsToU256(_transaction["type"].asString());
+                flag = jsToU256(_transaction["value"].asString());
+				if(type == 3)
+					isVote = true;
+			}
+		}
+		catch(...)
+		{
+			BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+		}
+        std::cout<<"////////////////////// this transation is vote:"<< (int)isVote << std::endl;
+		if(isVote)
+			return toJS(m_eth.submitTransaction(t, s, flag));
 		return toJS(m_eth.submitTransaction(t, s));
+        
+	}
+	BOOST_THROW_EXCEPTION(JsonRpcException("Invalid password or account."));
+}
+
+string Personal::personal_sendDelegatedTransaction(Json::Value const& _transaction, string const& _password)
+{
+    std::cout << "///////////////////////personal_sendTransaction " << std::endl;
+	TransactionSkeleton t;
+    u256 flag;
+	try
+	{
+		t = toTransactionSkeleton(_transaction);
+        if (!_transaction["value"].empty())
+        flag = jsToU256(_transaction["value"].asString());
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+
+	if (Secret s = m_keyManager.secret(t.from, [&](){ return _password; }, false))
+	{
+		// return the tx hash
+		return toJS(m_eth.submitTransaction(t, s, flag));
+
+        //return "yes";
 	}
 	BOOST_THROW_EXCEPTION(JsonRpcException("Invalid password or account."));
 }

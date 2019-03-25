@@ -201,12 +201,12 @@ u256 TransactionQueue::maxNonce_WITH_LOCK(Address const& _a) const
 
 void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p)
 {
+    
     if (m_currentByHash.count(_p.first))
     {
         cwarn << "Transaction hash" << _p.first << "already in current?!";
         return;
     }
-
     Transaction const& t = _p.second;
     // Insert into current
     auto inserted = m_currentByAddressAndNonce[t.from()].insert(std::make_pair(t.nonce(), PriorityQueue::iterator()));
@@ -392,6 +392,7 @@ void TransactionQueue::verifierBody()
 
         try
         {
+            
             Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
             ImportResult ir = import(t);
             m_onImport(ir, t.sha3(), work.nodeId);

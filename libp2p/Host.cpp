@@ -337,13 +337,14 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
                 return session->disconnect(IncompatibleProtocol);
 
             auto capability = itCap->second;
+            offset = itCap->second->offset();
             session->registerCapability(capDesc, offset, capability);
 
             cnetlog << "New session for capability " << capDesc.first << "; idOffset: " << offset;
 
             capability->onConnect(_id, capDesc.second);
 
-            offset += capability->messageCount();
+            //offset += capability->messageCount();
         }
 
         session->start();
@@ -414,7 +415,7 @@ void Host::determinePublic()
     else if (m_netConfig.traverseNAT)
     {
         bi::address natIFAddr;
-        ep = Network::traverseNAT(lset && ifAddresses.count(laddr) ? std::set<bi::address>({laddr}) : ifAddresses, m_listenPort, natIFAddr);
+        //ep = Network::traverseNAT(lset && ifAddresses.count(laddr) ? std::set<bi::address>({laddr}) : ifAddresses, m_listenPort, natIFAddr);
         
         if (lset && natIFAddr != laddr)
             // if listen address is set, Host will use it, even if upnp returns different

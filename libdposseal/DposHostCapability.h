@@ -18,26 +18,27 @@ typedef std::function<void(NodeID const&, u256 const&)> OnConnHandler;
 class DposHostcapality : public p2p::CapabilityFace
 {
 public:
-	DposHostcapality(std::shared_ptr<p2p::CapabilityHostFace> _host, u256 _networkId, MsgHandler _h, OnConnHandler _oh);
+    DposHostcapality(std::shared_ptr<p2p::CapabilityHostFace> _host, u256 _networkId, MsgHandler _h, OnConnHandler _oh);
 
-	std::string     name() const override { return "Dpos"; }
-	u256            version() const override { return c_protocolVersion; }
-	unsigned        messageCount() const override { return DposPacketCount; }
+    std::string     name() const override { return "Dpos"; }
+    u256            version() const override { return eth::c_protocolVersion; }
+    unsigned        messageCount() const override { return DposPacketCount; }
+    unsigned        offset() const override { return DposStatuspacket + p2p::PacketType::UserPacket; }
 
-	void            onStarting() override {}
-	void            onStopping() override{}
-	void            onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion) override;
-	void            onDisconnect(NodeID const& /*_nodeID*/) override{}
+    void            onStarting() override {}
+    void            onStopping() override{}
+    void            onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion) override;
+    void            onDisconnect(NodeID const& /*_nodeID*/) override{}
         
-	bool            interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r) override;
+    bool            interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r) override;
 
-	inline std::shared_ptr<p2p::CapabilityHostFace> hostFace()const { return m_host; }
+    inline std::shared_ptr<p2p::CapabilityHostFace> hostFace()const { return m_host; }
 
 private:
-	std::shared_ptr<p2p::CapabilityHostFace> m_host;
-	u256 m_networkId;
-	MsgHandler m_msg_handler;                  //消息回调
-	OnConnHandler m_onconn_handler;            //连接成功回调
+    std::shared_ptr<p2p::CapabilityHostFace> m_host;
+    u256 m_networkId;
+    MsgHandler m_msg_handler;                  //娑堟伅鍥炶皟
+    OnConnHandler m_onconn_handler;            //杩炴帴鎴愬姛鍥炶皟
 };
 }
 }

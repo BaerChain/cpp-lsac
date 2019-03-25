@@ -6,66 +6,85 @@
 #include <libethcore/Common.h>
 #include <libp2p/Common.h>
 #include <libdevcore/Worker.h>
+#include "DposClient.h"
 
 namespace dev
 {
     namespace bacd
-	{
-	using namespace dev ::eth;
-	    class Dpos: public SealEngineBase, Worker
-		{
-		public:
-			Dpos();
-			~Dpos() { stopWorking(); }
-			static std::string  name(){ return "Dpos"; }
-			unsigned            revision() const override { return 1; }
-			unsigned            sealFields() const override { return 2; }
-			strings             sealers() const override { return { "cpu" }; };
-			void                generateSeal(BlockHeader const& _bi) override;
-			static void         init();
-			void                initEnv(std::weak_ptr<DposHostcapality> _host);
-			inline void         startGeneration()   { setName("Poa"); startWorking(); }   //loop ¿ªÆô
-			inline void         SetCurrValitor(Address const& _addr) { m_curr_valitor = Address(_addr); }
-		protected:
-			void                workLoop() override;
-		public:
-			void                onPoaMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
-			void                requestStatus(NodeID const& _nodeID, u256 const& _peerCapabilityVersion);
-		private:
-			// ¹ã²¥ÏûÏ¢
-			void                brocastMsg(DposPacketType _type, RLPStream& _msg_s);
-			//Ö¸¶¨·¢ËÍ
-			void                sealAndSend(NodeID const& _nodeid, DposPacketType _type, RLPStream const& _msg_s);
+    {
+        using namespace dev ::eth;
+        typedef std::function<BlockHeader ()> OnGetHeader;
 
-		public:
-			void                updateDposData(EDposDataType _type, Address const& _addr_source, Address const& _addr_target);
+        class Dpos: public SealEngineBase , Worker
+        {
+        public:
+            Dpos();
+            ~Dpos();
+            static std::string  name(){ return "Dpos"; }
+            unsigned            revision() const override { return 1; }
+            unsigned            sealFields() const override { return 2; }
+            strings             sealers() const override { return { "cpu" }; };
+            void                generateSeal(BlockHeader const& _bi) override;
 
-			bool                isBolckSeal(uint64_t _last_time ,uint64_t _now);
-			bool                checkDeadline(uint64_t _last_block_time,uint64_t _now);           //ÑéÖ¤³ö¿éÊ±¼äÖÜÆÚ
-		private:
-			bool                CheckValidator(uint64_t _now);                  //ÑéÖ¤ÊÇ·ñ¸Ãµ±Ç°½Úµã³ö¿é
-			bool                tryElect(uint64_t _last_time, uint64_t _now);   //ÅĞ¶ÏÊÇ·ñÍê³ÉÁË±¾ÂÖ³ö¿é£¬Ñ¡³öĞÂÒ»ÂÖÑéÖ¤ÈË
-			void                kickoutValidator(unsigned int _prveslot);       //ÌŞ³ı²»ºÏ¸ñÑéÖ¤ÈË£¬²»ÄÜ²ÎÓëÏÂÒ»ÂÖ¾ºÑ¡
-			void                countVotes(){}
-            void                disorganizeVotes(){}
-		private:
-			mutable  Mutex                  m_mutex;
-			std::weak_ptr<DposHostcapality> m_host;
-			DposMsgQueue                    m_msg_queue;
+            void                initGenesieVarlitors(ChainParams const& m_params);
+            void                setDposClient(DposClient const* _c) { m_dpos_cleint = _c; }
+            void                setHeaderDposData(BlockHeader& _h)  { _h.setDposContext(m_dpos_context); }
+            DposContext const&  dposContext() { return m_dpos_context; }
+            
+            static void         init();
 
-			SVarlitor_Voters                m_varlitor_vote;         //ÑéÖ¤ÈË¶ÔÓ¦Í¶Æ±ÈË 1£ºn
-			Voter_Varlitor                  m_vote_varlitor;         //Í¶Æ±ÈË¶ÔÓ¦ÑéÖ¤ÈË 1£º1
-			Canlidate                       m_canditate;             //ºòÑ¡ÈË
+            void                initEnv(std::weak_ptr<DposHostcapality> _host);
+            inline void         startGeneration() { setName("Dpos"); startWorking(); }   //loop å¼€å¯
+        protected:
+            void                workLoop() override;
+        public:
+            void                requestStatus(NodeID const & _nodeID, u256 const & _peerCapabilityVersion);
+            void                onDposMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
+        private:
+            void                sealAndSend(NodeID const& _nodeid, DposPacketType _type, RLPStream const& _msg_s);
 
-			CurrValirots                    m_curr_valitors;         //±¾ÂÖÑéÖ¤ÈË¼¯ºÏ
-			Address                         m_curr_valitor;          //±¾½ÚµãÑéÖ¤ÈË
+        public:
+            bool                isBolckSeal(uint64_t _now);
+            bool                checkDeadline(uint64_t _now);           //éªŒè¯å‡ºå—æ—¶é—´å‘¨æœŸ
+            void                tryElect(uint64_t _now);   //åˆ¤æ–­æ˜¯å¦å®Œæˆäº†æœ¬è½®å‡ºå—ï¼Œé€‰å‡ºæ–°ä¸€è½®éªŒè¯äºº
+        private:
+            void                initVarlitorByGenesis();
+            bool                CheckValidator(uint64_t _now);                  //éªŒè¯æ˜¯å¦è¯¥å½“å‰èŠ‚ç‚¹å‡ºå—
+            void                kickoutValidator();       //å‰”é™¤ä¸åˆæ ¼éªŒè¯äººï¼Œä¸èƒ½å‚ä¸ä¸‹ä¸€è½®ç«é€‰
+            void                countVotes();
+            void                disorganizeVotes();
+        private:
+            void                updateVoteData(OnDealTransationResult const& _ret);
+            void                dealVoteDatas();
+            void                dealVoteData(OnDealTransationResult const& _ret);
+            void                syncVoteData();
+        public:
+            void                verifyTransationVote(BlockHeader const& _bi);
+            void                varlitorAddBlockNum(Address const& _add, size_t _num = 1) { m_dpos_context.varlitorAddBlockNum(_add, _num); }
+            void                printDposData(DposContext const& _d);
 
-            //Çø·Ö´´ÊÀÖÜÆÚ
-			unsigned int                    m_prveslot;                //ÉÏÒ»ÂÖÖÜÆÚ
-			unsigned int                    m_currslot;                //±¾ÂÖÖÜÆÚ
+        private:
+            // å¹¿æ’­æ¶ˆæ¯
+            void                brocastMsg(DposPacketType _type, RLPStream& _msg_s);
 
-		};
+            void                initDataByCurrBlock();    //æ ¹æ®å½“å‰å— åˆå§‹åŒ–dposæ•°æ®
+            bool                isVarlitor(Address const& _add);
+
+        private:
+            mutable  Mutex                  m_mutex;
+            std::weak_ptr<DposHostcapality> m_host;
+            DposMsgQueue                    m_msg_queue;
+
+            DposContext                     m_dpos_context;                     //æœ¬åœ°æ•°æ® æ¯è½®å‡ºå—å¼€å§‹é€šè¿‡parentHeaderåˆå§‹åŒ–
+            std::vector<Address>            m_genesis_varlitor;                 //åˆ›ä¸–éªŒè¯é›†åˆ
+            DposClient const*               m_dpos_cleint;
+            int64_t                         m_last_dposDataMsg_time;
+            int64_t                         m_last_create_block_time;           // ä¸Šæ¬¡è¿›å…¥å‡ºå—å‘¨æœŸæ—¶é—´
+
+            Logger m_logger{createLogger(VerbosityDebug, "Dpos")};
+            Logger m_warnlog{ createLogger(VerbosityWarning, "Dpos") };
+        };
 
         
-	}
+    }
 }

@@ -91,6 +91,9 @@ public:
 	/// Constructs from a transaction skeleton & optional secret.
 	Transaction(TransactionSkeleton const& _ts, Secret const& _s = Secret()): TransactionBase(_ts, _s) {}
 
+    /// 创建dpos相关的交易
+    Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
+
 	/// Constructs a signed message-call transaction.
 	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret):
 		TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce, _secret)
