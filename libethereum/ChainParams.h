@@ -20,7 +20,6 @@
  */
 
 #pragma once
-
 #include <libdevcore/Common.h>
 #include <libethcore/Common.h>
 #include <libethcore/ChainOperationParams.h>
@@ -58,6 +57,9 @@ struct ChainParams: public ChainOperationParams
 	unsigned sealFields = 0;
 	bytes sealRLP;
 
+	//Poa 
+    std::vector<Address> poaValidatorAccount;
+
 	h256 calculateStateRoot(bool _force = false) const;
 
 	/// Genesis block info.
@@ -72,6 +74,8 @@ private:
 
     /// load genesis
     ChainParams loadGenesis(std::string const& _json, h256 const& _stateRoot = {}) const;
+    // laod Poa validators account
+    ChainParams loadpoaValidators(std::string const& _json, h256 const& _stateRoot = {}) const;
 };
 
 }

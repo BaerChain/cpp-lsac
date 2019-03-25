@@ -118,6 +118,7 @@ add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(libethashseal)
+add_subdirectory(libpoaseal)
 
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
@@ -130,10 +131,10 @@ if (TOOLS)
     add_subdirectory(rlp)
 endif()
 
-if (TESTS)
-    enable_testing()
-    add_subdirectory(test)
-endif()
+#if (TESTS)
+ #   enable_testing()
+  #  add_subdirectory(test)
+#endif()
 
 
 install(FILES ${PROJECT_BINARY_DIR}/aleth/buildinfo.json DESTINATION ${CMAKE_INSTALL_DATADIR}/aleth)

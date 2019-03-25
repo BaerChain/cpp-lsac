@@ -97,6 +97,9 @@ ChainParams ChainParams::loadConfig(
         cp.networkID = int(u256(fromBigEndian<u256>(fromHex(params.at(c_networkID).get_str()))));
     cp.allowFutureBlocks = params.count(c_allowFutureBlocks);
 
+    //Poa Validators
+    string poaStr = js::write_string(obj[c_poa], false);
+    cp = cp.loadpoaValidators(poaStr, _stateRoot);
     // genesis
     string genesisStr = js::write_string(obj[c_genesis], false);
     cp = cp.loadGenesis(genesisStr, _stateRoot);
@@ -137,6 +140,26 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
         cp.sealRLP = rlp(mixHash) + rlp(nonce);
     }
     cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
+    return cp;
+}
+
+ChainParams dev::eth::ChainParams::loadpoaValidators(
+    std::string const& _json, h256 const& _stateRoot) const
+{
+    ChainParams cp(*this);
+
+    js::mValue val;
+    js::read_string(_json, val);
+    js::mObject poa = val.get_obj();
+    js::mArray poaArray = poa["validators"].get_array();
+    //cp.poaValidatorAccount.clear();
+    js::mArray::const_iterator iter;
+    for (auto val : poaArray)
+    {
+        std::cout << "Validator:" << val.get_str() <<std::endl;
+        cp.poaValidatorAccount.push_back(Address(val.get_str()));
+    }
+    cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();		
     return cp;
 }
 

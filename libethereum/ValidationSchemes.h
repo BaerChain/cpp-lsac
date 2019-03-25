@@ -46,6 +46,7 @@ extern std::string const c_code;
 extern std::string const c_gasUsed;
 extern std::string const c_codeFromFile;
 extern std::string const c_shouldnotexist;
+extern std::string const c_poa;
 
 extern std::string const c_minGasLimit;
 extern std::string const c_maxGasLimit;

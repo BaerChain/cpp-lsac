@@ -15,7 +15,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "WarpHostCapability.h"
+#include "WarpCapability.h"
 #include "BlockChain.h"
 #include "SnapshotStorage.h"
 
@@ -29,6 +29,7 @@ namespace eth
 namespace
 {
 static size_t const c_freePeerBufferSize = 32;
+static int const c_backroundWorkPeriodMs = 1000;
 
 bool validateManifest(RLP const& _manifestRlp)
 {
@@ -50,7 +51,7 @@ h256 snapshotBlockHash(RLP const& _manifestRlp)
 class WarpPeerObserver : public WarpPeerObserverFace
 {
 public:
-    WarpPeerObserver(WarpHostCapability& _host, BlockChain const& _blockChain,
+    WarpPeerObserver(WarpCapability& _host, BlockChain const& _blockChain,
         boost::filesystem::path const& _snapshotPath)
       : m_host(_host),
         m_hostProtocolVersion(_host.protocolVersion()),
@@ -169,8 +170,7 @@ private:
         if (!validateManifest(manifestRlp))
         {
             // TODO try disconnecting instead of disabling; disabled peer still occupies the peer slot
-            m_host.capabilityHost().disableCapability(
-                _peerID, m_host.name(), "Invalid snapshot manifest.");
+            m_host.disablePeer(_peerID, "Invalid snapshot manifest.");
             return;
         }
 
@@ -180,8 +180,7 @@ private:
             if (snapshotHash == m_syncingSnapshotHash)
                 m_freePeers.push(_peerID);
             else
-                m_host.capabilityHost().disableCapability(
-                    _peerID, m_host.name(), "Another snapshot.");
+                m_host.disablePeer(_peerID, "Another snapshot.");
         }
         else
         {
@@ -196,8 +195,7 @@ private:
                 RLP headerRlp(headerBytes);
                 if (!verifyDaoChallengeResponse(headerRlp))
                 {
-                    m_host.capabilityHost().disableCapability(
-                        _peerID, m_host.name(), "Peer from another fork.");
+                    m_host.disablePeer(_peerID, "Peer from another fork.");
                     return;
                 }
             }
@@ -289,7 +287,7 @@ private:
         }
     }
 
-    WarpHostCapability& m_host;
+    WarpCapability& m_host;
     unsigned const m_hostProtocolVersion;
     u256 const m_hostNetworkId;
     h256 const m_hostGenesisHash;
@@ -311,7 +309,7 @@ private:
 }  // namespace
 
 
-WarpHostCapability::WarpHostCapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
+WarpCapability::WarpCapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
     BlockChain const& _blockChain, u256 const& _networkId,
     boost::filesystem::path const& _snapshotDownloadPath,
     std::shared_ptr<SnapshotStorageFace> _snapshotStorage)
@@ -321,44 +319,45 @@ WarpHostCapability::WarpHostCapability(std::shared_ptr<p2p::CapabilityHostFace> 
     m_snapshot(_snapshotStorage),
     // observer needed only in case we download snapshot
     m_peerObserver(
-        _snapshotDownloadPath.empty() ? nullptr : createPeerObserver(_snapshotDownloadPath)),
-    m_lastTick(0)
+        _snapshotDownloadPath.empty() ? nullptr : createPeerObserver(_snapshotDownloadPath))
 {
 }
 
-WarpHostCapability::~WarpHostCapability()
+void WarpCapability::onStarting()
 {
-    terminate();
+    m_backgroundWorkEnabled = true;
+    m_host->scheduleExecution(c_backroundWorkPeriodMs, [this]() { doBackgroundWork(); });
 }
 
-std::shared_ptr<WarpPeerObserverFace> WarpHostCapability::createPeerObserver(
+void WarpCapability::onStopping()
+{
+    m_backgroundWorkEnabled = false;
+}
+
+std::shared_ptr<WarpPeerObserverFace> WarpCapability::createPeerObserver(
     boost::filesystem::path const& _snapshotDownloadPath)
 {
     return std::make_shared<WarpPeerObserver>(*this, m_blockChain, _snapshotDownloadPath);
 }
 
-void WarpHostCapability::doWork()
+void WarpCapability::doBackgroundWork()
 {
-    time_t const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    if (now - m_lastTick >= 1)
+    for (auto const& peer : m_peers)
     {
-        m_lastTick = now;
-
-        // TODO this is not thread-safe, move this code to a fiber
-        for (auto const& peer : m_peers)
+        time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        auto const& status = peer.second;
+        if (now - status.m_lastAsk > 10 && status.m_asking != Asking::Nothing)
         {
-            time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            auto const& status = peer.second;
-            if (now - status.m_lastAsk > 10 && status.m_asking != Asking::Nothing)
-            {
-                // timeout
-                m_host->disconnect(peer.first, p2p::PingTimeout);
-            }
+            // timeout
+            m_host->disconnect(peer.first, p2p::PingTimeout);
         }
     }
+
+    if (m_backgroundWorkEnabled)
+        m_host->scheduleExecution(c_backroundWorkPeriodMs, [this]() { doBackgroundWork(); });
 }
 
-void WarpHostCapability::onConnect(NodeID const& _peerID, u256 const& /* _peerCapabilityVersion */)
+void WarpCapability::onConnect(NodeID const& _peerID, u256 const& /* _peerCapabilityVersion */)
 {
     m_peers.emplace(_peerID, WarpPeerStatus{});
 
@@ -379,8 +378,7 @@ void WarpHostCapability::onConnect(NodeID const& _peerID, u256 const& /* _peerCa
         m_blockChain.genesisHash(), snapshotBlockHash, snapshotBlockNumber);
 }
 
-bool WarpHostCapability::interpretCapabilityPacket(
-    NodeID const& _peerID, unsigned _id, RLP const& _r)
+bool WarpCapability::interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
     auto& peerStatus = m_peers[_peerID];
     peerStatus.m_lastAsk = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -483,13 +481,14 @@ bool WarpHostCapability::interpretCapabilityPacket(
     return true;
 }
 
-void WarpHostCapability::onDisconnect(NodeID const& _peerID)
+void WarpCapability::onDisconnect(NodeID const& _peerID)
 {
+    m_peerObserver->onPeerDisconnect(_peerID, m_peers[_peerID].m_asking);
     m_peers.erase(_peerID);
 }
 
 
-void WarpHostCapability::requestStatus(NodeID const& _peerID, unsigned _hostProtocolVersion,
+void WarpCapability::requestStatus(NodeID const& _peerID, unsigned _hostProtocolVersion,
     u256 const& _hostNetworkId, u256 const& _chainTotalDifficulty, h256 const& _chainCurrentHash,
     h256 const& _chainGenesisHash, h256 const& _snapshotBlockHash, u256 const& _snapshotBlockNumber)
 {
@@ -501,7 +500,7 @@ void WarpHostCapability::requestStatus(NodeID const& _peerID, unsigned _hostProt
 }
 
 
-void WarpHostCapability::requestBlockHeaders(
+void WarpCapability::requestBlockHeaders(
     NodeID const& _peerID, unsigned _startNumber, unsigned _count, unsigned _skip, bool _reverse)
 {
     auto itPeerStatus = m_peers.find(_peerID);
@@ -516,7 +515,7 @@ void WarpHostCapability::requestBlockHeaders(
     m_host->sealAndSend(_peerID, s);
 }
 
-void WarpHostCapability::requestManifest(NodeID const& _peerID)
+void WarpCapability::requestManifest(NodeID const& _peerID)
 {
     auto itPeerStatus = m_peers.find(_peerID);
     if (itPeerStatus == m_peers.end())
@@ -529,7 +528,7 @@ void WarpHostCapability::requestManifest(NodeID const& _peerID)
     m_host->sealAndSend(_peerID, s);
 }
 
-bool WarpHostCapability::requestData(NodeID const& _peerID, h256 const& _chunkHash)
+bool WarpCapability::requestData(NodeID const& _peerID, h256 const& _chunkHash)
 {
     auto itPeerStatus = m_peers.find(_peerID);
     if (itPeerStatus == m_peers.end())
@@ -544,7 +543,7 @@ bool WarpHostCapability::requestData(NodeID const& _peerID, h256 const& _chunkHa
     return true;
 }
 
-void WarpHostCapability::setAsking(NodeID const& _peerID, Asking _a)
+void WarpCapability::setAsking(NodeID const& _peerID, Asking _a)
 {
     auto itPeerStatus = m_peers.find(_peerID);
     if (itPeerStatus == m_peers.end())
@@ -557,7 +556,7 @@ void WarpHostCapability::setAsking(NodeID const& _peerID, Asking _a)
 }
 
 /// Validates whether peer is able to communicate with the host, disables peer if not
-bool WarpHostCapability::validateStatus(NodeID const& _peerID, h256 const& _genesisHash,
+bool WarpCapability::validateStatus(NodeID const& _peerID, h256 const& _genesisHash,
     std::vector<unsigned> const& _protocolVersions, u256 const& _networkId)
 {
     auto itPeerStatus = m_peers.find(_peerID);
@@ -568,27 +567,32 @@ bool WarpHostCapability::validateStatus(NodeID const& _peerID, h256 const& _gene
 
     if (peerStatus.m_genesisHash != _genesisHash)
     {
-        m_host->disableCapability(_peerID, name(), "Invalid genesis hash");
+        disablePeer(_peerID, "Invalid genesis hash");
         return false;
     }
     if (find(_protocolVersions.begin(), _protocolVersions.end(), peerStatus.m_protocolVersion) ==
         _protocolVersions.end())
     {
-        m_host->disableCapability(_peerID, name(), "Invalid protocol version.");
+        disablePeer(_peerID, "Invalid protocol version.");
         return false;
     }
     if (peerStatus.m_networkId != _networkId)
     {
-        m_host->disableCapability(_peerID, name(), "Invalid network identifier.");
+        disablePeer(_peerID, "Invalid network identifier.");
         return false;
     }
     if (peerStatus.m_asking != Asking::State && peerStatus.m_asking != Asking::Nothing)
     {
-        m_host->disableCapability(_peerID, name(), "Peer banned for unexpected status message.");
+        disablePeer(_peerID, "Peer banned for unexpected status message.");
         return false;
     }
 
     return true;
+}
+
+void WarpCapability::disablePeer(NodeID const& _peerID, std::string const& _problem)
+{
+    m_host->disableCapability(_peerID, name(), _problem);
 }
 
 }  // namespace eth

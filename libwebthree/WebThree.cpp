@@ -22,6 +22,9 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/EthereumCapability.h>
 
+#include <libpoaseal/Poa.h>
+#include <libpoaseal/PoaClient.h>
+
 #include <aleth/buildinfo.h>
 
 #include <boost/filesystem.hpp>
@@ -53,6 +56,9 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == NoProof::name())
                 m_ethereum.reset(new eth::Client(_params, (int)_params.networkID, m_net,
+                    shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+            else if (_params.sealEngineName == Poa::name())
+                m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
