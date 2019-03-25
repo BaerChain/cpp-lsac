@@ -30,9 +30,17 @@ void dev::bacd::Dpos::generateSeal(BlockHeader const & _bi)
     syncVoteData();
 }
 
-void dev::bacd::Dpos::initGenesieVarlitors(ChainParams const & m_params)
+void dev::bacd::Dpos::initConfigAndGenesis(ChainParams const & m_params)
 {
     m_genesis_varlitor.assign(m_params.poaValidatorAccount.begin(), m_params.poaValidatorAccount.end());
+
+    m_config.epochInterval = m_params.epochInterval;
+    m_config.blockInterval = m_params.blockInterval;
+    m_config.varlitorInterval = m_params.varlitorInterval;
+    m_config.valitorNum = m_params.checkVarlitorNum;
+    m_config.maxValitorNum = m_params.maxVarlitorNum;
+    m_config.verifyVoteNum = m_params.verifyVoteNum;
+    LOG(m_logger) << EthYellow "dpos config:"<< m_config;
 }
 
 void dev::bacd::Dpos::init()
@@ -191,17 +199,17 @@ bool dev::bacd::Dpos::checkDeadline(uint64_t _now)
     }
     //得到每次出块的整数时间刻度，比较上次，现在和下次
     //系统时间算出的下一个出块时间点
-	uint64_t next_slot = (_now + blockInterval - 1) / blockInterval * blockInterval;
+    uint64_t next_slot = (_now + m_config.blockInterval - 1) / m_config.blockInterval * m_config.blockInterval;
     //当前块算出的上一个出块时间点
-	uint64_t last_slot = (_last_time - 1) / blockInterval * blockInterval;
+    uint64_t last_slot = (_last_time - 1) / m_config.blockInterval * m_config.blockInterval;
     //当前块算出即将出块时间点
-	uint64_t curr_slot = last_slot + blockInterval;
+    uint64_t curr_slot = last_slot + m_config.blockInterval;
 
-	/*cdebug << "_now:      " << _now;
-	cdebug << "_last_time:" << _last_time;
-	cdebug << "next_slot: " << next_slot;
-	cdebug << "last_slot: " << last_slot;
-	cdebug << "curr_slot: " << curr_slot;*/
+    /*cdebug << "_now:      " << _now;
+    cdebug << "_last_time:" << _last_time;
+    cdebug << "next_slot: " << next_slot;
+    cdebug << "last_slot: " << last_slot;
+    cdebug << "curr_slot: " << curr_slot;*/
 
     if(curr_slot <= _now || (next_slot - _now) <= 1)
     {
@@ -236,18 +244,18 @@ bool dev::bacd::Dpos::CheckValidator(uint64_t _now)
         varlitors.clear();
         varlitors.assign(_gennesis_var.begin(), _gennesis_var.end());
     }
-	LOG(m_logger) << EthYellow << "_now:" << _now;
-    uint64_t offet = _now % epochInterval;       // 当前轮 进入了多时间
+    LOG(m_logger) << EthYellow << "_now:" << _now;
+    uint64_t offet = _now % m_config.epochInterval;       // 当前轮 进入了多时间
     //if(offet % blockInterval != 0)
     //{
     //    LOG(m_logger) << "this time not is create block time!";
     //    return false;   //此时间在出块最短时间 返回
     //}
-	LOG(m_logger) << "offet = _now % epochInterval:" << offet;
-    offet /= varlitorInterval;
-	LOG(m_logger) << "offet /= varlitorInterval:" << offet;
+    LOG(m_logger) << "offet = _now % epochInterval:" << offet;
+    offet /= m_config.varlitorInterval;
+    LOG(m_logger) << "offet /= varlitorInterval:" << offet;
     offet %= varlitors.size();
-	LOG(m_logger) << "offet %= varlitors.size():" << offet;
+    LOG(m_logger) << "offet %= varlitors.size():" << offet;
     Address const& curr_valitor = varlitors[offet]; //得到当验证人
     for (auto val : varlitors)
     {
@@ -267,11 +275,11 @@ void dev::bacd::Dpos::tryElect(uint64_t _now)
     //尝试后继续出块 则继续出块
     const BlockHeader _h = m_dpos_cleint->getCurrHeader();
     uint64_t _last_time = _h.timestamp();
-    unsigned int prveslot = _last_time / epochInterval; //上一个块的周期
-    unsigned int currslot = _now / epochInterval;   //当前即将出块的周期
+    unsigned int prveslot = _last_time / m_config.epochInterval; //上一个块的周期
+    unsigned int currslot = _now / m_config.epochInterval;   //当前即将出块的周期
     //cdebug << EthYellow"？？？？prveslot:"<< prveslot << " |currslot" << currslot;
-	//cdebug << EthYellow"parent hash:" << m_dpos_cleint->getCurrBlockhash();
-	cdebug << EthYellow"_last_time: " << _last_time << "|now:"<<_now;
+    //cdebug << EthYellow"parent hash:" << m_dpos_cleint->getCurrBlockhash();
+    cdebug << EthYellow"_last_time: " << _last_time << "|now:"<<_now;
     if(prveslot == currslot)
     {
         //处于相同周期 出块
@@ -291,22 +299,53 @@ void dev::bacd::Dpos::tryElect(uint64_t _now)
 
 void dev::bacd::Dpos::kickoutValidator()
 {
+    //踢出不合格的候选人 不能成为新一轮的出块者
+    kickoutcanlidates();
+    
+    //踢出 出块数量为0的节点
+    for(auto val : m_dpos_context.curr_varlitor)
+    {
+        auto ret = m_dpos_context.varlitor_block_num.find(val);
+        if(ret != m_dpos_context.varlitor_block_num.end() && ret->second > 0)
+            continue;
+        auto varRet = m_dpos_context.varlitors_votes.m_varlitor_voter.find(val);
+        if(varRet != m_dpos_context.varlitors_votes.m_varlitor_voter.end())
+            m_dpos_context.varlitors_votes.m_varlitor_voter.erase(varRet);
+    }
     //剔除不合格 当下一轮验证人+ 创世配置验证人 > maxValitorNum 触发
-    BlockHeader const& genesisHeader = m_dpos_cleint->getGenesisHeader();
-    DposContext const& genesis_dpos_data = genesisHeader.dposContext();
-    int varlitor_num = maxValitorNum - genesis_dpos_data.curr_varlitor.size();
+    DposContext const& genesis_dpos_data = m_dpos_cleint->getGenesisHeader().dposContext();
+    int varlitor_num = m_config.maxValitorNum - genesis_dpos_data.curr_varlitor.size() - m_dpos_context.varlitors_votes.size();
     if(varlitor_num <=0)
     {
-        LOG(m_logger) << "next slot varlitor num <" << maxValitorNum << " and not to kickout...";
+        LOG(m_logger) << "next slot varlitor num <" << m_config.maxValitorNum << " and not to kickout...";
         return;
     }
-    //踢人逻辑
+}
 
+
+void dev::bacd::Dpos::kickoutcanlidates()
+{
+    auto iter = m_dpos_context.canlidates.begin();
+    for(; iter!= m_dpos_context.canlidates.end();)
+    {
+        //得到候选人地址后，获取候选人信息（代币是否足够等）
+        if(!able_to_canlidate(*iter))
+        {
+            m_dpos_context.canlidates.erase(iter);
+        }
+        else
+            iter++;
+    }
 }
 
 void dev::bacd::Dpos::countVotes()
 {
     //统计投票
+    if(m_dpos_context.varlitors_votes.size() < m_config.valitorNum)
+    {
+        LOG(m_logger) << "dpos vote num not enough and use last vote_result!";
+        return;
+    }
     std::vector<DposVarlitorVote> varlitor_vote;
     for (auto var_vote : m_dpos_context.varlitors_votes.m_varlitor_voter)
     {
@@ -325,37 +364,48 @@ void dev::bacd::Dpos::countVotes()
             if(voter->second == var_vote.first)
                 ++num;
         }
-        varlitor_vote.push_back(DposVarlitorVote(var_vote.first, num));
+        //获取上一轮出块数量
+        size_t block_num = 0;
+        auto result = m_dpos_context.varlitor_block_num.find(var_vote.first);
+        if(result != m_dpos_context.varlitor_block_num.end())
+            block_num = result->second;
+        varlitor_vote.push_back(DposVarlitorVote(var_vote.first, num, block_num));
     }
-    if(varlitor_vote.size() > 1)
-    {
-        std::sort(varlitor_vote.begin(), varlitor_vote.end());
-    }
+    //根据投票数量排序 当投票数量相同时 通过其他属性排序，最后前面条件相同时 随机排列
+    owenSortDposValitor(varlitor_vote);
 
     //insert to curr_varlitor
     m_dpos_context.curr_varlitor.clear();
     DposContext const& genesis_dpos_data =m_dpos_cleint->getGenesisHeader().dposContext();
-    size_t varlitor_num = maxValitorNum - genesis_dpos_data.curr_varlitor.size();
+    size_t varlitor_num = m_config.maxValitorNum;
+    if(m_config.isGensisVarNext)
+    {
+        varlitor_num -= genesis_dpos_data.curr_varlitor.size();
+        //加入创世配置验证人
+        for(auto val : genesis_dpos_data.curr_varlitor)
+        {
+            //cdebug << "genesis_dpos_data:" << val;
+            m_dpos_context.curr_varlitor.push_back(Address(val));
+        }
+    }
+
     for (size_t i=0; i< varlitor_num; i++)
     {   if(varlitor_vote.size() > i)
             m_dpos_context.curr_varlitor.push_back(varlitor_vote[i].m_addr);
     }
-    //加入创世配置验证人
-    for(auto val : genesis_dpos_data.curr_varlitor)
-    {
-        cdebug << "genesis_dpos_data:" << val;
-        m_dpos_context.curr_varlitor.push_back(Address(val));
-    }
-    for(auto val: m_dpos_context.curr_varlitor)
-    {
-        cdebug << val;
-    }
 
     //清空相关数据
     m_dpos_context.varlitor_block_num.clear();
+
+    // 投票人清空还原时候，需要将其抵押的代币归还
+    for (auto val : m_dpos_context.vote_varlitor)
+    {
+        giveBackBlanceToVote(val.first, e_timeOut);
+    }
     m_dpos_context.vote_varlitor.clear();
-	m_dpos_context.varlitors_votes.clear();
-    //待考虑候选人时候清空
+
+    m_dpos_context.varlitors_votes.clear();
+    //候选人在之前踢人逻辑的时候已经处理
 }
 
 void dev::bacd::Dpos::disorganizeVotes()
@@ -367,13 +417,71 @@ void dev::bacd::Dpos::disorganizeVotes()
     //rand()%range
     //使用 parent hash 种子
     //size_t parent_hash =(size_t)m_dpos_cleint->getCurrBlockhash();
-    srand(time(NULL));
+    srand(utcTimeMilliSec());
     for(int i=0; i < range; i++)
     {
         int j = rand() % range;
         Address temp_addr = m_dpos_context.curr_varlitor[i];
         m_dpos_context.curr_varlitor[i] = m_dpos_context.curr_varlitor[j];
         m_dpos_context.curr_varlitor[j] = temp_addr;
+    }
+}
+
+
+void dev::bacd::Dpos::owenSortDposValitor(std::vector<DposVarlitorVote>& _varlitors)
+{
+    if(_varlitors.size() <= 1)
+        return;
+    //根据投票数量排序  根据出块数量二级排序
+    std::sort(_varlitors.begin(), _varlitors.end(), dposVarlitorComp);
+    
+    //在比较属性相同的区段数据打乱顺序
+    //取出相同区段数据
+    std::vector<std::vector<DposVarlitorVote> > randVarlitors;
+    std::vector<DposVarlitorVote> currVarlitors;
+    for (auto val : _varlitors)
+    {
+        if(currVarlitors.empty())
+        {
+            currVarlitors.push_back(val);
+            continue;
+        }
+        if(currVarlitors[0].m_vote_num == val.m_vote_num && currVarlitors[0].m_block_num == val.m_block_num)
+        {
+            currVarlitors.push_back(val);
+        }
+        else
+        {
+            std::vector<DposVarlitorVote> tempVar;
+            tempVar.assign(currVarlitors.begin(), currVarlitors.end());
+            randVarlitors.push_back(tempVar);
+            currVarlitors.clear();
+            currVarlitors.push_back(val);
+        }
+    }
+    if(!currVarlitors.empty())
+        randVarlitors.push_back(currVarlitors);
+    //区段随机 
+    _varlitors.clear();
+    for (auto val : randVarlitors)
+    {
+        if(val.size() > 1)
+        {
+            //随机顺序
+            int range = val.size();
+            srand(utcTimeMilliSec());
+            for(int i = 0; i < range; i++)
+            {
+                int j = rand() % range;
+                DposVarlitorVote temp_var = val[i];
+                val[i] = val[j];
+                val[j] = temp_var;
+            }
+        }
+        for (auto var : val)
+        {
+            _varlitors.push_back(var);
+        }
     }
 }
 
@@ -391,7 +499,14 @@ void dev::bacd::Dpos::dealVoteDatas()
     for(auto val : ret)
     {
         if(!val.m_is_deal_vote)
+        {
+            //处理失效的投票
+            if(val.m_type == e_timeOut)
+            {
+                giveBackBlanceToVote(val.m_form, e_timeOut);
+            }
             continue;
+        }
         dealVoteData(val);
     }
 }
@@ -408,11 +523,19 @@ void dev::bacd::Dpos::dealVoteData(OnDealTransationResult const& _ret)
     {
     case dev::bacd::e_loginCandidate:
     {
+        //自己申请成为候选人
+        if(addr_from != addr_sender_to)
+            break;
+        if(!able_to_canlidate(addr_sender_to))
+            break;
         m_dpos_context.canlidates.insert(addr_sender_to);
     }
     break;
     case dev::bacd::e_logoutCandidate:
     {
+        //自己申请取消成为候选人
+        if(addr_from != addr_sender_to)
+            break;
         auto ret = std::find(m_dpos_context.canlidates.begin(), m_dpos_context.canlidates.end(), addr_sender_to); //m_dpos_context.canlidates.find( _t.sender());
         if(ret != m_dpos_context.canlidates.end())
             m_dpos_context.canlidates.erase(ret);
@@ -421,6 +544,14 @@ void dev::bacd::Dpos::dealVoteData(OnDealTransationResult const& _ret)
     case dev::bacd::e_delegate:
     {
         //推荐为验证人
+        //验证是否为候选人
+        if(m_dpos_context.canlidates.find(addr_sender_to) == m_dpos_context.canlidates.end())
+        {
+            LOG(m_warnlog) << EthRed "Addr:" << addr_sender_to << "not is canlidate!" EthReset;
+            giveBackBlanceToVote(addr_from, e_timeOut);
+            break;
+        }
+
         //删除原来的 投票人-验证人
         auto vote_ret = m_dpos_context.vote_varlitor.find(addr_from);
         if(vote_ret != m_dpos_context.vote_varlitor.end())
@@ -437,7 +568,10 @@ void dev::bacd::Dpos::dealVoteData(OnDealTransationResult const& _ret)
     {
         auto vote_ret = m_dpos_context.vote_varlitor.find(addr_from);
         if(vote_ret != m_dpos_context.vote_varlitor.end())
+        {
+            giveBackBlanceToVote(vote_ret->first, e_unDelegate);
             m_dpos_context.vote_varlitor.erase(vote_ret);
+        }
         //删除旧的 验证人-投票人s
         m_dpos_context.varlitors_votes.del_old_varlitor(addr_sender_to, addr_from);
     }
@@ -474,9 +608,9 @@ void dev::bacd::Dpos::verifyTransationVote(BlockHeader const& _bi)
     m_dpos_cleint->dposVoteState()->currReset();
     size_t curr_num = _bi.number();
     LOG(m_logger) << EthYellow "************verifyTransationVote curr BlockNum:" << m_dpos_cleint->getCurrHeader().number() << "| create BlockNum:" << curr_num << EthYellow;
-    if(curr_num > verifyVoteNum && m_dpos_cleint->dposVoteState()->isVerifyVoteTransation())
+    if(curr_num > m_config.verifyVoteNum && m_dpos_cleint->dposVoteState()->isVerifyVoteTransation())
     {
-        h256s _hash_t = m_dpos_cleint->getTransationsHashByBlockNum(size_t(curr_num - verifyVoteNum));
+        h256s _hash_t = m_dpos_cleint->getTransationsHashByBlockNum(size_t(curr_num - m_config.verifyVoteNum));
         if(_hash_t.empty())
             return;
         LOG(m_logger) << "************get transationHashs size:" << _hash_t.size();
@@ -512,9 +646,18 @@ bool dev::bacd::Dpos::isVarlitor(Address const & _addr)
     return false;
 }
 
+
+bool dev::bacd::Dpos::able_to_canlidate(Address const& _addr)
+{
+     // virtual std::string eth_getBalance(std::string const& _address, std::string const& _blockNumber) override;
+    //client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber))
+    u256 blance= m_dpos_cleint->balanceAt(_addr);
+    return blance >= m_config.candidateBlance;
+}
+
 void dev::bacd::Dpos::printDposData(DposContext const& _d)
 {
     LOG(m_logger) << EthYellow" DposData:" << EthYellow;
-	_d.printData();
+    _d.printData();
     
 }

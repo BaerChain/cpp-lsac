@@ -93,7 +93,7 @@ void dev::bacd::DposClient::doWork(bool _doWait)
     if(!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())
     {
         std::unique_lock<std::mutex> l(x_signalled);
-        m_signalled.wait_for(l, chrono::milliseconds(blockInterval));
+        m_signalled.wait_for(l, chrono::milliseconds(dpos()->dposConfig().blockInterval));
     }
 }
 
@@ -190,11 +190,11 @@ void dev::bacd::DposClient::init(p2p::Host & _host, int _netWorkId)
                             });
     _host.registerCapability(ethCapability);
     dpos()->initEnv(ethCapability);
-    dpos()->initGenesieVarlitors(m_params);
+    dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
     dpos()->startGeneration();
 
-    m_dpos_state = std::make_shared<DposVoteState>();
+    m_dpos_state = std::make_shared<DposVoteState>(dpos()->dposConfig());
 }
 
 bool dev::bacd::DposClient::isBlockSeal(uint64_t _now)

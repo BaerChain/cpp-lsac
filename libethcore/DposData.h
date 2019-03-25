@@ -27,14 +27,15 @@ namespace dev
 			}
 		}
         inline void clear() { m_varlitor_voter.clear(); }
-        unsigned int voterCount(const Address& _addr_varlitor) const
+		inline size_t size() { return m_varlitor_voter.size(); }
+        inline unsigned int voterCount(const Address& _addr_varlitor) const
 		{
 			auto ret = m_varlitor_voter.find(_addr_varlitor);
 			if(ret == m_varlitor_voter.end())
 				return 0;
 			return ret->second.size();
 		}
-        //会覆盖之前存在的头片信息
+        //会覆盖之前存在的投票信息
         inline void insert(const Address& _addr_varlitor, const Address& _addr_voter)
 		{
 			auto ret = m_varlitor_voter.find(_addr_varlitor);

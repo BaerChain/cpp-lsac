@@ -48,7 +48,7 @@ class BackendError(Exception):
 
 class UnixSocketConnector(object):
     """Unix Domain Socket connector. Connects to socket lazily."""
-
+    print("test")
     def __init__(self, socket_path):
         self._socket_path = socket_path
         self._socket = None
@@ -67,7 +67,7 @@ class UnixSocketConnector(object):
             try:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 s.connect(self._socket_path)
-                s.settimeout(1)
+                s.settimeout(10)
                 # Assign last, to keep it None in case of exception.
                 self._socket = s
             except OSError as ex:
@@ -98,6 +98,8 @@ class UnixSocketConnector(object):
 
             time.sleep(SLEEPTIME)
             wait_time += SLEEPTIME
+            print("wait time is ", wait_time)
+            print("time out is ", timeout)
             if wait_time > timeout:
                 raise last_exception if last_exception else TimeoutError
 
@@ -186,6 +188,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
         try:
             response_content = self.server.process(request_content)
+            print("response is", response_content)
             # self.log_message("Response: {}".format(response_content))
 
             self.send_response(200)
@@ -226,10 +229,11 @@ class Proxy(HTTPServer):
 
     def process(self, request):
         self.conn.sendall(request)
-
+        print("req is ", request)
         response = b''
         while True:
             r = self.conn.recv(BUFSIZE)
+            print("rpc recv is", r)
             if not r:
                 break
             if r[-1] == DELIMITER:
@@ -291,6 +295,8 @@ def run_daemon(proxy_url=DEFAULT_PROXY_URL, backend_path=DEFAULT_BACKEND_PATH):
 
 
 if __name__ == '__main__':
+    print("in main")
     args = parse_args()
+    print(args.proxy_url)
     run(args.proxy_url, args.backend_path)
 

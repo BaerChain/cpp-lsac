@@ -69,6 +69,12 @@ extern std::string const c_durationLimit;
 extern std::string const c_chainID;
 extern std::string const c_networkID;
 extern std::string const c_allowFutureBlocks;
+extern std::string const c_epochInterval;
+extern std::string const c_varlitorInterval;
+extern std::string const c_blockInterval;
+extern std::string const c_checkVarlitorNum;
+extern std::string const c_maxVarlitorNum;
+extern std::string const c_verifyVoteNum;
 
 // Validate config.json that contains chain params and genesis state
 void validateConfigJson(json_spirit::mObject const& _obj);

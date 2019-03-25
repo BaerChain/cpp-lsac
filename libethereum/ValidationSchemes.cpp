@@ -73,6 +73,13 @@ string const c_chainID = "chainID";
 string const c_networkID = "networkID";
 string const c_allowFutureBlocks = "allowFutureBlocks";
 
+string const c_epochInterval = "dposEpochInterval";
+string const c_varlitorInterval = "dposVarlitorInterval";
+string const c_blockInterval = "dposBlockInterval";
+string const c_checkVarlitorNum = "dposCheckVarlitorNum";
+string const c_maxVarlitorNum = "dposMaxvarlitorNum";
+string const c_verifyVoteNum = "dposVerifyVoteNum";
+
 void validateConfigJson(js::mObject const& _obj)
 {
     requireJsonFields(_obj, "ChainParams::loadConfig",

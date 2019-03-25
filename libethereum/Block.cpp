@@ -788,7 +788,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)
         txs.appendRaw(txrlp.out());
 
         //dpos 交易处理
-        if(m_transactions[i].isVoteTranction())
+        if(m_transactions[i].isVoteContractCreation())
 		{
 			m_dposTransations.push_back(txrlp.out());
 		}

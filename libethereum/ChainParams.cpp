@@ -97,6 +97,21 @@ ChainParams ChainParams::loadConfig(
         cp.networkID = int(u256(fromBigEndian<u256>(fromHex(params.at(c_networkID).get_str()))));
     cp.allowFutureBlocks = params.count(c_allowFutureBlocks);
 
+    //dpos data
+    //size_t(u256(fromBigEndian<u256>(fromHex(params.at(c_varlitorInterval).get_str()))));
+	if(params.count(c_epochInterval))
+		cp.epochInterval = size_t(params.at(c_epochInterval).get_int());
+	if(params.count(c_varlitorInterval))
+		cp.varlitorInterval = size_t(params.at(c_varlitorInterval).get_int());
+	if(params.count(c_blockInterval))
+		cp.blockInterval = size_t(params.at(c_blockInterval).get_int());
+	if(params.count(c_checkVarlitorNum))
+		cp.checkVarlitorNum = size_t(params.at(c_checkVarlitorNum).get_int());
+	if(params.count(c_maxVarlitorNum))
+		cp.maxVarlitorNum = size_t(params.at(c_maxVarlitorNum).get_int());
+	if(params.count(c_verifyVoteNum))
+		cp.verifyVoteNum = size_t(params.at(c_verifyVoteNum).get_int());
+
     //Poa Validators
     string poaStr = js::write_string(obj[c_poa], false);
     cp = cp.loadpoaValidators(poaStr, _stateRoot);

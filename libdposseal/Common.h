@@ -19,12 +19,6 @@ namespace dev
     {
         using NodeID = p2p::NodeID;
         using DposContext = eth::DposContext;
-        const unsigned int epochInterval = 120000;         // 一个出块轮询周期 ms
-		const unsigned int varlitorInterval = 1000;        // 一个出块人一次出块时间
-        const unsigned int blockInterval = 1000;           // 一个块最短出块时间 ms 
-        const unsigned int valitorNum = 5;              // 筛选验证人的人数最低值
-        const unsigned int maxValitorNum = 21;          // 最大验证人数量
-        const unsigned int verifyVoteNum = 6;           // 投票交易确认数
 
         enum DposPacketType :byte
         {
@@ -38,6 +32,7 @@ namespace dev
             e_logoutCandidate,
             e_delegate,            // 推举验证人
             e_unDelegate,
+            e_timeOut,             // 投票失效
 
             e_max
         };
@@ -48,19 +43,69 @@ namespace dev
             e_Full,
             e_Max
         };
+
+        struct DposConfigParams
+        {
+            size_t epochInterval = 6000;         // 一个出块轮询周期 ms
+            size_t varlitorInterval = 1000;      // 一个出块人一次出块时间 ms
+            size_t blockInterval = 1000;         // 一个块最短出块时间 ms
+            size_t valitorNum = 2;               // 筛选验证人的人数最低值
+            size_t maxValitorNum = 21;           // 最大验证人数量
+            size_t verifyVoteNum = 6;            // 投票交易确认数
+            bool   isGensisVarNext = true;       // 创世配置的验证人是否保留到下一轮
+            u256   candidateBlance = 1000000;    // 成为候选人 代币数量
+            void operator = (DposConfigParams const& _f)
+            {
+                epochInterval = _f.epochInterval;
+                varlitorInterval = _f.varlitorInterval;
+                blockInterval = _f.blockInterval;
+                valitorNum = _f.valitorNum;
+                maxValitorNum = _f.maxValitorNum;
+                verifyVoteNum = _f.verifyVoteNum;
+                isGensisVarNext = _f.isGensisVarNext;
+            }
+            friend std::ostream& operator << (std::ostream& out, DposConfigParams const& _f)
+            {
+                out << "epochInterval:" << _f.epochInterval << "ms|varlitorInterval:" << _f.varlitorInterval <<
+                    "ms|blockInterval:" << _f.blockInterval << "ms|checkvarlitorNum:" << _f.valitorNum <<
+                    "|maxValitorNum:" << _f.maxValitorNum << "|verifyVoteNum:" << _f.verifyVoteNum<< 
+                    "| isGensisVarNext:" << _f.isGensisVarNext;
+                return out;
+            }
+        };
+
         //统计投票数据结构
         struct DposVarlitorVote
         {
             Address     m_addr;
             size_t      m_vote_num;
-            DposVarlitorVote(Address const& _addr, size_t _num)
+            size_t      m_block_num;
+            DposVarlitorVote(DposVarlitorVote const& _d)
+            {
+                m_addr = _d.m_addr;
+                m_vote_num = _d.m_vote_num;
+                m_block_num = _d.m_block_num;
+            }
+            DposVarlitorVote(Address const& _addr, size_t _num, size_t _block_num)
             {
                 m_addr = _addr;
                 m_vote_num = _num;
+                m_block_num = _block_num;
             }
-            bool operator >= (DposVarlitorVote const& _d) { return m_vote_num >= _d.m_vote_num; }
-            bool operator < (DposVarlitorVote const& _d) { return m_vote_num < _d.m_vote_num; }
         };
+
+        inline bool dposVarlitorComp(DposVarlitorVote const& _d1, DposVarlitorVote const& _d2)
+        {
+            if(_d1.m_vote_num > _d2.m_vote_num)
+                return true;
+            else if(_d1.m_vote_num < _d2.m_vote_num)
+                return false;
+            else
+            {
+                //票数相同 比较出块数量
+                return _d1.m_block_num > _d2.m_block_num;
+            }
+        }
 
         /***************************交易投票相关数据 start*********************************************/
         struct DposTransaTionResult
@@ -70,7 +115,8 @@ namespace dev
             size_t          m_epoch;            //交易目标是第几轮投票
             Address         m_send_to;
             Address         m_form;
-            size_t          m_block_hight;      //所在区块的高度
+            int64_t         m_block_hight;      //所在区块的高度
+            bytes           m_data;             //合约数据
             DposTransaTionResult()
             {
                 m_hash = h256();
@@ -79,6 +125,7 @@ namespace dev
                 m_send_to = Address();
                 m_form = Address();
                 m_block_hight = 0;
+                m_data.clear();
             }
             bool operator < (DposTransaTionResult const& _d) const { return m_block_hight < _d.m_block_hight; }
             friend std::ostream& operator << (std::ostream& out, DposTransaTionResult const& _d)
@@ -90,6 +137,7 @@ namespace dev
                 out<<"from:" << _d.m_form << std::endl;
                 out<<"sender_to:" << _d.m_send_to << std::endl;
                 out << "block_hight" << _d.m_block_hight << std::endl;
+                out << "data_size:" << _d.m_data.size() << std::endl;
                 return out;
             }
             void operator = (DposTransaTionResult const& _d)
@@ -100,6 +148,7 @@ namespace dev
                 m_send_to = _d.m_send_to;
                 m_form = _d.m_form;
                 m_block_hight = _d.m_block_hight;
+                m_data.assign(_d.m_data.begin(), _d.m_data.end());
             }
         };
         struct OnDealTransationResult : DposTransaTionResult
@@ -124,10 +173,11 @@ namespace dev
             }
             void streamRLPFields(RLPStream& _s) const
             {
-                _s.appendList(8);
+                _s.appendList(9);
                 _s << m_hash.asBytes() << (size_t)m_type << m_epoch << 
-					m_send_to.asBytes() << m_form.asBytes() << 
-					m_block_hight << (size_t)m_ret_type << (size_t)m_is_deal_vote;
+                    m_send_to.asBytes() << m_form.asBytes() << 
+                    m_block_hight << (size_t)m_ret_type << 
+                    (size_t)m_is_deal_vote << m_data;
             }
             void populate(RLP const& _rlp)
             {
@@ -140,9 +190,10 @@ namespace dev
                     m_epoch = _rlp[field = 2].toInt<size_t>();
                     m_send_to =Address(_rlp[field = 3].toBytes());
                     m_form =Address(_rlp[field = 4].toBytes());
-                    m_block_hight = _rlp[field = 5].toInt<size_t>();
-					m_ret_type = (EDPosResult)_rlp[field = 6].toInt<size_t>();
-					m_is_deal_vote = (bool)_rlp[field = 7].toInt<size_t>();
+                    m_block_hight = _rlp[field = 5].toInt<int64_t>();
+                    m_ret_type = (EDPosResult)_rlp[field = 6].toInt<size_t>();
+                    m_is_deal_vote = (bool)_rlp[field = 7].toInt<size_t>();
+                    m_data = _rlp[8].toBytes();
                 }
                 catch(Exception const& /*_e*/)
                 {

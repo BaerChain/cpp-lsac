@@ -55,7 +55,14 @@ struct ChainParams: public ChainOperationParams
     mutable h256 stateRoot;    ///< Only pre-populate if known equivalent to genesisState's root. If they're different Bad Things Will Happen.
     AccountMap genesisState;
 
-    DposContext dposcontext;
+    DposContext dposcontext;              // dpos 配置数据
+	size_t   epochInterval = 1;           // 一个出块轮询周期 ms
+	size_t   varlitorInterval = 1;        // 一个出块人一次出块时间
+	size_t   blockInterval = 1;           // 一个块最短出块时间 ms
+	size_t   checkVarlitorNum = 1;        // 筛选验证人的人数最低值
+	size_t   maxVarlitorNum = 1;          // 最大验证人数量
+	size_t   verifyVoteNum = 1;           // 投票交易确认数
+										  
 
     unsigned sealFields = 0;
     bytes sealRLP;

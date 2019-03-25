@@ -71,8 +71,14 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
         m_gas = rlp[2].toInt<u256>();
-        //m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
-        m_type = rlp[3].isEmpty() ? ContractCreation : (Type)rlp[9].toInt<int>(); //空 为智能合约
+        if (rlp.itemCount() == 9)
+        {
+            m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+        }
+        else
+        {
+            m_type = rlp[3].isEmpty() ? ContractCreation : (Type)rlp[9].toInt<int>(); //空 为智能合约
+        }
         m_receiveAddress = rlp[3].isEmpty() ? Address() : rlp[3].toHash<Address>(RLP::VeryStrict);
         m_value = rlp[4].toInt<u256>();
 
@@ -82,6 +88,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         m_data = rlp[5].toBytes();
 
         int const v = rlp[6].toInt<int>();
+        //std::cout << "v is " << v << std::endl;
         h256 const r = rlp[7].toInt<u256>();
         h256 const s = rlp[8].toInt<u256>();
         if (isZeroSignature(r, s))
@@ -102,7 +109,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
             if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
                 BOOST_THROW_EXCEPTION(InvalidSignature());
         }
-        
+
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
 
@@ -169,8 +176,15 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
 {
     if (m_type == NullTransaction)
         return;
-
-    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 7);
+    if (m_type == VoteMassage)
+    {
+        _s.appendList((_sig || _forEip155hash ? 3 : 0) + 7);
+    }
+    else
+    {
+        _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
+    }
+    
     _s << m_nonce << m_gasPrice << m_gas;
     if (m_type == MessageCall || m_type == VoteMassage)
         _s << m_receiveAddress;
@@ -195,7 +209,10 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
     else if (_forEip155hash)
         _s << m_chainId << 0 << 0;
 
-    _s << m_type;
+    if (m_type == VoteMassage)
+    {
+        _s << m_type;
+    }
     
 }
 
@@ -238,4 +255,16 @@ h256 TransactionBase::sha3(IncludeSignature _sig) const
     if (_sig == WithSignature)
         m_hashWith = ret;
     return ret;
+}
+
+bool dev::eth::TransactionBase::isVoteContractCreation() const
+{
+    if(m_type != ContractCreation) 
+        return false;
+    DposContractCreation contract;
+    if(!contract.populate(m_data))
+        return false;
+    if(!contract.isContractCreation())
+        return false;
+    return true;
 }

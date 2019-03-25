@@ -17,7 +17,7 @@ namespace bacd
     class DposVoteState
     {
     public:
-        DposVoteState() { m_transations.clear(); }
+		DposVoteState(DposConfigParams const& _config) { m_transations.clear(); m_config = _config; }
         ~DposVoteState() { }
 
     public:
@@ -34,6 +34,7 @@ namespace bacd
     private:
         std::vector<DposTransaTionResult>      m_transations;      //等待验证的交易结果缓存
         std::vector<OnDealTransationResult>    m_onResult;         //处理后的交易结果缓存 等待同步
+		DposConfigParams                       m_config;
         Logger                                 m_logger { createLogger(VerbosityDebug, "DposVote") };
     };
 }
