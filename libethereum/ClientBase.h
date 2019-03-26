@@ -76,6 +76,7 @@ public:
     std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback) override;
 
     using Interface::balanceAt;
+    using Interface::ballotAt;
     using Interface::countAt;
     using Interface::stateAt;
     using Interface::codeAt;
@@ -83,6 +84,7 @@ public:
     using Interface::storageAt;
 
     u256 balanceAt(Address _a, BlockNumber _block) const override;
+    u256 ballotAt(Address _a, BlockNumber _block) const override;
     u256 countAt(Address _a, BlockNumber _block) const override;
     u256 stateAt(Address _a, u256 _l, BlockNumber _block) const override;
     h256 stateRootAt(Address _a, BlockNumber _block) const override;

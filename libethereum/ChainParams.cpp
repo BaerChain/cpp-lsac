@@ -125,6 +125,7 @@ ChainParams ChainParams::loadConfig(
                 genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath);
 
     cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot(true);
+
     return cp;
 }
 
@@ -145,7 +146,9 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     cp.gasUsed = genesis.count(c_gasUsed) ? u256(fromBigEndian<u256>(fromHex(genesis[c_gasUsed].get_str()))) : 0;
     cp.timestamp = u256(fromBigEndian<u256>(fromHex(genesis[c_timestamp].get_str())));
     cp.extraData = bytes(fromHex(genesis[c_extraData].get_str()));
-	cp.dposcontext.curr_varlitor.assign(cp.poaValidatorAccount.begin(), cp.poaValidatorAccount.end());
+    cp.m_sign_data = h520(fromHex(genesis[c_sign].get_str()));
+
+	//dposVarlitors.assign(cp.poaValidatorAccount.begin(), cp.poaValidatorAccount.end());
 
     // magic code for handling ethash stuff:
     if (genesis.count(c_mixHash) && genesis.count(c_nonce))
@@ -172,7 +175,11 @@ ChainParams dev::eth::ChainParams::loadpoaValidators(
     js::mArray::const_iterator iter;
     for (auto val : poaArray)
     {
-        cp.poaValidatorAccount.push_back(Address(val.get_str()));
+        auto encode_pk = val.get_str();
+        auto secret = Secret(dev::crypto::from_base58(encode_pk));
+        auto address = toAddress(toPublic(secret));
+        cp.poaValidatorAccount.push_back(Address(address));
+        cp.m_miner_priv_keys[address] = secret;
     }
     cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
 
@@ -204,7 +211,8 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
     gasUsed = bi.gasUsed();
     timestamp = bi.timestamp();
     extraData = bi.extraData();
-	dposcontext = bi.dposContext();
+    m_sign_data = bi.sign_data();
+	poaValidatorAccount.assign(bi.dposCurrVarlitors().begin(), bi.dposCurrVarlitors().end());
     genesisState = _state;
     RLP r(_genesisRLP);
     sealFields = r[0].itemCount() - BlockHeader::BasicFields;
@@ -246,7 +254,7 @@ bytes ChainParams::genesisBlock() const
 
     calculateStateRoot();
 
-    block.appendList(BlockHeader::BasicFields + sealFields)
+    block.appendList(BlockHeader::BasicFields + sealFields + 1)
             << parentHash
             << EmptyListSHA3	// sha3(uncles)
             << author
@@ -259,8 +267,13 @@ bytes ChainParams::genesisBlock() const
             << gasLimit
             << gasUsed			// gasUsed
             << timestamp
-            << extraData;
-	dposcontext.streamRLPFields(block);
+            << extraData
+            << h520(m_sign_data)
+            ;
+	//dposcontext.streamRLPFields(block);
+	RLPStream _s;
+	_s.appendVector<Address>(poaValidatorAccount);
+	block << _s.out();
 
     block.appendRaw(sealRLP, sealFields);
     block.appendRaw(RLPEmptyList);

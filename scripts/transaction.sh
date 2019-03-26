@@ -17,8 +17,8 @@ isFull=`echo $accounts | jq ".result[$bigest]"`
 vote=`echo $accounts | jq ".result[0]"`
 if [ ${1}x = "initx" ]
 then
-    if [ ${isFull}x = "nullx" ]
-    then
+    while [ ${isFull}x = "nullx" ]
+    do
         while [ $n -le $bigest ]
         do
             account=`echo $accounts | jq ".result[$n]"`
@@ -32,7 +32,10 @@ then
             fi
             n=`expr ${n} + 1`
         done
-    fi
+        accounts=`curl -s -d '{"jsonrpc":"2.0","id":16,"method":"eth_accounts","params":[]}' $ip`
+        isFull=`echo $accounts | jq ".result[$bigest]"`
+        n=0
+    done
 
     n=0
     accounts=`curl -s -d '{"jsonrpc":"2.0","id":13,"method":"eth_accounts","params":[]}' $ip`

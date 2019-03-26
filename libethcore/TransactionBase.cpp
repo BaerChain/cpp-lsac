@@ -19,19 +19,19 @@
  * @date 2014
  */
 
-#include <libdevcore/vector_ref.h>
-#include <libdevcore/Log.h>
-#include <libdevcrypto/Common.h>
-#include <libethcore/Exceptions.h>
 #include "TransactionBase.h"
 #include "EVMSchedule.h"
+#include <libdevcore/Log.h>
+#include <libdevcore/vector_ref.h>
+#include <libdevcrypto/Common.h>
+#include <libethcore/Exceptions.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _s):
-    m_type(_ts.creation ? ContractCreation : MessageCall),
+TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _s)
+  : m_type(_ts.creation ? ContractCreation : MessageCall),
     m_nonce(_ts.nonce),
     m_value(_ts.value),
     m_receiveAddress(_ts.to),
@@ -42,9 +42,13 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
 {
     if (_s)
         sign(_s);
+    if (m_receiveAddress == VoteAddress)
+    {
+        m_type = VoteMassage;
+    }
 }
 
-TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag):
+/*TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag):
     m_type(VoteMassage),
     m_nonce(_ts.nonce),
     m_value(_ts.value),
@@ -57,38 +61,45 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
     if (_s)
         sign(_s);
     m_value = _flag;
-}
+}*/
 
 TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
-    
     RLP const rlp(_rlpData);
     try
     {
         if (!rlp.isList())
-            BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction RLP must be a list"));
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment("transaction RLP must be a list"));
 
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
         m_gas = rlp[2].toInt<u256>();
-        if (rlp.itemCount() == 9)
-        {
-            m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
-        }
-        else
-        {
-            m_type = rlp[3].isEmpty() ? ContractCreation : (Type)rlp[9].toInt<int>(); //空 为智能合约
-        }
+        // if (rlp.itemCount() == 9)
+        //{
+        m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+        //}
+        // else
+        //{
+        //    m_type = rlp[3].isEmpty() ? ContractCreation : (Type)rlp[9].toInt<int>(); //空
+        //    为智能合约
+        //}
         m_receiveAddress = rlp[3].isEmpty() ? Address() : rlp[3].toHash<Address>(RLP::VeryStrict);
+
+        if (!rlp[3].isEmpty() && m_receiveAddress == VoteAddress)
+        {
+            m_type = VoteMassage;
+        }
         m_value = rlp[4].toInt<u256>();
 
         if (!rlp[5].isData())
-            BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction data RLP must be an array"));
+            BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
+                                  << errinfo_comment("transaction data RLP must be an array"));
 
         m_data = rlp[5].toBytes();
 
         int const v = rlp[6].toInt<int>();
-        //std::cout << "v is " << v << std::endl;
+        // std::cout << "v is " << v << std::endl;
         h256 const r = rlp[7].toInt<u256>();
         h256 const s = rlp[8].toInt<u256>();
         if (isZeroSignature(r, s))
@@ -99,7 +110,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         else
         {
             if (v > 36)
-                m_chainId = (v - 35) / 2; 
+                m_chainId = (v - 35) / 2;
             else if (v == 27 || v == 28)
                 m_chainId = -4;
             else
@@ -113,12 +124,14 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
 
-        if (rlp.itemCount() > 10)
-            BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("too many fields in the transaction RLP"));
+        if (rlp.itemCount() > 9 /*10*/)
+            BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
+                                  << errinfo_comment("too many fields in the transaction RLP"));
     }
     catch (Exception& _e)
     {
-        _e << errinfo_name("invalid transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
+        _e << errinfo_name(
+            "invalid transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
         throw;
     }
 }
@@ -149,7 +162,7 @@ Address const& TransactionBase::sender() const
             auto p = recover(*m_vrs, sha3(WithoutSignature));
             if (!p)
                 BOOST_THROW_EXCEPTION(InvalidSignature());
-            
+
             m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
         }
     }
@@ -157,7 +170,7 @@ Address const& TransactionBase::sender() const
 }
 
 SignatureStruct const& TransactionBase::signature() const
-{ 
+{
     if (!m_vrs)
         BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
 
@@ -172,19 +185,27 @@ void TransactionBase::sign(Secret const& _priv)
         m_vrs = sigStruct;
 }
 
+bool dev::eth::TransactionBase::isVoteTranction() const
+{
+    if (m_receiveAddress != VoteAddress)
+        return false;
+    std::cout << EthYellow "check isVoteTranction ..." << EthReset << std::endl;
+    return true;
+}
+
 void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forEip155hash) const
 {
     if (m_type == NullTransaction)
         return;
-    if (m_type == VoteMassage)
-    {
-        _s.appendList((_sig || _forEip155hash ? 3 : 0) + 7);
-    }
-    else
-    {
-        _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
-    }
-    
+    // if (m_type == VoteMassage)
+    //{
+    //    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 7);
+    //}
+    // else
+    //{
+    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
+    //}
+
     _s << m_nonce << m_gasPrice << m_gas;
     if (m_type == MessageCall || m_type == VoteMassage)
         _s << m_receiveAddress;
@@ -209,14 +230,14 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
     else if (_forEip155hash)
         _s << m_chainId << 0 << 0;
 
-    if (m_type == VoteMassage)
+    /*if (m_type == VoteMassage)
     {
         _s << m_type;
-    }
-    
+    }*/
 }
 
-static const u256 c_secp256k1n("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+static const u256 c_secp256k1n(
+    "115792089237316195423570985008687907852837564279074904382605163141518161494337");
 
 void TransactionBase::checkLowS() const
 {
@@ -233,14 +254,15 @@ void TransactionBase::checkChainId(int chainId) const
         BOOST_THROW_EXCEPTION(InvalidSignature());
 }
 
-int64_t TransactionBase::baseGasRequired(bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es)
+int64_t TransactionBase::baseGasRequired(
+    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es)
 {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
 
     // Calculate the cost of input data.
     // No risk of overflow by using int64 until txDataNonZeroGas is quite small
     // (the value not in billions).
-    for (auto i: _data)
+    for (auto i : _data)
         g += i ? _es.txDataNonZeroGas : _es.txDataZeroGas;
     return g;
 }
@@ -255,16 +277,4 @@ h256 TransactionBase::sha3(IncludeSignature _sig) const
     if (_sig == WithSignature)
         m_hashWith = ret;
     return ret;
-}
-
-bool dev::eth::TransactionBase::isVoteContractCreation() const
-{
-    if(m_type != ContractCreation) 
-        return false;
-    DposContractCreation contract;
-    if(!contract.populate(m_data))
-        return false;
-    if(!contract.isContractCreation())
-        return false;
-    return true;
 }

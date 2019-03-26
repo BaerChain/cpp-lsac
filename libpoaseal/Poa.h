@@ -64,7 +64,7 @@ private:
 	int64_t                             m_lastChange_valitor_time; //上次更改验证人时间
     std::weak_ptr<PoaHostCapability>    m_host;
 	PoaMsgQueue                         m_msg_queue;	// msg queue 消息队列
-	bool                                m_cfg_err;
+//	bool                                m_cfg_err;
 	std::vector<DelPoaValitor>          m_del_poaValitors;       //被删除验证人集合，主要是验证轮流出块时 使用一次，使用后删除
 };
 

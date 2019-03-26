@@ -23,6 +23,7 @@
 #include <random>
 
 #include "Exceptions.h"
+#include "RLP.h"
 
 using namespace std;
 using namespace dev;

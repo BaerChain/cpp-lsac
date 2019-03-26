@@ -104,6 +104,10 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, SealEngineFace* _sealer)
         res["extraData"] = toJS(_bi.extraData());
         res["logsBloom"] = toJS(_bi.logBloom());
         res["timestamp"] = toJS(_bi.timestamp());
+
+        res["sign"] = toJS((h520)_bi.sign_data());
+
+
         // TODO: remove once JSONRPC spec is updated to use "author" over "miner".
         res["miner"] = toJS(_bi.author());
         if (_sealer)
@@ -393,7 +397,57 @@ TransactionSkeleton toTransactionSkeleton(Json::Value const& _json)
         ret.gasPrice = jsToU256(_json["gasPrice"].asString());
 
     if (!_json["data"].empty())							// ethereum.js has preconstructed the data array
-        ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+    {
+		if(_json["to"].asString() == "0x00000000000000000000000000000000766f7465")
+		{
+			Json::Value _item = _json["data"];
+			transationTool::op_type _type= (transationTool::op_type) _item["method_type"].asInt();
+			Address _from = Address(_item["from"].asString());
+			Address _to = Address(_item["to"].asString());
+			
+			switch(_type)
+			{
+			case transationTool::vote:
+			{
+				uint8_t _vote_type = (uint8_t)_item["type"].asInt();
+				size_t _vote_num = (size_t)_item["tickets"].asInt();
+				transationTool::vote_operation vote_op { _type, _from, _to, _vote_type, _vote_num };
+				ret.data = vote_op.serialize();
+			}
+			break;
+			default:
+			break;
+			}
+			//int size = _json["data"].size();
+			/*for(int i = 0; i < size; i++)
+			{
+				Json::Value _itemData = _json["data"][i];
+				transationTool::op_type _type = (transationTool::op_type)_itemData["method_type"].asInt();
+				Address _from = Address(_itemData["from"].asString());
+				Address _to = Address(_itemData["to"].asString());
+				switch(_type)
+				{
+				case transationTool::vote:
+				{
+					uint8_t _vote_type = (uint8_t)_itemData["type"].asInt();
+					size_t _vote_num = (size_t)_itemData["tickets"].asInt();
+					transationTool::vote_operation vote_op { _type, _from, _to, _vote_type, _vote_num };
+					_op_datas.push_back(vote_op.serialize());
+				}
+				break;
+				default:
+				break;
+				}
+			}*/
+			/*RLPStream _s;
+			_s.appendVector<bytes>(_op_datas);*/
+			//ret.data = _s.out();
+		}
+		else
+		{
+			ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+		}
+    }
 
     if (!_json["code"].empty())
         ret.data = jsToBytes(_json["code"].asString(), OnFailed::Throw);

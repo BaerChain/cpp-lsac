@@ -9,7 +9,6 @@
 #include <libethereum/Client.h>
 #include <boost/filesystem/path.hpp>
 #include "libethereum/Interface.h"
-#include "DposVoteState.h"
 
 namespace dev
 {
@@ -39,21 +38,20 @@ public:
     inline h256                 getCurrBlockhash()const  { return m_bc.currentHash(); }
     inline h256                 getGenesisHash()const    { return m_bc.genesisHash(); }
     inline BlockHeader const&   getGenesisHeader()const  { return m_bc.genesis(); }
-
     inline h256s                getTransationsHashByBlockNum(size_t num) const { return transactionHashes(hashFromNumber(num)); }
-    inline DposVoteState*       dposVoteState()const { return  m_dpos_state.get(); }
+
+	void   getEletorsByNum(std::vector<Address>& _v, size_t _num) const;
+
+	void   printfElectors();
+	
 protected:
     void rejigSealing();
 
 private:
     void init(p2p::Host & _host, int _netWorkId);
-
     bool isBlockSeal(uint64_t _now);
-
-
 private:
     ChainParams                     m_params;          //配置
-    std::shared_ptr<DposVoteState>  m_dpos_state;
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
 };
 

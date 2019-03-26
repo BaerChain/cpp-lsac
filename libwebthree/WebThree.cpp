@@ -41,49 +41,46 @@ using namespace dev::shh;
 
 static_assert(BOOST_VERSION >= 106400, "Wrong boost headers version");
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
-    boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
-    eth::ChainParams const& _params, WithExisting _we, std::set<std::string> const& _interfaces,
-    NetworkConfig const& _n, bytesConstRef _network, bool _testing)
-  : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network)
-{
-    if (_interfaces.count("eth"))
-    {
+WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
+                               boost::filesystem::path const &_dbPath, boost::filesystem::path const &_snapshotPath,
+                               eth::ChainParams const &_params, WithExisting _we,
+                               std::set<std::string> const &_interfaces,
+                               NetworkConfig const &_n, bytesConstRef _network, bool _testing)
+        : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network) {
+    if (_interfaces.count("eth")) {
         if (_testing)
             m_ethereum.reset(new eth::ClientTest(
-                _params, (int)_params.networkID, m_net, shared_ptr<GasPricer>(), _dbPath, _we));
-        else
-        {
+                    _params, (int) _params.networkID, m_net, shared_ptr<GasPricer>(), _dbPath, _we));
+        else {
             if (_params.sealEngineName == Ethash::name())
-                m_ethereum.reset(new eth::EthashClient(_params, (int)_params.networkID, m_net,
-                    shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+                m_ethereum.reset(new eth::EthashClient(_params, (int) _params.networkID, m_net,
+                                                       shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == NoProof::name())
-                m_ethereum.reset(new eth::Client(_params, (int)_params.networkID, m_net,
-                    shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+                m_ethereum.reset(new eth::Client(_params, (int) _params.networkID, m_net,
+                                                 shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == Poa::name())
-                m_ethereum.reset(new eth::PoaClient(_params, (int)_params.networkID, m_net,
-                    shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
-			else if(_params.sealEngineName ==bacd::Dpos::name())
-				m_ethereum.reset(new bacd::DposClient(_params, (int)_params.networkID, m_net,
-					shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+                m_ethereum.reset(new eth::PoaClient(_params, (int) _params.networkID, m_net,
+                                                    shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+            else if (_params.sealEngineName == bacd::Dpos::name())
+                m_ethereum.reset(new bacd::DposClient(_params, (int) _params.networkID, m_net,
+                                                      shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
-                                          "Unknown seal engine: " + _params.sealEngineName));
+                        "Unknown seal engine: " + _params.sealEngineName));
         }
         std::cout << "start of startWorking" << std::endl;
         m_ethereum->startWorking();
         std::cout << "end of startWorking" << std::endl;
-        const auto* buildinfo = aleth_get_buildinfo();
+        const auto *buildinfo = aleth_get_buildinfo();
         m_ethereum->setExtraData(rlpList(0, string{buildinfo->project_version}.substr(0, 5) + "++" +
-                                                string{buildinfo->git_commit_hash}.substr(0, 4) +
-                                                string{buildinfo->build_type}.substr(0, 1) +
-                                                string{buildinfo->system_name}.substr(0, 5) +
-                                                string{buildinfo->compiler_id}.substr(0, 3)));
+                                            string{buildinfo->git_commit_hash}.substr(0, 4) +
+                                            string{buildinfo->build_type}.substr(0, 1) +
+                                            string{buildinfo->system_name}.substr(0, 5) +
+                                            string{buildinfo->compiler_id}.substr(0, 3)));
     }
 }
 
-WebThreeDirect::~WebThreeDirect()
-{
+WebThreeDirect::~WebThreeDirect() {
     // Utterly horrible right now - WebThree owns everything (good), but:
     // m_net (Host) owns the eth::EthereumHost via a shared_ptr.
     // The eth::EthereumHost depends on eth::Client (it maintains a reference to the BlockChain field of Client).
@@ -97,50 +94,41 @@ WebThreeDirect::~WebThreeDirect()
     m_net.stop();
 }
 
-std::string WebThreeDirect::composeClientVersion(std::string const& _client)
-{
-    const auto* buildinfo = aleth_get_buildinfo();
+std::string WebThreeDirect::composeClientVersion(std::string const &_client) {
+    const auto *buildinfo = aleth_get_buildinfo();
     return _client + "/" + buildinfo->project_version + "/" + buildinfo->system_name + "/" +
            buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
 }
 
-std::vector<PeerSessionInfo> WebThreeDirect::peers()
-{
+std::vector<PeerSessionInfo> WebThreeDirect::peers() {
     return m_net.peerSessionInfo();
 }
 
-size_t WebThreeDirect::peerCount() const
-{
+size_t WebThreeDirect::peerCount() const {
     return m_net.peerCount();
 }
 
-void WebThreeDirect::setIdealPeerCount(size_t _n)
-{
+void WebThreeDirect::setIdealPeerCount(size_t _n) {
     return m_net.setIdealPeerCount(_n);
 }
 
-void WebThreeDirect::setPeerStretch(size_t _n)
-{
+void WebThreeDirect::setPeerStretch(size_t _n) {
     return m_net.setPeerStretch(_n);
 }
 
-bytes WebThreeDirect::saveNetwork()
-{
+bytes WebThreeDirect::saveNetwork() {
     return m_net.saveNetwork();
 }
 
-void WebThreeDirect::addNode(p2p::NodeID const& _node, bi::tcp::endpoint const& _host)
-{
+void WebThreeDirect::addNode(p2p::NodeID const &_node, bi::tcp::endpoint const &_host) {
     m_net.addNode(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
-void WebThreeDirect::requirePeer(p2p::NodeID const& _node, bi::tcp::endpoint const& _host)
-{
+void WebThreeDirect::requirePeer(p2p::NodeID const &_node, bi::tcp::endpoint const &_host) {
     m_net.requirePeer(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
-void WebThreeDirect::addPeer(NodeSpec const& _s, PeerType _t)
-{
+void WebThreeDirect::addPeer(NodeSpec const &_s, PeerType _t) {
     m_net.addPeer(_s, _t);
 }
 

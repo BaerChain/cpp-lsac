@@ -17,7 +17,7 @@ namespace bacd
     class DposVoteState
     {
     public:
-		DposVoteState(DposConfigParams const& _config) { m_transations.clear(); m_config = _config; }
+        DposVoteState(DposConfigParams const& _config) { m_transations.clear(); m_config = _config; }
         ~DposVoteState() { }
 
     public:
@@ -28,13 +28,18 @@ namespace bacd
         void            currReset() { m_onResult.clear(); }
         bool            isVerifyVoteTransation() { return !m_transations.empty(); }
         bool            isSyncVoteTransation() { return !m_onResult.empty(); }
-        std::vector<OnDealTransationResult> const& getOnTransationResult() { return m_onResult; }
+        std::vector<OnDealTransationResult>& getOnTransationResult() { return m_onResult; }
         std::vector<DposTransaTionResult> const& getTransationResult() { return m_transations; }
+		void            setUpdateTime(int64_t _time) { m_updateTime = _time; }
+		int64_t         getUpdateTime() { return m_updateTime; }
+    private:            
+        bool            insertDposTransaTionResult(DposTransaTionResult const& _d);
 
     private:
         std::vector<DposTransaTionResult>      m_transations;      //等待验证的交易结果缓存
-        std::vector<OnDealTransationResult>    m_onResult;         //处理后的交易结果缓存 等待同步
-		DposConfigParams                       m_config;
+		int64_t                                m_updateTime;
+        std::vector<OnDealTransationResult>    m_onResult;         //验证后的交易结果缓存 等待处理
+        DposConfigParams                       m_config;
         Logger                                 m_logger { createLogger(VerbosityDebug, "DposVote") };
     };
 }

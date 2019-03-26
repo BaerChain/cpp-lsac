@@ -101,7 +101,7 @@ public:
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
  */
-class BlockChain
+class  BlockChain
 {
 public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it

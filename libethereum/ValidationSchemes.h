@@ -40,6 +40,7 @@ extern std::string const c_difficulty;
 extern std::string const c_extraData;
 extern std::string const c_mixHash;
 extern std::string const c_parentHash;
+extern std::string const c_sign;
 extern std::string const c_precompiled;
 extern std::string const c_storage;
 extern std::string const c_code;

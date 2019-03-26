@@ -1,12 +1,10 @@
 set(sources
+    DposData.h
+    Common.h
     Dpos.cpp
     Dpos.h
     DposClient.cpp
     DposClient.h
-    DposVoteState.h
-    DposVoteState.cpp
-    DposHostCapability.h
-    DposHostCapability.cpp
 )
 
 add_library(dposseal ${sources})

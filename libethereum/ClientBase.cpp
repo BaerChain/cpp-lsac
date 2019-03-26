@@ -96,6 +96,11 @@ u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const
     return blockByNumber(_block).balance(_a);
 }
 
+u256 ClientBase::ballotAt(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).ballot(_a);
+}
+
 u256 ClientBase::countAt(Address _a, BlockNumber _block) const
 {
     return blockByNumber(_block).transactionsFrom(_a);

@@ -22,10 +22,11 @@
 #pragma once
 #include <libdevcore/Common.h>
 #include <libethcore/Common.h>
+#include <libdevcrypto/Common.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/BlockHeader.h>
+#include <libdevcrypto/base58.h>
 #include "Account.h"
-#include <libethcore/DposData.h>
 
 namespace dev
 {
@@ -55,20 +56,22 @@ struct ChainParams: public ChainOperationParams
     mutable h256 stateRoot;    ///< Only pre-populate if known equivalent to genesisState's root. If they're different Bad Things Will Happen.
     AccountMap genesisState;
 
-    DposContext dposcontext;              // dpos ÅäÖÃÊý¾Ý
-	size_t   epochInterval = 1;           // Ò»¸ö³ö¿éÂÖÑ¯ÖÜÆÚ ms
-	size_t   varlitorInterval = 1;        // Ò»¸ö³ö¿éÈËÒ»´Î³ö¿éÊ±¼ä
-	size_t   blockInterval = 1;           // Ò»¸ö¿é×î¶Ì³ö¿éÊ±¼ä ms
-	size_t   checkVarlitorNum = 1;        // É¸Ñ¡ÑéÖ¤ÈËµÄÈËÊý×îµÍÖµ
-	size_t   maxVarlitorNum = 1;          // ×î´óÑéÖ¤ÈËÊýÁ¿
-	size_t   verifyVoteNum = 1;           // Í¶Æ±½»Ò×È·ÈÏÊý
-										  
 
+	size_t   epochInterval = 1;           // Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½ ms
+	size_t   varlitorInterval = 1;        // Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î³ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
+	size_t   blockInterval = 1;           // Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì³ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ ms
+	size_t   checkVarlitorNum = 1;        // É¸Ñ¡ï¿½ï¿½Ö¤ï¿½Ëµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+	size_t   maxVarlitorNum = 1;          // ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	size_t   verifyVoteNum = 1;           // Í¶Æ±ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½
+
+    SignatureStruct     m_sign_data;
     unsigned sealFields = 0;
     bytes sealRLP;
 
     //Poa 
     std::vector<Address> poaValidatorAccount;
+
+    std::map<Address, Secret>       m_miner_priv_keys;      ///key: address, value : private key , packed block and sign
 
     h256 calculateStateRoot(bool _force = false) const;
 

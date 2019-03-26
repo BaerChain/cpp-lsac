@@ -10,32 +10,37 @@
 #include <libp2p/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libethcore/Common.h>
-#include <libethcore/DposData.h>
 #include <libdevcore/Log.h>
+#include "DposData.h"
 
 namespace dev
 {
     namespace bacd
     {
         using NodeID = p2p::NodeID;
-        using DposContext = eth::DposContext;
+		const std::string contextDBKey = "dposcontext";
 
         enum DposPacketType :byte
         {
             DposStatuspacket = 0x23,
+            DposVoteTransation,
             DposDataPacket,
+            DposContextPacket,
             DposPacketCount
         };
         enum EDposDataType
         {
-            e_loginCandidate =0,         // 成为候选人
-            e_logoutCandidate,
+            e_null =0,             // 无效
+            e_loginCandidate ,     // 成为候选人
+            e_logoutCandidate,     // 取消成为侯选人
             e_delegate,            // 推举验证人
-            e_unDelegate,
-            e_timeOut,             // 投票失效
-
-            e_max
+            e_unDelegate          // 取消
         };
+        enum EeffectType
+		{
+			e_timeOut,
+            e_used,
+		};
         enum EDPosResult
         {
             e_Add =0,
@@ -52,7 +57,7 @@ namespace dev
             size_t valitorNum = 2;               // 筛选验证人的人数最低值
             size_t maxValitorNum = 21;           // 最大验证人数量
             size_t verifyVoteNum = 6;            // 投票交易确认数
-            bool   isGensisVarNext = true;       // 创世配置的验证人是否保留到下一轮
+            bool   isGensisVarNext = false;       // 创世配置的验证人是否保留到下一轮
             u256   candidateBlance = 1000000;    // 成为候选人 代币数量
             void operator = (DposConfigParams const& _f)
             {
@@ -72,6 +77,39 @@ namespace dev
                     "| isGensisVarNext:" << _f.isGensisVarNext;
                 return out;
             }
+        };
+
+        struct DposBlockNum 
+        {
+			size_t m_epcho;
+			std::map<Address, size_t> m_var_block_num;
+            DposBlockNum(): m_epcho(0)
+			{
+				m_var_block_num.clear();
+			}
+			void addNum(size_t _epoch, Address const& _addr, size_t _num = 1)
+			{
+				if(m_epcho > _epoch)
+					return;
+				if(m_epcho < _epoch)
+					m_var_block_num.clear();
+				m_epcho = _epoch;
+				auto ret = m_var_block_num.find(_addr);
+				if(ret == m_var_block_num.end())
+					m_var_block_num[_addr] = _num;
+				else
+					ret->second += _num;
+			}
+			friend std::ostream& operator << (std::ostream& out, DposBlockNum const& _d)
+			{
+				out << "m_epcho :" << _d.m_epcho <<"{" <<std::endl;
+                for (auto val: _d.m_var_block_num)
+                {
+					out << "[Address:" << val.first << "  num:" << val.second << "]" << std::endl;
+                }
+				out << "}";
+				return out;
+			}
         };
 
         //统计投票数据结构
@@ -112,20 +150,24 @@ namespace dev
         {
             h256            m_hash;
             EDposDataType   m_type;
+			EeffectType     m_effect;
             size_t          m_epoch;            //交易目标是第几轮投票
             Address         m_send_to;
             Address         m_form;
             int64_t         m_block_hight;      //所在区块的高度
             bytes           m_data;             //合约数据
+			size_t          m_vote;
             DposTransaTionResult()
             {
                 m_hash = h256();
-                m_type = EDposDataType::e_max;
+                m_type = EDposDataType::e_null;
+				m_effect = e_used;
                 m_epoch = 0;
                 m_send_to = Address();
                 m_form = Address();
                 m_block_hight = 0;
                 m_data.clear();
+				m_vote = 0;
             }
             bool operator < (DposTransaTionResult const& _d) const { return m_block_hight < _d.m_block_hight; }
             friend std::ostream& operator << (std::ostream& out, DposTransaTionResult const& _d)
@@ -133,10 +175,12 @@ namespace dev
                 out <<"{"<< std::endl;
                 out <<"hash:" << _d.m_hash << std::endl;
                 out<< "type:" << _d.m_type << std::endl;
+				out << "effect:" << _d.m_effect << std::endl;
                 out<<"epoch:" << _d.m_epoch << std::endl;
                 out<<"from:" << _d.m_form << std::endl;
                 out<<"sender_to:" << _d.m_send_to << std::endl;
                 out << "block_hight" << _d.m_block_hight << std::endl;
+				out << "vote:" << _d.m_vote << std::endl;
                 out << "data_size:" << _d.m_data.size() << std::endl;
                 return out;
             }
@@ -144,40 +188,38 @@ namespace dev
             {
                 m_hash = _d.m_hash;
                 m_type = _d.m_type;
+				m_effect = _d.m_effect;
                 m_epoch = _d.m_epoch;
                 m_send_to = _d.m_send_to;
                 m_form = _d.m_form;
                 m_block_hight = _d.m_block_hight;
                 m_data.assign(_d.m_data.begin(), _d.m_data.end());
+				m_vote = _d.m_vote;
             }
         };
         struct OnDealTransationResult : DposTransaTionResult
         {
             EDPosResult     m_ret_type;
-            bool            m_is_deal_vote;
 
-            OnDealTransationResult() :DposTransaTionResult(), m_ret_type(EDPosResult::e_Max), m_is_deal_vote(false) { }
-            OnDealTransationResult(EDPosResult type, bool _is_deal, DposTransaTionResult const& _d) :
+            OnDealTransationResult() :DposTransaTionResult(), m_ret_type(EDPosResult::e_Max) { }
+            OnDealTransationResult(EDPosResult type, DposTransaTionResult const& _d) :
                 DposTransaTionResult(_d),
-                m_ret_type(type),
-                m_is_deal_vote(_is_deal)
+                m_ret_type(type)
             {
             }
 
             friend std::ostream& operator <<(std::ostream& out, OnDealTransationResult const& _ret)
             {
-                out << static_cast<DposTransaTionResult>(_ret) 
-                    << std::endl<< "EDPosResult:" << _ret.m_ret_type 
-                    << std::endl << "m_is_deal_vote:" << _ret.m_is_deal_vote;
+				out << static_cast<DposTransaTionResult>(_ret)
+					<< std::endl << "EDPosResult:" << _ret.m_ret_type;
                 return out;
             }
             void streamRLPFields(RLPStream& _s) const
             {
-                _s.appendList(9);
-                _s << m_hash.asBytes() << (size_t)m_type << m_epoch << 
-                    m_send_to.asBytes() << m_form.asBytes() << 
-                    m_block_hight << (size_t)m_ret_type << 
-                    (size_t)m_is_deal_vote << m_data;
+                _s.appendList(10);
+				_s << m_hash.asBytes() << (size_t)m_type << m_epoch <<
+					m_send_to.asBytes() << m_form.asBytes() <<
+					m_block_hight << (size_t)m_ret_type << m_vote << m_data << (size_t)m_effect;
             }
             void populate(RLP const& _rlp)
             {
@@ -192,8 +234,9 @@ namespace dev
                     m_form =Address(_rlp[field = 4].toBytes());
                     m_block_hight = _rlp[field = 5].toInt<int64_t>();
                     m_ret_type = (EDPosResult)_rlp[field = 6].toInt<size_t>();
-                    m_is_deal_vote = (bool)_rlp[field = 7].toInt<size_t>();
-                    m_data = _rlp[8].toBytes();
+					m_vote = _rlp[field = 7].toInt<size_t>();
+                    m_data = _rlp[field = 8].toBytes();
+					m_effect =(EeffectType)_rlp[field = 9].toInt<size_t>();
                 }
                 catch(Exception const& /*_e*/)
                 {
@@ -223,11 +266,10 @@ namespace dev
         struct DPosStatusMsg
         {
             Address        m_addr;
-            int64_t        m_now;
+            u256           m_now;
             DPosStatusMsg() : m_addr(Address()) { }
             virtual void streamRLPFields(RLPStream& _s) const
             {
-                //_s.appendList(2);
                 _s << m_addr.asBytes() << m_now;
             }
             virtual void populate(RLP const& _rlp)
@@ -236,7 +278,7 @@ namespace dev
                 try
                 {
                     m_addr =Address(_rlp[field = 0].toBytes());
-                    m_now = _rlp[field = 1].toInt<int64_t>();
+                    m_now = _rlp[field = 1].toInt<u256>();
                 }
                 catch (Exception const& /*_e*/)
                 {
@@ -310,6 +352,40 @@ namespace dev
                 return out;
             }
         };
+
+        struct DposContextMsg : DPosStatusMsg
+		{    
+			bytes data;
+            DposContextMsg():DPosStatusMsg(){}
+			void streamRLPFields(RLPStream& _s) const override
+			{
+				DPosStatusMsg::streamRLPFields(_s);
+				_s << data;
+			}
+			void populate(RLP const& _rlp) override
+			{
+				size_t field = 0;
+				DPosStatusMsg::populate(_rlp);
+				try
+				{
+					data = _rlp[field = 2].toBytes();
+				}
+				catch(Exception const& /*_e*/)
+				{
+					/*_e << errinfo_name("invalid msg format") << BadFieldError(field, toHex(_rlp[field].data().toBytes()));
+					throw;*/
+					cwarn << "populate DposDataMsg is error field: " << field;
+				}
+			}
+			friend std::ostream& operator << (std::ostream& out, DposContextMsg const& _d)
+			{
+				out << "DposContext: {" << std::endl;
+				out << static_cast<DPosStatusMsg>(_d) << std::endl;
+				out << "DposContextSize:"<< _d.data.size();
+				out << " }" << std::endl;
+				return out;
+			}
+		};
 
         /***************************网络数据包 封装业务数据 start*********************************************/
     }

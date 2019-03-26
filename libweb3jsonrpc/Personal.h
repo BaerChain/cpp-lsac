@@ -17,12 +17,12 @@ namespace rpc
 class Personal: public dev::rpc::PersonalFace
 {
 public:
-    enum Type
+    /*enum Type
 	{
 		BeCandidate,    // 申请自己成为候选人
 		CacleCandidate, // 申请取消自己的候选人资格
 		Delegated       // 投票
-	};
+	};*/
 	Personal(dev::eth::KeyManager& _keyManager, dev::eth::AccountHolder& _accountHolder, eth::Interface& _eth);
 	virtual RPCModules implementedModules() const override
 	{
@@ -32,7 +32,7 @@ public:
 	virtual bool personal_unlockAccount(std::string const& _address, std::string const& _password, int _duration) override;
 	virtual std::string personal_signAndSendTransaction(Json::Value const& _transaction, std::string const& _password) override;
 	virtual std::string personal_sendTransaction(Json::Value const& _transaction, std::string const& _password) override;
-    virtual std::string personal_sendDelegatedTransaction(Json::Value const& _transaction, std::string const& _password) override;
+    //virtual std::string personal_sendDelegatedTransaction(Json::Value const& _transaction, std::string const& _password) override;
 	virtual Json::Value personal_listAccounts() override;
 
 private:
