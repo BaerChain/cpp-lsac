@@ -25,6 +25,7 @@
 #include "BlockChain.h"
 #include "ExtVM.h"
 #include "TransactionQueue.h"
+#include "DposVote.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/TrieHash.h>
@@ -37,18 +38,17 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs):
-    m_db(_db),
-    m_state(&m_db),
-    m_accountStartNonce(_accountStartNonce)
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs)
+  : m_db(_db), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
     if (_bs != BaseState::PreExisting)
-        // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built
+        // correctly.
         m_state.init();
 }
 
-State::State(State const& _s):
-    m_db(_s.m_db),
+State::State(State const& _s)
+  : m_db(_s.m_db),
     m_state(&m_db, _s.m_state.root(), Verification::Skip),
     m_cache(_s.m_cache),
     m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
@@ -67,7 +67,8 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
         fs::remove_all(path / fs::path("state"));
     }
 
-    path /= fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
+    path /=
+        fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
     if (db::isDiskDatabase())
     {
         fs::create_directories(path);
@@ -76,7 +77,7 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
 
     try
     {
-		std::unique_ptr<db::DatabaseFace> db = db::DBFactory::create(path / fs::path("state"));
+        std::unique_ptr<db::DatabaseFace> db = db::DBFactory::create(path / fs::path("state"));
         clog(VerbosityTrace, "statedb") << "Opened state DB.";
         return OverlayDB(std::move(db));
     }
@@ -87,15 +88,15 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
             throw;
         else if (fs::space(path / fs::path("state")).available < 1024)
         {
-            cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
+            cwarn << "Not enough available space found on hard drive. Please free some up and then "
+                     "re-run. Bailing.";
             BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
         }
         else
         {
-            cwarn <<
-                "Database " <<
-                (path / fs::path("state")) <<
-                "already open. You appear to have another instance of ethereum running. Bailing.";
+            cwarn << "Database " << (path / fs::path("state"))
+                  << "already open. You appear to have another instance of ethereum running. "
+                     "Bailing.";
             BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
         }
     }
@@ -103,6 +104,10 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
 
 void State::populateFrom(AccountMap const& _map)
 {
+    auto it = _map.find(Address("0xffff19f5ada6a28821ce0ed74c605c8c086ceb35"));
+    Account a;
+    if (it != m_cache.end())
+        a = it->second;
     eth::commit(_map, m_state);
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
@@ -124,7 +129,7 @@ void State::noteAccountStartNonce(u256 const& _actual)
 
 void State::removeEmptyAccounts()
 {
-    for (auto& i: m_cache)
+    for (auto& i : m_cache)
         if (i.second.isDirty() && i.second.isEmpty())
             i.second.kill();
 }
@@ -133,7 +138,6 @@ State& State::operator=(State const& _s)
 {
     if (&_s == this)
         return *this;
-
     m_db = _s.m_db;
     m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
     m_cache = _s.m_cache;
@@ -169,11 +173,24 @@ Account* State::account(Address const& _addr)
     clearCacheIfTooLarge();
 
     RLP state(stateBack);
+
+    const bytes _b = state[6].toBytes();
+    RLP vote(_b);
+    size_t num = vote[0].toInt<size_t>();
+    std::unordered_map<Address, u256> _vote;
+    for (size_t j=1 ; j <= num; j++)
+    {
+        std::pair<Address, u256> _pair = vote[j].toPair<Address, u256>();
+        _vote.insert(_pair);
+    }
+
     auto i = m_cache.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(_addr),
-        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), Account::Unchanged)
+        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(), state[5].toInt<u256>(), state[7].toInt<u256>(),Account::Unchanged)
     );
+    i.first->second.setVoteDate(_vote);
+
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -184,8 +201,10 @@ void State::clearCacheIfTooLarge() const
     while (m_unchangedCacheEntries.size() > 1000)
     {
         // Remove a random element
-        // FIXME: Do not use random device as the engine. The random device should be only used to seed other engine.
-        size_t const randomIndex = std::uniform_int_distribution<size_t>(0, m_unchangedCacheEntries.size() - 1)(dev::s_fixedHashEngine);
+        // FIXME: Do not use random device as the engine. The random device should be only used to
+        // seed other engine.
+        size_t const randomIndex = std::uniform_int_distribution<size_t>(
+            0, m_unchangedCacheEntries.size() - 1)(dev::s_fixedHashEngine);
 
         Address const addr = m_unchangedCacheEntries[randomIndex];
         swap(m_unchangedCacheEntries[randomIndex], m_unchangedCacheEntries.back());
@@ -211,10 +230,10 @@ unordered_map<Address, u256> State::addresses() const
 {
 #if ETH_FATDB
     unordered_map<Address, u256> ret;
-    for (auto& i: m_cache)
+    for (auto& i : m_cache)
         if (i.second.isAlive())
             ret[i.first] = i.second.balance();
-    for (auto const& i: m_state)
+    for (auto const& i : m_state)
         if (m_cache.find(i.first) == m_cache.end())
             ret[i.first] = RLP(i.second)[1].toInt<u256>();
     return ret;
@@ -284,7 +303,7 @@ void State::setRoot(h256 const& _r)
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-//  m_touched.clear();
+    //  m_touched.clear();
     m_state.setRoot(_r);
 }
 
@@ -313,6 +332,16 @@ u256 State::balance(Address const& _id) const
 {
     if (auto a = account(_id))
         return a->balance();
+    else
+        return 0;
+}
+
+u256 State::ballot(Address const& _id) const
+{
+    if (auto a = account(_id))
+    {
+        return a->ballot();
+    }
     else
         return 0;
 }
@@ -368,6 +397,22 @@ void State::addBalance(Address const& _id, u256 const& _amount)
         m_changeLog.emplace_back(Change::Balance, _id, _amount);
 }
 
+void State::addBallot(Address const& _id, u256 const& _amount)
+{
+    if (Account* a = account(_id))
+    {
+        if (!a->isDirty() && a->isEmpty())
+            m_changeLog.emplace_back(Change::Touch, _id);
+        a->addBallot(_amount);
+    }
+    else
+        BOOST_THROW_EXCEPTION(InvalidAddress() << errinfo_interface("State::addBallot()"));
+        //createAccount(_id, {requireAccountStartNonce(), _amount});
+
+    if (_amount)
+        m_changeLog.emplace_back(Change::Ballot, _id, _amount);
+}
+
 void State::subBalance(Address const& _addr, u256 const& _value)
 {
     if (_value == 0)
@@ -382,6 +427,18 @@ void State::subBalance(Address const& _addr, u256 const& _value)
     addBalance(_addr, 0 - _value);
 }
 
+void State::subBallot(Address const& _addr, u256 const& _value)
+{
+    if (_value == 0)
+        return;
+
+    Account* a = account(_addr);
+    if (!a || a->ballot() < _value)
+        BOOST_THROW_EXCEPTION(NotEnoughBallot());
+
+    addBallot(_addr, 0 - _value);
+}
+
 void State::setBalance(Address const& _addr, u256 const& _value)
 {
     Account* a = account(_addr);
@@ -390,6 +447,58 @@ void State::setBalance(Address const& _addr, u256 const& _value)
     // Fall back to addBalance().
     addBalance(_addr, _value - original);
 }
+
+// BRC接口实现
+u256 State::BRC(Address const& _id) const
+{
+    if (auto* a = account(_id))
+    {
+        return a->BRC();
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+void State::addBRC(Address const& _addr, u256 const& _value)
+{
+    if (Account* a = account(_addr))
+    {
+        if (!a->isDirty() && a->isEmpty())
+            m_changeLog.emplace_back(Change::Touch, _addr);
+        a->addBRC(_value);
+    }
+    else
+        createAccount(_addr, {requireAccountStartNonce(), _value});
+
+    if (_value)
+        m_changeLog.emplace_back(Change::Balance, _addr, _value);
+}
+
+void State::subBRC(Address const& _addr, u256 const& _value)
+{
+    if (_value == 0)
+        return;
+
+    Account* a = account(_addr);
+    if (!a || a->BRC() < _value)
+        // TODO: I expect this never happens.
+        BOOST_THROW_EXCEPTION(NotEnoughCash());
+
+    // Fall back to addBalance().
+    addBRC(_addr, 0 - _value);
+}
+
+void State::setBRC(Address const& _addr, u256 const& _value)
+{
+    Account* a = account(_addr);
+    u256 original = a ? a->BRC() : 0;
+
+    // Fall back to addBalance().
+    addBRC(_addr, _value - original);
+}
+
 
 void State::createContract(Address const& _address)
 {
@@ -460,7 +569,8 @@ map<h256, pair<u256, u256>> State::storage(Address const& _id) const
         // Pull out all values from trie storage.
         if (h256 root = a->baseRoot())
         {
-            SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), root);       // promise we won't alter the overlay! :)
+            SecureTrieDB<h256, OverlayDB> memdb(
+                const_cast<OverlayDB*>(&m_db), root);  // promise we won't alter the overlay! :)
 
             for (auto it = memdb.hashedBegin(); it != memdb.hashedEnd(); ++it)
             {
@@ -484,8 +594,9 @@ map<h256, pair<u256, u256>> State::storage(Address const& _id) const
     }
     return ret;
 #else
-    (void) _id;
-    BOOST_THROW_EXCEPTION(InterfaceNotSupported() << errinfo_interface("State::storage(Address const& _id)"));
+    (void)_id;
+    BOOST_THROW_EXCEPTION(
+        InterfaceNotSupported() << errinfo_interface("State::storage(Address const& _id)"));
 #endif
 }
 
@@ -577,6 +688,9 @@ void State::rollback(size_t _savepoint)
         case Change::Balance:
             account.addBalance(0 - change.value);
             break;
+        case Change::BRC:
+            account.addBRC(0 - change.value);
+            break;
         case Change::Nonce:
             account.setNonce(change.value);
             break;
@@ -590,12 +704,26 @@ void State::rollback(size_t _savepoint)
             account.untouch();
             m_unchangedCacheEntries.emplace_back(change.address);
             break;
+        case Change::Ballot:
+            account.addBallot(0 - change.value);
+            break;
+        case Change::Poll:
+            account.addPoll(0 - change.value);
+            break;   
+        case Change::Vote:
+            account.addVote(change.vote);
+            break;
+        case Change::SysVoteData:
+            account.manageSysVote(change.sysVotedate.first, !change.sysVotedate.second, 0);
+            break;
+        break;
         }
         m_changeLog.pop_back();
     }
 }
 
-std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
+std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo,
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
@@ -614,24 +742,27 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     bool removeEmptyAccounts = false;
     switch (_p)
     {
-        case Permanence::Reverted:
-            m_cache.clear();
-            break;
-        case Permanence::Committed:
-            removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-            commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
-            break;
-        case Permanence::Uncommitted:
-            break;
+    case Permanence::Reverted:
+        m_cache.clear();
+        break;
+    case Permanence::Committed:
+        removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
+        commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                     State::CommitBehaviour::KeepEmptyAccounts);
+        break;
+    case Permanence::Uncommitted:
+        break;
     }
 
-    TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
-        TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
-        TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
+    TransactionReceipt const receipt =
+        _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+            TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
+            TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
     return make_pair(res, receipt);
 }
 
-void State::executeBlockTransactions(Block const& _block, unsigned _txCount, LastBlockHashesFace const& _lastHashes, SealEngineFace const& _sealEngine)
+void State::executeBlockTransactions(Block const& _block, unsigned _txCount,
+    LastBlockHashesFace const& _lastHashes, SealEngineFace const& _sealEngine)
 {
     u256 gasUsed = 0;
     for (unsigned i = 0; i < _txCount; ++i)
@@ -665,18 +796,161 @@ bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc co
     }
 }
 
+u256 dev::eth::State::poll(Address const& _addr) const
+{
+    if(auto a = account(_addr))
+        return a->poll();
+    else
+        return 0;
+}
+
+void dev::eth::State::addPoll(Address const & _addr, u256 const & _value)
+{
+
+    if(Account* a = account(_addr))
+    {
+        a->addBalance(_value);
+    }
+    else
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addPoll()"));
+
+    if(_value)
+        m_changeLog.emplace_back(Change::Poll, _addr, _value);
+}
+
+
+void dev::eth::State::subPoll(Address const& _addr, u256 const& _value)
+{
+    if(_value == 0)
+        return;
+    Account* a = account(_addr);
+    if(!a || a->poll() < _value)
+        BOOST_THROW_EXCEPTION(NotEnoughPoll());
+    addPoll(_addr, 0 - _value);
+}
+
+
+dev::u256 dev::eth::State::voteAll(Address const& _id) const
+{
+    if(auto a = account(_id))
+        return a->voteAll();
+    else
+        return 0;
+}
+
+
+dev::u256 dev::eth::State::voteAdress(Address const& _id, Address const& _recivedAddr) const
+{
+    if(auto a = account(_id))
+        return a->vote(_recivedAddr);
+    else
+        return 0;
+}
+
+
+void dev::eth::State::addVote(Address const& _id, Address const& _recivedAddr, u256 _value)
+{
+    //此为投票接口  没有投票人地址失败   投票人票数不足 失败
+    Account* a = account(_id);
+    Account *rec_a = account(_recivedAddr);
+    if(a && rec_a)
+    {
+        // 一个原子操作
+        //扣票
+        if(a->ballot() < _value)
+            BOOST_THROW_EXCEPTION(NotEnoughBallot() << errinfo_interface("State::addvote()"));
+        a->addBallot(0 - _value);
+        //加票
+        rec_a->addPoll(_value);
+        //添加记录
+        a->addVote(std::make_pair(_recivedAddr, _value));
+    }
+    else
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
+
+    if(_value)
+    {
+        m_changeLog.emplace_back( _id, std::make_pair(_recivedAddr, _value) );
+        m_changeLog.emplace_back(Change::Ballot, _id, 0- _value);
+        m_changeLog.emplace_back(Change::Poll, _id, _value);
+    }
+}
+
+
+void dev::eth::State::subVote(Address const& _id, Address const& _recivedAddr, u256 _value)
+{
+    //撤销投票
+    Account *rec_a = account(_recivedAddr);
+    Account* a = account(_id);
+    if(a && rec_a )
+    {
+        // 验证投票将记录
+        if(a->vote(_recivedAddr) < _value )
+            BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
+        a->addVote(std::make_pair(_recivedAddr, 0 - _value));
+        a->addBallot(_value);
+        if(rec_a->poll() < _value)
+            _value = rec_a->poll();
+        rec_a->addPoll(0 - _value);
+    }                 
+    else
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
+
+    if(_value)
+    {
+        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, 0 - _value));
+        m_changeLog.emplace_back(Change::Ballot, _id, _value);
+        m_changeLog.emplace_back(Change::Poll, _id, 0 - _value);
+    }
+}                                           
+
+
+std::unordered_map<dev::Address, dev::u256> dev::eth::State::voteDate(Address const& _id) const
+{
+    if(auto a = account(_id))
+        return a->voteData();
+    else
+        return std::unordered_map<Address, u256>();
+}
+
+
+void dev::eth::State::addSysVoteDate(Address const& _sysAddress, Address const& _id)
+{
+    Account *sysAddr = account(_sysAddress);
+    Account* a = account(_id);
+    if(!sysAddr)
+        BOOST_THROW_EXCEPTION(InvalidSysAddress() << errinfo_interface("State::addSysVoteDate()"));
+    if(!a)
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addSysVoteDate()"));
+    sysAddr->manageSysVote(_id, true, 0);
+    m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, true));
+}
+
+
+void dev::eth::State::subSysVoteDate(Address const& _sysAddress, Address const& _id)
+{
+    Account *sysAddr = account(_sysAddress);
+    Account* a = account(_id);
+    if(!sysAddr)
+        BOOST_THROW_EXCEPTION(InvalidSysAddress() << errinfo_interface("State::subSysVoteDate()"));
+    if(!a)
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subSysVoteDate()"));
+    sysAddr->manageSysVote(_id, false, 0);
+    m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
+}
+
 std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
     std::set<Address> dtr;
     auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
-    for (auto i: trie)
+    for (auto i : trie)
         d.insert(i.first), dtr.insert(i.first);
-    for (auto i: _s.m_cache)
+    for (auto i : _s.m_cache)
         d.insert(i.first);
 
-    for (auto i: d)
+    for (auto i : d)
     {
         auto it = _s.m_cache.find(i);
         Account* cache = it != _s.m_cache.end() ? &it->second : nullptr;
@@ -689,12 +963,14 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
         else
         {
             string lead = (cache ? r ? " *   " : " +   " : "     ");
-            if (cache && r && cache->nonce() == r[0].toInt<u256>() && cache->balance() == r[1].toInt<u256>())
+            if (cache && r && cache->nonce() == r[0].toInt<u256>() &&
+                cache->balance() == r[1].toInt<u256>())
                 lead = " .   ";
 
             stringstream contout;
 
-            if ((cache && cache->codeHash() == EmptySHA3) || (!cache && r && (h256)r[3] != EmptySHA3))
+            if ((cache && cache->codeHash() == EmptySHA3) ||
+                (!cache && r && (h256)r[3] != EmptySHA3))
             {
                 std::map<u256, u256> mem;
                 std::set<u256> back;
@@ -702,14 +978,16 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
                 std::set<u256> cached;
                 if (r)
                 {
-                    SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());     // promise we won't alter the overlay! :)
-                    for (auto const& j: memdb)
+                    SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db),
+                        r[2].toHash<h256>());  // promise we won't alter the overlay! :)
+                    for (auto const& j : memdb)
                         mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
                 }
                 if (cache)
-                    for (auto const& j: cache->storageOverlay())
+                    for (auto const& j : cache->storageOverlay())
                     {
-                        if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
+                        if ((!mem.count(j.first) && j.second) ||
+                            (mem.count(j.first) && mem.at(j.first) != j.second))
                             mem[j.first] = j.second, delta.insert(j.first);
                         else if (j.second)
                             cached.insert(j.first);
@@ -727,21 +1005,31 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
                 else
                     contout << " $" << (cache ? cache->codeHash() : r[3].toHash<h256>());
 
-                for (auto const& j: mem)
+                for (auto const& j : mem)
                     if (j.second)
-                        contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << nouppercase << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
+                        contout << std::endl
+                                << (delta.count(j.first) ?
+                                           back.count(j.first) ? " *     " : " +     " :
+                                           cached.count(j.first) ? " .     " : "       ")
+                                << std::hex << nouppercase << std::setw(64) << j.first << ": "
+                                << std::setw(0) << j.second;
                     else
-                        contout << std::endl << "XXX    " << std::hex << nouppercase << std::setw(64) << j.first << "";
+                        contout << std::endl
+                                << "XXX    " << std::hex << nouppercase << std::setw(64) << j.first
+                                << "";
             }
             else
                 contout << " [SIMPLE]";
-            _out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
+            _out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>())
+                 << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str()
+                 << std::endl;
         }
     }
     return _out;
 }
 
-State& dev::eth::createIntermediateState(State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc)
+State& dev::eth::createIntermediateState(
+    State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc)
 {
     o_s = _block.state();
     u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
@@ -759,16 +1047,15 @@ template <class DB>
 AddressHash dev::eth::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state)
 {
     AddressHash ret;
-    for (auto const& i: _cache)
+    for (auto const& i : _cache)
         if (i.second.isDirty())
         {
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else
             {
-                RLPStream s(4);
+                RLPStream s(8);
                 s << i.second.nonce() << i.second.balance();
-
                 if (i.second.storageOverlay().empty())
                 {
                     assert(i.second.baseRoot());
@@ -777,7 +1064,7 @@ AddressHash dev::eth::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 else
                 {
                     SecureTrieDB<h256, DB> storageDB(_state.db(), i.second.baseRoot());
-                    for (auto const& j: i.second.storageOverlay())
+                    for (auto const& j : i.second.storageOverlay())
                         if (j.second)
                             storageDB.insert(j.first, rlp(j.second));
                         else
@@ -796,6 +1083,20 @@ AddressHash dev::eth::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 }
                 else
                     s << i.second.codeHash();
+                s << i.second.ballot();
+                s << i.second.poll();
+                { 
+                    RLPStream _s;
+                    size_t num = i.second.voteData().size();
+                    _s.appendList(num + 1);
+                    _s << num;
+                    for(auto val : i.second.voteData())
+                    {
+                        _s.append<Address, u256>(std::make_pair(val.first, val.second));
+                    }
+                    s << _s.out();
+                }
+                s << i.second.BRC();
 
                 _state.insert(i.first, &s.out());
             }
@@ -805,5 +1106,7 @@ AddressHash dev::eth::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
 }
 
 
-template AddressHash dev::eth::commit<OverlayDB>(AccountMap const& _cache, SecureTrieDB<Address, OverlayDB>& _state);
-template AddressHash dev::eth::commit<StateCacheDB>(AccountMap const& _cache, SecureTrieDB<Address, StateCacheDB>& _state);
+template AddressHash dev::eth::commit<OverlayDB>(
+    AccountMap const& _cache, SecureTrieDB<Address, OverlayDB>& _state);
+template AddressHash dev::eth::commit<StateCacheDB>(
+    AccountMap const& _cache, SecureTrieDB<Address, StateCacheDB>& _state);

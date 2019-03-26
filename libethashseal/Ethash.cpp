@@ -28,19 +28,19 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-void Ethash::init()
-{
+void Ethash::init() {
     ETH_REGISTER_SEAL_ENGINE(Ethash);
 }
 
-Ethash::Ethash()
-{
+Ethash::Ethash() {
     std::cout << "Ethash::Ethash" << std::endl;
     map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
-    sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
+    sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances,
+                                                                      [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci) {
+                                                                          return new EthashCPUMiner(ci);
+                                                                      }};
     m_farm.setSealers(sealers);
-    m_farm.onSolutionFound([=](EthashProofOfWork::Solution const& sol)
-    {
+    m_farm.onSolutionFound([=](EthashProofOfWork::Solution const &sol) {
         std::unique_lock<Mutex> l(m_submitLock);
 //        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
         setMixHash(m_sealing, sol.mixHash);
@@ -48,8 +48,7 @@ Ethash::Ethash()
         if (!quickVerifySeal(m_sealing))
             return false;
 
-        if (m_onSealGenerated)
-        {
+        if (m_onSealGenerated) {
             RLPStream ret;
             m_sealing.streamRLP(ret);
             l.unlock();
@@ -59,21 +58,18 @@ Ethash::Ethash()
     });
 }
 
-Ethash::~Ethash()
-{
+Ethash::~Ethash() {
     std::cout << "Ethash::~Ethash" << std::endl;
     // onSolutionFound closure sometimes has references to destroyed members.
     m_farm.onSolutionFound({});
 }
 
-strings Ethash::sealers() const
-{
+strings Ethash::sealers() const {
     std::cout << "Ethash::Ethash" << std::endl;
     return {"cpu"};
 }
 
-h256 Ethash::seedHash(BlockHeader const& _bi)
-{
+h256 Ethash::seedHash(BlockHeader const &_bi) {
     // FIXME: Use ethash lib for this (function not exposed in 0.3).
     std::cout << "Ethash::seedHash" << std::endl;
     unsigned epoch = static_cast<unsigned>(_bi.number()) / ETHASH_EPOCH_LENGTH;
@@ -84,32 +80,32 @@ h256 Ethash::seedHash(BlockHeader const& _bi)
     return seed;
 }
 
-StringHashMap Ethash::jsInfo(BlockHeader const& _bi) const
-{
+StringHashMap Ethash::jsInfo(BlockHeader const &_bi) const {
     std::cout << "Ethash::jsInfo" << std::endl;
-    return { { "nonce", toJS(nonce(_bi)) }, { "seedHash", toJS(seedHash(_bi)) }, { "mixHash", toJS(mixHash(_bi)) }, { "boundary", toJS(boundary(_bi)) }, { "difficulty", toJS(_bi.difficulty()) } };
+    return {{"nonce",      toJS(nonce(_bi))},
+            {"seedHash",   toJS(seedHash(_bi))},
+            {"mixHash",    toJS(mixHash(_bi))},
+            {"boundary",   toJS(boundary(_bi))},
+            {"difficulty", toJS(_bi.difficulty())}};
 }
 
-void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
-{
+void Ethash::verify(Strictness _s, BlockHeader const &_bi, BlockHeader const &_parent, bytesConstRef _block) const {
     std::cout << "Ethash::verify" << std::endl;
     SealEngineFace::verify(_s, _bi, _parent, _block);
 
-    if (_parent)
-    {
+    if (_parent) {
         // Check difficulty is correct given the two timestamps.
         auto expected = calculateEthashDifficulty(chainParams(), _bi, _parent);
         auto difficulty = _bi.difficulty();
         if (difficulty != expected)
-            BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)expected, (bigint)difficulty));
+            BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint) expected, (bigint) difficulty));
     }
 
     // check it hashes according to proof of work or that it's the genesis block.
-    if (_s == CheckEverything && _bi.parentHash() && !verifySeal(_bi))
-    {
+    if (_s == CheckEverything && _bi.parentHash() && !verifySeal(_bi)) {
         ethash::result result =
-            ethash::hash(ethash::get_global_epoch_context(ethash::get_epoch_number(_bi.number())),
-                toEthash(_bi.hash(WithoutSeal)), toEthash(nonce(_bi)));
+                ethash::hash(ethash::get_global_epoch_context(ethash::get_epoch_number(_bi.number())),
+                             toEthash(_bi.hash(WithoutSeal)), toEthash(nonce(_bi)));
 
         h256 mix{result.mix_hash.bytes, h256::ConstructFromPointer};
         h256 final{result.final_hash.bytes, h256::ConstructFromPointer};
@@ -123,9 +119,7 @@ void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _p
         ex << errinfo_difficulty(_bi.difficulty());
         ex << errinfo_target(boundary(_bi));
         BOOST_THROW_EXCEPTION(ex);
-    }
-    else if (_s == QuickNonce && _bi.parentHash() && !quickVerifySeal(_bi))
-    {
+    } else if (_s == QuickNonce && _bi.parentHash() && !quickVerifySeal(_bi)) {
         InvalidBlockNonce ex;
         ex << errinfo_hash256(_bi.hash(WithoutSeal));
         ex << errinfo_difficulty(_bi.difficulty());
@@ -134,39 +128,33 @@ void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _p
     }
 }
 
-void Ethash::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header, u256 const& _startGasUsed) const
-{
+void Ethash::verifyTransaction(ImportRequirements::value _ir, TransactionBase const &_t, BlockHeader const &_header,
+                               u256 const &_startGasUsed) const {
     std::cout << "Ethash::verifyTransaction" << std::endl;
     SealEngineFace::verifyTransaction(_ir, _t, _header, _startGasUsed);
 
-    if (_ir & ImportRequirements::TransactionSignatures)
-    {
-        if (_header.number() >= chainParams().EIP158ForkBlock)
-        {
+    if (_ir & ImportRequirements::TransactionSignatures) {
+        if (_header.number() >= chainParams().EIP158ForkBlock) {
             int chainID = chainParams().chainID;
             _t.checkChainId(chainID);
-        }
-        else
+        } else
             _t.checkChainId(-4);
     }
 }
 
-void Ethash::manuallySubmitWork(const h256& _mixHash, Nonce _nonce)
-{
+void Ethash::manuallySubmitWork(const h256 &_mixHash, Nonce _nonce) {
     std::cout << "Ethash::manuallySubmitWork" << std::endl;
     m_farm.submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
 }
 
-void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const
-{
+void Ethash::populateFromParent(BlockHeader &_bi, BlockHeader const &_parent) const {
     std::cout << "Ethash::populateFromParent" << std::endl;
     SealEngineFace::populateFromParent(_bi, _parent);
     _bi.setDifficulty(calculateEthashDifficulty(chainParams(), _bi, _parent));
     _bi.setGasLimit(calculateGasLimit(chainParams(), _bi));
 }
 
-bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
-{
+bool Ethash::quickVerifySeal(BlockHeader const &_blockHeader) const {
     std::cout << "Ethash::quickVerifySeal" << std::endl;
     h256 const h = _blockHeader.hash(WithoutSeal);
     h256 const b = boundary(_blockHeader);
@@ -176,21 +164,19 @@ bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
     return ethash::verify_final_hash(toEthash(h), toEthash(m), toEthash(n), toEthash(b));
 }
 
-bool Ethash::verifySeal(BlockHeader const& _blockHeader) const
-{
+bool Ethash::verifySeal(BlockHeader const &_blockHeader) const {
     std::cout << "Ethash::verifySeal" << std::endl;
     h256 const h = _blockHeader.hash(WithoutSeal);
     h256 const b = boundary(_blockHeader);
     Nonce const n = nonce(_blockHeader);
     h256 const m = mixHash(_blockHeader);
 
-    auto& context =
-        ethash::get_global_epoch_context(ethash::get_epoch_number(_blockHeader.number()));
+    auto &context =
+            ethash::get_global_epoch_context(ethash::get_epoch_number(_blockHeader.number()));
     return ethash::verify(context, toEthash(h), toEthash(m), toEthash(n), toEthash(b));
 }
 
-void Ethash::generateSeal(BlockHeader const& _bi)
-{
+void Ethash::generateSeal(BlockHeader const &_bi) {
     std::cout << "Ethash::generateSeal" << std::endl;
     Guard l(m_submitLock);
     m_sealing = _bi;
@@ -199,49 +185,45 @@ void Ethash::generateSeal(BlockHeader const& _bi)
     m_farm.setWork(m_sealing);
 }
 
-bool Ethash::shouldSeal(Interface*)
-{
+bool Ethash::shouldSeal(Interface *) {
     std::cout << "Ethash::shouldSeal" << std::endl;
     return true;
 }
 
 
-
-void Dpos::init()
-{
+void Dpos::init() {
     ETH_REGISTER_SEAL_ENGINE(Dpos);
 }
 
-void Dpos::generateSeal(BlockHeader const& _bi)
-{
+void Dpos::generateSeal(BlockHeader const &_bi) {
     chrono::high_resolution_clock::time_point v_timeNow = chrono::high_resolution_clock::now();
-    chrono::duration<double,std::ratio<1,1000>> duration_ms=chrono::duration_cast<chrono::duration<double,std::ratio<1,1000>>>(v_timeNow - m_lasttimesubmit);
+    chrono::duration<double, std::ratio<1, 1000>> duration_ms = chrono::duration_cast<chrono::duration<double, std::ratio<1, 1000>>>(
+            v_timeNow - m_lasttimesubmit);
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
     header.setSeal(MixHashField, h256{0});
     RLPStream ret;
     header.streamRLP(ret);
     std::cout << "dpos generateSeal:" << std::endl;
-    if (m_onSealGenerated && duration_ms.count() > 10000 ){
+    if (m_onSealGenerated && duration_ms.count() > 10000) {
         m_onSealGenerated(ret.out());
         m_lasttimesubmit = chrono::high_resolution_clock::now();
     }
 }
 
 DposClient::DposClient(
-    ChainParams const& _params, 
-        int _networkID, 
-        p2p::Host& _host,
-        std::shared_ptr<GasPricer> _gpForAdoption, 
-        boost::filesystem::path const& _dbPath,
-        boost::filesystem::path const& _snapshotPath,
+        ChainParams const &_params,
+        int _networkID,
+        p2p::Host &_host,
+        std::shared_ptr<GasPricer> _gpForAdoption,
+        boost::filesystem::path const &_dbPath,
+        boost::filesystem::path const &_snapshotPath,
         WithExisting _forceAction,
-        TransactionQueue::Limits const& _limits)
+        TransactionQueue::Limits const &_limits)
         : Client(
-                _params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _limits)
-{
-	// will throw if we're not an Ethash seal engine.
-	//asEthashClient(*this);
+        _params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _limits) {
+    // will throw if we're not an Ethash seal engine.
+    //asEthashClient(*this);
 }
 
 

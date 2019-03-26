@@ -53,8 +53,6 @@ Dpos* dev::bacd::DposClient::dpos() const
 void dev::bacd::DposClient::startSealing()
 {
     setName("DposClient");
-    //TODO DposCLient func
-    //LOG(m_logger) << "DposClient: into startSealing";
     Client::startSealing();
 }
 
@@ -97,6 +95,26 @@ void dev::bacd::DposClient::doWork(bool _doWait)
     }
 }
 
+
+void dev::bacd::DposClient::getEletorsByNum(std::vector<Address>& _v, size_t _num) const
+{
+	Block _block = blockByNumber(LatestBlock);
+	_block.mutableVote().getSortElectors(_v, _num);
+}
+
+
+void dev::bacd::DposClient::printfElectors()
+{
+	Block _block = blockByNumber(LatestBlock);
+	std::unordered_map<Address, u256> _m = _block.mutableVote().getElectors();
+	std::cout << EthYellow " dpos electors:" << std::endl << "{" << std::endl;;
+    for (auto val : _m)
+    {
+		std::cout << "Address:" << val.first << " tickets:" << val.second << std::endl;
+    }
+	std::cout << std::endl << "}" << EthReset << std::endl;
+}
+
 void dev::bacd::DposClient::rejigSealing()
 {
     if(!m_wouldSeal)
@@ -126,23 +144,34 @@ void dev::bacd::DposClient::rejigSealing()
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 //设置Block 出块开关 封装extraData数据 transation 数据
                 m_working.commitToSeal(bc(), m_extraData);
-                //验证交易
-                dpos()->verifyTransationVote(m_working.info());
-                //添加对应出块数量
-                dpos()->varlitorAddBlockNum(author(), 1);
                 //尝试进行下一轮 投票统计
                 dpos()->tryElect(utcTimeMilliSec());
+
                 //添加 dpos 数据
-                BlockHeader _h;
-				_h.setDposContext(dpos()->dposContext());
-                m_working.setDposData(_h);
+				BlockHeader _h;
+				_h.setDposCurrVarlitors(dpos()->currVarlitors());
+				m_working.setDposData(_h);
+				
                 LOG(m_loggerDetail) <<EthYellow "seal block add dposData is ok" << EthYellow;
+				printfElectors();
+
+
             }
             DEV_READ_GUARDED(x_working)
             {
                 DEV_WRITE_GUARDED(x_postSeal)
                     m_postSeal = m_working;
                 m_sealingInfo = m_working.info();
+
+                auto author = m_working.author();
+                if(!m_params.m_miner_priv_keys.count(author)){
+                    cerror << "not find author : " << author << "private key , please set private key.";
+                    return;
+                }
+                else{
+                    m_sealingInfo.sign_block(m_params.m_miner_priv_keys.at(author));
+                }
+
             }
             //出块
             if(wouldSeal())
@@ -150,51 +179,43 @@ void dev::bacd::DposClient::rejigSealing()
                 //调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
                 sealEngine()->onSealGenerated([=](bytes const& _header){
                     LOG(m_logger) << "Block sealed #" << BlockHeader(_header, HeaderData).number();
+
                     if(this->submitSealed(_header))
                     {
                         m_onBlockSealed(_header);
-                        //处理dpos投票数据
-                        LOG(m_logger) << "submitSealed deal vote ... start !";
-                        BlockHeader _h_temp = BlockHeader(_header, HeaderData);
-                        dpos()->printDposData(_h_temp.dposContext());
-                        std::vector<bytes> const& _ts = m_working.getDposTransations();
-						
-                        for(auto val : _ts)
-                            m_dpos_state->excuteTransation(val, _h_temp);
                     }
                     else
                         LOG(m_logger) << "Submitting block failed...";
                                               });
-                ctrace << "Generating seal on " << m_sealingInfo.hash(WithoutSeal) << " #" << m_sealingInfo.number();
+                ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal(m_sealingInfo);
             }
         }
         else
             m_wouldButShouldnot = true;
     }
-    if(!m_wouldSeal)
-        sealEngine()->cancelGeneration();
+	if(!m_wouldSeal)
+	{
+		sealEngine()->cancelGeneration();
+	}
 }
 
-void dev::bacd::DposClient::init(p2p::Host & _host, int _netWorkId)
+void dev::bacd::DposClient::init(p2p::Host & /*_host*/, int /*_netWorkId*/)
 {
     //关联 host 管理的CapabilityHostFace 接口
-    cdebug << "capabilityHost :: DposHostCapability";
-    auto ethCapability = make_shared<DposHostcapality>(_host.capabilityHost(),
-                            _netWorkId,
-                            [this](NodeID _nodeid, unsigned _id, RLP const& _r){
-                                dpos()->onDposMsg(_nodeid, _id, _r);
-                            },
-                            [this](NodeID const& _nodeid, u256 const& _peerCapabilityVersion){
-                                dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
-                            });
-    _host.registerCapability(ethCapability);
-    dpos()->initEnv(ethCapability);
+	/*cdebug << "capabilityHost :: DposHostCapability";
+	auto ethCapability = make_shared<DposHostcapality>(_host.capabilityHost(),
+							_netWorkId,
+							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
+								dpos()->onDposMsg(_nodeid, _id, _r);
+							},
+							[this](NodeID const& _nodeid, u256 const& _peerCapabilityVersion){
+								dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
+							});
+	_host.registerCapability(ethCapability);
+	dpos()->initEnv(ethCapability);*/
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
-    dpos()->startGeneration();
-
-    m_dpos_state = std::make_shared<DposVoteState>(dpos()->dposConfig());
 }
 
 bool dev::bacd::DposClient::isBlockSeal(uint64_t _now)
@@ -209,3 +230,4 @@ bool dev::bacd::DposClient::isBlockSeal(uint64_t _now)
         return false;
     return true;
 }
+

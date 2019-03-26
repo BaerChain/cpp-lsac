@@ -85,6 +85,10 @@ Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     m_working(chainParams().accountStartNonce)
 {
     init(_host, _dbPath, _snapshotPath, _forceAction, _networkID);
+//    for(auto &itr : _params.m_miner_priv_keys){
+//        setAuthor(itr.first);
+//    }
+
 }
 
 Client::~Client()
@@ -875,13 +879,13 @@ h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _sec
     return importTransaction(t);
 }
 
-h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag)
+/*h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag)
 {
     TransactionSkeleton ts = populateTransactionWithDefaults(_t);
     ts.from = toAddress(_secret);
     Transaction t(ts, _secret, _flag);
     return importTransaction(t);
-}
+}*/
 
 h256 Client::importTransaction(Transaction const& _t)
 {

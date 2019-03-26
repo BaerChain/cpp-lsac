@@ -33,6 +33,8 @@
 #include <fstream>
 #include <iosfwd>
 #include <thread>
+#include <libdevcrypto/base58.h>
+#include <libdevcrypto/Common.h>
 
 using namespace std;
 using namespace dev;
@@ -436,6 +438,7 @@ public:
 			h128 u = secretStore().importSecret(k.secret().ref(), m_lock);
 			cout << "Created key " << toUUID(u) << endl;
 			cout << "  Address: " << k.address().hex() << endl;
+			cout << "private key: " << dev::crypto::to_base58((char*)k.secret().data(), 32) << std::endl;
 			break;
 		}
 		case OperationMode::ImportBare:

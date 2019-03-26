@@ -78,7 +78,7 @@ public:
 	/// Submits a new transaction.
 	/// @returns the transaction's hash.
 	virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) = 0;
-    virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag) = 0;
+    //virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret, u256 _flag) = 0;
 
 	/// Submits the given message-call transaction.
 	void submitTransaction(Secret const& _secret, u256 const& _value, Address const& _dest, bytes const& _data = bytes(), u256 const& _gas = 1000000, u256 const& _gasPrice = DefaultGasPrice, u256 const& _nonce = Invalid256);
@@ -109,6 +109,7 @@ public:
 	void setDefault(BlockNumber _block) { m_default = _block; }
 
 	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
+    u256 ballotAt(Address _a) const { return ballotAt(_a, m_default); }
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
 	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
@@ -116,6 +117,7 @@ public:
 	std::map<h256, std::pair<u256, u256>> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
 	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
+    virtual u256 ballotAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
 	virtual h256 stateRootAt(Address _a, BlockNumber _block) const = 0;

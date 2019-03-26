@@ -45,7 +45,7 @@ string Personal::personal_sendTransaction(Json::Value const& _transaction, strin
         /*enum Type
 	    {
 		    NullTransaction, ContractCreation, MessageCall, VoteMassage
-	    }; */
+	    }; 
 		u256 type;
 		u256 flag;
 		bool isVote = false;
@@ -66,14 +66,14 @@ string Personal::personal_sendTransaction(Json::Value const& _transaction, strin
 		}
         std::cout<<"////////////////////// this transation is vote:"<< (int)isVote << std::endl;
 		if(isVote)
-			return toJS(m_eth.submitTransaction(t, s, flag));
+			return toJS(m_eth.submitTransaction(t, s, flag));*/
 		return toJS(m_eth.submitTransaction(t, s));
         
 	}
 	BOOST_THROW_EXCEPTION(JsonRpcException("Invalid password or account."));
 }
 
-string Personal::personal_sendDelegatedTransaction(Json::Value const& _transaction, string const& _password)
+/*string Personal::personal_sendDelegatedTransaction(Json::Value const& _transaction, string const& _password)
 {
     std::cout << "///////////////////////personal_sendTransaction " << std::endl;
 	TransactionSkeleton t;
@@ -97,7 +97,7 @@ string Personal::personal_sendDelegatedTransaction(Json::Value const& _transacti
         //return "yes";
 	}
 	BOOST_THROW_EXCEPTION(JsonRpcException("Invalid password or account."));
-}
+}*/
 
 string Personal::personal_signAndSendTransaction(Json::Value const& _transaction, string const& _password)
 {

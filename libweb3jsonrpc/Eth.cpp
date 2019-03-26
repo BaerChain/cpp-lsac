@@ -107,6 +107,18 @@ string Eth::eth_getBalance(string const& _address, string const& _blockNumber)
 	}
 }
 
+string Eth::eth_getBallot(string const& _address, string const& _blockNumber)
+{
+	try
+	{
+		return toJS(client()->ballotAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 string Eth::eth_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
 {
 	try
@@ -750,6 +762,10 @@ string dev::rpc::exceptionToErrorMessage()
 	{
 		ret = "Account balance is too low (balance < value + gas * gas price).";
 	}
+    catch (NotEnoughBallot const&)
+    {
+		ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";
+    }
 	catch (InvalidSignature const&)
 	{
 		ret = "Invalid transaction signature.";

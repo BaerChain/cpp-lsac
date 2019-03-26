@@ -22,6 +22,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 
+#include <json/json.h>
 #include <boost/optional.hpp>
 
 namespace dev
@@ -45,25 +46,6 @@ enum class CheckTransaction
     Everything
 };
 
-/***************************交易投票合约相关数据结构 start*********************************************/
-struct DposContractCreation
-{
-    std::string m_methed = "";
-    Address m_from = Address();
-    Address m_send_to = Address();
-    size_t m_type = 0;
-
-    bool    populate(bytes const& _data)
-    {
-        if(_data.empty())
-            return false;
-
-        return true;
-    }
-    bool isContractCreation() { return true; }
-};
-/***************************交易投票合约相关数据结构 end*********************************************/
-
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class TransactionBase
 {
@@ -73,7 +55,7 @@ public:
 
     /// Constructs a transaction from a transaction skeleton & optional secret.
     TransactionBase(TransactionSkeleton const& _ts, Secret const& _s = Secret());
-    TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
+    //TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
     /// Constructs a signed message-call transaction.
     TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
@@ -121,9 +103,10 @@ public:
     bool isCreation() const { return m_type == ContractCreation; }
 
     // 是否是投票消息
-    bool isVoteTranction() const { return m_type == VoteMassage; }
-    // 判断是为 投票智能合约 预留接口
-    bool isVoteContractCreation() const; 
+    bool isVoteTranction() const; //{ return m_type == VoteMassage; }
+
+	//是否是BRC转账消息
+    bool isBRCTransaction() const;
 
     /// Serialises this transaction to an RLPStream.
     /// @throws TransactionIsUnsigned if including signature was requested but it was not initialized

@@ -35,6 +35,7 @@
 #include "TransactionReceipt.h"
 #include "GasPricer.h"
 #include "State.h"
+#include "DposVote.h"
 
 namespace dev
 {
@@ -77,7 +78,7 @@ public:
     // TODO: pass in ChainOperationParams rather than u256
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    Block(u256 const& _accountStartNonce): m_state(_accountStartNonce, OverlayDB(), BaseState::Empty), m_precommit(_accountStartNonce) {}
+    Block(u256 const& _accountStartNonce): m_state(_accountStartNonce, OverlayDB(), BaseState::Empty), m_vote(m_state), m_precommit(_accountStartNonce) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a Block object
@@ -94,7 +95,7 @@ public:
     Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root, Address const& _author = Address());
 
     enum NullType { Null };
-    Block(NullType): m_state(0, OverlayDB(), BaseState::Empty), m_precommit(0) {}
+    Block(NullType): m_state(0, OverlayDB(), BaseState::Empty), m_vote(m_state), m_precommit(0) {}
 
     /// Construct from a given blockchain. Empty, but associated with @a _bc 's chain params.
     explicit Block(BlockChain const& _bc): Block(Null) { noteChain(_bc); }
@@ -121,6 +122,8 @@ public:
     /// Get an account's balance.
     /// @returns 0 if the address has never been used.
     u256 balance(Address const& _address) const { return m_state.balance(_address); }
+
+    u256 ballot(Address const& _address) const { return m_state.ballot(_address); }
 
     /// Get the number of transactions a particular address has sent (used for the transaction nonce).
     /// @returns 0 if the address has never been used.
@@ -173,6 +176,7 @@ public:
     /// @warning Only use this is you know what you're doing. If you use it while constructing a
     /// normal sealable block, don't expect things to work right.
     State& mutableState() { return m_state; }
+	DposVote& mutableVote() { return m_vote; }
 
     // Information concerning ongoing transactions
 
@@ -273,9 +277,11 @@ public:
     BlockHeader const& info() const { return m_currentBlock; }
 
     //set Header dposData
-    void setDposData(BlockHeader const& _h) { m_currentBlock.setDposContext(_h.dposContext()); }
+    void setDposData(BlockHeader const& _h) { m_currentBlock.setDposCurrVarlitors(_h.dposCurrVarlitors()); }
     //get dposTransation cache
 	std::vector<bytes> const& getDposTransations() const { return m_dposTransations; }
+
+
 
 private:
     SealEngineFace* sealEngine() const;
@@ -300,6 +306,7 @@ private:
     void updateBlockhashContract();
 
     State m_state;                                ///< Our state tree, as an OverlayDB DB.
+	DposVote m_vote;                               // dpos vote
     Transactions m_transactions;                ///< The current list of transactions that we've included in the state.
     TransactionReceipts m_receipts;                ///< The corresponding list of transaction receipts.
     h256Hash m_transactionSet;                    ///< The set of transaction hashes that we've included in the state.
@@ -322,6 +329,10 @@ private:
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};
+
+
+
+
 };
 
 

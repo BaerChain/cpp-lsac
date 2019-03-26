@@ -15,7 +15,8 @@
 #pragma once
 
 #include "Transaction.h"
-
+#include "DposVote.h"
+#include "BRCTranscation.h"
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libevm/VMFace.h>
@@ -104,7 +105,7 @@ class Executive
 {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
-    Executive(State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, unsigned _level = 0): m_s(_s), m_envInfo(_envInfo), m_depth(_level), m_sealEngine(_sealEngine) {}
+	Executive(State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, unsigned _level = 0) :m_vote(_s), m_brctranscation(_s), m_s(_s), m_envInfo(_envInfo), m_depth(_level), m_sealEngine(_sealEngine) { }
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
@@ -187,10 +188,24 @@ public:
     void revert();
 
 private:
+    enum Method
+    {
+        Other,
+		BuyVotes,
+		SellVotes,
+        Vote,
+        CancelVote,
+        LoginCandidate,
+        LogOutCandidate,
+        BRCTransaction
+    };
+
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _code, Address const& _originAddress);
-
-    State& m_s;							///< The state to which this operation/transaction is applied.
+	void setCallParameters(Address const& _senderAddress, Address const& _codeAddress, Address const& _receiveAddress, u256 _valueTransfer, u256 _apparentValue, u256 _gas, bytesConstRef const& _data, OnOpFunc _onOpFunc);
+	DposVote m_vote;                   // dpos for vote class
+    BRCTranscation m_brctranscation;
+	State& m_s;							///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
     EnvInfo m_envInfo;					///< Information on the runtime environment.
     std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
@@ -206,6 +221,10 @@ private:
     LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
+    u256 m_value = 0;
+    u256 m_ballots = 0;
+    Method m_method = Other;
+	CallParameters m_callParameters;    // transation callParameters
     SealEngineFace const& m_sealEngine;
 
     bool m_isCreation = false;

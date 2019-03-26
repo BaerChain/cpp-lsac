@@ -26,6 +26,8 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
+#include <boost/preprocessor/seq.hpp>
+#include "State.h"
 
 namespace dev
 {
@@ -34,25 +36,116 @@ namespace eth
 
 enum class TransactionException
 {
-	None = 0,
-	Unknown,
-	BadRLP,
-	InvalidFormat,
-	OutOfGasIntrinsic,		///< Too little gas to pay for the base transaction cost.
-	InvalidSignature,
-	InvalidNonce,
-	NotEnoughCash,
-	OutOfGasBase,			///< Too little gas to pay for the base transaction cost.
-	BlockGasLimitReached,
-	BadInstruction,
-	BadJumpDestination,
-	OutOfGas,				///< Ran out of gas executing code of the transaction.
-	OutOfStack,				///< Ran out of stack executing code of the transaction.
-	StackUnderflow,
-	RevertInstruction,
-	InvalidZeroSignatureFormat,
-	AddressAlreadyUsed
+    None = 0,
+    Unknown,
+    BadRLP,
+    InvalidFormat,
+    OutOfGasIntrinsic,  ///< Too little gas to pay for the base transaction cost.
+    InvalidSignature,
+    InvalidNonce,
+    NotEnoughCash,
+    OutOfGasBase,  ///< Too little gas to pay for the base transaction cost.
+    BlockGasLimitReached,
+    BadInstruction,
+    BadJumpDestination,
+    OutOfGas,    ///< Ran out of gas executing code of the transaction.
+    OutOfStack,  ///< Ran out of stack executing code of the transaction.
+    StackUnderflow,
+    RevertInstruction,
+    InvalidZeroSignatureFormat,
+    AddressAlreadyUsed,
+    NotEnoughBallot,
+    VerifyVoteField,
+    BadSystemAddress,
+    BadVoteParamter,
+    BadBRCTransactionParamter
 };
+
+namespace transationTool
+{
+
+#define SERIALIZE_MACRO(r, data, elem)   data.append(elem);
+#define OPERATION_SERIALIZE(MEMBERS)  \
+    bytes serialize(){\
+            RLPStream stream(BOOST_PP_SEQ_SIZE(MEMBERS));\
+            BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS);\
+            return stream.out();\
+    }
+#define UNSERIALIZE_MACRO(r, data, i, elem)     elem = data[i].convert< decltype(elem)>(RLP::LaissezFaire);
+#define OPERATION_UNSERIALIZE(CALSS, MEMBERS) \
+    CALSS(const bytes &Data){\
+        RLP rlp(Data);\
+        BOOST_PP_SEQ_FOR_EACH_I(UNSERIALIZE_MACRO, rlp, MEMBERS)\
+    }
+
+enum op_type : uint8_t
+{
+	null = 0,
+	vote = 1,
+	brcTranscation = 2
+};
+struct operation
+{
+	static op_type get_type(const bytes &data)
+	{
+		try
+		{
+			RLP rlp(data);
+			return (op_type)rlp[0].toInt<uint8_t>();
+		}
+		catch(const boost::exception &e)
+		{
+			//TODO throw exception or log message
+			std::cout << "exception get type" << std::endl;
+			return null;
+		}
+	}
+};
+struct vote_operation : public operation
+{
+	uint8_t m_type = null;
+	Address m_from;
+	Address m_to;
+	uint8_t m_vote_type =0;
+	size_t m_vote_numbers =0;
+	vote_operation(op_type type, const Address &from, const Address &to, uint8_t vote_type, size_t vote_num)
+		: m_type(type),
+		m_from(from),
+		m_to(to),
+		m_vote_type(vote_type),
+		m_vote_numbers(vote_num)
+	{
+	}
+	/// unserialize from data
+	/// \param Data
+	OPERATION_UNSERIALIZE(vote_operation, (m_type)(m_from)(m_to)(m_vote_type)(m_vote_numbers))
+
+		/// bytes serialize this struct
+		/// \return  bytes
+	OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_type)(m_vote_numbers))
+
+};
+
+struct transcation_operation : public operation
+{
+    uint8_t m_type = null;
+    Address m_from;
+    Address m_to;
+    uint8_t m_Transcation_type = 0;
+    size_t m_Transcation_numbers = 0;
+    transcation_operation(
+        op_type type, const Address& from, const Address& to, uint8_t transcation_type, size_t transcation_num)
+      : m_type(type), m_from(from), m_to(to), m_Transcation_type(transcation_type), m_Transcation_numbers(transcation_num)
+    {}
+    /// unserialize from data
+    /// \param Data
+    OPERATION_UNSERIALIZE(transcation_operation, (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+
+    /// bytes serialize this struct
+    /// \return  bytes
+    OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+};
+}
 
 enum class CodeDeposit
 {
@@ -92,7 +185,7 @@ public:
 	Transaction(TransactionSkeleton const& _ts, Secret const& _s = Secret()): TransactionBase(_ts, _s) {}
 
     /// 创建dpos相关的交易
-    Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
+    //Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
 	/// Constructs a signed message-call transaction.
 	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret):
@@ -149,5 +242,6 @@ private:
 	BlockNumber m_blockNumber;
 };
 
+#define BALLOTPRICE 1
 }
 }
