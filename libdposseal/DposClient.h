@@ -1,7 +1,6 @@
 /*
     DposClient.h
-    管理调用 Dpos.h 的接口
-    指定用户轮流出块，必须保证 配置验证用户能正常出块 否则会等待
+    
  */
 #pragma once
 #include <libp2p/Host.h>

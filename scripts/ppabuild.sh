@@ -1,29 +1,4 @@
 #!/bin/sh
-##############################################################################
-## This is used to package .deb packages and upload them to the launchpad
-## ppa servers for building. It requires one argument (passed via env):
-##
-## ethbranch:   the branch to use for webthree-umbrella, either develop or
-##              release
-## debplatform: target ubuntu "release", i.e. trusty, vivid, wily or xenial
-##              (we should switch to numbered releases at some point)
-##
-## The "debian" directories can be found in github.com/ethereum/ethereum-ppa
-## The develop branch will be used for anything before wily, while wily and
-## xenial have their own branches.
-##
-## The gnupg key for "build@ethdev.com" has to be present in order to sign
-## the package.
-##
-## Caveats: A package with the same version number should not be uploaded
-## multiple times to the build servers. This is not a big problem for the
-## develop snapshots as the version will change with every commit, but
-## for release packages, the version will be taken from the CMakeLists.txt
-## file. This means that this script should only be run once for every
-## release. If the source package was uploaded before, add '-sd' to the
-## debuild command (see below).
-##############################################################################
-
 set -e
 
 distribution=${debplatform}

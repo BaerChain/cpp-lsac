@@ -1,42 +1,9 @@
-/*
-    This file is part of cpp-ethereum.
-
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
 #pragma once
 
 namespace dev
     {
         namespace eth
     {
-///////////////////////////////////////////////////////////////////////////////
-//
-// interpreter configuration macros for development, optimizations and tracing
-//
-// EIP_615                - subroutines and static jumps
-// EIP_616                - SIMD
-//
-// EVM_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
-//
-// EVM_SWITCH_DISPATCH    - dispatch via loop and switch
-// EVM_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
-//
-// EVM_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
-//
-// EVM_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
-//
-// EVM_TRACE              - provides various levels of tracing
 
 #ifndef EIP_615
 #define EIP_615 false

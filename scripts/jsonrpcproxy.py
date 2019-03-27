@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-JSON-RPC Proxy
 
-This Python script provides HTTP proxy to Unix Socket based JSON-RPC servers.
-Check out --help option for more information.
-
-Build with cython:
-
-cython rpcproxy.py --embed
-gcc -O3 -I /usr/include/python3.5m -o rpcproxy rpcproxy.c \
--Wl,-Bstatic -lpython3.5m -lz -lexpat -lutil -Wl,-Bdynamic -lpthread -ldl -lm
-
-"""
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from http.server import HTTPServer, BaseHTTPRequestHandler

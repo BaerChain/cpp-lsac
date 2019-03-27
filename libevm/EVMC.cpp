@@ -1,6 +1,3 @@
-// Copyright 2018 cpp-ethereum Authors.
-// Licensed under the GNU General Public License v3. See the LICENSE file.
-
 #include "EVMC.h"
 
 #include <libdevcore/Log.h>

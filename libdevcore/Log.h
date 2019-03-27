@@ -1,20 +1,3 @@
-/*
-    This file is part of cpp-ethereum.
-
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #pragma once
 
 #include "CommonIO.h"
@@ -30,31 +13,6 @@
 
 namespace dev
 {
-/// Set the current thread's log name.
-///
-/// It appears that there is not currently any cross-platform way of setting
-/// thread names either in Boost or in the C++11 runtime libraries.   What is
-/// more, the API for 'pthread_setname_np' is not even consistent across
-/// platforms which implement it.
-///
-/// A proposal to add such functionality on the Boost mailing list, which
-/// I assume never happened, but which I should follow-up and ask about.
-/// http://boost.2283326.n4.nabble.com/Adding-an-option-to-set-the-name-of-a-boost-thread-td4638283.html
-///
-/// man page for 'pthread_setname_np', including this crucial snippet of
-/// information ... "These functions are nonstandard GNU extensions."
-/// http://man7.org/linux/man-pages/man3/pthread_setname_np.3.html
-///
-/// Stack Overflow "Can I set the name of a thread in pthreads / linux?"
-/// which includes useful information on the minor API differences between
-/// Linux, BSD and OS X.
-/// http://stackoverflow.com/questions/2369738/can-i-set-the-name-of-a-thread-in-pthreads-linux/7989973#7989973
-///
-/// musl mailng list posting "pthread set name on MIPs" which includes the
-/// information that musl doesn't currently implement 'pthread_setname_np'
-/// https://marc.info/?l=musl&m=146171729013062&w=1
-///
-/// For better formatting it is recommended to limit thread name to max 4 characters.
 void setThreadName(std::string const& _n);
 
 /// Set the current thread's log name.

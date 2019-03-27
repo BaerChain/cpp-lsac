@@ -1,7 +1,3 @@
-/*
-    Poa.cpp
-*/
-
 #include "Poa.h"
 
 #include <libethcore/ChainOperationParams.h>

@@ -1,24 +1,3 @@
-/*
-    This file is part of cpp-ethereum.
-
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file Account.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
-
 #pragma once
 
 #include <libdevcore/Common.h>
@@ -34,25 +13,7 @@ class OverlayDB;
 
 namespace eth
 {
-/**
- * Models the state of a single Ethereum account.
- * Used to cache a portion of the full Ethereum state. State keeps a mapping of Address's to
- * Accounts.
- *
- * Aside from storing the nonce and balance, the account may also be "dead" (where isAlive() returns
- * false). This allows State to explicitly store the notion of a deleted account in it's cache.
- * kill() can be used for this.
- *
- * For the account's storage, the class operates a cache. baseRoot() specifies the base state of the
- * storage given as the Trie root to be looked up in the state database. Alterations beyond this
- * base are specified in the overlay, stored in this class and retrieved with storageOverlay().
- * setStorage allows the overlay to be altered.
- *
- * The constructor allows you to create an one of a number of "types" of accounts. The default
- * constructor makes a dead account (this is ignored by State when writing out the Trie). Another
- * three allow a basic or contract account to be specified along with an initial balance. The fina
- * two allow either a basic or a contract account to be created with arbitrary values.
- */
+
 class Account
 {
 public:

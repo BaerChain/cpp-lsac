@@ -1,8 +1,3 @@
-/*
-    PoaClient.h
-    管理调用 Poa.h 的接口
-    POA 指定用户轮流出块，必须保证 配置验证用户能正常出块 否则会等待
- */
 #pragma once
 #include "Poa.h"
 #include <libp2p/Host.h>
