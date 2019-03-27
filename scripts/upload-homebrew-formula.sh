@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# author: Lefteris Karapetsas <lefteris@refu.co>
-#
-# Just upload the generated .rb file to homebrew ethereum
 
 echo ">>> Starting the script to upload .rb file to homebrew ethereum"
 rm -rf homebrew-ethereum

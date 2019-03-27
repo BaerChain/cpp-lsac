@@ -1,11 +1,5 @@
 #!/usr/bin/env sh
 
-# This script downloads the CMake binary and installs it in $PREFIX directory
-# (the cmake executable will be in $PREFIX/bin). By default $PREFIX is
-# ~/.local but can we changes with --prefix <PREFIX> argument.
-
-# This is mostly suitable for CIs, not end users.
-
 set -e
 
 VERSION=3.12.4

@@ -1,11 +1,5 @@
 #!/usr/bin/env sh
 
-# This script downloads the lllc/solc binaries and installs them in $PREFIX directory
-# (the solc/lllc executables will be in $PREFIX/bin). By default $PREFIX is
-# ~/.local but can we changes with --prefix <PREFIX> argument.
-
-# This is mostly suitable for CIs, not end users.
-
 set -e
 
 VERSION=0.4.17

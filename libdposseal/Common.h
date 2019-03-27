@@ -1,6 +1,6 @@
 #pragma once
 /*
-    dpos 相关数据结构
+    dpos 
 */
 #include <iostream>
 #include <libdevcore/concurrent_queue.h>

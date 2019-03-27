@@ -1,9 +1,3 @@
-
-
-
-
-#set(COMPILE_OPTIONS -O3 -W -std=c89 -pedantic -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-unused-function -Wno-long-long -Wno-overlength-strings -fvisibility=hidden)
-
 add_executable(pub_key_test
         eccTest.cpp
 

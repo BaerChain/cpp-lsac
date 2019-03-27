@@ -1,24 +1,3 @@
-/*
-    This file is part of cpp-ethereum.
-
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file Account.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
-
 #include "Account.h"
 #include "SecureTrieDB.h"
 #include "ValidationSchemes.h"
@@ -73,7 +52,7 @@ void dev::eth::Account::addVote(std::pair<Address, u256> _votePair)
 
 void dev::eth::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {
-	// ¸Ã½Ó¿Ú ±£ÁôÆ±ÊıÎª0µÄÊı¾İ  µ±ÊÇ³ÉÎª»òÕß³·Ïú¾ºÑ¡ÈËÊÇ·ñ£¬_tickets Îª0
+	// è¯¥æ¥å£ ä¿ç•™ç¥¨æ•°ä¸º0çš„æ•°æ®  å½“æ˜¯æˆä¸ºæˆ–è€…æ’¤é”€ç«é€‰äººæ˜¯å¦ï¼Œ_tickets ä¸º0
 	auto ret = m_voteDate.find(_otherAddr);
 	if(_isLogin && ret == m_voteDate.end())
 	{

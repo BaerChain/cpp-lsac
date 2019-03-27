@@ -1,15 +1,10 @@
 #ifndef JSON_SPIRIT_READER_TEMPLATE
 #define JSON_SPIRIT_READER_TEMPLATE
 
-//          Copyright John W. Wilkinson 2007 - 2009.
-// Distributed under the MIT License, see accompanying file LICENSE.txt
-
-// json spirit version 4.03
 
 #include "json_spirit_value.h"
 #include "json_spirit_error_position.h"
 
-//#define BOOST_SPIRIT_THREADSAFE  // uncomment for multithreaded use, requires linking to boost.thread
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>

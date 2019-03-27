@@ -1,24 +1,3 @@
-//
-// Created by fri on 2019/3/5.
-//
-
-//#define BOOST_TEST_MODULE pub_key_test
-//#define BOOST_TEST_DYN_LINK
-//#include <boost/test/unit_test.hpp>
-//#include <iostream>
-//
-//BOOST_AUTO_TEST_SUITE(pub_key_test)
-//
-//    BOOST_AUTO_TEST_CASE(pub_key_test) {
-//
-//        std::cout << "input test" << std::endl;
-//
-//    }
-//
-//
-//
-//BOOST_AUTO_TEST_SUITE_END()]
-
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/SHA3.h>
@@ -36,10 +15,6 @@ dev::bytesConstRef to_byteRef(const std::string &source){
 
 using namespace dev;
 int main(int argc, char *argv[]){
-//    try {
-//
-//    }
-
     std::string pwd = "DdQEYux64qDRt7Ey9RkEc6TWxcskgpm7dNeRv27EVsmh5oJALX5DRAguo4mZ41DaE5jNXZkhnAwuWUXKYwUsD9Q";
     auto seed = to_byteRef(pwd);
     auto ss = dev::sha3(seed);
