@@ -55,7 +55,7 @@ class secure_vector
 {
 public:
     secure_vector() {}
-    secure_vector(secure_vector<T> const& /*_c*/) = default;  // See https://github.com/ethereum/libweb3core/pull/44
+    secure_vector(secure_vector<T> const& /*_c*/) = default;
     explicit secure_vector(size_t _size): m_data(_size) {}
     explicit secure_vector(size_t _size, T _item): m_data(_size, _item) {}
     explicit secure_vector(std::vector<T> const& _c): m_data(_c) {}
@@ -211,7 +211,7 @@ private:
 };
 
 /// Scope guard for invariant check in a class derived from HasInvariants.
-#if ETH_DEBUG
+#if BRC_DEBUG
 #define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__)
 #define DEV_INVARIANT_CHECK_HERE ::dev::InvariantChecker::checkInvariants(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, true)
 #else
@@ -245,16 +245,16 @@ private:
     std::chrono::high_resolution_clock::time_point m_t;
 };
 
-#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(S, true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
+#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __brc_t(S, true); __brc_t.second; __brc_t.second = false)
+#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __brc_t(S)
 #if defined(_WIN32)
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
 #else
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
 #endif
 
-#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(S, MS), true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
+#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __brc_t(::dev::TimerHelper(S, MS), true); __brc_t.second; __brc_t.second = false)
+#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __brc_t(S, MS)
 #if defined(_WIN32)
 #define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)
 #else

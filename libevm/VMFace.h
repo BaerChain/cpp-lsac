@@ -6,18 +6,18 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 struct VMException: Exception {};
-#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: VMException { const char* what() const noexcept override { return #X; } }
-ETH_SIMPLE_EXCEPTION_VM(BadInstruction);
-ETH_SIMPLE_EXCEPTION_VM(BadJumpDestination);
-ETH_SIMPLE_EXCEPTION_VM(OutOfGas);
-ETH_SIMPLE_EXCEPTION_VM(OutOfStack);
-ETH_SIMPLE_EXCEPTION_VM(StackUnderflow);
-ETH_SIMPLE_EXCEPTION_VM(DisallowedStateChange);
-ETH_SIMPLE_EXCEPTION_VM(BufferOverrun);
+#define BRC_SIMPLE_EXCEPTION_VM(X) struct X: VMException { const char* what() const noexcept override { return #X; } }
+BRC_SIMPLE_EXCEPTION_VM(BadInstruction);
+BRC_SIMPLE_EXCEPTION_VM(BadJumpDestination);
+BRC_SIMPLE_EXCEPTION_VM(OutOfGas);
+BRC_SIMPLE_EXCEPTION_VM(OutOfStack);
+BRC_SIMPLE_EXCEPTION_VM(StackUnderflow);
+BRC_SIMPLE_EXCEPTION_VM(DisallowedStateChange);
+BRC_SIMPLE_EXCEPTION_VM(BufferOverrun);
 
 /// Reports VM internal error. This is not based on VMException because it must be handled
 /// differently than defined consensus exceptions.

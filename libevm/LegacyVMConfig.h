@@ -2,8 +2,25 @@
 
 namespace dev
     {
-        namespace eth
+        namespace brc
     {
+///////////////////////////////////////////////////////////////////////////////
+//
+// interpreter configuration macros for development, optimizations and tracing
+//
+// EIP_615                - subroutines and static jumps
+// EIP_616                - SIMD
+//
+// EVM_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
+//
+// EVM_SWITCH_DISPATCH    - dispatch via loop and switch
+// EVM_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
+//
+// EVM_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
+//
+// EVM_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
+//
+// EVM_TRACE              - provides various levels of tracing
 
 #ifndef EIP_615
 #define EIP_615 false

@@ -15,16 +15,6 @@ namespace p2p
 
 static const unsigned c_rlpxVersion = 4;
 
-/**
- * @brief Setup inbound or outbound connection for communication over RLPXFrameCoder.
- * RLPx Spec: https://github.com/ethereum/devp2p/blob/master/rlpx.md#encrypted-handshake
- *
- * @todo Implement StartSession transition via lambda which is passed to constructor.
- *
- * Thread Safety
- * Distinct Objects: Safe.
- * Shared objects: Unsafe.
- */
 class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
     friend class RLPXFrameCoder;

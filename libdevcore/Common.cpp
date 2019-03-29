@@ -2,7 +2,7 @@
 #include "Exceptions.h"
 #include "Log.h"
 
-#include <aleth/buildinfo.h>
+#include <brcd/buildinfo.h>
 #include <chrono>
 
 using namespace std;
@@ -10,7 +10,7 @@ using namespace std::chrono;
 
 namespace dev
 {
-char const* Version = aleth_get_buildinfo()->project_version;
+char const* Version = brcd_get_buildinfo()->project_version;
 bytes const NullBytes;
 std::string const EmptyString;
 

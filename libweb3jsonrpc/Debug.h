@@ -1,11 +1,11 @@
 #pragma once
-#include <libethereum/Executive.h>
+#include <libbrcdchain/Executive.h>
 #include "DebugFace.h"
 
 namespace dev
 {
 
-namespace eth
+namespace brc
 {
 class Client;
 
@@ -20,7 +20,7 @@ class SessionManager;
 class Debug: public DebugFace
 {
 public:
-	explicit Debug(eth::Client const& _eth);
+	explicit Debug(brc::Client const& _brc);
 
 	virtual RPCModules implementedModules() const override
 	{
@@ -39,11 +39,11 @@ public:
 
 private:
 
-	eth::Client const& m_eth;
+	brc::Client const& m_brc;
 	h256 blockHash(std::string const& _blockHashOrNumber) const;
-    eth::State stateAt(std::string const& _blockHashOrNumber, int _txIndex) const;
-    Json::Value traceTransaction(dev::eth::Executive& _e, dev::eth::Transaction const& _t, Json::Value const& _json);
-	Json::Value traceBlock(dev::eth::Block const& _block, Json::Value const& _json);
+    brc::State stateAt(std::string const& _blockHashOrNumber, int _txIndex) const;
+    Json::Value traceTransaction(dev::brc::Executive& _e, dev::brc::Transaction const& _t, Json::Value const& _json);
+	Json::Value traceBlock(dev::brc::Block const& _block, Json::Value const& _json);
 };
 
 }

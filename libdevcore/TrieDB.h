@@ -16,6 +16,21 @@ enum class Verification {
     Normal
 };
 
+/**
+ * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
+ * This version uses a database backend.
+ * Usage:
+ * @code
+ * GenericTrieDB<MyDB> t(&myDB);
+ * assert(t.isNull());
+ * t.init();
+ * assert(t.isEmpty());
+ * t.insert(x, y);
+ * assert(t.at(x) == y.toString());
+ * t.remove(x);
+ * assert(t.isEmpty());
+ * @endcode
+ */
 template <class _DB>
 class GenericTrieDB
 {
@@ -517,7 +532,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next(NibbleSlice _key)
             }
             if (!rlp.isList() || (rlp.itemCount() != 2 && rlp.itemCount() != 17))
             {
-#if ETH_PARANOIA
+#if BRC_PARANOIA
                 cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
                 cwarn << b.rlp.size() << toHex(b.rlp);
                 cwarn << rlp;
@@ -652,7 +667,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next()
             }
             if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
             {
-#if ETH_PARANOIA
+#if BRC_PARANOIA
                 cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
                 cwarn << b.rlp.size() << toHex(b.rlp);
                 cwarn << rlp;

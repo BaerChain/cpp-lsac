@@ -2,14 +2,14 @@
 #include <libdevcore/concurrent_queue.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Exceptions.h>
+#include <libbrccore/Exceptions.h>
 #include <libp2p/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <time.h>
 
 namespace dev
 {
-	namespace eth
+	namespace brc
 	{
 	    using NodeID = p2p::NodeID;
 		enum PoapPacketType : byte

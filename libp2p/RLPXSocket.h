@@ -7,6 +7,14 @@ namespace dev
 namespace p2p
 {
 
+/**
+ * @brief Shared pointer wrapper for ASIO TCP socket.
+ *
+ * Thread Safety
+ * Distinct Objects: Safe.
+ * Shared objects: Unsafe.
+ * * an instance method must not be called concurrently
+ */
 class RLPXSocket: public std::enable_shared_from_this<RLPXSocket>
 {
 public:

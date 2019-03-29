@@ -12,7 +12,7 @@ contract TokenBRC {
     string private name;
     
     constructor() public {
-        name = "brctoken";
+        name = "wanthings";
         balances[name] = 10000 wei;
     }
      

@@ -210,7 +210,6 @@ struct NodeSpec
 {
     NodeSpec() {}
 
-    /// Accepts user-readable strings in the form defined here: https://github.com/ethereum/wiki/wiki/enode-url-format
     NodeSpec(std::string const& _user);
 
     NodeSpec(std::string const& _addr, uint16_t _port, int _udpPort = -1):

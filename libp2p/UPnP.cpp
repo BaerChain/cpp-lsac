@@ -1,7 +1,7 @@
 #include "UPnP.h"
 
 #include <string.h>
-#if ETH_MINIUPNPC
+#if BRC_MINIUPNPC
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
@@ -15,7 +15,7 @@ using namespace dev::p2p;
 
 UPnP::UPnP()
 {
-#if ETH_MINIUPNPC
+#if BRC_MINIUPNPC
 	m_urls = make_shared<UPNPUrls>();
 	m_data = make_shared<IGDdatas>();
 
@@ -84,7 +84,7 @@ UPnP::~UPnP()
 
 string UPnP::externalIP()
 {
-#if ETH_MINIUPNPC
+#if BRC_MINIUPNPC
 	char addr[16];
 	if (!UPNP_GetExternalIPAddress(m_urls->controlURL, m_data->first.servicetype, addr))
 		return addr;
@@ -96,7 +96,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 {
 	(void)_addr;
 	(void)_port;
-#if ETH_MINIUPNPC
+#if BRC_MINIUPNPC
 	if (m_urls->controlURL[0] == '\0')
 	{
 		cwarn << "UPnP::addRedirect() called without proper initialisation?";
@@ -107,7 +107,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 	char port_str[16];
 	char ext_port_str[16];
 	sprintf(port_str, "%d", _port);
-	if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+	if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, port_str, _addr, "brcdChain", "TCP", NULL, NULL))
 		return _port;
 
 	// Failed - now try (random external, port internal) and cycle up to 10 times.
@@ -116,12 +116,12 @@ int UPnP::addRedirect(char const* _addr, int _port)
 	{
 		_port = rand() % (32768 - 1024) + 1024;
 		sprintf(ext_port_str, "%d", _port);
-		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, ext_port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, ext_port_str, port_str, _addr, "brcdChain", "TCP", NULL, NULL))
 			return _port;
 	}
 
 	// Failed. Try asking the router to give us a free external port.
-	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, NULL, _addr, "ethereum", "TCP", NULL, NULL))
+	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, NULL, _addr, "brcdChain", "TCP", NULL, NULL))
 		// Failed. Exit.
 		return 0;
 
@@ -139,7 +139,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 		char rHost[64];
 		char duration[16];
 		UPNP_GetGenericPortMappingEntry(m_urls->controlURL, m_data->first.servicetype, toString(i).c_str(), extPort, intClient, intPort, protocol, desc, enabled, rHost, duration);
-		if (string("ethereum") == desc)
+		if (string("brcdChain") == desc)
 		{
 			m_reg.insert(atoi(extPort));
 			return atoi(extPort);
@@ -153,7 +153,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 void UPnP::removeRedirect(int _port)
 {
 	(void)_port;
-#if ETH_MINIUPNPC
+#if BRC_MINIUPNPC
 	char port_str[16];
 	printf("TB : upnp_rem_redir (%d)\n", _port);
 	if (m_urls->controlURL[0] == '\0')

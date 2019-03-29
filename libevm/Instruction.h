@@ -4,7 +4,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 /// Virtual machine bytecode instruction.

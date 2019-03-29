@@ -19,41 +19,41 @@ namespace fs = boost::filesystem;
 static_assert(BOOST_VERSION >= 106400, "Wrong boost headers version");
 
 // Should be written to only once during startup
-static fs::path s_ethereumDatadir;
-static fs::path s_ethereumIpcPath;
+static fs::path s_brcdChainDatadir;
+static fs::path s_brcdChainIpcPath;
 
 void dev::setDataDir(fs::path const& _dataDir)
 {
-	s_ethereumDatadir = _dataDir;
+	s_brcdChainDatadir = _dataDir;
 }
 
 void dev::setIpcPath(fs::path const& _ipcDir)
 {
-	s_ethereumIpcPath = _ipcDir;
+	s_brcdChainIpcPath = _ipcDir;
 }
 
 fs::path dev::getIpcPath()
 {
-	// Strip "geth.ipc" suffix if provided.
-	if (s_ethereumIpcPath.filename() == "geth.ipc")
-		return s_ethereumIpcPath.parent_path();
+	// Strip "cppbrc.ipc" suffix if provided.
+	if (s_brcdChainIpcPath.filename() == "cppbrc.ipc")
+		return s_brcdChainIpcPath.parent_path();
 	else
-		return s_ethereumIpcPath;
+		return s_brcdChainIpcPath;
 }
 
 fs::path dev::getDataDir(string _prefix)
 {
 	if (_prefix.empty())
-		_prefix = "ethereum";
-	if (_prefix == "ethereum" && !s_ethereumDatadir.empty())
-		return s_ethereumDatadir;
+		_prefix = "brcdChain";
+	if (_prefix == "brcdChain" && !s_brcdChainDatadir.empty())
+		return s_brcdChainDatadir;
 	return getDefaultDataDir(_prefix);
 }
 
 fs::path dev::getDefaultDataDir(string _prefix)
 {
 	if (_prefix.empty())
-		_prefix = "ethereum";
+		_prefix = "brcdChain";
 
 #if defined(_WIN32)
 	_prefix[0] = toupper(_prefix[0]);

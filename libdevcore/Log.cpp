@@ -45,8 +45,8 @@ ThreadLocalLogName g_logThreadName("main");
 
 auto const g_timestampFormatter =
     (boost::log::expressions::stream
-        << EthViolet << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
-        << EthReset " ");
+        << BrcViolet << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
+        << BrcReset " ");
 
 std::string verbosityToString(int _verbosity)
 {
@@ -73,10 +73,10 @@ void formatter(boost::log::record_view const& _rec, boost::log::formatting_ostre
 
     g_timestampFormatter(_rec, _strm);
 
-    _strm << EthNavy << std::setw(4) << std::left << _rec[threadName] << EthReset " ";
+    _strm << BrcNavy << std::setw(4) << std::left << _rec[threadName] << BrcReset " ";
     _strm << std::setw(6) << std::left << _rec[channel] << " ";
     if (boost::log::expressions::has_attr(context)(_rec))
-        _strm << EthNavy << _rec[context] << EthReset " ";
+        _strm << BrcNavy << _rec[context] << BrcReset " ";
 
     _strm << _rec[boost::log::expressions::smessage];
 }

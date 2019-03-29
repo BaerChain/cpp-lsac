@@ -2,7 +2,7 @@
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 
 
 void LegacyVM::copyDataToMemory(bytesConstRef _data, u256*_sp)

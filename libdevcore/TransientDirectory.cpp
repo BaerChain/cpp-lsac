@@ -9,7 +9,7 @@ using namespace dev;
 namespace fs = boost::filesystem;
 
 TransientDirectory::TransientDirectory():
-	TransientDirectory((boost::filesystem::temp_directory_path() / "eth_transient" / toString(FixedHash<4>::random())).string())
+	TransientDirectory((boost::filesystem::temp_directory_path() / "brc_transient" / toString(FixedHash<4>::random())).string())
 {}
 
 TransientDirectory::TransientDirectory(std::string const& _path):

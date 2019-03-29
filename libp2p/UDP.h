@@ -5,6 +5,7 @@
 #include <vector>
 #include <deque>
 #include <array>
+
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcore/SHA3.h>

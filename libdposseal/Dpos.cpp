@@ -1,5 +1,5 @@
 #include "Dpos.h"
-#include <libethcore/TransactionBase.h>
+#include <libbrccore/TransactionBase.h>
 #include <cstdlib>
 
 dev::bacd::Dpos::Dpos()
@@ -35,12 +35,12 @@ void dev::bacd::Dpos::initConfigAndGenesis(ChainParams const & m_params)
     m_config.valitorNum = m_params.checkVarlitorNum;
     m_config.maxValitorNum = m_params.maxVarlitorNum;
     m_config.verifyVoteNum = m_params.verifyVoteNum;
-    LOG(m_logger) << EthYellow "dpos config:"<< m_config;
+    LOG(m_logger) << BrcYellow "dpos config:"<< m_config;
 }
 
 void dev::bacd::Dpos::init()
 {
-    ETH_REGISTER_SEAL_ENGINE(Dpos);
+    BRC_REGISTER_SEAL_ENGINE(Dpos);
 }
 
 bool dev::bacd::Dpos::isBolckSeal(uint64_t _now)
@@ -75,7 +75,7 @@ bool dev::bacd::Dpos::checkDeadline(uint64_t _now)
         LOG(m_warnlog) << "the time is error ..";
         return false;
     }
-    LOG(m_logger) << EthYellow "begin to create new block! .." EthReset <<"time:"<<_now;
+    LOG(m_logger) << BrcYellow "begin to create new block! .." BrcReset <<"time:"<<_now;
     //得到每次出块的整数时间刻度，比较上次，现在和下次
     //系统时间算出的下一个出块时间点
     uint64_t next_slot = (_now + m_config.blockInterval - 1) / m_config.blockInterval * m_config.blockInterval;
@@ -88,7 +88,7 @@ bool dev::bacd::Dpos::checkDeadline(uint64_t _now)
     {
         return true;
     }
-    LOG(m_logger) << EthYellow"the slot time have some error! _now:"<< _now<< EthReset;
+    LOG(m_logger) << BrcYellow"the slot time have some error! _now:"<< _now<< BrcReset;
     return false;
 }
 
@@ -139,7 +139,7 @@ void dev::bacd::Dpos::tryElect(uint64_t _now)
     uint64_t _last_time = _h.timestamp();
     unsigned int prveslot = _last_time / m_config.epochInterval; //上一个块的周期
     unsigned int currslot = _now / m_config.epochInterval;   //当前即将出块的周期
-    cdebug << EthYellow"_last_time: " << _last_time << "|now:"<<_now;
+    cdebug << BrcYellow"_last_time: " << _last_time << "|now:"<<_now;
     if(prveslot == currslot)
     {
         //处于相同周期 出块
@@ -153,7 +153,7 @@ void dev::bacd::Dpos::tryElect(uint64_t _now)
     //打乱验证人顺序
     disorganizeVotes();
     
-    LOG(m_logger) <<EthYellow "******Come to new epoch, prevEpoch:"<< prveslot << "nextEpoch:" << currslot<< EthYellow;
+    LOG(m_logger) <<BrcYellow "******Come to new epoch, prevEpoch:"<< prveslot << "nextEpoch:" << currslot<< BrcYellow;
 }
 
 void dev::bacd::Dpos::kickoutValidator()

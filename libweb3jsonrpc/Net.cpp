@@ -1,6 +1,6 @@
 #include <libwebthree/WebThree.h>
 #include <libdevcore/CommonJS.h>
-#include <libethcore/Common.h>
+#include <libbrccore/Common.h>
 #include "Net.h"
 
 using namespace dev;

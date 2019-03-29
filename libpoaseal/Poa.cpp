@@ -1,18 +1,22 @@
+/*
+    Poa.cpp
+*/
+
 #include "Poa.h"
 
-#include <libethcore/ChainOperationParams.h>
-#include <libethcore/CommonJS.h>
-#include <libethereum/Interface.h>
+#include <libbrccore/ChainOperationParams.h>
+#include <libbrccore/CommonJS.h>
+#include <libbrcdchain/Interface.h>
 using namespace std;
 using namespace dev;
-using namespace eth;
+using namespace brc;
 
-void dev::eth::Poa::init()
+void dev::brc::Poa::init()
 {
-    ETH_REGISTER_SEAL_ENGINE(Poa);
+    BRC_REGISTER_SEAL_ENGINE(Poa);
 }
 
-void dev::eth::Poa::initEnv(std::weak_ptr<PoaHostCapability> _host)
+void dev::brc::Poa::initEnv(std::weak_ptr<PoaHostCapability> _host)
 {
 	m_host = _host; 
 	m_lastChange_valitor_time = 0;
@@ -23,7 +27,7 @@ void dev::eth::Poa::initEnv(std::weak_ptr<PoaHostCapability> _host)
 	_flag ： true 添加
 	_time ：更新时间
 */
-bool dev::eth::Poa::updateValitor(Address const & _address, bool _flag, int64_t _time)
+bool dev::brc::Poa::updateValitor(Address const & _address, bool _flag, int64_t _time)
 {
 	//cdebug << "updateValitor: _address:" << _address << "|_flag:" << _flag << "|time:"<<_time;
 	Address address(_address);
@@ -67,7 +71,7 @@ bool dev::eth::Poa::updateValitor(Address const & _address, bool _flag, int64_t 
 	return true;
 }
 
-void dev::eth::Poa::initPoaValidatorAccounts(std::vector<Address> const & _addresses)
+void dev::brc::Poa::initPoaValidatorAccounts(std::vector<Address> const & _addresses)
 {
 	if(_addresses.empty())
 		return;
@@ -77,7 +81,7 @@ void dev::eth::Poa::initPoaValidatorAccounts(std::vector<Address> const & _addre
 	m_del_poaValitors.clear();
 }
 
-bool dev::eth::Poa::isvalidators(Address const & _our_address, Address const & _currBlock_address)
+bool dev::brc::Poa::isvalidators(Address const & _our_address, Address const & _currBlock_address)
 {
 	if(m_poaValidatorAccount.empty())
 	{
@@ -127,7 +131,7 @@ bool dev::eth::Poa::isvalidators(Address const & _our_address, Address const & _
 	return false;
 }
 
-void dev::eth::Poa::sendAllUpdateValitor(Address const & _address, bool _flag)
+void dev::brc::Poa::sendAllUpdateValitor(Address const & _address, bool _flag)
 {
 	PoaMsg pmsg;
 	pmsg.address.push_back(Address(_address));
@@ -141,7 +145,7 @@ void dev::eth::Poa::sendAllUpdateValitor(Address const & _address, bool _flag)
 	brocastMsg(PoaValitorData, _s); 
 }
 
-void dev::eth::Poa::onPoaMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
+void dev::brc::Poa::onPoaMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
 {
 	if(_id < PoaPacketCount)
 	{
@@ -155,7 +159,7 @@ void dev::eth::Poa::onPoaMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
 	}
 }
 
-void dev::eth::Poa::requestStatus(NodeID const & _nodeID, u256 const & /*_peerCapabilityVersion*/)
+void dev::brc::Poa::requestStatus(NodeID const & _nodeID, u256 const & /*_peerCapabilityVersion*/)
 {
 	//
 	cdebug << "send status to:" << _nodeID;
@@ -168,7 +172,7 @@ void dev::eth::Poa::requestStatus(NodeID const & _nodeID, u256 const & /*_peerCa
 
 	sealAndSend(_nodeID, PoaStatusPacket, resp_ts);
 }
-void dev::eth::Poa::brocastMsg(PoapPacketType _type, RLPStream & _msg_s)
+void dev::brc::Poa::brocastMsg(PoapPacketType _type, RLPStream & _msg_s)
 {
 	// 广播发送  将 sealAndSend() 回调使用
 	auto h = m_host.lock();
@@ -180,7 +184,7 @@ void dev::eth::Poa::brocastMsg(PoapPacketType _type, RLPStream & _msg_s)
 	    });
 
 }
-void dev::eth::Poa::sealAndSend(NodeID const & _nodeid, PoapPacketType _type, RLPStream const& _msg_s)
+void dev::brc::Poa::sealAndSend(NodeID const & _nodeid, PoapPacketType _type, RLPStream const& _msg_s)
 {
     // 封装发送
 	RLPStream msg_ts;
@@ -190,7 +194,7 @@ void dev::eth::Poa::sealAndSend(NodeID const & _nodeid, PoapPacketType _type, RL
 	cdebug << " Poa Send[" << _type << "] to " << _nodeid;
 }
 
-void dev::eth::Poa::updateValitor(PoaMsg const & _poadata)
+void dev::brc::Poa::updateValitor(PoaMsg const & _poadata)
 
 {
 	if(_poadata.address.empty())
@@ -226,7 +230,7 @@ void dev::eth::Poa::updateValitor(PoaMsg const & _poadata)
 	}
 }
 
-void dev::eth::Poa::generateSeal(BlockHeader const& _bi)
+void dev::brc::Poa::generateSeal(BlockHeader const& _bi)
 {
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
@@ -237,13 +241,13 @@ void dev::eth::Poa::generateSeal(BlockHeader const& _bi)
         m_onSealGenerated(ret.out());
 }
 
-bool dev::eth::Poa::shouldSeal(Interface*)
+bool dev::brc::Poa::shouldSeal(Interface*)
 {
     //TODO 实现判断算法执行前逻辑
     return true;
 }
 
-void dev::eth::Poa::workLoop()
+void dev::brc::Poa::workLoop()
 {
 	while(isWorking())
 	{

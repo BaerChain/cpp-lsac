@@ -1,7 +1,7 @@
 #include <jsonrpccpp/common/exception.h>
 #include <libwebthree/WebThree.h>
 #include <libdevcore/CommonJS.h>
-#include <libethcore/Common.h>
+#include <libbrccore/Common.h>
 #include "AdminNet.h"
 #include "SessionManager.h"
 #include "JsonHelper.h"
@@ -66,7 +66,7 @@ Json::Value AdminNet::admin_nodeInfo()
 	ret["id"] = i.id.hex();
 	ret["enode"] = i.enode();
 	ret["protocols"] = Json::objectValue;
-	ret["protocols"]["eth"] = Json::objectValue; //@todo fill with information
+	ret["protocols"]["brc"] = Json::objectValue; //@todo fill with information
 	return ret;
 }
 

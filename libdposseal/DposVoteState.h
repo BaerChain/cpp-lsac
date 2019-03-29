@@ -2,17 +2,17 @@
 #include <iostream>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Exceptions.h>
+#include <libbrccore/Exceptions.h>
 #include <libdevcore/FixedHash.h>
-#include <libethcore/TransactionBase.h>
-#include <libethcore/BlockHeader.h>
+#include <libbrccore/TransactionBase.h>
+#include <libbrccore/BlockHeader.h>
 #include "Common.h"
 
 namespace dev
 {
 namespace bacd
 {
-    using namespace eth;
+    using namespace brc;
 
     class DposVoteState
     {

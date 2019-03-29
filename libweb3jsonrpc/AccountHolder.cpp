@@ -1,13 +1,13 @@
 #include "AccountHolder.h"
 #include <random>
 #include <libdevcore/Guards.h>
-#include <libethereum/Client.h>
-#include <libethcore/KeyManager.h>
+#include <libbrcdchain/Client.h>
+#include <libbrccore/KeyManager.h>
 
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 
 vector<TransactionSkeleton> g_emptyQueue;
 static std::mt19937 g_randomNumberGenerator(utcTime());
@@ -81,7 +81,7 @@ AddressHash SimpleAccountHolder::realAccounts() const
 	return m_keyManager.accountsHash();
 }
 
-pair<bool, Secret> SimpleAccountHolder::authenticate(dev::eth::TransactionSkeleton const& _t)
+pair<bool, Secret> SimpleAccountHolder::authenticate(dev::brc::TransactionSkeleton const& _t)
 {
 	pair<bool, Secret> ret;
 	bool locked = true;
@@ -142,7 +142,7 @@ bool SimpleAccountHolder::unlockAccount(Address const& _account, string const& _
 	return true;
 }
 
-pair<bool, Secret> FixedAccountHolder::authenticate(dev::eth::TransactionSkeleton const& _t)
+pair<bool, Secret> FixedAccountHolder::authenticate(dev::brc::TransactionSkeleton const& _t)
 {
 	pair<bool, Secret> ret;
 	if (isRealAccount(_t.from))

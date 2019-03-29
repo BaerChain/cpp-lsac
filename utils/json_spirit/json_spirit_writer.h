@@ -1,7 +1,6 @@
 #ifndef JSON_SPIRIT_WRITER
 #define JSON_SPIRIT_WRITER
 
-
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 # pragma once
 #endif
@@ -11,6 +10,8 @@
 
 namespace json_spirit
 {
+    // functions to convert JSON Values to text, 
+    // the "formatted" versions add whitespace to format the output nicely
 
     void         write          ( const Value& value, std::ostream&  os );
     void         write_formatted( const Value& value, std::ostream&  os );

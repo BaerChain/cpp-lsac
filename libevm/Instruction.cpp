@@ -3,7 +3,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 static const std::map<Instruction,  InstructionInfo> c_instructionInfo =

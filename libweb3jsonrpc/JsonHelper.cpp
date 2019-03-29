@@ -1,21 +1,20 @@
 #include "JsonHelper.h"
 
-#include <libethcore/SealEngine.h>
-#include <libethereum/Client.h>
-#include <libwebthree/WebThree.h>
-#include <libethcore/CommonJS.h>
 #include <jsonrpccpp/common/exception.h>
+#include <libbrccore/CommonJS.h>
+#include <libbrccore/SealEngine.h>
+#include <libbrcdchain/Client.h>
+#include <libwebthree/WebThree.h>
 using namespace std;
 using namespace dev;
-using namespace eth;
+using namespace brc;
 
 namespace dev
 {
-
 Json::Value toJson(unordered_map<u256, u256> const& _storage)
 {
     Json::Value res(Json::objectValue);
-    for (auto i: _storage)
+    for (auto i : _storage)
         res[toJS(i.first)] = toJS(i.second);
     return res;
 }
@@ -23,7 +22,7 @@ Json::Value toJson(unordered_map<u256, u256> const& _storage)
 Json::Value toJson(map<h256, pair<u256, u256>> const& _storage)
 {
     Json::Value res(Json::objectValue);
-    for (auto i: _storage)
+    for (auto i : _storage)
         res[toJS(u256(i.second.first))] = toJS(i.second.second);
     return res;
 }
@@ -38,7 +37,6 @@ Json::Value toJson(Address const& _address)
 // ////////////////////////////////////////////////////////////////////////////////
 namespace p2p
 {
-
 Json::Value toJson(p2p::PeerSessionInfo const& _p)
 {
     //@todo localAddress
@@ -48,23 +46,22 @@ Json::Value toJson(p2p::PeerSessionInfo const& _p)
     ret["name"] = _p.clientVersion;
     ret["network"]["remoteAddress"] = _p.host + ":" + toString(_p.port);
     ret["lastPing"] = (int)chrono::duration_cast<chrono::milliseconds>(_p.lastPing).count();
-    for (auto const& i: _p.notes)
+    for (auto const& i : _p.notes)
         ret["notes"][i.first] = i.second;
-    for (auto const& i: _p.caps)
+    for (auto const& i : _p.caps)
         ret["caps"].append(i.first + "/" + toString((unsigned)i.second));
     return ret;
 }
 
-}
+}  // namespace p2p
 
 // ////////////////////////////////////////////////////////////////////////////////
-// eth
+// brc
 // ////////////////////////////////////////////////////////////////////////////////
 
-namespace eth
+namespace brc
 {
-
-Json::Value toJson(dev::eth::BlockHeader const& _bi, SealEngineFace* _sealer)
+Json::Value toJson(dev::brc::BlockHeader const& _bi, SealEngineFace* _sealer)
 {
     Json::Value res;
     if (_bi)
@@ -89,14 +86,14 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, SealEngineFace* _sealer)
         // TODO: remove once JSONRPC spec is updated to use "author" over "miner".
         res["miner"] = toJS(_bi.author());
         if (_sealer)
-            for (auto const& i: _sealer->jsInfo(_bi))
+            for (auto const& i : _sealer->jsInfo(_bi))
                 res[i.first] = i.second;
-
     }
     return res;
 }
 
-Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber)
+Json::Value toJson(
+    dev::brc::Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber)
 {
     Json::Value res;
     if (_t)
@@ -119,7 +116,8 @@ Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _l
     return res;
 }
 
-Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face)
+Json::Value toJson(dev::brc::BlockHeader const& _bi, BlockDetails const& _bd,
+    UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face)
 {
     Json::Value res = toJson(_bi, _face);
     if (_bi)
@@ -127,16 +125,18 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, Un
         res["totalDifficulty"] = toJS(_bd.totalDifficulty);
         res["size"] = toJS(_bd.size);
         res["uncles"] = Json::Value(Json::arrayValue);
-        for (h256 h: _us)
+        for (h256 h : _us)
             res["uncles"].append(toJS(h));
         res["transactions"] = Json::Value(Json::arrayValue);
         for (unsigned i = 0; i < _ts.size(); i++)
-            res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number()));
+            res["transactions"].append(
+                toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number()));
     }
     return res;
 }
 
-Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face)
+Json::Value toJson(dev::brc::BlockHeader const& _bi, BlockDetails const& _bd,
+    UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face)
 {
     Json::Value res = toJson(_bi, _face);
     if (_bi)
@@ -144,16 +144,16 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, Un
         res["totalDifficulty"] = toJS(_bd.totalDifficulty);
         res["size"] = toJS(_bd.size);
         res["uncles"] = Json::Value(Json::arrayValue);
-        for (h256 h: _us)
+        for (h256 h : _us)
             res["uncles"].append(toJS(h));
         res["transactions"] = Json::Value(Json::arrayValue);
-        for (h256 const& t: _ts)
+        for (h256 const& t : _ts)
             res["transactions"].append(toJS(t));
     }
     return res;
 }
 
-Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
+Json::Value toJson(dev::brc::TransactionSkeleton const& _t)
 {
     Json::Value res;
     res["to"] = _t.creation ? Json::Value() : toJS(_t.to);
@@ -165,7 +165,7 @@ Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
     return res;
 }
 
-Json::Value toJson(dev::eth::TransactionReceipt const& _t)
+Json::Value toJson(dev::brc::TransactionReceipt const& _t)
 {
     Json::Value res;
     if (_t.hasStatusCode())
@@ -178,7 +178,7 @@ Json::Value toJson(dev::eth::TransactionReceipt const& _t)
     return res;
 }
 
-Json::Value toJson(dev::eth::LocalisedTransactionReceipt const& _t)
+Json::Value toJson(dev::brc::LocalisedTransactionReceipt const& _t)
 {
     Json::Value res;
     res["transactionHash"] = toJS(_t.hash());
@@ -199,7 +199,7 @@ Json::Value toJson(dev::eth::LocalisedTransactionReceipt const& _t)
     return res;
 }
 
-Json::Value toJson(dev::eth::Transaction const& _t)
+Json::Value toJson(dev::brc::Transaction const& _t)
 {
     Json::Value res;
     res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.to());
@@ -217,7 +217,7 @@ Json::Value toJson(dev::eth::Transaction const& _t)
     return res;
 }
 
-Json::Value toJson(dev::eth::Transaction const& _t, bytes const& _rlp)
+Json::Value toJson(dev::brc::Transaction const& _t, bytes const& _rlp)
 {
     Json::Value res;
     res["raw"] = toJS(_rlp);
@@ -225,7 +225,7 @@ Json::Value toJson(dev::eth::Transaction const& _t, bytes const& _rlp)
     return res;
 }
 
-Json::Value toJson(dev::eth::LocalisedTransaction const& _t)
+Json::Value toJson(dev::brc::LocalisedTransaction const& _t)
 {
     Json::Value res;
     if (_t)
@@ -245,7 +245,7 @@ Json::Value toJson(dev::eth::LocalisedTransaction const& _t)
     return res;
 }
 
-Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
+Json::Value toJson(dev::brc::LocalisedLogEntry const& _e)
 {
     Json::Value res;
 
@@ -253,7 +253,7 @@ Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
         res = toJS(_e.special);
     else
     {
-        res = toJson(static_cast<dev::eth::LogEntry const&>(_e));
+        res = toJson(static_cast<dev::brc::LogEntry const&>(_e));
         res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
         if (_e.mined)
         {
@@ -277,28 +277,28 @@ Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
     return res;
 }
 
-Json::Value toJson(dev::eth::LogEntry const& _e)
+Json::Value toJson(dev::brc::LogEntry const& _e)
 {
     Json::Value res;
     res["data"] = toJS(_e.data);
     res["address"] = toJS(_e.address);
     res["topics"] = Json::Value(Json::arrayValue);
-    for (auto const& t: _e.topics)
+    for (auto const& t : _e.topics)
         res["topics"].append(toJS(t));
     return res;
 }
 
-Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const& _entriesByBlock, vector<h256> const& _order)
+Json::Value toJson(std::unordered_map<h256, dev::brc::LocalisedLogEntries> const& _entriesByBlock,
+    vector<h256> const& _order)
 {
     Json::Value res(Json::arrayValue);
-    for (auto const& i: _order)
+    for (auto const& i : _order)
     {
         auto entries = _entriesByBlock.at(i);
         Json::Value currentBlock(Json::objectValue);
         LocalisedLogEntry entry = entries[0];
         if (entry.mined)
         {
-
             currentBlock["blockNumber"] = entry.blockNumber;
             currentBlock["blockHash"] = toJS(entry.blockHash);
             currentBlock["type"] = "mined";
@@ -309,7 +309,7 @@ Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const
         currentBlock["polarity"] = entry.polarity == BlockPolarity::Live ? true : false;
         currentBlock["logs"] = Json::Value(Json::arrayValue);
 
-        for (LocalisedLogEntry const& e: entries)
+        for (LocalisedLogEntry const& e : entries)
         {
             Json::Value log(Json::objectValue);
             log["logIndex"] = e.logIndex;
@@ -318,7 +318,7 @@ Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const
             log["address"] = toJS(e.address);
             log["data"] = toJS(e.data);
             log["topics"] = Json::Value(Json::arrayValue);
-            for (auto const& t: e.topics)
+            for (auto const& t : e.topics)
                 log["topics"].append(toJS(t));
 
             currentBlock["logs"].append(log);
@@ -333,11 +333,11 @@ Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const
 Json::Value toJsonByBlock(LocalisedLogEntries const& _entries)
 {
     vector<h256> order;
-    unordered_map <h256, LocalisedLogEntries> entriesByBlock;
+    unordered_map<h256, LocalisedLogEntries> entriesByBlock;
 
-    for (dev::eth::LocalisedLogEntry const& e: _entries)
+    for (dev::brc::LocalisedLogEntry const& e : _entries)
     {
-        if (e.isSpecial) // skip special log
+        if (e.isSpecial)  // skip special log
             continue;
 
         if (entriesByBlock.count(e.blockHash) == 0)
@@ -357,87 +357,82 @@ TransactionSkeleton toTransactionSkeleton(Json::Value const& _json)
     TransactionSkeleton ret;
     if (!_json.isObject() || _json.empty())
         return ret;
-
-    if (!_json["from"].empty())
-        ret.from = jsToAddress(_json["from"].asString());
-    if (!_json["to"].empty() && _json["to"].asString() != "0x" && !_json["to"].asString().empty())
-        ret.to = jsToAddress(_json["to"].asString());
-    else
-        ret.creation = true;
-
-    if (!_json["value"].empty())
-        ret.value = jsToU256(_json["value"].asString());
-
-    if (!_json["gas"].empty())
-        ret.gas = jsToU256(_json["gas"].asString());
-
-    if (!_json["gasPrice"].empty())
-        ret.gasPrice = jsToU256(_json["gasPrice"].asString());
-
-    if (!_json["data"].empty())							// ethereum.js has preconstructed the data array
+    try
     {
-		if(_json["to"].asString() == "0x00000000000000000000000000000000766f7465")
-		{
-			Json::Value _item = _json["data"];
-			transationTool::op_type _type= (transationTool::op_type) _item["method_type"].asInt();
-			Address _from = Address(_item["from"].asString());
-			Address _to = Address(_item["to"].asString());
-			
-			switch(_type)
-			{
-			case transationTool::vote:
-			{
-				uint8_t _vote_type = (uint8_t)_item["type"].asInt();
-				size_t _vote_num = (size_t)_item["tickets"].asInt();
-				transationTool::vote_operation vote_op { _type, _from, _to, _vote_type, _vote_num };
-				ret.data = vote_op.serialize();
-			}
-			break;
-			default:
-			break;
-			}
-			//int size = _json["data"].size();
-			/*for(int i = 0; i < size; i++)
-			{
-				Json::Value _itemData = _json["data"][i];
-				transationTool::op_type _type = (transationTool::op_type)_itemData["method_type"].asInt();
-				Address _from = Address(_itemData["from"].asString());
-				Address _to = Address(_itemData["to"].asString());
-				switch(_type)
-				{
-				case transationTool::vote:
-				{
-					uint8_t _vote_type = (uint8_t)_itemData["type"].asInt();
-					size_t _vote_num = (size_t)_itemData["tickets"].asInt();
-					transationTool::vote_operation vote_op { _type, _from, _to, _vote_type, _vote_num };
-					_op_datas.push_back(vote_op.serialize());
-				}
-				break;
-				default:
-				break;
-				}
-			}*/
-			/*RLPStream _s;
-			_s.appendVector<bytes>(_op_datas);*/
-			//ret.data = _s.out();
-		}
+		if(!_json["from"].empty())
+			ret.from = jsToAddress(_json["from"].asString());
+		if(!_json["to"].empty() && _json["to"].asString() != "0x" && !_json["to"].asString().empty())
+			ret.to = jsToAddress(_json["to"].asString());
 		else
+			ret.creation = true;
+
+		if(!_json["value"].empty())
+			ret.value = jsToU256(_json["value"].asString());
+
+		if(!_json["gas"].empty())
+			ret.gas = jsToU256(_json["gas"].asString());
+
+		if(!_json["gasPrice"].empty())
+			ret.gasPrice = jsToU256(_json["gasPrice"].asString());
+
+		if(!_json["data"].empty())							// brcdChain.js has preconstructed the data array
 		{
-			ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+			if(_json["to"].asString() == "0x00000000000000000000000000000000766f7465")
+			{
+				std::cout << "1111111111111111111111111111111";
+				int size = _json["data"].size();
+				std::cout << "data size:" << size << std::endl;
+				std::vector<bytes> _op_datas;
+				for(int i = 0; i < size; i++)
+				{
+					Json::Value _itemData = _json["data"][i];
+					std::cout << "1222222222222222222222222222" << std::endl;
+					transationTool::op_type _type = (transationTool::op_type)_itemData["method_type"].asInt();
+					Address _from = Address(_itemData["from"].asString());
+					Address _to = Address(_itemData["to"].asString());
+					std::cout << "3333333333333333333333333333333" << std::endl;
+					switch(_type)
+					{
+					case transationTool::vote:
+					{
+						uint8_t _vote_type = (uint8_t)_itemData["type"].asInt();
+						size_t _vote_num = (size_t)_itemData["tickets"].asInt();
+						transationTool::vote_operation vote_op { _type, _from, _to, _vote_type, _vote_num };
+						_op_datas.push_back(vote_op.serialize());
+						std::cout << "444444444444444444444444444444444" << std::endl;
+					}
+					break;
+					default:
+					break;
+					}
+				}
+				RLPStream _s;
+				_s.appendVector<bytes>(_op_datas);
+				ret.data = _s.out();
+			}
+			else
+			{
+				ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+			}
 		}
+
+		if(!_json["code"].empty())
+			ret.data = jsToBytes(_json["code"].asString(), OnFailed::Throw);
+
+		if(!_json["nonce"].empty())
+			ret.nonce = jsToU256(_json["nonce"].asString());
+    }
+    catch (boost::exception const&)
+    {
+        throw jsonrpc::JsonRpcException("Invalid toTransactionSkeleton from json: ");
     }
 
-    if (!_json["code"].empty())
-        ret.data = jsToBytes(_json["code"].asString(), OnFailed::Throw);
-
-    if (!_json["nonce"].empty())
-        ret.nonce = jsToU256(_json["nonce"].asString());
     return ret;
 }
 
-dev::eth::LogFilter toLogFilter(Json::Value const& _json)
+dev::brc::LogFilter toLogFilter(Json::Value const& _json)
 {
-    dev::eth::LogFilter filter;
+    dev::brc::LogFilter filter;
     if (!_json.isObject() || _json.empty())
         return filter;
 
@@ -459,20 +454,22 @@ dev::eth::LogFilter toLogFilter(Json::Value const& _json)
         {
             if (_json["topics"][i].isArray())
             {
-                for (auto t: _json["topics"][i])
+                for (auto t : _json["topics"][i])
                     if (!t.isNull())
                         filter.topic(i, jsToFixed<32>(t.asString()));
             }
-            else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
+            else if (!_json["topics"][i].isNull())  // if it is anything else then string, it should
+                                                    // and will fail
                 filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
         }
     return filter;
 }
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
-dev::eth::LogFilter toLogFilter(Json::Value const& _json, Interface const& _client)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+dev::brc::LogFilter toLogFilter(Json::Value const& _json,
+    Interface const& _client)  // commented to avoid warning. Uncomment once in use @ PoC-7.
 {
-    dev::eth::LogFilter filter;
+    dev::brc::LogFilter filter;
     if (!_json.isObject() || _json.empty())
         return filter;
 
@@ -494,17 +491,18 @@ dev::eth::LogFilter toLogFilter(Json::Value const& _json, Interface const& _clie
         {
             if (_json["topics"][i].isArray())
             {
-                for (auto t: _json["topics"][i])
+                for (auto t : _json["topics"][i])
                     if (!t.isNull())
                         filter.topic(i, jsToFixed<32>(t.asString()));
             }
-            else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
+            else if (!_json["topics"][i].isNull())  // if it is anything else then string, it should
+                                                    // and will fail
                 filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
         }
     return filter;
 }
 
-}
+}  // namespace brc
 
 // ////////////////////////////////////////////////////////////////////////////////////
 // rpc
@@ -523,6 +521,6 @@ h256 h256fromHex(string const& _s)
         throw jsonrpc::JsonRpcException("Invalid hex-encoded string: " + _s);
     }
 }
-}
+}  // namespace rpc
 
-}
+}  // namespace dev

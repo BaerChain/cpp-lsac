@@ -4,7 +4,7 @@
 namespace dev
 {
 	
-namespace eth
+namespace brc
 {
 class KeyManager;
 class AccountHolder;
@@ -23,7 +23,7 @@ public:
 		CacleCandidate, // 申请取消自己的候选人资格
 		Delegated       // 投票
 	};*/
-	Personal(dev::eth::KeyManager& _keyManager, dev::eth::AccountHolder& _accountHolder, eth::Interface& _eth);
+	Personal(dev::brc::KeyManager& _keyManager, dev::brc::AccountHolder& _accountHolder, brc::Interface& _brc);
 	virtual RPCModules implementedModules() const override
 	{
 		return RPCModules{RPCModule{"personal", "1.0"}};
@@ -36,9 +36,9 @@ public:
 	virtual Json::Value personal_listAccounts() override;
 
 private:
-	dev::eth::KeyManager& m_keyManager;
-	dev::eth::AccountHolder& m_accountHolder;
-	dev::eth::Interface& m_eth;
+	dev::brc::KeyManager& m_keyManager;
+	dev::brc::AccountHolder& m_accountHolder;
+	dev::brc::Interface& m_brc;
 };
 
 }

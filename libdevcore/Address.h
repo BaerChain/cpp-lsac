@@ -5,14 +5,14 @@
 namespace dev
 {
 
-/// An Ethereum address: 20 bytes.
+/// An BrcdChain address: 20 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Address = h160;
 
-/// A vector of Ethereum addresses.
+/// A vector of BrcdChain addresses.
 using Addresses = h160s;
 
-/// A hash set of Ethereum addresses.
+/// A hash set of BrcdChain addresses.
 using AddressHash = std::unordered_set<h160>;
 
 /// The zero address.

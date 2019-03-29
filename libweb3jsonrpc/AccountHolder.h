@@ -5,12 +5,12 @@
 #include <vector>
 #include <map>
 #include <chrono>
-#include <libethcore/CommonJS.h>
-#include <libethereum/Transaction.h>
+#include <libbrccore/CommonJS.h>
+#include <libbrcdchain/Transaction.h>
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 class KeyManager;
@@ -30,7 +30,7 @@ public:
 	// use m_web3's submitTransaction or use AccountHolder::queueTransaction(_t) to accept.
 	// @returns the authenticated account's Secret (if available) and if the account is a
 	// proxy account.
-	virtual std::pair<bool, Secret> authenticate(dev::eth::TransactionSkeleton const& _t) = 0;
+	virtual std::pair<bool, Secret> authenticate(dev::brc::TransactionSkeleton const& _t) = 0;
 
 	Addresses allAccounts() const;
 	bool isRealAccount(Address const& _account) const { return realAccounts().count(_account) > 0; }
@@ -51,16 +51,16 @@ public:
 
 	int addProxyAccount(Address const& _account);
 	bool removeProxyAccount(unsigned _id);
-	void queueTransaction(eth::TransactionSkeleton const& _transaction);
+	void queueTransaction(brc::TransactionSkeleton const& _transaction);
 
-	std::vector<eth::TransactionSkeleton> const& queuedTransactions(int _id) const;
+	std::vector<brc::TransactionSkeleton> const& queuedTransactions(int _id) const;
 	void clearQueue(int _id);
 
 protected:
 	std::function<Interface*()> m_client;
 
 private:
-	using TransactionQueue = std::vector<eth::TransactionSkeleton>;
+	using TransactionQueue = std::vector<brc::TransactionSkeleton>;
 
 	std::unordered_map<Address, int> m_proxyAccounts;
 	std::unordered_map<int, std::pair<Address, TransactionQueue>> m_transactionQueues;
@@ -77,7 +77,7 @@ public:
 	{}
 
 	AddressHash realAccounts() const override;
-	std::pair<bool, Secret> authenticate(dev::eth::TransactionSkeleton const& _t) override;
+	std::pair<bool, Secret> authenticate(dev::brc::TransactionSkeleton const& _t) override;
 
 	bool unlockAccount(Address const& _account, std::string const& _password, unsigned _duration) override;
 
@@ -112,7 +112,7 @@ public:
 		return ret;
 	}
 
-	std::pair<bool, Secret> authenticate(dev::eth::TransactionSkeleton const& _t) override;
+	std::pair<bool, Secret> authenticate(dev::brc::TransactionSkeleton const& _t) override;
 
 private:
 	std::unordered_map<dev::Address, dev::Secret> m_accounts;

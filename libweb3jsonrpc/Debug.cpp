@@ -1,21 +1,21 @@
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonJS.h>
-#include <libethcore/CommonJS.h>
-#include <libethereum/Client.h>
-#include <libethereum/Executive.h>
+#include <libbrccore/CommonJS.h>
+#include <libbrcdchain/Client.h>
+#include <libbrcdchain/Executive.h>
 #include "Debug.h"
 #include "JsonHelper.h"
 using namespace std;
 using namespace dev;
 using namespace dev::rpc;
-using namespace dev::eth;
+using namespace dev::brc;
 
-Debug::Debug(eth::Client const& _eth):
-    m_eth(_eth)
+Debug::Debug(brc::Client const& _brc):
+    m_brc(_brc)
 {}
 
-StandardTrace::DebugOptions dev::eth::debugOptions(Json::Value const& _json)
+StandardTrace::DebugOptions dev::brc::debugOptions(Json::Value const& _json)
 {
     StandardTrace::DebugOptions op;
     if (!_json.isObject() || _json.empty())
@@ -37,7 +37,7 @@ h256 Debug::blockHash(string const& _blockNumberOrHash) const
         return h256(_blockNumberOrHash.substr(_blockNumberOrHash.size() - 64, 64));
     try
     {
-        return m_eth.blockChain().numberHash(stoul(_blockNumberOrHash));
+        return m_brc.blockChain().numberHash(stoul(_blockNumberOrHash));
     }
     catch (...)
     {
@@ -50,12 +50,12 @@ State Debug::stateAt(std::string const& _blockHashOrNumber, int _txIndex) const
     if (_txIndex < 0)
         throw jsonrpc::JsonRpcException("Negative index");
 
-    Block block = m_eth.block(blockHash(_blockHashOrNumber));
+    Block block = m_brc.block(blockHash(_blockHashOrNumber));
     auto const txCount = block.pending().size();
 
     State state(State::Null);
     if (static_cast<size_t>(_txIndex) < txCount)
-        createIntermediateState(state, block, _txIndex, m_eth.blockChain());
+        createIntermediateState(state, block, _txIndex, m_brc.blockChain());
     else if (static_cast<size_t>(_txIndex) == txCount)
         // the final state of block (after applying rewards)
         state = block.state();
@@ -88,10 +88,10 @@ Json::Value Debug::traceBlock(Block const& _block, Json::Value const& _json)
         Transaction t = _block.pending()[k];
 
         u256 const gasUsed = k ? _block.receipt(k - 1).cumulativeGasUsed() : 0;
-        EnvInfo envInfo(_block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed);
-        Executive e(s, envInfo, *m_eth.blockChain().sealEngine());
+        EnvInfo envInfo(_block.info(), m_brc.blockChain().lastBlockHashes(), gasUsed);
+        Executive e(s, envInfo, *m_brc.blockChain().sealEngine());
 
-        eth::ExecutionResult er;
+        brc::ExecutionResult er;
         e.setResultRecipient(er);
         traces.append(traceTransaction(e, t, _json));
     }
@@ -103,11 +103,11 @@ Json::Value Debug::debug_traceTransaction(string const& _txHash, Json::Value con
     Json::Value ret;
     try
     {
-        LocalisedTransaction t = m_eth.localisedTransaction(h256(_txHash));
-        Block block = m_eth.block(t.blockHash());
+        LocalisedTransaction t = m_brc.localisedTransaction(h256(_txHash));
+        Block block = m_brc.block(t.blockHash());
         State s(State::Null);
-        eth::ExecutionResult er;
-        Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
+        brc::ExecutionResult er;
+        Executive e(s, block, t.transactionIndex(), m_brc.blockChain());
         e.setResultRecipient(er);
         Json::Value trace = traceTransaction(e, t, _json);
         ret["gas"] = toJS(t.gas());
@@ -131,7 +131,7 @@ Json::Value Debug::debug_traceBlock(string const& _blockRLP, Json::Value const& 
 Json::Value Debug::debug_traceBlockByHash(string const& _blockHash, Json::Value const& _json)
 {
     Json::Value ret;
-    Block block = m_eth.block(h256(_blockHash));
+    Block block = m_brc.block(h256(_blockHash));
     ret["structLogs"] = traceBlock(block, _json);
     return ret;
 }
@@ -139,7 +139,7 @@ Json::Value Debug::debug_traceBlockByHash(string const& _blockHash, Json::Value 
 Json::Value Debug::debug_traceBlockByNumber(int _blockNumber, Json::Value const& _json)
 {
     Json::Value ret;
-    Block block = m_eth.block(blockHash(std::to_string(_blockNumber)));
+    Block block = m_brc.block(blockHash(std::to_string(_blockNumber)));
     ret["structLogs"] = traceBlock(block, _json);
     return ret;
 }
@@ -219,7 +219,7 @@ Json::Value Debug::debug_storageRangeAt(string const& _blockHashOrNumber, int _t
 std::string Debug::debug_preimage(std::string const& _hashedKey)
 {
     h256 const hashedKey(h256fromHex(_hashedKey));
-    bytes const key = m_eth.stateDB().lookupAux(hashedKey);
+    bytes const key = m_brc.stateDB().lookupAux(hashedKey);
 
     return key.empty() ? std::string() : toHexPrefixed(key);
 }
@@ -229,19 +229,19 @@ Json::Value Debug::debug_traceCall(Json::Value const& _call, std::string const& 
     Json::Value ret;
     try
     {
-        Block temp = m_eth.blockByNumber(jsToBlockNumber(_blockNumber));
+        Block temp = m_brc.blockByNumber(jsToBlockNumber(_blockNumber));
         TransactionSkeleton ts = toTransactionSkeleton(_call);
         if (!ts.from) {
             ts.from = Address();
         }
         u256 nonce = temp.transactionsFrom(ts.from);
-        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
-        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
+        u256 gas = ts.gas == Invalid256 ? m_brc.gasLimitRemaining() : ts.gas;
+        u256 gasPrice = ts.gasPrice == Invalid256 ? m_brc.gasBidPrice() : ts.gasPrice;
         temp.mutableState().addBalance(ts.from, gas * gasPrice + ts.value);
         Transaction transaction(ts.value, gasPrice, gas, ts.to, ts.data, nonce);
         transaction.forceSender(ts.from);
-        eth::ExecutionResult er;
-        Executive e(temp, m_eth.blockChain().lastBlockHashes());
+        brc::ExecutionResult er;
+        Executive e(temp, m_brc.blockChain().lastBlockHashes());
         e.setResultRecipient(er);
         Json::Value trace = traceTransaction(e, transaction, _options);
         ret["gas"] = toJS(transaction.gas());

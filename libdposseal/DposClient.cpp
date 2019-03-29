@@ -6,7 +6,7 @@
 #include <time.h>
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 using namespace p2p;
 using namespace dev::bacd;
 namespace fs = boost::filesystem;
@@ -107,12 +107,12 @@ void dev::bacd::DposClient::printfElectors()
 {
 	Block _block = blockByNumber(LatestBlock);
 	std::unordered_map<Address, u256> _m = _block.mutableVote().getElectors();
-	std::cout << EthYellow " dpos electors:" << std::endl << "{" << std::endl;;
-    for (auto val : _m)
-    {
-		std::cout << "Address:" << val.first << " tickets:" << val.second << std::endl;
-    }
-	std::cout << std::endl << "}" << EthReset << std::endl;
+//	std::cout << BrcYellow " dpos electors:" << std::endl << "{" << std::endl;;
+//    for (auto val : _m)
+//    {
+//		std::cout << "Address:" << val.first << " tickets:" << val.second << std::endl;
+//    }
+//	std::cout << std::endl << "}" << BrcReset << std::endl;
 }
 
 void dev::bacd::DposClient::rejigSealing()
@@ -152,7 +152,7 @@ void dev::bacd::DposClient::rejigSealing()
 				_h.setDposCurrVarlitors(dpos()->currVarlitors());
 				m_working.setDposData(_h);
 				
-                LOG(m_loggerDetail) <<EthYellow "seal block add dposData is ok" << EthYellow;
+                LOG(m_loggerDetail) <<BrcYellow "seal block add dposData is ok" << BrcYellow;
 				printfElectors();
 
 
@@ -204,7 +204,7 @@ void dev::bacd::DposClient::init(p2p::Host & /*_host*/, int /*_netWorkId*/)
 {
     //关联 host 管理的CapabilityHostFace 接口
 	/*cdebug << "capabilityHost :: DposHostCapability";
-	auto ethCapability = make_shared<DposHostcapality>(_host.capabilityHost(),
+	auto brcCapability = make_shared<DposHostcapality>(_host.capabilityHost(),
 							_netWorkId,
 							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
 								dpos()->onDposMsg(_nodeid, _id, _r);
@@ -212,8 +212,8 @@ void dev::bacd::DposClient::init(p2p::Host & /*_host*/, int /*_netWorkId*/)
 							[this](NodeID const& _nodeid, u256 const& _peerCapabilityVersion){
 								dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
 							});
-	_host.registerCapability(ethCapability);
-	dpos()->initEnv(ethCapability);*/
+	_host.registerCapability(brcCapability);
+	dpos()->initEnv(brcCapability);*/
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
 }

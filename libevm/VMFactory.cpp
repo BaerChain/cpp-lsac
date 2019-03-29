@@ -2,7 +2,7 @@
 #include "EVMC.h"
 #include "LegacyVM.h"
 
-#include <libaleth-interpreter/interpreter.h>
+#include <libbrcd-interpreter/interpreter.h>
 
 #include <evmc/loader.h>
 
@@ -10,7 +10,7 @@ namespace po = boost::program_options;
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 namespace
 {
@@ -180,5 +180,5 @@ VMPtr VMFactory::create(VMKind _kind)
         return {new LegacyVM, default_delete};
     }
 }
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

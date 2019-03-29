@@ -1,9 +1,9 @@
 #include "WebThree.h"
 
-#include <libethashseal/Ethash.h>
-#include <libethashseal/EthashClient.h>
-#include <libethereum/ClientTest.h>
-#include <libethereum/EthereumCapability.h>
+#include <libbrchashseal/Brchash.h>
+#include <libbrchashseal/BrchashClient.h>
+#include <libbrcdchain/ClientTest.h>
+#include <libbrcdchain/BrcdChainCapability.h>
 
 #include <libpoaseal/Poa.h>
 #include <libpoaseal/PoaClient.h>
@@ -11,7 +11,7 @@
 #include <libdposseal/Dpos.h>
 #include <libdposseal/DposClient.h>
 
-#include <aleth/buildinfo.h>
+#include <brcd/buildinfo.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
@@ -19,43 +19,43 @@
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
-using namespace dev::eth;
+using namespace dev::brc;
 using namespace dev::shh;
 
 static_assert(BOOST_VERSION >= 106400, "Wrong boost headers version");
 
 WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
                                boost::filesystem::path const &_dbPath, boost::filesystem::path const &_snapshotPath,
-                               eth::ChainParams const &_params, WithExisting _we,
+                               brc::ChainParams const &_params, WithExisting _we,
                                std::set<std::string> const &_interfaces,
                                NetworkConfig const &_n, bytesConstRef _network, bool _testing)
         : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network) {
-    if (_interfaces.count("eth")) {
+    if (_interfaces.count("brc")) {
         if (_testing)
-            m_ethereum.reset(new eth::ClientTest(
+            m_brcdChain.reset(new brc::ClientTest(
                     _params, (int) _params.networkID, m_net, shared_ptr<GasPricer>(), _dbPath, _we));
         else {
-            if (_params.sealEngineName == Ethash::name())
-                m_ethereum.reset(new eth::EthashClient(_params, (int) _params.networkID, m_net,
+            if (_params.sealEngineName == Brchash::name())
+                m_brcdChain.reset(new brc::BrchashClient(_params, (int) _params.networkID, m_net,
                                                        shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == NoProof::name())
-                m_ethereum.reset(new eth::Client(_params, (int) _params.networkID, m_net,
+                m_brcdChain.reset(new brc::Client(_params, (int) _params.networkID, m_net,
                                                  shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == Poa::name())
-                m_ethereum.reset(new eth::PoaClient(_params, (int) _params.networkID, m_net,
+                m_brcdChain.reset(new brc::PoaClient(_params, (int) _params.networkID, m_net,
                                                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == bacd::Dpos::name())
-                m_ethereum.reset(new bacd::DposClient(_params, (int) _params.networkID, m_net,
+                m_brcdChain.reset(new bacd::DposClient(_params, (int) _params.networkID, m_net,
                                                       shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
                         "Unknown seal engine: " + _params.sealEngineName));
         }
         std::cout << "start of startWorking" << std::endl;
-        m_ethereum->startWorking();
+        m_brcdChain->startWorking();
         std::cout << "end of startWorking" << std::endl;
-        const auto *buildinfo = aleth_get_buildinfo();
-        m_ethereum->setExtraData(rlpList(0, string{buildinfo->project_version}.substr(0, 5) + "++" +
+        const auto *buildinfo = brcd_get_buildinfo();
+        m_brcdChain->setExtraData(rlpList(0, string{buildinfo->project_version}.substr(0, 5) + "++" +
                                             string{buildinfo->git_commit_hash}.substr(0, 4) +
                                             string{buildinfo->build_type}.substr(0, 1) +
                                             string{buildinfo->system_name}.substr(0, 5) +
@@ -65,20 +65,20 @@ WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
 
 WebThreeDirect::~WebThreeDirect() {
     // Utterly horrible right now - WebThree owns everything (good), but:
-    // m_net (Host) owns the eth::EthereumHost via a shared_ptr.
-    // The eth::EthereumHost depends on eth::Client (it maintains a reference to the BlockChain field of Client).
-    // eth::Client (owned by us via a unique_ptr) uses eth::EthereumHost (via a weak_ptr).
+    // m_net (Host) owns the brc::BrcdChainHost via a shared_ptr.
+    // The brc::BrcdChainHost depends on brc::Client (it maintains a reference to the BlockChain field of Client).
+    // brc::Client (owned by us via a unique_ptr) uses brc::BrcdChainHost (via a weak_ptr).
     // Really need to work out a clean way of organising ownership and guaranteeing startup/shutdown is perfect.
 
     // Have to call stop here to get the Host to kill its io_service otherwise we end up with left-over reads,
-    // still referencing Sessions getting deleted *after* m_ethereum is reset, causing bad things to happen, since
-    // the guarantee is that m_ethereum is only reset *after* all sessions have ended (sessions are allowed to
-    // use bits of data owned by m_ethereum).
+    // still referencing Sessions getting deleted *after* m_brcdChain is reset, causing bad things to happen, since
+    // the guarantee is that m_brcdChain is only reset *after* all sessions have ended (sessions are allowed to
+    // use bits of data owned by m_brcdChain).
     m_net.stop();
 }
 
 std::string WebThreeDirect::composeClientVersion(std::string const &_client) {
-    const auto *buildinfo = aleth_get_buildinfo();
+    const auto *buildinfo = brcd_get_buildinfo();
     return _client + "/" + buildinfo->project_version + "/" + buildinfo->system_name + "/" +
            buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
 }
