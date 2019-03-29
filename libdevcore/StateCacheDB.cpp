@@ -72,7 +72,7 @@ void StateCacheDB::insert(h256 const& _h, bytesConstRef _v)
     }
     else
         m_main[_h] = make_pair(_v.toString(), 1);
-#if ETH_PARANOIA
+#if BRC_PARANOIA
     cdebug << "INST" << _h << "=>" << m_main[_h].second;
 #endif
 }
@@ -89,7 +89,7 @@ bool StateCacheDB::kill(h256 const& _h)
             m_main[_h].second--;
             return true;
         }
-#if ETH_PARANOIA
+#if BRC_PARANOIA
         else
         {
             // If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously

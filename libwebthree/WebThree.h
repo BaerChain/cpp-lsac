@@ -11,8 +11,8 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
-#include <libethereum/Client.h>
-#include <libethereum/ChainParams.h>
+#include <libbrcdchain/Client.h>
+#include <libbrcdchain/ChainParams.h>
 
 namespace dev
 {
@@ -24,7 +24,7 @@ enum WorkState
     Deleted
 };
 
-namespace eth { class Interface; }
+namespace brc { class Interface; }
 namespace shh { class Interface; }
 namespace bzz { class Interface; class Client; }
 
@@ -88,11 +88,11 @@ class WebThreeDirect: public NetworkFace
 {
 public:
     /// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
-    /// ethereum() may be safely static_cast()ed to a eth::Client*.
+    /// brcdChain() may be safely static_cast()ed to a brc::Client*.
     WebThreeDirect(std::string const& _clientVersion, boost::filesystem::path const& _dbPath,
-        boost::filesystem::path const& _snapshotPath, eth::ChainParams const& _params,
+        boost::filesystem::path const& _snapshotPath, brc::ChainParams const& _params,
         WithExisting _we = WithExisting::Trust,
-        std::set<std::string> const& _interfaces = {"eth", "shh", "bzz"},
+        std::set<std::string> const& _interfaces = {"brc", "shh", "bzz"},
         p2p::NetworkConfig const& _n = p2p::NetworkConfig{},
         bytesConstRef _network = bytesConstRef(), bool _testing = false);
 
@@ -101,11 +101,11 @@ public:
 
     // The mainline interfaces:
 
-    eth::Client* ethereum() const
+    brc::Client* brcdChain() const
     {
-        if (!m_ethereum)
-            BOOST_THROW_EXCEPTION(InterfaceNotSupported() << errinfo_interface("eth"));
-        return m_ethereum.get();
+        if (!m_brcdChain)
+            BOOST_THROW_EXCEPTION(InterfaceNotSupported() << errinfo_interface("brc"));
+        return m_brcdChain.get();
     }
 
     // Misc stuff:
@@ -153,7 +153,7 @@ public:
     
     p2p::NodeInfo nodeInfo() const override { return m_net.nodeInfo(); }
 
-    u256 networkId() const override { return m_ethereum.get()->networkId(); }
+    u256 networkId() const override { return m_brcdChain.get()->networkId(); }
 
     std::string enode() const override { return m_net.enode(); }
 
@@ -169,7 +169,7 @@ public:
 private:
     std::string m_clientVersion;                    ///< Our end-application client's name/version.
 
-    std::unique_ptr<eth::Client> m_ethereum;        ///< Client for Ethereum ("eth") protocol.
+    std::unique_ptr<brc::Client> m_brcdChain;        ///< Client for BrcdChain ("brc") protocol.
 
     p2p::Host m_net;                                ///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 };

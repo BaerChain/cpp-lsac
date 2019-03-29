@@ -6,7 +6,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 enum class VMKind
 {
@@ -39,5 +39,5 @@ public:
     /// Creates a VM instance of the kind provided.
     static VMPtr create(VMKind _kind);
 };
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

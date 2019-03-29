@@ -1,12 +1,14 @@
-# Aleth: Ethereum C++ client, tools and libraries.
-# Copyright 2018 Aleth Autors.
-# Licensed under the GNU General Public License, Version 3. See the LICENSE file.
 
 cmake_minimum_required(VERSION 3.9.3)
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 endif()
+
+
+#add_compile_options(-Werror -Wunused-variable -Wno-unused-parameter)
+add_compile_options(-Wno-unused-parameter)
+
 
 include(cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
@@ -16,8 +18,8 @@ include(GNUInstallDirs)
 
 cable_configure_toolchain(DEFAULT cxx11-pic)
 
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
-list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
+set(BRC_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
+list(APPEND CMAKE_MODULE_PATH ${BRC_CMAKE_DIR})
 
 # Map current configuration to configurations of imported targets.
 set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release)
@@ -25,7 +27,6 @@ set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
 
 set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
 set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
-set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
 set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
 
 # In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
@@ -44,12 +45,12 @@ HunterGate(
     LOCAL
 )
 
-project(aleth)
+project(brcd)
 set(PROJECT_VERSION 1.5.0-alpha.6)
 
 cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
-cable_add_buildinfo_library(PROJECT_NAME aleth)
+cable_add_buildinfo_library(PROJECT_NAME brcd)
 
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY On)
 
@@ -59,6 +60,7 @@ include(EthCompilerSettings)
 include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
+#include(ProjectMHD)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
@@ -82,6 +84,28 @@ find_package(libscrypt CONFIG REQUIRED)
 
 hunter_add_package(ethash)
 find_package(ethash CONFIG REQUIRED)
+
+find_package(MHD REQUIRED)
+#
+#IF(NOT ${MIRCROHTTPD_ROOT} STREQUAL "")
+#    message(STATUS "MIRCROHTTPD_ROOT: ${MIRCROHTTPD_ROOT}")
+#    set(MIRCROHTTPD_INCLUDE ${MIRCROHTTPD_ROOT}/include)
+#    set(MIRCROHTTPD_LIBRARY ${MIRCROHTTPD_ROOT}/lib)
+#    ELSE()
+#    message(FATAL_ERROR "please set  micorhttpd root : MIRCROHTTPD_ROOT.")
+#ENDIF()
+
+##openssl
+find_package(OpenSSL REQUIRED)
+IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+    set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR} )
+    set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+    message(STATUS "Setting up OpenSSL root and include vars to ${OPENSSL_ROOT_DIR}, ${OPENSSL_INCLUDE_DIR}")
+    IF("${OPENSSL_ROOT_DIR}" STREQUAL "")
+        hunter_add_package(OpenSSL)
+    ENDIF()
+ENDIF()
+
 
 include(ProjectSecp256k1)
 include(ProjectLibFF)
@@ -107,38 +131,41 @@ add_subdirectory(evmc)
 #Global include path for all libs.
 include_directories("${CMAKE_SOURCE_DIR}")
 
-option(ALETH_INTERPRETER_SHARED "Build aleth-interpreter as a shared library" OFF)
-add_subdirectory(libaleth-interpreter)
+option(ALETH_INTERPRETER_SHARED "Build brcd-interpreter as a shared library" OFF)
+add_subdirectory(libbrcd-interpreter)
 
 add_subdirectory(libdevcore)
 add_subdirectory(libdevcrypto)
 add_subdirectory(libp2p)
 
-add_subdirectory(libethcore)
+add_subdirectory(libbrccore)
 add_subdirectory(libevm)
-add_subdirectory(libethereum)
-add_subdirectory(libethashseal)
+add_subdirectory(libbrcdchain)
+add_subdirectory(libbrchashseal)
 add_subdirectory(libpoaseal)
 add_subdirectory(libdposseal)
 
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
 
-add_subdirectory(aleth)
+add_subdirectory(brcd)
+
+add_subdirectory(wallet)
 
 if (TOOLS)
-    add_subdirectory(aleth-key)
-    add_subdirectory(aleth-vm)
+    add_subdirectory(brcd-key)
+    add_subdirectory(brcd-vm)
     add_subdirectory(rlp)
 endif()
 
+add_subdirectory(test)
 #if (TESTS)
 #    enable_testing()
 #    add_subdirectory(test)
 #endif()
 
 
-install(FILES ${PROJECT_BINARY_DIR}/aleth/buildinfo.json DESTINATION ${CMAKE_INSTALL_DATADIR}/aleth)
+install(FILES ${PROJECT_BINARY_DIR}/brcd/buildinfo.json DESTINATION ${CMAKE_INSTALL_DATADIR}/brcd)
 
 
 if(WIN32)

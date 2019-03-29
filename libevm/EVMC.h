@@ -7,7 +7,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 /// The RAII wrapper for an EVMC instance.

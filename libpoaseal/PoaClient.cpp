@@ -4,25 +4,25 @@
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 using namespace p2p;
 namespace fs = boost::filesystem;
 
-PoaClient& dev::eth::asPoaClient(Interface& _c)
+PoaClient& dev::brc::asPoaClient(Interface& _c)
 {
     if (dynamic_cast<Poa*>(_c.sealEngine()))
         return dynamic_cast<PoaClient&>(_c);
     throw InvalidPoaSealEngine();
 }
 
-PoaClient* dev::eth::asPoaClient(Interface* _c)
+PoaClient* dev::brc::asPoaClient(Interface* _c)
 {
     if (dynamic_cast<Poa*>(_c->sealEngine()))
         return &dynamic_cast<PoaClient&>(*_c);
     throw InvalidPoaSealEngine();
 }
 
-dev::eth::PoaClient::PoaClient(ChainParams const& _params, int _networkID, p2p::Host& _host,
+dev::brc::PoaClient::PoaClient(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath,
     boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,
     TransactionQueue::Limits const& _l)
@@ -35,18 +35,18 @@ dev::eth::PoaClient::PoaClient(ChainParams const& _params, int _networkID, p2p::
 	init(_host, _networkID);
 }
 
-dev::eth::PoaClient::~PoaClient()
+dev::brc::PoaClient::~PoaClient()
 {
     // to wake up the thread from Client::doWork()
     m_signalled.notify_all();
     terminate();
 }
 
-void dev::eth::PoaClient::init(p2p::Host& _host, int _networkID)
+void dev::brc::PoaClient::init(p2p::Host& _host, int _networkID)
 {
     //关联 host 管理的CapabilityHostFace 接口
 	cdebug << "capabilityHost :: PoaHostCapability";
-	auto ethCapability = make_shared<PoaHostCapability>(_host.capabilityHost(), 
+	auto brcCapability = make_shared<PoaHostCapability>(_host.capabilityHost(), 
 		_networkID,
 		[this](NodeID _nodeid, unsigned _id, RLP const& _r){
 		poa()->onPoaMsg(_nodeid, _id, _r);
@@ -55,18 +55,18 @@ void dev::eth::PoaClient::init(p2p::Host& _host, int _networkID)
 			poa()->requestStatus(_nodeid, _peerCapabilityVersion);
 		}
 		);
-	_host.registerCapability(ethCapability);
+	_host.registerCapability(brcCapability);
 	poa()->initPoaValidatorAccounts(m_params.poaValidatorAccount);
-	poa()->initEnv(ethCapability);
+	poa()->initEnv(brcCapability);
 	poa()->startGeneration();
 }
 
-Poa* dev::eth::PoaClient::poa() const
+Poa* dev::brc::PoaClient::poa() const
 {
     return dynamic_cast<Poa*>(Client::sealEngine());
 }
 
-void dev::eth::PoaClient::doWork(bool _doWait)
+void dev::brc::PoaClient::doWork(bool _doWait)
 {
     //重载dowork 写入poa逻辑
     bool t = true;
@@ -105,7 +105,7 @@ void dev::eth::PoaClient::doWork(bool _doWait)
     }
 }
 
-void dev::eth::PoaClient::startSealing()
+void dev::brc::PoaClient::startSealing()
 {
     setName("PoaClient");
     // TODO PoaCLient func
@@ -113,14 +113,14 @@ void dev::eth::PoaClient::startSealing()
     Client::startSealing();
 }
 
-void dev::eth::PoaClient::stopSealing()
+void dev::brc::PoaClient::stopSealing()
 {
     Client::stopSealing();
     // TODO dposCleint func
     cdebug << "PoaClient: into stopSealing";
 }
 
-void dev::eth::PoaClient::rejigSealing()
+void dev::brc::PoaClient::rejigSealing()
 {
     if (!m_wouldSeal)
         return;
@@ -138,14 +138,14 @@ void dev::eth::PoaClient::rejigSealing()
     Client::rejigSealing();
 }
 
-void dev::eth::PoaClient::syncBlockQueue()
+void dev::brc::PoaClient::syncBlockQueue()
 {
     // cdebug << "PoaClient: into syncBlockQueue";
     Client::syncBlockQueue();
     // TODO dposClient func
 }
 
-bool dev::eth::PoaClient::setValidator(const std::string& _address, bool _ret)
+bool dev::brc::PoaClient::setValidator(const std::string& _address, bool _ret)
 {
     //更改权限
     //cdebug << "_address:" << _address << "|| _ret:" << _ret ;
@@ -173,7 +173,7 @@ bool dev::eth::PoaClient::setValidator(const std::string& _address, bool _ret)
     验证人更改
     ret:true 添加
 */
-bool dev::eth::PoaClient::setValidatorAccount(const std::string& _address, bool _ret)
+bool dev::brc::PoaClient::setValidatorAccount(const std::string& _address, bool _ret)
 {
     bool ret = setValidator(_address, _ret);
     // TODO 通知其他节点

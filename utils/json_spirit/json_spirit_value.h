@@ -1,7 +1,5 @@
 #ifndef JSON_SPIRIT_VALUE
 #define JSON_SPIRIT_VALUE
-
-
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 # pragma once
 #endif

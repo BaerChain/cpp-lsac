@@ -160,11 +160,6 @@ Node::Node(NodeSpec const& _s, PeerType _p):
 
 NodeSpec::NodeSpec(string const& _user)
 {
-    // Format described here: https://github.com/ethereum/wiki/wiki/enode-url-format
-    // Example valid URLs:
-    //      enode://6332792c4a00e3e4ee0926ed89e0d27ef985424d97b6a45bf0f23e51f0dcb5e66b875777506458aea7af6f9e4ffb69f43f3778ee73c81ed9d34c51c4b16b0b0f@52.232.243.152:30305
-    //      enode://6332792c4a00e3e4ee0926ed89e0d27ef985424d97b6a45bf0f23e51f0dcb5e66b875777506458aea7af6f9e4ffb69f43f3778ee73c81ed9d34c51c4b16b0b0f@52.232.243.152:30305?discport=30303
-    //      enode://6332792c4a00e3e4ee0926ed89e0d27ef985424d97b6a45bf0f23e51f0dcb5e66b875777506458aea7af6f9e4ffb69f43f3778ee73c81ed9d34c51c4b16b0b0f@52.232.243.152
     const char* peerPattern = "^(enode://)([\\dabcdef]{128})@(\\d{1,3}.\\d{1,3}.\\d{1,3}.\\d{1,3})((:\\d{2,5})(\\?discport=(\\d{2,5}))?)?$";
     regex rx(peerPattern);
     smatch match;

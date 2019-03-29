@@ -1,22 +1,22 @@
 #include <jsonrpccpp/common/exception.h>
-#include <libethcore/KeyManager.h>
+#include <libbrccore/KeyManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
-#include <libethcore/CommonJS.h>
+#include <libbrccore/CommonJS.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libethereum/Client.h>
+#include <libbrcdchain/Client.h>
 
 #include "Personal.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::rpc;
-using namespace dev::eth;
+using namespace dev::brc;
 using namespace jsonrpc;
 
-Personal::Personal(KeyManager& _keyManager, AccountHolder& _accountHolder, eth::Interface& _eth):
+Personal::Personal(KeyManager& _keyManager, AccountHolder& _accountHolder, brc::Interface& _brc):
 	m_keyManager(_keyManager),
 	m_accountHolder(_accountHolder),
-	m_eth(_eth)
+	m_brc(_brc)
 {
 }
 
@@ -66,8 +66,8 @@ string Personal::personal_sendTransaction(Json::Value const& _transaction, strin
 		}
         std::cout<<"////////////////////// this transation is vote:"<< (int)isVote << std::endl;
 		if(isVote)
-			return toJS(m_eth.submitTransaction(t, s, flag));*/
-		return toJS(m_eth.submitTransaction(t, s));
+			return toJS(m_brc.submitTransaction(t, s, flag));*/
+		return toJS(m_brc.submitTransaction(t, s));
         
 	}
 	BOOST_THROW_EXCEPTION(JsonRpcException("Invalid password or account."));
@@ -92,7 +92,7 @@ string Personal::personal_sendTransaction(Json::Value const& _transaction, strin
 	if (Secret s = m_keyManager.secret(t.from, [&](){ return _password; }, false))
 	{
 		// return the tx hash
-		return toJS(m_eth.submitTransaction(t, s, flag));
+		return toJS(m_brc.submitTransaction(t, s, flag));
 
         //return "yes";
 	}

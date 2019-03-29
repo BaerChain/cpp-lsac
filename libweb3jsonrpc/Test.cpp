@@ -2,24 +2,24 @@
 #include <jsonrpccpp/common/errors.h>
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonJS.h>
-#include <libethereum/ChainParams.h>
-#include <libethereum/ClientTest.h>
+#include <libbrcdchain/ChainParams.h>
+#include <libbrcdchain/ClientTest.h>
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 using namespace dev::rpc;
 using namespace jsonrpc;
 
-Test::Test(eth::Client& _eth): m_eth(_eth) {}
+Test::Test(brc::Client& _brc): m_brc(_brc) {}
 
 namespace
 {
-string logEntriesToLogHash(eth::LogEntries const& _logs)
+string logEntriesToLogHash(brc::LogEntries const& _logs)
 {
     RLPStream s;
     s.appendList(_logs.size());
-    for (eth::LogEntry const& l : _logs)
+    for (brc::LogEntry const& l : _logs)
         l.streamRLP(s);
     return toJS(sha3(s.out()));
 }
@@ -42,10 +42,10 @@ string Test::test_getLogHash(string const& _txHash)
     try
     {
         h256 txHash = stringToHash(_txHash);
-        if (m_eth.blockChain().isKnownTransaction(txHash))
+        if (m_brc.blockChain().isKnownTransaction(txHash))
         {
-            LocalisedTransaction t = m_eth.localisedTransaction(txHash);
-            BlockReceipts const& blockReceipts = m_eth.blockChain().receipts(t.blockHash());
+            LocalisedTransaction t = m_brc.localisedTransaction(txHash);
+            BlockReceipts const& blockReceipts = m_brc.blockChain().receipts(t.blockHash());
             if (blockReceipts.receipts.size() != 0)
                 return logEntriesToLogHash(blockReceipts.receipts[t.transactionIndex()].log());
         }
@@ -64,8 +64,8 @@ bool Test::test_setChainParams(Json::Value const& param1)
     {
         Json::FastWriter fastWriter;
         std::string output = fastWriter.write(param1);
-        asClientTest(m_eth).setChainParams(output);
-        asClientTest(m_eth).completeSync();  // set sync state to idle for mining
+        asClientTest(m_brc).setChainParams(output);
+        asClientTest(m_brc).completeSync();  // set sync state to idle for mining
         return true;
     }
     catch (std::exception const& ex)
@@ -77,7 +77,7 @@ bool Test::test_setChainParams(Json::Value const& param1)
 
 bool Test::test_mineBlocks(int _number)
 {
-    if (!asClientTest(m_eth).mineBlocks(_number))  // Synchronous
+    if (!asClientTest(m_brc).mineBlocks(_number))  // Synchronous
         throw JsonRpcException("Mining failed.");
     return true;
 }
@@ -87,7 +87,7 @@ bool Test::test_modifyTimestamp(int _timestamp)
     // FIXME: Fix year 2038 issue.
     try
     {
-        asClientTest(m_eth).modifyTimestamp(_timestamp);
+        asClientTest(m_brc).modifyTimestamp(_timestamp);
     }
     catch (std::exception const&)
     {
@@ -100,8 +100,8 @@ bool Test::test_rewindToBlock(int _number)
 {
     try
     {
-        m_eth.rewind(_number);
-        asClientTest(m_eth).completeSync();
+        m_brc.rewind(_number);
+        asClientTest(m_brc).completeSync();
     }
     catch (std::exception const&)
     {
@@ -114,7 +114,7 @@ std::string Test::test_importRawBlock(string const& _blockRLP)
 {
     try
     {
-        ClientTest& client = asClientTest(m_eth);
+        ClientTest& client = asClientTest(m_brc);
         return toJS(client.importRawBlock(_blockRLP));
     }
     catch (std::exception const& ex)

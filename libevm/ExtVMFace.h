@@ -2,10 +2,10 @@
 
 #include "Instruction.h"
 
-#include <libethcore/BlockHeader.h>
-#include <libethcore/ChainOperationParams.h>
-#include <libethcore/Common.h>
-#include <libethcore/LogEntry.h>
+#include <libbrccore/BlockHeader.h>
+#include <libbrccore/ChainOperationParams.h>
+#include <libbrccore/Common.h>
+#include <libbrccore/LogEntry.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/SHA3.h>
@@ -19,7 +19,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 /// Reference to a slice of buffer that also owns the buffer.
@@ -130,7 +130,7 @@ public:
         m_lastHashes(_lh),
         m_gasUsed(_gasUsed)
     {}
-    // Constructor with custom gasLimit - used in some synthetic scenarios like eth_estimateGas    RPC method
+    // Constructor with custom gasLimit - used in some synthetic scenarios like brc_estimateGas    RPC method
     EnvInfo(BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed, u256 const& _gasLimit):
         EnvInfo(_current, _lh, _gasUsed)
     {

@@ -1,4 +1,4 @@
-# Aleth Coding Style
+# Brcd Coding Style
 
 ## Code Formatting
 

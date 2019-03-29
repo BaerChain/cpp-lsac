@@ -4,13 +4,13 @@
 */
 #include "Common.h"
 #include "PoaHostCapability.h"
-#include <libethcore/SealEngine.h>
-#include <libethcore/Common.h>
+#include <libbrccore/SealEngine.h>
+#include <libbrccore/Common.h>
 #include <libp2p/Common.h>
 #include <libdevcore/Worker.h>
 namespace dev
 {
-namespace eth
+namespace brc
 {
 class Poa : public SealEngineBase, Worker
 {
@@ -68,5 +68,5 @@ private:
 	std::vector<DelPoaValitor>          m_del_poaValitors;       //被删除验证人集合，主要是验证轮流出块时 使用一次，使用后删除
 };
 
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

@@ -4,7 +4,7 @@
 namespace dev
 {
 
-namespace eth
+namespace brc
 {
 class Client;
 }
@@ -15,7 +15,7 @@ namespace rpc
 class Test: public TestFace
 {
 public:
-    Test(eth::Client& _eth);
+    Test(brc::Client& _brc);
     virtual RPCModules implementedModules() const override
     {
         return RPCModules{RPCModule{"test", "1.0"}};
@@ -28,7 +28,7 @@ public:
     virtual bool test_rewindToBlock(int _number) override;
 
 private:
-    eth::Client& m_eth;
+    brc::Client& m_brc;
 };
 
 }

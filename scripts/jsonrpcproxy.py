@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 
+"""
+JSON-RPC Proxy
 
+This Python script provides HTTP proxy to Unix Socket based JSON-RPC servers.
+Check out --help option for more information.
+
+Build with cython:
+
+cython rpcproxy.py --embed
+gcc -O3 -I /usr/include/python3.5m -o rpcproxy rpcproxy.c \
+-Wl,-Bstatic -lpython3.5m -lz -lexpat -lutil -Wl,-Bdynamic -lpthread -ldl -lm
+
+"""
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -244,7 +256,7 @@ if sys.platform == 'win32':
     DEFAULT_BACKEND_PATH = r'\\.\pipe\geth.ipc'
     BACKEND_PATH_HELP = "Named Pipe of a backend RPC server"
 else:
-    DEFAULT_BACKEND_PATH = '~/.ethereum/geth.ipc'
+    DEFAULT_BACKEND_PATH = '~/.bearChain/geth.ipc'
     BACKEND_PATH_HELP = "Unix Socket of a backend RPC server"
 
 DEFAULT_PROXY_URL = 'http://127.0.0.1:8545'

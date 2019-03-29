@@ -32,7 +32,7 @@ public:
     virtual ~ServerInterface() {}
     Methods const& methods() const { return m_methods; }
     Notifications const& notifications() const { return m_notifications; }
-    /// @returns which interfaces (eth, admin, db, ...) this class implements in which version.
+    /// @returns which interfaces (brc, admin, db, ...) this class implements in which version.
     virtual RPCModules implementedModules() const = 0;
 
 protected:

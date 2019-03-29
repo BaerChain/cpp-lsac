@@ -123,7 +123,7 @@ bool OverlayDB::exists(h256 const& _h) const
 
 void OverlayDB::kill(h256 const& _h)
 {
-#if ETH_PARANOIA || 1
+#if BRC_PARANOIA || 1
     if (!StateCacheDB::kill(_h))
     {
         if (m_db)

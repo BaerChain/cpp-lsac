@@ -1,7 +1,5 @@
 #ifndef JSON_SPIRIT_READER
 #define JSON_SPIRIT_READER
-
-
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 # pragma once
 #endif

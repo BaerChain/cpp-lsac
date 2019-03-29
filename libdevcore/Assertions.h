@@ -7,15 +7,15 @@ namespace dev
 {
 
 #if defined(_MSC_VER)
-#define ETH_FUNC __FUNCSIG__
+#define BRC_FUNC __FUNCSIG__
 #elif defined(__GNUC__)
-#define ETH_FUNC __PRETTY_FUNCTION__
+#define BRC_FUNC __PRETTY_FUNCTION__
 #else
-#define ETH_FUNC __func__
+#define BRC_FUNC __func__
 #endif
 
-#define asserts(A) ::dev::assertAux(A, #A, __LINE__, __FILE__, ETH_FUNC)
-#define assertsEqual(A, B) ::dev::assertEqualAux(A, B, #A, #B, __LINE__, __FILE__, ETH_FUNC)
+#define asserts(A) ::dev::assertAux(A, #A, __LINE__, __FILE__, BRC_FUNC)
+#define assertsEqual(A, B) ::dev::assertEqualAux(A, B, #A, #B, __LINE__, __FILE__, BRC_FUNC)
 
 inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func)
 {
@@ -40,7 +40,7 @@ inline bool assertEqualAux(A const& _a, B const& _b, char const* _aStr, char con
 /// Use it as assertThrow(1 == 1, ExceptionType, "Mathematics is wrong.");
 /// Do NOT supply an exception object as the second parameter.
 #define assertThrow(_condition, _ExceptionType, _description) \
-	::dev::assertThrowAux<_ExceptionType>(_condition, _description, __LINE__, __FILE__, ETH_FUNC)
+	::dev::assertThrowAux<_ExceptionType>(_condition, _description, __LINE__, __FILE__, BRC_FUNC)
 
 using errinfo_comment = boost::error_info<struct tag_comment, std::string>;
 

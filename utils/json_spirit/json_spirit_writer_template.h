@@ -1,7 +1,5 @@
 #ifndef JSON_SPIRIT_WRITER_TEMPLATE
 #define JSON_SPIRIT_WRITER_TEMPLATE
-
-
 #include "json_spirit_value.h"
 
 #include <cassert>

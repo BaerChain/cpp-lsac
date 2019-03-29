@@ -1,12 +1,12 @@
 #include "DposVoteState.h"
-#include <libethcore/TransactionBase.h>
+#include <libbrccore/TransactionBase.h>
 
-using namespace dev::eth;
+using namespace dev::brc;
 
 /**********************DposState start****************************/
 void dev::bacd::DposVoteState::excuteTransation(TransactionBase const & _t, BlockHeader const & _h)
 {
-	LOG(m_logger) << EthYellow << " excuteTransation ......................." << EthReset;
+	LOG(m_logger) << BrcYellow << " excuteTransation ......................." << BrcReset;
 	if(_t.data().empty())
 		return;
 	RLP rlp(_t.data());
@@ -48,7 +48,7 @@ void dev::bacd::DposVoteState::excuteTransation(TransactionBase const & _t, Bloc
     m_transations.push_back(t_ret);
     m_onResult.push_back(OnDealTransationResult(EDPosResult::e_Add, t_ret));
 	setUpdateTime(utcTimeMilliSec());
-    cdebug <<EthYellow "excute transation ret:" << t_ret << EthReset;
+    cdebug <<BrcYellow "excute transation ret:" << t_ret << BrcReset;
 }
 
 void dev::bacd::DposVoteState::excuteTransation(bytes const & _t, BlockHeader const & _h)
@@ -63,15 +63,15 @@ void dev::bacd::DposVoteState::verifyVoteTransation(BlockHeader const & _h, h256
         return;
     /* for (auto val : _t_hashs)
      {
-         LOG(m_logger) << EthYellow << _h.number() - m_config.verifyVoteNum << " Block transations hash" << val << EthYellow;
+         LOG(m_logger) << BrcYellow << _h.number() - m_config.verifyVoteNum << " Block transations hash" << val << BrcYellow;
      }*/
     m_onResult.clear();
     //size_t curr_epoch = _h.timestamp() / m_config.epochInterval;
     std::vector<DposTransaTionResult>::iterator iter = m_transations.begin();
     for(; iter != m_transations.end();)
     {
-        //LOG(m_logger) << EthYellow "m_transations epoch:" << iter->m_epoch << "|cuur_epoch :" << curr_epoch << EthYellow;
-        LOG(m_logger) << EthYellow "result:" << *iter << EthYellow;
+        //LOG(m_logger) << BrcYellow "m_transations epoch:" << iter->m_epoch << "|cuur_epoch :" << curr_epoch << BrcYellow;
+        LOG(m_logger) << BrcYellow "result:" << *iter << BrcYellow;
         if(iter->m_effect == e_timeOut)
 		{
 			m_onResult.push_back(OnDealTransationResult(EDPosResult::e_Dell, *iter));

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Common.h"
-#include <libethcore/SealEngine.h>
-#include <libethcore/Common.h>
+#include <libbrccore/SealEngine.h>
+#include <libbrccore/Common.h>
 #include <libp2p/Common.h>
 #include <libdevcore/Worker.h>
 #include "DposClient.h"
@@ -11,7 +11,7 @@ namespace dev
 {
     namespace bacd
     {
-        using namespace dev ::eth;
+        using namespace dev ::brc;
         typedef std::function<BlockHeader ()> OnGetHeader;
 
         class Dpos: public SealEngineBase

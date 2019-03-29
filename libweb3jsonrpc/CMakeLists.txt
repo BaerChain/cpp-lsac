@@ -1,18 +1,18 @@
 set(sources
     AccountHolder.cpp
     AccountHolder.h
-    AdminEth.cpp
-    AdminEth.h
-    AdminEthFace.h
+    AdminBrc.cpp
+    AdminBrc.h
+    AdminBrcFace.h
     AdminNet.cpp
     AdminNet.h
     AdminNetFace.h
     Debug.cpp
     Debug.h
     DebugFace.h
-    Eth.cpp
-    Eth.h
-    EthFace.h
+    Brc.cpp
+    Brc.h
+    BrcFace.h
     IpcServer.h
     IpcServerBase.cpp
     IpcServerBase.h
@@ -47,7 +47,7 @@ endif()
 add_library(web3jsonrpc ${sources})
 
 jsonrpcstub_create(
-    web3jsonrpc eth.json
+    web3jsonrpc brc.json
     dev::rpc::EthFace ${CMAKE_CURRENT_SOURCE_DIR} EthFace
     EthClient ${CMAKE_CURRENT_BINARY_DIR} EthClient
 )
@@ -72,7 +72,7 @@ jsonrpcstub_create(web3jsonrpc admin_net.json
     AdminNetClient ${CMAKE_CURRENT_BINARY_DIR} AdminNetClient
 )
 
-jsonrpcstub_create(web3jsonrpc admin_eth.json
+jsonrpcstub_create(web3jsonrpc admin_brc.json
     dev::rpc::AdminEthFace ${CMAKE_CURRENT_SOURCE_DIR} AdminEthFace
     AdminEthClient ${CMAKE_CURRENT_BINARY_DIR} AdminEthClient
 )
@@ -87,5 +87,5 @@ jsonrpcstub_create(web3jsonrpc test.json
     TestClient ${CMAKE_CURRENT_BINARY_DIR} TestClient
 )
 
-target_link_libraries(web3jsonrpc ethashseal webthree libjson-rpc-cpp::server ${MHD_LIBRARIES})
+target_link_libraries(web3jsonrpc brchashseal webthree libjson-rpc-cpp::server ${MHD_LIBRARIES})
 target_include_directories(web3jsonrpc PUBLIC ${MHD_INCLUDE_DIRS})

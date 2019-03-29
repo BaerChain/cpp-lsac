@@ -5,7 +5,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 EVM::EVM(evmc_instance* _instance) noexcept : m_instance(_instance)
 {
@@ -127,5 +127,5 @@ evmc_revision EVM::toRevision(EVMSchedule const& _schedule)
         return EVMC_HOMESTEAD;
     return EVMC_FRONTIER;
 }
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

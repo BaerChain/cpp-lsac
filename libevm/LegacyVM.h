@@ -6,7 +6,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 
 class LegacyVM: public VMFace

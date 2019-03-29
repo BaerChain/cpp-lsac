@@ -1,13 +1,18 @@
+/*
+    PoaClient.h
+    管理调用 Poa.h 的接口
+    POA 指定用户轮流出块，必须保证 配置验证用户能正常出块 否则会等待
+ */
 #pragma once
 #include "Poa.h"
 #include <libp2p/Host.h>
-#include <libethcore/KeyManager.h>
-#include <libethereum/Client.h>
+#include <libbrccore/KeyManager.h>
+#include <libbrcdchain/Client.h>
 #include <boost/filesystem/path.hpp>
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 class Poa;
 DEV_SIMPLE_EXCEPTION(InvalidPoaSealEngine);
@@ -55,5 +60,5 @@ private:
 PoaClient& asPoaClient(Interface& _c);
 PoaClient* asPoaClient(Interface* _c);
 
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

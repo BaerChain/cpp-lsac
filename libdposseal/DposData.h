@@ -3,13 +3,13 @@
 #include <iostream>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Exceptions.h>
+#include <libbrccore/Exceptions.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Address.h>
 
 namespace dev
 {
-    namespace eth
+    namespace brc
     {
 
     enum EVoteType
@@ -254,7 +254,7 @@ namespace dev
 				const bytes _b_var = _r[_f = 2].toBytes();
 				RLP _r_var = RLP(_b_var);
 				unsigned int vote_size = _r_var[0].toInt<unsigned int>();
-				//cdebug << EthRed"populate var_size：" << vote_size;
+				//cdebug << BrcRed"populate var_size：" << vote_size;
 				for(unsigned int i = 1; i <= vote_size; i++)
 				{
 					std::pair<Address, bytes> _var_pair = _r_var[i].toPair<Address, bytes>();
@@ -262,7 +262,7 @@ namespace dev
 					SVoteData data;
 					data.populate(_r_votes);
 					varlitor_votes[_var_pair.first] = data;
-					//cdebug << EthRed"populate m_varlitor_voter voters：" << votes.size()<<"|"<<_var_pair.second.size();
+					//cdebug << BrcRed"populate m_varlitor_voter voters：" << votes.size()<<"|"<<_var_pair.second.size();
 				} 
 
 				updateTime = _r[_f = 3].toInt<int64_t>();
@@ -276,28 +276,28 @@ namespace dev
         void printData () const
 		{
 			DposContext const& _d = *this;
-			std::cout << EthYellow" DposData:" << EthYellow;
-			std::cout << EthBlue "canlitor:{";
+			std::cout << BrcYellow" DposData:" << BrcYellow;
+			std::cout << BrcBlue "canlitor:{";
 			for(auto val : _d.canlidates)
 				std::cout << val << "| ";
-			std::cout << "}" << std::endl << EthBlue;
+			std::cout << "}" << std::endl << BrcBlue;
 
-			std::cout << EthBlue "varlitors_votes:{";
+			std::cout << BrcBlue "varlitors_votes:{";
 			for(auto val : _d.varlitor_votes)
 			{
 				std::cout << "[varlitor:" << val.first << "(";
 				std::cout << val.second;
 				std::cout << ")] ";
 			}
-			std::cout << "}" << std::endl << EthBlue;
+			std::cout << "}" << std::endl << BrcBlue;
 
-			std::cout << EthBlue "vote_varlitors:{";
+			std::cout << BrcBlue "vote_varlitors:{";
 			for(auto val : _d.vote_varlitors)
 			{
 				std::cout << "[vote:" << val.first << "| varlitor:";
 				std::cout << "(" << val.second <<")] ";
 			}
-			std::cout << "}" << std::endl << EthYellow;
+			std::cout << "}" << std::endl << BrcYellow;
 		}
         friend std::ostream& operator << (std::ostream& out , DposContext& _d)
 		{

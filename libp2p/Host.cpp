@@ -160,7 +160,7 @@ void Host::doneWorking()
     while (m_accepting)
         m_ioService.poll();
 
-    // stop capabilities (eth: stops syncing or block/tx broadcast)
+    // stop capabilities (brc: stops syncing or block/tx broadcast)
     for (auto const& h: m_capabilities)
         h.second->onStopping();
 

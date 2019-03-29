@@ -4,7 +4,7 @@
 
 namespace dev
 {
-namespace eth
+namespace brc
 {
 namespace
 {
@@ -271,10 +271,10 @@ evmc_host_interface const hostInterface = {
     getCodeHash,
     copyCode,
     selfdestruct,
-    eth::call,
+    brc::call,
     getTxContext,
     getBlockHash,
-    eth::log,
+    brc::log,
 };
 }
 

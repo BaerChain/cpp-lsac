@@ -2,9 +2,9 @@
 
 #include <json/json.h>
 #include <libp2p/Common.h>
-#include <libethcore/Common.h>
-#include <libethcore/BlockHeader.h>
-#include <libethereum/LogFilter.h>
+#include <libbrccore/Common.h>
+#include <libbrccore/BlockHeader.h>
+#include <libbrcdchain/LogFilter.h>
 
 namespace dev
 {
@@ -20,7 +20,7 @@ Json::Value toJson(PeerSessionInfo const& _p);
 
 }
 
-namespace eth
+namespace brc
 {
 
 class Transaction;

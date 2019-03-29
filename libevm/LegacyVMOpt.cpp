@@ -2,7 +2,7 @@
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::brc;
 
 std::array<InstructionMetric, 256> LegacyVM::c_metrics;
 void LegacyVM::initMetrics()

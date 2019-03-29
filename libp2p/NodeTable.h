@@ -92,7 +92,7 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * @todo cache Ping and FindSelf
  *
  * [Networking]
- * @todo eth/upnp/natpmp/stun/ice/etc for public-discovery
+ * @todo brc/upnp/natpmp/stun/ice/etc for public-discovery
  * @todo firewall
  *
  * [Protocol]

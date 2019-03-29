@@ -2,7 +2,7 @@
 
 #include "Common.h"
 #include <libdevcore/Guards.h>
-#include <libethcore/Common.h>
+#include <libbrccore/Common.h>
 #include <libp2p/Common.h>
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Capability.h>
@@ -10,7 +10,7 @@
 namespace dev
 {
 class RLPStream;
-namespace eth
+namespace brc
 {
     typedef std::function<void(NodeID, unsigned, RLP const&)> MsgHandler;
     typedef std::function<void(NodeID const&, u256 const&)> OnConnHandler;

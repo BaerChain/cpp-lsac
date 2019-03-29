@@ -1,15 +1,15 @@
 #pragma once
 /*
-    dpos 
+    dpos 相关数据结构
 */
 #include <iostream>
 #include <libdevcore/concurrent_queue.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Exceptions.h>
+#include <libbrccore/Exceptions.h>
 #include <libp2p/Common.h>
 #include <libdevcore/FixedHash.h>
-#include <libethcore/Common.h>
+#include <libbrccore/Common.h>
 #include <libdevcore/Log.h>
 #include "DposData.h"
 

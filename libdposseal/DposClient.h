@@ -1,20 +1,21 @@
 /*
     DposClient.h
-    
+    管理调用 Dpos.h 的接口
+    指定用户轮流出块，必须保证 配置验证用户能正常出块 否则会等待
  */
 #pragma once
 #include <libp2p/Host.h>
-#include <libethcore/KeyManager.h>
-#include <libethereum/Client.h>
+#include <libbrccore/KeyManager.h>
+#include <libbrcdchain/Client.h>
 #include <boost/filesystem/path.hpp>
-#include "libethereum/Interface.h"
+#include "libbrcdchain/Interface.h"
 
 namespace dev
 {
 namespace bacd
 {
 class Dpos;
-using namespace dev::eth;
+using namespace dev::brc;
 DEV_SIMPLE_EXCEPTION(InvalidDposSealEngine);
 
 class DposClient : public Client
@@ -57,5 +58,5 @@ private:
 DposClient& asDposClient(Interface& _c);
 DposClient* asDposClient(Interface* _c);
 
-}  // namespace eth
+}  // namespace brc
 }  // namespace dev

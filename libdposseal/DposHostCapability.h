@@ -2,7 +2,7 @@
 
 #include "Common.h"
 #include <libdevcore/Guards.h>
-#include <libethcore/Common.h>
+#include <libbrccore/Common.h>
 #include <libp2p/Common.h>
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Capability.h>
@@ -21,7 +21,7 @@ public:
     DposHostcapality(std::shared_ptr<p2p::CapabilityHostFace> _host, u256 _networkId, MsgHandler _h, OnConnHandler _oh);
 
     std::string     name() const override { return "Dpos"; }
-    u256            version() const override { return eth::c_protocolVersion; }
+    u256            version() const override { return brc::c_protocolVersion; }
     unsigned        messageCount() const override { return DposPacketCount; }
     unsigned        offset() const override { return DposStatuspacket + p2p::PacketType::UserPacket; }
 
