@@ -1,5 +1,5 @@
 
-> formerly known as _cpp-BearChain_ project.
+> formerly known as _cpp_bearchain_ project.
 
 
 ## Building from source
