@@ -1,1 +1,7 @@
 
+[submodule "cmake/cable"]
+	path = cmake/cable
+	url = https://github.com/BaerChain/cable
+[submodule "evmc"]
+	path = evmc
+	url = https://github.com/BaerChain/evmc

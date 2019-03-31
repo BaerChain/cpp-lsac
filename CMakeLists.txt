@@ -158,7 +158,7 @@ if (TOOLS)
     add_subdirectory(rlp)
 endif()
 
-add_subdirectory(test)
+#add_subdirectory(test)
 #if (TESTS)
 #    enable_testing()
 #    add_subdirectory(test)
