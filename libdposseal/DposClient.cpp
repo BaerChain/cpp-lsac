@@ -120,7 +120,7 @@ void dev::bacd::DposClient::rejigSealing()
     if(!m_wouldSeal)
         return;
     //打包出块验证 包括出块周期，出块时间，出块人验证
-    uint64_t _time = utcTimeMilliSec();            //这里得到的是系统时间，考虑使用网络心跳同步时间最佳
+    uint64_t _time = utcTimeMilliSec();            //这里得到的是系统时间，
     if(!isBlockSeal(_time))
     {
         return;
@@ -200,10 +200,10 @@ void dev::bacd::DposClient::rejigSealing()
 	}
 }
 
-void dev::bacd::DposClient::init(p2p::Host & /*_host*/, int /*_netWorkId*/)
+void dev::bacd::DposClient::init(p2p::Host & _host, int _netWorkId)
 {
-    //关联 host 管理的CapabilityHostFace 接口
-	/*cdebug << "capabilityHost :: DposHostCapability";
+    //about SH-dpos net_host CapabilityHostFace 接口
+	cdebug << "capabilityHost :: DposHostCapability";
 	auto brcCapability = make_shared<DposHostcapality>(_host.capabilityHost(),
 							_netWorkId,
 							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
@@ -213,9 +213,10 @@ void dev::bacd::DposClient::init(p2p::Host & /*_host*/, int /*_netWorkId*/)
 								dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
 							});
 	_host.registerCapability(brcCapability);
-	dpos()->initEnv(brcCapability);*/
+	dpos()->initNet(brcCapability);
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
+	m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
 }
 
 bool dev::bacd::DposClient::isBlockSeal(uint64_t _now)
@@ -229,5 +230,20 @@ bool dev::bacd::DposClient::isBlockSeal(uint64_t _now)
     if(!dpos()->isBolckSeal(_now))
         return false;
     return true;
+}
+
+void dev::bacd::DposClient::importBadBlock(Exception& _ex) const
+{
+	// BAD BLOCK!!!
+	bytes const* block = boost::get_error_info<errinfo_block>(_ex);
+	if(!block)
+	{
+		cwarn << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
+		cwarn << boost::diagnostic_information(_ex);
+		return;
+	}
+    // SH-DPOS to del bad Block
+	dpos()->verifyBadBlock(author(), *block);
+	badBlock(*block, _ex.what());
 }
 

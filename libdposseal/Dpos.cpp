@@ -89,7 +89,62 @@ bool dev::bacd::Dpos::checkDeadline(uint64_t _now)
         return true;
     }
     LOG(m_logger) << BrcYellow"the slot time have some error! _now:"<< _now<< BrcReset;
-    return false;
+
+	return false;
+}
+void dev::bacd::Dpos::workLoop()
+{
+	while(isWorking())
+	{
+		//TODO dell net message
+		std::pair<bool, DposMsgPacket> ret = m_msg_queue.tryPop(5);
+		if(!ret.first)
+		{
+			continue;
+		}
+		LOG(m_logger) << " get mesg: ||" << ret.second.packet_id << ret.second.node_id ;
+		switch((DposPacketType)ret.second.packet_id)
+		{
+		case DposPacketType::SHDposDataPacket:
+		{
+		    // init the new SHDpos data from other peer
+            // TODO
+		}
+        break;
+		case DposPacketType::SHDposBadBlockPacket:
+		{
+		    // int this get a new badBlock 
+            // will to verfy the badBlock if verfy feild will to record the bad log into dataBase
+            // TODO
+		}
+        break;
+		default:
+		break;
+		}
+	}
+}
+
+
+void dev::bacd::Dpos::sealAndSend(NodeID const& _nodeid, DposPacketType _type, RLPStream const& _msg_s)
+{
+	// seal and send
+	RLPStream msg_ts;
+	auto h = m_host.lock(); //weak_ptr need to  unlock to share_ptr
+	h->hostFace()->prep(_nodeid, name(), msg_ts, _type, 1).append(_msg_s.out()); // seal ID....
+	h->hostFace()->sealAndSend(_nodeid, msg_ts);
+	cdebug << "SH-Dpos Send[" << _type << "] to " << _nodeid;
+}
+
+void dev::bacd::Dpos::brocastMsg(DposPacketType _type, RLPStream& _msg_s)
+{
+	// brocast msg  the sealAndSend() called back
+	auto h = m_host.lock();
+	h->hostFace()->foreachPeer(h->name(),
+							   [&](NodeID const& _nodeId){
+								   sealAndSend(_nodeId, _type, _msg_s);
+								   cdebug << "brocastMsg ... NodeId:" << _nodeId << "type" << _type;
+								   return true;
+							   });
 }
 
 bool dev::bacd::Dpos::CheckValidator(uint64_t _now)
@@ -156,6 +211,27 @@ void dev::bacd::Dpos::tryElect(uint64_t _now)
     LOG(m_logger) <<BrcYellow "******Come to new epoch, prevEpoch:"<< prveslot << "nextEpoch:" << currslot<< BrcYellow;
 }
 
+
+void dev::bacd::Dpos::onDposMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
+{
+	if(_id < DposPacketCount && _id >= DposStatuspacket)
+	{
+		cdebug << "onRaftMsg: id=" << _id << ",from=" << _nodeid;
+		m_msg_queue.push(DposMsgPacket(_nodeid, _id, _r[0].data()));
+	}
+	else
+	{
+		cwarn << "Recv an illegal msg, id=" << _id << "  and the max_id:" << DposPacketCount - 1;
+	}
+}
+
+void dev::bacd::Dpos::requestStatus(NodeID const & _nodeID, u256 const & _peerCapabilityVersion)
+{
+    // connet net 
+    // TODO
+	LOG(m_logger) << " connnt SH-Dpos net...";
+}
+
 void dev::bacd::Dpos::kickoutValidator()
 {
     //踢出不合格的候选人 不能成为新一轮的出块者
@@ -197,3 +273,27 @@ void dev::bacd::Dpos::disorganizeVotes()
 		m_curr_varlitors[j] = temp_addr;
     }
 }
+
+// SHDos to verfy the badBolck
+dev::brc::VerifiedBlockRef dev::bacd::Dpos::verifyBadBlock(Address const& /*_verfyAddr*/, bytes const& _block, ImportRequirements::value /*_ir*/ /*= ImportRequirements::OutOfOrderChecks*/)
+{
+  // TODO
+    //1. verfy the sender sgin
+    //2. verfy the bad Block if the Block is bad will to add record 
+
+    //sign_send_badBlock()
+
+    // add bad Block data
+	BlockHeader _header = BlockHeader(_block);
+	if(m_badBlocks.insert(_header.hash(), _block))
+		m_badVarlitor.addBadVarlitor(_header.author());
+	return VerifiedBlockRef();
+}
+
+bool dev::bacd::Dpos::sign_send_badBlock(const Secret &/*sec*/, bytes const& /*_badBlock*/)
+{
+    // TODO
+    // SHDPOS will to verfiy _badBlock sgin
+	return true;
+}
+
