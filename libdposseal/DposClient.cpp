@@ -120,7 +120,7 @@ void dev::bacd::DposClient::rejigSealing()
     if(!m_wouldSeal)
         return;
     //打包出块验证 包括出块周期，出块时间，出块人验证
-    uint64_t _time = utcTimeMilliSec();            //这里得到的是系统时间，
+    uint64_t _time = utcTimeMilliSec();            //get the systemTime
     if(!isBlockSeal(_time))
     {
         return;
@@ -142,12 +142,12 @@ void dev::bacd::DposClient::rejigSealing()
                 }
                 // TODO is that needed? we have "Generating seal on" below
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
-                //设置Block 出块开关 封装extraData数据 transation 数据
-                m_working.commitToSeal(bc(), m_extraData);
-                //尝试进行下一轮 投票统计
+                // input a seal time to contral the seal transation time
+                m_working.commitToSeal(bc(), m_extraData, 2/3* blockInterval);
+                //try into next new epoch and check some about varlitor for SH-DPOS
                 dpos()->tryElect(utcTimeMilliSec());
 
-                //添加 dpos 数据
+                //add SH-Dpos data
 				BlockHeader _h;
 				_h.setDposCurrVarlitors(dpos()->currVarlitors());
 				m_working.setDposData(_h);

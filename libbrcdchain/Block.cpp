@@ -644,7 +644,7 @@ void Block::updateBlockhashContract() {
     }
 }
 
-void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData) {
+void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_t _sealTime /*= 0*/) {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 
@@ -687,6 +687,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData) {
     RLPStream txs;
     txs.appendList(m_transactions.size());
     m_dposTransations.clear();
+	uint64_t _startTime = utcTimeMilliSec();
     for (unsigned i = 0; i < m_transactions.size(); ++i) {
         RLPStream k;
         k << i;
@@ -700,6 +701,8 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData) {
         transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
         txs.appendRaw(txrlp.out());
+        if(utcTimeMilliSec() - _startTime >= _sealTime)
+            break;
     }
 
     txs.swapOut(m_currentTxs);
