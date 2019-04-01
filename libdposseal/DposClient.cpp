@@ -143,7 +143,7 @@ void dev::bacd::DposClient::rejigSealing()
                 // TODO is that needed? we have "Generating seal on" below
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 // input a seal time to contral the seal transation time
-                m_working.commitToSeal(bc(), m_extraData, 2/3* blockInterval);
+                m_working.commitToSeal(bc(), m_extraData, 2/3*dpos()->dposConfig().blockInterval);
                 //try into next new epoch and check some about varlitor for SH-DPOS
                 dpos()->tryElect(utcTimeMilliSec());
 
