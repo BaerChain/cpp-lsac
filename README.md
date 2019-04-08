@@ -187,7 +187,7 @@ GENERAL OPTIONS:
 
 
 ## Testing
-Details on how to run and debug the tests can be found [here](doc/usingtesteth.rst)
+Details on how to run and debug the tests can be found
 
 
 ## Documentation

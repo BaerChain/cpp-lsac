@@ -1,24 +1,3 @@
-/// EVMC -- Ethereum Client-VM Connector API
-///
-/// ## High level design rules
-///
-/// 1. Pass function arguments and results by value.
-///    This rule comes from modern C++ and tries to avoid costly alias analysis
-///    needed for optimization. As the result we have a lots of complex structs
-///    and unions. And variable sized arrays of bytes cannot be passed by copy.
-/// 2. The EVM operates on integers so it prefers values to be host-endian.
-///    On the other hand, LLVM can generate good code for byte swaping.
-///    The interface also tries to match host application "natural" endianess.
-///    I would like to know what endianess you use and where.
-///
-/// ## Terms
-///
-/// 1. EVM  -- an Ethereum Virtual Machine instance/implementation.
-/// 2. Host -- an entity controlling the EVM. The Host requests code execution
-///            and responses to EVM queries by callback functions.
-///
-/// @defgroup EVMC EVMC
-/// @{
 #ifndef EVMC_H
 #define EVMC_H
 
@@ -48,7 +27,7 @@ struct evmc_uint256be {
     uint8_t bytes[32];
 };
 
-/// Big-endian 160-bit hash suitable for keeping an Ethereum address.
+/// Big-endian 160-bit hash suitable for keeping an eum address.
 struct evmc_address {
     /// The 20 bytes of the hash.
     uint8_t bytes[20];
@@ -73,7 +52,7 @@ struct evmc_message {
     struct evmc_address destination;  ///< The destination of the message.
     struct evmc_address sender;       ///< The sender of the message.
 
-    /// The amount of Ether transferred with the message.
+    /// The amount of  transferred with the message.
     struct evmc_uint256be value;
 
     /// The message input data.
@@ -255,7 +234,7 @@ struct evmc_result {
 
     /// Reserved data that MAY be used by a evmc_result object creator.
     ///
-    /// This reserved 4 bytes together with 20 bytes from create_address form
+    /// This reserved 4 bytes tog with 20 bytes from create_address form
     /// 24 bytes of memory called "optional data" within evmc_result struct
     /// to be optionally used by the evmc_result object creator.
     ///
@@ -388,7 +367,7 @@ typedef size_t (*evmc_copy_code_fn)(struct evmc_context* context,
 /// @param context      The pointer to the Host execution context.
 ///                     @see ::evmc_context.
 /// @param address      The address of the contract to be selfdestructed.
-/// @param beneficiary  The address where the remaining ETH is going to be
+/// @param beneficiary  The address where the remaining  is going to be
 ///                     transferred.
 typedef void (*evmc_selfdestruct_fn)(struct evmc_context* context,
                                      const struct evmc_address* address,
@@ -509,7 +488,7 @@ typedef int (*evmc_set_option_fn)(struct evmc_instance* evm,
 
 /// EVM revision.
 ///
-/// The revision of the EVM specification based on the Ethereum
+/// The revision of the EVM specification based on the eum
 /// upgrade / hard fork codenames.
 enum evmc_revision {
     EVMC_FRONTIER = 0,
