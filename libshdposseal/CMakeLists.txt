@@ -10,5 +10,5 @@ set(sources
 )
 
 add_library(shdposseal ${sources})
-target_include_directories(shdposseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include)
+target_include_directories(shdposseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} )
 target_link_libraries(shdposseal PUBLIC brcdchain p2p brccore devcore)

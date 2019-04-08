@@ -99,7 +99,7 @@ void Brchash::verify(Strictness _s, BlockHeader const &_bi, BlockHeader const &_
         ex << errinfo_brcashResult(make_tuple(final, mix));
         ex << errinfo_hash256(_bi.hash(WithoutSeal));
         ex << errinfo_difficulty(_bi.difficulty());
-        ex << errinf o_target(boundary(_bi));
+        ex << errinfo_target(boundary(_bi));
         BOOST_THROW_EXCEPTION(ex);
     } else if (_s == QuickNonce && _bi.parentHash() && !quickVerifySeal(_bi)) {
         InvalidBlockNonce ex;

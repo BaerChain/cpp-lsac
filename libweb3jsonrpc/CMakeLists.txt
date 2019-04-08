@@ -54,6 +54,6 @@ target_link_libraries(web3jsonrpc PUBLIC
         ${Boost_LIBRARIES}
         ${JSON_RPC_CPP_COMMON_LIBRARY}
         )
-target_include_directories(web3jsonrpc PUBLIC ${MHD_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include ${JSON_RPC_CPP_INCLUDE_DIR})
+target_include_directories(web3jsonrpc PUBLIC ${MHD_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIR}  ${JSON_RPC_CPP_INCLUDE_DIR})
 
 

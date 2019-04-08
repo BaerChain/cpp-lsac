@@ -5,7 +5,7 @@
 #include "Transaction.h"
 #include <libdevcore/Log.h>
 #include <libbrccore/Common.h>
-#include <libevm/VMFace.h>
+#include <libbvm/VMFace.h>
 
 #include <json/json.h>
 #include <functional>
@@ -250,7 +250,7 @@ private:
     TransactionException m_excepted =
         TransactionException::None;  ///< Details if the VM's execution resulted in an exception.
     int64_t m_baseGasRequired;  ///< The base amount of gas requried for executing this transaction.
-    u256 m_gas = 0;  ///< The gas for EVM code execution. Initial amount before go() execution,
+    u256 m_gas = 0;  ///< The gas for BRC code execution. Initial amount before go() execution,
                      ///< final amount after go() execution.
 
     Transaction m_t;    ///< The original transaction. Set by setup().

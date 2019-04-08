@@ -11,7 +11,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
-#include <libevm/ExtVMFace.h>
+#include <libbvm/ExtVMFace.h>
 #include <array>
 #include <unordered_map>
 

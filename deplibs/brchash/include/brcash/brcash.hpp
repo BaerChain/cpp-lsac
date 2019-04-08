@@ -1,4 +1,4 @@
-// brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
+// brcash: C/C++ implementation of Brcash, the brcd Proof of Work algorithm.
 // Copyright 2018 Pawel Bylica.
 // Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
@@ -7,7 +7,7 @@
 /// API design decisions:
 ///
 /// 1. Signed integer type is used whenever the size of the type is not
-///    restricted by the Ethash specification.
+///    restricted by the Brcash specification.
 ///    See http://www.aristeia.com/Papers/C++ReportColumns/sep95.pdf.
 ///    See https://stackoverflow.com/questions/10168079/why-is-size-t-unsigned/.
 ///    See https://github.com/Microsoft/GSL/issues/171.
@@ -93,7 +93,7 @@ using epoch_context_ptr = std::unique_ptr<epoch_context, decltype(&brcash_destro
 using epoch_context_full_ptr =
     std::unique_ptr<epoch_context_full, decltype(&brcash_destroy_epoch_context_full)>;
 
-/// Creates Ethash epoch context.
+/// Creates Brcash epoch context.
 ///
 /// This is a wrapper for brcash_create_epoch_number C function that returns
 /// the context as a smart pointer which handles the destruction of the context.
@@ -131,7 +131,7 @@ uint64_t search(const epoch_context_full& context, const hash256& header_hash,
 /// seed hash instead of epoch number to workers. This function tries to recover
 /// the epoch number from this seed hash.
 ///
-/// @param seed  Ethash seed hash.
+/// @param seed  Brcash seed hash.
 /// @return      The epoch number or -1 if not found.
 int find_epoch_number(const hash256& seed) noexcept;
 

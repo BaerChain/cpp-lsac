@@ -139,7 +139,7 @@ void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, Transactio
     if (_header.number() >= chainParams().homesteadForkBlock && (_ir & ImportRequirements::TransactionSignatures) && _t.hasSignature())
         _t.checkLowS();
 
-    brc::EVMSchedule const& schedule = evmSchedule(_header.number());
+    brc::BRCSchedule const& schedule = brcSchedule(_header.number());
 
     // Pre calculate the gas needed for execution
     if ((_ir & ImportRequirements::TransactionBasic) && _t.baseGasRequired(schedule) > _t.gas())
@@ -163,14 +163,14 @@ SealEngineFace* SealEngineRegistrar::create(ChainOperationParams const& _params)
     return ret;
 }
 
-EVMSchedule const& SealEngineBase::evmSchedule(u256 const& _blockNumber) const
+BRCSchedule const& SealEngineBase::brcSchedule(u256 const& _blockNumber) const
 {
     return chainParams().scheduleForBlockNumber(_blockNumber);
 }
 
 u256 SealEngineBase::blockReward(u256 const& _blockNumber) const
 {
-    EVMSchedule const& schedule{evmSchedule(_blockNumber)};
+    BRCSchedule const& schedule{brcSchedule(_blockNumber)};
     return chainParams().blockReward(schedule);
 }
 

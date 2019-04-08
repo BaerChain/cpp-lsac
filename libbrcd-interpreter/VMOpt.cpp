@@ -9,7 +9,7 @@ void VM::initMetrics()
 {
     static bool done = []() noexcept
     {
-        // Copy the metrics of the top EVM revision.
+        // Copy the metrics of the top BVM revision.
         std::memcpy(&c_metrics[0], bvmc_get_instruction_metrics_table(BVMC_LATEST_REVISION),
             c_metrics.size() * sizeof(c_metrics[0]));
 
@@ -71,7 +71,7 @@ void VM::optimize()
         }
     }
     
-#ifdef EVM_DO_FIRST_PASS_OPTIMIZATION
+#ifdef BVM_DO_FIRST_PASS_OPTIMIZATION
     
     TRACE_STR(1, "Do first pass optimizations")
     for (size_t pc = 0; pc < nBytes; ++pc)
@@ -89,7 +89,7 @@ void VM::optimize()
                 val = (val << 8) | m_code[i];
             }
 
-        #if EVM_USE_CONSTANT_POOL
+        #if BVM_USE_CONSTANT_POOL
 
             // add value to constant pool and replace PUSHn with PUSHC
             // place offset in code as 2 bytes MSB-first
@@ -111,7 +111,7 @@ void VM::optimize()
 
         #endif
 
-        #if EVM_REPLACE_CONST_JUMP    
+        #if BVM_REPLACE_CONST_JUMP
             // replace JUMP or JUMPI to constant location with JUMPC or JUMPCI
             // verifyJumpDest is M = log(number of jump destinations)
             // outer loop is N = number of bytes in code array

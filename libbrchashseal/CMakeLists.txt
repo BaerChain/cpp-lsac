@@ -12,7 +12,7 @@ set(sources
 )
 
 add_library(brchashseal ${sources})
-target_include_directories(brchashseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include)
+target_include_directories(brchashseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} )
 target_link_libraries(brchashseal PUBLIC brcdchain brccore)
 
 

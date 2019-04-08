@@ -109,7 +109,7 @@ public:
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
-    EVMSchedule evmSchedule() const override { return sealEngine()->evmSchedule(pendingInfo().number()); }
+    BRCSchedule brcSchedule() const override { return sealEngine()->brcSchedule(pendingInfo().number()); }
 
     ImportResult injectBlock(bytes const& _block) override;
 
