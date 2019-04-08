@@ -11,20 +11,34 @@
     {
         ETranscationNull = 0,
         EBRCTranscation,
+		EFBRCFreezeTranscation,
+		EFBRCUnFreezeTranscation,
         ECookieTranscation,
         ETranscationMax
     };
 
-    class BRCTranscation
-    {
-    public:
-        BRCTranscation(State& _state) : m_state(_state) {}
-        ~BRCTranscation() {}
-        void setState(State& _s) { m_state = _s; }
+enum PendingOrderEnum
+{
+    EPendingOrderNull = 0,
+    EBuyBrcPendingOrder,
+    ESellBrcPendingOrder,
+    EBuyFuelPendingOrder,
+    ESellFuelPendingOrder,
+	ECancelPendingOrder,
+    EPendingOrderMax
+};
 
-    public:
-        bool verifyTranscation(
-            Address const& _form, Address const& _to, size_t _type, size_t _transcationNum);
+class BRCTranscation
+{
+public:
+    BRCTranscation(State& _state) : m_state(_state) {}
+    ~BRCTranscation() {}
+    void setState(State& _s) { m_state = _s; }
+
+public:
+    bool verifyTranscation(
+        Address const& _form, Address const& _to, size_t _type, size_t _transcationNum);
+    bool verifyPendingOrder(Address const& _form, size_t _type, size_t _pendingOrderNum, size_t _pendingOrderPrice, h256 _pendingOrderHash = h256(0));
 
     private:
         State& m_state;

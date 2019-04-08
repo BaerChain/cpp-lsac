@@ -167,7 +167,7 @@ Account* State::account(Address const& _addr)
     auto i = m_cache.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(_addr),
-        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(), state[5].toInt<u256>(), state[7].toInt<u256>(),Account::Unchanged)
+        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(), state[5].toInt<u256>(), state[7].toInt<u256>(), state[8].toInt<u256>(), state[9].toInt<u256>(),Account::Unchanged)
     );
     i.first->second.setVoteDate(_vote);
 
@@ -450,7 +450,7 @@ void State::addBRC(Address const& _addr, u256 const& _value)
         a->addBRC(_value);
     }
     else
-        createAccount(_addr, {requireAccountStartNonce(), _value});
+        createAccount(_addr, {requireAccountStartNonce(), 0,_value});
 
     if (_value)
         m_changeLog.emplace_back(Change::BRC, _addr, _value);
@@ -479,6 +479,146 @@ void State::setBRC(Address const& _addr, u256 const& _value)
     addBRC(_addr, _value - original);
 }
 
+// FBRC 相关接口实现
+
+u256 State::FBRC(Address const& _id) const
+{
+    if (auto a = account(_id))
+    {
+        return a->FBRC();
+    } else
+	{
+        return 0;
+	}
+}
+
+
+void State::addFBRC(Address const& _addr, u256 const& _value)
+{
+    if (Account* a = account(_addr))
+    {
+        if (!a->isDirty() && a->isEmpty())
+            m_changeLog.emplace_back(Change::Touch, _addr);
+        a->addFBRC(_value);
+    }
+
+    if (_value)
+        m_changeLog.emplace_back(Change::FBRC, _addr, _value);
+}
+
+void State::subFBRC(Address const& _addr, u256 const& _value)
+{
+    if (_value == 0)
+        return;
+
+    Account* a = account(_addr);
+    if (!a || a->FBRC() < _value)
+        // TODO: I expect this never happens.
+        BOOST_THROW_EXCEPTION(NotEnoughCash());
+
+    // Fall back to addBalance().
+    addFBRC(_addr, 0 - _value);
+}
+
+
+//FBalance接口实现
+u256 State::FBalance(Address const& _id) const
+{
+    if (auto a = account(_id))
+    {
+        return a->FBalance();
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+
+void State::addFBalance(Address const& _addr, u256 const& _value)
+{
+    if (Account* a = account(_addr))
+    {
+        if (!a->isDirty() && a->isEmpty())
+            m_changeLog.emplace_back(Change::Touch, _addr);
+        a->addFBalance(_value);
+    }
+
+    if (_value)
+        m_changeLog.emplace_back(Change::FBalance, _addr, _value);
+}
+
+void State::subFBalance(Address const& _addr, u256 const& _value)
+{
+    if (_value == 0)
+        return;
+
+    Account* a = account(_addr);
+    if (!a || a->FBalance() < _value)
+        // TODO: I expect this never happens.
+        BOOST_THROW_EXCEPTION(NotEnoughCash());
+
+    // Fall back to addBalance().
+    addFBalance(_addr, 0 - _value);
+}
+
+
+    //交易挂单接口
+void State::brcPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
+    h256 _pendingOrderHash, size_t _pendingOrderType)
+{
+    u256 _nowTime = utcTimeMilliSec();
+    if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
+    {
+        subBalance(_addr, _value * _pendingOrderPrice);
+        addFBalance(_addr, _value * _pendingOrderPrice);
+    }
+    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellBrcPendingOrder)
+    {
+        subBRC(_addr, _value);
+        addFBRC(_addr, _value);
+    }
+    //交易所挂单
+}
+
+void State::fuelPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
+    h256 _pendingOrderHash, size_t _pendingOrderType)
+{
+    u256 _nowTime = utcTimeMilliSec();
+	if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyFuelPendingOrder)
+    {
+        subBRC(_addr, _value * _pendingOrderPrice);
+        addFBRC(_addr, _value * _pendingOrderPrice);
+    }
+    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellFuelPendingOrder)
+    {
+        subBalance(_addr, _value);
+        addFBalance(_addr, _value);
+    }
+    //交易所挂单
+}
+
+
+void State::cancelPendingOrder(
+    Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash)
+{
+    if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
+    {
+    }
+    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellBrcPendingOrder)
+    {
+    }
+    else if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyFuelPendingOrder)
+    {
+    }
+    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellFuelPendingOrder)
+    {
+    }
+
+    //取消交易所挂单
+    subFBRC(_addr, _value);
+    addBRC(_addr, _value);
+}
 
 void State::createContract(Address const& _address)
 {
@@ -695,6 +835,12 @@ void State::rollback(size_t _savepoint)
             break;
         case Change::SysVoteData:
             account.manageSysVote(change.sysVotedate.first, !change.sysVotedate.second, 0);
+            break;
+        case Change::FBRC:
+            account.addFBRC(0 - change.value);
+			break;
+		case Change::FBalance:
+            account.addFBalance(0 - change.value);
             break;
         break;
         }
@@ -1087,7 +1233,7 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else
             {
-                RLPStream s(8);
+                RLPStream s(10);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty())
                 {
@@ -1130,7 +1276,8 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                     s << _s.out();
                 }
                 s << i.second.BRC();
-
+                s << i.second.FBRC();
+				s << i.second.FBalance();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

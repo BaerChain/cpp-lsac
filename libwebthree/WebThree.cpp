@@ -8,8 +8,8 @@
 #include <libpoaseal/Poa.h>
 #include <libpoaseal/PoaClient.h>
 
-#include <libdposseal/Dpos.h>
-#include <libdposseal/DposClient.h>
+#include <libshdposseal/SHDpos.h>
+#include <libshdposseal/SHDposClient.h>
 
 #include <brcd/buildinfo.h>
 
@@ -44,8 +44,8 @@ WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
             else if (_params.sealEngineName == Poa::name())
                 m_brcdChain.reset(new brc::PoaClient(_params, (int) _params.networkID, m_net,
                                                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
-            else if (_params.sealEngineName == bacd::Dpos::name())
-                m_brcdChain.reset(new bacd::DposClient(_params, (int) _params.networkID, m_net,
+            else if (_params.sealEngineName == bacd::SHDpos::name())
+                m_brcdChain.reset(new bacd::SHDposClient(_params, (int) _params.networkID, m_net,
                                                       shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(

@@ -1,6 +1,7 @@
 #pragma once
 #include "State.h"
 #include <libdevcore/Common.h>
+#include <libdevcrypto/Common.h>
 
 namespace dev
 {
@@ -57,11 +58,14 @@ public:
     // 验证投票合法
     bool verifyVote(Address const& _from, Address const& _to, size_t _type, size_t tickets = 0);
 	std::unordered_map<Address, u256>  VarlitorSAddress() { return m_state.voteDate(SysVarlitorAddress); }
-    void getSortElectors(std::vector<Address>& _electors, size_t _num) const;
+	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.addVote(_id, _recivedAddr, _value);} 
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);} 
     void voteLoginCandidate(Address const& _addr);    
     void voteLogoutCandidate(Address const& _addr); 
+
+	Secret  getVarlitorSecret(Address const& /*_add*/) { return Secret(); }
+
 
 public:
     std::unordered_map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}  

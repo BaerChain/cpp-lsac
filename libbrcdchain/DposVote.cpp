@@ -93,9 +93,14 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
     return false;
 }
 
-void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t _num) const
+void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const
 {
-	const std::unordered_map<Address, u256> _eletors = getElectors();
+    std::unordered_map<Address, u256> _eletors = getElectors();
+    for (auto it : _ignore)
+    {
+        auto ret = _eletors.find(it);
+        _eletors.erase(ret);
+    }
 
 	std::vector<DposVarlitorVote> _v;
     for(auto val : _eletors)

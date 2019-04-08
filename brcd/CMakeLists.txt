@@ -5,17 +5,24 @@ set(
     MinerAux.cpp MinerAux.h
 )
 
+
+
 add_executable(brcd ${sources})
+
 target_link_libraries(
     brcd
-    PRIVATE brcdchain brchashseal poaseal dposseal evm web3jsonrpc webthree devcore Boost::program_options
-	PUBLIC ${MHD_LIBRARIES}
+    PRIVATE  brchashseal poaseal shdposseal loader instructions web3jsonrpc webthree devcore ${Boost_LIBRARIES} libvm
+	PUBLIC ${MHD_LIBRARIES} ${GMP_LIBRARIES} ${Boost_LIBRARIES} brcdchain dl
     )
 
-target_include_directories(brcd PRIVATE ../utils PUBLIC ${MHD_INCLUDE_DIRS})
+target_include_directories(brcd PRIVATE ../utils PUBLIC ${MHD_INCLUDE_DIRS} )
 
 if(MINIUPNPC)
-    target_compile_definitions(brcd PRIVATE BRC_MINIUPNPC)
+    target_compile_definitions(brcd PRIVATE BRC_MINIUPNPC )
 endif()
 
 install(TARGETS brcd DESTINATION bin)
+
+
+
+

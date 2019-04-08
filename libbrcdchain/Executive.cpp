@@ -369,13 +369,93 @@ void Executive::initialize(Transaction const& _transaction)
                                 _transcation_op.m_Transcation_numbers, 0, bytesConstRef(), {}}});
                 }
                 break;
+                case transationTool::pendingOrder:
+                {
+                    transationTool::pendingorder_opearaion _pengdingorder_op =
+                        transationTool::pendingorder_opearaion(val);
+                    if (m_s.balance(m_t.sender()) < totalCost)
+                    {
+                        LOG(m_execLogger)
+                            << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                            << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
+                            << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
+                        m_excepted = TransactionException::NotEnoughCash;
+                        BOOST_THROW_EXCEPTION(
+                            NotEnoughCash()
+                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
+                            << errinfo_comment(m_t.sender().hex()));
+                    }
+                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
+                            (size_t)_pengdingorder_op.m_type, _pengdingorder_op.m_Pendingorder_num,
+                            _pengdingorder_op.m_Pendingorder_price))
+                    {
+                        LOG(m_execLogger)
+                            << "verifyVote field > "
+                            << "m_t.sender:" << m_t.sender() << " * "
+                            << " pendingorder_type:" << _pengdingorder_op.m_Pendingorder_type
+                            << " pendingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
+                        m_excepted = TransactionException::VerifyVoteField;
+                        BOOST_THROW_EXCEPTION(
+                            VerifyVoteField()
+                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
+                            << errinfo_comment(m_t.sender().hex()));
+                    }
+                    m_callParameters_v.push_back(
+                        {(Executive::Method)(
+                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                            {m_t.sender(), Address(0), Address(0),
+                                _pengdingorder_op.m_Pendingorder_type,
+                                _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
+                            _pengdingorder_op.m_Pendingorder_price, m_t.sha3()});
+                }
+                break;
+                case transationTool::cancelPendingOrder:
+                {
+					transationTool::pendingorder_opearaion _pengdingorder_op =
+                        transationTool::pendingorder_opearaion(val);
+                    if (m_s.balance(m_t.sender()) < totalCost)
+                    {
+                        LOG(m_execLogger)
+                            << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                            << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
+                            << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
+                        m_excepted = TransactionException::NotEnoughCash;
+                        BOOST_THROW_EXCEPTION(
+                            NotEnoughCash()
+                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
+                            << errinfo_comment(m_t.sender().hex()));
+                    }
+                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
+                            (size_t)_pengdingorder_op.m_type, _pengdingorder_op.m_Pendingorder_num,
+                            _pengdingorder_op.m_Pendingorder_price))
+                    {
+                        LOG(m_execLogger)
+                            << "verifyVote field > "
+                            << "m_t.sender:" << m_t.sender() << " * "
+                            << " canclependingorder_type:" << _pengdingorder_op.m_Pendingorder_type
+                            << " canclependingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
+                        m_excepted = TransactionException::VerifyVoteField;
+                        BOOST_THROW_EXCEPTION(
+                            VerifyVoteField()
+                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
+                            << errinfo_comment(m_t.sender().hex()));
+                    }
+                    m_callParameters_v.push_back(
+                        {(Executive::Method)(
+                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                            {m_t.sender(), Address(0), Address(0),
+                                _pengdingorder_op.m_Pendingorder_type,
+                                _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
+                            _pengdingorder_op.m_Pendingorder_price, _pengdingorder_op.m_Pendingorder_Hash});
+                }
+                break;
                 default:
                     break;
-                }
             }
         }
         m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
-    }
+		}
+	}
 }
 
 bool Executive::execute()
@@ -474,24 +554,34 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         for (auto val : m_callParameters_v)
 		{
             CallParameters const& p = val.m_callParameters;
-			LOG(m_execLogger) << BrcYellow " dell vote : method:" << val.m_method << " _from:" << p.senderAddress
-				<< " _to:" << p.receiveAddress << " _value:" << p.valueTransfer;
-			if(val.m_method == BuyVotes)
-				m_s.transferBallotBuy(p.senderAddress, p.receiveAddress, p.valueTransfer);
-			else if(val.m_method == SellVotes)
-				m_s.transferBallotSell(p.senderAddress, p.receiveAddress, _p.valueTransfer);
-			else if(val.m_method == Executive::LoginCandidate)
-				m_vote.voteLoginCandidate(p.senderAddress);
-			else if(val.m_method == Executive::LogOutCandidate)
-				m_vote.voteLogoutCandidate(p.senderAddress);
-			else if(val.m_method == Vote)
-				m_vote.addVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
-			else if(val.m_method == CancelVote)
-				m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
-			else if(val.m_method == BRCTransaction)
-				m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
-			else
-				return false;
+            LOG(m_execLogger) << BrcYellow " dell vote : method:" << val.m_method
+                              << " _from:" << p.senderAddress << " _to:" << p.receiveAddress
+                              << " _value:" << p.valueTransfer;
+            if (val.m_method == BuyVotes)
+                m_s.transferBallotBuy(p.senderAddress, p.receiveAddress, p.valueTransfer);
+            else if (val.m_method == SellVotes)
+                m_s.transferBallotSell(p.senderAddress, p.receiveAddress, _p.valueTransfer);
+            else if (val.m_method == Executive::LoginCandidate)
+                m_vote.voteLoginCandidate(p.senderAddress);
+            else if (val.m_method == Executive::LogOutCandidate)
+                m_vote.voteLogoutCandidate(p.senderAddress);
+            else if (val.m_method == Vote)
+                m_vote.addVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
+            else if (val.m_method == CancelVote)
+                m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
+            else if (val.m_method == BRCTransaction)
+                m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
+            else if (val.m_method == BuyBrcPendingOrder || val.m_method == SellBrcPendingOrder)
+                m_s.brcPendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
+                    val.m_pendingOrderHash, val.m_method - (uint8_t)PendingOrderStart);
+            else if (val.m_method == BuyFuelPendingOrder || val.m_method == SellFuelPendingOrder)
+                m_s.fuelPendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
+                    val.m_pendingOrderHash, val.m_method - (uint8_t)PendingOrderStart);
+            else if (val.m_method == CancelPendingOrder)
+                m_s.cancelPendingOrder(p.senderAddress, p.valueTransfer,
+                    val.m_method - (uint8_t)PendingOrderStart, val.m_pendingOrderHash);
+            else
+                return false;
         }
         m_callParameters_v.clear();
 		return true;

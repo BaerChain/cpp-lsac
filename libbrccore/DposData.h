@@ -76,14 +76,14 @@ namespace dev
 		}
     };
 
-    struct DposContext
+    struct SHDposContext
     {
         std::set<Address>           canlidates;                 //  候选人集合
         SVarlitor_Voters            varlitors_votes;            //  验证人对应投票人 1：n
         std::map<Address, Address>  vote_varlitor;              //  投票人对应验证人 1：1
         std::vector<Address>        curr_varlitor;              //  当前轮对应验证人 顺序固定
         std::map<Address, size_t>   varlitor_block_num;         //  验证人 本轮出块数
-        DposContext()
+        SHDposContext()
 		{
 			canlidates.clear();
 			varlitors_votes.clear();
@@ -91,7 +91,7 @@ namespace dev
 			curr_varlitor.clear();
 			varlitor_block_num.clear();
 		}
-        DposContext& operator = (const DposContext& _d)
+        SHDposContext& operator = (const SHDposContext& _d)
 		{
 			clear();
 			canlidates.insert(_d.canlidates.begin(), _d.canlidates.end());
@@ -245,7 +245,7 @@ namespace dev
 		}
         void printData () const
 		{
-			DposContext const& _d = *this;
+			SHDposContext const& _d = *this;
 			std::cout << BrcYellow" DposData:" << BrcYellow;
 			std::cout << BrcBlue "canlitor:{";
 			for(auto val : _d.canlidates)
@@ -283,7 +283,7 @@ namespace dev
 			}
 			std::cout << "}" << std::endl << BrcYellow;
 		}
-        friend std::ostream& operator << (std::ostream& out , DposContext& _d)
+        friend std::ostream& operator << (std::ostream& out , SHDposContext& _d)
 		{
 			out << "canlitor:{";
 			for(auto val : _d.canlidates)

@@ -202,15 +202,30 @@ private:
         CancelVote,
 		VoteEnd,
 		TranscationStart,
-        BRCTransaction
+        BRCTransaction,
+        BRCFreezeTranscation,
+        BRCUnfreezeTranscation,
+        TranscationEnd,
+        PendingOrderStart,
+        BuyBrcPendingOrder,
+        SellBrcPendingOrder,
+        BuyFuelPendingOrder,
+        SellFuelPendingOrder,
+        CancelPendingOrder,
+		PendingOrderEnd
     };
 
     struct TransationParameters
     {
         Method m_method = Other;
         CallParameters m_callParameters;
-        TransationParameters(Method _type, CallParameters _c)
-          : m_method(_type), m_callParameters(_c)
+        size_t m_PendingOrderPrice = 0;
+        h256 m_pendingOrderHash = h256(0);
+        TransationParameters(Method _type, CallParameters _c, size_t _pendingOrderPrice = 0, h256 _pendingOrderHash = h256(0))
+          : m_method(_type),
+            m_callParameters(_c),
+            m_PendingOrderPrice(_pendingOrderPrice),
+            m_pendingOrderHash(_pendingOrderHash)
         {}
     };
 

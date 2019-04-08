@@ -8,11 +8,12 @@
 #  LEVELDB_INCLUDE_DIRS, where to find header, etc.
 #  LEVELDB_LIBRARIES, the libraries needed to use leveldb.
 #  LEVELDB_FOUND, If false, do not try to use leveldb.
-
+#  HINTS LEVELDB_ROOT_DIR
 # only look in default directories
 find_path(
 	LEVELDB_INCLUDE_DIR 
 	NAMES leveldb/db.h
+#	HINTS ${LEVELDB_ROOT_DIR}/include
 	DOC "leveldb include dir"
 )
 
@@ -22,22 +23,28 @@ else()
 	set(names leveldb)
 endif()
 
+
 find_library(
 	LEVELDB_LIBRARY
 	NAMES ${names}
+	#HINTS ${LEVELDB_ROOT_DIR}/lib
 	DOC "leveldb library"
 )
-
 set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR})
-set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
+if (APPLE)
+	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
+ELSE()
+	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY}/lib${names}.a)
+endif ()
+
 
 # When linking statically we should include also the snappy static lib.
-if(LEVELDB_LIBRARY MATCHES ${CMAKE_STATIC_LIBRARY_SUFFIX})
-	find_path(SNAPPY_INCLUDE_DIR snappy.h PATH_SUFFIXES snappy)
-	find_library(SNAPPY_LIBRARY ${CMAKE_STATIC_LIBRARY_PREFIX}snappy${CMAKE_STATIC_LIBRARY_SUFFIX})
-	set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR} ${SNAPPY_INCLUDE_DIR})
-	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY} ${SNAPPY_LIBRARY})
-endif()
+#if(LEVELDB_LIBRARY MATCHES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+#	find_path(SNAPPY_INCLUDE_DIR snappy.h PATH_SUFFIXES snappy)
+#	find_library(SNAPPY_LIBRARY ${CMAKE_STATIC_LIBRARY_PREFIX}snappy${CMAKE_STATIC_LIBRARY_SUFFIX})
+#	set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR} ${SNAPPY_INCLUDE_DIR})
+#	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY} ${SNAPPY_LIBRARY})
+#endif()
 
 # debug library on windows
 # same naming convention as in qt (appending debug library with d)
@@ -61,3 +68,6 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(leveldb DEFAULT_MSG
 	LEVELDB_LIBRARY LEVELDB_INCLUDE_DIR)
 mark_as_advanced (LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)
+
+message(STATUS "Found level db include: ${LEVELDB_INCLUDE_DIRS}")
+message(STATUS "Found level db libraries: ${LEVELDB_LIBRARIES} ${LEVELDB_LIBRARY}")

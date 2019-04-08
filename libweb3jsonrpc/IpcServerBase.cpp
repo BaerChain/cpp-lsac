@@ -116,7 +116,15 @@ template <class S> void IpcServerBase<S>::GenerateResponse(S _connection)
                     std::string r = request.substr(0, i + 1);
                     request.erase(0, i + 1);
                     clog(VerbosityTrace, "rpc") << r;
+#if JSONRPC_CPP_MAJOR_VERSION
+//                    ProcessRequest(r, reinterpret_cast<void*>((intptr_t)_connection));
+                    std::cerr << "please .........TODO";
+                    exit(1);
+#else
                     OnRequest(r, reinterpret_cast<void*>((intptr_t)_connection));
+#endif
+
+
                     i = 0;
                     continue;
                 }

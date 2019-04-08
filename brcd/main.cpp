@@ -15,8 +15,8 @@
 #include <libbrchashseal/GenesisInfo.h>
 #include <libpoaseal/PoaClient.h>
 #include <libpoaseal/Poa.h>
-#include <libdposseal/Dpos.h>
-#include <libdposseal/DposClient.h>
+#include <libshdposseal/SHDpos.h>
+#include <libshdposseal/SHDposClient.h>
 #include <libbrccore/KeyManager.h>
 #include <libdevcore/DBFactory.h>
 #include <libbrcdchain/SnapshotImporter.h>
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     Brchash::init();
     NoProof::init();
     Poa::init();
-    bacd::Dpos::init();
+    bacd::SHDpos::init();
 
     /// Operating mode.
     OperationMode mode = OperationMode::Node;

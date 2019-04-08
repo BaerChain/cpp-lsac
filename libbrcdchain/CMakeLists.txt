@@ -1,6 +1,20 @@
 file(GLOB sources "*.cpp" "*.h")
-add_definitions(-w)
-add_library(brcdchain ${sources})
+#add_definitions(-w)
+add_library(brcdchain STATIC ${sources})
 
-target_include_directories(brcdchain PRIVATE "${UTILS_INCLUDE_DIR}")
-target_link_libraries(brcdchain  PUBLIC evm brccore p2p devcrypto devcore PRIVATE jsoncpp_lib_static Snappy::snappy Boost::fiber Boost::context)
+target_include_directories(brcdchain PRIVATE "${UTILS_INCLUDE_DIR}" ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include)
+target_link_libraries(brcdchain
+        PUBLIC
+            loader
+            instructions
+            brccore
+            p2p
+            devcrypto
+            devcore
+	    libvm
+            jsoncpp_lib_static
+            ${SNAPPY_LIBRARIES}
+            ${Boost_LIBRARIES}
+            dl
+        )
+#target_compile_options(devcore PUBLIC -DBOOST_ALL_DYN_LINK )

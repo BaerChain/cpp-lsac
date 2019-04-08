@@ -1,24 +1,26 @@
 
 set(sources
-    EVMC.cpp EVMC.h
-    ExtVMFace.cpp ExtVMFace.h
-    Instruction.cpp Instruction.h
-    LegacyVM.cpp LegacyVM.h
-    LegacyVMConfig.h
-    LegacyVMCalls.cpp
-    LegacyVMOpt.cpp
-    VMFace.h
-    VMFactory.cpp VMFactory.h
-)
+        EVMC.cpp EVMC.h
+        ExtVMFace.cpp ExtVMFace.h
+        Instruction.cpp Instruction.h
+        LegacyVM.cpp LegacyVM.h
+        LegacyVMConfig.h
+        LegacyVMCalls.cpp
+        LegacyVMOpt.cpp
+        VMFace.h
+        VMFactory.cpp VMFactory.h
+        )
 
-add_library(evm ${sources})
+add_library(libvm STATIC  ${sources})
 
 target_link_libraries(
-    evm
-    PUBLIC brccore devcore evmc::evmc
-    PRIVATE brcd-interpreter brcd-buildinfo jsoncpp_lib_static Boost::program_options evmc::loader
+        libvm
+        PUBLIC brccore devcore instructions loader
+        PRIVATE brcd-interpreter brcd-buildinfo jsoncpp_lib_static Boost::program_options
 )
 
-if(EVM_OPTIMIZE)
-    target_compile_definitions(evm PRIVATE EVM_OPTIMIZE)
-endif()
+target_include_directories(libvm PUBLIC ${CMAKE_SOURCE_DIR})
+
+#if(EVM_OPTIMIZE)
+#    target_compile_definitions(libvm PRIVATE EVM_OPTIMIZE)
+#endif()

@@ -173,7 +173,7 @@ bool Brchash::shouldSeal(Interface *) {
 }
 
 
-void Dpos::init() {
+/*void Dpos::init() {
     BRC_REGISTER_SEAL_ENGINE(Dpos);
 }
 
@@ -191,9 +191,9 @@ void Dpos::generateSeal(BlockHeader const &_bi) {
         m_onSealGenerated(ret.out());
         m_lasttimesubmit = chrono::high_resolution_clock::now();
     }
-}
+}*/
 
-DposClient::DposClient(
+/*SHDposClient::SHDposClient(
         ChainParams const &_params,
         int _networkID,
         p2p::Host &_host,
@@ -207,7 +207,7 @@ DposClient::DposClient(
     // will throw if we're not an Brchash seal engine.
     //asBrchashClient(*this);
 }
-
+*/
 
 
 /*
