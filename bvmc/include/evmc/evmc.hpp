@@ -76,4 +76,4 @@ public:
 private:
     evmc_instance* const m_instance = nullptr;
 };
-}  // namespace evmc
+}  // namespace bvmc

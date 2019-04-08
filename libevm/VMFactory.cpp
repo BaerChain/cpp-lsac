@@ -93,7 +93,7 @@ namespace
 {
 /// The name of the program option --evmc. The boost will trim the tailing
 /// space and we can reuse this variable in exception message.
-const char c_evmcPrefix[] = "evmc ";
+const char c_evmcPrefix[] = "bvmc ";
 
 /// The list of EVMC options stored as pairs of (name, value).
 std::vector<std::pair<std::string, std::string>> s_evmcOptions;

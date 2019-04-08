@@ -6,7 +6,7 @@ set(
 )
 
 
-
+#add_definitions(-DBOOST_LOG_DYN_LINK)
 add_executable(brcd ${sources})
 
 target_link_libraries(

@@ -19,7 +19,7 @@ target_link_libraries(
         PRIVATE brcd-interpreter brcd-buildinfo jsoncpp_lib_static Boost::program_options
 )
 
-target_include_directories(libvm PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(libvm PUBLIC ${CMAKE_SOURCE_DIR}/bvmc/include)
 
 #if(EVM_OPTIMIZE)
 #    target_compile_definitions(libvm PRIVATE EVM_OPTIMIZE)

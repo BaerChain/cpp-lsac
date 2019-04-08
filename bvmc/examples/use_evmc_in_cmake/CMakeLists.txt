@@ -2,7 +2,7 @@
 # Copyright 2018 The EVMC Authors.
 # Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
-# This example shows how to use evmc INTERFACE library from evmc CMake package.
+# This example shows how to use bvmc INTERFACE library from bvmc CMake package.
 
 cmake_minimum_required(VERSION 3.5)
 
