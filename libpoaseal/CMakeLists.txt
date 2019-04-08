@@ -9,5 +9,5 @@ set(sources
 )
 
 add_library(poaseal ${sources})
-target_include_directories(poaseal PRIVATE ../utils)
+target_include_directories(poaseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include)
 target_link_libraries(poaseal PUBLIC brcdchain brccore)

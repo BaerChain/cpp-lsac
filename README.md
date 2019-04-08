@@ -65,6 +65,15 @@ After configuration is completed, the `brcd.sln` can be found in the
 ```shell
 cmake .. -G "Visual Studio 14 2015 Win64"
 ```
+On **Ubuntu 18.04** 
+```
+    sudo apt-get install -y 
+                        libjsonrpccpp-dev 
+                        libjsonrpccpp-tools 
+                        librocksdb5.8 
+                        libscrypt-dev 
+                        libmicrohttpd-dev
+```
 #### Common Issues Building on Windows
 ##### LINK : fatal error LNK1158: cannot run 'rc.exe'
 Rc.exe is the [Microsoft Resource Compiler](https://docs.microsoft.com/en-us/windows/desktop/menurc/resource-compiler). It's distributed with the [Windows SDK](https://developer.microsoft.com/en-US/windows/downloads/windows-10-sdk) and is required for generating the Visual Studio solution file. It can be found in the following directory: ```%ProgramFiles(x86)%\Windows Kits\<OS major version>\bin\<OS full version>\<arch>\```

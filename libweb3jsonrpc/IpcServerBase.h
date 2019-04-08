@@ -6,7 +6,7 @@
 #include <mutex>
 #include <unordered_set>
 #include <jsonrpccpp/server/abstractserverconnector.h>
-
+#include <jsonrpccpp/version.h>
 namespace dev
 {
 template <class S> class IpcServerBase: public jsonrpc::AbstractServerConnector

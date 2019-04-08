@@ -53,17 +53,31 @@ public:
       : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
     {}
 
+	Account(u256 _nonce, u256 _balance, u256 _BRC ,Changedness _c = Changed)
+      : m_isAlive(true),
+        m_isUnchanged(_c == Unchanged),
+        m_nonce(_nonce),
+        m_balance(_balance),
+        m_BRC(_BRC)
+    {}
+
     /// Explicit constructor for wierd cases of construction or a contract account.
- Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, Changedness _c)
-      : 
-        m_isAlive(true), m_isUnchanged(_c == Unchanged), 
-        m_nonce(_nonce), m_balance(_balance), 
-        m_storageRoot(_contractRoot), m_codeHash(_codeHash), 
+    Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
+        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c)
+      : m_isAlive(true),
+        m_isUnchanged(_c == Unchanged),
+        m_nonce(_nonce),
+        m_balance(_balance),
+        m_storageRoot(_contractRoot),
+		m_codeHash(_codeHash), 
         m_ballot(_ballot), 
         m_poll(_poll),
-        m_BRC(_BRC)
-    { assert(_contractRoot); }
+        m_BRC(_BRC),
+        m_FBRC(_FBRC),
+        m_FBalance(_FBalance)
+    {
+        assert(_contractRoot);
+    }
 
  Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, Changedness _c)
 		:
@@ -89,6 +103,8 @@ public:
         m_storageRoot = EmptyTrie;
         m_balance = 0;
         m_BRC = 0;
+        m_FBRC = 0;
+        m_FBalance = 0;
         m_nonce = 0;
         m_poll = 0;
         m_ballot = 0;
@@ -114,7 +130,11 @@ public:
     u256 const& balance() const { return m_balance; }
 
 
-	u256 const& BRC() const { return m_BRC; }
+    u256 const& BRC() const { return m_BRC; }
+
+    u256 const& FBRC() const { return m_FBRC; }
+
+    u256 const& FBalance() const { return m_FBalance; }
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)
     {
@@ -130,7 +150,18 @@ public:
     }
 
 
-    // Acounts own ballot 
+	//add FBRC
+    void addFBRC(u256 _value)
+	{
+		m_FBRC += _value;
+        changed();
+	}
+
+    void addFBalance(u256 _value)
+	{
+		m_FBalance += _value;
+	}
+    // Acounts own ballot
     u256 const& ballot() const { return m_ballot; }
     void addBallot(u256 _value) { m_ballot += _value; changed(); }
 
@@ -278,10 +309,14 @@ private:
 	// Account's BRC
     u256 m_BRC = 100;
 
-   /* dpos 投票数据
-      Address : 投票目标 size_t: 票数
-      当该Account 为系统预制地址表表示为 竞选人集合
-   */
+    // Account's FBRC
+    u256 m_FBRC = 0;
+    u256 m_FBalance = 0;
+
+    /* dpos 投票数据
+       Address : 投票目标 size_t: 票数
+       当该Account 为系统预制地址表表示为 竞选人集合
+    */
     std::unordered_map<Address, u256> m_voteDate;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.

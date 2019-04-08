@@ -123,17 +123,17 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     }
 
     // create Warp capability if we either download snapshot or can give out snapshot
-    auto const importedSnapshot = importedSnapshotPath(_dbPath, bc().genesisHash());
-    bool const importedSnapshotExists = fs::exists(importedSnapshot);
-    if (!_snapshotDownloadPath.empty() || importedSnapshotExists)
-    {
-        std::shared_ptr<SnapshotStorageFace> snapshotStorage(
-            importedSnapshotExists ? createSnapshotStorage(importedSnapshot) : nullptr);
-        auto warpCapability = make_shared<WarpCapability>(
-            _extNet.capabilityHost(), bc(), _networkId, _snapshotDownloadPath, snapshotStorage);
-        _extNet.registerCapability(warpCapability);
-        m_warpHost = warpCapability;
-    }
+//    auto const importedSnapshot = importedSnapshotPath(_dbPath, bc().genesisHash());
+//    bool const importedSnapshotExists = fs::exists(importedSnapshot);
+//    if (!_snapshotDownloadPath.empty() || importedSnapshotExists)
+//    {
+//        std::shared_ptr<SnapshotStorageFace> snapshotStorage(
+//            importedSnapshotExists ? createSnapshotStorage(importedSnapshot) : nullptr);
+//        auto warpCapability = make_shared<WarpCapability>(
+//            _extNet.capabilityHost(), bc(), _networkId, _snapshotDownloadPath, snapshotStorage);
+//        _extNet.registerCapability(warpCapability);
+//        m_warpHost = warpCapability;
+//    }
 
     doWork(false);
 }

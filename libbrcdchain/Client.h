@@ -6,7 +6,7 @@
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "StateImporter.h"
-#include "WarpCapability.h"
+//#include "WarpCapability.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
@@ -320,7 +320,7 @@ protected:
     std::chrono::system_clock::time_point m_lastGetWork;    ///< Is there an active and valid remote worker?
 
     std::weak_ptr<BrcdChainCapability> m_host;
-    std::weak_ptr<WarpCapability> m_warpHost;
+//    std::weak_ptr<WarpCapability> m_warpHost;
 
     std::condition_variable m_signalled;
     Mutex x_signalled;

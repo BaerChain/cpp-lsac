@@ -5,12 +5,12 @@
 #include "SecureTrieDB.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
-#include <libdevcore/Common.h>
-#include <libdevcore/OverlayDB.h>
-#include <libdevcore/RLP.h>
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrcdchain/CodeSizeCache.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/OverlayDB.h>
+#include <libdevcore/RLP.h>
 #include <libevm/ExtVMFace.h>
 #include <array>
 #include <unordered_map>
@@ -80,8 +80,6 @@ struct Change
         /// Account balance changed. Change::value contains the amount the
         /// balance was increased by.
         Balance,
-
-		BRC,
         /// Account storage was modified. Change::key contains the storage key,
         /// Change::value the storage value.
         Storage,
@@ -105,8 +103,10 @@ struct Change
         Ballot,
         Poll,
         Vote,
-        SysVoteData
-
+        SysVoteData,
+        BRC,
+        FBRC,
+        FBalance
     };
 
     Kind kind;        ///< The kind of the change.
@@ -114,8 +114,8 @@ struct Change
     u256 value;       ///< Change value, e.g. balance, storage and nonce.
     u256 key;         ///< Storage key. Last because used only in one case.
     bytes oldCode;    ///< Code overwritten by CREATE, empty except in case of address collision.
-    std::pair<Address, u256> vote;  // 投票事件
-	std::pair<Address, bool> sysVotedate; // 成为/撤销竞选人事件
+    std::pair<Address, u256> vote;         // 投票事件
+    std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -137,17 +137,15 @@ struct Change
       : kind(Code), address(_addr), oldCode(_oldCode)
     {}
 
-    //  Helper constructor for vote change log 
-    Change(Address const& _addr, std::pair<Address, u256> _vote):
-        kind(Vote), address(_addr)
+    //  Helper constructor for vote change log
+    Change(Address const& _addr, std::pair<Address, u256> _vote) : kind(Vote), address(_addr)
     {
         vote = std::make_pair(_vote.first, _vote.second);
     }
-	Change(Address const& _addr, std::pair<Address, bool> _sysVote) :
-		kind(Vote), address(_addr)
-	{
-		sysVotedate = std::make_pair(_sysVote.first, _sysVote.second);
-	}
+    Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(Vote), address(_addr)
+    {
+        sysVotedate = std::make_pair(_sysVote.first, _sysVote.second);
+    }
 };
 
 using ChangeLog = std::vector<Change>;
@@ -171,7 +169,7 @@ class State
     friend class dev::test::ImportTest;
     friend class dev::test::StateLoader;
     friend class BlockChain;
-	friend class DposVote;
+    friend class DposVote;
     friend class BRCTranscation;
 
 public:
@@ -277,6 +275,39 @@ public:
         addBRC(_ToAddr, _value);
     }
 
+    // FBRC相关接口
+    u256 FBRC(Address const& _id) const;
+    void addFBRC(Address const& _addr, u256 const& _value);
+    void subFBRC(Address const& _addr, u256 const& _value);
+
+    // FBalance相关接口
+    u256 FBalance(Address const& _id) const;
+    void addFBalance(Address const& _addr, u256 const& _value);
+    void subFBalance(Address const& _addr, u256 const& _value);
+
+    //交易挂单接口
+    void brcPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
+        h256 _pendingOrderHash, size_t _pendingOrderType);
+
+
+    void fuelPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
+        h256 _pendingOrderHash, size_t _pendingOrderType);
+ 
+
+
+    void cancelPendingOrder(
+        Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
+    
+
+    //计算每笔交易所需要扣除的手续费
+    u256 transactionForCookie()
+    {
+        //通过计算BRC跟Cookie的兑换比例来决定手续费扣除
+        u256 _serviceCharge = 21000;
+        return _serviceCharge;
+    }
+
+
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
     void addBallot(Address const& _addr, u256 const& _value);
@@ -288,7 +319,7 @@ public:
     void subPoll(Address const& _adddr, u256 const& _value);
 
     // 详细信息 test
-	std::string accoutMessage(Address const& _addr);
+    std::string accoutMessage(Address const& _addr);
 
 private:
     //投票数据
@@ -301,15 +332,16 @@ private:
     //撤销投票
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     //获取指定地址的voteDate
-	std::unordered_map<Address, u256> voteDate(Address const& _id) const;
+    std::unordered_map<Address, u256> voteDate(Address const& _id) const;
     //竞选人，验证人管理
-	void addSysVoteDate(Address const& _sysAddress, Address const& _id);
-	void subSysVoteDate(Address const& _sysAddress, Address const& _id);
+    void addSysVoteDate(Address const& _sysAddress, Address const& _id);
+    void subSysVoteDate(Address const& _sysAddress, Address const& _id);
 
 public:
-	void transferBallotBuy(Address const& _from, Address const& _to, u256 const& _value); 
-	void transferBallotSell(Address const& _from, Address const& _to, u256 const& _value);
-    //void transferBallot(Address const& _from, Address const& _to, u256 const& _value) { subBallot(_from, _value); addBallot(_to, _value); }
+    void transferBallotBuy(Address const& _from, Address const& _to, u256 const& _value);
+    void transferBallotSell(Address const& _from, Address const& _to, u256 const& _value);
+    // void transferBallot(Address const& _from, Address const& _to, u256 const& _value) {
+    // subBallot(_from, _value); addBallot(_to, _value); }
     /**
      * @brief Transfers "the balance @a _value between two accounts.
      * @param _from Account from which @a _value will be deducted.
