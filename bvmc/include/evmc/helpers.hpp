@@ -1,15 +1,3 @@
-/* EVMC: Ethereum Client-VM Connector API.
- * Copyright 2019 The EVMC Authors.
- * Licensed under the Apache License, Version 2.0.
- */
-
-/**
- * @file
- * A collection of helpers (overloaded operators) for using EVMC types effectively in C++.
- *
- * @addtogroup helpers
- * @{
- */
 #pragma once
 
 #include <evmc/evmc.h>

@@ -1,13 +1,4 @@
-/**
- * EVMC: Ethereum Client-VM Connector API
- *
- * @copyright
- * Copyright 2019 The EVMC Authors.
- * Licensed under the Apache License, Version 2.0.
- *
- * @defgroup EVMC EVMC
- * @{
- */
+
 #ifndef EVMC_H
 #define EVMC_H
 
@@ -36,14 +27,6 @@ extern "C" {
 
 enum
 {
-    /**
-     * The EVMC ABI version number of the interface declared in this file.
-     *
-     * The EVMC ABI version always equals the major version number of the EVMC project.
-     * The Host SHOULD check if the ABI versions match when dynamically loading VMs.
-     *
-     * @see @ref versioning
-     */
     EVMC_ABI_VERSION = 6
 };
 
@@ -64,7 +47,7 @@ typedef struct evmc_bytes32
  */
 typedef struct evmc_bytes32 evmc_uint256be;
 
-/** Big-endian 160-bit hash suitable for keeping an Ethereum address. */
+/** Big-endian 160-bit hash suitable for keeping an eum address. */
 typedef struct evmc_address
 {
     /** The 20 bytes of the hash. */
@@ -130,7 +113,7 @@ struct evmc_message
     size_t input_size;
 
     /**
-     * The amount of Ether transferred with the message.
+     * The amount of  transferred with the message.
      */
     evmc_uint256be value;
 
@@ -200,7 +183,7 @@ typedef evmc_bytes32 (*evmc_get_block_hash_fn)(struct evmc_context* context, int
  *
  * @note
  * In case new status codes are needed, please create an issue or pull request
- * in the EVMC repository (https://github.com/ethereum/evmc).
+ * in the EVMC repository (ereum/evmc).
  */
 enum evmc_status_code
 {
@@ -224,7 +207,7 @@ enum evmc_status_code
     /**
      * The designated INVALID instruction has been hit during execution.
      *
-     * The EIP-141 (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-141.md)
+     * The EIP-141 (ereum/EIPs/blob/master/EIPS/eip-141.md)
      * defines the instruction 0xfe as INVALID instruction to indicate execution
      * abortion coming from high-level languages. This status code is reported
      * in case this INVALID instruction has been encountered.
@@ -395,7 +378,7 @@ struct evmc_result
     /**
      * Reserved data that MAY be used by a evmc_result object creator.
      *
-     *  This reserved 4 bytes together with 20 bytes from create_address form
+     *  This reserved 4 bytes tog with 20 bytes from create_address form
      *  24 bytes of memory called "optional data" within evmc_result struct
      *  to be optionally used by the evmc_result object creator.
      *
@@ -564,7 +547,7 @@ typedef size_t (*evmc_copy_code_fn)(struct evmc_context* context,
  *  @param context      The pointer to the Host execution context.
  *                      @see ::evmc_context.
  *  @param address      The address of the contract to be selfdestructed.
- *  @param beneficiary  The address where the remaining ETH is going to be
+ *  @param beneficiary  The address where the remaining  is going to be
  *                      transferred.
  */
 typedef void (*evmc_selfdestruct_fn)(struct evmc_context* context,
@@ -708,7 +691,7 @@ typedef enum evmc_set_option_result (*evmc_set_option_fn)(struct evmc_instance* 
 /**
  * EVM revision.
  *
- * The revision of the EVM specification based on the Ethereum
+ * The revision of the EVM specification based on the eum
  * upgrade / hard fork codenames.
  */
 enum evmc_revision
@@ -716,42 +699,37 @@ enum evmc_revision
     /**
      * The Frontier revision.
      *
-     * The one Ethereum launched with.
+     * The one eum launched with.
      */
     EVMC_FRONTIER = 0,
 
     /**
      * The Homestead revision.
      *
-     * https://eips.ethereum.org/EIPS/eip-606
      */
     EVMC_HOMESTEAD = 1,
 
     /**
      * The Tangerine Whistle revision.
      *
-     * https://eips.ethereum.org/EIPS/eip-608
      */
     EVMC_TANGERINE_WHISTLE = 2,
 
     /**
      * The Spurious Dragon revision.
      *
-     * https://eips.ethereum.org/EIPS/eip-607
      */
     EVMC_SPURIOUS_DRAGON = 3,
 
     /**
      * The Byzantium revision.
      *
-     * https://eips.ethereum.org/EIPS/eip-609
      */
     EVMC_BYZANTIUM = 4,
 
     /**
      * The Constantinople revision.
      *
-     * https://eips.ethereum.org/EIPS/eip-1013
      */
     EVMC_CONSTANTINOPLE = 5,
 
@@ -759,14 +737,14 @@ enum evmc_revision
      * Reserved for the post-Constantinople upgrade. The name is likely to
      * be changed, but the assigned number should stay.
      *
-     * The spec draft: https://github.com/ethereum/EIPs/pull/1716.
+     * The spec draft: ereum/EIPs/pull/1716.
      */
     EVMC_CONSTANTINOPLE2 = 6,
 
     /**
      * The Istanbul revision.
      *
-     * The spec draft: https://eips.ethereum.org/EIPS/eip-1679.
+     * The spec draft: ereum.org/EIPS/eip-1679.
      */
     EVMC_ISTANBUL = 7,
 
@@ -855,7 +833,7 @@ struct evmc_tracer_context;
  * @param memory_size            The size of the EVM memory after the instruction execution.
  * @param changed_memory_offset  The offset in number of bytes of the beginning of the memory area
  *                               modified as the result of the instruction execution.
- *                               The Client MAY use this information together with
+ *                               The Client MAY use this information tog with
  *                               @p changed_memory_size and @p changed_memory to incrementally
  *                               update the copy of the full VM's memory.
  * @param changed_memory_size    The size of the memory area modified as the result of

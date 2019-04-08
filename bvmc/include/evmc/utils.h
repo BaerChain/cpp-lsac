@@ -1,19 +1,4 @@
-/* EVMC: Ethereum Client-VM Connector API.
- * Copyright 2018 The EVMC Authors.
- * Licensed under the Apache License, Version 2.0. See the LICENSE file.
- */
-
 #pragma once
-
-/**
- * @addtogroup helpers
- * @{
- */
-
-/**
- * @def EVMC_EXPORT
- * Marks a function to be exported from a shared library.
- */
 #if defined _MSC_VER || defined __MINGW32__
 #define EVMC_EXPORT __declspec(dllexport)
 #else

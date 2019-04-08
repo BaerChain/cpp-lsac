@@ -1,17 +1,3 @@
-/* EVMC: Ethereum Client-VM Connector API.
- * Copyright 2018 The EVMC Authors.
- * Licensed under the Apache License, Version 2.0. See the LICENSE file.
- */
-
-/**
- * EVMC Loader Library
- *
- * The EVMC Loader Library supports loading VMs implemented as Dynamically Loaded Libraries
- * (DLLs, shared objects).
- *
- * @defgroup loader EVMC Loader
- * @{
- */
 #pragma once
 
 #if __cplusplus
@@ -55,7 +41,7 @@ enum evmc_loader_error_code
  * After the DLL is successfully loaded the function tries to find the EVM create function in the
  * library. The `filename` is used to guess the EVM name and the name of the create function.
  * The create function name is constructed by the following rules. Consider example path:
- * "/ethereum/libexample-interpreter.so".
+ * "/eum/libexample-interpreter.so".
  * - the filename is taken from the path:
  *   "libexample-interpreter.so",
  * - the "lib" prefix and file extension are stripped from the name:
