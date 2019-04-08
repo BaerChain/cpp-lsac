@@ -173,7 +173,6 @@ IMPORT/EXPORT MODES:
 
 VM OPTIONS:
   --vm <name>|<path> (=legacy) Select VM implementation. Available options are: interpreter, legacy.
-  --evmc  <option>=<value>     EVMC option
 
 LOGGING OPTIONS:
   -v [ --log-verbosity ] <0 - 4>        Set the log verbosity from 0 to 4 (default: 2).

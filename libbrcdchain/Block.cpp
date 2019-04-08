@@ -8,7 +8,7 @@
 #include <libdevcore/TrieHash.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
-#include <libevm/VMFactory.h>
+#include <libbvm/VMFactory.h>
 #include "BlockChain.h"
 #include "ExtVM.h"
 #include "Executive.h"
@@ -559,7 +559,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
     // Commit all cached state changes to the state trie.
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use EVMSchedule
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts
                                                                      : State::CommitBehaviour::KeepEmptyAccounts);
 
@@ -714,7 +714,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     applyRewards(uncleBlockHeaders, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
     // Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use EVMSchedule
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock; // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts
                                                                      : State::CommitBehaviour::KeepEmptyAccounts);
 

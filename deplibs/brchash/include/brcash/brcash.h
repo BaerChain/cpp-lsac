@@ -1,4 +1,4 @@
-/* brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
+/* brcash: C/C++ implementation of Brcash, the brcd Proof of Work algorithm.
  * Copyright 2018 Pawel Bylica.
  * Licensed under the Apache License, Version 2.0. See the LICENSE file.
  */
@@ -41,7 +41,7 @@ struct brcash_epoch_context_full;
  * Calculates the number of items in the light cache for given epoch.
  *
  * This function will search for a prime number matching the criteria given
- * by the Ethash so the execution time is not constant. It takes ~ 0.01 ms.
+ * by the Brcash so the execution time is not constant. It takes ~ 0.01 ms.
  *
  * @param epoch_number  The epoch number.
  * @return              The number items in the light cache.
@@ -53,7 +53,7 @@ int brcash_calculate_light_cache_num_items(int epoch_number) NOEXCEPT;
  * Calculates the number of items in the full dataset for given epoch.
  *
  * This function will search for a prime number matching the criteria given
- * by the Ethash so the execution time is not constant. It takes ~ 0.05 ms.
+ * by the Brcash so the execution time is not constant. It takes ~ 0.05 ms.
  *
  * @param epoch_number  The epoch number.
  * @return              The number items in the full dataset.

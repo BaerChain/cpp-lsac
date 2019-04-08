@@ -5,7 +5,7 @@
 
 #include <libbrccore/Common.h>
 #include <libbrccore/SealEngine.h>
-#include <libevm/ExtVMFace.h>
+#include <libbvm/ExtVMFace.h>
 
 #include <functional>
 #include <map>
@@ -70,7 +70,7 @@ public:
     /// Does the account exist?
     bool exists(Address _a) final
     {
-        if (evmSchedule().emptinessIsNonexistence())
+        if (brcSchedule().emptinessIsNonexistence())
             return m_s.accountNonemptyAndExisting(_a);
         else
             return m_s.addressInUse(_a);
@@ -79,10 +79,10 @@ public:
     /// Suicide the associated contract to the given address.
     void suicide(Address _a) final;
 
-    /// Return the EVM gas-price schedule for this execution context.
-    EVMSchedule const& evmSchedule() const final
+    /// Return the BRC gas-price schedule for this execution context.
+    BRCSchedule const& brcSchedule() const final
     {
-        return m_sealEngine.evmSchedule(envInfo().number());
+        return m_sealEngine.brcSchedule(envInfo().number());
     }
 
     State const& state() const { return m_s; }

@@ -111,7 +111,7 @@ void VM::caseCreate()
     // Clear the return data buffer. This will not free the memory.
     m_returnData.clear();
 
-    u256 const balance = fromEvmC(m_context->host->get_balance(m_context, &m_message->destination));
+    u256 const balance = fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
     if (balance >= endowment && m_message->depth < 1024)
     {
         bvmc_message msg = {};
@@ -125,16 +125,16 @@ void VM::caseCreate()
 
         msg.input_data = &m_mem[off];
         msg.input_size = size;
-        msg.create2_salt = toEvmC(salt);
+        msg.create2_salt = toBvmC(salt);
         msg.sender = m_message->destination;
         msg.depth = m_message->depth + 1;
         msg.kind = m_OP == Instruction::CREATE ? BVMC_CREATE : BVMC_CREATE2;  // FIXME: In BVMC move the kind to the top.
-        msg.value = toEvmC(endowment);
+        msg.value = toBvmC(endowment);
 
         bvmc_result result = m_context->host->call(m_context, &msg);
 
         if (result.status_code == BVMC_SUCCESS)
-            m_SPP[0] = fromAddress(fromEvmC(result.create_address));
+            m_SPP[0] = fromAddress(fromBvmC(result.create_address));
         else
             m_SPP[0] = 0;
         m_returnData.assign(result.output_data, result.output_data + result.output_size);
@@ -204,7 +204,7 @@ bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
 
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
-    bvmc_address destination = toEvmC(asAddress(m_SP[1]));
+    bvmc_address destination = toBvmC(asAddress(m_SP[1]));
     int destinationExists = m_context->host->account_exists(m_context, &destination);
 
     if (m_OP == Instruction::CALL && !destinationExists)
@@ -252,11 +252,11 @@ bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
         u256 value = m_SP[2];
         if (value > 0)
         {
-            o_msg.value = toEvmC(m_SP[2]);
+            o_msg.value = toBvmC(m_SP[2]);
             o_msg.gas += VMSchedule::callStipend;
             {
                 u256 const balance =
-                    fromEvmC(m_context->host->get_balance(m_context, &m_message->destination));
+                    fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
                 balanceOk = balance >= value;
             }
         }

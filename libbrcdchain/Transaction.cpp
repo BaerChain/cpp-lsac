@@ -5,7 +5,7 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
 #include <libbrccore/Exceptions.h>
-#include <libevm/VMFace.h>
+#include <libbvm/VMFace.h>
 using namespace std;
 using namespace dev;
 using namespace dev::brc;

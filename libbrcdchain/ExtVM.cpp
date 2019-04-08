@@ -69,7 +69,7 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
         _e.go(_onOp);
 }
 
-bvmc_status_code transactionExceptionToEvmcStatusCode(TransactionException ex) noexcept
+bvmc_status_code transactionExceptionToBvmcStatusCode(TransactionException ex) noexcept
 {
     switch (ex)
     {
@@ -112,7 +112,7 @@ CallResult ExtVM::call(CallParameters& _p)
     }
     _p.gas = e.gas();
 
-    return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput()};
+    return {transactionExceptionToBvmcStatusCode(e.getException()), e.takeOutput()};
 }
 
 size_t ExtVM::codeSizeAt(dev::Address _a)
@@ -148,7 +148,7 @@ CreateResult ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, I
         e.accrueSubState(sub);
     }
     io_gas = e.gas();
-    return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress()};
+    return {transactionExceptionToBvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress()};
 }
 
 void ExtVM::suicide(Address _a)

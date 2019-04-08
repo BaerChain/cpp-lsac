@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 /**
- * The list of EVM 1 opcodes from every EVM revision.
+ * The list of BVM 1 opcodes from every BVM revision.
  */
 enum bvmc_opcode
 {
@@ -164,7 +164,7 @@ enum bvmc_opcode
 };
 
 /**
- * Metrics for an EVM 1 instruction.
+ * Metrics for an BVM 1 instruction.
  *
  * Small integer types are used here to make the tables of metrics cache friendly.
  */
@@ -173,31 +173,31 @@ struct bvmc_instruction_metrics
     /** The instruction gas cost. Value -1 indicates an undefined instruction. */
     int16_t gas_cost;
 
-    /** The number of items the instruction pops from the EVM stack before execution. */
+    /** The number of items the instruction pops from the BVM stack before execution. */
     int8_t num_stack_arguments;
 
-    /** The number of items the instruction pushes to the EVM stack after execution. */
+    /** The number of items the instruction pushes to the BVM stack after execution. */
     int8_t num_stack_returned_items;
 };
 
 /**
- * Get the table of the EVM 1 instructions metrics.
+ * Get the table of the BVM 1 instructions metrics.
  *
- * @param revision  The EVM revision.
+ * @param revision  The BVM revision.
  * @return          The pointer to the array of 256 instruction metrics. Null pointer in case
- *                  an invalid EVM revision provided.
+ *                  an invalid BVM revision provided.
  */
 BVMC_EXPORT const struct bvmc_instruction_metrics* bvmc_get_instruction_metrics_table(
     enum bvmc_revision revision);
 
 /**
- * Get the table of the EVM 1 instruction names.
+ * Get the table of the BVM 1 instruction names.
  *
  * The entries for undefined instructions contain null pointers.
  *
- * @param revision  The EVM revision.
+ * @param revision  The BVM revision.
  * @return          The pointer to the array of 256 instruction names. Null pointer in case
- *                  an invalid EVM revision provided.
+ *                  an invalid BVM revision provided.
  */
 BVMC_EXPORT const char* const* bvmc_get_instruction_names_table(enum bvmc_revision revision);
 

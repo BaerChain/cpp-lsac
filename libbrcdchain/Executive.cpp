@@ -8,8 +8,8 @@
 
 #include <libdevcore/CommonIO.h>
 #include <libbrccore/CommonJS.h>
-#include <libevm/LegacyVM.h>
-#include <libevm/VMFactory.h>
+#include <libbvm/LegacyVM.h>
+#include <libbvm/VMFactory.h>
 
 #include <json/json.h>
 #include <boost/timer.hpp>
@@ -203,7 +203,7 @@ void Executive::initialize(Transaction const& _transaction)
 {
     LOG(m_execLogger) << "debug001 init";
     m_t = _transaction;
-    m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.evmSchedule(m_envInfo.number()));
+    m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
     try
     {
         m_sealEngine.verifyTransaction(
@@ -697,17 +697,17 @@ bool Executive::go(OnOpFunc const& _onOp)
                     m_res->gasForDeposit = m_gas;
                     m_res->depositSize = out.size();
                 }
-                if (out.size() > m_ext->evmSchedule().maxCodeSize)
+                if (out.size() > m_ext->brcSchedule().maxCodeSize)
                     BOOST_THROW_EXCEPTION(OutOfGas());
-                else if (out.size() * m_ext->evmSchedule().createDataGas <= m_gas)
+                else if (out.size() * m_ext->brcSchedule().createDataGas <= m_gas)
                 {
                     if (m_res)
                         m_res->codeDeposit = CodeDeposit::Success;
-                    m_gas -= out.size() * m_ext->evmSchedule().createDataGas;
+                    m_gas -= out.size() * m_ext->brcSchedule().createDataGas;
                 }
                 else
                 {
-                    if (m_ext->evmSchedule().exceptionalFailedCodeDeposit)
+                    if (m_ext->brcSchedule().exceptionalFailedCodeDeposit)
                         BOOST_THROW_EXCEPTION(OutOfGas());
                     else
                     {
@@ -779,7 +779,7 @@ bool Executive::finalize()
     if (m_ext)
     {
         // Accumulate refunds for suicides.
-        m_ext->sub.refunds += m_ext->evmSchedule().suicideRefundGas * m_ext->sub.suicides.size();
+        m_ext->sub.refunds += m_ext->brcSchedule().suicideRefundGas * m_ext->sub.suicides.size();
 
         // Refunds must be applied before the miner gets the fees.
         assert(m_ext->sub.refunds >= 0);

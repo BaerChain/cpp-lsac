@@ -21,7 +21,7 @@
 #include <libdevcore/DBFactory.h>
 #include <libbrcdchain/SnapshotImporter.h>
 #include <libbrcdchain/SnapshotStorage.h>
-#include <libevm/VMFactory.h>
+#include <libbvm/VMFactory.h>
 #include <libwebthree/WebThree.h>
 #include <libbrchashseal/Brchash.h>
 #include <libdevcrypto/LibSnark.h>

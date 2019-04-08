@@ -1,132 +1,20 @@
-#include "interpreter.h"
-#include "VM.h"
+#include "LegacyVM.h"
 
-#include <brcd/buildinfo.h>
+using namespace std;
+using namespace dev;
+using namespace dev::brc;
 
-namespace
-{
-void destroy(bvmc_instance* _instance)
-{
-    (void)_instance;
-}
-
-bvmc_capabilities_flagset getCapabilities(bvmc_instance* _instance) noexcept
-{
-    (void)_instance;
-    return BVMC_CAPABILITY_BVM1;
-}
-
-void delete_output(const bvmc_result* result)
-{
-    delete[] result->output_data;
-}
-
-bvmc_result execute(bvmc_instance* _instance, bvmc_context* _context, bvmc_revision _rev,
-    const bvmc_message* _msg, uint8_t const* _code, size_t _codeSize) noexcept
-{
-    (void)_instance;
-    std::unique_ptr<dev::brc::VM> vm{new dev::brc::VM};
-
-    bvmc_result result = {};
-    dev::brc::owning_bytes_ref output;
-
-    try
-    {
-        output = vm->exec(_context, _rev, _msg, _code, _codeSize);
-        result.status_code = BVMC_SUCCESS;
-        result.gas_left = vm->m_io_gas;
-    }
-    catch (dev::brc::RevertInstruction& ex)
-    {
-        result.status_code = BVMC_REVERT;
-        result.gas_left = vm->m_io_gas;
-        output = ex.output();  // This moves the output from the exception!
-    }
-    catch (dev::brc::BadInstruction const&)
-    {
-        result.status_code = BVMC_UNDEFINED_INSTRUCTION;
-    }
-    catch (dev::brc::OutOfStack const&)
-    {
-        result.status_code = BVMC_STACK_OVERFLOW;
-    }
-    catch (dev::brc::StackUnderflow const&)
-    {
-        result.status_code = BVMC_STACK_UNDERFLOW;
-    }
-    catch (dev::brc::BufferOverrun const&)
-    {
-        result.status_code = BVMC_INVALID_MEMORY_ACCESS;
-    }
-    catch (dev::brc::OutOfGas const&)
-    {
-        result.status_code = BVMC_OUT_OF_GAS;
-    }
-    catch (dev::brc::BadJumpDestination const&)
-    {
-        result.status_code = BVMC_BAD_JUMP_DESTINATION;
-    }
-    catch (dev::brc::DisallowedStateChange const&)
-    {
-        result.status_code = BVMC_STATIC_MODE_VIOLATION;
-    }
-    catch (dev::brc::VMException const&)
-    {
-        result.status_code = BVMC_FAILURE;
-    }
-    catch (...)
-    {
-        result.status_code = BVMC_INTERNAL_ERROR;
-    }
-
-    if (!output.empty())
-    {
-        // Make a copy of the output.
-        auto outputData = new uint8_t[output.size()];
-        std::memcpy(outputData, output.data(), output.size());
-        result.output_data = outputData;
-        result.output_size = output.size();
-        result.release = delete_output;
-    }
-
-    return result;
-}
-}  // namespace
-
-extern "C" bvmc_instance* bvmc_create_interpreter() noexcept
-{
-    // TODO: Allow creating multiple instances with different configurations.
-    static bvmc_instance s_instance{
-        BVMC_ABI_VERSION,
-        "interpreter",
-        brcd_get_buildinfo()->project_version,
-        ::destroy,
-        ::execute,
-        getCapabilities,
-        nullptr,  // set_tracer
-        nullptr,  // set_option
-    };
-    return &s_instance;
-}
-
-
-namespace dev
-{
-namespace brc
-{
-uint64_t VM::memNeed(u256 _offset, u256 _size)
+uint64_t LegacyVM::memNeed(u256 _offset, u256 _size)
 {
     return toInt63(_size ? u512(_offset) + _size : u512(0));
 }
 
-template <class S>
-S divWorkaround(S const& _a, S const& _b)
+template <class S> S divWorkaround(S const& _a, S const& _b)
 {
     return (S)(s512(_a) / s512(_b));
 }
 
-template <class S>
-S modWorkaround(S const& _a, S const& _b)
+template <class S> S modWorkaround(S const& _a, S const& _b)
 {
     return (S)(s512(_a) % s512(_b));
 }
@@ -136,7 +24,7 @@ S modWorkaround(S const& _a, S const& _b)
 // for decoding destinations of JUMPTO, JUMPV, JUMPSUB and JUMPSUBV
 //
 
-uint64_t VM::decodeJumpDest(const byte* const _code, uint64_t& _pc)
+uint64_t LegacyVM::decodeJumpDest(const byte* const _code, uint64_t& _pc)
 {
     // turn 2 MSB-first bytes in the code into a native-order integer
     uint64_t dest      = _code[_pc++];
@@ -144,7 +32,7 @@ uint64_t VM::decodeJumpDest(const byte* const _code, uint64_t& _pc)
     return dest;
 }
 
-uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
+uint64_t LegacyVM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
 {
     // Layout of jump table in bytecode...
     //     byte opcode
@@ -164,9 +52,20 @@ uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
 
 
 //
+// for tracing, checking, metering, measuring ...
+//
+void LegacyVM::onOperation()
+{
+    if (m_onOp)
+        (m_onOp)(++m_nSteps, m_PC, m_OP,
+            m_newMemSize > m_mem.size() ? (m_newMemSize - m_mem.size()) / 32 : uint64_t(0),
+            m_runGas, m_io_gas, this, m_ext);
+}
+
+//
 // set current SP to SP', adjust SP' per _removed and _added items
 //
-void VM::adjustStack(int _removed, int _added)
+void LegacyVM::adjustStack(unsigned _removed, unsigned _added)
 {
     m_SP = m_SPP;
 
@@ -179,31 +78,94 @@ void VM::adjustStack(int _removed, int _added)
         throwBadStack(_removed, _added);
 }
 
-uint64_t VM::gasForMem(u512 _size)
+void LegacyVM::updateSSGas()
 {
-    constexpr int64_t memoryGas = VMSchedule::memoryGas;
-    constexpr int64_t quadCoeffDiv = VMSchedule::quadCoeffDiv;
-    u512 s = _size / 32;
-    return toInt63(memoryGas * s + s * s / quadCoeffDiv);
+    u256 const currentValue = m_ext->store(m_SP[0]);
+    u256 const newValue = m_SP[1];
+
+    if (m_schedule->eip1283Mode)
+        updateSSGasEIP1283(currentValue, newValue);
+    else
+        updateSSGasPreEIP1283(currentValue, newValue);
 }
 
-void VM::updateIOGas()
+void LegacyVM::updateSSGasPreEIP1283(u256 const& _currentValue, u256 const& _newValue)
+{
+    if (!_currentValue && _newValue)
+        m_runGas = toInt63(m_schedule->sstoreSetGas);
+    else if (_currentValue && !_newValue)
+    {
+        m_runGas = toInt63(m_schedule->sstoreResetGas);
+        m_ext->sub.refunds += m_schedule->sstoreRefundGas;
+    }
+    else
+        m_runGas = toInt63(m_schedule->sstoreResetGas);
+}
+
+void LegacyVM::updateSSGasEIP1283(u256 const& _currentValue, u256 const& _newValue)
+{
+    if (_currentValue == _newValue)
+        m_runGas = m_schedule->sstoreUnchangedGas;
+    else
+    {
+        u256 const originalValue = m_ext->originalStorageValue(m_SP[0]);
+        if (originalValue == _currentValue)
+        {
+            if (originalValue == 0)
+                m_runGas = m_schedule->sstoreSetGas;
+            else
+            {
+                m_runGas = m_schedule->sstoreResetGas;
+                if (_newValue == 0)
+                    m_ext->sub.refunds += m_schedule->sstoreRefundGas;
+            }
+        }
+        else
+        {
+            m_runGas = m_schedule->sstoreUnchangedGas;
+            if (originalValue != 0)
+            {
+                if (_currentValue == 0)
+                    m_ext->sub.refunds -= m_schedule->sstoreRefundGas;  // Can go negative.
+                if (_newValue == 0)
+                    m_ext->sub.refunds += m_schedule->sstoreRefundGas;
+            }
+            if (originalValue == _newValue)
+            {
+                if (originalValue == 0)
+                    m_ext->sub.refunds +=
+                        m_schedule->sstoreRefundGas + m_schedule->sstoreRefundNonzeroGas;
+                else
+                    m_ext->sub.refunds += m_schedule->sstoreRefundNonzeroGas;
+            }
+        }
+    }
+}
+
+
+uint64_t LegacyVM::gasForMem(u512 _size)
+{
+    u512 s = _size / 32;
+    return toInt63((u512)m_schedule->memoryGas * s + s * s / m_schedule->quadCoeffDiv);
+}
+
+void LegacyVM::updateIOGas()
 {
     if (m_io_gas < m_runGas)
         throwOutOfGas();
     m_io_gas -= m_runGas;
 }
 
-void VM::updateGas()
+void LegacyVM::updateGas()
 {
     if (m_newMemSize > m_mem.size())
         m_runGas += toInt63(gasForMem(m_newMemSize) - gasForMem(m_mem.size()));
-    m_runGas += (VMSchedule::copyGas * ((m_copyMemSize + 31) / 32));
+    m_runGas += (m_schedule->copyGas * ((m_copyMemSize + 31) / 32));
     if (m_io_gas < m_runGas)
         throwOutOfGas();
 }
 
-void VM::updateMem(uint64_t _newMem)
+void LegacyVM::updateMem(uint64_t _newMem)
 {
     m_newMemSize = (_newMem + 31) / 32 * 32;
     updateGas();
@@ -211,32 +173,23 @@ void VM::updateMem(uint64_t _newMem)
         m_mem.resize(m_newMemSize);
 }
 
-void VM::logGasMem()
+void LegacyVM::logGasMem()
 {
-    unsigned n = (unsigned) m_OP - (unsigned) Instruction::LOG0;
-    constexpr int64_t logDataGas = VMSchedule::logDataGas;
-    m_runGas = toInt63(
-        VMSchedule::logGas + VMSchedule::logTopicGas * n + logDataGas * u512(m_SP[1]));
+    unsigned n = (unsigned)m_OP - (unsigned)Instruction::LOG0;
+    m_runGas = toInt63(m_schedule->logGas + m_schedule->logTopicGas * n + u512(m_schedule->logDataGas) * m_SP[1]);
     updateMem(memNeed(m_SP[0], m_SP[1]));
 }
 
-void VM::fetchInstruction()
+void LegacyVM::fetchInstruction()
 {
     m_OP = Instruction(m_code[m_PC]);
-    auto const metric = c_metrics[static_cast<size_t>(m_OP)];
-    adjustStack(metric.num_stack_arguments, metric.num_stack_returned_items);
+    const InstructionMetric& metric = c_metrics[static_cast<size_t>(m_OP)];
+    adjustStack(metric.args, metric.ret);
 
     // FEES...
-    m_runGas = metric.gas_cost;
+    m_runGas = toInt63(m_schedule->tierStepGas[static_cast<unsigned>(metric.gasPriceTier)]);
     m_newMemSize = m_mem.size();
     m_copyMemSize = 0;
-}
-
-bvmc_tx_context const& VM::getTxContext()
-{
-    if (!m_tx_context)
-        m_tx_context.emplace(m_context->host->get_tx_context(m_context));
-    return m_tx_context.value();
 }
 
 
@@ -244,30 +197,39 @@ bvmc_tx_context const& VM::getTxContext()
 //
 // interpreter entry point
 
-owning_bytes_ref VM::exec(bvmc_context* _context, bvmc_revision _rev, const bvmc_message* _msg,
-    uint8_t const* _code, size_t _codeSize)
+owning_bytes_ref LegacyVM::exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
-    m_context = _context;
-    m_rev = _rev;
-    m_message = _msg;
-    m_io_gas = uint64_t(_msg->gas);
+    m_io_gas_p = &_io_gas;
+    m_io_gas = uint64_t(_io_gas);
+    m_ext = &_ext;
+    m_schedule = &m_ext->brcSchedule();
+    m_onOp = _onOp;
+    m_onFail = &LegacyVM::onOperation; // this results in operations that fail being logged twice in the trace
     m_PC = 0;
-    m_pCode = _code;
-    m_codeSize = _codeSize;
 
-    // trampoline to minimize depth of call stack when calling out
-    m_bounce = &VM::initEntry;
-    do
-        (this->*m_bounce)();
-    while (m_bounce);
+    try
+    {
+        // trampoline to minimize depth of call stack when calling out
+        m_bounce = &LegacyVM::initEntry;
+        do
+            (this->*m_bounce)();
+        while (m_bounce);
 
+    }
+    catch (...)
+    {
+        *m_io_gas_p = m_io_gas;
+        throw;
+    }
+
+    *m_io_gas_p = m_io_gas;
     return std::move(m_output);
 }
 
 //
 // main interpreter loop and switch
 //
-void VM::interpretCases()
+void LegacyVM::interpretCases()
 {
     INIT_CASES
     DO_CASES
@@ -279,22 +241,22 @@ void VM::interpretCases()
         CASE(CREATE2)
         {
             ON_OP();
-            if (m_rev < BVMC_CONSTANTINOPLE)
+            if (!m_schedule->haveCreate2)
                 throwBadInstruction();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
-            m_bounce = &VM::caseCreate;
+            m_bounce = &LegacyVM::caseCreate;
         }
         BREAK
 
         CASE(CREATE)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
-            m_bounce = &VM::caseCreate;
+            m_bounce = &LegacyVM::caseCreate;
         }
         BREAK
 
@@ -304,13 +266,13 @@ void VM::interpretCases()
         CASE(CALLCODE)
         {
             ON_OP();
-            if (m_OP == Instruction::DELEGATECALL && m_rev < BVMC_HOMESTEAD)
+            if (m_OP == Instruction::DELEGATECALL && !m_schedule->haveDelegateCall)
                 throwBadInstruction();
-            if (m_OP == Instruction::STATICCALL && m_rev < BVMC_BYZANTIUM)
+            if (m_OP == Instruction::STATICCALL && !m_schedule->haveStaticCall)
                 throwBadInstruction();
-            if (m_OP == Instruction::CALL && m_message->flags & BVMC_STATIC && m_SP[2] != 0)
+            if (m_OP == Instruction::CALL && m_ext->staticCall && m_SP[2] != 0)
                 throwDisallowedStateChange();
-            m_bounce = &VM::caseCall;
+            m_bounce = &LegacyVM::caseCall;
         }
         BREAK
 
@@ -331,7 +293,7 @@ void VM::interpretCases()
         CASE(REVERT)
         {
             // Pre-byzantium
-            if (m_rev < BVMC_BYZANTIUM)
+            if (!m_schedule->haveRevert)
                 throwBadInstruction();
 
             ON_OP();
@@ -341,34 +303,28 @@ void VM::interpretCases()
 
             uint64_t b = (uint64_t)m_SP[0];
             uint64_t s = (uint64_t)m_SP[1];
-            owning_bytes_ref output{std::move(m_mem), b, s};
-            throwRevertInstruction(std::move(output));
+            owning_bytes_ref output{move(m_mem), b, s};
+            throwRevertInstruction(move(output));
         }
         BREAK;
 
         CASE(SUICIDE)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 5000 : 0;
-            bvmc_address destination = toBvmC(asAddress(m_SP[0]));
+            m_runGas = toInt63(m_schedule->suicideGas);
+            Address dest = asAddress(m_SP[0]);
 
             // After EIP158 zero-value suicides do not have to pay account creation gas.
-            u256 const balance =
-                fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
-            if (balance > 0 || m_rev < BVMC_SPURIOUS_DRAGON)
-            {
-                int destinationExists =
-                    m_context->host->account_exists(m_context, &destination);
-                if (m_rev >= BVMC_TANGERINE_WHISTLE && !destinationExists)
-                    m_runGas += VMSchedule::callNewAccount;
-            }
+            if (m_ext->balance(m_ext->myAddress) > 0 || m_schedule->zeroValueTransferChargesNewAccountGas())
+                if (m_schedule->suicideChargesNewAccountGas() && !m_ext->exists(dest))
+                    m_runGas += m_schedule->callNewAccountGas;
 
             updateIOGas();
-            m_context->host->selfdestruct(m_context, &m_message->destination, &destination);
-            m_bounce = nullptr;
+            m_ext->suicide(dest);
+            m_bounce = 0;
         }
         BREAK
 
@@ -418,9 +374,7 @@ void VM::interpretCases()
         CASE(SHA3)
         {
             ON_OP();
-            constexpr int64_t sha3Gas = VMSchedule::sha3Gas;
-            constexpr int64_t sha3WordGas = VMSchedule::sha3WordGas;
-            m_runGas = toInt63(sha3Gas + (u512(m_SP[1]) + 31) / 32 * sha3WordGas);
+            m_runGas = toInt63(m_schedule->sha3Gas + (u512(m_SP[1]) + 31) / 32 * m_schedule->sha3WordGas);
             updateMem(memNeed(m_SP[0], m_SP[1]));
             updateIOGas();
 
@@ -433,106 +387,72 @@ void VM::interpretCases()
         CASE(LOG0)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
             logGasMem();
             updateIOGas();
 
-            uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
-            size_t dataSize = size_t(m_SP[1]);
-
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, nullptr, 0);
+            m_ext->log({}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
         }
         NEXT
 
         CASE(LOG1)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
             logGasMem();
             updateIOGas();
 
-            uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
-            size_t dataSize = size_t(m_SP[1]);
-
-            bvmc_uint256be topics[] = {toBvmC(m_SP[2])};
-            size_t numTopics = sizeof(topics) / sizeof(topics[0]);
-
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_ext->log({m_SP[2]}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
         }
         NEXT
 
         CASE(LOG2)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
             logGasMem();
             updateIOGas();
 
-            uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
-            size_t dataSize = size_t(m_SP[1]);
-
-            bvmc_uint256be topics[] = {toBvmC(m_SP[2]), toBvmC(m_SP[3])};
-            size_t numTopics = sizeof(topics) / sizeof(topics[0]);
-
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_ext->log({m_SP[2], m_SP[3]}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
         }
         NEXT
 
         CASE(LOG3)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
             logGasMem();
             updateIOGas();
 
-            uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
-            size_t dataSize = size_t(m_SP[1]);
-
-            bvmc_uint256be topics[] = {toBvmC(m_SP[2]), toBvmC(m_SP[3]), toBvmC(m_SP[4])};
-            size_t numTopics = sizeof(topics) / sizeof(topics[0]);
-
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_ext->log({m_SP[2], m_SP[3], m_SP[4]}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
         }
         NEXT
 
         CASE(LOG4)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
             logGasMem();
             updateIOGas();
 
-            uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
-            size_t dataSize = size_t(m_SP[1]);
-
-            bvmc_uint256be topics[] = {
-                toBvmC(m_SP[2]), toBvmC(m_SP[3]), toBvmC(m_SP[4]), toBvmC(m_SP[5])};
-            size_t numTopics = sizeof(topics) / sizeof(topics[0]);
-
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_ext->log({m_SP[2], m_SP[3], m_SP[4], m_SP[5]}, bytesConstRef(m_mem.data() + (uint64_t)m_SP[0], (uint64_t)m_SP[1]));
         }
         NEXT
 
         CASE(EXP)
         {
             u256 expon = m_SP[1];
-            const int64_t byteCost = m_rev >= BVMC_SPURIOUS_DRAGON ? 50 : 10;
-            m_runGas = toInt63(VMSchedule::stepGas5 + byteCost * (32 - (h256(expon).firstBitSet() / 8)));
+            m_runGas = toInt63(m_schedule->expGas + m_schedule->expByteGas * (32 - (h256(expon).firstBitSet() / 8)));
             ON_OP();
             updateIOGas();
 
@@ -713,7 +633,7 @@ void VM::interpretCases()
         CASE(SHL)
         {
             // Pre-constantinople
-            if (m_rev < BVMC_CONSTANTINOPLE)
+            if (!m_schedule->haveBitwiseShifting)
                 throwBadInstruction();
 
             ON_OP();
@@ -729,7 +649,7 @@ void VM::interpretCases()
         CASE(SHR)
         {
             // Pre-constantinople
-            if (m_rev < BVMC_CONSTANTINOPLE)
+            if (!m_schedule->haveBitwiseShifting)
                 throwBadInstruction();
 
             ON_OP();
@@ -745,7 +665,7 @@ void VM::interpretCases()
         CASE(SAR)
         {
             // Pre-constantinople
-            if (m_rev < BVMC_CONSTANTINOPLE)
+            if (!m_schedule->haveBitwiseShifting)
                 throwBadInstruction();
 
             ON_OP();
@@ -809,6 +729,93 @@ void VM::interpretCases()
         }
         NEXT
 
+#if EIP_615
+        CASE(JUMPTO)
+        {
+            ON_OP();
+            updateIOGas();
+
+            m_PC = decodeJumpDest(m_code.data(), m_PC);
+        }
+        CONTINUE
+
+        CASE(JUMPIF)
+        {
+            ON_OP();
+            updateIOGas();
+
+            if (m_SP[0])
+                m_PC = decodeJumpDest(m_code.data(), m_PC);
+            else
+                ++m_PC;
+        }
+        CONTINUE
+
+        CASE(JUMPV)
+        {
+            ON_OP();
+            updateIOGas();
+            m_PC = decodeJumpvDest(m_code.data(), m_PC, byte(m_SP[0]));
+        }
+        CONTINUE
+
+        CASE(JUMPSUB)
+        {
+            ON_OP();
+            updateIOGas();
+            *m_RP++ = m_PC++;
+            m_PC = decodeJumpDest(m_code.data(), m_PC);
+        }
+        CONTINUE
+
+        CASE(JUMPSUBV)
+        {
+            ON_OP();
+            updateIOGas();
+            *m_RP++ = m_PC;
+            m_PC = decodeJumpvDest(m_code.data(), m_PC, byte(m_SP[0]));
+        }
+        CONTINUE
+
+        CASE(RETURNSUB)
+        {
+            ON_OP();
+            updateIOGas();
+
+            m_PC = *m_RP--;
+        }
+        NEXT
+
+        CASE(BEGINSUB)
+        {
+            ON_OP();
+            updateIOGas();
+        }
+        NEXT
+
+
+        CASE(BEGINDATA)
+        {
+            ON_OP();
+            updateIOGas();
+        }
+        NEXT
+
+        CASE(GETLOCAL)
+        {
+            ON_OP();
+            updateIOGas();
+        }
+        NEXT
+
+        CASE(PUTLOCAL)
+        {
+            ON_OP();
+            updateIOGas();
+        }
+        NEXT
+
+#else
         CASE(JUMPTO)
         CASE(JUMPIF)
         CASE(JUMPV)
@@ -823,7 +830,320 @@ void VM::interpretCases()
             throwBadInstruction();
         }
         CONTINUE
+#endif
 
+#if EIP_616
+
+        CASE(XADD)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xadd(simdType());
+        }
+        CONTINUE
+
+        CASE(XMUL)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xmul(simdType());
+        }
+        CONTINUE
+
+        CASE(XSUB)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xsub(simdType());
+        }
+        CONTINUE
+
+        CASE(XDIV)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xdiv(simdType());
+        }
+        CONTINUE
+
+        CASE(XSDIV)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xsdiv(simdType());
+        }
+        CONTINUE
+
+        CASE(XMOD)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xmod(simdType());
+        }
+        CONTINUE
+
+        CASE(XSMOD)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xsmod(simdType());
+        }
+        CONTINUE
+
+        CASE(XLT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xlt(simdType());
+        }
+        CONTINUE
+
+        CASE(XGT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xgt(simdType());
+        }
+        CONTINUE
+
+        CASE(XSLT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xslt(simdType());
+        }
+        CONTINUE
+
+        CASE(XSGT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xsgt(simdType());
+        }
+        CONTINUE
+
+        CASE(XEQ)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xeq(simdType());
+        }
+        CONTINUE
+
+        CASE(XISZERO)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xzero(simdType());
+        }
+        CONTINUE
+
+        CASE(XAND)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xand(simdType());
+        }
+        CONTINUE
+
+        CASE(XOOR)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xoor(simdType());
+        }
+        CONTINUE
+
+        CASE(XXOR)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xxor(simdType());
+        }
+        CONTINUE
+
+        CASE(XNOT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xnot(simdType());
+        }
+        CONTINUE
+
+        CASE(XSHL)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xshl(simdType());
+        }
+        CONTINUE
+
+        CASE(XSHR)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xshr(simdType());
+        }
+        CONTINUE
+
+        CASE(XSAR)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xsar(simdType());
+        }
+        CONTINUE
+
+        CASE(XROL)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xrol(simdType());
+        }
+        CONTINUE
+
+        CASE(XROR)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xror(simdType());
+        }
+        CONTINUE
+
+        CASE(XMLOAD)
+        {
+            updateMem(toInt63(m_SP[0]) + 32);
+            ON_OP();
+            updateIOGas();
+
+            xmload(simdType());
+        }
+        CONTINUE
+
+        CASE(XMSTORE)
+        {
+            updateMem(toInt63(m_SP[0]) + 32);
+            ON_OP();
+            updateIOGas();
+
+            xmstore(simdType());
+        }
+        CONTINUE
+
+        CASE(XSLOAD)
+        {
+            m_runGas = toInt63(m_schedule->sloadGas);
+            ON_OP();
+            updateIOGas();
+
+            xsload(simdType());
+        }
+        CONTINUE
+
+        CASE(XSSTORE)
+        {
+            if (m_ext->staticCall)
+                throwDisallowedStateChange();
+
+            updateSSGas();
+            ON_OP();
+            updateIOGas();
+
+            xsstore(simdType());
+        }
+        CONTINUE
+
+        CASE(XVTOWIDE)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xvtowide(simdType());
+        }
+        CONTINUE
+
+        CASE(XWIDETOV)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xwidetov(simdType());
+        }
+        CONTINUE
+
+        CASE(XPUSH)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xpush(simdType());
+        }
+        CONTINUE
+
+        CASE(XPUT)
+        {
+            ON_OP();
+            updateIOGas();
+
+            uint8_t b = ++m_PC;
+            uint8_t c = ++m_PC;
+            xput(m_code[b], m_code[c]);
+            ++m_PC;
+        }
+        CONTINUE
+
+        CASE(XGET)
+        {
+            ON_OP();
+            updateIOGas();
+
+            uint8_t b = ++m_PC;
+            uint8_t c = ++m_PC;
+            xget(m_code[b], m_code[c]);
+            ++m_PC;
+        }
+        CONTINUE
+
+        CASE(XSWIZZLE)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xswizzle(simdType());
+        }
+        CONTINUE
+
+        CASE(XSHUFFLE)
+        {
+            ON_OP();
+            updateIOGas();
+
+            xshuffle(simdType());
+        }
+        CONTINUE
+#else
         CASE(XADD)
         CASE(XMUL)
         CASE(XSUB)
@@ -861,13 +1181,14 @@ void VM::interpretCases()
             throwBadInstruction();
         }
         CONTINUE
+#endif
 
         CASE(ADDRESS)
         {
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromAddress(fromBvmC(m_message->destination));
+            m_SPP[0] = fromAddress(m_ext->myAddress);
         }
         NEXT
 
@@ -876,18 +1197,17 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromAddress(fromBvmC(getTxContext().tx_origin));
+            m_SPP[0] = fromAddress(m_ext->origin);
         }
         NEXT
 
         CASE(BALANCE)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 400 : 20;
+            m_runGas = toInt63(m_schedule->balanceGas);
             ON_OP();
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-            m_SPP[0] = fromBvmC(m_context->host->get_balance(m_context, &address));
+            m_SPP[0] = m_ext->balance(asAddress(m_SP[0]));
         }
         NEXT
 
@@ -897,7 +1217,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromAddress(fromBvmC(m_message->sender));
+            m_SPP[0] = fromAddress(m_ext->caller);
         }
         NEXT
 
@@ -906,7 +1226,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromBvmC(m_message->value);
+            m_SPP[0] = m_ext->value;
         }
         NEXT
 
@@ -916,17 +1236,14 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            size_t const dataSize = m_message->input_size;
-            uint8_t const* const data = m_message->input_data;
-
-            if (u512(m_SP[0]) + 31 < dataSize)
-                m_SP[0] = (u256)*(h256 const*)(data + (size_t)m_SP[0]);
-            else if (m_SP[0] >= dataSize)
+            if (u512(m_SP[0]) + 31 < m_ext->data.size())
+                m_SP[0] = (u256)*(h256 const*)(m_ext->data.data() + (size_t)m_SP[0]);
+            else if (m_SP[0] >= m_ext->data.size())
                 m_SP[0] = u256(0);
             else
-            {     h256 r;
+            { 	h256 r;
                 for (uint64_t i = (uint64_t)m_SP[0], e = (uint64_t)m_SP[0] + (uint64_t)32, j = 0; i < e; ++i, ++j)
-                    r[j] = i < dataSize ? data[i] : 0;
+                    r[j] = i < m_ext->data.size() ? m_ext->data[i] : 0;
                 m_SP[0] = (u256)r;
             };
         }
@@ -938,13 +1255,13 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_message->input_size;
+            m_SPP[0] = m_ext->data.size();
         }
         NEXT
 
         CASE(RETURNDATASIZE)
         {
-            if (m_rev < BVMC_BYZANTIUM)
+            if (!m_schedule->haveReturnData)
                 throwBadInstruction();
 
             ON_OP();
@@ -959,19 +1276,17 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_codeSize;
+            m_SPP[0] = m_ext->code.size();
         }
         NEXT
 
         CASE(EXTCODESIZE)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 700 : 20;
+            m_runGas = toInt63(m_schedule->extcodesizeGas);
             ON_OP();
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-
-            m_SPP[0] = m_context->host->get_code_size(m_context, &address);
+            m_SPP[0] = m_ext->codeSizeAt(asAddress(m_SP[0]));
         }
         NEXT
 
@@ -982,15 +1297,14 @@ void VM::interpretCases()
             updateMem(memNeed(m_SP[0], m_SP[2]));
             updateIOGas();
 
-            bytesConstRef data{m_message->input_data, m_message->input_size};
-            copyDataToMemory(data, m_SP);
+            copyDataToMemory(m_ext->data, m_SP);
         }
         NEXT
 
         CASE(RETURNDATACOPY)
         {
             ON_OP();
-            if (m_rev < BVMC_BYZANTIUM)
+            if (!m_schedule->haveReturnData)
                 throwBadInstruction();
             bigint const endOfAccess = bigint(m_SP[1]) + bigint(m_SP[2]);
             if (m_returnData.size() < endOfAccess)
@@ -1007,13 +1321,13 @@ void VM::interpretCases()
         CASE(EXTCODEHASH)
         {
             ON_OP();
-            if (m_rev < BVMC_CONSTANTINOPLE)
+            if (!m_schedule->haveExtcodehash)
                 throwBadInstruction();
 
+            m_runGas = toInt63(m_schedule->extcodehashGas);
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-            m_SPP[0] = fromBvmC(m_context->host->get_code_hash(m_context, &address));
+            m_SPP[0] = u256{m_ext->codeHashAt(asAddress(m_SP[0]))};
         }
         NEXT
 
@@ -1024,31 +1338,20 @@ void VM::interpretCases()
             updateMem(memNeed(m_SP[0], m_SP[2]));
             updateIOGas();
 
-            copyDataToMemory({m_pCode, m_codeSize}, m_SP);
+            copyDataToMemory(&m_ext->code, m_SP);
         }
         NEXT
 
         CASE(EXTCODECOPY)
         {
             ON_OP();
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 700 : 20;
-            uint64_t copyMemSize = toInt63(m_SP[3]);
-            m_copyMemSize = copyMemSize;
+            m_runGas = toInt63(m_schedule->extcodecopyGas);
+            m_copyMemSize = toInt63(m_SP[3]);
             updateMem(memNeed(m_SP[1], m_SP[3]));
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-
-            size_t memoryOffset = static_cast<size_t>(m_SP[1]);
-            constexpr size_t codeOffsetMax = std::numeric_limits<size_t>::max();
-            size_t codeOffset =
-                m_SP[2] > codeOffsetMax ? codeOffsetMax : static_cast<size_t>(m_SP[2]);
-            size_t size = static_cast<size_t>(copyMemSize);
-
-            size_t numCopied = m_context->host->copy_code(
-                m_context, &address, codeOffset, &m_mem[memoryOffset], size);
-
-            std::fill_n(&m_mem[memoryOffset + numCopied], size - numCopied, 0);
+            Address a = asAddress(m_SP[0]);
+            copyDataToMemory(&m_ext->codeAt(a), m_SP + 1);
         }
         NEXT
 
@@ -1058,25 +1361,17 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromBvmC(getTxContext().tx_gas_price);
+            m_SPP[0] = m_ext->gasPrice;
         }
         NEXT
 
         CASE(BLOCKHASH)
         {
             ON_OP();
-            m_runGas = VMSchedule::stepGas6;
+            m_runGas = toInt63(m_schedule->blockhashGas);
             updateIOGas();
 
-            const int64_t blockNumber = getTxContext().block_number;
-            u256 number = m_SP[0];
-
-            if (number < blockNumber && number >= std::max(int64_t(256), blockNumber) - 256)
-            {
-                m_SPP[0] = fromBvmC(m_context->host->get_block_hash(m_context, int64_t(number)));
-            }
-            else
-                m_SPP[0] = 0;
+            m_SPP[0] = (u256)m_ext->blockHash(m_SP[0]);
         }
         NEXT
 
@@ -1085,7 +1380,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromAddress(fromBvmC(getTxContext().block_coinbase));
+            m_SPP[0] = (u160)m_ext->envInfo().author();
         }
         NEXT
 
@@ -1094,7 +1389,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = getTxContext().block_timestamp;
+            m_SPP[0] = m_ext->envInfo().timestamp();
         }
         NEXT
 
@@ -1103,7 +1398,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = getTxContext().block_number;
+            m_SPP[0] = m_ext->envInfo().number();
         }
         NEXT
 
@@ -1112,7 +1407,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = fromBvmC(getTxContext().block_difficulty);
+            m_SPP[0] = m_ext->envInfo().difficulty();
         }
         NEXT
 
@@ -1121,7 +1416,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = getTxContext().block_gas_limit;
+            m_SPP[0] = m_ext->envInfo().gasLimit();
         }
         NEXT
 
@@ -1136,7 +1431,7 @@ void VM::interpretCases()
 
         CASE(PUSHC)
         {
-#if BVM_USE_CONSTANT_POOL
+#if BRC_USE_CONSTANT_POOL
             ON_OP();
             updateIOGas();
 
@@ -1231,7 +1526,7 @@ void VM::interpretCases()
 
         CASE(JUMPC)
         {
-#if BVM_REPLACE_CONST_JUMP
+#if BRC_REPLACE_CONST_JUMP
             ON_OP();
             updateIOGas();
 
@@ -1244,7 +1539,7 @@ void VM::interpretCases()
 
         CASE(JUMPCI)
         {
-#if BVM_REPLACE_CONST_JUMP
+#if BRC_REPLACE_CONST_JUMP
             ON_OP();
             updateIOGas();
 
@@ -1316,41 +1611,24 @@ void VM::interpretCases()
 
         CASE(SLOAD)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 200 : 50;
+            m_runGas = toInt63(m_schedule->sloadGas);
             ON_OP();
             updateIOGas();
 
-            bvmc_uint256be key = toBvmC(m_SP[0]);
-            m_SPP[0] =
-                fromBvmC(m_context->host->get_storage(m_context, &m_message->destination, &key));
+            m_SPP[0] = m_ext->store(m_SP[0]);
         }
         NEXT
 
         CASE(SSTORE)
         {
             ON_OP();
-            if (m_message->flags & BVMC_STATIC)
+            if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
-            bvmc_uint256be const key = toBvmC(m_SP[0]);
-            bvmc_uint256be const value = toBvmC(m_SP[1]);
-            auto const status =
-                m_context->host->set_storage(m_context, &m_message->destination, &key, &value);
-
-            if (status == BVMC_STORAGE_ADDED)
-                m_runGas = VMSchedule::sstoreSetGas;
-            else if (status == BVMC_STORAGE_MODIFIED || status == BVMC_STORAGE_DELETED)
-                m_runGas = VMSchedule::sstoreResetGas;
-            else if (status == BVMC_STORAGE_UNCHANGED && m_rev < BVMC_CONSTANTINOPLE)
-                m_runGas = VMSchedule::sstoreResetGas;
-            else
-            {
-                assert(status == BVMC_STORAGE_UNCHANGED || status == BVMC_STORAGE_MODIFIED_AGAIN);
-                assert(m_rev >= BVMC_CONSTANTINOPLE);
-                m_runGas = VMSchedule::sstoreUnchangedGas;
-            }
-
+            updateSSGas();
             updateIOGas();
+
+            m_ext->setStore(m_SP[0], m_SP[1]);
         }
         NEXT
 
@@ -1383,7 +1661,7 @@ void VM::interpretCases()
 
         CASE(JUMPDEST)
         {
-            m_runGas = VMSchedule::jumpdestGas;
+            m_runGas = 1;
             ON_OP();
             updateIOGas();
         }
@@ -1396,6 +1674,4 @@ void VM::interpretCases()
         }
     }
     WHILE_CASES
-}
-}
 }

@@ -2,7 +2,7 @@
 
 #include "VMConfig.h"
 
-#include <libevm/VMFace.h>
+#include <libbvm/VMFace.h>
 
 #include <bvmc/bvmc.h>
 #include <bvmc/instructions.h>

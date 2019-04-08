@@ -1,5 +1,5 @@
 #include "TransactionBase.h"
-#include "EVMSchedule.h"
+#include "BRCSchedule.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
@@ -234,7 +234,7 @@ void TransactionBase::checkChainId(int chainId) const
 }
 
 int64_t TransactionBase::baseGasRequired(
-    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es)
+    bool _contractCreation, bytesConstRef _data, BRCSchedule const& _es)
 {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
 

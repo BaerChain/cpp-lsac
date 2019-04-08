@@ -17,7 +17,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         int64_t upperBound = _maxGas;
         if (upperBound == Invalid256 || upperBound > c_maxGasEstimate)
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound = Transaction::baseGasRequired(!_dest, &_data, EVMSchedule());
+        int64_t lowerBound = Transaction::baseGasRequired(!_dest, &_data, BRCSchedule());
         Block bk = blockByNumber(_blockNumber);
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         ExecutionResult er;

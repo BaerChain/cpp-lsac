@@ -32,7 +32,7 @@ ChainOperationParams::ChainOperationParams():
 {
 }
 
-EVMSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blockNumber) const
+BRCSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blockNumber) const
 {
     if (_blockNumber >= experimentalForkBlock)
         return ExperimentalSchedule;
@@ -52,7 +52,7 @@ EVMSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blo
         return FrontierSchedule;
 }
 
-u256 ChainOperationParams::blockReward(EVMSchedule const& _schedule) const
+u256 ChainOperationParams::blockReward(BRCSchedule const& _schedule) const
 {
     if (_schedule.blockRewardOverwrite)
         return *_schedule.blockRewardOverwrite;

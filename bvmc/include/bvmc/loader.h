@@ -30,7 +30,7 @@ enum bvmc_loader_error_code
 };
 
 /**
- * Dynamically loads the shared object (DLL) with an EVM implementation.
+ * Dynamically loads the shared object (DLL) with an BVM implementation.
  *
  * This function tries to open a DLL at the given `filename`. On UNIX-like systems dlopen() function
  * is used. On Windows LoadLibrary() function is used.
@@ -38,8 +38,8 @@ enum bvmc_loader_error_code
  * If the file does not exist or is not a valid shared library the ::BVMC_LOADER_CANNOT_OPEN error
  * code is signaled and NULL is returned.
  *
- * After the DLL is successfully loaded the function tries to find the EVM create function in the
- * library. The `filename` is used to guess the EVM name and the name of the create function.
+ * After the DLL is successfully loaded the function tries to find the BVM create function in the
+ * library. The `filename` is used to guess the BVM name and the name of the create function.
  * The create function name is constructed by the following rules. Consider example path:
  * "/eum/libexample-interpreter.so".
  * - the filename is taken from the path:
@@ -64,12 +64,12 @@ enum bvmc_loader_error_code
  * (the DLL is not going to be loaded multiple times).
  *
  * @param filename    The null terminated path (absolute or relative) to the shared library
- *                    containing the EVM implementation. If the value is NULL, an empty C-string
+ *                    containing the BVM implementation. If the value is NULL, an empty C-string
  *                    or longer than the path maximum length the ::BVMC_LOADER_INVALID_ARGUMENT is
  *                    signaled.
  * @param error_code  The pointer to the error code. If not NULL the value is set to
  *                    ::BVMC_LOADER_SUCCESS on success or any other error code as described above.
- * @return            The pointer to the EVM create function or NULL.
+ * @return            The pointer to the BVM create function or NULL.
  */
 bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* error_code);
 

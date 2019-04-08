@@ -1,60 +1,71 @@
 #pragma once
 
 namespace dev
-{
-namespace brc
-{
+    {
+        namespace brc
+    {
 ///////////////////////////////////////////////////////////////////////////////
 //
 // interpreter configuration macros for development, optimizations and tracing
 //
-// BVM_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
+// EIP_615                - subroutines and static jumps
+// EIP_616                - SIMD
 //
-// BVM_SWITCH_DISPATCH    - dispatch via loop and switch
-// BVM_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
+// BRC_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
 //
-// BVM_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
+// BRC_SWITCH_DISPATCH    - dispatch via loop and switch
+// BRC_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
 //
-// BVM_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
+// BRC_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
 //
-// BVM_TRACE              - provides various levels of tracing
+// BRC_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
+//
+// BRC_TRACE              - provides various levels of tracing
 
-#ifndef BVM_JUMP_DISPATCH
+#ifndef EIP_615
+#define EIP_615 false
+#endif
+
+#ifndef EIP_616
+#define EIP_616 false
+#endif
+
+#ifndef BRC_JUMP_DISPATCH
 #ifdef __GNUC__
-#define BVM_JUMP_DISPATCH true
+#define BRC_JUMP_DISPATCH true
 #else
-#define BVM_JUMP_DISPATCH false
+#define BRC_JUMP_DISPATCH false
 #endif
 #endif
-#if BVM_JUMP_DISPATCH
-#ifndef __GNUC__
+#if BRC_JUMP_DISPATCH
+        #ifndef __GNUC__
 #error "address of label extension available only on Gnu"
 #endif
 #else
-#define BVM_SWITCH_DISPATCH true
+#define BRC_SWITCH_DISPATCH true
 #endif
 
-#ifndef BVM_OPTIMIZE
-#define BVM_OPTIMIZE false
+#ifndef BRC_OPTIMIZE
+#define BRC_OPTIMIZE false
 #endif
-#if BVM_OPTIMIZE
-#define BVM_REPLACE_CONST_JUMP true
-#define BVM_USE_CONSTANT_POOL true
-#define BVM_DO_FIRST_PASS_OPTIMIZATION (BVM_REPLACE_CONST_JUMP || BVM_USE_CONSTANT_POOL)
+#if BRC_OPTIMIZE
+        #define BRC_REPLACE_CONST_JUMP true
+#define BRC_USE_CONSTANT_POOL true
+#define BRC_DO_FIRST_PASS_OPTIMIZATION (BRC_REPLACE_CONST_JUMP || BRC_USE_CONSTANT_POOL)
 #endif
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// set BVM_TRACE to 3, 2, 1, or 0 for lots to no tracing to cerr
+// set BRC_TRACE to 3, 2, 1, or 0 for lots to no tracing to cerr
 //
-#ifndef BVM_TRACE
-#define BVM_TRACE 0
+#ifndef BRC_TRACE
+#define BRC_TRACE 0
 #endif
-#if BVM_TRACE > 0
+#if BRC_TRACE > 0
 
-#undef ON_OP
-#if BVM_TRACE > 2
+        #undef ON_OP
+#if BRC_TRACE > 2
 #define ON_OP() \
     (cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo(m_OP).name << endl)
 #else
@@ -62,22 +73,22 @@ namespace brc
 #endif
 
 #define TRACE_STR(level, str) \
-    if ((level) <= BVM_TRACE) \
+    if ((level) <= BRC_TRACE) \
         cerr << "$$$ " << (str) << endl;
 
 #define TRACE_VAL(level, name, val) \
-    if ((level) <= BVM_TRACE)       \
+    if ((level) <= BRC_TRACE)       \
         cerr << "=== " << (name) << " " << hex << (val) << endl;
 #define TRACE_OP(level, pc, op) \
-    if ((level) <= BVM_TRACE)   \
+    if ((level) <= BRC_TRACE)   \
         cerr << "*** " << (pc) << " " << instructionInfo(op).name << endl;
 
 #define TRACE_PRE_OPT(level, pc, op) \
-    if ((level) <= BVM_TRACE)        \
+    if ((level) <= BRC_TRACE)        \
         cerr << "<<< " << (pc) << " " << instructionInfo(op).name << endl;
 
 #define TRACE_POST_OPT(level, pc, op) \
-    if ((level) <= BVM_TRACE)         \
+    if ((level) <= BRC_TRACE)         \
         cerr << ">>> " << (pc) << " " << instructionInfo(op).name << endl;
 #else
 #define TRACE_STR(level, str)
@@ -90,11 +101,11 @@ namespace brc
 
 // Executive swallows exceptions in some circumstances
 #if 0
-#define THROW_EXCEPTION(X) ((cerr << "!!! BVM EXCEPTION " << (X).what() << endl), abort())
+#define THROW_EXCEPTION(X) ((cerr << "!!! BRC EXCEPTION " << (X).what() << endl), abort())
 #else
-#if BVM_TRACE > 0
-#define THROW_EXCEPTION(X) \
-    ((cerr << "!!! BVM EXCEPTION " << (X).what() << endl), BOOST_THROW_EXCEPTION(X))
+#if BRC_TRACE > 0
+        #define THROW_EXCEPTION(X) \
+    ((cerr << "!!! BRC EXCEPTION " << (X).what() << endl), BOOST_THROW_EXCEPTION(X))
 #else
 #define THROW_EXCEPTION(X) BOOST_THROW_EXCEPTION(X)
 #endif
@@ -105,9 +116,9 @@ namespace brc
 //
 // build a simple loop-and-switch interpreter
 //
-#if BVM_SWITCH_DISPATCH
+#if BRC_SWITCH_DISPATCH
 
-#define INIT_CASES
+        #define INIT_CASES
 #define DO_CASES            \
     for (;;)                \
     {                       \
@@ -131,7 +142,7 @@ namespace brc
 // build an indirect-threaded interpreter using a jump table of
 // label addresses (a gcc extension)
 //
-#elif BVM_JUMP_DISPATCH
+#elif BRC_JUMP_DISPATCH
 
 #define INIT_CASES                              \
                                                 \
@@ -199,7 +210,7 @@ namespace brc
         &&EXTCODECOPY,                          \
         &&RETURNDATASIZE,                       \
         &&RETURNDATACOPY,                       \
-        &&EXTCODEHASH,                          \
+        &&EXTCODEHASH,                         \
         &&BLOCKHASH, /* 40, */                  \
         &&COINBASE,                             \
         &&TIMESTAMP,                            \
@@ -413,5 +424,5 @@ namespace brc
 #else
 #error No opcode dispatch configured
 #endif
-}
-}
+    }
+    }

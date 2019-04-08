@@ -8,7 +8,7 @@
 #include <libbrcdchain/ChainParams.h>
 #include <libbrcdchain/Executive.h>
 #include <libbrcdchain/LastBlockHashesFace.h>
-#include <libevm/VMFactory.h>
+#include <libbvm/VMFactory.h>
 
 #include <brcd/buildinfo.h>
 
@@ -339,7 +339,7 @@ int main(int argc, char** argv)
     if (mode == Mode::Statistics)
     {
         cout << "Gas used: " << res.gasUsed << " (+"
-             << t.baseGasRequired(se->evmSchedule(envInfo.number())) << " for transaction, -"
+             << t.baseGasRequired(se->brcSchedule(envInfo.number())) << " for transaction, -"
              << res.gasRefunded << " refunded)\n";
         cout << "Output: " << toHex(output) << "\n";
         LogEntries logs = executive.logs();

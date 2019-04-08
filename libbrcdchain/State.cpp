@@ -8,7 +8,7 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/TrieHash.h>
-#include <libevm/VMFactory.h>
+#include <libbvm/VMFactory.h>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <libdevcore/CommonJS.h>
