@@ -1,4 +1,4 @@
-// ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
+// brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
 // Copyright 2018 Pawel Bylica.
 // Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
@@ -14,22 +14,22 @@
 
 #pragma once
 
-#include <ethash/ethash.h>
-#include <ethash/hash_types.hpp>
+#include <brcash/brcash.h>
+#include <brcash/hash_types.hpp>
 
 #include <cstdint>
 #include <cstring>
 #include <memory>
 
-namespace ethash
+namespace brcash
 {
-static constexpr int epoch_length = ETHASH_EPOCH_LENGTH;
-static constexpr int light_cache_item_size = ETHASH_LIGHT_CACHE_ITEM_SIZE;
-static constexpr int full_dataset_item_size = ETHASH_FULL_DATASET_ITEM_SIZE;
-static constexpr int num_dataset_accesses = ETHASH_NUM_DATASET_ACCESSES;
+static constexpr int epoch_length = BRCASH_EPOCH_LENGTH;
+static constexpr int light_cache_item_size = BRCASH_LIGHT_CACHE_ITEM_SIZE;
+static constexpr int full_dataset_item_size = BRCASH_FULL_DATASET_ITEM_SIZE;
+static constexpr int num_dataset_accesses = BRCASH_NUM_DATASET_ACCESSES;
 
-using epoch_context = ethash_epoch_context;
-using epoch_context_full = ethash_epoch_context_full;
+using epoch_context = brcash_epoch_context;
+using epoch_context_full = brcash_epoch_context_full;
 
 /// Constructs a 256-bit hash from an array of bytes.
 ///
@@ -49,14 +49,14 @@ struct result
 };
 
 
-/// Alias for ethash_calculate_light_cache_num_items().
-static constexpr auto calculate_light_cache_num_items = ethash_calculate_light_cache_num_items;
+/// Alias for brcash_calculate_light_cache_num_items().
+static constexpr auto calculate_light_cache_num_items = brcash_calculate_light_cache_num_items;
 
-/// Alias for ethash_calculate_full_dataset_num_items().
-static constexpr auto calculate_full_dataset_num_items = ethash_calculate_full_dataset_num_items;
+/// Alias for brcash_calculate_full_dataset_num_items().
+static constexpr auto calculate_full_dataset_num_items = brcash_calculate_full_dataset_num_items;
 
-/// Alias for ethash_calculate_epoch_seed().
-static constexpr auto calculate_epoch_seed = ethash_calculate_epoch_seed;
+/// Alias for brcash_calculate_epoch_seed().
+static constexpr auto calculate_epoch_seed = brcash_calculate_epoch_seed;
 
 
 /// Calculates the epoch number out of the block number.
@@ -88,23 +88,23 @@ inline constexpr uint64_t get_full_dataset_size(int num_items) noexcept
 }
 
 /// Owned unique pointer to an epoch context.
-using epoch_context_ptr = std::unique_ptr<epoch_context, decltype(&ethash_destroy_epoch_context)>;
+using epoch_context_ptr = std::unique_ptr<epoch_context, decltype(&brcash_destroy_epoch_context)>;
 
 using epoch_context_full_ptr =
-    std::unique_ptr<epoch_context_full, decltype(&ethash_destroy_epoch_context_full)>;
+    std::unique_ptr<epoch_context_full, decltype(&brcash_destroy_epoch_context_full)>;
 
 /// Creates Ethash epoch context.
 ///
-/// This is a wrapper for ethash_create_epoch_number C function that returns
+/// This is a wrapper for brcash_create_epoch_number C function that returns
 /// the context as a smart pointer which handles the destruction of the context.
 inline epoch_context_ptr create_epoch_context(int epoch_number) noexcept
 {
-    return {ethash_create_epoch_context(epoch_number), ethash_destroy_epoch_context};
+    return {brcash_create_epoch_context(epoch_number), brcash_destroy_epoch_context};
 }
 
 inline epoch_context_full_ptr create_epoch_context_full(int epoch_number) noexcept
 {
-    return {ethash_create_epoch_context_full(epoch_number), ethash_destroy_epoch_context_full};
+    return {brcash_create_epoch_context_full(epoch_number), brcash_destroy_epoch_context_full};
 }
 
 
@@ -141,4 +141,4 @@ const epoch_context& get_global_epoch_context(int epoch_number);
 
 /// Get global shared epoch context with full dataset initialized.
 const epoch_context_full& get_global_epoch_context_full(int epoch_number);
-}  // namespace ethash
+}  // namespace brcash

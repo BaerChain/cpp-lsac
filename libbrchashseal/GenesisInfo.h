@@ -55,7 +55,7 @@ enum class Network
     HomesteadToEIP150At5 = 102,
     EIP158ToByzantiumAt5 = 103,
 
-    Special = 0xff  ///< Something else.
+    Special = 0xff  ///< Sombrcing else.
 };
 
 std::string const& genesisInfo(Network _n);

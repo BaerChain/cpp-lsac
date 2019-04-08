@@ -1,4 +1,4 @@
-#include "EVMC.h"
+#include "BVMC.h"
 
 #include <libdevcore/Log.h>
 #include <libevm/VMFactory.h>
@@ -7,46 +7,46 @@ namespace dev
 {
 namespace brc
 {
-EVM::EVM(evmc_instance* _instance) noexcept : m_instance(_instance)
+EVM::EVM(bvmc_instance* _instance) noexcept : m_instance(_instance)
 {
     assert(m_instance != nullptr);
-    assert(evmc_is_abi_compatible(m_instance));
+    assert(bvmc_is_abi_compatible(m_instance));
 
     // Set the options.
-    for (auto& pair : evmcOptions())
+    for (auto& pair : bvmcOptions())
     {
-        auto result = evmc_set_option(m_instance, pair.first.c_str(), pair.second.c_str());
+        auto result = bvmc_set_option(m_instance, pair.first.c_str(), pair.second.c_str());
         switch (result)
         {
-        case EVMC_SET_OPTION_SUCCESS:
+        case BVMC_SET_OPTION_SUCCESS:
             break;
-        case EVMC_SET_OPTION_INVALID_NAME:
-            cwarn << "Unknown EVMC option '" << pair.first << "'";
+        case BVMC_SET_OPTION_INVALID_NAME:
+            cwarn << "Unknown BVMC option '" << pair.first << "'";
             break;
-        case EVMC_SET_OPTION_INVALID_VALUE:
-            cwarn << "Invalid value '" << pair.second << "' for EVMC option '" << pair.first << "'";
+        case BVMC_SET_OPTION_INVALID_VALUE:
+            cwarn << "Invalid value '" << pair.second << "' for BVMC option '" << pair.first << "'";
             break;
         default:
-            cwarn << "Unknown error when setting EVMC option '" << pair.first << "'";
+            cwarn << "Unknown error when setting BVMC option '" << pair.first << "'";
         }
     }
 }
 
-/// Handy wrapper for evmc_execute().
+/// Handy wrapper for bvmc_execute().
 EVM::Result EVM::execute(ExtVMFace& _ext, int64_t gas)
 {
     auto mode = toRevision(_ext.evmSchedule());
-    evmc_call_kind kind = _ext.isCreate ? EVMC_CREATE : EVMC_CALL;
-    uint32_t flags = _ext.staticCall ? EVMC_STATIC : 0;
-    assert(flags != EVMC_STATIC || kind == EVMC_CALL);  // STATIC implies a CALL.
-    evmc_message msg = {kind, flags, static_cast<int32_t>(_ext.depth), gas, toEvmC(_ext.myAddress),
+    bvmc_call_kind kind = _ext.isCreate ? BVMC_CREATE : BVMC_CALL;
+    uint32_t flags = _ext.staticCall ? BVMC_STATIC : 0;
+    assert(flags != BVMC_STATIC || kind == BVMC_CALL);  // STATIC implies a CALL.
+    bvmc_message msg = {kind, flags, static_cast<int32_t>(_ext.depth), gas, toEvmC(_ext.myAddress),
         toEvmC(_ext.caller), _ext.data.data(), _ext.data.size(), toEvmC(_ext.value),
         toEvmC(0x0_cppui256)};
     return EVM::Result{
-        evmc_execute(m_instance, &_ext, mode, &msg, _ext.code.data(), _ext.code.size())};
+        bvmc_execute(m_instance, &_ext, mode, &msg, _ext.code.data(), _ext.code.size())};
 }
 
-owning_bytes_ref EVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp)
+owning_bytes_ref BVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp)
 {
     assert(_ext.envInfo().number() >= 0);
     assert(_ext.envInfo().timestamp() >= 0);
@@ -65,47 +65,47 @@ owning_bytes_ref EVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
 
     switch (r.status())
     {
-    case EVMC_SUCCESS:
+    case BVMC_SUCCESS:
         io_gas = r.gasLeft();
         // FIXME: Copy the output for now, but copyless version possible.
         return {r.output().toVector(), 0, r.output().size()};
 
-    case EVMC_REVERT:
+    case BVMC_REVERT:
         io_gas = r.gasLeft();
         // FIXME: Copy the output for now, but copyless version possible.
         throw RevertInstruction{{r.output().toVector(), 0, r.output().size()}};
 
-    case EVMC_OUT_OF_GAS:
-    case EVMC_FAILURE:
+    case BVMC_OUT_OF_GAS:
+    case BVMC_FAILURE:
         BOOST_THROW_EXCEPTION(OutOfGas());
 
-    case EVMC_INVALID_INSTRUCTION:  // NOTE: this could have its own exception
-    case EVMC_UNDEFINED_INSTRUCTION:
+    case BVMC_INVALID_INSTRUCTION:  // NOTE: this could have its own exception
+    case BVMC_UNDEFINED_INSTRUCTION:
         BOOST_THROW_EXCEPTION(BadInstruction());
 
-    case EVMC_BAD_JUMP_DESTINATION:
+    case BVMC_BAD_JUMP_DESTINATION:
         BOOST_THROW_EXCEPTION(BadJumpDestination());
 
-    case EVMC_STACK_OVERFLOW:
+    case BVMC_STACK_OVERFLOW:
         BOOST_THROW_EXCEPTION(OutOfStack());
 
-    case EVMC_STACK_UNDERFLOW:
+    case BVMC_STACK_UNDERFLOW:
         BOOST_THROW_EXCEPTION(StackUnderflow());
 
-    case EVMC_INVALID_MEMORY_ACCESS:
+    case BVMC_INVALID_MEMORY_ACCESS:
         BOOST_THROW_EXCEPTION(BufferOverrun());
 
-    case EVMC_STATIC_MODE_VIOLATION:
+    case BVMC_STATIC_MODE_VIOLATION:
         BOOST_THROW_EXCEPTION(DisallowedStateChange());
 
-    case EVMC_REJECTED:
-        cwarn << "Execution rejected by EVMC, executing with default VM implementation";
+    case BVMC_REJECTED:
+        cwarn << "Execution rejected by BVMC, executing with default VM implementation";
         return VMFactory::create(VMKind::Legacy)->exec(io_gas, _ext, _onOp);
 
-    case EVMC_INTERNAL_ERROR:
+    case BVMC_INTERNAL_ERROR:
     default:
-        if (r.status() <= EVMC_INTERNAL_ERROR)
-            BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_evmcStatusCode(r.status()));
+        if (r.status() <= BVMC_INTERNAL_ERROR)
+            BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_bvmcStatusCode(r.status()));
         else
             // These cases aren't really internal errors, just more specific
             // error codes returned by the VM. Map all of them to OOG.
@@ -113,19 +113,19 @@ owning_bytes_ref EVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
     }
 }
 
-evmc_revision EVM::toRevision(EVMSchedule const& _schedule)
+bvmc_revision EVM::toRevision(EVMSchedule const& _schedule)
 {
     if (_schedule.haveCreate2)
-        return EVMC_CONSTANTINOPLE;
+        return BVMC_CONSTANTINOPLE;
     if (_schedule.haveRevert)
-        return EVMC_BYZANTIUM;
+        return BVMC_BYZANTIUM;
     if (_schedule.eip158Mode)
-        return EVMC_SPURIOUS_DRAGON;
+        return BVMC_SPURIOUS_DRAGON;
     if (_schedule.eip150Mode)
-        return EVMC_TANGERINE_WHISTLE;
+        return BVMC_TANGERINE_WHISTLE;
     if (_schedule.haveDelegateCall)
-        return EVMC_HOMESTEAD;
-    return EVMC_FRONTIER;
+        return BVMC_HOMESTEAD;
+    return BVMC_FRONTIER;
 }
 }  // namespace brc
 }  // namespace dev

@@ -1,7 +1,7 @@
-#include <evmc/loader.h>
+#include <bvmc/loader.h>
 
-#include <evmc/evmc.h>
-#include <evmc/helpers.h>
+#include <bvmc/bvmc.h>
+#include <bvmc/helpers.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -11,14 +11,14 @@
 #define DLL_HANDLE HMODULE
 #define DLL_OPEN(filename) LoadLibrary(filename)
 #define DLL_CLOSE(handle) FreeLibrary(handle)
-#define DLL_GET_CREATE_FN(handle, name) (evmc_create_fn)(uintptr_t) GetProcAddress(handle, name)
+#define DLL_GET_CREATE_FN(handle, name) (bvmc_create_fn)(uintptr_t) GetProcAddress(handle, name)
 #define HAVE_STRCPY_S 1
 #else
 #include <dlfcn.h>
 #define DLL_HANDLE void*
 #define DLL_OPEN(filename) dlopen(filename, RTLD_LAZY)
 #define DLL_CLOSE(handle) dlclose(handle)
-#define DLL_GET_CREATE_FN(handle, name) (evmc_create_fn)(uintptr_t) dlsym(handle, name)
+#define DLL_GET_CREATE_FN(handle, name) (bvmc_create_fn)(uintptr_t) dlsym(handle, name)
 #define HAVE_STRCPY_S 0
 #endif
 
@@ -36,33 +36,33 @@ static void strcpy_s(char* dest, size_t destsz, const char* src)
 #endif
 
 
-evmc_create_fn evmc_load(const char* filename, enum evmc_loader_error_code* error_code)
+bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* error_code)
 {
-    enum evmc_loader_error_code ec = EVMC_LOADER_SUCCESS;
-    evmc_create_fn create_fn = NULL;
+    enum bvmc_loader_error_code ec = BVMC_LOADER_SUCCESS;
+    bvmc_create_fn create_fn = NULL;
 
     if (!filename)
     {
-        ec = EVMC_LOADER_INVALID_ARGUMENT;
+        ec = BVMC_LOADER_INVALID_ARGUMENT;
         goto exit;
     }
 
     const size_t length = strlen(filename);
     if (length == 0 || length > PATH_MAX_LENGTH)
     {
-        ec = EVMC_LOADER_INVALID_ARGUMENT;
+        ec = BVMC_LOADER_INVALID_ARGUMENT;
         goto exit;
     }
 
     DLL_HANDLE handle = DLL_OPEN(filename);
     if (!handle)
     {
-        ec = EVMC_LOADER_CANNOT_OPEN;
+        ec = BVMC_LOADER_CANNOT_OPEN;
         goto exit;
     }
 
     // Create name buffer with the prefix.
-    const char prefix[] = "evmc_create_";
+    const char prefix[] = "bvmc_create_";
     const size_t prefix_length = strlen(prefix);
     char prefixed_name[sizeof(prefix) + PATH_MAX_LENGTH];
     strcpy_s(prefixed_name, sizeof(prefixed_name), prefix);
@@ -107,12 +107,12 @@ evmc_create_fn evmc_load(const char* filename, enum evmc_loader_error_code* erro
     }
 
     if (!create_fn)
-        create_fn = DLL_GET_CREATE_FN(handle, "evmc_create");
+        create_fn = DLL_GET_CREATE_FN(handle, "bvmc_create");
 
     if (!create_fn)
     {
         DLL_CLOSE(handle);
-        ec = EVMC_LOADER_SYMBOL_NOT_FOUND;
+        ec = BVMC_LOADER_SYMBOL_NOT_FOUND;
     }
 
 exit:
@@ -121,24 +121,24 @@ exit:
     return create_fn;
 }
 
-struct evmc_instance* evmc_load_and_create(const char* filename,
-                                           enum evmc_loader_error_code* error_code)
+struct bvmc_instance* bvmc_load_and_create(const char* filename,
+                                           enum bvmc_loader_error_code* error_code)
 {
-    evmc_create_fn create_fn = evmc_load(filename, error_code);
+    bvmc_create_fn create_fn = bvmc_load(filename, error_code);
 
     if (!create_fn)
         return NULL;
 
-    struct evmc_instance* instance = create_fn();
+    struct bvmc_instance* instance = create_fn();
     if (!instance)
     {
-        *error_code = EVMC_LOADER_INSTANCE_CREATION_FAILURE;
+        *error_code = BVMC_LOADER_INSTANCE_CREATION_FAILURE;
         return NULL;
     }
 
-    if (!evmc_is_abi_compatible(instance))
+    if (!bvmc_is_abi_compatible(instance))
     {
-        *error_code = EVMC_LOADER_ABI_VERSION_MISMATCH;
+        *error_code = BVMC_LOADER_ABI_VERSION_MISMATCH;
         return NULL;
     }
 

@@ -5,7 +5,7 @@
 #include <libbrccore/CommonJS.h>
 #include <libbrcdchain/Interface.h>
 
-#include <ethash/ethash.hpp>
+#include <brcash/brcash.hpp>
 
 using namespace std;
 using namespace dev;
@@ -54,7 +54,7 @@ strings Brchash::sealers() const {
 
 h256 Brchash::seedHash(BlockHeader const &_bi) {
     std::cout << "Brchash::seedHash" << std::endl;
-    unsigned epoch = static_cast<unsigned>(_bi.number()) / ETHASH_EPOCH_LENGTH;
+    unsigned epoch = static_cast<unsigned>(_bi.number()) / BRCASH_EPOCH_LENGTH;
 
     h256 seed;
     for (unsigned n = 0; n < epoch; ++n)
@@ -85,8 +85,8 @@ void Brchash::verify(Strictness _s, BlockHeader const &_bi, BlockHeader const &_
 
     // check it hashes according to proof of work or that it's the genesis block.
     if (_s == CheckEverything && _bi.parentHash() && !verifySeal(_bi)) {
-        ethash::result result =
-                ethash::hash(ethash::get_global_epoch_context(ethash::get_epoch_number(_bi.number())),
+        brcash::result result =
+                brcash::hash(brcash::get_global_epoch_context(brcash::get_epoch_number(_bi.number())),
                              toBrchash(_bi.hash(WithoutSeal)), toBrchash(nonce(_bi)));
 
         h256 mix{result.mix_hash.bytes, h256::ConstructFromPointer};
@@ -96,10 +96,10 @@ void Brchash::verify(Strictness _s, BlockHeader const &_bi, BlockHeader const &_
         ex << errinfo_nonce(nonce(_bi));
         ex << errinfo_mixHash(mixHash(_bi));
         ex << errinfo_seedHash(seedHash(_bi));
-        ex << errinfo_ethashResult(make_tuple(final, mix));
+        ex << errinfo_brcashResult(make_tuple(final, mix));
         ex << errinfo_hash256(_bi.hash(WithoutSeal));
         ex << errinfo_difficulty(_bi.difficulty());
-        ex << errinfo_target(boundary(_bi));
+        ex << errinf o_target(boundary(_bi));
         BOOST_THROW_EXCEPTION(ex);
     } else if (_s == QuickNonce && _bi.parentHash() && !quickVerifySeal(_bi)) {
         InvalidBlockNonce ex;
@@ -143,7 +143,7 @@ bool Brchash::quickVerifySeal(BlockHeader const &_blockHeader) const {
     Nonce const n = nonce(_blockHeader);
     h256 const m = mixHash(_blockHeader);
 
-    return ethash::verify_final_hash(toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
+    return brcash::verify_final_hash(toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
 }
 
 bool Brchash::verifySeal(BlockHeader const &_blockHeader) const {
@@ -154,8 +154,8 @@ bool Brchash::verifySeal(BlockHeader const &_blockHeader) const {
     h256 const m = mixHash(_blockHeader);
 
     auto &context =
-            ethash::get_global_epoch_context(ethash::get_epoch_number(_blockHeader.number()));
-    return ethash::verify(context, toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
+            brcash::get_global_epoch_context(brcash::get_epoch_number(_blockHeader.number()));
+    return brcash::verify(context, toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
 }
 
 void Brchash::generateSeal(BlockHeader const &_bi) {
@@ -235,7 +235,7 @@ strings Dpos::sealers() const
 h256 Dpos::seedHash(BlockHeader const& _bi)
 {
 
-    unsigned epoch = static_cast<unsigned>(_bi.number()) / ETHASH_EPOCH_LENGTH;
+    unsigned epoch = static_cast<unsigned>(_bi.number()) / BRCASH_EPOCH_LENGTH;
 
     h256 seed;
     for (unsigned n = 0; n < epoch; ++n)
@@ -281,7 +281,7 @@ bool Dpos::quickVerifySeal(BlockHeader const& _blockHeader) const
     Nonce const n = nonce(_blockHeader);
     h256 const m = mixHash(_blockHeader);
 
-    return ethash::verify_final_hash(toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
+    return brcash::verify_final_hash(toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
 }
 
 bool Dpos::verifySeal(BlockHeader const& _blockHeader) const
@@ -292,8 +292,8 @@ bool Dpos::verifySeal(BlockHeader const& _blockHeader) const
     h256 const m = mixHash(_blockHeader);
 
     auto& context =
-        ethash::get_global_epoch_context(ethash::get_epoch_number(_blockHeader.number()));
-    return ethash::verify(context, toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
+        brcash::get_global_epoch_context(brcash::get_epoch_number(_blockHeader.number()));
+    return brcash::verify(context, toBrchash(h), toBrchash(m), toBrchash(n), toBrchash(b));
 }
 
 void Dpos::generateSeal(BlockHeader const& _bi)

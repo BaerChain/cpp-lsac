@@ -1,4 +1,4 @@
-#include <evmc/instructions.h>
+#include <bvmc/instructions.h>
 
 static const char* constantinople_names[256] = {
     /* 0x00 */ "STOP",
@@ -1036,21 +1036,21 @@ static const char* frontier_names[256] = {
     /* 0xff */ "SELFDESTRUCT",
 };
 
-const char* const* evmc_get_instruction_names_table(enum evmc_revision revision)
+const char* const* bvmc_get_instruction_names_table(enum bvmc_revision revision)
 {
     switch (revision)
     {
-    case EVMC_ISTANBUL:
-    case EVMC_CONSTANTINOPLE2:
-    case EVMC_CONSTANTINOPLE:
+    case BVMC_ISTANBUL:
+    case BVMC_CONSTANTINOPLE2:
+    case BVMC_CONSTANTINOPLE:
         return constantinople_names;
-    case EVMC_BYZANTIUM:
+    case BVMC_BYZANTIUM:
         return byzantium_names;
-    case EVMC_SPURIOUS_DRAGON:
-    case EVMC_TANGERINE_WHISTLE:
-    case EVMC_HOMESTEAD:
+    case BVMC_SPURIOUS_DRAGON:
+    case BVMC_TANGERINE_WHISTLE:
+    case BVMC_HOMESTEAD:
         return homestead_names;
-    case EVMC_FRONTIER:
+    case BVMC_FRONTIER:
         return frontier_names;
     }
     return NULL;

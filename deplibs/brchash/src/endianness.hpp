@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <ethash/ethash.hpp>
+#include <brcash/brcash.hpp>
 
 #if _WIN32
 
@@ -40,7 +40,7 @@
 
 #endif
 
-namespace ethash
+namespace brcash
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -137,4 +137,4 @@ inline uint64_t from_be(uint64_t x)
 }
 
 #endif
-}  // namespace ethash
+}  // namespace brcash

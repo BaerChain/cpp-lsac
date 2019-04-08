@@ -24,7 +24,7 @@ public:
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024});
     ~BrchashClient();
 
-    Brchash* ethash() const;
+    Brchash* brcash() const;
 
     /// Are we mining now?
     bool isMining() const;

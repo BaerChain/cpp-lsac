@@ -40,20 +40,20 @@ BrchashClient::~BrchashClient()
     terminate();
 }
 
-Brchash* BrchashClient::ethash() const
+Brchash* BrchashClient::brcash() const
 {
     return dynamic_cast<Brchash*>(Client::sealEngine());
 }
 
 bool BrchashClient::isMining() const
 {
-    return ethash()->farm().isMining();
+    return brcash()->farm().isMining();
 }
 
 WorkingProgress BrchashClient::miningProgress() const
 {
     if (isMining())
-        return ethash()->farm().miningProgress();
+        return brcash()->farm().miningProgress();
     return WorkingProgress();
 }
 
@@ -81,13 +81,13 @@ std::tuple<h256, h256, h256> BrchashClient::getBrchashWork()
     else
         // otherwise, set this to true so that it gets prepped next time.
         m_remoteWorking = true;
-    ethash()->manuallySetWork(m_sealingInfo);
+    brcash()->manuallySetWork(m_sealingInfo);
     return std::tuple<h256, h256, h256>(m_sealingInfo.hash(WithoutSeal), Brchash::seedHash(m_sealingInfo), Brchash::boundary(m_sealingInfo));
 }
 
 bool BrchashClient::submitBrchashWork(h256 const& _mixHash, h64 const& _nonce)
 {
-    ethash()->manuallySubmitWork(_mixHash, _nonce);
+    brcash()->manuallySubmitWork(_mixHash, _nonce);
     return true;
 }
 

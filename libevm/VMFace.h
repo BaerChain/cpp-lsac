@@ -23,8 +23,8 @@ BRC_SIMPLE_EXCEPTION_VM(BufferOverrun);
 /// differently than defined consensus exceptions.
 struct InternalVMError : Exception {};
 
-/// Error info for EVMC status code.
-using errinfo_evmcStatusCode = boost::error_info<struct tag_evmcStatusCode, evmc_status_code>;
+/// Error info for BVMC status code.
+using errinfo_bvmcStatusCode = boost::error_info<struct tag_bvmcStatusCode, bvmc_status_code>;
 
 struct RevertInstruction: VMException
 {

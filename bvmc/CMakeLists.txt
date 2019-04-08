@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 
-if(TARGET evmc)
+if(TARGET bvmc)
     return()
 endif()
 
-project(evmc)
+project(bvmc)
 set(PROJECT_VERSION 6.0.0)
 
 set(include_dir ${PROJECT_SOURCE_DIR}/include)

@@ -1,4 +1,4 @@
-/* ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
+/* brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
  * Copyright 2018 Pawel Bylica.
  * Licensed under the Apache License, Version 2.0. See the LICENSE file.
  */
@@ -37,7 +37,7 @@ static const uint64_t round_constants[24] = {
     0x8000000080008008,
 };
 
-void ethash_keccakf1600(uint64_t state[25])
+void brcash_keccakf1600(uint64_t state[25])
 {
     /* The implementation based on the "simple" implementation by Ronny Van Keer. */
 

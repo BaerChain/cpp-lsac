@@ -15,8 +15,8 @@ enum class VMKind
     DLL
 };
 
-/// Returns the EVMC options parsed from command line.
-std::vector<std::pair<std::string, std::string>>& evmcOptions() noexcept;
+/// Returns the BVMC options parsed from command line.
+std::vector<std::pair<std::string, std::string>>& bvmcOptions() noexcept;
 
 /// Provide a set of program options related to VMs.
 ///

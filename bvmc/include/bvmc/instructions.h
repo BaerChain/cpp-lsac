@@ -1,7 +1,7 @@
 #pragma once
 
-#include <evmc/evmc.h>
-#include <evmc/utils.h>
+#include <bvmc/bvmc.h>
+#include <bvmc/utils.h>
 
 #if __cplusplus
 extern "C" {
@@ -10,7 +10,7 @@ extern "C" {
 /**
  * The list of EVM 1 opcodes from every EVM revision.
  */
-enum evmc_opcode
+enum bvmc_opcode
 {
     OP_STOP = 0x00,
     OP_ADD = 0x01,
@@ -168,7 +168,7 @@ enum evmc_opcode
  *
  * Small integer types are used here to make the tables of metrics cache friendly.
  */
-struct evmc_instruction_metrics
+struct bvmc_instruction_metrics
 {
     /** The instruction gas cost. Value -1 indicates an undefined instruction. */
     int16_t gas_cost;
@@ -187,8 +187,8 @@ struct evmc_instruction_metrics
  * @return          The pointer to the array of 256 instruction metrics. Null pointer in case
  *                  an invalid EVM revision provided.
  */
-EVMC_EXPORT const struct evmc_instruction_metrics* evmc_get_instruction_metrics_table(
-    enum evmc_revision revision);
+BVMC_EXPORT const struct bvmc_instruction_metrics* bvmc_get_instruction_metrics_table(
+    enum bvmc_revision revision);
 
 /**
  * Get the table of the EVM 1 instruction names.
@@ -199,7 +199,7 @@ EVMC_EXPORT const struct evmc_instruction_metrics* evmc_get_instruction_metrics_
  * @return          The pointer to the array of 256 instruction names. Null pointer in case
  *                  an invalid EVM revision provided.
  */
-EVMC_EXPORT const char* const* evmc_get_instruction_names_table(enum evmc_revision revision);
+BVMC_EXPORT const char* const* bvmc_get_instruction_names_table(enum bvmc_revision revision);
 
 #if __cplusplus
 }

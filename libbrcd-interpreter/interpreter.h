@@ -1,13 +1,13 @@
 #pragma once
 
-#include <evmc/evmc.h>
-#include <evmc/utils.h>
+#include <bvmc/bvmc.h>
+#include <bvmc/utils.h>
 
 #if __cplusplus
 extern "C" {
 #endif
 
-EVMC_EXPORT struct evmc_instance* evmc_create_interpreter() EVMC_NOEXCEPT;
+BVMC_EXPORT struct bvmc_instance* bvmc_create_interpreter() BVMC_NOEXCEPT;
 
 #if __cplusplus
 }
