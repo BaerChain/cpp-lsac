@@ -4,8 +4,8 @@
 
 #include <libevm/VMFace.h>
 
-#include <evmc/evmc.h>
-#include <evmc/instructions.h>
+#include <bvmc/bvmc.h>
+#include <bvmc/instructions.h>
 
 #include <boost/optional.hpp>
 
@@ -48,17 +48,17 @@ class VM
 public:
     VM() = default;
 
-    owning_bytes_ref exec(evmc_context* _context, evmc_revision _rev, const evmc_message* _msg,
+    owning_bytes_ref exec(bvmc_context* _context, bvmc_revision _rev, const bvmc_message* _msg,
         uint8_t const* _code, size_t _codeSize);
 
     uint64_t m_io_gas = 0;
 private:
-    evmc_context* m_context = nullptr;
-    evmc_revision m_rev = EVMC_FRONTIER;
-    evmc_message const* m_message = nullptr;
-    boost::optional<evmc_tx_context> m_tx_context;
+    bvmc_context* m_context = nullptr;
+    bvmc_revision m_rev = BVMC_FRONTIER;
+    bvmc_message const* m_message = nullptr;
+    boost::optional<bvmc_tx_context> m_tx_context;
 
-    static std::array<evmc_instruction_metrics, 256> c_metrics;
+    static std::array<bvmc_instruction_metrics, 256> c_metrics;
     static void initMetrics();
     static u256 exp256(u256 _base, u256 _exponent);
     void copyCode(int);
@@ -108,13 +108,13 @@ private:
 
     // interpreter cases that call out
     void caseCreate();
-    bool caseCallSetup(evmc_message& _msg, bytesRef& o_output);
+    bool caseCallSetup(bvmc_message& _msg, bytesRef& o_output);
     void caseCall();
 
     void copyDataToMemory(bytesConstRef _data, u256*_sp);
     uint64_t memNeed(u256 _offset, u256 _size);
 
-    const evmc_tx_context& getTxContext();
+    const bvmc_tx_context& getTxContext();
 
     void throwOutOfGas();
     void throwBadInstruction();

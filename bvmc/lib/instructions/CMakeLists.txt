@@ -1,6 +1,6 @@
 add_library(
         instructions STATIC
-        ${include_dir}/evmc/instructions.h
+        ${include_dir}/bvmc/instructions.h
         instruction_metrics.c
         instruction_names.c
 )

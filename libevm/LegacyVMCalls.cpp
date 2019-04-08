@@ -173,7 +173,7 @@ void LegacyVM::caseCall()
         // Option 2 used:
         m_returnData = result.output.toBytes();
 
-        m_SPP[0] = result.status == EVMC_SUCCESS ? 1 : 0;
+        m_SPP[0] = result.status == BVMC_SUCCESS ? 1 : 0;
     }
     else
         m_SPP[0] = 0;

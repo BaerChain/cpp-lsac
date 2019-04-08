@@ -2,19 +2,19 @@
 
 
 set(sources
-        include/ethash/ethash.h
-        include/ethash/hash_types.h
-        include/ethash/keccak.h
-        include/ethash/ethash.hpp
-        include/ethash/hash_types.hpp
-        include/ethash/keccak.hpp
+        include/brcash/brcash.h
+        include/brcash/hash_types.h
+        include/brcash/keccak.h
+        include/brcash/brcash.hpp
+        include/brcash/hash_types.hpp
+        include/brcash/keccak.hpp
         src/primes.h
         src/endianness.hpp
-        src/ethash-internal.hpp
+        src/brcash-internal.hpp
         src/keccak.c
         src/keccakf1600.c
         src/primes.c
-        src/ethash.cpp
+        src/brcash.cpp
         src/managed.cpp
         )
 

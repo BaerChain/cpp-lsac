@@ -1,4 +1,4 @@
-#include <evmc/instructions.h>
+#include <bvmc/instructions.h>
 
 /** Marks an instruction as undefined. */
 #define UNDEFINED -1
@@ -16,7 +16,7 @@
 
 /** @} */
 
-static struct evmc_instruction_metrics constantinople_metrics[256] = {
+static struct bvmc_instruction_metrics constantinople_metrics[256] = {
     /*           STOP = 0x00 */ {ZERO, 0, 0},
     /*            ADD = 0x01 */ {VERYLOW, 2, 1},
     /*            MUL = 0x02 */ {LOW, 2, 1},
@@ -275,7 +275,7 @@ static struct evmc_instruction_metrics constantinople_metrics[256] = {
     /*        SUICIDE = 0xff */ {5000, 1, 0},
 };
 
-static struct evmc_instruction_metrics byzantium_metrics[256] = {
+static struct bvmc_instruction_metrics byzantium_metrics[256] = {
     /*           STOP = 0x00 */ {ZERO, 0, 0},
     /*            ADD = 0x01 */ {VERYLOW, 2, 1},
     /*            MUL = 0x02 */ {LOW, 2, 1},
@@ -534,7 +534,7 @@ static struct evmc_instruction_metrics byzantium_metrics[256] = {
     /*        SUICIDE = 0xff */ {5000, 1, 0},
 };
 
-static struct evmc_instruction_metrics tangerine_whistle_metrics[256] = {
+static struct bvmc_instruction_metrics tangerine_whistle_metrics[256] = {
     /*           STOP = 0x00 */ {ZERO, 0, 0},
     /*            ADD = 0x01 */ {VERYLOW, 2, 1},
     /*            MUL = 0x02 */ {LOW, 2, 1},
@@ -793,7 +793,7 @@ static struct evmc_instruction_metrics tangerine_whistle_metrics[256] = {
     /*        SUICIDE = 0xff */ {5000, 1, 0},
 };
 
-static struct evmc_instruction_metrics homestead_metrics[256] = {
+static struct bvmc_instruction_metrics homestead_metrics[256] = {
     /*           STOP = 0x00 */ {ZERO, 0, 0},
     /*            ADD = 0x01 */ {VERYLOW, 2, 1},
     /*            MUL = 0x02 */ {LOW, 2, 1},
@@ -1052,7 +1052,7 @@ static struct evmc_instruction_metrics homestead_metrics[256] = {
     /*        SUICIDE = 0xff */ {ZERO, 1, 0},
 };
 
-static struct evmc_instruction_metrics frontier_metrics[256] = {
+static struct bvmc_instruction_metrics frontier_metrics[256] = {
     /*           STOP = 0x00 */ {ZERO, 0, 0},
     /*            ADD = 0x01 */ {VERYLOW, 2, 1},
     /*            MUL = 0x02 */ {LOW, 2, 1},
@@ -1311,23 +1311,23 @@ static struct evmc_instruction_metrics frontier_metrics[256] = {
     /*        SUICIDE = 0xff */ {ZERO, 1, 0},
 };
 
-const struct evmc_instruction_metrics* evmc_get_instruction_metrics_table(
-    enum evmc_revision revision)
+const struct bvmc_instruction_metrics* bvmc_get_instruction_metrics_table(
+    enum bvmc_revision revision)
 {
     switch (revision)
     {
-    case EVMC_ISTANBUL:
-    case EVMC_CONSTANTINOPLE2:
-    case EVMC_CONSTANTINOPLE:
+    case BVMC_ISTANBUL:
+    case BVMC_CONSTANTINOPLE2:
+    case BVMC_CONSTANTINOPLE:
         return constantinople_metrics;
-    case EVMC_BYZANTIUM:
+    case BVMC_BYZANTIUM:
         return byzantium_metrics;
-    case EVMC_SPURIOUS_DRAGON:
-    case EVMC_TANGERINE_WHISTLE:
+    case BVMC_SPURIOUS_DRAGON:
+    case BVMC_TANGERINE_WHISTLE:
         return tangerine_whistle_metrics;
-    case EVMC_HOMESTEAD:
+    case BVMC_HOMESTEAD:
         return homestead_metrics;
-    case EVMC_FRONTIER:
+    case BVMC_FRONTIER:
         return frontier_metrics;
     }
     return NULL;

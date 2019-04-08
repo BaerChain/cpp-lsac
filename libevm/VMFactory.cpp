@@ -1,10 +1,10 @@
 #include "VMFactory.h"
-#include "EVMC.h"
+#include "BVMC.h"
 #include "LegacyVM.h"
 
 #include <libbrcd-interpreter/interpreter.h>
 
-#include <evmc/loader.h>
+#include <bvmc/loader.h>
 
 namespace po = boost::program_options;
 
@@ -16,11 +16,11 @@ namespace
 {
 auto g_kind = VMKind::Legacy;
 
-/// The pointer to EVMC create function in DLL EVMC VM.
+/// The pointer to BVMC create function in DLL BVMC VM.
 ///
 /// This variable is only written once when processing command line arguments,
 /// so access is thread-safe.
-std::unique_ptr<EVMC> g_evmcDll;
+std::unique_ptr<BVMC> g_bvmcDll;
 
 /// A helper type to build the tabled of VM implementations.
 ///
@@ -53,53 +53,53 @@ void setVMKind(const std::string& _name)
         }
     }
 
-    // If no match for predefined VM names, try loading it as an EVMC VM DLL.
+    // If no match for predefined VM names, try loading it as an BVMC VM DLL.
     g_kind = VMKind::DLL;
 
     // Release previous instance
-    g_evmcDll.reset();
+    g_bvmcDll.reset();
 
-    evmc_loader_error_code ec;
-    evmc_instance *instance = evmc_load_and_create(_name.c_str(), &ec);
-    assert(ec == EVMC_LOADER_SUCCESS || instance == nullptr);
+    bvmc_loader_error_code ec;
+    bvmc_instance *instance = bvmc_load_and_create(_name.c_str(), &ec);
+    assert(ec == BVMC_LOADER_SUCCESS || instance == nullptr);
 
     switch (ec)
     {
-    case EVMC_LOADER_SUCCESS:
+    case BVMC_LOADER_SUCCESS:
         break;
-    case EVMC_LOADER_CANNOT_OPEN:
+    case BVMC_LOADER_CANNOT_OPEN:
         BOOST_THROW_EXCEPTION(
             po::validation_error(po::validation_error::invalid_option_value, "vm", _name, 1));
-    case EVMC_LOADER_SYMBOL_NOT_FOUND:
+    case BVMC_LOADER_SYMBOL_NOT_FOUND:
         BOOST_THROW_EXCEPTION(std::system_error(std::make_error_code(std::errc::invalid_seek),
-            "loading " + _name + " failed: EVMC create function not found"));
-    case EVMC_LOADER_ABI_VERSION_MISMATCH:
+            "loading " + _name + " failed: BVMC create function not found"));
+    case BVMC_LOADER_ABI_VERSION_MISMATCH:
         BOOST_THROW_EXCEPTION(std::system_error(std::make_error_code(std::errc::invalid_argument),
-            "loading " + _name + " failed: EVMC ABI version mismatch"));
+            "loading " + _name + " failed: BVMC ABI version mismatch"));
     default:
         BOOST_THROW_EXCEPTION(
             std::system_error(std::error_code(static_cast<int>(ec), std::generic_category()),
                 "loading " + _name + " failed"));
     }
 
-    g_evmcDll.reset(new EVMC{instance});
+    g_bvmcDll.reset(new BVMC{instance});
 
-    cnote << "Loaded EVMC module: " << g_evmcDll->name() << " " << g_evmcDll->version() << " ("
+    cnote << "Loaded BVMC module: " << g_bvmcDll->name() << " " << g_bvmcDll->version() << " ("
           << _name << ")";
 }
 }  // namespace
 
 namespace
 {
-/// The name of the program option --evmc. The boost will trim the tailing
+/// The name of the program option --bvmc. The boost will trim the tailing
 /// space and we can reuse this variable in exception message.
-const char c_evmcPrefix[] = "bvmc ";
+const char c_bvmcPrefix[] = "bvmc ";
 
-/// The list of EVMC options stored as pairs of (name, value).
-std::vector<std::pair<std::string, std::string>> s_evmcOptions;
+/// The list of BVMC options stored as pairs of (name, value).
+std::vector<std::pair<std::string, std::string>> s_bvmcOptions;
 
-/// The additional parser for EVMC options. The options should look like
-/// `--evmc name=value` or `--evmc=name=value`. The boost pass the strings
+/// The additional parser for BVMC options. The options should look like
+/// `--bvmc name=value` or `--bvmc=name=value`. The boost pass the strings
 /// of `name=value` here. This function splits the name and value or reports
 /// the syntax error if the `=` character is missing.
 void parseEvmcOptions(const std::vector<std::string>& _opts)
@@ -108,17 +108,17 @@ void parseEvmcOptions(const std::vector<std::string>& _opts)
     {
         auto separatorPos = s.find('=');
         if (separatorPos == s.npos)
-            throw po::invalid_syntax{po::invalid_syntax::missing_parameter, c_evmcPrefix + s};
+            throw po::invalid_syntax{po::invalid_syntax::missing_parameter, c_bvmcPrefix + s};
         auto name = s.substr(0, separatorPos);
         auto value = s.substr(separatorPos + 1);
-        s_evmcOptions.emplace_back(std::move(name), std::move(value));
+        s_bvmcOptions.emplace_back(std::move(name), std::move(value));
     }
 }
 }  // namespace
 
-std::vector<std::pair<std::string, std::string>>& evmcOptions() noexcept
+std::vector<std::pair<std::string, std::string>>& bvmcOptions() noexcept
 {
-    return s_evmcOptions;
+    return s_bvmcOptions;
 };
 
 po::options_description vmProgramOptions(unsigned _lineLength)
@@ -146,12 +146,12 @@ po::options_description vmProgramOptions(unsigned _lineLength)
             ->notifier(setVMKind),
         description.data());
 
-    add(c_evmcPrefix,
+    add(c_bvmcPrefix,
         po::value<std::vector<std::string>>()
             ->multitoken()
             ->value_name("<option>=<value>")
             ->notifier(parseEvmcOptions),
-        "EVMC option\n");
+        "BVMC option\n");
 
     return opts;
 }
@@ -170,11 +170,11 @@ VMPtr VMFactory::create(VMKind _kind)
     switch (_kind)
     {
     case VMKind::Interpreter:
-        return {new EVMC{evmc_create_interpreter()}, default_delete};
+        return {new BVMC{bvmc_create_interpreter()}, default_delete};
     case VMKind::DLL:
-        assert(g_evmcDll != nullptr);
-        // Return "fake" owning pointer to global EVMC DLL VM.
-        return {g_evmcDll.get(), null_delete};
+        assert(g_bvmcDll != nullptr);
+        // Return "fake" owning pointer to global BVMC DLL VM.
+        return {g_bvmcDll.get(), null_delete};
     case VMKind::Legacy:
     default:
         return {new LegacyVM, default_delete};

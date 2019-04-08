@@ -1,8 +1,8 @@
-// ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
+// brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
 // Copyright 2018 Pawel Bylica.
 // Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
-#include "ethash-internal.hpp"
+#include "brcash-internal.hpp"
 
 #include <memory>
 #include <mutex>
@@ -19,7 +19,7 @@
 #define ATTRIBUTE_NOINLINE
 #endif
 
-namespace ethash
+namespace brcash
 {
 namespace
 {
@@ -97,4 +97,4 @@ const epoch_context_full& get_global_epoch_context_full(int epoch_number)
 
     return *thread_local_context_full;
 }
-}  // namespace ethash
+}  // namespace brcash

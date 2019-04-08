@@ -69,33 +69,33 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
         _e.go(_onOp);
 }
 
-evmc_status_code transactionExceptionToEvmcStatusCode(TransactionException ex) noexcept
+bvmc_status_code transactionExceptionToEvmcStatusCode(TransactionException ex) noexcept
 {
     switch (ex)
     {
     case TransactionException::None:
-        return EVMC_SUCCESS;
+        return BVMC_SUCCESS;
 
     case TransactionException::RevertInstruction:
-        return EVMC_REVERT;
+        return BVMC_REVERT;
 
     case TransactionException::OutOfGas:
-        return EVMC_OUT_OF_GAS;
+        return BVMC_OUT_OF_GAS;
 
     case TransactionException::BadInstruction:
-        return EVMC_UNDEFINED_INSTRUCTION;
+        return BVMC_UNDEFINED_INSTRUCTION;
 
     case TransactionException::OutOfStack:
-        return EVMC_STACK_OVERFLOW;
+        return BVMC_STACK_OVERFLOW;
 
     case TransactionException::StackUnderflow:
-        return EVMC_STACK_UNDERFLOW;
+        return BVMC_STACK_UNDERFLOW;
 
     case TransactionException ::BadJumpDestination:
-        return EVMC_BAD_JUMP_DESTINATION;
+        return BVMC_BAD_JUMP_DESTINATION;
 
     default:
-        return EVMC_FAILURE;
+        return BVMC_FAILURE;
     }
 }
 

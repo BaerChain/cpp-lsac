@@ -5,7 +5,7 @@
 #include <libbrcdchain/Client.h>
 #include "BrchashProofOfWork.h"
 
-#include <ethash/ethash.hpp>
+#include <brcash/brcash.hpp>
 
 #include <chrono>
 
@@ -14,10 +14,10 @@ namespace dev
 
 namespace brc
 {
-inline ethash::hash256 toBrchash(h256 const& hash) noexcept
+inline brcash::hash256 toBrchash(h256 const& hash) noexcept
 {
     std::cout << "Brchash::toBrchash" << std::endl;
-    return ethash::hash256_from_bytes(hash.data());
+    return brcash::hash256_from_bytes(hash.data());
 }
 
 inline uint64_t toBrchash(Nonce const& nonce) noexcept
@@ -115,9 +115,9 @@ public:
 
 
 /*
-inline ethash::hash256 toBrchash(h256 const& hash) noexcept
+inline brcash::hash256 toBrchash(h256 const& hash) noexcept
 {
-    return ethash::hash256_from_bytes(hash.data());
+    return brcash::hash256_from_bytes(hash.data());
 }
 
 inline uint64_t toBrchash(Nonce const& nonce) noexcept

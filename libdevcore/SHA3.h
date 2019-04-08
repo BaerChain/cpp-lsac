@@ -3,7 +3,7 @@
 #include "FixedHash.h"
 #include "vector_ref.h"
 
-#include <ethash/keccak.hpp>
+#include <brcash/keccak.hpp>
 
 #include <string>
 
@@ -56,7 +56,7 @@ inline SecureFixedHash<32> sha3Secure(std::string const& _input) noexcept
 /// Keccak hash variant optimized for hashing 256-bit hashes.
 inline h256 sha3(h256 const& _input) noexcept
 {
-    ethash::hash256 hash = ethash::keccak256_32(_input.data());
+    brcash::hash256 hash = brcash::keccak256_32(_input.data());
     return h256{hash.bytes, h256::ConstructFromPointer};
 }
 

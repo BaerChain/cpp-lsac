@@ -738,8 +738,8 @@ bool Executive::go(OnOpFunc const& _onOp)
         }
         catch (InternalVMError const& _e)
         {
-            cerror << "Internal VM Error (EVMC status code: "
-                   << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")";
+            cerror << "Internal VM Error (BVMC status code: "
+                   << *boost::get_error_info<errinfo_bvmcStatusCode>(_e) << ")";
             revert();
             throw;
         }

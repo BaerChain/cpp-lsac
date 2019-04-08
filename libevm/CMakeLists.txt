@@ -1,6 +1,6 @@
 
 set(sources
-        EVMC.cpp EVMC.h
+        bvmc.cpp BVMC.h
         ExtVMFace.cpp ExtVMFace.h
         Instruction.cpp Instruction.h
         LegacyVM.cpp LegacyVM.h
@@ -19,7 +19,7 @@ target_link_libraries(
         PRIVATE brcd-interpreter brcd-buildinfo jsoncpp_lib_static Boost::program_options
 )
 
-target_include_directories(libvm PUBLIC ${CMAKE_SOURCE_DIR}/bvmc/include)
+target_include_directories(libvm PUBLIC ${CMAKE_SOURCE_DIR}/bbvmc/include)
 
 #if(EVM_OPTIMIZE)
 #    target_compile_definitions(libvm PRIVATE EVM_OPTIMIZE)

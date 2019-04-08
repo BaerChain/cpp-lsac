@@ -1,11 +1,11 @@
-/* ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
+/* brcash: C/C++ implementation of Ethash, the brcd Proof of Work algorithm.
  * Copyright 2018 Pawel Bylica.
  * Licensed under the Apache License, Version 2.0. See the LICENSE file.
  */
 
 #pragma once
 
-#include <ethash/ethash.h>
+#include <brcash/brcash.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +18,7 @@ extern "C" {
  * @return  The largest prime number `p` such `p <= upper_bound`.
  *          In case `upper_bound <= 1`, returns 0.
  */
-int ethash_find_largest_prime(int upper_bound) NOEXCEPT;
+int brcash_find_largest_prime(int upper_bound) NOEXCEPT;
 
 #ifdef __cplusplus
 }

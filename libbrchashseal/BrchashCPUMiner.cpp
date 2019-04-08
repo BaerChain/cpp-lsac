@@ -1,7 +1,7 @@
 #include "BrchashCPUMiner.h"
 #include "Brchash.h"
 
-#include <ethash/ethash.hpp>
+#include <brcash/brcash.hpp>
 
 #include <thread>
 #include <chrono>
@@ -67,13 +67,13 @@ void BrchashCPUMiner::minerBody()
     // FIXME: Use epoch number, not seed hash in the work package.
     WorkPackage w = work();
 
-    int epoch = ethash::find_epoch_number(toBrchash(w.seedHash));
-    auto& brchashContext = ethash::get_global_epoch_context_full(epoch);
+    int epoch = brcash::find_epoch_number(toBrchash(w.seedHash));
+    auto& brchashContext = brcash::get_global_epoch_context_full(epoch);
 
     h256 boundary = w.boundary;
     for (unsigned hashCount = 1; !m_shouldStop; tryNonce++, hashCount++)
     {
-        auto result = ethash::hash(brchashContext, toBrchash(w.headerHash()), tryNonce);
+        auto result = brcash::hash(brchashContext, toBrchash(w.headerHash()), tryNonce);
         h256 value = h256(result.final_hash.bytes, h256::ConstructFromPointer);
         if (value <= boundary && submitProof(BrchashProofOfWork::Solution{(h64)(u64)tryNonce,
                                      h256(result.mix_hash.bytes, h256::ConstructFromPointer)}))
