@@ -247,7 +247,7 @@ TEST(loader, lib_)
 
 TEST(loader, load_default)
 {
-    auto path = "unittests/default.evmc";
+    auto path = "unittests/default.bvmc";
 
     evmc_loader_error_code ec;
     auto fn = evmc_load(path, &ec);
