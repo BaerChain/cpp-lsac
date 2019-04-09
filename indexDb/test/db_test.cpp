@@ -115,6 +115,9 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
     BOOST_AUTO_TEST_CASE(db_test2) {
+
+
+
         std::cout << "Address sizeof : " << sizeof(dev::Address) << std::endl;
         std::cout << "h256 sizeof : " << sizeof(dev::h256) << std::endl;
         std::cout << "u256 sizeof : " << sizeof(dev::u256) << std::endl;
@@ -125,6 +128,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
         std::cout << "std::array " << sizeof(std::array<uint32_t , 1>) << std::endl;
         std::cout << "std::array " << sizeof(std::array<uint32_t , 5>) << std::endl;
+        std::cout << "u256::MAX " << u256(-1) << std::endl;
     }
 
 
@@ -163,7 +167,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                 }
             }
 
-            const auto &index_itr = db.get_index<order_object_index>().indices().get<by_price_buy>();
+            const auto &index_itr = db.get_index<order_object_index>().indices().get<by_price_buy_less>();
             auto begin = index_itr.lower_bound(boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, BRC, 2, 0));
             auto end = index_itr.upper_bound(boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, BRC, 2, INT64_MAX));
             std::cout << "---------------------------\n";
@@ -189,12 +193,12 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
     BOOST_AUTO_TEST_CASE(db_buy_test4) {
-        h256 id("0000000000000000000000000000000000000000000000000000000000001234");
+        h256 id("1234500000000000000000000000000000000000000000000000000000001234");
         Address ad("0000000000000000000000000000000000000123");
 
 
         std::vector<order> os;
-        uint32_t    create_size = 0xff;
+        uint32_t    create_size = 2;
         for(auto i = 0; i < create_size; i++){
             order o;
             o.trxid = id;
@@ -202,7 +206,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             o.buy_type = only_price;
             o.token_type = BRC;
             o.type = buy;
-            o.price_token = {{u256(i), u256(1)}};
+            o.price_token = {{u256(60), u256(1)}};
             o.time = i;
             os.push_back(o);
         }
@@ -225,23 +229,28 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
             db.insert_operation(os, false, true);
 
-            auto exchange_orders = db.get_oeders();
-            std::cout << "-------------------------------------------\n";
-            std::cout << "exchange_orders.size:  " << exchange_orders.size() << std::endl;
-            std::cout << "os.size:  " << os.size() << std::endl;
-//            BOOST_CHECK((exchange_orders.size() == os.size()));
 
-            for(auto &itr : exchange_orders){
+
+            auto print_data = [&](brc::ex::exchange_plugin &db){
+                auto exchange_orders = db.get_oeders();
+                std::cout << "-------------------------------------------\n";
+                std::cout << "exchange_orders.size:  " << exchange_orders.size() << std::endl;
+                for(auto &itr : exchange_orders){
 //                std::cout << "trxid: " << itr.trxid << std::endl;
 //                std::cout << "sender: " << itr.sender << std::endl;
 //                std::cout << "price: " << itr.price << std::endl;
-//                std::cout << "token_amount: " << itr.token_amount << std::endl;
-//                std::cout << "source_amount: " << itr.source_amount << std::endl;
+                    std::cout << "token_amount: " << itr.token_amount << std::endl;
+                    std::cout << "source_amount: " << itr.source_amount << std::endl;
 //                std::cout << "create_time: " << itr.create_time << std::endl;
 //                std::cout << "type: " << itr.type << std::endl;
 //                std::cout << "token_type: " << itr.token_type << std::endl;
-//                std::cout << "-------------------------------------------\n";
-            }
+                    std::cout << "-------------------------------------------\n";
+                }
+            };
+
+            print_data(db);
+
+
 
 
             ///////////////////create sell order
@@ -254,13 +263,14 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             o.token_type = FUEL;
             o.type = sell;
             for(auto i = 0; i < create_size; i++) {
-                o.price_token = {{u256(50), u256(2)}};
+                o.price_token = {{u256(50), u256(1)}};
             }
             o.time = 0;
 
 
 
             auto ret = db.insert_operation({o}, false, true);
+            print_data(db);
             std::cout << "ret size " << ret.size() << std::endl;
             for(auto &itr : ret){
                 std::cout << "sender   : " << itr.sender << std::endl;

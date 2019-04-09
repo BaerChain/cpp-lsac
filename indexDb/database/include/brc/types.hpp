@@ -58,20 +58,36 @@ namespace brc {
 
 
         struct result_order {
+            result_order(){}
 
             template <typename ITR1, typename  ITR2>
-            result_order(ITR1 itr1, ITR2 itr2, u256 _amount, u256 _price){
+            result_order(const ITR1 &itr1, const ITR2 &itr2, const u256 &_amount, const u256 &_price){
 
                 sender = itr1.sender;
-                shared_to_fix_number(itr2->sender, acceptor);
+//                shared_to_fix_number(itr2->sender, acceptor);
+                acceptor = itr2->sender;
                 type = itr1.type;
                 token_type = itr1.token_type;
                 create_time = itr1.time;
                 send_trxid = itr1.trxid;
-                shared_to_fix_number(itr2->trxid, to_trxid);
+//                shared_to_fix_number(itr2->trxid, to_trxid);
+                to_trxid = itr2->trxid;
                 amount = _amount;
                 price = _price;
-                std::cout << "result_order " << amount << std::endl;
+            }
+
+            template <typename ITR1, typename  ITR2>
+            void set_data(const ITR1 &itr1, const ITR2 &itr2, const u256 &_amount, const u256 &_price){
+                sender = itr1.sender;
+                acceptor = itr2->sender;
+                type = itr1.type;
+                token_type = itr1.token_type;
+                create_time = itr1.time;
+                send_trxid = itr1.trxid;
+                to_trxid = itr2->trxid;
+                amount = _amount;
+                std::cout << "amount " << _amount << std::endl;
+                price = _price;
             }
 
             Address                     sender;
@@ -104,13 +120,13 @@ namespace brc {
         {
         public:
             template<typename Constructor, typename Allocator>
-            order_object(Constructor &&c, Allocator &&a):trxid(a),sender(a){
+            order_object(Constructor &&c, Allocator &&a){
                     c(*this);
             }
 
             id_type                     id;
-            shared_hash256              trxid;
-            shared_Address              sender;
+            h256                        trxid;
+            Address                     sender;
             u256                        price;
             u256                        token_amount;
             u256                        source_amount;
@@ -121,8 +137,11 @@ namespace brc {
 
             template <typename ITR1, typename  ITR2>
             void set_data(ITR1 itr, ITR2 t, u256 rel_amount){
-                fix_number_to_shared(itr.sender, sender);
-                fix_number_to_shared(itr.trxid, trxid);
+//                fix_number_to_shared(itr.sender, sender);
+//                fix_number_to_shared(itr.trxid, trxid);
+
+                sender = itr.sender;
+                trxid = itr.trxid;
                 price = t.first;
                 token_amount = rel_amount;
                 source_amount = t.second ;
@@ -136,7 +155,8 @@ namespace brc {
 
         struct by_id;
         struct by_trx_id;
-        struct by_price_buy;            // price less
+        struct by_price_buy_less;            // price less
+        struct by_price_buy_greater;
         struct by_price_sell;           // price grater
         struct by_address;
 
@@ -148,9 +168,9 @@ namespace brc {
                                     member< order_object, order_object::id_type, &order_object::id >
                             >,
                             ordered_non_unique< tag<by_trx_id>,
-                                    member< order_object, shared_hash256, &order_object::trxid >
+                                    member< order_object, h256, &order_object::trxid >
                             >,
-                            ordered_non_unique< tag<by_price_buy>,
+                            ordered_non_unique< tag<by_price_buy_less>,
                                     composite_key<order_object,
                                         member<order_object, order_type, &order_object::type>,
                                         member<order_object, order_token_type, &order_object::token_type>,
@@ -159,12 +179,21 @@ namespace brc {
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type >, std::less<u256>, std::less<Time_ms>>
                             >,
+                        ordered_non_unique< tag<by_price_buy_greater>,
+                                composite_key<order_object,
+                                        member<order_object, order_type, &order_object::type>,
+                                        member<order_object, order_token_type, &order_object::token_type>,
+                                        member<order_object, u256, &order_object::price>,
+                                        member<order_object, Time_ms, &order_object::create_time>
+                                >,
+                                composite_key_compare<std::less<order_type>, std::less<order_token_type >, std::greater<u256>, std::less<Time_ms>>
+                        >,
                             ordered_non_unique< tag<by_address>,
                                     composite_key<order_object,
-                                        member<order_object, shared_Address, &order_object::sender>,
+                                        member<order_object, Address, &order_object::sender>,
                                         member<order_object, Time_ms, &order_object::create_time>
                                     >,
-                                    composite_key_compare< shared_compare, std::greater<Time_ms>>
+                                    composite_key_compare< std::less<Address>, std::greater<Time_ms>>
                             >
                         >,
                 chainbase::allocator <order_object>
@@ -234,14 +263,17 @@ namespace brc {
 
         struct exchange_order{
             exchange_order(const order_object &obj)
-                    :price(obj.price)
+                    :trxid(obj.trxid)
+                    ,sender(obj.sender)
+                    ,price(obj.price)
                     ,token_amount(obj.token_amount)
                     ,source_amount(obj.source_amount)
                     ,create_time(obj.create_time)
                     ,type(obj.type)
                     ,token_type(obj.token_type){
-                shared_to_fix_number(obj.trxid, trxid);
-                shared_to_fix_number(obj.sender, sender);
+//                shared_to_fix_number(obj.trxid, trxid);
+//                shared_to_fix_number(obj.sender, sender);
+
             }
             h256                        trxid;
             Address                     sender;
