@@ -22,6 +22,7 @@
 #include <functional>
 #include <string>
 #include <chrono>
+#include <boost/multiprecision/cpp_int.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -122,10 +123,15 @@ using strings = std::vector<std::string>;
 // Fixed-length string types.
 using string32 = std::array<char, 32>;
 
+
+
+
 // Null/Invalid values for convenience.
 extern bytes const NullBytes;
 u256 constexpr Invalid256 =
     0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_cppui256;
+
+
 
 /// Interprets @a _u as a two's complement signed number and returns the resulting s256.
 inline s256 u2s(u256 _u)

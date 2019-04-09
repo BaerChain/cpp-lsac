@@ -7,6 +7,7 @@ add_library(brc_db STATIC
             include/brc/types.hpp
             include/brc/exchangeOrder.hpp
             include/brc/exception.hpp
+            include/brc/FixNumber.hpp
 
             src/database.cpp
             src/exchangeOrder.cpp
