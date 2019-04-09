@@ -27,99 +27,52 @@ namespace brc {
 
             std::vector<result_order> result;
             auto session = db.start_undo_session(true);
-            const auto &index = db.get_index<order_object_index>().indices().get<by_price_buy>();
+
             try {
+
+                // get itr by type and token_type
+                // @param less
+                // @return pair,   first is begin iterator,  second is end iterator.
+                auto get_buy_itr = [&](order_token_type token_type, u256 price){
+                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    const auto &index_greater = db.get_index<order_object_index>().indices().get<by_price_buy_greater>();
+
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, uint64_t>(sell, find_token, u256(0), UINT64_MAX);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, uint64_t>(sell, find_token, price, UINT64_MAX);
+
+                    typedef decltype(index_greater.lower_bound(find_lower)) Lower_Type;
+                    typedef decltype(index_greater.upper_bound(find_upper)) Upper_Type;
+
+                    return std::pair<Lower_Type, Upper_Type>(index_greater.lower_bound(find_lower), index_greater.upper_bound(find_upper));
+                };
+
+                auto get_sell_itr = [&](order_token_type token_type, u256 price){
+                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    const auto &index_less = db.get_index<order_object_index>().indices().get<by_price_buy_less>();  //↑
+
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, find_token, price, UINT64_MAX);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, find_token, u256(-1), UINT64_MAX);
+
+                    typedef decltype(index_less.lower_bound(find_upper)) Lower_Type;
+                    typedef decltype(index_less.upper_bound(find_lower)) Upper_Type;
+
+                    return std::pair<Lower_Type, Upper_Type>(index_less.lower_bound(find_upper), index_less.upper_bound(find_lower));
+                };
+
                 for (const auto &itr : orders) {
                     if (itr.buy_type == only_price) {
                         for (const auto t :  itr.price_token) {
-                            order_type o_type = (order_type) (1 ^ itr.type);
-                            order_token_type t_type = (order_token_type) (1 ^ itr.token_type);
+                           if(itr.type == buy){
+                               auto find_itr = get_buy_itr(itr.token_type, t.first);
+                               proccess(find_itr.first, find_itr.second, itr, t.first, t.second, result, throw_exception);
+                           }
+                           else{ //sell
+                               auto find_itr = get_sell_itr(itr.token_type, t.first);
+                               proccess(find_itr.first, find_itr.second, itr, t.first, t.second, result, throw_exception);
+                           }
 
-
-                            u256 price_lower = 0;
-                            u256 price_up = 0;
-
-                            if(itr.type == buy){
-                                price_up = t.first;
-                            }
-                            else if(itr.type == sell){
-                                price_lower = t.first;
-                                price_up = Invalid256;
-                            }
-                            else{
-                                IF_THROW_EXCEPTION(throw_exception, BOOST_THROW_EXCEPTION(order_type_is_null()), result);
-                            }
-
-                            auto find_lower_type = boost::tuple<order_type, order_token_type, u256, uint64_t>(o_type,
-                                                                                                              t_type,
-                                                                                                              price_lower,
-                                                                                                              UINT64_MAX);
-                            auto find_upper_type = boost::tuple<order_type, order_token_type, u256, uint64_t>(o_type,
-                                                                                                              t_type,
-                                                                                                              price_up,
-                                                                                                              UINT64_MAX);
-                            auto lower_itr = index.lower_bound(find_lower_type);
-                            auto up_itr = index.upper_bound(find_upper_type);
-
-
-                            if (lower_itr == up_itr) {
-                                db.create<order_object>([&](order_object &obj) {
-                                    obj.set_data(itr, t, t.second);
-                                });
-                            } else {
-                                auto amount = t.second;
-                                auto begin = itr.type == buy ? lower_itr : up_itr;
-                                auto end = itr.type == buy ? up_itr : lower_itr;
-                                while (amount > 0) {
-                                    if (begin == end) {
-                                        //left token  push order_object
-                                        if (amount != 0) {
-                                            db.create<order_object>([&](order_object &obj) {
-                                                obj.set_data(itr, t, amount);
-                                            });
-                                        }
-                                    }
-                                    if (begin->token_amount <= amount) {
-                                        amount -= begin->token_amount;
-                                        std::cout << "expire : " << amount << std::endl;
-                                        result_order ret(itr, begin, begin->token_amount, t.first);
-                                        const auto *rm_item = db.find(begin->id);
-                                        if(rm_item != nullptr){
-                                            db.remove(*rm_item);
-                                        }
-                                        else{
-                                            IF_THROW_EXCEPTION(throw_exception, BOOST_THROW_EXCEPTION(remove_object_error()), result);
-                                        }
-                                        db.create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
-                                        result.push_back(ret);
-                                    } else {
-                                        db.modify(*begin, [&](order_object &obj) {
-                                            obj.token_amount -= amount;
-
-                                        });
-                                        result_order ret(itr, begin, amount, t.first);
-                                        db.create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
-                                        amount = 0;
-                                    }
-                                    itr.type == buy ? begin++ : begin--;
-                                }
-                            }
                         }
                     }
-//                    else {  //all_price
-//                        for(const auto t :  itr.price_token){
-//                            order_type o_type = (order_type)(1 ^ itr.type);
-//                            order_token_type t_type = (order_token_type)(1 ^ itr.token_type);
-//                            auto find_lower_type = boost::tuple<order_type, order_token_type, u256, uint64_t>(o_type, t_type, u256(0), UINT64_MAX);
-//                            auto find_upper_type = boost::tuple<order_type, order_token_type, u256, uint64_t>(o_type, t_type, t.first, UINT64_MAX);
-//
-//
-//                        }
-//                    }
 
                 }
 
