@@ -8,11 +8,14 @@
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrcdchain/CodeSizeCache.h>
+#include <libbvm/ExtVMFace.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
-#include <libbvm/ExtVMFace.h>
 #include <array>
+#include <brc/database.hpp>
+#include <brc/exchangeOrder.hpp>
+#include <brc/types.hpp>
 #include <unordered_map>
 
 namespace dev
@@ -183,14 +186,14 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State(u256 const& _accountStartNonce)
-      : State(_accountStartNonce, OverlayDB(), BaseState::Empty)
+      : State(_accountStartNonce, OverlayDB(), exchange_plugin(),BaseState::Empty)
     {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db,
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, exchange_plugin const& _exdb,
         BaseState _bs = BaseState::PreExisting);
 
     enum NullType
@@ -211,6 +214,9 @@ public:
         WithExisting _we = WithExisting::Trust);
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
+
+    static void openExdb(boost::filesystem::path const& _path);
+    exchange_plugin const& exdb() const { return m_exdb; }
 
     /// Populate the state from the given AccountMap. Just uses dev::brc::commit().
     void populateFrom(AccountMap const& _map);
@@ -286,18 +292,13 @@ public:
     void subFBalance(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
-    void brcPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
-        h256 _pendingOrderHash, size_t _pendingOrderType);
-
-
-    void fuelPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
-        h256 _pendingOrderHash, size_t _pendingOrderType);
- 
-
+    void pendingOrder(Address const& _addr, u256 const& _pendingOrderNum, size_t _pendingOrderPrice,
+        h256 _pendingOrderHash, size_t _pendingOrderType, size_t _pendingOrderTokenType,
+        size_t _pendingOrderBuyType);
 
     void cancelPendingOrder(
         Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
-    
+
 
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
@@ -459,6 +460,9 @@ private:
 
     /// Our overlay for the state tree.
     OverlayDB m_db;
+
+    // Exdb
+    exchange_plugin m_exdb;
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
@@ -475,6 +479,8 @@ private:
 
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
+
+    mutable Logger m_loggerError{createLogger(VerbosityError, "State")};
 };
 
 std::ostream& operator<<(std::ostream& _out, State const& _s);

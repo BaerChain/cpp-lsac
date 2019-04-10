@@ -38,7 +38,7 @@ public:
 public:
     bool verifyTranscation(
         Address const& _form, Address const& _to, size_t _type, size_t _transcationNum);
-    bool verifyPendingOrder(Address const& _form, size_t _type, size_t _pendingOrderNum, size_t _pendingOrderPrice, h256 _pendingOrderHash = h256(0));
+    bool verifyPendingOrder(Address const& _form, exchange_plugin const& _exdb, int64_t _nowTime, size_t _type, size_t _token_type, size_t _buy_type, size_t _pendingOrderNum, size_t& _pendingOrderPrice, h256 _pendingOrderHash = 0);
 
     private:
         State& m_state;

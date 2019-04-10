@@ -161,6 +161,7 @@ string StandardTrace::multilineTrace() const
 
 Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level)
   : m_vote(_s.mutableState()),
+    m_exdb(_s.mutableState().exdb()),
     m_brctranscation(_s.mutableState()),
     m_s(_s.mutableState()),
     m_envInfo(_s.info(), _bc.lastBlockHashes(), 0),
@@ -351,7 +352,7 @@ void Executive::initialize(Transaction const& _transaction)
                             _transcation_op.m_Transcation_numbers))
                     {
                         LOG(m_execLogger)
-                            << "verifyVote field > "
+                            << "transcation field > "
                             << "m_t.sender:" << m_t.sender() << " * "
                             << " to:" << _transcation_op.m_to
                             << " transcation_type:" << _transcation_op.m_Transcation_type
@@ -386,27 +387,32 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
-                            (size_t)_pengdingorder_op.m_type, _pengdingorder_op.m_Pendingorder_num,
+							m_exdb, m_envInfo.timestamp(),
+                            (size_t)_pengdingorder_op.m_Pendingorder_type,
+                            (size_t)_pengdingorder_op.m_Pendingorder_Token_type,
+                            (size_t)_pengdingorder_op.m_Pendingorder_buy_type,
+							_pengdingorder_op.m_Pendingorder_num,
                             _pengdingorder_op.m_Pendingorder_price))
                     {
                         LOG(m_execLogger)
-                            << "verifyVote field > "
+                            << "pendingorder field > "
                             << "m_t.sender:" << m_t.sender() << " * "
                             << " pendingorder_type:" << _pengdingorder_op.m_Pendingorder_type
                             << " pendingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
-                        m_excepted = TransactionException::VerifyVoteField;
+                        m_excepted = TransactionException::VerifyPendingOrderFiled;
                         BOOST_THROW_EXCEPTION(
-                            VerifyVoteField()
+                            VerifyPendingOrderFiled()
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
-                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0),
                                 _pengdingorder_op.m_Pendingorder_type,
                                 _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
-                            _pengdingorder_op.m_Pendingorder_price, m_t.sha3()});
+								_pengdingorder_op.m_Pendingorder_price, m_t.sha3(),
+								_pengdingorder_op.m_Pendingorder_Token_type, _pengdingorder_op.m_Pendingorder_buy_type});
                 }
                 break;
                 case transationTool::cancelPendingOrder:
@@ -426,11 +432,14 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
-                            (size_t)_pengdingorder_op.m_type, _pengdingorder_op.m_Pendingorder_num,
+                            (size_t)_pengdingorder_op.m_Pendingorder_type,
+							(size_t)_pengdingorder_op.m_Pendingorder_Token_type,
+							_pengdingorder_op.m_Pendingorder_buy_type,
+							_pengdingorder_op.m_Pendingorder_num,
                             _pengdingorder_op.m_Pendingorder_price))
                     {
                         LOG(m_execLogger)
-                            << "verifyVote field > "
+                            << "pendingorder field > "
                             << "m_t.sender:" << m_t.sender() << " * "
                             << " canclependingorder_type:" << _pengdingorder_op.m_Pendingorder_type
                             << " canclependingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
@@ -571,12 +580,12 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
             else if (val.m_method == BRCTransaction)
                 m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == BuyBrcPendingOrder || val.m_method == SellBrcPendingOrder)
-                m_s.brcPendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
-                    val.m_pendingOrderHash, val.m_method - (uint8_t)PendingOrderStart);
-            else if (val.m_method == BuyFuelPendingOrder || val.m_method == SellFuelPendingOrder)
-                m_s.fuelPendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
-                    val.m_pendingOrderHash, val.m_method - (uint8_t)PendingOrderStart);
+            else if (val.m_method == PendingOrder)
+                m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
+                                    val.m_pendingOrderHash,
+                                    val.m_method - (uint8_t)PendingOrderStart,
+                                    val.m_PendingOrderTokenType,
+									val.m_PendingOrderBuyType);
             else if (val.m_method == CancelPendingOrder)
                 m_s.cancelPendingOrder(p.senderAddress, p.valueTransfer,
                     val.m_method - (uint8_t)PendingOrderStart, val.m_pendingOrderHash);

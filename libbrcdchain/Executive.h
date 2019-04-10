@@ -237,6 +237,8 @@ private:
         bytesConstRef const& _data, OnOpFunc _onOpFunc);
     DposVote m_vote;  // dpos for vote class
     BRCTranscation m_brctranscation;
+	exchange_plugin m_exdb;
+
     State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
     EnvInfo m_envInfo;             ///< Information on the runtime environment.
