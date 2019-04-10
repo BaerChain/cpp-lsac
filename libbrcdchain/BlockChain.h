@@ -106,8 +106,8 @@ public:
 
     /// Import block into disk-backed DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-    ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, bool _mustBeNew = true);
-    ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, bool _mustBeNew = true);
+    ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, exchange_plugin const& _stateExDB, bool _mustBeNew = true);
+    ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, exchange_plugin const& _stateExDB,bool _mustBeNew = true);
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the
@@ -274,7 +274,7 @@ public:
     void setOnBlockImport(std::function<void(BlockHeader const&)> _t) { m_onBlockImport = _t; }
 
     /// Get a pre-made genesis State object.
-    Block genesisBlock(OverlayDB const& _db) const;
+    Block genesisBlock(OverlayDB const& _db, exchange_plugin const& _exdb ) const;
 
     /// Verify block and prepare it for enactment
     VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const;

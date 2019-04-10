@@ -36,8 +36,8 @@ namespace {
 }
 
 
-Block::Block(BlockChain const &_bc, OverlayDB const &_db, BaseState _bs, Address const &_author) :
-        m_state(Invalid256, _db, _bs),
+Block::Block(BlockChain const &_bc, OverlayDB const &_db, exchange_plugin const& _exdb ,BaseState _bs,Address const &_author) :
+        m_state(Invalid256, _db, _exdb ,_bs), 
         m_vote(m_state),
         m_precommit(Invalid256),
         m_author(_author) {
@@ -48,8 +48,8 @@ Block::Block(BlockChain const &_bc, OverlayDB const &_db, BaseState _bs, Address
 //    assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(BlockChain const &_bc, OverlayDB const &_db, h256 const &_root, Address const &_author) :
-        m_state(Invalid256, _db, BaseState::PreExisting),
+Block::Block(BlockChain const &_bc, OverlayDB const &_db, exchange_plugin const& _exdb,h256 const &_root, Address const &_author) :
+        m_state(Invalid256, _db, _exdb,BaseState::PreExisting),
         m_vote(m_state),
         m_precommit(Invalid256),
         m_author(_author) {
@@ -271,7 +271,7 @@ bool Block::sync(BlockChain const &_bc, h256 const &_block, BlockHeader const &_
 }
 
 pair<TransactionReceipts, bool>
-Block::sync(BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, unsigned msTimeout) {
+Block::sync(BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, exchange_plugin const& _exdb,unsigned msTimeout) {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 
@@ -567,12 +567,17 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash()) {
         auto r = rootHash();
         m_state.db().rollback();        // TODO: API in State for this?
+
+		// exdb rollback
+
         BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
     }
 
     if (m_currentBlock.gasUsed() != gasUsed()) {
         // Rollback the trie.
         m_state.db().rollback();        // TODO: API in State for this?
+
+		// exdb rollback
         BOOST_THROW_EXCEPTION(
                 InvalidGasUsed() << RequirementError(bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
     }
@@ -721,7 +726,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
             LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
             LOG(m_loggerDetailed) << m_state;
 
-    m_currentBlock.setTimestamp(utcTimeMilliSec());
+    //m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap),

@@ -306,7 +306,10 @@ protected:
 
     std::shared_ptr<GasPricer> m_gp;        ///< The gas pricer.
 
-    OverlayDB m_stateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
+    OverlayDB m_stateDB;
+	exchange_plugin m_StateExDB;
+
+		///< Acts as the central point for the state database, so multiple States can share it.
     mutable SharedMutex x_preSeal;          ///< Lock on m_preSeal.
     Block m_preSeal;                        ///< The present state of the client.
     mutable SharedMutex x_postSeal;         ///< Lock on m_postSeal.
