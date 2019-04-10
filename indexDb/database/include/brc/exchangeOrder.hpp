@@ -9,10 +9,6 @@
 
 namespace dev {
     namespace brc {
-
-        using namespace db;
-
-
         namespace ex {
 
             class exchange_plugin {
@@ -34,6 +30,8 @@ namespace dev {
                 int64_t get_version();
 
                 bool rollback(int version);
+
+                bool commit();
 
             private:
 
@@ -103,7 +101,7 @@ namespace dev {
 
                 }
 
-                std::shared_ptr<brc::db::database> db;
+                std::shared_ptr<database> db;
             };
 
 
