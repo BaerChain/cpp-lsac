@@ -5,6 +5,10 @@
 #include <brc/types.hpp>
 
 using namespace chainbase;
+
+namespace dev{
+
+
 namespace brc {
     namespace db {
 
@@ -41,4 +45,5 @@ namespace brc {
 
         };
     }
+}
 }

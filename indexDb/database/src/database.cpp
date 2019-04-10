@@ -3,6 +3,9 @@
 
 #include <brc/database.hpp>
 
+namespace dev{
+
+
 
 namespace brc {
     namespace db {
@@ -49,4 +52,5 @@ namespace brc {
 
 
     }
+}
 }
