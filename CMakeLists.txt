@@ -7,6 +7,10 @@ include(CheckTypeSize)
 include(CheckSymbolExists)
 set(CMAKE_CXX_STANDARD 14)
 #add_definitions(-fvisibility=hidden)
+
+
+
+
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
 endif()
