@@ -18,7 +18,7 @@ using namespace boost::multi_index;
 
 namespace dev{
     namespace brc {
-        namespace db {
+        namespace ex {
 
             typedef int64_t     Time_ms;
 
@@ -292,5 +292,5 @@ namespace dev{
 }
 
 
-CHAINBASE_SET_INDEX_TYPE(dev::brc::db::order_object, dev::brc::db::order_object_index)
-CHAINBASE_SET_INDEX_TYPE(dev::brc::db::order_result_object, dev::brc::db::order_result_object_index)
+CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_object, dev::brc::ex::order_object_index)
+CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_result_object, dev::brc::ex::order_result_object_index)

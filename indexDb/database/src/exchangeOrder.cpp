@@ -27,9 +27,7 @@ namespace dev {
                 if (!db) {
                     BOOST_THROW_EXCEPTION(get_db_instance_error());
                 }
-
                 std::vector<result_order> result;
-                auto session = db->start_undo_session(true);
                 try {
                     // get itr by type and token_type
                     // @param less
@@ -88,7 +86,6 @@ namespace dev {
                     if (!reset) {
                         auto version = db->revision();
                         db->commit(version + 1);
-
                     }
                 } catch (const boost::exception &e) {
                     return result;
@@ -121,6 +118,19 @@ namespace dev {
                 }
 
                 return ret;
+            }
+
+
+            int64_t exchange_plugin::get_version() {
+                return db->revision();
+            }
+
+            bool exchange_plugin::rollback(int version) {
+                return true;
+            }
+
+            bool exchange_plugin::commit() {
+                return true;
             }
 
         }
