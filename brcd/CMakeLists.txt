@@ -5,7 +5,8 @@ set(
     MinerAux.cpp MinerAux.h
 )
 
-
+#set(CMAKE_CXX_LINK_EXECUTABLE  "-static")
+#message(STATUS "CMAKE_CXX_LINK_EXECUTABLE = " ${CMAKE_CXX_LINK_EXECUTABLE})
 #add_definitions(-DBOOST_LOG_DYN_LINK)
 add_executable(brcd ${sources})
 

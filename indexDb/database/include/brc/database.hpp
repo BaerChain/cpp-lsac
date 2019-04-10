@@ -11,6 +11,7 @@ namespace brc {
 
         class database : public chainbase::database {
         public:
+
             database(const boost::filesystem::path &data_dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool allow_dirty = false);
 
             ~database();
