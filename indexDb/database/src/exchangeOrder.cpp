@@ -18,7 +18,7 @@ namespace brc {
     namespace ex {
 
         exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
-                : db(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL) {
+                : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
 
         }
 
@@ -29,14 +29,14 @@ namespace brc {
             }
 
             std::vector<result_order> result;
-            auto session = db.start_undo_session(true);
+            auto session = db->start_undo_session(true);
             try {
                 // get itr by type and token_type
                 // @param less
                 // @return pair,   first is begin iterator,  second is end iterator.
                 auto get_buy_itr = [&](order_token_type token_type, u256 price){
                     auto find_token = token_type == BRC ? FUEL : BRC;
-                    const auto &index_greater = db.get_index<order_object_index>().indices().get<by_price_buy_less>();
+                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_buy_less>();
 
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms >(sell, find_token, u256(0), 0);
                     auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token, price, INT64_MAX);

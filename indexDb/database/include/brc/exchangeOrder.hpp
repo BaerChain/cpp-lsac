@@ -15,7 +15,7 @@ namespace brc{
 
         class exchange_plugin{
         public:
-            exchange_plugin(){
+            exchange_plugin():db(nullptr){
 
             }
             exchange_plugin(const boost::filesystem::path &data_dir);
@@ -35,7 +35,6 @@ namespace brc{
             template <typename BEGIN, typename END>
             void proccess(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount, std::vector<result_order> &result, bool throw_exception){
                 if(begin == end){
-                    //TODO: create order_object
                     db->create<order_object>([&](order_object &obj) {
                         obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                     });
@@ -55,8 +54,6 @@ namespace brc{
                     if(begin->token_amount <= spend){
                         spend -= begin->token_amount;
                         ret.set_data(od, begin, begin->token_amount, begin->price);
-
-
                         rm = true;
 
                     } else{
@@ -72,7 +69,6 @@ namespace brc{
                     });
                     result.push_back(ret);
                     if(rm){
-
                         const auto rm_obj = db->find(begin->id);
                         if(rm_obj != nullptr){
                             begin++;
@@ -83,6 +79,7 @@ namespace brc{
                                 BOOST_THROW_EXCEPTION(remove_object_error());
                             }
                         }
+                        rm = false;
                     }
                     else{
                         begin++;
