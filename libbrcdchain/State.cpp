@@ -2,24 +2,24 @@
 
 #include "Block.h"
 #include "BlockChain.h"
+#include "DposVote.h"
 #include "ExtVM.h"
 #include "TransactionQueue.h"
-#include "DposVote.h"
+#include <libbvm/VMFactory.h>
 #include <libdevcore/Assertions.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/TrieHash.h>
-#include <libbvm/VMFactory.h>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
-#include <libdevcore/CommonJS.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
 namespace fs = boost::filesystem;
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs)
-  : m_db(_db), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, exchange_plugin const& _exdb, BaseState _bs)
+  : m_db(_db), m_exdb(_exdb) ,m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
@@ -80,6 +80,22 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
             BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
         }
     }
+}
+
+void State::openExdb(boost::filesystem::path const& _path)
+{
+    try
+    {
+        exchange_plugin exdb = exchange_plugin(_path);
+    }
+    catch (const std::exception&)
+    {
+        LOG(m_loggerError) << "Open ExDb Error";
+        exit(1);
+    }
+
+	return exdb;
+    
 }
 
 void State::populateFrom(AccountMap const& _map)
@@ -158,17 +174,17 @@ Account* State::account(Address const& _addr)
     RLP vote(_b);
     size_t num = vote[0].toInt<size_t>();
     std::unordered_map<Address, u256> _vote;
-    for (size_t j=1 ; j <= num; j++)
+    for (size_t j = 1; j <= num; j++)
     {
         std::pair<Address, u256> _pair = vote[j].toPair<Address, u256>();
         _vote.insert(_pair);
     }
 
-    auto i = m_cache.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(_addr),
-        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(), state[5].toInt<u256>(), state[7].toInt<u256>(), state[8].toInt<u256>(), state[9].toInt<u256>(),Account::Unchanged)
-    );
+    auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
+        std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
+            state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(),
+            state[5].toInt<u256>(), state[7].toInt<u256>(), state[8].toInt<u256>(),
+            state[9].toInt<u256>(), Account::Unchanged));
     i.first->second.setVoteDate(_vote);
 
     m_unchangedCacheEntries.push_back(_addr);
@@ -387,7 +403,7 @@ void State::addBallot(Address const& _id, u256 const& _amount)
     }
     else
         BOOST_THROW_EXCEPTION(InvalidAddress() << errinfo_interface("State::addBallot()"));
-        //createAccount(_id, {requireAccountStartNonce(), _amount});
+    // createAccount(_id, {requireAccountStartNonce(), _amount});
 
     if (_amount)
         m_changeLog.emplace_back(Change::Ballot, _id, _amount);
@@ -450,7 +466,7 @@ void State::addBRC(Address const& _addr, u256 const& _value)
         a->addBRC(_value);
     }
     else
-        createAccount(_addr, {requireAccountStartNonce(), 0,_value});
+        createAccount(_addr, {requireAccountStartNonce(), 0, _value});
 
     if (_value)
         m_changeLog.emplace_back(Change::BRC, _addr, _value);
@@ -486,10 +502,11 @@ u256 State::FBRC(Address const& _id) const
     if (auto a = account(_id))
     {
         return a->FBRC();
-    } else
-	{
+    }
+    else
+    {
         return 0;
-	}
+    }
 }
 
 
@@ -521,7 +538,7 @@ void State::subFBRC(Address const& _addr, u256 const& _value)
 }
 
 
-//FBalance接口实现
+// FBalance接口实现
 u256 State::FBalance(Address const& _id) const
 {
     if (auto a = account(_id))
@@ -563,41 +580,15 @@ void State::subFBalance(Address const& _addr, u256 const& _value)
 }
 
 
-    //交易挂单接口
-void State::brcPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
-    h256 _pendingOrderHash, size_t _pendingOrderType)
+//交易挂单接口
+void State::pendingOrder(Address const& _addr, u256 const& _pendingOrderNum,
+    size_t _pendingOrderPrice, h256 _pendingOrderHash, size_t _pendingOrderType,
+    size_t _pendingOrderTokenType, size_t _pendingOrderBuyType)
 {
     u256 _nowTime = utcTimeMilliSec();
-    if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
-    {
-        subBalance(_addr, _value * _pendingOrderPrice);
-        addFBalance(_addr, _value * _pendingOrderPrice);
-    }
-    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellBrcPendingOrder)
-    {
-        subBRC(_addr, _value);
-        addFBRC(_addr, _value);
-    }
-    //交易所挂单
+    // TO DO :
+    // Call EOSDB to complete the transaction
 }
-
-void State::fuelPendingOrder(Address const& _addr, u256 const& _value, size_t _pendingOrderPrice,
-    h256 _pendingOrderHash, size_t _pendingOrderType)
-{
-    u256 _nowTime = utcTimeMilliSec();
-	if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyFuelPendingOrder)
-    {
-        subBRC(_addr, _value * _pendingOrderPrice);
-        addFBRC(_addr, _value * _pendingOrderPrice);
-    }
-    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellFuelPendingOrder)
-    {
-        subBalance(_addr, _value);
-        addFBalance(_addr, _value);
-    }
-    //交易所挂单
-}
-
 
 void State::cancelPendingOrder(
     Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash)
@@ -794,7 +785,9 @@ void State::rollback(size_t _savepoint)
     {
         auto& change = m_changeLog.back();
         auto& account = m_cache[change.address];
-		std::cout << BrcYellow "rollback: " << " change.kind" << (size_t)change.kind << " change.value:" << change.value<< BrcReset << std::endl;
+        std::cout << BrcYellow "rollback: "
+                  << " change.kind" << (size_t)change.kind << " change.value:" << change.value
+                  << BrcReset << std::endl;
         // Public State API cannot be used here because it will add another
         // change log entry.
         switch (change.kind)
@@ -829,7 +822,7 @@ void State::rollback(size_t _savepoint)
             break;
         case Change::Poll:
             account.addPoll(0 - change.value);
-            break;   
+            break;
         case Change::Vote:
             account.addVote(change.vote);
             break;
@@ -838,11 +831,11 @@ void State::rollback(size_t _savepoint)
             break;
         case Change::FBRC:
             account.addFBRC(0 - change.value);
-			break;
-		case Change::FBalance:
+            break;
+        case Change::FBalance:
             account.addFBalance(0 - change.value);
             break;
-        break;
+            break;
         }
         m_changeLog.pop_back();
     }
@@ -924,74 +917,72 @@ bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc co
 
 u256 dev::brc::State::poll(Address const& _addr) const
 {
-    if(auto a = account(_addr))
+    if (auto a = account(_addr))
         return a->poll();
     else
         return 0;
 }
 
-void dev::brc::State::addPoll(Address const & _addr, u256 const & _value)
+void dev::brc::State::addPoll(Address const& _addr, u256 const& _value)
 {
-
-    if(Account* a = account(_addr))
+    if (Account* a = account(_addr))
     {
         a->addBalance(_value);
     }
     else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addPoll()"));
 
-    if(_value)
+    if (_value)
         m_changeLog.emplace_back(Change::Poll, _addr, _value);
 }
 
 
 void dev::brc::State::subPoll(Address const& _addr, u256 const& _value)
 {
-    if(_value == 0)
+    if (_value == 0)
         return;
     Account* a = account(_addr);
-    if(!a || a->poll() < _value)
+    if (!a || a->poll() < _value)
         BOOST_THROW_EXCEPTION(NotEnoughPoll());
     addPoll(_addr, 0 - _value);
 }
 
 
-
 std::string dev::brc::State::accoutMessage(Address const& _addr)
 {
-	std::string _str ="";
-	Json::Value jv;
-	if(auto a = account(_addr))
-	{
-		/*_str << "Address:" << _addr << " | balance:" << a->balance()
-			<< " | ballot:" << a->ballot()
-			<< " | poll:" << a->poll()
-			<< " | "*/
-		jv["Address"] = toJS(_addr);
-		jv["balance"] = toJS(a->balance());
-		jv["ballot"] = toJS(a->ballot());
-		jv["poll"] = toJS(a->poll());
-		jv["nonce"] = toJS(a->nonce());
-		jv["BRC"] = toJS(a->BRC());
-		jv["vote"] = toJS(a->BRC());
-		Json::Value _array;
+    std::string _str = "";
+    Json::Value jv;
+    if (auto a = account(_addr))
+    {
+        /*_str << "Address:" << _addr << " | balance:" << a->balance()
+            << " | ballot:" << a->ballot()
+            << " | poll:" << a->poll()
+            << " | "*/
+        jv["Address"] = toJS(_addr);
+        jv["balance"] = toJS(a->balance());
+        jv["ballot"] = toJS(a->ballot());
+        jv["poll"] = toJS(a->poll());
+        jv["nonce"] = toJS(a->nonce());
+        jv["BRC"] = toJS(a->BRC());
+        jv["vote"] = toJS(a->BRC());
+        Json::Value _array;
         for (auto val : a->voteData())
         {
-			Json::Value _v;
-			_v["Adress"] = toJS(val.first);
-			_v["vote_num"] = toJS(val.second);
-			_array.append(_v);
+            Json::Value _v;
+            _v["Adress"] = toJS(val.first);
+            _v["vote_num"] = toJS(val.second);
+            _array.append(_v);
         }
-		jv["vote"] = _array;
+        jv["vote"] = _array;
 
-		return jv.toStyledString();
-	}
-    return _str; 
+        return jv.toStyledString();
+    }
+    return _str;
 }
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {
-    if(auto a = account(_id))
+    if (auto a = account(_id))
         return a->voteAll();
     else
         return 0;
@@ -1000,7 +991,7 @@ dev::u256 dev::brc::State::voteAll(Address const& _id) const
 
 dev::u256 dev::brc::State::voteAdress(Address const& _id, Address const& _recivedAddr) const
 {
-    if(auto a = account(_id))
+    if (auto a = account(_id))
         return a->vote(_recivedAddr);
     else
         return 0;
@@ -1011,12 +1002,12 @@ void dev::brc::State::addVote(Address const& _id, Address const& _recivedAddr, u
 {
     //此为投票接口  没有投票人地址失败   投票人票数不足 失败
     Account* a = account(_id);
-    Account *rec_a = account(_recivedAddr);
-    if(a && rec_a)
+    Account* rec_a = account(_recivedAddr);
+    if (a && rec_a)
     {
         // 一个原子操作
         //扣票
-        if(a->ballot() < _value)
+        if (a->ballot() < _value)
             BOOST_THROW_EXCEPTION(NotEnoughBallot() << errinfo_interface("State::addvote()"));
         a->addBallot(0 - _value);
         //加票
@@ -1027,10 +1018,10 @@ void dev::brc::State::addVote(Address const& _id, Address const& _recivedAddr, u
     else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
 
-    if(_value)
+    if (_value)
     {
-        m_changeLog.emplace_back( _id, std::make_pair(_recivedAddr, _value) );
-        m_changeLog.emplace_back(Change::Ballot, _id, 0- _value);
+        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
         m_changeLog.emplace_back(Change::Poll, _id, _value);
     }
 }
@@ -1039,52 +1030,52 @@ void dev::brc::State::addVote(Address const& _id, Address const& _recivedAddr, u
 void dev::brc::State::subVote(Address const& _id, Address const& _recivedAddr, u256 _value)
 {
     //撤销投票
-    Account *rec_a = account(_recivedAddr);
+    Account* rec_a = account(_recivedAddr);
     Account* a = account(_id);
-    if(a && rec_a )
+    if (a && rec_a)
     {
         // 验证投票将记录
-        if(a->vote(_recivedAddr) < _value )
+        if (a->vote(_recivedAddr) < _value)
             BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
         a->addVote(std::make_pair(_recivedAddr, 0 - _value));
         a->addBallot(_value);
-        if(rec_a->poll() < _value)
+        if (rec_a->poll() < _value)
             _value = rec_a->poll();
         rec_a->addPoll(0 - _value);
-    }                 
+    }
     else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
 
-    if(_value)
+    if (_value)
     {
         m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, 0 - _value));
         m_changeLog.emplace_back(Change::Ballot, _id, _value);
         m_changeLog.emplace_back(Change::Poll, _id, 0 - _value);
     }
-}                                           
+}
 
 
 std::unordered_map<dev::Address, dev::u256> dev::brc::State::voteDate(Address const& _id) const
 {
-    if(auto a = account(_id))
+    if (auto a = account(_id))
         return a->voteData();
-	else
-	{
-		return std::unordered_map<Address, u256>();
-	}
+    else
+    {
+        return std::unordered_map<Address, u256>();
+    }
 }
 
 
 void dev::brc::State::addSysVoteDate(Address const& _sysAddress, Address const& _id)
 {
-    Account *sysAddr = account(_sysAddress);
+    Account* sysAddr = account(_sysAddress);
     Account* a = account(_id);
-    if(!sysAddr)
-	{
-		createAccount(_sysAddress, { requireAccountStartNonce(), 0 });
-		sysAddr = account(_sysAddress);
-	}
-    if(!a)
+    if (!sysAddr)
+    {
+        createAccount(_sysAddress, {requireAccountStartNonce(), 0});
+        sysAddr = account(_sysAddress);
+    }
+    if (!a)
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addSysVoteDate()"));
     sysAddr->manageSysVote(_id, true, 0);
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, true));
@@ -1093,29 +1084,31 @@ void dev::brc::State::addSysVoteDate(Address const& _sysAddress, Address const& 
 
 void dev::brc::State::subSysVoteDate(Address const& _sysAddress, Address const& _id)
 {
-    Account *sysAddr = account(_sysAddress);
+    Account* sysAddr = account(_sysAddress);
     Account* a = account(_id);
-    if(!sysAddr)
+    if (!sysAddr)
         BOOST_THROW_EXCEPTION(InvalidSysAddress() << errinfo_interface("State::subSysVoteDate()"));
-    if(!a)
+    if (!a)
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subSysVoteDate()"));
     sysAddr->manageSysVote(_id, false, 0);
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
 }
 
 
-void dev::brc::State::transferBallotBuy(Address const& _from, Address const& _to, u256 const& _value)
+void dev::brc::State::transferBallotBuy(
+    Address const& _from, Address const& _to, u256 const& _value)
 {
-	subBRC(_from, _value*BALLOTPRICE);
-	addBRC(_to, _value*BALLOTPRICE);
-	addBallot(_from, _value);
+    subBRC(_from, _value * BALLOTPRICE);
+    addBRC(_to, _value * BALLOTPRICE);
+    addBallot(_from, _value);
 }
 
-void dev::brc::State::transferBallotSell(Address const& _from, Address const& _to, u256 const& _value)
+void dev::brc::State::transferBallotSell(
+    Address const& _from, Address const& _to, u256 const& _value)
 {
-	subBallot(_from, _value);
-	addBRC(_from, _value*BALLOTPRICE);
-	subBRC(_to, BALLOTPRICE);
+    subBallot(_from, _value);
+    addBRC(_from, _value * BALLOTPRICE);
+    subBRC(_to, BALLOTPRICE);
 }
 
 std::ostream& dev::brc::operator<<(std::ostream& _out, State const& _s)
@@ -1264,12 +1257,12 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                     s << i.second.codeHash();
                 s << i.second.ballot();
                 s << i.second.poll();
-                { 
+                {
                     RLPStream _s;
                     size_t num = i.second.voteData().size();
                     _s.appendList(num + 1);
                     _s << num;
-                    for(auto val : i.second.voteData())
+                    for (auto val : i.second.voteData())
                     {
                         _s.append<Address, u256>(std::make_pair(val.first, val.second));
                     }
@@ -1277,7 +1270,7 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 }
                 s << i.second.BRC();
                 s << i.second.FBRC();
-				s << i.second.FBalance();
+                s << i.second.FBalance();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

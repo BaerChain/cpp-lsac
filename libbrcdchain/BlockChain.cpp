@@ -344,7 +344,7 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
 
     // Open a fresh state DB
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill));
+    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),State::openExdb(path.string() + "/exdb");
 
     // Clear all memos ready for replay.
     m_details.clear();
@@ -385,7 +385,7 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
-            import(b, s.db(), 0);
+            import(b, s.db(), s.exdb(), 0);
         }
         catch (...)
         {
@@ -508,11 +508,11 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
     }
 }
 
-ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _mustBeNew)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, exchange_plugin const& _exdb, bool _mustBeNew)
 {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
-    return import(block, _db, _mustBeNew);
+    return import(block, _db, _exdb,_mustBeNew);
 }
 
 void BlockChain::insert(bytes const& _block, bytesConstRef _receipts, bool _mustBeNew)
@@ -625,7 +625,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
     }
 }
 
-ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, bool _mustBeNew)
+ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, exchange_plugin const& _exdb, bool _mustBeNew)
 {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -673,7 +673,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
     {
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
-        Block s(*this, _db);
+        Block s(*this, _db, _exdb);
         auto tdIncrease = s.enactOn(_block, *this);
 
         for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -1453,10 +1453,10 @@ bytes BlockChain::headerData(h256 const& _hash) const
     return BlockHeader::extractHeader(&m_blocks[_hash]).data().toBytes();
 }
 
-Block BlockChain::genesisBlock(OverlayDB const& _db) const
+Block BlockChain::genesisBlock(OverlayDB const& _db, exchange_plugin const & _exdb) const
 {
     h256 r = BlockHeader(m_params.genesisBlock()).stateRoot();
-    Block ret(*this, _db, BaseState::Empty);
+    Block ret(*this, _db, _exdb, BaseState::Empty);
     if (!_db.exists(r))
     {
         ret.noteChain(*this);

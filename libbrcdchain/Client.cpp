@@ -86,8 +86,9 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the blockchain database
     // until after the construction.
     m_stateDB = State::openDB(_dbPath, bc().genesisHash(), _forceAction);
+    m_StateExDB = State::openExdb(_dbPath + "/edb");
     // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this just take the root from the genesis block.
-    m_preSeal = bc().genesisBlock(m_stateDB);
+    m_preSeal = bc().genesisBlock(m_stateDB, m_StateExDB);
     m_postSeal = m_preSeal;
 
     m_bq.setChain(bc());
@@ -406,7 +407,7 @@ void Client::syncTransactionQueue()
             return;
         }
 
-        tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
+        tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp, m_StateExDB);
     }
 
     if (newPendingReceipts.empty())
@@ -740,7 +741,7 @@ Block Client::block(h256 const& _block) const
 {
     try
     {
-        Block ret(bc(), m_stateDB);
+        Block ret(bc(), m_stateDB, m_StateExDB);
         ret.populateFromChain(bc(), _block);
         return ret;
     }
@@ -756,7 +757,7 @@ Block Client::block(h256 const& _blockHash, PopulationStatistics* o_stats) const
 {
     try
     {
-        Block ret(bc(), m_stateDB);
+        Block ret(bc(), m_stateDB, m_StateExDB);
         PopulationStatistics s = ret.populateFromChain(bc(), _blockHash);
         if (o_stats)
             swap(s, *o_stats);
