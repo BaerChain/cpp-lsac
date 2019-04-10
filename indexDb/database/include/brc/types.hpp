@@ -26,6 +26,7 @@ namespace brc {
 
 
         enum order_type : int {
+            null_type = -1,
             sell = 0,
             buy
         };
@@ -86,7 +87,7 @@ namespace brc {
                 send_trxid = itr1.trxid;
                 to_trxid = itr2->trxid;
                 amount = _amount;
-                std::cout << "amount " << _amount << std::endl;
+//                std::cout << "amount " << _amount << std::endl;
                 price = _price;
             }
 
