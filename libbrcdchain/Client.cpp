@@ -373,7 +373,7 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
-    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_syncAmount);
+    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
     double elapsed = t.elapsed();
 
     if (count)
