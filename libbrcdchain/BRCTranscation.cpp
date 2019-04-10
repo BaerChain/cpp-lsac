@@ -1,4 +1,5 @@
 #include "BRCTranscation.h"
+#include <brc/types.hpp>
 
 bool dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, size_t _transcationNum)
@@ -57,48 +58,28 @@ bool dev::brc::BRCTranscation::verifyTranscation(
     return false;
 }
 
-bool dev::brc::BRCTranscation::verifyPendingOrder(
-    Address const& _form, size_t _type, size_t _pendingOrderNum, size_t _pendingOrderPrice, h256 _pendingOrderHash)
+bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, exchange_plugin const& _exdb, int64_t _nowTime,  size_t _type,
+    size_t _token_type, size_t _buy_type, size_t _pendingOrderNum, size_t& _pendingOrderPrice,
+    h256 _pendingOrderHash)
 {
-    if (_type <= dev::brc::PendingOrderEnum::EPendingOrderNull ||
-        _type >= dev::brc::PendingOrderEnum::EPendingOrderMax || _pendingOrderNum == 0 ||
+    if (_type == brc::db::order_type::null_order ||
+        _token_type == brc::db::order_token_type::null_token ||
+        _buy_type == brc::db::order_buy_type::null_buy || _pendingOrderNum == 0 ||
         _pendingOrderPrice == 0)
     {
         return false;
     }
 
-    if (_type == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
+    try
     {
-        if (_pendingOrderNum * _pendingOrderPrice > (size_t)m_state.balance(_form))
-        {
-            return false;
-        }
+        std::map<u256, u256> _map = {_pendingOrderPrice, _pendingOrderNum};
+        order _order = {_pendingOrderHash, _form, _buy_type, _token_type, _type, _map, _nowTime};
+        _exdb.insert_operation(_order, true, true);
     }
-    else if (_type == dev::brc::PendingOrderEnum::ESellBrcPendingOrder)
+    catch (const boost::exception& e)
     {
-        if (_pendingOrderNum > (size_t)m_state.BRC(_form))
-        {
-            return false;
-        }
+        ctrace << "verifyPendingOrder Error";
+        return false;
     }
-    else if (_type == dev::brc::PendingOrderEnum::EBuyFuelPendingOrder)
-    {
-        if (_pendingOrderNum * _pendingOrderPrice > (size_t)m_state.BRC(_form))
-        {
-            return false;
-        }
-    }
-    else if (_type == dev::brc::PendingOrderEnum::ESellFuelPendingOrder)
-	{
-        if (_pendingOrderNum > (size_t)m_state.balance(_form))
-		{
-            return false;
-		}
-    }
-    else if (_type == dev::brc::PendingOrderEnum::ECancelPendingOrder)
-	{
-		//TO DO :校验撤销挂单是否合法
-	}
-
-	return true;
+    return true;
 }
