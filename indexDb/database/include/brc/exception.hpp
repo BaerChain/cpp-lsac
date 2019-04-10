@@ -10,4 +10,5 @@ namespace dev{
     DEV_SIMPLE_EXCEPTION(createOrderError);
     DEV_SIMPLE_EXCEPTION(order_type_is_null);
     DEV_SIMPLE_EXCEPTION(remove_object_error);
+    DEV_SIMPLE_EXCEPTION(get_db_instance_error);
 }

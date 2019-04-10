@@ -8,6 +8,9 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/random.hpp>
+#include <boost/format.hpp>
+
 
 #include <brc/database.hpp>
 #include <libdevcore/Address.h>
@@ -17,6 +20,7 @@ using namespace chainbase;
 using namespace boost::multi_index;
 using namespace dev;
 using namespace brc::db;
+using namespace std;
 
 struct up_order : public chainbase::object<0, up_order> {
 
@@ -197,16 +201,23 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         Address ad("0000000000000000000000000000000000000123");
 
 
+        auto get_random_price = []() -> h256{
+            static int32_t  seed = 0;
+            boost::mt19937 rng(seed++);
+            boost::uniform_int<> ui(1, 100);
+            return h256(ui(rng));
+        };
+
         std::vector<order> os;
-        uint32_t    create_size = 2;
+        uint32_t    create_size = 1000;
         for(auto i = 0; i < create_size; i++){
             order o;
             o.trxid = id;
             o.sender = ad;
             o.buy_type = only_price;
-            o.token_type = BRC;
-            o.type = buy;
-            o.price_token = {{u256(60), u256(1)}};
+            o.token_type = FUEL;
+            o.type = sell;
+            o.price_token = {{get_random_price(), u256(1)}};
             o.time = i;
             os.push_back(o);
         }
@@ -222,8 +233,11 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
 
-        bfs::path cur_dir = bfs::current_path();
-        cur_dir += bfs::unique_path();
+        bfs::path cur_dir = bfs::current_path()  ;
+        cur_dir /= bfs::path("data");
+        cur_dir /= bfs::unique_path();
+
+
         try{
             brc::ex::exchange_plugin db(cur_dir);
 
@@ -231,59 +245,55 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
 
-            auto print_data = [&](brc::ex::exchange_plugin &db){
-                auto exchange_orders = db.get_oeders();
-                std::cout << "-------------------------------------------\n";
-                std::cout << "exchange_orders.size:  " << exchange_orders.size() << std::endl;
+            auto print_data = [&](brc::ex::exchange_plugin &data, bool write_file = false){
+                auto exchange_orders = data.get_orders();
+//                std::cout << "-------------------------------------------\n";
+////                std::cout << "exchange_orders.size:  " << exchange_orders.size() << std::endl;
+                std::cout << "--------------------------------------------------------------------------------------------------\n";
+                std::cout << boost::format("%|59t|%1% | %|59t|%2% | %3% | %4% | %5% | %6% | %7% | %8%") \
+                % "trxid"
+                % "sender"
+                % "price"
+                % "token_amount"
+                % "source_amount "
+                % "create_time"
+                % "type"
+                % "token_type"
+                << std::endl;
                 for(auto &itr : exchange_orders){
-//                std::cout << "trxid: " << itr.trxid << std::endl;
-//                std::cout << "sender: " << itr.sender << std::endl;
-//                std::cout << "price: " << itr.price << std::endl;
-                    std::cout << "token_amount: " << itr.token_amount << std::endl;
-                    std::cout << "source_amount: " << itr.source_amount << std::endl;
-//                std::cout << "create_time: " << itr.create_time << std::endl;
-//                std::cout << "type: " << itr.type << std::endl;
-//                std::cout << "token_type: " << itr.token_type << std::endl;
-                    std::cout << "-------------------------------------------\n";
+                    std::cout  << boost::format("%1% | %2% | %3% | %4% | %5% | %6% | %7% | %8%") \
+                    % itr.trxid
+                    % itr.sender
+                    % itr.price
+                    % itr.token_amount
+                    % itr.source_amount
+                    % itr.create_time
+                    % itr.type
+                    % itr.token_type
+                    << std::endl;
                 }
             };
 
-            print_data(db);
-
-
-
+//            print_data(db);
 
             ///////////////////create sell order
-//
-            uint32_t    selle_size = 100;
-            order o;
-            o.trxid = id;
-            o.sender = Address("0000000000000000400000000000000000001111");
-            o.buy_type = only_price;
-            o.token_type = FUEL;
-            o.type = sell;
-            for(auto i = 0; i < create_size; i++) {
-                o.price_token = {{u256(50), u256(1)}};
+            uint32_t    selle_size = 500;
+            for(auto i = 0; i < selle_size ; i++){
+                order o;
+                o.trxid = id;
+                o.sender = Address("0000000000000000400000000000000000001111");
+                o.buy_type = only_price;
+                o.token_type = BRC;
+                o.type = buy;
+                for(auto i = 0; i < create_size; i++) {
+                    o.price_token = {{get_random_price(), u256(1)}};
+                }
+                o.time = 0;
+                auto ret = db.insert_operation({o}, false, true);
+
             }
-            o.time = 0;
 
-
-
-            auto ret = db.insert_operation({o}, false, true);
             print_data(db);
-            std::cout << "ret size " << ret.size() << std::endl;
-            for(auto &itr : ret){
-                std::cout << "sender   : " << itr.sender << std::endl;
-                std::cout << "acceptor   : " << itr.acceptor << std::endl;
-                std::cout << "type   : " << itr.type << std::endl;
-                std::cout << "token_type   : " << itr.token_type << std::endl;
-                std::cout << "create_time   : " << itr.create_time << std::endl;
-                std::cout << "send_trxid   : " << itr.send_trxid << std::endl;
-                std::cout << "to_trxid   : " << itr.to_trxid << std::endl;
-                std::cout << "amount   : " << itr.amount << std::endl;
-                std::cout << "price   : " << itr.price << std::endl;
-            }
-
 
 
 
@@ -295,10 +305,13 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             std::cout << "unkown exception .\n";
         }
 
+    }
 
 
+    BOOST_AUTO_TEST_CASE(cout_formmat_test){
+        std::cout  << boost::format("%1%.%2%.%3%") % 2018 % 11 % 2 << std::endl;
 
-
+        std::cout << boost::format("%|40t|%1% | %|20t|%2%") % "trxid"  % "trxid" << std::endl;
 
     }
 
