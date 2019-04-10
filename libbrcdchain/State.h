@@ -200,7 +200,7 @@ public:
     {
         Null
     };
-    State(NullType) : State(Invalid256, OverlayDB(), exchange_plugin(),BaseState::Empty) {}
+    State(NullType) : State(Invalid256, OverlayDB(), ex::exchange_plugin(),BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);
@@ -215,8 +215,8 @@ public:
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static exchange_plugin openExdb(boost::filesystem::path const& _path);
-    exchange_plugin const& exdb() const { return m_exdb; }
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
+    ex::exchange_plugin const& exdb() const { return m_exdb; }
 
     /// Populate the state from the given AccountMap. Just uses dev::brc::commit().
     void populateFrom(AccountMap const& _map);
@@ -234,7 +234,7 @@ public:
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo,
-        SealEngineFace const& _sealEngine, Transaction const& _t, exchange_plugin const& _exdb,
+        SealEngineFace const& _sealEngine, Transaction const& _t, ex::exchange_plugin const& _exdb,
         Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
     /// Execute @a _txCount transactions of a given block.

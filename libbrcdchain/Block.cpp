@@ -36,7 +36,7 @@ namespace {
 }
 
 
-Block::Block(BlockChain const &_bc, OverlayDB const &_db, exchange_plugin const& _exdb ,BaseState _bs,Address const &_author) :
+Block::Block(BlockChain const &_bc, OverlayDB const &_db, ex::exchange_plugin const& _exdb ,BaseState _bs,Address const &_author) :
         m_state(Invalid256, _db, _exdb ,_bs), 
         m_vote(m_state),
         m_precommit(Invalid256),
@@ -48,7 +48,7 @@ Block::Block(BlockChain const &_bc, OverlayDB const &_db, exchange_plugin const&
 //    assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(BlockChain const &_bc, OverlayDB const &_db, exchange_plugin const& _exdb,h256 const &_root, Address const &_author) :
+Block::Block(BlockChain const &_bc, OverlayDB const &_db, ex::exchange_plugin const& _exdb,h256 const &_root, Address const &_author) :
         m_state(Invalid256, _db, _exdb,BaseState::PreExisting),
         m_vote(m_state),
         m_precommit(Invalid256),
@@ -271,7 +271,7 @@ bool Block::sync(BlockChain const &_bc, h256 const &_block, BlockHeader const &_
 }
 
 pair<TransactionReceipts, bool>
-Block::sync(BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, exchange_plugin const& _exdb,unsigned msTimeout) {
+Block::sync(BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, ex::exchange_plugin const& _exdb,unsigned msTimeout) {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 
@@ -586,7 +586,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 }
 
 ExecutionResult
-Block::execute(LastBlockHashesFace const &_lh, Transaction const &_t, exchange_plugin const& _exdb, Permanence _p, OnOpFunc const &_onOp) {
+Block::execute(LastBlockHashesFace const &_lh, Transaction const &_t, ex::exchange_plugin const& _exdb, Permanence _p, OnOpFunc const &_onOp) {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 

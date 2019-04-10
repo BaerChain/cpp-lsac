@@ -18,7 +18,7 @@ using namespace dev;
 using namespace dev::brc;
 namespace fs = boost::filesystem;
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, exchange_plugin const& _exdb, BaseState _bs)
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb, BaseState _bs)
   : m_db(_db), m_exdb(_exdb) ,m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
     if (_bs != BaseState::PreExisting)
@@ -86,7 +86,7 @@ void State::openExdb(boost::filesystem::path const& _path)
 {
     try
     {
-        exchange_plugin exdb = exchange_plugin(_path);
+        ex::exchange_plugin exdb = ex::exchange_plugin(_path);
     }
     catch (const std::exception&)
     {
