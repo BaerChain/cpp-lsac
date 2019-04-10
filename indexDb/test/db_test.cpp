@@ -19,7 +19,7 @@
 using namespace chainbase;
 using namespace boost::multi_index;
 using namespace dev;
-using namespace brc::db;
+using namespace dev::brc::ex;
 using namespace std;
 
 struct up_order : public chainbase::object<0, up_order> {
@@ -71,12 +71,27 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
             //write
             bfs::path cur_dir = bfs::current_path();
-            cur_dir += bfs::unique_path();;
-            brc::db::database db(cur_dir, chainbase::database::read_write, 1024 * 64);
+            cur_dir /= bfs::unique_path();;
 
+
+
+            dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
+
+            auto session = db.start_undo_session(true);
+            auto version = db.revision();
             db.add_index<up_order_index>();
 
-            for (uint32_t i = 0; i < 0xfff; i++) {
+            db.create<up_order>([](up_order &order){
+
+            });
+            db.commit(1);
+            db.create<up_order>([](up_order &order){
+
+            });
+            db.commit(2);
+
+
+            for (uint32_t i = 0; i < 10; i++) {
                 db.create<up_order>([&](up_order &order) {
                     std::string nn = "test" + std::to_string(i);
                     order.name.assign(nn.begin(), nn.end());
@@ -87,9 +102,9 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                     order.price = i * 10;
                 });
             }
-            db.commit(1);
-            db.flush();
 
+            db.undo();
+            db.flush();
 
 
             //read
@@ -97,7 +112,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                 std::string nn = "test" + std::to_string(i);
                 const auto itr = db.find<up_order, by_name>(nn);
                 BOOST_CHECK(itr);           //if  not find ,  itr is nullptr,
-
+                std::cout << itr->name << std::endl;
                 try {
                     const auto &ret = db.get<up_order, by_name>(nn);
                 } catch (const boost::exception &e) {
@@ -125,10 +140,10 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         std::cout << "Address sizeof : " << sizeof(dev::Address) << std::endl;
         std::cout << "h256 sizeof : " << sizeof(dev::h256) << std::endl;
         std::cout << "u256 sizeof : " << sizeof(dev::u256) << std::endl;
-        std::cout << "order_token_type sizeof : " << sizeof(brc::db::order_token_type) << std::endl;
-        std::cout << "price_token sizeof : " << sizeof(brc::db::order::price_token) << std::endl;
-        std::cout << "order sizeof : " << sizeof(brc::db::order) << std::endl;
-        std::cout << "result_order sizeof : " << sizeof(brc::db::result_order) << std::endl;
+        std::cout << "order_token_type sizeof : " << sizeof(dev::brc::ex::order_token_type) << std::endl;
+        std::cout << "price_token sizeof : " << sizeof(dev::brc::ex::order::price_token) << std::endl;
+        std::cout << "order sizeof : " << sizeof(dev::brc::ex::order) << std::endl;
+        std::cout << "result_order sizeof : " << sizeof(dev::brc::ex::result_order) << std::endl;
 
         std::cout << "std::array " << sizeof(std::array<uint32_t , 1>) << std::endl;
         std::cout << "std::array " << sizeof(std::array<uint32_t , 5>) << std::endl;
@@ -153,7 +168,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             bfs::path cur_dir = bfs::current_path();
             cur_dir += bfs::unique_path();
 
-            brc::db::database db(cur_dir, chainbase::database::read_write, 1024 * 64);
+            dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 64);
 
             for(auto &itr : os){
                 if(itr.type == buy){
@@ -239,13 +254,13 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
         try{
-            brc::ex::exchange_plugin db(cur_dir);
+            dev::brc::ex::exchange_plugin db(cur_dir);
 
             db.insert_operation(os, false, true);
 
 
 
-            auto print_data = [&](brc::ex::exchange_plugin &data, bool write_file = false){
+            auto print_data = [&](dev::brc::ex::exchange_plugin &data, bool write_file = false){
                 auto exchange_orders = data.get_orders();
 //                std::cout << "-------------------------------------------\n";
 ////                std::cout << "exchange_orders.size:  " << exchange_orders.size() << std::endl;
