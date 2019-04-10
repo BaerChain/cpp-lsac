@@ -388,9 +388,9 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
 							m_exdb, m_envInfo.timestamp(),
-                            (size_t)_pengdingorder_op.m_Pendingorder_type,
-                            (size_t)_pengdingorder_op.m_Pendingorder_Token_type,
-                            (size_t)_pengdingorder_op.m_Pendingorder_buy_type,
+                            (int)_pengdingorder_op.m_Pendingorder_type,
+                            (int)_pengdingorder_op.m_Pendingorder_Token_type,
+                            (int)_pengdingorder_op.m_Pendingorder_buy_type,
 							_pengdingorder_op.m_Pendingorder_num,
                             _pengdingorder_op.m_Pendingorder_price))
                     {
@@ -432,9 +432,9 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
-                            (size_t)_pengdingorder_op.m_Pendingorder_type,
-							(size_t)_pengdingorder_op.m_Pendingorder_Token_type,
-							_pengdingorder_op.m_Pendingorder_buy_type,
+                            (int)_pengdingorder_op.m_Pendingorder_type,
+							(int)_pengdingorder_op.m_Pendingorder_Token_type,
+							(int)_pengdingorder_op.m_Pendingorder_buy_type,
 							_pengdingorder_op.m_Pendingorder_num,
                             _pengdingorder_op.m_Pendingorder_price))
                     {

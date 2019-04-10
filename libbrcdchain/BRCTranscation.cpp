@@ -1,6 +1,6 @@
 #include "BRCTranscation.h"
+#include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
-
 bool dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, size_t _transcationNum)
 {
@@ -37,13 +37,13 @@ bool dev::brc::BRCTranscation::verifyTranscation(
     else if (_type == dev::brc::TranscationEnum::EFBRCUnFreezeTranscation)
     {
         if (_form != _to)
-		{
+        {
             return false;
-		}
+        }
         if (_transcationNum > (size_t)m_state.FBRC(_form))
         {
             return false;
-		}
+        }
         return true;
     }
     else if (_type == dev::brc::TranscationEnum::ECookieTranscation)
@@ -58,14 +58,11 @@ bool dev::brc::BRCTranscation::verifyTranscation(
     return false;
 }
 
-bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, exchange_plugin const& _exdb, int64_t _nowTime,  size_t _type,
-    size_t _token_type, size_t _buy_type, size_t _pendingOrderNum, size_t& _pendingOrderPrice,
-    h256 _pendingOrderHash)
+bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form,
+    ex::exchange_plugin const& _exdb, int64_t _nowTime, int _type, int _token_type, int _buy_type,
+    u256 _pendingOrderNum, u256& _pendingOrderPrice, h256 _pendingOrderHash)
 {
-    if (_type == brc::db::order_type::null_order ||
-        _token_type == brc::db::order_token_type::null_token ||
-        _buy_type == brc::db::order_buy_type::null_buy || _pendingOrderNum == 0 ||
-        _pendingOrderPrice == 0)
+    if (_type == order_type::null_type || _pendingOrderNum == 0 || _pendingOrderPrice == 0)
     {
         return false;
     }
@@ -73,8 +70,9 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, exchange
     try
     {
         std::map<u256, u256> _map = {_pendingOrderPrice, _pendingOrderNum};
-        order _order = {_pendingOrderHash, _form, _buy_type, _token_type, _type, _map, _nowTime};
-        _exdb.insert_operation(_order, true, true);
+        order _order = {_pendingOrderHash, _form, (order_buy_type)_buy_type, (order_token_type)_token_type, (order_type)_type, _map, _nowTime};
+        std::vector<order> _v = {_order};
+		_exdb.insert_operation(_v, true, true);
     }
     catch (const boost::exception& e)
     {

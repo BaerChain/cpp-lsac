@@ -13,13 +13,15 @@
 #include <libdevcore/TrieHash.h>
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
-
+#include <libdevcore/dbfwd.h>
 #include <boost/exception/errinfo_nested_exception.hpp>
 #include <boost/filesystem.hpp>
 
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
+using namespace dev::db;
+
 namespace fs = boost::filesystem;
 
 #define BRC_TIMED_IMPORTS 1
@@ -419,7 +421,7 @@ string BlockChain::dumpDatabase() const
     return oss.str();
 }
 
-tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, exchange_plugin const& _stateExDB,unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, ex::exchange_plugin const& _stateExDB,unsigned _max)
 {
 //  _bq.tick(*this);
     VerifiedBlocks blocks;
@@ -508,7 +510,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
     }
 }
 
-ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, exchange_plugin const& _exdb, bool _mustBeNew)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, ex::exchange_plugin const& _exdb, bool _mustBeNew)
 {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
@@ -625,7 +627,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
     }
 }
 
-ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, exchange_plugin const& _exdb, bool _mustBeNew)
+ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin const& _exdb, bool _mustBeNew)
 {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -1453,7 +1455,7 @@ bytes BlockChain::headerData(h256 const& _hash) const
     return BlockHeader::extractHeader(&m_blocks[_hash]).data().toBytes();
 }
 
-Block BlockChain::genesisBlock(OverlayDB const& _db, exchange_plugin const & _exdb) const
+Block BlockChain::genesisBlock(OverlayDB const& _db, ex::exchange_plugin const & _exdb) const
 {
     h256 r = BlockHeader(m_params.genesisBlock()).stateRoot();
     Block ret(*this, _db, _exdb, BaseState::Empty);
