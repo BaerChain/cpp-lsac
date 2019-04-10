@@ -98,7 +98,7 @@ public:
 
     /// Sync the chain with any incoming blocks. All blocks should, if processed in order.
     /// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
-    std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+    std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, exchange_plugin const& _stateExDB,unsigned _max);
 
     /// Attempt to import the given block directly into the BlockChain and sync with the state DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.

@@ -222,7 +222,7 @@ public:
 
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
-    ExecutionResult execute(LastBlockHashesFace const& _lh, Transaction const& _t,
+    ExecutionResult execute(LastBlockHashesFace const& _lh, Transaction const& _t, exchange_plugin cosnt& _exdb,
         Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
     /// Sync our transactions, killing those from the queue that we have and assimilating those that

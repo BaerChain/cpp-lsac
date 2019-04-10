@@ -162,7 +162,7 @@ PopulationStatistics Block::populateFromChain(BlockChain const &_bc, h256 const 
     } else {
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-        m_state = State(m_state.accountStartNonce(), m_state.db(), BaseState::Empty);    // TODO: try with PreExisting.
+        m_state = State(m_state.accountStartNonce(), m_state.db(), m_state.exdb(),BaseState::Empty);    // TODO: try with PreExisting.
         sync(_bc, _h, bi);
     }
 
@@ -294,7 +294,7 @@ Block::sync(BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, 
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
 //                        Timer t;
-                        execute(_bc.lastBlockHashes(), t);
+                        execute(_bc.lastBlockHashes(), t, _exdb);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
 //                        cnote << "TX took:" << t.elapsed() * 1000;
@@ -586,7 +586,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 }
 
 ExecutionResult
-Block::execute(LastBlockHashesFace const &_lh, Transaction const &_t, Permanence _p, OnOpFunc const &_onOp) {
+Block::execute(LastBlockHashesFace const &_lh, Transaction const &_t, exchange_plugin const& _exdb, Permanence _p, OnOpFunc const &_onOp) {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 

@@ -419,7 +419,7 @@ string BlockChain::dumpDatabase() const
     return oss.str();
 }
 
-tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, exchange_plugin const& _stateExDB,unsigned _max)
 {
 //  _bq.tick(*this);
     VerifiedBlocks blocks;
@@ -438,7 +438,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
                 DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
-                    r = import(block.verified, _stateDB, (ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles) != 0);
+                    r = import(block.verified, _stateDB, _stateExDB,(ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles) != 0);
                 fresh += r.liveBlocks;
                 dead += r.deadBlocks;
                 goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
