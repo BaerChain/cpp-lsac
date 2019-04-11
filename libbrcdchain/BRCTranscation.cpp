@@ -72,7 +72,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
         (_buy_type == order_buy_type::all_price &&
             ((_type == order_type::buy && (_pendingOrderNum != 0 || _pendingOrderPrice == 0)) ||
                 (_type == order_type::sell &&
-                    (_pendingOrderPrice != 0 || _pendingOrderNum == 0)))) ||)
+                    (_pendingOrderPrice != 0 || _pendingOrderNum == 0)))))
     {
         return false;
     }

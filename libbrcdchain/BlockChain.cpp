@@ -346,7 +346,7 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
 
     // Open a fresh state DB
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),State::openExdb(path.string() + "/exdb"));
+    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),State::openExdb((fs::path)(path.string() + "/exdb")));
 
     // Clear all memos ready for replay.
     m_details.clear();
@@ -421,7 +421,7 @@ string BlockChain::dumpDatabase() const
     return oss.str();
 }
 
-tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, ex::exchange_plugin const& _stateExDB,unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB,unsigned _max)
 {
 //  _bq.tick(*this);
     VerifiedBlocks blocks;
@@ -484,7 +484,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
     return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
-pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin const& _stateExDB, bool _mustBeNew) noexcept
+pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB, bool _mustBeNew) noexcept
 {
     try
     {
@@ -510,7 +510,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
     }
 }
 
-ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, ex::exchange_plugin const& _exdb, bool _mustBeNew)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, ex::exchange_plugin& _exdb, bool _mustBeNew)
 {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
@@ -627,7 +627,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
     }
 }
 
-ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin const& _exdb, bool _mustBeNew)
+ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin& _exdb, bool _mustBeNew)
 {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -1455,7 +1455,7 @@ bytes BlockChain::headerData(h256 const& _hash) const
     return BlockHeader::extractHeader(&m_blocks[_hash]).data().toBytes();
 }
 
-Block BlockChain::genesisBlock(OverlayDB const& _db, ex::exchange_plugin const & _exdb) const
+Block BlockChain::genesisBlock(OverlayDB const& _db, ex::exchange_plugin& _exdb) const
 {
     h256 r = BlockHeader(m_params.genesisBlock()).stateRoot();
     Block ret(*this, _db, _exdb, BaseState::Empty);

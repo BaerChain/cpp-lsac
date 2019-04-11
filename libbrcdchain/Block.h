@@ -72,7 +72,7 @@ public:
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,
         BaseState _bs = BaseState::PreExisting, Address const& _author = Address());
 
     /// Basic state object from database.
@@ -80,7 +80,7 @@ public:
     /// which uses it.
     /// Will throw InvalidRoot if the root passed is not in the database.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,h256 const& _root,
+    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,h256 const& _root,
         Address const& _author = Address());
 
     enum NullType
@@ -169,7 +169,7 @@ public:
     /// necessary.
     OverlayDB const& db() const { return m_state.db(); }
 
-    ex::exchange_plugin const& exdb() const { return m_state.exdb(); }
+    ex::exchange_plugin& exdb() { return m_state.exdb(); }
     /// The hash of the root of our state tree.
     h256 rootHash() const { return m_state.rootHash(); }
 
