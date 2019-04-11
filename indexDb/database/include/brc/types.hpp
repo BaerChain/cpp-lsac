@@ -216,11 +216,15 @@ namespace dev {
             };
 
             struct by_sender;
+            struct by_greater_id;
             typedef multi_index_container<
                     order_result_object,
                     indexed_by<
-                            ordered_unique<tag<by_id>,
-                                    member<order_result_object, order_result_object::id_type, &order_result_object::id>
+                            ordered_unique<tag<by_greater_id>,
+                                    composite_key<order_result_object,
+                                        member<order_result_object, order_result_object::id_type, &order_result_object::id>
+                                    >,
+                                    composite_key_compare<std::greater<order_result_object::id_type>>
                             >,
                             ordered_non_unique<tag<by_sender>,
                                     composite_key<order_result_object,
