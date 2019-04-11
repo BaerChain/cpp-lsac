@@ -66,7 +66,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
 
 ImportResult ClientBase::injectBlock(bytes const& _block)
 {
-    return bc().attemptImport(_block, preSeal().db()).first;
+    return bc().attemptImport(_block, preSeal().db(), preSeal().exdb()).first;
 }
 
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const

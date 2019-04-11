@@ -82,20 +82,18 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
     }
 }
 
-void State::openExdb(boost::filesystem::path const& _path)
+ex::exchange_plugin State::openExdb(boost::filesystem::path const& _path)
 {
     try
     {
         ex::exchange_plugin exdb = ex::exchange_plugin(_path);
+        return exdb;
     }
     catch (const std::exception&)
     {
-        LOG(m_loggerError) << "Open ExDb Error";
+        cerror << "open exDB error";
         exit(1);
     }
-
-	return exdb;
-    
 }
 
 void State::populateFrom(AccountMap const& _map)
@@ -582,10 +580,11 @@ void State::subFBalance(Address const& _addr, u256 const& _value)
 
 //交易挂单接口
 void State::pendingOrder(Address const& _addr, u256 const& _pendingOrderNum,
-    size_t _pendingOrderPrice, h256 _pendingOrderHash, size_t _pendingOrderType,
-    size_t _pendingOrderTokenType, size_t _pendingOrderBuyType)
+    u256 _pendingOrderPrice, h256 _pendingOrderHash, size_t _pendingOrderType,
+    size_t _pendingOrderTokenType, size_t _pendingOrderBuyType, int64_t _nowTime)
 {
-    u256 _nowTime = utcTimeMilliSec();
+	order _order = {_pendingOrderHash, _addr, }
+	std::vector<order>
     // TO DO :
     // Call EOSDB to complete the transaction
 }

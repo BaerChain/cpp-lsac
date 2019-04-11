@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <boost/filesystem/path.hpp>
+#include <brc/exchangeOrder.hpp>
+
 
 namespace std
 {
@@ -52,8 +54,8 @@ DEV_SIMPLE_EXCEPTION(UnknownBlockNumber);
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::unordered_map<Address, Account> const& genesisState();
 
-Slice toSlice(h256 const& _h, unsigned _sub = 0);
-Slice toSlice(uint64_t _n, unsigned _sub = 0);
+db::Slice toSlice(h256 const& _h, unsigned _sub = 0);
+db::Slice toSlice(uint64_t _n, unsigned _sub = 0);
 
 using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
@@ -102,7 +104,7 @@ public:
 
     /// Attempt to import the given block directly into the BlockChain and sync with the state DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-    std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _mutBeNew = true) noexcept;
+    std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin const& _stateExDB,bool _mutBeNew = true) noexcept;
 
     /// Import block into disk-backed DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
@@ -311,7 +313,7 @@ private:
 
     template <class T, class K, unsigned N>
     T queryExtras(K const& _h, std::unordered_map<K, T>& _m, boost::shared_mutex& _x, T const& _n,
-        DatabaseFace* _extrasDB = nullptr) const
+        db::DatabaseFace* _extrasDB = nullptr) const
     {
         {
             ReadGuard l(_x);
@@ -333,7 +335,7 @@ private:
 
     template <class T, unsigned N>
     T queryExtras(h256 const& _h, std::unordered_map<h256, T>& _m, boost::shared_mutex& _x,
-        T const& _n, DatabaseFace* _extrasDB = nullptr) const
+        T const& _n, db::DatabaseFace* _extrasDB = nullptr) const
     {
         return queryExtras<T, h256, N>(_h, _m, _x, _n, _extrasDB);
     }
@@ -376,8 +378,8 @@ private:
     mutable Statistics m_lastStats;
 
     /// The disk DBs. Thread-safe, so no need for locks.
-    std::unique_ptr<DatabaseFace> m_blocksDB;
-    std::unique_ptr<DatabaseFace> m_extrasDB;
+    std::unique_ptr<db::DatabaseFace> m_blocksDB;
+    std::unique_ptr<db::DatabaseFace> m_extrasDB;
 
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash; // should protect both m_lastBlockHash and m_lastBlockNumber

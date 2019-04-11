@@ -208,10 +208,7 @@ private:
         BRCUnfreezeTranscation,
         TranscationEnd,
         PendingOrderStart,
-        BuyBrcPendingOrder,
-        SellBrcPendingOrder,
-        BuyFuelPendingOrder,
-        SellFuelPendingOrder,
+        PendingOrder,
         CancelPendingOrder,
 		PendingOrderEnd
     };
@@ -220,13 +217,18 @@ private:
     {
         Method m_method = Other;
         CallParameters m_callParameters;
-        size_t m_PendingOrderPrice = 0;
+        u256 m_PendingOrderPrice = 0;
         h256 m_pendingOrderHash = h256(0);
-        TransationParameters(Method _type, CallParameters _c, size_t _pendingOrderPrice = 0, h256 _pendingOrderHash = h256(0))
+        int m_pendingOrder_Token_Type = 0;
+        int m_pendingOrder_Buy_Type = 0;
+        TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
+            h256 _pendingOrderHash = h256(0), int _pendingOrder_Token_Type = 0, int _pendingOrder_Buy_Type = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
-            m_pendingOrderHash(_pendingOrderHash)
+            m_pendingOrderHash(_pendingOrderHash),
+			m_pendingOrder_Token_Type(_pendingOrder_Token_Type),
+			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type)
         {}
     };
 
