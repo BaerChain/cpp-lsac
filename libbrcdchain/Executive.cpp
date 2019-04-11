@@ -161,7 +161,7 @@ string StandardTrace::multilineTrace() const
 
 Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level)
   : m_vote(_s.mutableState()),
-    m_exdb(_s.mutableState().exdb()),
+    m_exdb(std::move(_s.mutableState().exdb())),
     m_brctranscation(_s.mutableState()),
     m_s(_s.mutableState()),
     m_envInfo(_s.info(), _bc.lastBlockHashes(), 0),
@@ -171,7 +171,7 @@ Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level)
 
 Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level)
   : m_vote(_s.mutableState()),
-    m_exdb(_s.mutableState().exdb()),
+    m_exdb(std::move(_s.mutableState().exdb())),
     m_brctranscation(_s.mutableState()),
     m_s(_s.mutableState()),
     m_envInfo(_s.info(), _lh, 0),
@@ -182,7 +182,7 @@ Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level)
 Executive::Executive(
     State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level)
   : m_vote(io_s),
-    m_exdb(io_s.exdb()),
+    m_exdb(std::move(io_s.exdb())),
     m_brctranscation(io_s),
     m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
     m_envInfo(_block.info(), _bc.lastBlockHashes(),

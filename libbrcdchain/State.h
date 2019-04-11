@@ -193,7 +193,7 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin& _exdb,
         BaseState _bs = BaseState::PreExisting);
 
     enum NullType
@@ -215,8 +215,9 @@ public:
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path); 
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
     ex::exchange_plugin const& exdb() const { return m_exdb; }
+    ex::exchange_plugin& exdb() { return m_exdb; }
 
     /// Populate the state from the given AccountMap. Just uses dev::brc::commit().
     void populateFrom(AccountMap const& _map);

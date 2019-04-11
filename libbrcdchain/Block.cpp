@@ -37,7 +37,7 @@ public:
 //}  // namespace
 
 
-Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,
     BaseState _bs, Address const& _author)
   : m_state(Invalid256, _db, _exdb, _bs),
     m_vote(m_state),
@@ -51,7 +51,7 @@ Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin co
     //    assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,
     h256 const& _root, Address const& _author)
   : m_state(Invalid256, _db, _exdb, BaseState::PreExisting),
     m_vote(m_state),
@@ -180,7 +180,7 @@ PopulationStatistics Block::populateFromChain(
     {
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-        m_state = State(m_state.accountStartNonce(), m_state.db(), m_state.exdb(),
+        m_state = State(m_state.accountStartNonce(), m_state.db(),m_state.exdb(),
             BaseState::Empty);  // TODO: try with PreExisting.
         sync(_bc, _h, bi);
     }

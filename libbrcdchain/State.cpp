@@ -16,9 +16,11 @@
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
+using namespace dev::brc::ex;
+
 namespace fs = boost::filesystem;
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin& _exdb,
     BaseState _bs)
   : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
@@ -588,8 +590,8 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
         _pendingOrderTokenType, _pendingOrderBuyType);
     std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
-    order _order = {_pendingOrderHash, _addr, _pendingOrderBuyType, _pendingOrderTokenType,
-        _pendingOrderType, _map, _nowTime};
+    order _order = {_pendingOrderHash, _addr, (order_buy_type)_pendingOrderBuyType, (order_token_type)_pendingOrderTokenType,
+        (order_type)_pendingOrderType, _map, _nowTime};
     std::vector<order> _v = {{_order}};
     std::vector<result_order> _result_v;
 
@@ -603,12 +605,55 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
         return;
     }
 
+    u256 CombinationNum = 0;
+    u256 CombinationTotalAmount = 0;
+
     for (uint32_t i = 0; i < _result_v.size(); ++i)
     {
         result_order _result_order = _result_v[i];
+
+        pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
+            _result_order.price, _result_order.type, _result_order.buy_type,
+            _result_order.token_type);
+
+        CombinationNum += _result_order.amount;
+        CombinationTotalAmount += _result_order.amount * _result_order.price;
     }
-    // TO DO :
-    // Call EOSDB to complete the transaction
+
+    if (_pendingOrderBuyType == order_buy_type::all_price)
+    {
+        if (_pendingOrderTokenType == order_token_type::BRC && _pendingOrderType == order_type::buy)
+        {
+            if (_pendingOrderPrice > CombinationTotalAmount)
+            {
+                subFBRC(_addr, _pendingOrderPrice - CombinationTotalAmount);
+            }
+        }
+        else if (_pendingOrderTokenType == order_token_type::BRC &&
+                 _pendingOrderType == order_type::sell)
+        {
+            if (_pendingOrderNum > CombinationNum)
+            {
+                subFBRC(_addr, _pendingOrderNum - CombinationNum);
+            }
+        }
+        else if (_pendingOrderTokenType == order_token_type::FUEL &&
+                 _pendingOrderType == order_type::buy)
+        {
+            if (_pendingOrderPrice > CombinationTotalAmount)
+            {
+                subFBalance(_addr, _pendingOrderPrice - CombinationTotalAmount);
+            }
+        }
+        else if (_pendingOrderTokenType == order_token_type::FUEL &&
+                 _pendingOrderType == order_type::sell)
+        {
+            if (_pendingOrderNum > CombinationNum)
+            {
+                subFBalance(_addr, _pendingOrderNum - CombinationNum);
+            }
+        }
+    }
 }
 
 void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
@@ -616,53 +661,46 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
     uint8_t _pendingOrderBuyTypes)
 {
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
-        _pendingOrderBuyType == order_buy_type::only_price)
+        _pendingOrderBuyTypes == order_buy_type::only_price)
     {
-		//1、解冻相应金额
-		//2、转账给他人
+        // 1、解冻相应金额
+        // 2、转账给他人
         subFBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
         addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
         subFBalance(_to, _toPendingOrderNum);
         addBalance(_from, _toPendingOrderNum);
-
     }
     else if (_pendingOrderType == order_type::buy &&
              _pendingOrderTokenType == order_token_type::BRC &&
-             _pendingOrderBuyType == order_buy_type::all_price)
+             _pendingOrderBuyTypes == order_buy_type::all_price)
     {
         subFBRC(_from, _toPendingOrderPrice * _toPendingOrderNum);
         addBalance(_from, _toPendingOrderNum);
         subFBalance(_to, _toPendingOrderNum);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        
-        
-        //subBRC(_addr, _pendingOrderPrice);
-        //addFBRC(_addr, _pendingOrderPrice);
+        addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
     }
     else if (_pendingOrderType == order_type::buy &&
              _pendingOrderTokenType == order_token_type::FUEL &&
-             _pendingOrderBuyType == order_buy_type::only_price)
+             _pendingOrderBuyTypes == order_buy_type::only_price)
     {
         subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
         addBRC(_from, _toPendingOrderNum);
         subFBRC(_to, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum);
-        
-        
+        addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum);
     }
     else if (_pendingOrderType == order_type::buy &&
              _pendingOrderTokenType == order_token_type::FUEL &&
-             _pendingOrderBuyType == order_buy_type::all_price)
+             _pendingOrderBuyTypes == order_buy_type::all_price)
     {
         subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
         addBRC(_from, _toPendingOrderNum);
         subFBRC(_to, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
+        addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
     }
     else if (_pendingOrderType == order_type::sell &&
              _pendingOrderTokenType == order_token_type::BRC &&
-             (_pendingOrderBuyType == order_buy_type::only_price ||
-                 _pendingOrderBuyType == order_buy_type::all_price))
+             (_pendingOrderBuyTypes == order_buy_type::only_price ||
+                 _pendingOrderBuyTypes == order_buy_type::all_price))
     {
         subFBRC(_from, _toPendingOrderNum);
         addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
@@ -671,8 +709,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
     }
     else if (_pendingOrderType == order_type::sell &&
              _pendingOrderTokenType == order_token_type::FUEL &&
-             (_pendingOrderBuyType == order_buy_type::only_price ||
-                 _pendingOrderBuyType == order_buy_type::all_price))
+             (_pendingOrderBuyTypes == order_buy_type::only_price ||
+                 _pendingOrderBuyTypes == order_buy_type::all_price))
     {
         subFBalance(_from, _toPendingOrderNum);
         addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
