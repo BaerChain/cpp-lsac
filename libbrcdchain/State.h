@@ -215,7 +215,7 @@ public:
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path); 
     ex::exchange_plugin const& exdb() const { return m_exdb; }
 
     /// Populate the state from the given AccountMap. Just uses dev::brc::commit().
@@ -234,7 +234,7 @@ public:
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo,
-        SealEngineFace const& _sealEngine, Transaction const& _t, ex::exchange_plugin const& _exdb,
+        SealEngineFace const& _sealEngine, Transaction const& _t,
         Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
     /// Execute @a _txCount transactions of a given block.
@@ -292,9 +292,9 @@ public:
     void subFBalance(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
-    void pendingOrder(Address const& _addr, u256 const& _pendingOrderNum, size_t _pendingOrderPrice,
+    void pendingOrder(Address const& _addr, u256 const& _pendingOrderNum, u256 _pendingOrderPrice,
         h256 _pendingOrderHash, size_t _pendingOrderType, size_t _pendingOrderTokenType,
-        size_t _pendingOrderBuyType);
+        size_t _pendingOrderBuyType, int64_t _nowTime);
 
     void cancelPendingOrder(
         Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
@@ -351,6 +351,8 @@ public:
      */
     void transferBalance(Address const& _from, Address const& _to, u256 const& _value)
     {
+
+		//TO DO : Do not allow ordinary users to transfer money
         subBalance(_from, _value);
         addBalance(_to, _value);
     }

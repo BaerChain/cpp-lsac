@@ -346,7 +346,7 @@ void BlockChain::rebuild(fs::path const& _path, std::function<void(unsigned, uns
     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
 
     // Open a fresh state DB
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),State::openExdb(path.string() + "/exdb");
+    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),State::openExdb(path.string() + "/exdb"));
 
     // Clear all memos ready for replay.
     m_details.clear();
@@ -484,11 +484,11 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
     return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
-pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _mustBeNew) noexcept
+pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin const& _stateExDB, bool _mustBeNew) noexcept
 {
     try
     {
-        return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks), _stateDB, _mustBeNew));
+        return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks), _stateDB, _stateExDB,_mustBeNew));
     }
     catch (UnknownParent&)
     {

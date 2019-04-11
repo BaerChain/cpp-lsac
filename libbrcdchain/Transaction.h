@@ -137,15 +137,15 @@ struct pendingorder_opearaion : public operation
 {
     uint8_t m_type = null;
     Address m_from;
-    uint8_t m_Pendingorder_type = 0;
-    uint8_t m_Pendingorder_Token_type = 0;
-    uint8_t m_Pendingorder_buy_type = 0;
+    int m_Pendingorder_type = 0;
+    int m_Pendingorder_Token_type = 0;
+    int m_Pendingorder_buy_type = 0;
 	u256 m_Pendingorder_num = 0;
     u256 m_Pendingorder_price = 0;
     h256 m_Pendingorder_Hash = h256(0);
     pendingorder_opearaion(
-        op_type type, const Address& from, uint8_t pendingorder_type, uint8_t _pendingorder_token_type,
-		uint8_t _pendingorder_buy_type, size_t pendingorder_num, size_t pendingorder_price, h256 pendingorder_hash)
+        op_type type, const Address& from, int pendingorder_type, int _pendingorder_token_type,
+		int _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price, h256 pendingorder_hash)
       : m_type(type),
         m_from(from),
         m_Pendingorder_type(pendingorder_type),

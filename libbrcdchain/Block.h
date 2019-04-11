@@ -80,7 +80,7 @@ public:
     /// which uses it.
     /// Will throw InvalidRoot if the root passed is not in the database.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const _exdb,h256 const& _root,
+    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,h256 const& _root,
         Address const& _author = Address());
 
     enum NullType
@@ -222,7 +222,7 @@ public:
 
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
-    ExecutionResult execute(LastBlockHashesFace const& _lh, Transaction const& _t, ex::exchange_plugin const& _exdb,
+    ExecutionResult execute(LastBlockHashesFace const& _lh, Transaction const& _t,
         Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
