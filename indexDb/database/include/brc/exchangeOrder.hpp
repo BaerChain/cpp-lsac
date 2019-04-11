@@ -19,6 +19,10 @@ namespace dev {
 
                 exchange_plugin(const boost::filesystem::path &data_dir);
 
+                exchange_plugin(exchange_plugin&&) = default;
+                exchange_plugin& operator=(exchange_plugin&&) = default;
+
+
 
                 std::vector<result_order>
                 insert_operation(const std::vector<order> &orders, bool reset = true, bool throw_exception = false);
@@ -27,17 +31,16 @@ namespace dev {
 
                 std::vector<exchange_order> get_orders();
 
-                int64_t get_version();
+                bool rollback();
 
-                bool rollback(int version);
+                bool commit(int64_t version);
 
-                bool commit();
 
             private:
 
 
                 template<typename BEGIN, typename END>
-                void proccess(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
+                void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
                     if (begin == end) {
                         db->create<order_object>([&](order_object &obj) {
@@ -90,7 +93,6 @@ namespace dev {
                         }
 
                     }
-
                     //surplus token ,  record to db
                     if (spend > 0) {
                         db->create<order_object>([&](order_object &obj) {
@@ -100,6 +102,54 @@ namespace dev {
 
 
                 }
+
+
+//                template <typename BEGIN, typename END>
+//                void process_all_price(BEGIN &begin, END &end, const order &od, std::vector<result_order> &result, bool throw_exception)
+//                {
+//                    if(begin == end){
+//                        BOOST_THROW_EXCEPTION(all_price_operation_error());
+//                    }
+//                    auto total_price = od.total_price;
+//                    while(total_price > 0 && begin != end){
+//                        auto sum = begin->token_amount * begin->price;
+//                        if(sum >= total_price){
+//                            auto s_amount = total_price / begin->price;
+//                            auto s_price = s_amount * begin->price;
+//
+//                            assert(sum > s_price);
+//
+//                            result_order ret;
+//                            ret.set_data(od, begin, s_amount, begin->price);
+//                            const auto rm_obj = db->find(begin->id);
+//                            if(s_price == sum){ //remove
+//                                db->remove(*rm_obj);
+//                            }
+//                            else{
+//                                db->modify(*rm_obj, [&](order_object &obj){
+//                                    obj.token_amount -= s_amount;
+//                                });
+//                            }
+//
+//
+//                            result.push_back(ret);
+//                            break;
+//                        }
+//                        else{ // this order of all_price can eat this order.  find next . record cost amount.
+//                            auto s_amount = sum / begin->price;
+//
+//
+//
+//
+//
+//                        }
+//                    }
+//
+//
+//
+//                }
+
+
 
                 std::shared_ptr<database> db;
             };
