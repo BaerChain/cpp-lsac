@@ -219,10 +219,10 @@ private:
         CallParameters m_callParameters;
         u256 m_PendingOrderPrice = 0;
         h256 m_pendingOrderHash = h256(0);
-        int m_pendingOrder_Token_Type = 0;
-        int m_pendingOrder_Buy_Type = 0;
+        uint8_t m_pendingOrder_Token_Type = 0;
+        uint8_t m_pendingOrder_Buy_Type = 0;
         TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0), int _pendingOrder_Token_Type = 0, int _pendingOrder_Buy_Type = 0)
+            h256 _pendingOrderHash = h256(0), uint8_t _pendingOrder_Token_Type = 0, uint8_t _pendingOrder_Buy_Type = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
