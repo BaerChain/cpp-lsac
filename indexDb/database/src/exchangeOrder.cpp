@@ -1,7 +1,7 @@
 #include <brc/exchangeOrder.hpp>
 #include <boost/tuple/tuple.hpp>
 
-
+#include <brc/exception.hpp>
 
 
 //#define GET_ITR_BEGIN_LOWWER(INDEX_TYPE, INDEX, TYPE, PRICE) \
@@ -9,7 +9,6 @@
 
 #define IF_THROW_EXCEPTION(FLAG, EXP, RETURN) \
         if(FLAG) { EXP; }else{ return RETURN;}
-
 
 
 using namespace dev;
@@ -27,14 +26,15 @@ namespace dev {
                 if (!db) {
                     BOOST_THROW_EXCEPTION(get_db_instance_error());
                 }
+                auto session = db->start_undo_session(true);
                 std::vector<result_order> result;
                 try {
                     // get itr by type and token_type
                     // @param less
-                    // @return pair,   first is begin iterator,  second is end iterator.
+                    // @return pair,   first: begin iterator,  second: end iterator.
                     auto get_buy_itr = [&](order_token_type token_type, u256 price) {
                         auto find_token = token_type == BRC ? FUEL : BRC;
-                        const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_buy_less>();
+                        const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
 
                         auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
                                                                                                     u256(0), 0);
@@ -50,7 +50,7 @@ namespace dev {
 
                     auto get_sell_itr = [&](order_token_type token_type, u256 price) {
                         auto find_token = token_type == BRC ? FUEL : BRC;
-                        const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_buy_greater>();  //↑
+                        const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
 
                         auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
                                                                                                     u256(-1), 0);
@@ -69,25 +69,104 @@ namespace dev {
                             for (const auto t :  itr.price_token) {
                                 if (itr.type == buy) {
                                     auto find_itr = get_buy_itr(itr.token_type, t.first);
-                                    proccess(find_itr.first, find_itr.second, itr, t.first, t.second, result,
+                                    process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second, result,
                                              throw_exception);
                                 } else { //sell
                                     auto find_itr = get_sell_itr(itr.token_type, t.first);
-                                    proccess(find_itr.first, find_itr.second, itr, t.first, t.second, result,
+                                    process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second, result,
                                              throw_exception);
                                 }
 
                             }
+                        } else {
+                            //TODO
+                            if(itr.price_token.size() != 1){
+                                BOOST_THROW_EXCEPTION(all_price_operation_error());
+                            }
+                            if (itr.type == buy) {
+                                auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+                                auto total_price = itr.price_token.begin()->first;
+                                auto begin = find_itr.first;
+                                auto end = find_itr.second;
+                                if(begin != end){
+                                    while(total_price > 0 && begin != end){
+                                        auto begin_total_price = begin->token_amount * begin->price;
+                                        result_order ret;
+                                        if(begin_total_price <= total_price){   //
+                                            total_price -= begin_total_price;
+
+                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                            result.push_back(ret);
+
+                                            const auto rm_obj = db->find(begin->id);
+                                            begin++;
+                                            db->remove(*rm_obj);
+                                        }
+                                        else if(begin_total_price > total_price){
+                                            auto can_buy_amount = total_price / begin->price;
+                                            ret.set_data(itr, begin, can_buy_amount, begin->price);
+                                            result.push_back(ret);
+                                            const auto rm_obj = db->find(begin->id);
+                                            db->modify(*rm_obj, [&](order_object &obj){
+                                                obj.token_amount -= can_buy_amount;
+                                            });
+                                            begin++;
+                                        }
+
+                                        db->create<order_result_object>([&](order_result_object &obj) {
+                                            obj.set_data(ret);
+                                        });
+                                    }
+                                }
+                                else{
+                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+                                }
+                            } else {   //all_price  , sell,
+                                auto find_itr = get_sell_itr(itr.token_type, u256(0));
+                                auto begin = find_itr.first;
+                                auto end = find_itr.second;
+                                auto total_amount = itr.price_token.begin()->second;
+                                if(begin != end){
+                                    while(total_amount > 0 && begin !=  end){
+                                        result_order ret;
+                                        if(begin->token_amount >= total_amount){
+                                            ret.set_data(itr, begin, total_amount, begin->price);
+                                            result.push_back(ret);
+                                            const auto rm_obj = db->find(begin->id);
+                                            db->modify(*rm_obj, [&](order_object &obj){
+                                                obj.token_amount -= total_amount;
+                                            });
+                                            total_amount = 0;
+                                        }
+                                        else{
+                                            total_amount -= begin->token_amount;
+                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                            result.push_back(ret);
+                                            const auto rm_obj = db->find(begin->id);
+                                            begin++;
+                                            db->remove(*rm_obj);
+                                        }
+                                        db->create<order_result_object>([&](order_result_object &obj) {
+                                            obj.set_data(ret);
+                                        });
+                                    }
+                                }
+                                else{
+                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+                                }
+                            }
+
+
                         }
 
                     }
 
 
                     if (!reset) {
-                        auto version = db->revision();
-                        db->commit(version + 1);
+                        session.push();
                     }
-                } catch (const boost::exception &e) {
+                } catch (const dev::Exception &e) {
+                    std::cout << e.what() << std::endl;
                     return result;
                 }
                 return result;
@@ -110,7 +189,7 @@ namespace dev {
             std::vector<exchange_order> exchange_plugin::get_orders() {
 
                 vector<exchange_order> ret;
-                const auto &index = db->get_index<order_object_index>().indices().get<by_price_buy_less>();
+                const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
                 auto begin = index.begin();
                 while (begin != index.end()) {
                     ret.push_back(exchange_order(*begin));
@@ -121,15 +200,13 @@ namespace dev {
             }
 
 
-            int64_t exchange_plugin::get_version() {
-                return db->revision();
-            }
-
-            bool exchange_plugin::rollback(int version) {
+            bool exchange_plugin::rollback() {
+                db->undo();
                 return true;
             }
 
-            bool exchange_plugin::commit() {
+            bool exchange_plugin::commit(int64_t version) {
+                db->commit(version);
                 return true;
             }
 
