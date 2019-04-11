@@ -138,7 +138,7 @@ public:
     }
 
 
-    std::vector<order> get_random_order(uint32_t create_size, order_type type = sell, order_token_type t_type = BRC) {
+    std::vector<order> get_random_order(uint32_t create_size, order_type type = sell, order_token_type t_type = BRC, order_buy_type buy_type = only_price) {
 
 
         auto get_random_price = [](uint64_t down, uint64_t up) -> h256 {
@@ -167,7 +167,7 @@ public:
             order o;
             o.trxid = h256(get_random_str(true));
             o.sender = Address(get_random_str(false));
-            o.buy_type = only_price;
+            o.buy_type = buy_type;
             o.token_type = t_type;
             o.type = type;
             o.price_token = {{get_random_price(10, 20), get_random_price(5, 10)}};
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
     cur_dir /= bfs::unique_path();
     dev::brc::ex::exchange_plugin db(cur_dir);
 
-    std::vector<order> os = th.get_random_order(200, sell, BRC);
+    std::vector<order> os = th.get_random_order(200, sell, BRC, only_price);
 //    std::vector<order> os1 = th.get_random_order(100, buy, FUEL);
 //    std::vector<order> os3 = get_random_order(1000, sell, BRC);
 //    std::vector<order> os4 = get_random_order(1000, sell, BRC);
@@ -210,9 +210,10 @@ int main(int argc, char *argv[]) {
     int count = 100;
     while (count--) {
         sleep(1);
-        auto ret = db.insert_operation(th.get_random_order(1, buy, FUEL), false, true);
-        th.print_formmat(db.get_order_by_type(sell, BRC, 30));
-        th.print_sys_result(db.get_result_orders_by_news(3));
+        auto ret = db.insert_operation(th.get_random_order(5, buy, FUEL, all_price), false, true);
+        auto goyt = db.get_order_by_type(sell, BRC, 30);
+        th.print_formmat(goyt);
+        th.print_sys_result(db.get_result_orders_by_news(5));
     }
 
 
