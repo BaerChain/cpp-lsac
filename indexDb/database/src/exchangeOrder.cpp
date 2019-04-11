@@ -19,6 +19,13 @@ namespace dev {
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
                     : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
 
+
+                db->add_index<order_object_index>();
+                db->add_index<order_result_object_index>();
+            }
+
+            exchange_plugin::~exchange_plugin() {
+                db.reset();
             }
 
             std::vector<result_order>
@@ -32,37 +39,7 @@ namespace dev {
                     // get itr by type and token_type
                     // @param less
                     // @return pair,   first: begin iterator,  second: end iterator.
-                    auto get_buy_itr = [&](order_token_type token_type, u256 price) {
-                        auto find_token = token_type == BRC ? FUEL : BRC;
-                        const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
 
-                        auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
-                                                                                                    u256(0), 0);
-                        auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
-                                                                                                    price, INT64_MAX);
-
-                        typedef decltype(index_greater.lower_bound(find_lower)) Lower_Type;
-                        typedef decltype(index_greater.upper_bound(find_upper)) Upper_Type;
-
-                        return std::pair<Lower_Type, Upper_Type>(index_greater.lower_bound(find_lower),
-                                                                 index_greater.upper_bound(find_upper));
-                    };
-
-                    auto get_sell_itr = [&](order_token_type token_type, u256 price) {
-                        auto find_token = token_type == BRC ? FUEL : BRC;
-                        const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
-
-                        auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
-                                                                                                    u256(-1), 0);
-                        auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
-                                                                                                    price, INT64_MAX);
-
-                        typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
-                        typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
-
-                        return std::pair<Lower_Type, Upper_Type>(index_less.lower_bound(find_lower),
-                                                                 index_less.upper_bound(find_upper));
-                    };
 
                     for (const auto &itr : orders) {
                         if (itr.buy_type == only_price) {
@@ -186,16 +163,16 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<exchange_order> exchange_plugin::get_orders() {
+            std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size ) {
 
                 vector<exchange_order> ret;
                 const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
                 auto begin = index.begin();
-                while (begin != index.end()) {
+                while (begin != index.end() && size > 0) {
                     ret.push_back(exchange_order(*begin));
                     begin++;
+                    size--;
                 }
-
                 return ret;
             }
 
@@ -208,6 +185,38 @@ namespace dev {
             bool exchange_plugin::commit(int64_t version) {
                 db->commit(version);
                 return true;
+            }
+
+
+            std::vector<exchange_order> exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size)
+            {
+                vector<exchange_order> ret;
+                if(type == buy){
+                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type, u256(-1), 0);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type, u256(0), INT64_MAX);
+                    auto begin = index_greater.lower_bound(find_lower);
+                    auto end = index_greater.upper_bound(find_upper);
+
+                    while (begin != end && size > 0) {
+                        ret.push_back(exchange_order(*begin));
+                        begin++;
+                        size--;
+                    }
+                }
+                else{
+                    const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type, u256(0), 0);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type, u256(-1), INT64_MAX);
+                    auto begin = index_less.lower_bound(find_lower);
+                    auto end = index_less.upper_bound(find_upper);
+                    while (begin != end && size > 0) {
+                        ret.push_back(exchange_order(*begin));
+                        begin++;
+                        size--;
+                    }
+                }
+                return ret;
             }
 
         }
