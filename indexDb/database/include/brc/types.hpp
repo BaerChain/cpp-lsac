@@ -65,6 +65,7 @@ namespace dev {
                     acceptor = itr2->sender;
                     type = itr1.type;
                     token_type = itr1.token_type;
+                    buy_type = itr1.buy_type;
                     create_time = itr1.time;
                     send_trxid = itr1.trxid;
                     to_trxid = itr2->trxid;
@@ -72,15 +73,16 @@ namespace dev {
                     price = _price;
                 }
 
-                Address sender;
-                Address acceptor;
-                order_type type;
-                order_token_type token_type;         //sender token type
-                Time_ms create_time;        //success time.
-                h256 send_trxid;         //sender trxid;
-                h256 to_trxid;           //which trxid
-                u256 amount;
-                u256 price;
+                Address             sender;
+                Address             acceptor;
+                order_type          type;
+                order_token_type    token_type;         //sender token type
+                order_buy_type      buy_type;
+                Time_ms             create_time;        //success time.
+                h256                send_trxid;         //sender trxid;
+                h256                to_trxid;           //which trxid
+                u256                amount;
+                u256                price;
             };
 
 
@@ -191,6 +193,7 @@ namespace dev {
                     acceptor = ret.acceptor;
                     type = ret.type;
                     token_type = ret.token_type;
+                    buy_type = ret.buy_type;
                     create_time = ret.create_time;
                     send_trxid = ret.send_trxid;
                     to_trxid = ret.to_trxid;
@@ -203,6 +206,7 @@ namespace dev {
                 Address acceptor;
                 order_type type;
                 order_token_type token_type;         //sender token type
+                order_buy_type buy_type;
                 Time_ms create_time;        //success time.
                 h256 send_trxid;         //sender trxid;
                 h256 to_trxid;           //which trxid
