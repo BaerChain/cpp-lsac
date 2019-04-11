@@ -51,8 +51,7 @@ typedef multi_index_container<
                         tag<by_name>,
                         composite_key<up_order, member<up_order, shared_string, &up_order::name> >,
                         composite_key_compare<chainbase::strcmp_less>
-                >,
-                ordered_non_unique<member<up_order, uint64_t, &up_order::time> >
+                >
         >,
         chainbase::allocator<up_order>
 >
@@ -74,50 +73,68 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             cur_dir /= bfs::unique_path();;
 
 
-
+            uint32_t length = 10;
             dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
-
-            auto session = db.start_undo_session(true);
-            auto version = db.revision();
             db.add_index<up_order_index>();
-
-            db.create<up_order>([](up_order &order){
-
-            });
-            db.commit(1);
-            db.create<up_order>([](up_order &order){
-
-            });
-            db.commit(2);
-
-
-            for (uint32_t i = 0; i < 10; i++) {
-                db.create<up_order>([&](up_order &order) {
-                    std::string nn = "test" + std::to_string(i);
+            {
+                auto session = db.start_undo_session(true);
+                db.create<up_order>([](up_order &order){
+                    std::string nn = "xxxxxxxxxxxxxx";
                     order.name.assign(nn.begin(), nn.end());
-
-                    order.time = i;
-                    order.balance = i;
-                    order.type = uint8_t(i & 0xf);
-                    order.price = i * 10;
                 });
+
+                session.push();
+
+                db.commit(1);
+            }
+            {
+                auto session = db.start_undo_session(true);
+                db.create<up_order>([](up_order &order){
+                    std::string nn = "xxxxxxxxxxxxxx2";
+                    order.name.assign(nn.begin(), nn.end());
+                });
+
+                session.push();
+
+            }
+            {
+                auto session1 = db.start_undo_session(true);
+                for (uint32_t i = 0; i < length; i++) {
+                    db.create<up_order>([&](up_order &order) {
+                        std::string nn = "test" + std::to_string(i);
+                        order.name.assign(nn.begin(), nn.end());
+
+                        order.time = i;
+                        order.balance = i;
+                        order.type = uint8_t(i & 0xf);
+                        order.price = i * 10;
+                    });
+                }
+                session1.push();
+
             }
 
-            db.undo();
-            db.flush();
+
+
+//            db.undo();
+//            db.flush();
 
 
             //read
-            for (uint32_t i = 0; i < 0xfff; i++) {
-                std::string nn = "test" + std::to_string(i);
-                const auto itr = db.find<up_order, by_name>(nn);
-                BOOST_CHECK(itr);           //if  not find ,  itr is nullptr,
+//            for (uint32_t i = 0; i < length; i++) {
+//                std::string nn = "test" + std::to_string(i);
+//                const auto itr = db.find<up_order, by_name>(nn);
+//                BOOST_CHECK(itr);           //if  not find ,  itr is nullptr,
+//                std::cout << itr->name << std::endl;
+//                try {
+//                    const auto &ret = db.get<up_order, by_name>(nn);
+//                } catch (const boost::exception &e) {
+//                    //if not find , db.get will throw exception.
+//                }
+//            }
+            const auto &index = db.get_index<up_order_index>().indices().get<by_name>();
+            for(auto itr = index.begin(); itr != index.end(); itr++){
                 std::cout << itr->name << std::endl;
-                try {
-                    const auto &ret = db.get<up_order, by_name>(nn);
-                } catch (const boost::exception &e) {
-                    //if not find , db.get will throw exception.
-                }
             }
 
 
@@ -186,7 +203,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                 }
             }
 
-            const auto &index_itr = db.get_index<order_object_index>().indices().get<by_price_buy_less>();
+            const auto &index_itr = db.get_index<order_object_index>().indices().get<by_price_less>();
             auto begin = index_itr.lower_bound(boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, BRC, 2, 0));
             auto end = index_itr.upper_bound(boost::tuple<order_type, order_token_type, u256, uint64_t>(buy, BRC, 2, INT64_MAX));
             std::cout << "---------------------------\n";
@@ -285,7 +302,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                     % itr.create_time
                     % itr.type
                     % itr.token_type
-                    << std::endl;
+                    << std::flush;
                 }
             };
 
@@ -327,7 +344,13 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         std::cout  << boost::format("%1%.%2%.%3%") % 2018 % 11 % 2 << std::endl;
 
         std::cout << boost::format("%|40t|%1% | %|20t|%2%") % "trxid"  % "trxid" << std::endl;
-
+        int j=0,i=0;
+        while(j++<10)
+        {
+            printf("这是第%d次输出------",j);
+            printf("\r\033[k");
+        }
+        std::cout << "end" << std::endl;
     }
 
 
