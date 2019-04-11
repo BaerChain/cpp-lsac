@@ -366,7 +366,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     m_callParameters_v.push_back(
-                        {(Executive::Method)(_transcation_op.m_Transcation_type + (int)TranscationStart),
+                        {(Executive::Method)(_transcation_op.m_Transcation_type + (uint8_t)TranscationStart),
                             {m_t.sender(), _transcation_op.m_to, _transcation_op.m_to,
                                 _transcation_op.m_Transcation_numbers,
                                 _transcation_op.m_Transcation_numbers, 0, bytesConstRef(), {}}});
@@ -409,7 +409,7 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
-                             (uint8_t)_pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart + 1),
+                             (uint8_t)_pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0),
                                 _pengdingorder_op.m_Pendingorder_type,
                                 _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
@@ -454,7 +454,7 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
-                             (uint8_t)_pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
                             {m_t.sender(), Address(0), Address(0),
                                 _pengdingorder_op.m_Pendingorder_type,
                                 _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
@@ -586,7 +586,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             else if (val.m_method == PendingOrder)
                 m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
                                     val.m_pendingOrderHash,
-                                    (int)val.m_method - (int)PendingOrderStart - 1,
+                                    val.m_method - (uint8_t)PendingOrderStart,
                     val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
             else if (val.m_method == CancelPendingOrder)
                 m_s.cancelPendingOrder(p.senderAddress, p.valueTransfer,

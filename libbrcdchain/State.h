@@ -292,13 +292,20 @@ public:
     void subFBalance(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
-    void pendingOrder(Address const& _addr, u256 const& _pendingOrderNum, u256 _pendingOrderPrice,
-        h256 _pendingOrderHash, size_t _pendingOrderType, size_t _pendingOrderTokenType,
-        size_t _pendingOrderBuyType, int64_t _nowTime);
+    void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+        h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
+        uint8_t _pendingOrderBuyType, int64_t _nowTime);
 
     void cancelPendingOrder(
         Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
 
+
+	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+		uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType);
+
+	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
+        u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
+        uint8_t _pendingOrderBuyTypes); 
 
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
