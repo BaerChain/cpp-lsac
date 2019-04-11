@@ -186,21 +186,21 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State(u256 const& _accountStartNonce)
-      : State(_accountStartNonce, OverlayDB(), ex::exchange_plugin(),BaseState::Empty)
+      : State(_accountStartNonce, OverlayDB(), ex::exchange_plugin(), BaseState::Empty)
     {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin& _exdb,
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
         BaseState _bs = BaseState::PreExisting);
 
     enum NullType
     {
         Null
     };
-    State(NullType) : State(Invalid256, OverlayDB(), ex::exchange_plugin(),BaseState::Empty) {}
+    State(NullType) : State(Invalid256, OverlayDB(), ex::exchange_plugin(), BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);

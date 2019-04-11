@@ -20,7 +20,7 @@ using namespace dev::brc::ex;
 
 namespace fs = boost::filesystem;
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin& _exdb,
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
   : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
@@ -32,6 +32,7 @@ State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_
 
 State::State(State const& _s)
   : m_db(_s.m_db),
+    m_exdb(_s.m_exdb),
     m_state(&m_db, _s.m_state.root(), Verification::Skip),
     m_cache(_s.m_cache),
     m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
