@@ -313,7 +313,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
 
     // Open a fresh state DB
 
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),  State::openExdb( path ));
+    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),  State::openExdb(fs::path(path.string() + std::string("/exdb" ))));
 
     // Clear all memos ready for replay.
     m_details.clear();
