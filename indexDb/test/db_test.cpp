@@ -344,13 +344,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         std::cout  << boost::format("%1%.%2%.%3%") % 2018 % 11 % 2 << std::endl;
 
         std::cout << boost::format("%|40t|%1% | %|20t|%2%") % "trxid"  % "trxid" << std::endl;
-        int j=0,i=0;
-        while(j++<10)
-        {
-            printf("这是第%d次输出------",j);
-            printf("\r\033[k");
-        }
-        std::cout << "end" << std::endl;
+
     }
 
 
