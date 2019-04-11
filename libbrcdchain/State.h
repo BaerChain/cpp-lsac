@@ -186,21 +186,21 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State(u256 const& _accountStartNonce)
-      : State(_accountStartNonce, OverlayDB(), exchange_plugin(),BaseState::Empty)
+      : State(_accountStartNonce, OverlayDB(), ex::exchange_plugin(),BaseState::Empty)
     {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin& _exdb,
         BaseState _bs = BaseState::PreExisting);
 
     enum NullType
     {
         Null
     };
-    State(NullType) : State(Invalid256, OverlayDB(), BaseState::Empty) {}
+    State(NullType) : State(Invalid256, OverlayDB(), ex::exchange_plugin(),BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);
@@ -215,8 +215,9 @@ public:
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static void openExdb(boost::filesystem::path const& _path);
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
     ex::exchange_plugin const& exdb() const { return m_exdb; }
+    ex::exchange_plugin& exdb() { return m_exdb; }
 
     /// Populate the state from the given AccountMap. Just uses dev::brc::commit().
     void populateFrom(AccountMap const& _map);
@@ -292,13 +293,20 @@ public:
     void subFBalance(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
-    void pendingOrder(Address const& _addr, u256 const& _pendingOrderNum, size_t _pendingOrderPrice,
-        h256 _pendingOrderHash, size_t _pendingOrderType, size_t _pendingOrderTokenType,
-        size_t _pendingOrderBuyType);
+    void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+        h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
+        uint8_t _pendingOrderBuyType, int64_t _nowTime);
 
     void cancelPendingOrder(
         Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
 
+
+	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+		uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType);
+
+	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
+        u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
+        uint8_t _pendingOrderBuyTypes); 
 
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
@@ -351,6 +359,8 @@ public:
      */
     void transferBalance(Address const& _from, Address const& _to, u256 const& _value)
     {
+
+		//TO DO : Do not allow ordinary users to transfer money
         subBalance(_from, _value);
         addBalance(_to, _value);
     }

@@ -4,7 +4,6 @@
 #include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <chainbase/chainbase.hpp>
-#include <brc/FixNumber.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>

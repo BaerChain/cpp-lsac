@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <boost/filesystem/path.hpp>
+#include <brc/exchangeOrder.hpp>
+
 
 namespace std
 {
@@ -98,16 +100,16 @@ public:
 
     /// Sync the chain with any incoming blocks. All blocks should, if processed in order.
     /// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
-    std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+    std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB,unsigned _max);
 
     /// Attempt to import the given block directly into the BlockChain and sync with the state DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-    std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _mutBeNew = true) noexcept;
+    std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB,bool _mutBeNew = true) noexcept;
 
     /// Import block into disk-backed DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-    ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, exchange_plugin const& _stateExDB, bool _mustBeNew = true);
-    ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, exchange_plugin const& _stateExDB,bool _mustBeNew = true);
+    ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB, bool _mustBeNew = true);
+    ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin& _stateExDB,bool _mustBeNew = true);
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the
@@ -274,7 +276,7 @@ public:
     void setOnBlockImport(std::function<void(BlockHeader const&)> _t) { m_onBlockImport = _t; }
 
     /// Get a pre-made genesis State object.
-    Block genesisBlock(OverlayDB const& _db, exchange_plugin const& _exdb ) const;
+    Block genesisBlock(OverlayDB const& _db, ex::exchange_plugin& _exdb ) const;
 
     /// Verify block and prepare it for enactment
     VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const;
