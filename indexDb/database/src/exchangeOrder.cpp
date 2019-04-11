@@ -163,13 +163,39 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size ) {
+            std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size ) const{
 
                 vector<exchange_order> ret;
                 const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
                 auto begin = index.begin();
                 while (begin != index.end() && size > 0) {
                     ret.push_back(exchange_order(*begin));
+                    begin++;
+                    size--;
+                }
+                return ret;
+            }
+
+            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size ) {
+
+                vector<result_order> ret;
+                const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
+                auto begin = index.begin();
+                while (begin != index.end() && size > 0) {
+                    result_order eo;
+
+                    eo.sender = begin->sender;
+                    eo.acceptor = begin->acceptor;
+                    eo.type = begin->type;
+                    eo.token_type = begin->token_type;
+                    eo.buy_type = begin->buy_type;
+                    eo.create_time = begin->create_time;
+                    eo.send_trxid = begin->send_trxid;
+                    eo.to_trxid = begin->to_trxid;
+                    eo.amount = begin->amount;
+                    eo.price = begin->price;
+
+                    ret.push_back(eo);
                     begin++;
                     size--;
                 }
