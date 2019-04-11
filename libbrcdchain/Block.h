@@ -62,7 +62,7 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     Block(u256 const& _accountStartNonce)
-      : m_state(_accountStartNonce, OverlayDB(), exchange_plugin() ,BaseState::Empty),
+      : m_state(_accountStartNonce, OverlayDB(), ex::exchange_plugin() ,BaseState::Empty),
         m_vote(m_state),
         m_precommit(_accountStartNonce)
     {}
@@ -72,7 +72,7 @@ public:
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, exchange_plugin const& _exdb,
+    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,
         BaseState _bs = BaseState::PreExisting, Address const& _author = Address());
 
     /// Basic state object from database.
@@ -80,14 +80,14 @@ public:
     /// which uses it.
     /// Will throw InvalidRoot if the root passed is not in the database.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, exchange_plugin const _exdb,h256 const& _root,
+    Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,h256 const& _root,
         Address const& _author = Address());
 
     enum NullType
     {
         Null
     };
-    Block(NullType) : m_state(0, OverlayDB(), BaseState::Empty), m_vote(m_state), m_precommit(0) {}
+    Block(NullType) : m_state(0, OverlayDB(), ex::exchange_plugin(), BaseState::Empty), m_vote(m_state), m_precommit(0) {}
 
     /// Construct from a given blockchain. Empty, but associated with @a _bc 's chain params.
     explicit Block(BlockChain const& _bc) : Block(Null) { noteChain(_bc); }
@@ -169,7 +169,7 @@ public:
     /// necessary.
     OverlayDB const& db() const { return m_state.db(); }
 
-    exchange_plugin const& exdb() const { return m_state.exdb(); }
+    ex::exchange_plugin& exdb() { return m_state.exdb(); }
     /// The hash of the root of our state tree.
     h256 rootHash() const { return m_state.rootHash(); }
 
@@ -230,7 +230,7 @@ public:
     /// @returns a list of receipts one for each transaction placed from the queue into the state
     /// and bool, true iff there are more transactions to be processed.
     std::pair<TransactionReceipts, bool> sync(BlockChain const& _bc, TransactionQueue& _tq,
-        GasPricer const& _gp, exchange_plugin const& _exdb, unsigned _msTimeout = 100);
+        GasPricer const& _gp, ex::exchange_plugin const& _exdb, unsigned _msTimeout = 100);
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the

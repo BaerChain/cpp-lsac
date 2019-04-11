@@ -161,7 +161,7 @@ string StandardTrace::multilineTrace() const
 
 Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level)
   : m_vote(_s.mutableState()),
-    m_exdb(_s.mutableState().exdb()),
+    m_exdb(std::move(_s.mutableState().exdb())),
     m_brctranscation(_s.mutableState()),
     m_s(_s.mutableState()),
     m_envInfo(_s.info(), _bc.lastBlockHashes(), 0),
@@ -171,6 +171,7 @@ Executive::Executive(Block& _s, BlockChain const& _bc, unsigned _level)
 
 Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level)
   : m_vote(_s.mutableState()),
+    m_exdb(std::move(_s.mutableState().exdb())),
     m_brctranscation(_s.mutableState()),
     m_s(_s.mutableState()),
     m_envInfo(_s.info(), _lh, 0),
@@ -181,6 +182,7 @@ Executive::Executive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level)
 Executive::Executive(
     State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level)
   : m_vote(io_s),
+    m_exdb(std::move(io_s.exdb())),
     m_brctranscation(io_s),
     m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
     m_envInfo(_block.info(), _bc.lastBlockHashes(),
@@ -388,11 +390,11 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
 							m_exdb, m_envInfo.timestamp(),
-                            (size_t)_pengdingorder_op.m_Pendingorder_type,
-                            (size_t)_pengdingorder_op.m_Pendingorder_Token_type,
-                            (size_t)_pengdingorder_op.m_Pendingorder_buy_type,
+                            _pengdingorder_op.m_Pendingorder_type,
+                            _pengdingorder_op.m_Pendingorder_Token_type,
+                            _pengdingorder_op.m_Pendingorder_buy_type,
 							_pengdingorder_op.m_Pendingorder_num,
-                            _pengdingorder_op.m_Pendingorder_price))
+                            _pengdingorder_op.m_Pendingorder_price,m_t.sha3() ))
                     {
                         LOG(m_execLogger)
                             << "pendingorder field > "
@@ -407,7 +409,7 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
-                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart),
+                             (uint8_t)_pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0),
                                 _pengdingorder_op.m_Pendingorder_type,
                                 _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
@@ -431,12 +433,13 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
-                            (size_t)_pengdingorder_op.m_Pendingorder_type,
-							(size_t)_pengdingorder_op.m_Pendingorder_Token_type,
-							_pengdingorder_op.m_Pendingorder_buy_type,
+                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(), m_exdb,
+                            m_envInfo.timestamp(),
+                            (int)_pengdingorder_op.m_Pendingorder_type,
+							(int)_pengdingorder_op.m_Pendingorder_Token_type,
+							(int)_pengdingorder_op.m_Pendingorder_buy_type,
 							_pengdingorder_op.m_Pendingorder_num,
-                            _pengdingorder_op.m_Pendingorder_price))
+                            _pengdingorder_op.m_Pendingorder_price, m_t.sha3()))
                     {
                         LOG(m_execLogger)
                             << "pendingorder field > "
@@ -584,8 +587,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
                                     val.m_pendingOrderHash,
                                     val.m_method - (uint8_t)PendingOrderStart,
-                                    val.m_PendingOrderTokenType,
-									val.m_PendingOrderBuyType);
+                    val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
             else if (val.m_method == CancelPendingOrder)
                 m_s.cancelPendingOrder(p.senderAddress, p.valueTransfer,
                     val.m_method - (uint8_t)PendingOrderStart, val.m_pendingOrderHash);

@@ -86,7 +86,8 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the blockchain database
     // until after the construction.
     m_stateDB = State::openDB(_dbPath, bc().genesisHash(), _forceAction);
-    m_StateExDB = State::openExdb(_dbPath + "/edb");
+    std::string _exdbPath = _dbPath.string() + std::string("/exdb");
+    m_StateExDB = State::openExdb(fs::path(_exdbPath));
     // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this just take the root from the genesis block.
     m_preSeal = bc().genesisBlock(m_stateDB, m_StateExDB);
     m_postSeal = m_preSeal;
@@ -149,7 +150,7 @@ ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
 {
     stopWorking();
-    return bc().sync(m_bq, m_stateDB, _max);
+    return bc().sync(m_bq, m_stateDB, m_StateExDB,_max);
 }
 
 void Client::onBadBlock(Exception& _ex) const
@@ -275,8 +276,9 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         m_stateDB = OverlayDB();
         bc().reopen(_p, _we);
         m_stateDB = State::openDB(db::databasePath(), bc().genesisHash(), _we);
-
-        m_preSeal = bc().genesisBlock(m_stateDB);
+        std::string _exDBPath = db::databasePath().string() + std::string("/exdb");
+        m_StateExDB = State::openExdb(fs::path(_exDBPath));
+        m_preSeal = bc().genesisBlock(m_stateDB,m_StateExDB);
         m_preSeal.setAuthor(_p.author);
         m_postSeal = m_preSeal;
         m_working = Block(chainParams().accountStartNonce);
@@ -373,7 +375,7 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
-    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_syncAmount);
+    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
     double elapsed = t.elapsed();
 
     if (count)

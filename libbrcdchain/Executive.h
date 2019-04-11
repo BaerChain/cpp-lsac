@@ -92,6 +92,7 @@ public:
     Executive(
         State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, unsigned _level = 0)
       : m_vote(_s),
+        m_exdb(std::move(_s.exdb())),
         m_brctranscation(_s),
         m_s(_s),
         m_envInfo(_envInfo),
@@ -207,10 +208,7 @@ private:
         BRCUnfreezeTranscation,
         TranscationEnd,
         PendingOrderStart,
-        BuyBrcPendingOrder,
-        SellBrcPendingOrder,
-        BuyFuelPendingOrder,
-        SellFuelPendingOrder,
+        PendingOrder,
         CancelPendingOrder,
 		PendingOrderEnd
     };
@@ -219,13 +217,18 @@ private:
     {
         Method m_method = Other;
         CallParameters m_callParameters;
-        size_t m_PendingOrderPrice = 0;
+        u256 m_PendingOrderPrice = 0;
         h256 m_pendingOrderHash = h256(0);
-        TransationParameters(Method _type, CallParameters _c, size_t _pendingOrderPrice = 0, h256 _pendingOrderHash = h256(0))
+        uint8_t m_pendingOrder_Token_Type = 0;
+        uint8_t m_pendingOrder_Buy_Type = 0;
+        TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
+            h256 _pendingOrderHash = h256(0), uint8_t _pendingOrder_Token_Type = 0, uint8_t _pendingOrder_Buy_Type = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
-            m_pendingOrderHash(_pendingOrderHash)
+            m_pendingOrderHash(_pendingOrderHash),
+			m_pendingOrder_Token_Type(_pendingOrder_Token_Type),
+			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type)
         {}
     };
 
@@ -237,7 +240,7 @@ private:
         bytesConstRef const& _data, OnOpFunc _onOpFunc);
     DposVote m_vote;  // dpos for vote class
     BRCTranscation m_brctranscation;
-	exchange_plugin m_exdb;
+	ex::exchange_plugin m_exdb;
 
     State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
