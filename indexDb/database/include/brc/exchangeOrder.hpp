@@ -20,8 +20,11 @@ namespace dev {
                 ~exchange_plugin();
                 exchange_plugin(const boost::filesystem::path &data_dir);
 
+
+                exchange_plugin(const exchange_plugin &) = default;
                 exchange_plugin(exchange_plugin&&) = default;
                 exchange_plugin& operator=(exchange_plugin&&) = default;
+                exchange_plugin& operator=(const exchange_plugin&) = default;
 
 
 

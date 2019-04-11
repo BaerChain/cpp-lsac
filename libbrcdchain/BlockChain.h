@@ -276,7 +276,7 @@ public:
     void setOnBlockImport(std::function<void(BlockHeader const&)> _t) { m_onBlockImport = _t; }
 
     /// Get a pre-made genesis State object.
-    Block genesisBlock(OverlayDB const& _db, ex::exchange_plugin& _exdb ) const;
+    Block genesisBlock(OverlayDB const& _db, ex::exchange_plugin const& _exdb ) const;
 
     /// Verify block and prepare it for enactment
     VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const;

@@ -37,7 +37,7 @@ public:
 //}  // namespace
 
 
-Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin& _exdb,
+Block::Block(BlockChain const& _bc, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs, Address const& _author)
   : m_state(Invalid256, _db, _exdb, _bs),
     m_vote(m_state),
