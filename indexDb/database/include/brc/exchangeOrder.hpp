@@ -17,6 +17,7 @@ namespace dev {
 
                 }
 
+                ~exchange_plugin();
                 exchange_plugin(const boost::filesystem::path &data_dir);
 
                 exchange_plugin(exchange_plugin&&) = default;
@@ -29,14 +30,49 @@ namespace dev {
 
                 std::vector<exchange_order> get_order_by_address(const Address &addr);
 
-                std::vector<exchange_order> get_orders();
+                std::vector<exchange_order> get_orders(uint32_t size = 50);
+                std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size);
 
                 bool rollback();
 
                 bool commit(int64_t version);
 
 
+
+
             private:
+
+                auto get_buy_itr(order_token_type token_type, u256 price) {
+                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
+
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                                                                                                u256(0), 0);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                                                                                                price, INT64_MAX);
+
+                    typedef decltype(index_greater.lower_bound(find_lower)) Lower_Type;
+                    typedef decltype(index_greater.upper_bound(find_upper)) Upper_Type;
+
+                    return std::pair<Lower_Type, Upper_Type>(index_greater.lower_bound(find_lower),
+                                                             index_greater.upper_bound(find_upper));
+                };
+
+                auto get_sell_itr(order_token_type token_type, u256 price) {
+                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
+
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                                                                                                u256(-1), 0);
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                                                                                                price, INT64_MAX);
+
+                    typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
+                    typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
+
+                    return std::pair<Lower_Type, Upper_Type>(index_less.lower_bound(find_lower),
+                                                             index_less.upper_bound(find_upper));
+                };
 
 
                 template<typename BEGIN, typename END>
