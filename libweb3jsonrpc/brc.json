@@ -6,6 +6,7 @@
 { "name": "brc_gasPrice", "params": [], "order": [], "returns" : "" },
 { "name": "brc_accounts", "params": [], "order": [], "returns" : [] },
 { "name": "brc_blockNumber", "params": [], "order": [], "returns" : ""},
+{ "name": "brc_getPendingOrderPool", "params": ["","",""], "order": [], "returns" : ""},
 { "name": "brc_getBalance", "params": ["", ""], "order": [], "returns" : ""},
 { "name": "brc_getStorageAt", "params": ["", "", ""], "order": [], "returns": ""},
 { "name": "brc_getStorageRoot", "params": ["", ""], "order": [], "returns": ""},
