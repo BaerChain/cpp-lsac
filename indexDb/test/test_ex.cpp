@@ -17,6 +17,8 @@ using namespace dev::brc::ex;
 using namespace dev;
 
 
+
+#define SUB_STR_LENGTH      5
 template<typename T>
 std::string enum_to_string(T type) {
     return "null";
@@ -64,8 +66,8 @@ public:
         system("clear");
         auto print_one_line = [&](const exchange_order &e, bool update = false, uint32_t width = 14) {
 
-            std::cout << e.trxid.abridged() << " | "
-                      << e.sender.abridged() << " | "
+            std::cout << toHex(e.trxid).substr(0, SUB_STR_LENGTH) << " | "
+                      << toHex(e.sender).substr(0, SUB_STR_LENGTH) << " | "
                       << std::setw(width) << e.price << " | "
                       << std::setw(width) << e.token_amount << " | "
                       << std::setw(width) << e.source_amount << " | "
@@ -77,8 +79,8 @@ public:
 
         auto print_header = [&](uint32_t width = 14) {
 
-            std::cout << std::setw(9) << "trxid"
-                      << " | " << std::setw(9) << "sender"
+            std::cout << std::setw(5) << "trxid"
+                      << " | " << std::setw(5) << "sender"
                       << " | " << std::setw(width) << "price"
                       << " | " << std::setw(width) << "token_amount"
                       << " | " << std::setw(width) << "source_amount "
@@ -97,14 +99,14 @@ public:
         std::cout << "\n\n";
         auto print_one_line = [&](const result_order &e, bool update = false, uint32_t width = 14) {
 
-            std::cout << e.sender.abridged() << " | "
-                      << e.acceptor.abridged() << " | "
+            std::cout << toHex(e.sender).substr(0, SUB_STR_LENGTH) << " | "
+                      << toHex(e.acceptor).substr(0, SUB_STR_LENGTH) << " | "
                       << std::setw(width) << e.price << " |"
                       << std::setw(width) << enum_to_string(e.type) << " | "
                       << std::setw(width) << enum_to_string(e.token_type) << " | "
                       << std::setw(width) << enum_to_string(e.buy_type) << " | "
-                      << std::setw(width) << e.send_trxid.abridged() << " | "
-                      << std::setw(width) << e.to_trxid.abridged() << " | "
+                      << std::setw(width) << toHex(e.send_trxid).substr(0, SUB_STR_LENGTH) << " | "
+                      << std::setw(width) << toHex(e.to_trxid).substr(0, SUB_STR_LENGTH) << " | "
                       << std::setw(width) << e.amount << " |"
 
                       << std::endl;
@@ -115,8 +117,8 @@ public:
 
         auto print_header = [&](uint32_t width = 14) {
 
-            std::cout << std::setw(9) << "sender"
-                      << " | " << std::setw(9) << "acceptor"
+            std::cout << std::setw(5) << "sender"
+                      << " | " << std::setw(5) << "acceptor"
                       << " | " << std::setw(width) << "price"
                       << " | " << std::setw(width) << "type"
                       << " | " << std::setw(width) << "token_type"
@@ -184,6 +186,7 @@ public:
 
 
 int main(int argc, char *argv[]) {
+
     system("export TERM=linux");
 
 
@@ -209,8 +212,8 @@ int main(int argc, char *argv[]) {
 
     int count = 100;
     while (count--) {
-        sleep(1);
-        auto ret = db.insert_operation(th.get_random_order(5, buy, FUEL, all_price), false, true);
+        sleep(2);
+        auto ret = db.insert_operation(th.get_random_order(1, buy, FUEL, all_price), false, true);
         auto goyt = db.get_order_by_type(sell, BRC, 30);
         th.print_formmat(goyt);
         th.print_sys_result(db.get_result_orders_by_news(5));
