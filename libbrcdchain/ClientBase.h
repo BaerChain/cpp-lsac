@@ -73,7 +73,7 @@ public:
     std::map<h256, std::pair<u256, u256>> storageAt(Address _a, BlockNumber _block) const override;
 
 	std::string accountMessage(Address _a, BlockNumber _block) const override;
-    std::string pendingOrderPoolMessage(u256 _order_type, u256 _order_type, u256 _getSize, BlockNumber _block) const override;
+    std::string pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
 
 
     LocalisedLogEntries logs(unsigned _watchId) const override;

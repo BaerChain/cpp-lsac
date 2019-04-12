@@ -74,8 +74,8 @@ string Brc::brc_getPendingOrderPool(string const& _order_type, string const& _or
 {
     try
     {
-        return client()->pendingOrderPoolMessage(
-            jsToU256(_order_type), jsToU256(_order_token_type), jsToU256(_getSize),jsToBlockNumber(_blockNumber));
+        return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
+            jsToOrderEnum(_order_token_type), jsToU256(_getSize), jsToBlockNumber(_blockNumber));
     }
     catch (...)
     {
