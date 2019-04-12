@@ -306,7 +306,9 @@ public:
 
 	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
         u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-        uint8_t _pendingOrderBuyTypes); 
+        uint8_t _pendingOrderBuyTypes);
+
+	std::string pendingOrderPoolMsg(u256 _order_type, u256 _order_token_type, u256 getSize);
 
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
