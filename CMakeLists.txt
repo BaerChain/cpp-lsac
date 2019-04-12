@@ -79,5 +79,7 @@ add_subdirectory(libbrcd-interpreter)
 add_subdirectory(libp2p)
 add_subdirectory(brcd-vm)
 add_subdirectory(brcd)
-#add_subdirectory(test)
+
+
 add_subdirectory(indexDb)
+add_subdirectory(wallet)
