@@ -61,6 +61,7 @@ public:
     using Interface::codeHashAt;
     using Interface::storageAt;
     using Interface::accountMessage;
+	using Interface::pendingOrderPoolMessage;
 
     u256 balanceAt(Address _a, BlockNumber _block) const override;
     u256 ballotAt(Address _a, BlockNumber _block) const override;
@@ -72,6 +73,8 @@ public:
     std::map<h256, std::pair<u256, u256>> storageAt(Address _a, BlockNumber _block) const override;
 
 	std::string accountMessage(Address _a, BlockNumber _block) const override;
+    std::string pendingOrderPoolMessage(u256 _order_type, u256 _order_type, u256 _getSize, BlockNumber _block) const override;
+
 
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
