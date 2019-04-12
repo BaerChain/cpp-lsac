@@ -8,16 +8,16 @@
 #include <iostream>
 
 #include <json_spirit/JsonSpiritHeaders.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
+#include <libbrccore/Common.h>
+#include <libbrcdchain/Transaction.h>
 #include <libdevcore/Address.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/base58.h>
-#include <libbrccore/Common.h>
-#include <libbrcdchain/Transaction.h>
 #include <boost/filesystem.hpp>
 #include <iostream>
-
 
 namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
@@ -82,23 +82,28 @@ bytes packed_operation_data(const std::vector<std::shared_ptr<operation>>& op)
         return bytes();
     }
     RLPStream rlp;
-	std::vector<bytes> _v;
+    std::vector<bytes> _v;
     for (auto& p : op)
     {
-        //rlp.append(p->serialize());
-		_v.push_back(p->serialize());
+        // rlp.append(p->serialize());
+        _v.push_back(p->serialize());
     }
-	rlp.appendVector<bytes>(_v);
+    rlp.appendVector<bytes>(_v);
     return rlp.out();
 }
 
 void sendRawTransation(std::string const& _rlpStr, std::string const& _ip_port)
 {
-    std::string cmd =
+    std::string _result;
+    jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(_ip_port);
+    _httpClient.SendRPCMessage(_rlpStr, _result);
+
+    std::cout << _result << std::endl;
+    /*std::string cmd =
         "curl -d "
         "'{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"brc_sendRawTransaction\",\"params\":[\"" +
         _rlpStr + "\"]}' " + _ip_port;
-    system(cmd.c_str());
+    system(cmd.c_str());*/
 }
 
 bool sign_trx_from_json(const bfs::path& path, bool _is_send, std::string _ip = "")
@@ -147,7 +152,20 @@ bool sign_trx_from_json(const bfs::path& path, bool _is_send, std::string _ip = 
                             (uint8_t)op_obj["m_transcation_type"].get_int(),
                             op_obj["m_transcation_numbers"].get_int());
                         tx.ops.push_back(std::shared_ptr<transcation_operation>(transcation_op));
-						break;
+                        break;
+                    }
+                    case pendingOrder:
+                    {
+                        auto pendingorder_op = new pendingorder_opearaion((op_type)type,
+                            Address(op_obj["m_from"].get_str()),
+                            (uint8_t)op_obj["m_pendingorder_type"].get_int(),
+                            (uint8_t)op_obj["m_pendingorder_token_type"].get_int(),
+                            (uint8_t)op_obj["m_pendingorder_buy_type"].get_int(),
+                            (u256)op_obj["m_pendingorder_num"].get_int(),
+                            (u256)op_obj["m_pendingorer_price"].get_int(),
+							(h256)op_obj["m_pendingorder_hash"].get_int());
+                        tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
+                        break;
                     }
                     }
                 }
@@ -187,12 +205,12 @@ bool sign_trx_from_json(const bfs::path& path, bool _is_send, std::string _ip = 
                 brc::TransactionSkeleton ts;
                 ts.creation = false;
                 ts.from = t.from;
-				ts.to = t.to;
+                ts.to = t.to;
                 ts.value = t.value;
                 ts.data = data;
                 ts.nonce = t.nonce;
-				if(nonce != 0)
-					ts.nonce = nonce;
+                if (nonce != 0)
+                    ts.nonce = nonce;
                 ts.gas = t.gas;
                 ts.gasPrice = t.gasPrice;
 
@@ -270,9 +288,10 @@ int main(int argc, char* argv[])
         "json,j", bpo::value<bfs::path>(), "read from data from file.")
         //            ("log-to-console", bpo::value<bool>()->default_value(true), "default print log
         //            to console.")
-		("send,s", bpo::value<std::string>(), "get the http ip and port, use this option will auto to send rawTransation to http host...")
-		("nonce,n", bpo::value<int>(), "set the transation nonce ....")
-		("create,c", "create simple \"data.json\" to file on current path.");
+        ("send,s", bpo::value<std::string>(),
+            "get the http ip and port, use this option will auto to send rawTransation to http "
+            "host...")("nonce,n", bpo::value<int>(), "set the transation nonce ....")(
+            "create,c", "create simple \"data.json\" to file on current path.");
     // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
     //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
 
@@ -305,10 +324,10 @@ int main(int argc, char* argv[])
         sign_trx_from_json(json_path, _is_send, _ip);
         return 0;
     }
-    if(args_map.count("nonce"))
-	{
-		nonce = (size_t)args_map["nonce"].as<int>();
-	}
+    if (args_map.count("nonce"))
+    {
+        nonce = (size_t)args_map["nonce"].as<int>();
+    }
 
 
     return 0;
