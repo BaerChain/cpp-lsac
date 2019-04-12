@@ -119,9 +119,9 @@ public:
         return storageAt(_a, m_default);
     }
     std::string accountMessage(Address _a) const { return accountMessage(_a, m_default); }
-    std::string pendingOrderPoolMessage(u256 _order_type, u256 _order_token_type, u256 _getSize, BlockNumber _block) const
+    std::string pendingOrderPoolMessage(u256 _order_type, u256 _order_token_type, u256 _getSize) const
     {
-        return pendingOrderPoolMessage(_order_type, _order_token_type, _getSize, _block);
+        return pendingOrderPoolMessage(_order_type, _order_token_type, _getSize, m_default);
     }
 
 
