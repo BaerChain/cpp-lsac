@@ -591,8 +591,8 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
         _pendingOrderTokenType, _pendingOrderBuyType);
     std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
-    order _order = {_pendingOrderHash, _addr, (order_buy_type)_pendingOrderBuyType, (order_token_type)_pendingOrderTokenType,
-        (order_type)_pendingOrderType, _map, _nowTime};
+    order _order = {_pendingOrderHash, _addr, (order_buy_type)_pendingOrderBuyType,
+        (order_token_type)_pendingOrderTokenType, (order_type)_pendingOrderType, _map, _nowTime};
     std::vector<order> _v = {{_order}};
     std::vector<result_order> _result_v;
 
@@ -766,6 +766,29 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
         subBalance(_addr, _pendingOrderNum);
         addFBalance(_addr, _pendingOrderNum);
     }
+}
+
+std::string State::pendingOrderPoolMsg(u256 _order_type, u256 _order_token_type, u256 getSize)
+{
+    std::vector<exchange_order> _v = m_exdb.get_order_by_type(
+        (order_type)_order_type, (order_token_type)_order_token_type, getSize);
+
+	Json::Value _JsArray;
+    for (auto val : _v)
+    {
+        Json::Value _value;
+        _value["Address"] = toJS(val.sender);
+        _value["Hash"] = toJS(val.trxid);
+        _value["price"] = toJS(val.price);
+        _value["token_amount"] = toJS(val.token_amount);
+        _value["source_amount"] = toJS(val.source_amount);
+        _value["create_time"] = toJS(val.create_time);
+        _value["order_type"] = toJS((u256)val.type);
+        _value["order_token_type"] = toJS((u256)val.token_type);
+        _JsArray.append(_value);
+    }
+
+	return _JsArray.toStyledString();
 }
 
 void State::cancelPendingOrder(
@@ -1157,6 +1180,7 @@ std::string dev::brc::State::accoutMessage(Address const& _addr)
     }
     return _str;
 }
+
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {

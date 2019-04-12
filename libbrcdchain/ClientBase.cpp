@@ -1,8 +1,8 @@
 #include "ClientBase.h"
-#include <algorithm>
 #include "BlockChain.h"
 #include "Executive.h"
 #include "State.h"
+#include <algorithm>
 
 using namespace std;
 using namespace dev;
@@ -10,7 +10,9 @@ using namespace dev::brc;
 
 static const int64_t c_maxGasEstimate = 50000000;
 
-std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback)
+std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u256 _value,
+    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber,
+    GasEstimationCallback const& _callback)
 {
     try
     {
@@ -42,7 +44,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
                 er.excepted == TransactionException::OutOfGasIntrinsic ||
                 er.codeDeposit == CodeDeposit::Failed ||
                 er.excepted == TransactionException::BadJumpDestination)
-                    lowerBound = lowerBound == mid ? upperBound : mid;
+                lowerBound = lowerBound == mid ? upperBound : mid;
             else
             {
                 lastGood = er;
@@ -51,10 +53,10 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             }
 
             if (_callback)
-                _callback(GasEstimationProgress { lowerBound, upperBound });
+                _callback(GasEstimationProgress{lowerBound, upperBound});
         }
         if (_callback)
-            _callback(GasEstimationProgress { lowerBound, upperBound });
+            _callback(GasEstimationProgress{lowerBound, upperBound});
         return make_pair(upperBound, good ? lastGood : er);
     }
     catch (...)
@@ -111,7 +113,12 @@ map<h256, pair<u256, u256>> ClientBase::storageAt(Address _a, BlockNumber _block
 
 std::string dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block) const
 {
-	return blockByNumber(_block).mutableState().accoutMessage(_a);
+    return blockByNumber(_block).mutableState().accoutMessage(_a);
+}
+
+std::string dev::brc::ClientBase::pendingOrderPoolMessage(u256 _order_type, u256 _order_token_type, u256 _getSize,BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().pendingOrderPoolMsg(_order_type,_order_token_type,_getSize);
 }
 
 // TODO: remove try/catch, allow exceptions
@@ -135,7 +142,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
     LocalisedLogEntries ret;
     unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
     unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
-    
+
     // Handle pending transactions differently as they're not on the block chain.
     if (begin > bc().number())
     {
@@ -178,22 +185,23 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
     // Handle blocks from main chain
     set<unsigned> matchingBlocks;
     if (!_f.isRangeFilter())
-        for (auto const& i: _f.bloomPossibilities())
-            for (auto u: bc().withBlockBloom(i, end, begin))
+        for (auto const& i : _f.bloomPossibilities())
+            for (auto u : bc().withBlockBloom(i, end, begin))
                 matchingBlocks.insert(u);
     else
         // if it is a range filter, we want to get all logs from all blocks in given range
         for (unsigned i = end; i <= begin; i++)
             matchingBlocks.insert(i);
 
-    for (auto n: matchingBlocks)
+    for (auto n : matchingBlocks)
         prependLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
 
     reverse(ret.begin(), ret.end());
     return ret;
 }
 
-void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
+void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHash,
+    BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
 {
     auto receipts = bc().receipts(_blockHash).receipts;
     for (size_t i = 0; i < receipts.size(); i++)
@@ -202,7 +210,9 @@ void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHas
         auto th = transaction(_blockHash, i).sha3();
         LogEntries le = _f.matches(receipt);
         for (unsigned j = 0; j < le.size(); ++j)
-            io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
+            io_logs.insert(
+                io_logs.begin(), LocalisedLogEntry(le[j], _blockHash,
+                                     (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
     }
 }
 
@@ -246,13 +256,13 @@ bool ClientBase::uninstallWatch(unsigned _i)
     LOG(m_loggerWatch) << "XXX" << _i;
 
     Guard l(x_filtersWatches);
-    
+
     auto it = m_watches.find(_i);
     if (it == m_watches.end())
         return false;
     auto id = it->second.id;
     m_watches.erase(it);
-    
+
     auto fit = m_filters.find(id);
     if (fit != m_filters.end())
         if (!--fit->second.refCount)
@@ -270,7 +280,7 @@ LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
     //	LOG(m_loggerWatch) << "peekWatch" << _watchId;
     auto& w = m_watches.at(_watchId);
     //	LOG(m_loggerWatch) << "lastPoll updated to " <<
-    //chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+    // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     if (w.lastPoll != chrono::system_clock::time_point::max())
         w.lastPoll = chrono::system_clock::now();
     return w.changes;
@@ -284,7 +294,7 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
     //	LOG(m_loggerWatch) << "checkWatch" << _watchId;
     auto& w = m_watches.at(_watchId);
     //	LOG(m_loggerWatch) << "lastPoll updated to " <<
-    //chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+    // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     std::swap(ret, w.changes);
     if (w.lastPoll != chrono::system_clock::time_point::max())
         w.lastPoll = chrono::system_clock::now();
@@ -336,7 +346,8 @@ TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) 
     return bc().transactionReceipt(_transactionHash);
 }
 
-LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& _transactionHash) const
+LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
+    h256 const& _transactionHash) const
 {
     std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
     Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
@@ -344,16 +355,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& 
     u256 gasUsed = tr.cumulativeGasUsed();
     if (tl.second > 0)
         gasUsed -= bc().transactionReceipt(tl.first, tl.second - 1).cumulativeGasUsed();
-    return LocalisedTransactionReceipt(
-        tr,
-        t.sha3(),
-        tl.first,
-        numberFromHash(tl.first),
-        t.from(),
-        t.to(), 
-        tl.second,
-        gasUsed,
-        toAddress(t.from(), t.nonce()));
+    return LocalisedTransactionReceipt(tr, t.sha3(), tl.first, numberFromHash(tl.first), t.from(),
+        t.to(), tl.second, gasUsed, toAddress(t.from(), t.nonce()));
 }
 
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
@@ -424,7 +427,8 @@ BlockDetails ClientBase::pendingDetails() const
 {
     auto pm = postSeal().info();
     auto li = Interface::blockDetails(LatestBlock);
-    return BlockDetails((unsigned)pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{});
+    return BlockDetails(
+        (unsigned)pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{});
 }
 
 Addresses ClientBase::addresses(BlockNumber _block) const
@@ -479,17 +483,13 @@ int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
 
 bool ClientBase::isKnown(h256 const& _hash) const
 {
-    return _hash == PendingBlockHash ||
-        _hash == LatestBlockHash ||
-        _hash == EarliestBlockHash ||
-        bc().isKnown(_hash);
+    return _hash == PendingBlockHash || _hash == LatestBlockHash || _hash == EarliestBlockHash ||
+           bc().isKnown(_hash);
 }
 
 bool ClientBase::isKnown(BlockNumber _block) const
 {
-    return _block == PendingBlock ||
-        _block == LatestBlock ||
-        bc().numberHash(_block) != h256();
+    return _block == PendingBlock || _block == LatestBlock || bc().numberHash(_block) != h256();
 }
 
 bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
@@ -513,5 +513,5 @@ Block ClientBase::blockByNumber(BlockNumber _h) const
 
 int ClientBase::chainId() const
 {
-	return bc().chainParams().chainID;
+    return bc().chainParams().chainID;
 }
