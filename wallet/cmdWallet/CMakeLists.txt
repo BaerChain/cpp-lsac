@@ -11,4 +11,5 @@ target_include_directories(cmdWallet
         ${OPENSSL_INCLUDE_DIR}
         PRIVATE
         ${CMAKE_SOURCE_DIR}/utils
+        ${CMAKE_SOURCE_DIR}
         )

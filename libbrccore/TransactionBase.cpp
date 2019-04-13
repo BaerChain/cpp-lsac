@@ -4,7 +4,8 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
 #include <libbrccore/Exceptions.h>
-
+#include <libdevcrypto/base58.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
@@ -27,25 +28,10 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
     }
 }
 
-/*TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag):
-    m_type(VoteMassage),
-    m_nonce(_ts.nonce),
-    m_value(_ts.value),
-    m_receiveAddress(_ts.to),
-    m_gasPrice(_ts.gasPrice),
-    m_gas(_ts.gas),
-    m_data(_ts.data),
-    m_sender(_ts.from)
-{
-    if (_s)
-        sign(_s);
-    m_value = _flag;
-}*/
 
 TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
     RLP const rlp(_rlpData);
-    cwarn << "_rlpData " << _rlpData << std::endl;
     try
     {
         if (!rlp.isList())
@@ -69,9 +55,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
                                   << errinfo_comment("transaction data RLP must be an array"));
 
         m_data = rlp[5].toBytes();
-
         int const v = rlp[6].toInt<int>();
-        // std::cout << "v is " << v << std::endl;
         h256 const r = rlp[7].toInt<u256>();
         h256 const s = rlp[8].toInt<u256>();
         if (isZeroSignature(r, s))
@@ -88,6 +72,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
             else
                 BOOST_THROW_EXCEPTION(InvalidSignature());
             m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
+
 
             if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid()){
                 BOOST_THROW_EXCEPTION(InvalidSignature());
@@ -127,17 +112,19 @@ Address const& TransactionBase::sender() const
 {
     if (!m_sender)
     {
+
         if (hasZeroSignature())
             m_sender = MaxAddress;
         else
         {
             if (!m_vrs)
                 BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
-
-            auto p = recover(*m_vrs, sha3(WithoutSignature));
+            auto h_sha3 = sha3(WithoutSignature);
             cerror <<  m_vrs->r << std::endl;
             cerror <<  m_vrs->s << std::endl;
             cerror <<  m_vrs->v << std::endl;
+            cerror <<  dev::crypto::to_base58(h_sha3.ref().toString().c_str(), h_sha3.ref().toString().size()) << std::endl;
+            auto p = recover(*m_vrs, h_sha3 );
             if (!p)
                 BOOST_THROW_EXCEPTION(InvalidSignature());
 
@@ -175,15 +162,8 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
 {
     if (m_type == NullTransaction)
         return;
-    // if (m_type == VoteMassage)
-    //{
-    //    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 7);
-    //}
-    // else
-    //{
-    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
-    //}
 
+    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
     _s << m_nonce << m_gasPrice << m_gas;
     if (m_type == MessageCall || m_type == VoteMassage)
         _s << m_receiveAddress;
@@ -200,10 +180,10 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
             _s << m_chainId;
         else
         {
-            int const vOffset = m_chainId * 2 + 35;
-            _s << (m_vrs->v + vOffset);
+            int const vOffset = m_chainId * 2 + 35 + m_vrs->v;
+            _s << (vOffset);
         }
-        _s << (u256)m_vrs->r << (u256)m_vrs->s;
+        _s << m_vrs->r << m_vrs->s;
     }
     else if (_forEip155hash)
         _s << m_chainId << 0 << 0;
