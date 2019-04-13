@@ -144,22 +144,29 @@ ChainParams dev::brc::ChainParams::loadpoaValidators(
     std::string const& _json, h256 const& _stateRoot) const
 {
     ChainParams cp(*this);
-
-    js::mValue val;
-    js::read_string(_json, val);
-    js::mObject poa = val.get_obj();
-    js::mArray poaArray = poa["validators"].get_array();
-    //cp.poaValidatorAccount.clear();
-    js::mArray::const_iterator iter;
-    for (auto val : poaArray)
-    {
-        auto encode_pk = val.get_str();
-        auto secret = Secret(dev::crypto::from_base58(encode_pk));
-        auto address = toAddress(toPublic(secret));
-        cp.poaValidatorAccount.push_back(Address(address));
-        cp.m_miner_priv_keys[address] = secret;
+    try {
+        js::mValue val;
+        js::read_string(_json, val);
+        js::mObject poa = val.get_obj();
+        js::mArray poaArray = poa["validators"].get_array();
+        //cp.poaValidatorAccount.clear();
+        js::mArray::const_iterator iter;
+        for (auto val : poaArray)
+        {
+            auto encode_pk = val.get_str();
+            auto secret = Secret(dev::crypto::from_base58(encode_pk));
+            auto address = toAddress(toPublic(secret));
+            cp.poaValidatorAccount.push_back(Address(address));
+            cp.m_miner_priv_keys[address] = secret;
+        }
+        cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
+    }catch (const std::exception &e){
+        cerror <<  "init private-key error :"  << e.what() << std::endl;
+    }catch(const boost::exception &e){
+        cerror <<  "init private-key error :" << boost::diagnostic_information(e);
+    }catch (...){
+        cerror <<  "init private-key error :" << std::endl;
     }
-    cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
 
     return cp;
 }

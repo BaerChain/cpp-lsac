@@ -20,7 +20,7 @@ namespace dev
         public:
             SHDpos();
             ~SHDpos();
-            static std::string  name(){ return "Dpos"; }
+            static std::string  name(){ return "SHDpos"; }
             static void         init();
             unsigned            ver(){return 1001;};
             unsigned            revision() const override { return 1; }
