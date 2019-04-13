@@ -310,6 +310,7 @@ public:
 
 	std::string pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
+	std::string pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
     {

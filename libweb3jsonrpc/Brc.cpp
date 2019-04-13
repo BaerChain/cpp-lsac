@@ -69,8 +69,22 @@ string Brc::brc_blockNumber()
     return toJS(client()->number());
 }
 
+string Brc::brc_getPendingOrderPoolForAddr(
+    string const& _address, string const& _getSize, string const& _blockNum)
+{
+	try
+	{
+        return client()->pendingOrderPoolForAddrMessage(
+            jsToAddress(_address), jsToInt(_getSize), jsToBlockNumber(_blockNum));
+	}
+	catch (...)
+	{
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
 
-string Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type, string const& _getSize ,string const& _blockNumber)
+string Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
+    string const& _getSize, string const& _blockNumber)
 {
     try
     {

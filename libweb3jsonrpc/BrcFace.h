@@ -33,6 +33,11 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_blockNumber", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_blockNumberI);
+        this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getPendingOrderPoolForAddr", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getPendingOrderPoolForAddrI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getPendingOrderPool",
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, "param3",
@@ -243,11 +248,17 @@ public:
         (void)request;
         response = this->brc_blockNumber();
     }
+    inline virtual void brc_getPendingOrderPoolForAddrI(
+        const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getPendingOrderPoolForAddr(
+            request[0u].asString(), request[1u].asString(), request[2u].asString());
+	}
     inline virtual void brc_getPendingOrderPoolI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getPendingOrderPool(request[0u].asString(), request[1u].asString(),
             request[2u].asString(), request[3u].asString());
-	}
+    }
     inline virtual void brc_getBalanceI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getBalance(request[0u].asString(), request[1u].asString());
@@ -465,7 +476,9 @@ public:
     virtual std::string brc_blockNumber() = 0;
     virtual std::string brc_getPendingOrderPool(const std::string& param1,
         const std::string& param2, const std::string& param3, const std::string& param4) = 0;
-    virtual std::string brc_getBalance(const std::string& param1, const std::string& param2) = 0;
+    virtual std::string brc_getPendingOrderPoolForAddr(
+        const std::string& param1, const std::string& param2, const std::string& param3) = 0;
+	virtual std::string brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
