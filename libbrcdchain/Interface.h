@@ -119,9 +119,14 @@ public:
         return storageAt(_a, m_default);
     }
     std::string accountMessage(Address _a) const { return accountMessage(_a, m_default); }
-    std::string pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize) const
+    std::string pendingOrderPoolMessage(
+        uint8_t _order_type, uint8_t _order_token_type, u256 _getSize) const
     {
         return pendingOrderPoolMessage(_order_type, _order_token_type, _getSize, m_default);
+    }
+    std::string pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize) const
+    {
+        return pendingOrderPoolForAddrMessage(_a, _getSize, m_default);
     }
 
 
@@ -137,7 +142,10 @@ public:
 
     virtual std::string accountMessage(Address _a, BlockNumber _block) const = 0;
 
-    virtual std::string pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
+    virtual std::string pendingOrderPoolMessage(
+        uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
+    virtual std::string pendingOrderPoolForAddrMessage(
+        Address _a, uint32_t _getSize, BlockNumber _block) const = 0;
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
