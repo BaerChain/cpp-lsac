@@ -129,6 +129,11 @@ std::string dev::brc::ClientBase::pendingOrderPoolForAddrMessage(
 	return blockByNumber(_block).mutableState().pendingOrderPoolForAddrMsg(_a,_getSize);
 }
 
+std::string dev::brc::ClientBase::successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const
+{
+	return blockByNumber(_block).mutableState().successPendingOrderMsg(_getSize);
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {

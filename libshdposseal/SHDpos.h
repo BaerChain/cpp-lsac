@@ -37,7 +37,7 @@ namespace dev
 			void                tryElect(uint64_t _now);   //判断是否完成了本轮出块，选出新一轮验证人
 
 			inline void         initNet(std::weak_ptr<SHDposHostcapality> _host) { m_host = _host; }
-            inline void         startGeneration() { setName("Dpos"); startWorking(); }   //loop 开启 
+            inline void         startGeneration() { setName("SHDpos"); startWorking(); }   //loop 开启 
 
 		public:
 			void                onDposMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
