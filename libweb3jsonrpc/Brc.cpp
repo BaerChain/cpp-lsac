@@ -69,6 +69,19 @@ string Brc::brc_blockNumber()
     return toJS(client()->number());
 }
 
+
+string Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
+{
+	try
+	{
+		//return client()
+	}
+	catch (...)
+	{
+
+	}
+}
+
 string Brc::brc_getPendingOrderPoolForAddr(
     string const& _address, string const& _getSize, string const& _blockNum)
 {
