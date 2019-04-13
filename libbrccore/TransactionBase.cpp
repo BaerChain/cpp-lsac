@@ -45,6 +45,7 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
 TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
     RLP const rlp(_rlpData);
+    cwarn << "_rlpData " << _rlpData << std::endl;
     try
     {
         if (!rlp.isList())
@@ -54,15 +55,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
         m_gas = rlp[2].toInt<u256>();
-        // if (rlp.itemCount() == 9)
-        //{
         m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
-        //}
-        // else
-        //{
-        //    m_type = rlp[3].isEmpty() ? ContractCreation : (Type)rlp[9].toInt<int>(); //空
-        //    为智能合约
-        //}
         m_receiveAddress = rlp[3].isEmpty() ? Address() : rlp[3].toHash<Address>(RLP::VeryStrict);
 
         if (!rlp[3].isEmpty() && m_receiveAddress == VoteAddress)
@@ -96,8 +89,10 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
                 BOOST_THROW_EXCEPTION(InvalidSignature());
             m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
 
-            if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
+            if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid()){
                 BOOST_THROW_EXCEPTION(InvalidSignature());
+            }
+
         }
 
         if (_checkSig == CheckTransaction::Everything)
@@ -111,6 +106,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
     {
         _e << errinfo_name(
             "invalid transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
+        cwarn << _e.what();
         throw;
     }
 }
@@ -139,6 +135,9 @@ Address const& TransactionBase::sender() const
                 BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
 
             auto p = recover(*m_vrs, sha3(WithoutSignature));
+            cerror <<  m_vrs->r << std::endl;
+            cerror <<  m_vrs->s << std::endl;
+            cerror <<  m_vrs->v << std::endl;
             if (!p)
                 BOOST_THROW_EXCEPTION(InvalidSignature());
 

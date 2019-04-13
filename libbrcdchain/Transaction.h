@@ -158,8 +158,7 @@ struct pendingorder_opearaion : public operation
 
 	OPERATION_UNSERIALIZE(pendingorder_opearaion, (m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price)(m_Pendingorder_Hash))
 
-	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(
-        m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price)(m_Pendingorder_Hash))
+	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price)(m_Pendingorder_Hash))
 };
 
 }  // namespace transationTool

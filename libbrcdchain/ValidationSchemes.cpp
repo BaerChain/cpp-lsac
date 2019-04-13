@@ -103,7 +103,7 @@ namespace dev {
                 if (_obj.count(c_precompiled)) {
                     // A precompiled contract
                     requireJsonFields(_obj, "validateAccountObj",
-                                      {{c_precompiled, {{js::obj_type}, JsonFieldPresence::Required}},
+                                       {{c_precompiled, {{js::obj_type}, JsonFieldPresence::Required}},
                                        {c_wei,         {{js::str_type}, JsonFieldPresence::Optional}},
                                        {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}}});
                 } else if (_obj.size() == 1) {

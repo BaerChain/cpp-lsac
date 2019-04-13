@@ -32,7 +32,7 @@ public:
     Brchash();
     ~Brchash();
 
-    static std::string name() { std::cout << "Brchash::name" << std::endl; return "Brchash"; }
+    static std::string name() {  return "Brchash"; }
     unsigned revision() const override { std::cout << "Brchash::revision" << std::endl; return 1; }
     unsigned sealFields() const override { std::cout << "Brchash::sealFields" << std::endl; return 2; }
     bytes sealRLP() const override { std::cout << "Brchash::sealRLP" << std::endl; return rlp(h256()) + rlp(Nonce()); }
