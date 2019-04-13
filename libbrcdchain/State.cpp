@@ -773,7 +773,29 @@ std::string State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
     std::vector<exchange_order> _v = m_exdb.get_order_by_type(
         (order_type)_order_type, (order_token_type)_order_token_type, (uint32_t)getSize);
 
-	Json::Value _JsArray;
+    Json::Value _JsArray;
+    for (auto val : _v)
+    {
+        Json::Value _value;
+        _value["Address"] = toJS(val.sender);
+        _value["Hash"] = toJS(val.trxid);
+        _value["price"] = toJS(val.price);
+        _value["token_amount"] = toJS(val.token_amount);
+        _value["source_amount"] = toJS(val.source_amount);
+        _value["create_time"] = toJS(val.create_time);
+        _value["order_type"] = toJS((u256)val.type);
+        _value["order_token_type"] = toJS((u256)val.token_type);
+        _JsArray.append(_value);
+    }
+
+    return _JsArray.toStyledString();
+}
+
+std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
+{
+    std::vector<exchange_order> _v = m_exdb.get_order_by_address(_a);
+    Json::Value _JsArray;
+
     for (auto val : _v)
     {
         Json::Value _value;
