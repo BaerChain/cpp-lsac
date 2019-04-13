@@ -116,9 +116,17 @@ std::string dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block)
     return blockByNumber(_block).mutableState().accoutMessage(_a);
 }
 
-std::string dev::brc::ClientBase::pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize,BlockNumber _block) const
+std::string dev::brc::ClientBase::pendingOrderPoolMessage(
+    uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const
 {
-    return blockByNumber(_block).mutableState().pendingOrderPoolMsg(_order_type,_order_token_type,_getSize);
+    return blockByNumber(_block).mutableState().pendingOrderPoolMsg(
+        _order_type, _order_token_type, _getSize);
+}
+
+std::string dev::brc::ClientBase::pendingOrderPoolForAddrMessage(
+    Address _a, uint32_t _getSize, BlockNumber _block) const
+{
+	return blockByNumber(_block).mutableState().pendingOrderPoolForAddrMsg(_a,_getSize);
 }
 
 // TODO: remove try/catch, allow exceptions

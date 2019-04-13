@@ -53,6 +53,7 @@ public:
 	virtual std::string brc_gasPrice() override;
 	virtual Json::Value brc_accounts() override;
 	virtual std::string brc_blockNumber()override;
+    virtual std::string brc_getPendingOrderPoolForAddr(std::string const& _address, std::string const& _getSize, std::string const& _blockNum);
     virtual std::string brc_getPendingOrderPool(std::string const& _order_type, std::string const& _order_token_type, std::string const& _getSize,std::string const& _blockNumber) override;
 	virtual std::string brc_getBalance(std::string const& _address, std::string const& _blockNumber) override;
     virtual std::string brc_getBallot(std::string const& _address, std::string const& _blockNumber) override;
