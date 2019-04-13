@@ -2,7 +2,12 @@ file(GLOB sources "*.cpp" "*.h")
 #add_definitions(-w)
 add_library(brcdchain STATIC ${sources})
 
-target_include_directories(brcdchain PRIVATE "${UTILS_INCLUDE_DIR}" ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/evmc/include ${CMAKE_SOURCE_DIR}/indexDb/database/include)
+target_include_directories(brcdchain
+		PUBLIC
+		"${UTILS_INCLUDE_DIR}"
+		${CMAKE_SOURCE_DIR}
+		${CMAKE_SOURCE_DIR}/evmc/include
+		${CMAKE_SOURCE_DIR}/indexDb/database/include)
 target_link_libraries(brcdchain
         PUBLIC
             loader
