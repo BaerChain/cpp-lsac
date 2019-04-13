@@ -128,7 +128,10 @@ public:
     {
         return pendingOrderPoolForAddrMessage(_a, _getSize, m_default);
     }
-
+	std::string successPendingOrderMessage(uint32_t _getSize)
+	{
+		return successPendingOrderMessage(_getSize, m_default);
+	}
 
     virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
     virtual u256 ballotAt(Address _a, BlockNumber _block) const = 0;
@@ -142,6 +145,7 @@ public:
 
     virtual std::string accountMessage(Address _a, BlockNumber _block) const = 0;
 
+	virtual std::string successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const = 0;
     virtual std::string pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
     virtual std::string pendingOrderPoolForAddrMessage(

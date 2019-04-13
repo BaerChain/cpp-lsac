@@ -63,6 +63,7 @@ public:
     using Interface::accountMessage;
 	using Interface::pendingOrderPoolMessage;
 	using Interface::pendingOrderPoolForAddrMessage;
+	using Interface::successPendingOrderMessage;
 
     u256 balanceAt(Address _a, BlockNumber _block) const override;
     u256 ballotAt(Address _a, BlockNumber _block) const override;
@@ -76,7 +77,7 @@ public:
 	std::string accountMessage(Address _a, BlockNumber _block) const override;
     std::string pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
     std::string pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize, BlockNumber _block) const override;
-
+	std::string successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const override;
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
     virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;

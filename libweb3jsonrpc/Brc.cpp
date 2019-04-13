@@ -74,11 +74,11 @@ string Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _bl
 {
 	try
 	{
-		//return client()
+		return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNumber(_blockNum));
 	}
 	catch (...)
 	{
-
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 }
 

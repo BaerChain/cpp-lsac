@@ -783,8 +783,8 @@ std::string State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
         _value["token_amount"] = toJS(val.token_amount);
         _value["source_amount"] = toJS(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
-        _value["order_type"] = toJS((u256)val.type);
-        _value["order_token_type"] = toJS((u256)val.token_type);
+        _value["order_type"] = toJS((uint32_t)val.type);
+        _value["order_token_type"] = toJS((uint32_t)val.token_type);
         _JsArray.append(_value);
     }
 
@@ -805,12 +805,36 @@ std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
         _value["token_amount"] = toJS(val.token_amount);
         _value["source_amount"] = toJS(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
-        _value["order_type"] = toJS((u256)val.type);
-        _value["order_token_type"] = toJS((u256)val.token_type);
+        _value["order_type"] = toJS((uint32_t)val.type);
+        _value["order_token_type"] = toJS((uint32_t)val.token_type);
         _JsArray.append(_value);
     }
 
 	return _JsArray.toStyledString();
+}
+
+std::string State::successPendingOrderMsg(uint32_t _getSize)
+{
+    std::vector<result_order> _v = m_exdb.get_result_orders_by_news(_getSize);
+    Json::Value _JsArray;
+
+    for (auto val : _v)
+    {
+        Json::Value _value;
+		_value["Address"] = toJS(val.sender);
+		_value["Acceptor"] = toJS(val.acceptor);
+        _value["Hash"] = toJS(val.send_trxid);
+		_value["AcceptorHash"] = toJS(val.to_trxid);
+		_value["price"] = toJS(val.price);
+        _value["amount"] = toJS(val.amount);
+        _value["create_time"] = toJS(val.create_time);
+        _value["order_type"] = toJS((uint32_t)val.type);
+        _value["order_token_type"] = toJS((uint32_t)val.token_type);
+		_value["order_buy_type"] = toJS((uint32_t)val.buy_type);
+        _JsArray.append(_value);
+    }
+
+    return _JsArray.toStyledString();
 }
 
 void State::cancelPendingOrder(

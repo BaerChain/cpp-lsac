@@ -33,16 +33,20 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_blockNumber", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_blockNumberI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getSuccessPendingOrder",
+                                   jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
+                                   jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getSuccessPendingOrderI);
+		this->bindAndAddMethod(jsonrpc::Procedure("brc_getPendingOrderPool",
+			jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
+			jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, "param3",
+			jsonrpc::JSON_STRING, "param4", jsonrpc::JSON_STRING, NULL),
+			&dev::rpc::BrcFace::brc_getPendingOrderPoolI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getPendingOrderPoolForAddr", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
                 jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getPendingOrderPoolForAddrI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_getPendingOrderPool",
-                                   jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
-                                   jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, "param3",
-                                   jsonrpc::JSON_STRING, "param4", jsonrpc::JSON_STRING, NULL),
-            &dev::rpc::BrcFace::brc_getPendingOrderPoolI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getBalance", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
@@ -259,6 +263,10 @@ public:
         response = this->brc_getPendingOrderPool(request[0u].asString(), request[1u].asString(),
             request[2u].asString(), request[3u].asString());
     }
+	inline virtual void brc_getSuccessPendingOrderI(const Json::Value& request, Json::Value& response)
+	{
+		response = this->brc_getSuccessPendingOrder(request[0u].asString(), request[1u].asString());
+	}
     inline virtual void brc_getBalanceI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getBalance(request[0u].asString(), request[1u].asString());
@@ -478,6 +486,7 @@ public:
         const std::string& param2, const std::string& param3, const std::string& param4) = 0;
     virtual std::string brc_getPendingOrderPoolForAddr(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
+	virtual std::string brc_getSuccessPendingOrder(const std::string& param1, const std::string& param2) = 0;
 	virtual std::string brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
