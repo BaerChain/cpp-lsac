@@ -93,9 +93,9 @@ ex::exchange_plugin State::openExdb(boost::filesystem::path const& _path)
         ex::exchange_plugin exdb = ex::exchange_plugin(_path);
         return exdb;
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
-        cerror << "open exDB error";
+        cerror << "open exDB error" << e.what();
         exit(1);
     }
 }

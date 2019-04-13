@@ -25,7 +25,7 @@ namespace dev {
             }
 
             exchange_plugin::~exchange_plugin() {
-                db.reset();
+//                db.reset();
             }
 
             std::vector<result_order>
