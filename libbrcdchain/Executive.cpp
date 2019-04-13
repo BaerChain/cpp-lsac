@@ -477,7 +477,7 @@ bool Executive::execute()
     // Pay...
     LOG(m_detailsLogger) << "Paying " << formatBalance(m_gasCost) << " from sender for gas ("
                          << m_t.gas() << " gas at " << formatBalance(m_t.gasPrice()) << ")";
-    // m_s.subBalance(m_t.sender(), m_gasCost);
+    m_s.subBalance(m_t.sender(), m_gasCost);
 
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
