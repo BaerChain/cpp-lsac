@@ -826,7 +826,7 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData, uint64_
     LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
     LOG(m_loggerDetailed) << m_state;
 
-    // m_currentBlock.setTimestamp(utcTimeMilliSec());
+    m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(
