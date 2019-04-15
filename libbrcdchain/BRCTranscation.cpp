@@ -136,7 +136,11 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
     }
     catch (const boost::exception& e)
     {
-        ctrace << "verifyPendingOrder Error";
+        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
+        return false;
+    }
+    catch (...){
+        cwarn << "unkown exception .";
         return false;
     }
     return true;

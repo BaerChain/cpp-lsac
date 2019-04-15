@@ -230,7 +230,7 @@ public:
     /// @returns a list of receipts one for each transaction placed from the queue into the state
     /// and bool, true iff there are more transactions to be processed.
     std::pair<TransactionReceipts, bool> sync(BlockChain const& _bc, TransactionQueue& _tq,
-        GasPricer const& _gp, ex::exchange_plugin const& _exdb, unsigned _msTimeout = 100);
+        GasPricer const& _gp, unsigned _msTimeout = 100);
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the
@@ -239,8 +239,7 @@ public:
 
     /// Sync with the block chain, but rather than synching to the latest block, instead sync to the
     /// given block.
-    bool sync(
-        BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader());
+    bool sync(BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader());
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.

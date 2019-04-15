@@ -5,6 +5,7 @@
 #include "Terminal.h"
 #include <string>
 #include <vector>
+#include <libdevcore/Exceptions.h>
 
 #include <boost/log/attributes/scoped_attribute.hpp>
 #include <boost/log/sources/global_logger_storage.hpp>
@@ -219,6 +220,23 @@ inline boost::log::formatting_ostream& operator<<(
     _strm.stream() << BrcYellow "%" << toHex(_value) << BrcReset;
     return _strm;
 }
+
+//inline boost::log::formatting_ostream& operator<<(
+//        boost::log::formatting_ostream& _strm, Exception const&_value)
+//{
+//    _strm << _value.what();
+//    return _strm;
+//}
+//
+//
+//inline boost::log::formatting_ostream& operator<<(
+//        boost::log::formatting_ostream& _strm, boost::exception const&_value)
+//{
+//    _strm << boost::diagnostic_information_what(_value);
+//    return _strm;
+//}
+
+
 }  // namespace dev
 
 // Overloads for types of std namespace can't be defined in dev namespace, because they won't be

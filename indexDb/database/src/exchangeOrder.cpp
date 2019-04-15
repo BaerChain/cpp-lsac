@@ -217,36 +217,37 @@ namespace dev {
 
             std::vector<exchange_order>
             exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) {
-                vector<exchange_order> ret;
-                if (type == buy) {
-                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
-                                                                                                u256(-1), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
-                                                                                                u256(0), INT64_MAX);
-                    auto begin = index_greater.lower_bound(find_lower);
-                    auto end = index_greater.upper_bound(find_upper);
-
-                    while (begin != end && size > 0) {
-                        ret.push_back(exchange_order(*begin));
-                        begin++;
-                        size--;
-                    }
-                } else {
-                    const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
-                                                                                                u256(0), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
-                                                                                                u256(-1), INT64_MAX);
-                    auto begin = index_less.lower_bound(find_lower);
-                    auto end = index_less.upper_bound(find_upper);
-                    while (begin != end && size > 0) {
-                        ret.push_back(exchange_order(*begin));
-                        begin++;
-                        size--;
-                    }
-                }
-                return ret;
+//                vector<exchange_order> ret;
+//                if (type == buy) {
+//                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
+//                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
+//                                                                                                u256(-1), 0);
+//                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
+//                                                                                                u256(0), INT64_MAX);
+//                    auto begin = index_greater.lower_bound(find_lower);
+//                    auto end = index_greater.upper_bound(find_upper);
+//
+//                    while (begin != end && size > 0) {
+//                        ret.push_back(exchange_order(*begin));
+//                        begin++;
+//                        size--;
+//                    }
+//                } else {
+//                    const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
+//                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
+//                                                                                                u256(0), 0);
+//                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
+//                                                                                                u256(-1), INT64_MAX);
+//                    auto begin = index_less.lower_bound(find_lower);
+//                    auto end = index_less.upper_bound(find_upper);
+//                    while (begin != end && size > 0) {
+//                        ret.push_back(exchange_order(*begin));
+//                        begin++;
+//                        size--;
+//                    }
+//                }
+//                return ret;
+                return get_orders(size);
             }
 
         }
