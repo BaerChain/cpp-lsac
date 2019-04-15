@@ -72,7 +72,7 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now)
     int64_t comp_time = _now - m_config.blockInterval + 20;
     if (_last_time >= comp_time)
     {
-        LOG(m_warnlog) << "the time is error ..";
+//        LOG(m_warnlog) << "the time is error ..";
         return false;
     }
     LOG(m_logger) << BrcYellow "begin to create new block! .." BrcReset << "time:" << _now;

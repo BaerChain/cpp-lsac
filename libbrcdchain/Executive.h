@@ -92,7 +92,7 @@ public:
     Executive(
         State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, unsigned _level = 0)
       : m_vote(_s),
-        m_exdb(std::move(_s.exdb())),
+//        m_exdb(std::move(_s.exdb())),
         m_brctranscation(_s),
         m_s(_s),
         m_envInfo(_envInfo),

@@ -120,10 +120,6 @@ Address const& TransactionBase::sender() const
             if (!m_vrs)
                 BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
             auto h_sha3 = sha3(WithoutSignature);
-            cerror <<  m_vrs->r << std::endl;
-            cerror <<  m_vrs->s << std::endl;
-            cerror <<  m_vrs->v << std::endl;
-            cerror <<  dev::crypto::to_base58(h_sha3.ref().toString().c_str(), h_sha3.ref().toString().size()) << std::endl;
             auto p = recover(*m_vrs, h_sha3 );
             if (!p)
                 BOOST_THROW_EXCEPTION(InvalidSignature());
@@ -154,7 +150,7 @@ bool dev::brc::TransactionBase::isVoteTranction() const
 {
     if (m_receiveAddress != VoteAddress)
         return false;
-    std::cout << BrcYellow "check isVoteTranction ..." << BrcReset << std::endl;
+//    std::cout << BrcYellow "check isVoteTranction ..." << BrcReset << std::endl;
     return true;
 }
 

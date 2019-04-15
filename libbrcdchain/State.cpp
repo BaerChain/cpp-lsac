@@ -137,6 +137,7 @@ State& State::operator=(State const& _s)
     if (&_s == this)
         return *this;
     m_db = _s.m_db;
+    m_exdb = _s.m_exdb;
     m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
@@ -588,6 +589,8 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     uint8_t _pendingOrderBuyType, int64_t _nowTime)
 {
     // add
+    ctrace << "pendingorder";
+
     freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
         _pendingOrderTokenType, _pendingOrderBuyType);
     std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
@@ -602,7 +605,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
     catch (const boost::exception& e)
     {
-        cerror << "this pendingOrder is error";
+        cerror << "this pendingOrder is error" <<  diagnostic_information_what(e);
         return;
     }
 
@@ -840,6 +843,7 @@ std::string State::successPendingOrderMsg(uint32_t _getSize)
 void State::cancelPendingOrder(
     Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash)
 {
+    ctrace << "cancle pendingorder";
     if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
     {
     }

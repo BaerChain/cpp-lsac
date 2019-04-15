@@ -409,7 +409,7 @@ void Client::syncTransactionQueue()
             return;
         }
 
-        tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp, m_StateExDB);
+        tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
     }
 
     if (newPendingReceipts.empty())

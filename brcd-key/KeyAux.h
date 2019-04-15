@@ -302,7 +302,7 @@ public:
 			}
 			catch (Exception const& _e)
 			{
-				cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
+				cerr << "unable to create wallet"  << boost::diagnostic_information(_e);
 			}
 			break;
 		}

@@ -116,8 +116,10 @@ void Block::resetCurrent(int64_t _timestamp)
     m_dposTransations.clear();
     // TODO: check.
 
+    m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
+
     m_committedToSeal = false;
     m_vote.setState(m_state);
 
@@ -302,7 +304,7 @@ bool Block::sync(BlockChain const& _bc, h256 const& _block, BlockHeader const& _
 }
 
 pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQueue& _tq,
-    GasPricer const& _gp, ex::exchange_plugin const& _exdb, unsigned msTimeout)
+    GasPricer const& _gp, unsigned msTimeout)
 {
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
@@ -313,6 +315,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
     pair<TransactionReceipts, bool> ret;
 
     Transactions transactions = _tq.topTransactions(c_maxSyncTransactions, m_transactionSet);
+    cerror << "transactions size "  << transactions.size() ;
     ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
     // if we hit the limit
 
@@ -389,7 +392,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                 catch (Exception const& _e)
                 {
                     // Something else went wrong - drop it.
-                    LOG(m_logger) << t.sha3() << " Dropping invalid transaction: "
+                    cwarn << t.sha3() << " Dropping invalid transaction: "
                                   << diagnostic_information(_e);
                     _tq.drop(t.sha3());
                 }
@@ -673,6 +676,8 @@ ExecutionResult Block::execute(LastBlockHashesFace const& _lh, Transaction const
     // transaction as possible.
     uncommitToSeal();
 
+    //
+
     std::pair<ExecutionResult, TransactionReceipt> resultReceipt =
         m_state.execute(EnvInfo(info(), _lh, gasUsed()), *m_sealEngine, _t, _p, _onOp);
 
@@ -850,6 +855,8 @@ void Block::uncommitToSeal()
     if (m_committedToSeal)
     {
         m_state = m_precommit;
+
+
         m_committedToSeal = false;
     }
 }
@@ -931,6 +938,7 @@ void Block::cleanup()
     }
 
     m_state.db().commit();  // TODO: State API for this?
+    m_state.exdb().commit(info().number());
 
     LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
                   << " = " << toHex(asBytes(db().lookup(rootHash())));
