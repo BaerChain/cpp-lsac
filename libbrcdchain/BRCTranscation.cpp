@@ -144,15 +144,17 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 }
 
 
-bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb ,const std::vector<h256>& _HashV)
+bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb ,h256 _hash)
 {
-	if (_HashV.size() <= 0)
+	if (_hash == h256(0))
 	{
 		return false;
 	}
 
+
 	try
 	{
+		const std::vector<h256> _HashV = { {_hash} };
 		_exdb.cancel_order_by_trxid(_HashV, true);
 	}
 	catch (const boost::exception& e)
