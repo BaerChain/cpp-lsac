@@ -432,32 +432,21 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(), m_exdb,
-                            m_envInfo.timestamp(),
-                            (int)_pengdingorder_op.m_Pendingorder_type,
-							(int)_pengdingorder_op.m_Pendingorder_Token_type,
-							(int)_pengdingorder_op.m_Pendingorder_buy_type,
-							_pengdingorder_op.m_Pendingorder_num,
-                            _pengdingorder_op.m_Pendingorder_price, m_t.sha3()))
+                    if (!m_brctranscation.verifyCancelPendingOrder(m_exdb,
+                            _pengdingorder_op.m_Pendingorder_Hash))
                     {
                         LOG(m_execLogger)
-                            << "pendingorder field > "
-                            << "m_t.sender:" << m_t.sender() << " * "
-                            << " canclependingorder_type:" << _pengdingorder_op.m_Pendingorder_type
-                            << " canclependingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
+                            << "Cancelpendingorder field > "
+                            << " cancelpendingorder_hash:" << _pengdingorder_op.m_Pendingorder_Hash;
                         m_excepted = TransactionException::VerifyVoteField;
                         BOOST_THROW_EXCEPTION(
                             VerifyVoteField()
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    m_callParameters_v.push_back(
-                        {(Executive::Method)(
-                             _pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
-                            {m_t.sender(), Address(0), Address(0),
-                                _pengdingorder_op.m_Pendingorder_type,
-                                _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
-                            _pengdingorder_op.m_Pendingorder_price, _pengdingorder_op.m_Pendingorder_Hash});
+                    m_callParameters_v.push_back({(Executive::Method)(_pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                            {Address(0), Address(0), Address(0),u256(0), u256(0), u256(0), bytesConstRef(), {}},
+                            u256(0), _pengdingorder_op.m_Pendingorder_Hash,0,0});
                 }
                 break;
                 default:
@@ -588,8 +577,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                                     val.m_method - (uint8_t)PendingOrderStart,
                     val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
             else if (val.m_method == CancelPendingOrder)
-                m_s.cancelPendingOrder(p.senderAddress, p.valueTransfer,
-                    val.m_method - (uint8_t)PendingOrderStart, val.m_pendingOrderHash);
+                m_s.cancelPendingOrder(val.m_pendingOrderHash);
             else
                 return false;
         }

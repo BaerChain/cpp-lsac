@@ -155,15 +155,26 @@ bool sign_trx_from_json(const bfs::path &path, bool _is_send, std::string _ip = 
                         case pendingOrder: {
                             auto pendingorder_op = new pendingorder_opearaion((op_type) type,
                                                                               Address(op_obj["m_from"].get_str()),
-                                                                              (uint8_t) op_obj["m_pendingorder_type"].get_int(),
-                                                                              (uint8_t) op_obj["m_pendingorder_token_type"].get_int(),
-                                                                              (uint8_t) op_obj["m_pendingorder_buy_type"].get_int(),
-                                                                              (u256) op_obj["m_pendingorder_num"].get_int(),
-                                                                              (u256) op_obj["m_pendingorer_price"].get_int(),
-                                                                              (h256) op_obj["m_pendingorder_hash"].get_int());
+                                                                              (uint8_t) op_obj["m_type"].get_int(),
+                                                                              (uint8_t) op_obj["m_token_type"].get_int(),
+                                                                              (uint8_t) op_obj["m_buy_type"].get_int(),
+                                                                              (u256) op_obj["m_num"].get_int(),
+                                                                              (u256) op_obj["m_price"].get_int(),
+                                                                              (h256) op_obj["m_hash"].get_int());
                             tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
                             break;
                         }
+						case cancelPendingOrder: {
+							auto pendingorder_op = new pendingorder_opearaion((op_type)type,
+								Address(0),
+								0,
+								0,
+								0,
+								u256(0),
+								u256(0),
+								(h256)op_obj["m_hash"].get_int());
+							tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
+						}
                     }
                 }
                 trx_datas.push_back(tx);

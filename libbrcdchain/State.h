@@ -297,8 +297,7 @@ public:
         h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
         uint8_t _pendingOrderBuyType, int64_t _nowTime);
 
-    void cancelPendingOrder(
-        Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash);
+    void cancelPendingOrder(h256 _pendingOrderHash);
 
 
 	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
