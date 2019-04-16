@@ -257,3 +257,7 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 	badBlock(*block, _ex.what());
 }
 
+
+void dev::bacd::SHDposClient::stopSealing() {
+    Worker::stopWorking();
+}

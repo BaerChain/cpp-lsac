@@ -293,38 +293,18 @@ void write_simple_to_file(const bfs::path &path) {
 
 
 void generate_key(const std::string &seed){
-
-    auto key_pair = KeyPair::fromEncryptedSeed(seed, seed);
+    auto key_pair = KeyPair::create();
     auto sec = key_pair.secret();
-//    std::cout << "private key: " << dev::crypto::to_base58(sec.data(), sec.data().size());
-//    std::cout << "address : " << key_pair.address();
+    std::cout << "private key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
+    std::cout << "address : " << key_pair.address() << std::endl;
 
 }
 
-
-
-
-void test_test(){
-    RLPStream s;
-
-    s.appendList(1);
-    h256  t1 = h256("0x3ffae4a3dd6275404960e6c9a96b483936e898b7c9d7d83e69cf308b84bb141b");
-    std::cout << t1 << std::endl;
-    s << t1;
-    bytes data = s.out();
-
-
-    //
-    RLP const rlp(data);
-    h256 ret = rlp[0].toInt<u256>();
-    std::cout << ret << std::endl;
-}
 
 int main(int argc, char *argv[]) {
 
 
-//    test_test();
-//    return 0;
+
     bpo::options_description description("command line ");
     description.add_options()
             ("help,h", "show help message.")
@@ -332,7 +312,7 @@ int main(int argc, char *argv[]) {
             ("send,s", bpo::value<std::string>(), "get the http ip and port, use this option will auto to send rawTransation to http host...")
             ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
             ("create,c", "create simple \"data.json\" to file on current path.")
-            ("generate-key,g", bpo::value<std::string>()->default_value("123456"),"by seed generate private-key and address. ")
+            ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
             ;
     // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
     //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -351,6 +331,7 @@ int main(int argc, char *argv[]) {
         auto p = bfs::current_path().string() + "/data.json";
         write_simple_to_file(bfs::path(p));
     }
+
     bool _is_send = false;
     std::string _ip = "";
     if (args_map.count("send")) {
@@ -366,7 +347,7 @@ int main(int argc, char *argv[]) {
         nonce = (size_t) args_map["nonce"].as<int>();
     }
     if (args_map.count("generate-key")) {
-        generate_key(args_map["send"].as<std::string>());
+        generate_key(args_map["generate-key"].as<std::string>());
     }
 
 
