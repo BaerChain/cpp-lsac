@@ -27,32 +27,59 @@ namespace dev {
                 exchange_plugin& operator=(const exchange_plugin&) = default;
 
 
+                /// insert operation .
+                /// \param orders   vector<order>
+                /// \param reset    if true , this operation will reset, dont record.
+                /// \param throw_exception  if true  throw exception when error.
+                /// \return
+                std::vector<result_order> insert_operation(const std::vector<order> &orders, bool reset = true, bool throw_exception = false) ;
 
-                std::vector<result_order>
-                insert_operation(const std::vector<order> &orders, bool reset = true, bool throw_exception = false) ;
-
+                /// get exchange order by address,
+                /// \param addr   Address
+                /// \return         complete order.
                 std::vector<exchange_order> get_order_by_address(const Address &addr);
 
+                /// get current all orders on exchange by size. this search by id in function.
+                /// \param size  once get once.
+                /// \return
                 std::vector<exchange_order> get_orders(uint32_t size = 50) const;
 
+                /// get newest result_order by size
+                /// \param size         once get size.
+                /// \return             vector<result_orders>.
                 std::vector<result_order> get_result_orders_by_news(uint32_t size = 50);
 
+                /// get exchange order by type (sell or buy && BRC or  FUEL)
+                /// \param type         sell or buy
+                /// \param token_type   BRC OR FUEL
+                /// \param size         once search size.
+                /// \return             complete order.
                 std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size);
 
-                //
+                /// rollback before packed block.
+                /// \return
                 bool rollback();
 
-                //commit this state by block number.
+
+                ///  commit this state by block number.
+                /// \param version  block number
+                /// \return  true
                 bool commit(int64_t version);
 
-                //cancel order
+                ///
+                /// \param os vector transactions id
+                /// \param reset   if true, this operation rollback
+                /// \return        vector<orders>
                 std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
-
 
 
 
             private:
 
+                /// get iterator by type and price . this only find order of buy.
+                /// \param token_type   BRC OR FUEL
+                /// \param price        upper price.
+                /// \return         std::pair<lower iterator, upper iterator>
                 auto get_buy_itr(order_token_type token_type, u256 price) {
                     auto find_token = token_type == BRC ? FUEL : BRC;
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
@@ -69,6 +96,10 @@ namespace dev {
                                                              index_greater.upper_bound(find_upper));
                 };
 
+                /// get iterator by type and price, this only find of sell
+                /// \param token_type   BRC OR FUEL,
+                /// \param price        lower price.
+                /// \return             std::pair<lower iterator, upper iterator>
                 auto get_sell_itr(order_token_type token_type, u256 price) {
                     auto find_token = token_type == BRC ? FUEL : BRC;
                     const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
@@ -86,6 +117,16 @@ namespace dev {
                 };
 
 
+                /// process buy or sell orders by price and amount,
+                /// \tparam BEGIN   get_buy_itr.first or get_sell_itr.first.
+                /// \tparam END     get_buy_itr.second or get_buy_itr.second.
+                /// \param begin    begin iterator,
+                /// \param end      end iterator.
+                /// \param od       source order.
+                /// \param price    price,
+                /// \param amount   exchange amount
+                /// \param result   result of success order.
+                /// \param throw_exception  if true, will throw exception while error.
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
@@ -99,12 +140,6 @@ namespace dev {
 
                     bool rm = false;
                     while (spend > 0 && begin != end) {
-//                    std::cout << "begin time: " << begin->create_time << std::endl;
-//                    std::cout << "begin token_amount: " << begin->token_amount << std::endl;
-//                    std::cout << "begin price: " << begin->price << std::endl;
-//                    std::cout << "price: " << price << std::endl;
-//                    std::cout << "amount: " << amount << std::endl;
-
                         result_order ret;
                         if (begin->token_amount <= spend) {
                             spend -= begin->token_amount;
@@ -149,6 +184,10 @@ namespace dev {
 
 
                 }
+
+
+            //--------------------- members ---------------------
+                /// database
                 std::shared_ptr<database> db;
             };
 
