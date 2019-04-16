@@ -249,7 +249,8 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<order> exchange_plugin::cancel_order_by_trxid(const vector<h256> &os) {
+            std::vector<order> exchange_plugin::cancel_order_by_trxid(const vector<h256> &os, bool reset) {
+                auto session = db->start_undo_session(true);
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
                 for(const auto &t : os){
@@ -268,7 +269,13 @@ namespace dev {
                     while(begin != end){
                         o.price_token[begin->price] = begin->token_amount;
                     }
+                    const auto rm = db->find(begin->id);
+                    begin++;
+                    db->remove(*rm);
                     ret.push_back(o);
+                }
+                if(!reset){
+                    session.push();
                 }
                 return ret;
             }
