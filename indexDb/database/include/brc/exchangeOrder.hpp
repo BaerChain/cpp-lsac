@@ -6,7 +6,7 @@
 #include <boost/optional.hpp>
 #include <brc/exception.hpp>
 #include <brc/types.hpp>
-
+#include <libdevcore/Log.h>
 namespace dev {
     namespace brc {
         namespace ex {
@@ -37,7 +37,7 @@ namespace dev {
                 /// get exchange order by address,
                 /// \param addr   Address
                 /// \return         complete order.
-                std::vector<exchange_order> get_order_by_address(const Address &addr);
+                std::vector<exchange_order> get_order_by_address(const Address &addr) const;
 
                 /// get current all orders on exchange by size. this search by id in function.
                 /// \param size  once get once.
@@ -47,14 +47,14 @@ namespace dev {
                 /// get newest result_order by size
                 /// \param size         once get size.
                 /// \return             vector<result_orders>.
-                std::vector<result_order> get_result_orders_by_news(uint32_t size = 50);
+                std::vector<result_order> get_result_orders_by_news(uint32_t size = 50) const;
 
                 /// get exchange order by type (sell or buy && BRC or  FUEL)
                 /// \param type         sell or buy
                 /// \param token_type   BRC OR FUEL
                 /// \param size         once search size.
                 /// \return             complete order.
-                std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size);
+                std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
 
                 /// rollback before packed block.
                 /// \return
@@ -76,7 +76,7 @@ namespace dev {
 
             private:
 
-                /// get iterator by type and price . this only find order of buy.
+                /// get iterator by type and price . this only find order of sell.
                 /// \param token_type   BRC OR FUEL
                 /// \param price        upper price.
                 /// \return         std::pair<lower iterator, upper iterator>
@@ -96,7 +96,7 @@ namespace dev {
                                                              index_greater.upper_bound(find_upper));
                 };
 
-                /// get iterator by type and price, this only find of sell
+                /// get iterator by type and price, this only find of buy
                 /// \param token_type   BRC OR FUEL,
                 /// \param price        lower price.
                 /// \return             std::pair<lower iterator, upper iterator>
@@ -107,7 +107,7 @@ namespace dev {
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
                                                                                                 u256(-1), 0);
                     auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
-                                                                                                price, INT64_MAX);
+                                                                                                0, INT64_MAX);
 
                     typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
                     typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
@@ -157,6 +157,7 @@ namespace dev {
                         db->create<order_result_object>([&](order_result_object &obj) {
                             obj.set_data(ret);
                         });
+                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
                             const auto rm_obj = db->find(begin->id);
@@ -186,6 +187,11 @@ namespace dev {
                 }
 
 
+                inline void check_db() const{
+                    if (!db) {
+                        BOOST_THROW_EXCEPTION(get_db_instance_error());
+                    }
+                }
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;

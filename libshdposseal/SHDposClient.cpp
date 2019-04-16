@@ -121,8 +121,8 @@ dev::Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) con
 
 void dev::bacd::SHDposClient::printfElectors()
 {
-	Block _block = blockByNumber(LatestBlock);
-	std::unordered_map<Address, u256> _m = _block.mutableVote().getElectors();
+//	Block _block = blockByNumber(LatestBlock);
+//	std::unordered_map<Address, u256> _m = _block.mutableVote().getElectors();
 //	std::cout << BrcYellow " dpos electors:" << std::endl << "{" << std::endl;;
 //    for (auto val : _m)
 //    {
@@ -194,8 +194,6 @@ void dev::bacd::SHDposClient::rejigSealing()
             {
                 //调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
                 sealEngine()->onSealGenerated([=](bytes const& _header){
-                    LOG(m_logger) << "Block sealed #" << BlockHeader(_header, HeaderData).number();
-
                     if(this->submitSealed(_header))
                     {
                         m_onBlockSealed(_header);

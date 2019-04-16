@@ -315,7 +315,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
     pair<TransactionReceipts, bool> ret;
 
     Transactions transactions = _tq.topTransactions(c_maxSyncTransactions, m_transactionSet);
-    cerror << "transactions size "  << transactions.size() ;
     ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
     // if we hit the limit
 
@@ -888,7 +887,7 @@ bool Block::sealBlock(bytesConstRef _header)
     ret.appendRaw(m_currentUncles);
     ret.swapOut(m_currentBytes);
     m_currentBlock = BlockHeader(_header, HeaderData);
-    cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
+//    cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
     // TODO: move into SealEngine
 
     m_state = m_precommit;

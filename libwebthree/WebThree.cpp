@@ -51,9 +51,7 @@ WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
                         "Unknown seal engine: " + _params.sealEngineName));
         }
-        std::cout << "start of startWorking" << std::endl;
         m_brcdChain->startWorking();
-        std::cout << "end of startWorking" << std::endl;
         const auto *buildinfo = brcd_get_buildinfo();
         m_brcdChain->setExtraData(rlpList(0, string{buildinfo->project_version}.substr(0, 5) + "++" +
                                             string{buildinfo->git_commit_hash}.substr(0, 4) +
