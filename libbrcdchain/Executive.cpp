@@ -582,7 +582,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
             else if (val.m_method == BRCTransaction)
                 m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == PendingOrder)
+            else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)
                 m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
                                     val.m_pendingOrderHash,
                                     val.m_method - (uint8_t)PendingOrderStart,

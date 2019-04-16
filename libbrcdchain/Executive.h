@@ -208,7 +208,8 @@ private:
         BRCUnfreezeTranscation,
         TranscationEnd,
         PendingOrderStart,
-        PendingOrder,
+        SellPendingOrder,
+		BuyPendingOrder,
         CancelPendingOrder,
 		PendingOrderEnd
     };
