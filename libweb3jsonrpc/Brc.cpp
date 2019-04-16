@@ -70,7 +70,7 @@ string Brc::brc_blockNumber()
 }
 
 
-string Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
+Json::Value Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
 {
 	try
 	{
@@ -82,7 +82,7 @@ string Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _bl
 	}
 }
 
-string Brc::brc_getPendingOrderPoolForAddr(
+Json::Value Brc::brc_getPendingOrderPoolForAddr(
     string const& _address, string const& _getSize, string const& _blockNum)
 {
 	try
@@ -96,7 +96,7 @@ string Brc::brc_getPendingOrderPoolForAddr(
 	}
 }
 
-string Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
+Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
     string const& _getSize, string const& _blockNumber)
 {
     try
