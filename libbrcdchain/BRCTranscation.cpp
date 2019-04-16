@@ -65,14 +65,11 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
     int64_t _nowTime, uint8_t _type, uint8_t _token_type, uint8_t _buy_type, u256 _pendingOrderNum,
     u256 _pendingOrderPrice, h256 _pendingOrderHash)
 {
-    if (_type == order_type::null_type ||
-        (_buy_type == order_buy_type::only_price &&
-            (_type == order_type::buy || _type == order_type::sell) &&
-            (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
-        (_buy_type == order_buy_type::all_price &&
-            ((_type == order_type::buy && (_pendingOrderNum != 0 || _pendingOrderPrice == 0)) ||
-                (_type == order_type::sell &&
-                    (_pendingOrderPrice != 0 || _pendingOrderNum == 0)))))
+    if ( _type == order_type::null_type ||
+        (_buy_type == order_buy_type::only_price && (_type == order_type::buy || _type == order_type::sell) &&  (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
+        (_buy_type == order_buy_type::all_price && ((_type == order_type::buy && (_pendingOrderNum != 0 || _pendingOrderPrice == 0)) ||
+        (_type == order_type::sell && (_pendingOrderPrice != 0 || _pendingOrderNum == 0))))
+        )
     {
         return false;
     }
