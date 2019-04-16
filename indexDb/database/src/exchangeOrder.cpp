@@ -30,9 +30,7 @@ namespace dev {
 
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
-                if (!db) {
-                    BOOST_THROW_EXCEPTION(get_db_instance_error());
-                }
+                check_db();
                 auto session = db->start_undo_session(true);
                 std::vector<result_order> result;
                 try {
@@ -56,7 +54,6 @@ namespace dev {
 
                             }
                         } else {
-                            //TODO
                             if (itr.price_token.size() != 1) {
                                 BOOST_THROW_EXCEPTION(all_price_operation_error());
                             }
@@ -150,7 +147,8 @@ namespace dev {
                 return result;
             }
 
-            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) {
+            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const{
+                check_db();
                 std::vector<exchange_order> ret;
 
                 const auto &index = db->get_index<order_object_index>().indices().get<by_address>();
@@ -165,7 +163,7 @@ namespace dev {
             }
 
             std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size) const {
-
+                check_db();
                 vector<exchange_order> ret;
                 const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
                 auto begin = index.begin();
@@ -177,8 +175,8 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) {
-
+            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const{
+                check_db();
                 vector<result_order> ret;
                 const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
                 auto begin = index.begin();
@@ -205,18 +203,21 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
+                check_db();
                 db->undo();
                 return true;
             }
 
             bool exchange_plugin::commit(int64_t version) {
+                check_db();
                 db->commit(version);
                 return true;
             }
 
 
             std::vector<exchange_order>
-            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) {
+            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const{
+                check_db();
                 vector<exchange_order> ret;
                 if (type == buy) {
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
@@ -250,6 +251,7 @@ namespace dev {
             }
 
             std::vector<order> exchange_plugin::cancel_order_by_trxid(const std::vector<h256> &os, bool reset) {
+                check_db();
                 auto session = db->start_undo_session(true);
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();

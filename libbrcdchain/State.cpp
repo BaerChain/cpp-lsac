@@ -589,8 +589,6 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     uint8_t _pendingOrderBuyType, int64_t _nowTime)
 {
     // add
-    ctrace << "pendingorder";
-
     freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
         _pendingOrderTokenType, _pendingOrderBuyType);
     std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
@@ -843,7 +841,7 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize)
     return _JsArray;
 }
 
-std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type)
+std::tuple<std::string, std::string, std::string> State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type)
 {
 	std::string _type, _token_type, _buy_type;
 	switch (type)
