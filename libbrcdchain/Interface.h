@@ -119,16 +119,16 @@ public:
         return storageAt(_a, m_default);
     }
     std::string accountMessage(Address _a) const { return accountMessage(_a, m_default); }
-    std::string pendingOrderPoolMessage(
+    Json::Value pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_token_type, u256 _getSize) const
     {
         return pendingOrderPoolMessage(_order_type, _order_token_type, _getSize, m_default);
     }
-    std::string pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize) const
+    Json::Value pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize) const
     {
         return pendingOrderPoolForAddrMessage(_a, _getSize, m_default);
     }
-	std::string successPendingOrderMessage(uint32_t _getSize)
+	Json::Value successPendingOrderMessage(uint32_t _getSize)
 	{
 		return successPendingOrderMessage(_getSize, m_default);
 	}
@@ -145,10 +145,10 @@ public:
 
     virtual std::string accountMessage(Address _a, BlockNumber _block) const = 0;
 
-	virtual std::string successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const = 0;
-    virtual std::string pendingOrderPoolMessage(
+	virtual Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const = 0;
+    virtual Json::Value pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
-    virtual std::string pendingOrderPoolForAddrMessage(
+    virtual Json::Value pendingOrderPoolForAddrMessage(
         Address _a, uint32_t _getSize, BlockNumber _block) const = 0;
     // [LOGS API]
 

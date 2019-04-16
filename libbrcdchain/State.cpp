@@ -771,7 +771,7 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
-std::string State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize)
+Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize)
 {
     std::vector<exchange_order> _v = m_exdb.get_order_by_type(
         (order_type)_order_type, (order_token_type)_order_token_type, (uint32_t)getSize);
@@ -794,7 +794,7 @@ std::string State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
     return _JsArray;
 }
 
-std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
+Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
 {
     std::vector<exchange_order> _v = m_exdb.get_order_by_address(_a);
     Json::Value _JsArray;
@@ -816,7 +816,7 @@ std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
 	return _JsArray;
 }
 
-std::string State::successPendingOrderMsg(uint32_t _getSize)
+Json::Value State::successPendingOrderMsg(uint32_t _getSize)
 {
     std::vector<result_order> _v = m_exdb.get_result_orders_by_news(_getSize);
     Json::Value _JsArray;

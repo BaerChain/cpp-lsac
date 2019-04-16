@@ -482,11 +482,11 @@ public:
     virtual std::string brc_gasPrice() = 0;
     virtual Json::Value brc_accounts() = 0;
     virtual std::string brc_blockNumber() = 0;
-    virtual std::string brc_getPendingOrderPool(const std::string& param1,
+    virtual Json::Value brc_getPendingOrderPool(const std::string& param1,
         const std::string& param2, const std::string& param3, const std::string& param4) = 0;
-    virtual std::string brc_getPendingOrderPoolForAddr(
+    virtual Json::Value brc_getPendingOrderPoolForAddr(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
-	virtual std::string brc_getSuccessPendingOrder(const std::string& param1, const std::string& param2) = 0;
+	virtual Json::Value brc_getSuccessPendingOrder(const std::string& param1, const std::string& param2) = 0;
 	virtual std::string brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
