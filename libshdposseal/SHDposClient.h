@@ -44,7 +44,10 @@ public:
         std::vector<Address> _vector = std::vector<Address>()) const;
 	Secret getVarlitorSecret(Address const& _addr) const;
 	void   printfElectors();
-	
+
+	virtual  void stopSealing() override;
+
+
 protected:
     void rejigSealing();
 private:
