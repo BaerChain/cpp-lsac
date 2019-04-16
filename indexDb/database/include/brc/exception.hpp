@@ -12,4 +12,5 @@ namespace dev{
     DEV_SIMPLE_EXCEPTION(remove_object_error);
     DEV_SIMPLE_EXCEPTION(get_db_instance_error);
     DEV_SIMPLE_EXCEPTION(all_price_operation_error);
+    DEV_SIMPLE_EXCEPTION(find_order_trxid_error);
 }
