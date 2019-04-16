@@ -215,40 +215,10 @@ bool sign_trx_from_json(const bfs::path &path, bool _is_send, std::string _ip = 
                 ts.gasPrice = t.gasPrice;
 
                 brc::Transaction sign_t(ts, keys[t.from]);
-//                std::cout << "---------------------------------Address_from:" << t.from
-//                          << std::endl;
-//                std::cout << "---------------------------------rlp_data:" << std::endl;
-//                std::cout << sign_t.rlp() << std::endl;
-                Address  invalid_ad;
-                sign_t.forceSender(invalid_ad);
-                auto h_sha3 = sign_t.sha3(dev::brc::WithoutSignature).ref().toString();
-                cerror <<  dev::crypto::to_base58(h_sha3.c_str(), h_sha3.size()) << std::endl;
-                auto sender = sign_t.sender();
-                if(sender)
-                    cerror << sender << std::endl;
 
                 auto sssss = dev::brc::toJson(sign_t);
-                cerror << "test" << sssss << std::endl;
-
-
-
-
-
+                cerror << "test: " << sssss << std::endl;
                 if (_is_send) {
-                    auto _rlp = sign_t.rlp();
-                    std::string test = "0xf8a6808213ff8260ff9400000000000000000000000000000000766f74658213ffb842f840b83ef83c0394e523e7c59a0725afd08bc9751c89eed6f8e16dec0101010a0aa000000000000000000000000000000000000000000000000000000000000000001ca0b7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa07affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-                    cwarn  << "_rlp ----- : " << _rlp << std::endl;
-                    cwarn  << "test ----- : " << test << std::endl;
-
-
-
-                    Transaction t(_rlp, CheckTransaction::None);
-                    auto json = dev::brc::toJson(t);
-                    cerror << "test" << json << std::endl;
-                    auto sender = sign_t.sender();
-                    if(sender)
-                        cerror << sender << std::endl;
                     sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
                 }
             } else {
