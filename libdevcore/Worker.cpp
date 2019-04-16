@@ -45,6 +45,9 @@ void Worker::startWorking()
 				{
 					cwarn << "Exception thrown in Worker thread: " << _e.what();
 				}
+				catch (...){
+					cwarn << "unkown exception.";
+				}
 
 //				ex = WorkerState::Stopping;
 //				m_state.compare_exchange_strong(ex, WorkerState::Stopped);

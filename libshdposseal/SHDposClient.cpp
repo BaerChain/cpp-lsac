@@ -58,41 +58,50 @@ void dev::bacd::SHDposClient::startSealing()
 
 void dev::bacd::SHDposClient::doWork(bool _doWait)
 {
-    bool t = true;
-    //compare_exchange_strong(T& expected, T val, ...)
-    //比较本身值和expected, 如果相等者旧值=val, 如果不等 expected=旧值
-    if(m_syncBlockQueue.compare_exchange_strong(t, false))
-        syncBlockQueue();
+    try{
+        bool t = true;
+        //compare_exchange_strong(T& expected, T val, ...)
+        //比较本身值和expected, 如果相等者旧值=val, 如果不等 expected=旧值
+        if(m_syncBlockQueue.compare_exchange_strong(t, false))
+            syncBlockQueue();
 
-    if(m_needStateReset)
-    {
-        resetState();
-        m_needStateReset = false;
+        if(m_needStateReset)
+        {
+            resetState();
+            m_needStateReset = false;
+        }
+
+        t = true;
+        bool isSealed = false;
+        DEV_READ_GUARDED(x_working)
+            isSealed = m_working.isSealed();
+
+        if(!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
+            syncTransactionQueue();
+
+        tick();
+
+        rejigSealing();
+
+        callQueuedFunctions();
+
+        DEV_READ_GUARDED(x_working)
+            isSealed = m_working.isSealed();
+        // If the block is sealed, we have to wait for it to tickle through the block queue
+        // (which only signals as wanting to be synced if it is ready).
+        if(!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())
+        {
+            std::unique_lock<std::mutex> l(x_signalled);
+            m_signalled.wait_for(l, chrono::milliseconds(dpos()->dposConfig().blockInterval));
+        }
+    }catch (const boost::exception &e){
+        cwarn <<  boost::diagnostic_information(e);
+    }catch(const std::exception &e){
+        cwarn << e.what();
+    }catch (...){
+        cwarn << "unkown exception.";
     }
 
-    t = true;
-    bool isSealed = false;
-    DEV_READ_GUARDED(x_working)
-        isSealed = m_working.isSealed();
-
-    if(!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
-        syncTransactionQueue();
-
-    tick();
-
-    rejigSealing();
-
-    callQueuedFunctions();
-
-    DEV_READ_GUARDED(x_working)
-        isSealed = m_working.isSealed();
-    // If the block is sealed, we have to wait for it to tickle through the block queue
-    // (which only signals as wanting to be synced if it is ready).
-    if(!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())
-    {
-        std::unique_lock<std::mutex> l(x_signalled);
-        m_signalled.wait_for(l, chrono::milliseconds(dpos()->dposConfig().blockInterval));
-    }
 }
 
 
@@ -150,7 +159,7 @@ void dev::bacd::SHDposClient::rejigSealing()
                 // TODO is that needed? we have "Generating seal on" below
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 // input a seal time to contral the seal transation time
-                m_working.commitToSeal(bc(), m_extraData, 2/3*dpos()->dposConfig().blockInterval);
+                m_working.commitToSeal(bc(), m_extraData, dpos()->dposConfig().blockInterval * 2 / 3);
                 //try into next new epoch and check some about varlitor for SH-DPOS
                 dpos()->tryElect(utcTimeMilliSec());
 
@@ -258,6 +267,6 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 }
 
 
-void dev::bacd::SHDposClient::stopSealing() {
-    Worker::stopWorking();
-}
+//void dev::bacd::SHDposClient::stopSealing() {
+//    Worker::stopWorking();
+//}

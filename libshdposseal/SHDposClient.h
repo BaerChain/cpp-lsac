@@ -45,7 +45,7 @@ public:
 	Secret getVarlitorSecret(Address const& _addr) const;
 	void   printfElectors();
 
-	virtual  void stopSealing() override;
+//	virtual  void stopSealing() override;
 
 
 protected:
