@@ -249,7 +249,7 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<order> exchange_plugin::cancel_order_by_trxid(const vector<h256> &os) {
+            std::vector<order> exchange_plugin::cancel_order_by_trxid(const std::vector<h256> &os) {
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
                 for(const auto &t : os){
