@@ -99,7 +99,8 @@ Json::Value toJson(
     if (_t)
     {
         res["hash"] = toJS(_t.sha3());
-        res["input"] = toJS(_t.data());
+		RLP data(_t.data());
+		res["input"] = data;//toJS(_t.data());
         res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
         res["from"] = toJS(_t.safeSender());
         res["gas"] = toJS(_t.gas());

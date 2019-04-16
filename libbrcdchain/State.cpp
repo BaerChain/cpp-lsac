@@ -791,7 +791,7 @@ std::string State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
         _JsArray.append(_value);
     }
 
-    return _JsArray.toStyledString();
+    return _JsArray;
 }
 
 std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
@@ -813,7 +813,7 @@ std::string State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
         _JsArray.append(_value);
     }
 
-	return _JsArray.toStyledString();
+	return _JsArray;
 }
 
 std::string State::successPendingOrderMsg(uint32_t _getSize)
@@ -837,7 +837,7 @@ std::string State::successPendingOrderMsg(uint32_t _getSize)
         _JsArray.append(_value);
     }
 
-    return _JsArray.toStyledString();
+    return _JsArray;
 }
 
 void State::cancelPendingOrder(
