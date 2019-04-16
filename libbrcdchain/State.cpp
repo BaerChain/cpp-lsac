@@ -840,26 +840,39 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize)
     return _JsArray;
 }
 
-void State::cancelPendingOrder(
-    Address const& _addr, u256 const& _value, size_t _pendingOrderType, h256 _pendingOrderHash)
+void State::cancelPendingOrder(h256 _pendingOrderHash)
 {
     ctrace << "cancle pendingorder";
-    if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyBrcPendingOrder)
-    {
-    }
-    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellBrcPendingOrder)
-    {
-    }
-    else if (_pendingOrderType == dev::brc::PendingOrderEnum::EBuyFuelPendingOrder)
-    {
-    }
-    else if (_pendingOrderType == dev::brc::PendingOrderEnum::ESellFuelPendingOrder)
-    {
-    }
+	std::vector<ex::order> _resultV;
+	try
+	{
+		std::vector<h256> _hashV = { _pendingOrderHash };
+		_resultV = m_exdb.cancel_order_by_trxid(_hashV, false);
+	}
+	catch (const boost::exception& e)
+	{
+		cwarn << "cancelPendingorder Error :" << _pendingOrderHash;
+	}
 
-    //取消交易所挂单
-    subFBRC(_addr, _value);
-    addBRC(_addr, _value);
+	for (auto val : _resultV)
+	{
+		if ((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::BRC)
+		{
+			for (auto _mapval : val.price_token)
+			{
+				subFBRC(val.sender, _mapval.second);
+				addBRC(val.sender, _mapval.second);
+			}
+		}
+		else if ((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::FUEL)
+		{
+			for (auto _mapval : val.price_token)
+			{
+				subFBalance(val.sender, _mapval.second);
+				addBalance(val.sender, _mapval.second);
+			}
+		}
+	}
 }
 
 void State::createContract(Address const& _address)
