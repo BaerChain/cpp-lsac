@@ -786,8 +786,9 @@ Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
         _value["token_amount"] = toJS(val.token_amount);
         _value["source_amount"] = toJS(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
-        _value["order_type"] = toJS((uint32_t)val.type);
-        _value["order_token_type"] = toJS((uint32_t)val.token_type);
+		std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type, (ex::order_buy_type)0);
+		_value["order_type"] = get<0>(_resultTuple);
+		_value["order_token_type"] = get<1>(_resultTuple);
         _JsArray.append(_value);
     }
 
@@ -808,8 +809,9 @@ Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize)
         _value["token_amount"] = toJS(val.token_amount);
         _value["source_amount"] = toJS(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
-        _value["order_type"] = toJS((uint32_t)val.type);
-        _value["order_token_type"] = toJS((uint32_t)val.token_type);
+		std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type, (ex::order_buy_type)0);
+        _value["order_type"] = get<0>(_resultTuple);
+        _value["order_token_type"] = get<1>(_resultTuple);
         _JsArray.append(_value);
     }
 
@@ -831,14 +833,62 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize)
 		_value["price"] = toJS(val.price);
         _value["amount"] = toJS(val.amount);
         _value["create_time"] = toJS(val.create_time);
-        _value["order_type"] = toJS((uint32_t)val.type);
-        _value["order_token_type"] = toJS((uint32_t)val.token_type);
-		_value["order_buy_type"] = toJS((uint32_t)val.buy_type);
+		std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type, val.buy_type);
+        _value["order_type"] = get<0>(_resultTuple);
+        _value["order_token_type"] = get<1>(_resultTuple);
+		_value["order_buy_type"] = get<2>(_resultTuple);
         _JsArray.append(_value);
     }
 
     return _JsArray;
 }
+
+std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type)
+{
+	std::string _type, _token_type, _buy_type;
+	switch (type)
+	{
+	case dev::brc::ex::sell:
+		_type = std::string("sell");
+		break;
+	case dev::brc::ex::buy:
+		_type = std::string("buy");
+		break;
+	default:
+		_type = std::string("NULL");
+		break;
+	}
+
+	switch (token_type)
+	{
+	case dev::brc::ex::BRC:
+		_token_type = std::string("BRC");
+		break;
+	case dev::brc::ex::FUEL:
+		_token_type = std::string("FUEL");
+		break;
+	default:
+		_token_type = std::string("NULL");
+		break;
+	}
+
+	switch (buy_type)
+	{
+	case dev::brc::ex::all_price:
+		_buy_type = std::string("all_price");
+		break;
+	case dev::brc::ex::only_price:
+		_buy_type = std::string("only_price");
+		break;
+	default:
+		_buy_type = std::string("NULL");
+		break;
+	}
+
+	std::tuple<std::string, std::string, std::string> _result = std::make_tuple(_type, _token_type, _buy_type);
+	return _result;
+}
+
 
 void State::cancelPendingOrder(h256 _pendingOrderHash)
 {

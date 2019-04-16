@@ -312,6 +312,9 @@ public:
 	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
 
 	Json::Value successPendingOrderMsg(uint32_t _getSize);
+
+	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
+
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie()
     {
