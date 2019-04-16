@@ -156,7 +156,7 @@ bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _ex
 
 	try
 	{
-		_exdb.cancel_order_by_trxid(_HashV);
+		_exdb.cancel_order_by_trxid(_HashV, true);
 	}
 	catch (const boost::exception& e)
 	{
