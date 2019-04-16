@@ -46,7 +46,8 @@ namespace dev {
                 bool commit(int64_t version);
 
                 //cancel order
-                std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os);
+                std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
+
 
 
 
