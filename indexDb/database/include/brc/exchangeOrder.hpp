@@ -34,14 +34,19 @@ namespace dev {
                 std::vector<exchange_order> get_order_by_address(const Address &addr);
 
                 std::vector<exchange_order> get_orders(uint32_t size = 50) const;
+
                 std::vector<result_order> get_result_orders_by_news(uint32_t size = 50);
+
                 std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size);
 
+                //
                 bool rollback();
 
+                //commit this state by block number.
                 bool commit(int64_t version);
 
-
+                //cancel order
+                std::vector<order>  cancel_order_by_trxid(const vector<h256> &os);
 
 
 

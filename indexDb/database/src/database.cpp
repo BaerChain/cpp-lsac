@@ -12,7 +12,9 @@ namespace dev {
                                                                                                   allow_dirty) {
             }
 
-            database::~database() {}
+            database::~database() {
+                std::cout << __FUNCTION__ << "  " <<  __LINE__ << "  : try to close exdb.\n";
+            }
         }
     }
 }
