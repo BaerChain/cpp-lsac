@@ -697,14 +697,14 @@ ExecutionResult Block::execute(LastBlockHashesFace const& _lh, Transaction const
 
 void Block::applyRewards(vector<BlockHeader> const& _uncleBlockHeaders, u256 const& _blockReward)
 {
-    u256 r = _blockReward;
+    /*u256 r = _blockReward;
     for (auto const& i : _uncleBlockHeaders)
     {
         m_state.addBalance(
             i.author(), _blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
         r += _blockReward / 32;
     }
-    m_state.addBalance(m_currentBlock.author(), r);
+    m_state.addBalance(m_currentBlock.author(), r);*/
 }
 
 void Block::performIrregularModifications()
