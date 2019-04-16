@@ -145,3 +145,22 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
     }
     return true;
 }
+
+
+void dev::brc::BRCTranscation::verifyCancelPendingOrder(std::vector<h256> _HashV)
+{
+	if (_HashV.size <= 0)
+	{
+		return false;
+	}
+
+	try
+	{
+		
+	}
+	catch (const boost::exception& e)
+	{
+		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
+		return false;
+	}
+}
