@@ -402,6 +402,9 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                     _tq.drop(t.sha3());
                     cwarn << t.sha3() << "Transaction caused low-level exception :(";
                 }
+                catch (...){
+                    cwarn << "unkown exception .";
+                }
             }
         if (chrono::steady_clock::now() > deadline)
         {
@@ -808,8 +811,6 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData, uint64_
         transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
         txs.appendRaw(txrlp.out());
-        if (utcTimeMilliSec() - _startTime >= _sealTime)
-            break;
     }
 
     txs.swapOut(m_currentTxs);

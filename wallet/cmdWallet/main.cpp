@@ -21,7 +21,7 @@
 #include <iostream>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libbrccore/CommonJS.h>
-
+#include <brc/types.hpp>
 namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
 using namespace dev::brc;
@@ -65,6 +65,11 @@ bool validate_obj(const json_spirit::mObject &obj) {
     return true;
 }
 
+
+
+
+
+
 struct trx_source {
     Address from;
     Address to;
@@ -75,6 +80,11 @@ struct trx_source {
     u256 gasPrice = Invalid256;
     std::vector<std::shared_ptr<operation>> ops;
 };
+
+
+
+
+
 
 
 bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op) {
@@ -128,11 +138,9 @@ bool sign_trx_from_json(const bfs::path &path, bool _is_send, std::string _ip = 
                 tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
                 tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
-                cwarn <<  tx.gas ;
-                cwarn <<  tx.gasPrice;
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
-                    auto type = op_obj["m_type"].get_int();
+                    auto type = op_obj["type"].get_int();
                     switch (type) {
                         case vote: {
                             auto new_op = new vote_operation((op_type) type,
@@ -283,8 +291,6 @@ void generate_key(const std::string &seed){
 
 
 int main(int argc, char *argv[]) {
-
-
 
     bpo::options_description description("command line ");
     description.add_options()
