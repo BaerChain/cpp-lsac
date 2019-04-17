@@ -140,7 +140,7 @@ namespace dev {
 
                     bool rm = false;
                     while (spend > 0 && begin != end) {
-                        cwarn << "spent : " << (std::string)od();
+//                        cwarn << "spent : " << (std::string)od();
                         result_order ret;
                         if (begin->token_amount <= spend) {
                             spend -= begin->token_amount;
@@ -158,7 +158,7 @@ namespace dev {
                         db->create<order_result_object>([&](order_result_object &obj) {
                             obj.set_data(ret);
                         });
-                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
+//                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
                             const auto rm_obj = db->find(begin->id);
