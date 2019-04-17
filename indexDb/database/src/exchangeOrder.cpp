@@ -203,6 +203,7 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
+//                cwarn << "rollback version : ";
                 check_db();
                 db->undo();
                 return true;
@@ -211,6 +212,7 @@ namespace dev {
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
                 db->commit(version);
+//                cwarn << "commit version : " << version;
                 return true;
             }
 

@@ -99,6 +99,7 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 
 void OverlayDB::rollback()
 {
+    cwarn << "OverlayDB rollback";
 #if DEV_GUARDED_DB
     WriteGuard l(x_this);
 #endif

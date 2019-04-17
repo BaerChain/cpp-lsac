@@ -47,6 +47,17 @@ namespace dev {
                 order_type type;
                 std::map<u256, u256> price_token;
                 Time_ms time;
+
+
+
+                std::string operator()() const{
+                    std::string ret = "trxid : " +  trxid.abridged()
+                                        + "sender" + sender.abridged()
+                                        + "buy_type" + std::to_string(buy_type)
+                                        + "token_type " + std::to_string(token_type);
+
+                    return ret;
+                }
             };
 
 

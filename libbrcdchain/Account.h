@@ -160,6 +160,7 @@ public:
     void addFBalance(u256 _value)
 	{
 		m_FBalance += _value;
+        changed();
 	}
     // Acounts own ballot
     u256 const& ballot() const { return m_ballot; }
