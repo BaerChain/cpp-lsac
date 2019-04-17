@@ -410,7 +410,7 @@ void Executive::initialize(Transaction const& _transaction)
                         {(Executive::Method)(
                              (uint8_t)_pengdingorder_op.m_Pendingorder_type + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0),
-                                _pengdingorder_op.m_Pendingorder_type,
+                                _pengdingorder_op.m_Pendingorder_num,
                                 _pengdingorder_op.m_Pendingorder_num, 0, bytesConstRef(), {}},
 								_pengdingorder_op.m_Pendingorder_price, m_t.sha3(),
 								_pengdingorder_op.m_Pendingorder_Token_type, _pengdingorder_op.m_Pendingorder_buy_type});
@@ -460,13 +460,12 @@ void Executive::initialize(Transaction const& _transaction)
 
 bool Executive::execute()
 {
-    // Entry point for a user-executed transaction.
-
-    // Pay...
-    LOG(m_detailsLogger) << "Paying " << formatBalance(m_gasCost) << " from sender for gas ("
-                         << m_t.gas() << " gas at " << formatBalance(m_t.gasPrice()) << ")";
-    m_s.subBalance(m_t.sender(), m_gasCost);
-
+    for (auto val : m_callParameters_v)
+    {
+        u256 _gas = m_s.transactionForCookie();
+        Address _addr = val.m_callParameters.senderAddress;
+        m_s.subBalance(_addr, _gas);
+    }
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
