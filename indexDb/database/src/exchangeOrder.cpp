@@ -34,19 +34,9 @@ namespace dev {
                 auto session = db->start_undo_session(true);
                 std::vector<result_order> result;
                 try {
-                    // get itr by type and token_type
-                    // @param less
-                    // @return pair,   first: begin iterator,  second: end iterator.
-
-
                     for (const auto &itr : orders) {
-
-
-
-
                         if (itr.buy_type == only_price) {
                             for (const auto t :  itr.price_token) {
-                                cwarn << "price " << t.first << "   price " << t.second;
                                 if (itr.type == buy) {
                                     auto find_itr = get_buy_itr(itr.token_type, t.first);
                                     process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second, result,
