@@ -108,7 +108,7 @@ struct Change
         Vote,
         SysVoteData,
         BRC,
-        FBRC,
+        FBRC,               // = 12
         FBalance
     };
 

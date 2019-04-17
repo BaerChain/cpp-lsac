@@ -140,6 +140,7 @@ namespace dev {
 
                     bool rm = false;
                     while (spend > 0 && begin != end) {
+                        cwarn << "spent : " << (std::string)od();
                         result_order ret;
                         if (begin->token_amount <= spend) {
                             spend -= begin->token_amount;

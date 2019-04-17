@@ -395,11 +395,11 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                                   << diagnostic_information(_e);
                     _tq.drop(t.sha3());
                 }
-                catch (std::exception const&)
+                catch (std::exception const& e)
                 {
                     // Something else went wrong - drop it.
                     _tq.drop(t.sha3());
-                    cwarn << t.sha3() << "Transaction caused low-level exception :(";
+                    cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
                 }
                 catch (...){
                     cwarn << "unkown exception .";
@@ -679,9 +679,7 @@ ExecutionResult Block::execute(LastBlockHashesFace const& _lh, Transaction const
     uncommitToSeal();
 
     //
-
-    std::pair<ExecutionResult, TransactionReceipt> resultReceipt =
-        m_state.execute(EnvInfo(info(), _lh, gasUsed()), *m_sealEngine, _t, _p, _onOp);
+    std::pair<ExecutionResult, TransactionReceipt> resultReceipt = m_state.execute(EnvInfo(info(), _lh, gasUsed()), *m_sealEngine, _t, _p, _onOp);
 
     if (_p == Permanence::Committed)
     {

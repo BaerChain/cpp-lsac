@@ -5,7 +5,6 @@
 #include <libbrccore/Common.h>
 #include <libbrccore/BlockHeader.h>
 #include <libbrcdchain/LogFilter.h>
-
 namespace dev
 {
 

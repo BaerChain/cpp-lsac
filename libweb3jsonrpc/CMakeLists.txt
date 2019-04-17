@@ -53,7 +53,14 @@ target_link_libraries(web3jsonrpc PUBLIC
         ${MHD_LIBRARIES}
         ${Boost_LIBRARIES}
         ${JSON_RPC_CPP_COMMON_LIBRARY}
+        brc_db
         )
-target_include_directories(web3jsonrpc PUBLIC ${MHD_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIR}  ${JSON_RPC_CPP_INCLUDE_DIR})
+target_include_directories(web3jsonrpc PUBLIC
+        ${MHD_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}
+        ${Boost_INCLUDE_DIR}
+        ${JSON_RPC_CPP_INCLUDE_DIR}
+        ${CMAKE_SOURCE_DIR}/indexDb/database/include
+        )
 
 
