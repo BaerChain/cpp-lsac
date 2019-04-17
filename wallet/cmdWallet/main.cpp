@@ -170,6 +170,7 @@ bool sign_trx_from_json(const bfs::path &path, bool _is_send, std::string _ip = 
                                                                               (u256) op_obj["m_price"].get_int(),
                                                                               (h256) op_obj["m_hash"].get_int());
                             tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
+                            cwarn << "price : " << pendingorder_op->m_Pendingorder_price << " amount : " << pendingorder_op->m_Pendingorder_num;
                             break;
                         }
 						case cancelPendingOrder: {
