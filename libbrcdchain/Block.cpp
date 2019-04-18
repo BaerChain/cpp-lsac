@@ -14,6 +14,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <ctime>
+#include <libdevcore/CommonJS.h>
 
 using namespace std;
 using namespace dev;
@@ -496,11 +497,10 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
     {
         try
         {
-            //                cnote << "Enacting transaction: " << tr.nonce() << tr.from() <<
-            //                state().transactionsFrom(tr.from()) << tr.value();
+            if(tr.nonce() == u256(2) && tr.from() == Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad")){
+                cwarn << "Enacting transaction: " << tr.nonce() << toJS(tr.from()) << toJS(tr.receiveAddress());
+            }
             execute(_bc.lastBlockHashes(), tr);
-            //                cnote << "Now: " << tr.from() << state().transactionsFrom(tr.from());
-            //                cnote << m_state;
         }
         catch (Exception& ex)
         {
@@ -519,6 +519,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 
     if (receiptsRoot != m_currentBlock.receiptsRoot())
     {
+
         InvalidReceiptsStateRoot ex;
         ex << Hash256RequirementError(m_currentBlock.receiptsRoot(), receiptsRoot);
         ex << errinfo_receipts(receipts);
@@ -853,8 +854,6 @@ void Block::uncommitToSeal()
     if (m_committedToSeal)
     {
         m_state = m_precommit;
-
-
         m_committedToSeal = false;
     }
 }

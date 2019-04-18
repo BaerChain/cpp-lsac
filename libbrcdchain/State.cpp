@@ -423,9 +423,12 @@ void State::subBRC(Address const &_addr, u256 const &_value) {
         return;
 
     Account *a = account(_addr);
-    if (!a || a->BRC() < _value)
+    if (!a || a->BRC() < _value){
+        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->BRC();
         // TODO: I expect this never happens.
         BOOST_THROW_EXCEPTION(NotEnoughCash());
+    }
+
 
     // Fall back to addBalance().
     addBRC(_addr, 0 - _value);
@@ -466,9 +469,12 @@ void State::subFBRC(Address const &_addr, u256 const &_value) {
         return;
 
     Account *a = account(_addr);
-    if (!a || a->FBRC() < _value)
+    if (!a || a->FBRC() < _value){
         // TODO: I expect this never happens.
+        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->FBRC();
         BOOST_THROW_EXCEPTION(NotEnoughCash());
+    }
+
 
     // Fall back to addBalance().
     addFBRC(_addr, 0 - _value);
@@ -503,6 +509,7 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
     Account *a = account(_addr);
     if (!a || a->FBalance() < _value) {
         // TODO: I expect this never happens.
+        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->FBalance();
         BOOST_THROW_EXCEPTION(NotEnoughCash());
     }
 
@@ -575,6 +582,7 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 			if (CombinationNum == _pendingOrderNum)
 			{
 				subFBRC(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
+				addBRC(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
 			}
 		}
 		else if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::FUEL)
@@ -582,6 +590,7 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 			if (CombinationNum == _pendingOrderNum)
 			{
 				subFBalance(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
+				addBalance(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
 			}
 		}
 	}
