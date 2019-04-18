@@ -1105,7 +1105,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     if (auto a = account(_addr)) {
         jv["Address"] = toJS(_addr);
         jv["balance"] = toJS(a->balance());
-		jv["FBalance"] = toJS(a->addFBalance());
+		jv["FBalance"] = toJS(a->FBalance());
         jv["BRC"] = toJS(a->BRC());
 		jv["FBRC"] = toJS(a->FBRC());
 		jv["vote"] = toJS(a->voteAll());

@@ -172,7 +172,7 @@ public:
             o.buy_type = buy_type;
             o.token_type = t_type;
             o.type = type;
-            o.price_token = {{get_random_price(10, 20), get_random_price(5, 10)}};
+            o.price_token = {{get_random_price(1000, 2000), get_random_price(500, 1000)}};
             o.time = i;
             os.push_back(o);
         }
