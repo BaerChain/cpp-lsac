@@ -43,7 +43,7 @@ namespace transationTool
 {
 #define SERIALIZE_MACRO(r, data, elem) data.append(elem);
 #define OPERATION_SERIALIZE(MEMBERS)                             \
-    virtual bytes serialize()                                    \
+    virtual bytes serialize()  const                                  \
     {                                                            \
         RLPStream stream(BOOST_PP_SEQ_SIZE(MEMBERS));            \
         BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS); \
@@ -84,7 +84,7 @@ struct operation
         }
     }
 
-    virtual bytes serialize() { return bytes(); }
+    virtual bytes serialize() const{ return bytes(); }
 };
 struct vote_operation : public operation
 {
@@ -143,6 +143,7 @@ struct pendingorder_opearaion : public operation
 	u256 m_Pendingorder_num = 0;
     u256 m_Pendingorder_price = 0;
     h256 m_Pendingorder_Hash = h256(0);
+    pendingorder_opearaion(){}
     pendingorder_opearaion(
         op_type type, const Address& from, uint8_t pendingorder_type, uint8_t _pendingorder_token_type,
 		int _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price, h256 pendingorder_hash)
