@@ -134,7 +134,7 @@ namespace testex {
             ts.gas = u256(0x6000);
             ts.gasPrice = u256(0x1388);
             brc::Transaction sign_t(ts, keys[op.m_from]);
-            cwarn << "send trx " << toJS(sign_t);
+//            cwarn << "send trx " << dev::brc::toJson(sign_t);
 
             send_raw_transaction(sign_t);
         }
@@ -230,8 +230,7 @@ namespace testex {
  *
  * */
 
-void test1()
-{
+void test1() {
     testex::test_helper helper("127.0.0.1:8081");
     helper.set_keys();
 
@@ -276,73 +275,83 @@ void test1()
 }
 
 
-
-
-void test2(){
+void test2() {
     testex::test_helper helper("127.0.0.1:8081");
     helper.set_keys();
 
-    std::vector<Address> senders= {Address("0xe523e7c59a0725afd08bc9751c89eed6f8e16dec"),
-                                   Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856"),
-                                   Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad"),
-                                   Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77"),
-                                   Address("0xe53768c8b089cf35adb8c85fa183f36d73616a53")
-                                    };
+    std::vector<Address> senders = {Address("0xe523e7c59a0725afd08bc9751c89eed6f8e16dec"),
+                                    Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856"),
+                                    Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad"),
+                                    Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77"),
+                                    Address("0xe53768c8b089cf35adb8c85fa183f36d73616a53")
+    };
     std::vector<testex::account> pre_accounts;
 
 
+    uint8_t type[] = {1, 2};
+    uint8_t token_type[] = {0, 1};
 
-    uint8_t send_type = 1;                  //buy
-    uint8_t send_token_type = 1;            //BRC
-    uint8_t send_buy_type = 1;
+    for (uint8_t i = 0; i < 2; i++) {
+        for (uint8_t j = 0; j < 2; j++) {
 
-    for(uint32_t i = 0; i < senders.size(); i++){
-        auto ad1 = senders[i];
-        pre_accounts.push_back(helper.get_address_info(ad1));
-        dbt::pendingorder_opearaion op1;
-        op1.m_type = 3;
-        op1.m_from = ad1;
-        op1.m_Pendingorder_type = send_type;
-        op1.m_Pendingorder_Token_type = send_token_type;
-        op1.m_Pendingorder_buy_type = send_buy_type;
-        op1.m_Pendingorder_num = i + 1;
-        op1.m_Pendingorder_price = i + 1;
+            uint8_t send_type = type[i];                  //buy
+            uint8_t send_token_type = token_type[j];            //BRC
+            uint8_t send_buy_type = 1;
 
-        helper.packed_transaction(op1);
-        sleep(1);
+            for (uint32_t k = 0; k < senders.size(); k++) {
+
+                auto ad1 = senders[k];
+                pre_accounts.push_back(helper.get_address_info(ad1));
+                dbt::pendingorder_opearaion op1;
+                op1.m_type = 3;
+                op1.m_from = ad1;
+                op1.m_Pendingorder_type = send_type;
+                op1.m_Pendingorder_Token_type = send_token_type;
+                op1.m_Pendingorder_buy_type = send_buy_type;
+                op1.m_Pendingorder_num = k + 1;
+                op1.m_Pendingorder_price = k + 1;
+//                if(i == 1 && j == 0 && k == 3){
+//                    helper.packed_transaction(op1);
+//                }
+                helper.packed_transaction(op1);
+                sleep(1);
+
+            }
+
+            //
+            Address from("0xaa800d077c0afe7732b66ac58e9120f446af14a0");
+            auto pre_from = helper.get_address_info(from);
+
+            dbt::pendingorder_opearaion op2;
+            op2.m_type = 3;
+            op2.m_from = from;
+            op2.m_Pendingorder_type = send_type;
+            op2.m_Pendingorder_Token_type = send_token_type;
+            op2.m_Pendingorder_buy_type = send_buy_type;
+            op2.m_Pendingorder_num = 5;
+            op2.m_Pendingorder_price = 3;
+
+            op2 = helper.up_down_op(op2, from);
+
+            helper.packed_transaction(op2);
+
+            sleep(1);
+            for (uint32_t i = 0; i < senders.size(); i++) {
+                auto ad1 = pre_accounts[i].address;
+                auto ac = helper.get_address_info(ad1);
+                pre_accounts[i] % ac;
+            }
+
+            pre_from % helper.get_address_info(from);
+
+            pre_accounts.clear();
+            cwarn << "-------------------------- clear --------------------------";
+            sleep(2);
+        }
     }
 
-    //
-    Address from("0xaa800d077c0afe7732b66ac58e9120f446af14a0");
-    auto pre_from =  helper.get_address_info(from);
-
-    dbt::pendingorder_opearaion op2;
-    op2.m_type = 3;
-    op2.m_from = from;
-    op2.m_Pendingorder_type = send_type;
-    op2.m_Pendingorder_Token_type = send_token_type;
-    op2.m_Pendingorder_buy_type = send_buy_type;
-    op2.m_Pendingorder_num = 3;
-    op2.m_Pendingorder_price = 3;
-
-    op2 = helper.up_down_op(op2, from);
-
-    helper.packed_transaction(op2);
-
-    sleep(1);
-    for(uint32_t i = 0; i < senders.size(); i++){
-        auto ad1 = pre_accounts[i].address;
-        auto ac = helper.get_address_info(ad1);
-        pre_accounts[i] %  ac;
-    }
-
-    pre_from % helper.get_address_info(from);
 
 }
-
-
-
-
 
 
 int main(int argc, char **argv) {

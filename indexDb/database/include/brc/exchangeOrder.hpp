@@ -151,7 +151,7 @@ namespace dev {
                             db->modify(*begin, [&](order_object &obj) {
                                 obj.token_amount -= spend;
                             });
-                            ret.set_data(od, begin, amount, begin->price);
+                            ret.set_data(od, begin, spend, begin->price);
                             spend = 0;
                         }
 
