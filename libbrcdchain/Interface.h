@@ -118,7 +118,7 @@ public:
     {
         return storageAt(_a, m_default);
     }
-    std::string accountMessage(Address _a) const { return accountMessage(_a, m_default); }
+    Json::Value accountMessage(Address _a) const { return accountMessage(_a, m_default); }
     Json::Value pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_token_type, u256 _getSize) const
     {
@@ -143,7 +143,7 @@ public:
     virtual std::map<h256, std::pair<u256, u256>> storageAt(
         Address _a, BlockNumber _block) const = 0;
 
-    virtual std::string accountMessage(Address _a, BlockNumber _block) const = 0;
+    virtual Json::Value accountMessage(Address _a, BlockNumber _block) const = 0;
 
 	virtual Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const = 0;
     virtual Json::Value pendingOrderPoolMessage(
