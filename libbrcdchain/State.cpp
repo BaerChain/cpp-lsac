@@ -1105,11 +1105,13 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     if (auto a = account(_addr)) {
         jv["Address"] = toJS(_addr);
         jv["balance"] = toJS(a->balance());
+		jv["FBalance"] = toJS(a->addFBalance());
+        jv["BRC"] = toJS(a->BRC());
+		jv["FBRC"] = toJS(a->FBRC());
+		jv["vote"] = toJS(a->voteAll());
         jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
-        jv["nonce"] = toJS(a->nonce());
-        jv["BRC"] = toJS(a->BRC());
-        jv["vote"] = toJS(a->BRC());
+		jv["nonce"] = toJS(a->nonce());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
