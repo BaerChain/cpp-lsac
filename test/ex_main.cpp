@@ -19,6 +19,7 @@
 #include <libbrcdchain/Transaction.h>
 #include <libdevcrypto/base58.h>
 #include <libdevcore/Common.h>
+
 namespace dr = dev::brc;
 namespace dre  = dev::brc::ex;
 namespace dbt = dev::brc::transationTool;
@@ -36,7 +37,7 @@ namespace testex {
         u256 nonce;
 
 
-        std::string tojs() const{
+        std::string tojs() const {
             Json::Value vv;
             vv["address"] = toJS(address);
             vv["brc_balance"] = toJS(brc_balance);
@@ -50,21 +51,20 @@ namespace testex {
         }
 
 
-        bool operator == (const account &ac){
-            cwarn <<  this->tojs();
-            cwarn <<  ac.tojs();
+        bool operator==(const account &ac) {
+            cwarn << this->tojs();
+            cwarn << ac.tojs();
             return true;
         }
 
-        account operator % (const account &ac){
+        account operator%(const account &ac) {
+
 
             cwarn << "address:   " << toJS(this->address);
             std::string f1 = std::max(ac.brc_balance, brc_balance) == ac.brc_balance ? "+" : "-";
             std::string f2 = std::max(ac.fbrc_balance, fbrc_balance) == ac.fbrc_balance ? "+" : "-";
             std::string f3 = std::max(ac.balance, balance) == ac.balance ? "+" : "-";
             std::string f4 = std::max(ac.fbalance, fbalance) == ac.fbalance ? "+" : "-";
-
-
 
             cwarn << "brc _balance: " << f1 << diff(ac.brc_balance, brc_balance);
             cwarn << "fbrc_balance: " << f2 << diff(ac.fbrc_balance, fbrc_balance);
@@ -94,8 +94,8 @@ namespace testex {
         ac.address = dev::Address(js["Address"].asString());
         ac.brc_balance = u256(fromBigEndian<u256>(fromHex(js["BRC"].asString())));
         ac.fbrc_balance = u256(fromBigEndian<u256>(fromHex(js["FBRC"].asString())));
+        ac.fbalance = u256(fromBigEndian<u256>(fromHex(js["FBalance"].asString())));
         ac.balance = u256(fromBigEndian<u256>(fromHex(js["balance"].asString())));
-        ac.fbalance = u256(fromBigEndian<u256>(fromHex(js["fbalance"].asString())));
         ac.nonce = u256(fromBigEndian<u256>(fromHex(js["nonce"].asString())));
     }
 
@@ -111,9 +111,6 @@ namespace testex {
     }
 
 
-
-
-
     class test_helper {
     public:
         test_helper(const std::string &url) : url_ip(url) {}
@@ -122,10 +119,6 @@ namespace testex {
                                 dev::u256 price, dev::u256 amount) {
 
         }
-
-
-
-
 
 
         void packed_transaction(const dbt::pendingorder_opearaion &op) {
@@ -146,7 +139,7 @@ namespace testex {
             send_raw_transaction(sign_t);
         }
 
-        dbt::pendingorder_opearaion up_down_op(const dbt::pendingorder_opearaion &op, const Address &ad){
+        dbt::pendingorder_opearaion up_down_op(const dbt::pendingorder_opearaion &op, const Address &ad) {
             dbt::pendingorder_opearaion pp(op);
             pp.m_from = ad;
             pp.m_Pendingorder_Token_type = pp.m_Pendingorder_Token_type ^ 1;
@@ -154,6 +147,7 @@ namespace testex {
 
             return pp;
         }
+
         account get_address_info(const dev::Address &ad) {
             std::string rpc = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\"" + dev::toJS(ad) +
                               "\", \"-1\"],\"id\":1}";
@@ -167,9 +161,10 @@ namespace testex {
         }
 
 
-        void send_raw_transaction(const brc::Transaction &tx){
+        void send_raw_transaction(const brc::Transaction &tx) {
             auto s = toHexPrefixed(tx.rlp());
-            std::string rpc = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s +"\"],\"id\":1}";
+            std::string rpc =
+                    "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":1}";
             std::string ret;
             http_post(rpc, ret);
             cwarn << "push transaction ret: " << ret << std::endl;
@@ -181,7 +176,7 @@ namespace testex {
             _httpClient.SendRPCMessage(send_msg, ret);
         }
 
-        void set_keys(){
+        void set_keys() {
             std::vector<std::string> obj{
                     "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve",
                     "BeBU5mQE5nsymzvs86NGUAqZBwNbV4WQH45WBj9VNTDS",
@@ -194,7 +189,7 @@ namespace testex {
             for (auto &key : obj) {
                 auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
                 keys[keyPair.address()] = keyPair.secret();
-                cwarn << toJS(keyPair.address())  << " : " << key ;
+                cwarn << toJS(keyPair.address()) << " : " << key;
 
             }
         }
@@ -235,7 +230,8 @@ namespace testex {
  *
  * */
 
-int main(int argc, char **argv) {
+void test1()
+{
     testex::test_helper helper("127.0.0.1:8081");
     helper.set_keys();
 
@@ -243,13 +239,13 @@ int main(int argc, char **argv) {
     uint8_t token_type[] = {0, 1};
     uint8_t type[] = {1, 2};
     {
-//        for(uint8_t i = 0;i < 2; i++){
-//            for(uint8_t j = 0; j < 2; j++){
-                uint8_t send_type = 2;                  //buy
-                uint8_t send_token_type = 1;            //BRC
+        for (uint8_t i = 0; i < 2; i++) {
+            for (uint8_t j = 0; j < 2; j++) {
+                uint8_t send_type = type[i];                  //buy
+                uint8_t send_token_type = token_type[j];            //BRC
                 uint8_t send_buy_type = 1;
-                auto ad1 =  Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
-                auto ad2 =  Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+                auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
+                auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
                 /*-----------------------------------------*/
                 dbt::pendingorder_opearaion op1;
                 op1.m_type = 3;
@@ -274,11 +270,84 @@ int main(int argc, char **argv) {
                 s_ac1 % ac1;
                 s_ac2 % ac2;
                 sleep(2);
-//            }
-//        }
+            }
+        }
+    }
+}
+
+
+
+
+void test2(){
+    testex::test_helper helper("127.0.0.1:8081");
+    helper.set_keys();
+
+    std::vector<Address> senders= {Address("0xe523e7c59a0725afd08bc9751c89eed6f8e16dec"),
+                                   Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856"),
+                                   Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad"),
+                                   Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77"),
+                                   Address("0xe53768c8b089cf35adb8c85fa183f36d73616a53")
+                                    };
+    std::vector<testex::account> pre_accounts;
+
+
+
+    uint8_t send_type = 1;                  //buy
+    uint8_t send_token_type = 1;            //BRC
+    uint8_t send_buy_type = 1;
+
+    for(uint32_t i = 0; i < senders.size(); i++){
+        auto ad1 = senders[i];
+        pre_accounts.push_back(helper.get_address_info(ad1));
+        dbt::pendingorder_opearaion op1;
+        op1.m_type = 3;
+        op1.m_from = ad1;
+        op1.m_Pendingorder_type = send_type;
+        op1.m_Pendingorder_Token_type = send_token_type;
+        op1.m_Pendingorder_buy_type = send_buy_type;
+        op1.m_Pendingorder_num = i + 1;
+        op1.m_Pendingorder_price = i + 1;
+
+        helper.packed_transaction(op1);
+        sleep(1);
     }
 
+    //
+    Address from("0xaa800d077c0afe7732b66ac58e9120f446af14a0");
+    auto pre_from =  helper.get_address_info(from);
 
+    dbt::pendingorder_opearaion op2;
+    op2.m_type = 3;
+    op2.m_from = from;
+    op2.m_Pendingorder_type = send_type;
+    op2.m_Pendingorder_Token_type = send_token_type;
+    op2.m_Pendingorder_buy_type = send_buy_type;
+    op2.m_Pendingorder_num = 3;
+    op2.m_Pendingorder_price = 3;
+
+    op2 = helper.up_down_op(op2, from);
+
+    helper.packed_transaction(op2);
+
+    sleep(1);
+    for(uint32_t i = 0; i < senders.size(); i++){
+        auto ad1 = pre_accounts[i].address;
+        auto ac = helper.get_address_info(ad1);
+        pre_accounts[i] %  ac;
+    }
+
+    pre_from % helper.get_address_info(from);
+
+}
+
+
+
+
+
+
+int main(int argc, char **argv) {
+
+    test2();
 
     return 0;
 }
