@@ -667,9 +667,9 @@ Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
         Json::Value _value;
         _value["Address"] = toJS(val.sender);
         _value["Hash"] = toJS(val.trxid);
-        _value["price"] = toJS(val.price);
-        _value["token_amount"] = toJS(val.token_amount);
-        _value["source_amount"] = toJS(val.source_amount);
+        _value["price"] = std::string(val.price);
+        _value["token_amount"] = std::string(val.token_amount);
+        _value["source_amount"] = std::string(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
         std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
                                                                                       (ex::order_buy_type) 0);
@@ -689,9 +689,9 @@ Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
         Json::Value _value;
         _value["Address"] = toJS(val.sender);
         _value["Hash"] = toJS(val.trxid);
-        _value["price"] = toJS(val.price);
-        _value["token_amount"] = toJS(val.token_amount);
-        _value["source_amount"] = toJS(val.source_amount);
+		_value["price"] = std::string(val.price);
+        _value["token_amount"] = std::string(val.token_amount);
+        _value["source_amount"] = std::string(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
         std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
                                                                                       (ex::order_buy_type) 0);
@@ -713,8 +713,8 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
         _value["Acceptor"] = toJS(val.acceptor);
         _value["Hash"] = toJS(val.send_trxid);
         _value["AcceptorHash"] = toJS(val.to_trxid);
-        _value["price"] = toJS(val.price);
-        _value["amount"] = toJS(val.amount);
+        _value["price"] = std::string(val.price);
+		_value["amount"] = std::string(val.amount);
         _value["create_time"] = toJS(val.create_time);
         std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
                                                                                       val.buy_type);
@@ -1105,18 +1105,18 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     Json::Value jv;
     if (auto a = account(_addr)) {
         jv["Address"] = toJS(_addr);
-        jv["balance"] = toJS(a->balance());
-		jv["FBalance"] = toJS(a->FBalance());
-		jv["BRC"] = std::string(a->BRC()); //toJS(a->BRC());
-		jv["FBRC"] = toJS(a->FBRC());
-		jv["vote"] = toJS(a->voteAll());
-        jv["ballot"] = toJS(a->ballot());
-        jv["poll"] = toJS(a->poll());
-		jv["nonce"] = toJS(a->nonce());
+		jv["balance"] = std::string(a->balance()); 
+		jv["FBalance"] = std::string(a->FBalance());
+		jv["BRC"] = std::string(a->BRC()); 
+		jv["FBRC"] = std::string(a->FBRC());
+		jv["vote"] = std::string(a->voteAll());
+		jv["ballot"] = std::string(a->ballot());
+        jv["poll"] = std::string(a->poll());
+		jv["nonce"] = std::string(a->nonce());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
-            _v["Adress"] = toJS(val.first);
+            _v["Address"] = toJS(val.first);
             _v["vote_num"] = toJS(val.second);
             _array.append(_v);
         }
