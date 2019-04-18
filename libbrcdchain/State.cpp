@@ -567,7 +567,24 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
                 subFBalance(_addr, _pendingOrderNum - CombinationNum);
             }
         }
-    }
+	}
+	else if (_pendingOrderBuyType == order_buy_type::only_price)
+	{
+		if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC)
+		{
+			if (CombinationNum == _pendingOrderNum)
+			{
+				subFBRC(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
+			}
+		}
+		else if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::FUEL)
+		{
+			if (CombinationNum == _pendingOrderNum)
+			{
+				subFBalance(_addr, _pendingOrderNum * _pendingOrderPrice - CombinationTotalAmount);
+			}
+		}
+	}
 }
 
 void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 _toPendingOrderNum,
@@ -633,7 +650,7 @@ void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pend
                _pendingOrderBuyType == order_buy_type::all_price) {
         subBRC(_addr, _pendingOrderPrice);
         addFBRC(_addr, _pendingOrderPrice);
-    } else if (_pendingOrderType == order_type::buy &&
+    } else if (_pendingOrderType == order_type::buy && 
                _pendingOrderTokenType == order_token_type::FUEL &&
                _pendingOrderBuyType == order_buy_type::only_price) {
         subBalance(_addr, _pendingOrderNum * _pendingOrderPrice);
