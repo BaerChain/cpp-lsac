@@ -111,7 +111,7 @@ map<h256, pair<u256, u256>> ClientBase::storageAt(Address _a, BlockNumber _block
     return blockByNumber(_block).storage(_a);
 }
 
-std::string dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block) const
+Json::Value dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block) const
 {
     return blockByNumber(_block).mutableState().accoutMessage(_a);
 }

@@ -110,7 +110,7 @@ Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const
     }
 }
 
-string Brc::brc_getBalance(string const& _address, string const& _blockNumber)
+Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumber)
 {
     try
     {

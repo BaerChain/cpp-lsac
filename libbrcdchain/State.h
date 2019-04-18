@@ -335,7 +335,7 @@ public:
     void subPoll(Address const& _adddr, u256 const& _value);
 
     // 详细信息 test
-    std::string accoutMessage(Address const& _addr);
+    Json::Value accoutMessage(Address const& _addr);
 
 private:
     //投票数据

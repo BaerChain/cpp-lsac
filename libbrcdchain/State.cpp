@@ -607,7 +607,7 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         subFBRC(_from, _toPendingOrderNum);
-        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
+        addBalance(_from, _toPendingOrderNum);
         subFBalance(_to, _toPendingOrderNum);
         addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
     } else if (_pendingOrderType == order_type::sell &&
@@ -615,7 +615,7 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         subFBalance(_from, _toPendingOrderNum);
-        addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
+        addBRC(_from, _toPendingOrderNum);
         subFBRC(_to, _toPendingOrderNum);
         addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
     }
@@ -1100,14 +1100,9 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
 }
 
 
-std::string dev::brc::State::accoutMessage(Address const &_addr) {
-    std::string _str = "";
+Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     Json::Value jv;
     if (auto a = account(_addr)) {
-        /*_str << "Address:" << _addr << " | balance:" << a->balance()
-            << " | ballot:" << a->ballot()
-            << " | poll:" << a->poll()
-            << " | "*/
         jv["Address"] = toJS(_addr);
         jv["balance"] = toJS(a->balance());
         jv["ballot"] = toJS(a->ballot());
@@ -1123,10 +1118,8 @@ std::string dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-
-        return jv.toStyledString();
     }
-    return _str;
+    return jv;
 }
 
 

@@ -86,3 +86,7 @@ add_subdirectory(brcd)
 
 add_subdirectory(indexDb)
 add_subdirectory(wallet)
+
+if(${BUILD_TEST} STREQUAL "ON")
+    add_subdirectory(test)
+endif()

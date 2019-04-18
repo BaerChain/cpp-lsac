@@ -74,7 +74,7 @@ public:
     h256 codeHashAt(Address _a, BlockNumber _block) const override;
     std::map<h256, std::pair<u256, u256>> storageAt(Address _a, BlockNumber _block) const override;
 
-	std::string accountMessage(Address _a, BlockNumber _block) const override;
+	Json::Value accountMessage(Address _a, BlockNumber _block) const override;
     Json::Value pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
     Json::Value pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize, BlockNumber _block) const override;
 	Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const override;
