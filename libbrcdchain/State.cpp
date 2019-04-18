@@ -609,7 +609,7 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         subFBRC(_from, _toPendingOrderNum);
 		addBRC(_to, _toPendingOrderNum);
-		subFBalance(_to, _toPendingOrderNum * toPendingOrderPrice);
+		subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
 		addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::FUEL &&
@@ -1107,7 +1107,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
         jv["Address"] = toJS(_addr);
         jv["balance"] = toJS(a->balance());
 		jv["FBalance"] = toJS(a->FBalance());
-        jv["BRC"] = toJS(a->BRC());
+		jv["BRC"] = std::string(a->BRC()); //toJS(a->BRC());
 		jv["FBRC"] = toJS(a->FBRC());
 		jv["vote"] = toJS(a->voteAll());
         jv["ballot"] = toJS(a->ballot());
