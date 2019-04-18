@@ -608,9 +608,9 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         subFBRC(_from, _toPendingOrderNum);
+		addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		addBRC(_to, _toPendingOrderNum);
 		subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::FUEL &&
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
