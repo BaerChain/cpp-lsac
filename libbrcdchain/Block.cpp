@@ -498,7 +498,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
         try
         {
             if(tr.nonce() == u256(2) && tr.from() == Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad")){
-                cwarn << "Enacting transaction: " << tr.nonce() << toJS(tr.from()) << toJS(tr.receiveAddress());
+                cwarn << "Enacting transaction: " << tr.nonce() << "   "<< toJS(tr.from()) << toJS(tr.receiveAddress());
             }
             execute(_bc.lastBlockHashes(), tr);
         }
