@@ -114,6 +114,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
             }
 
+            db.
 
 
 //            db.undo();
@@ -132,10 +133,10 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 //                    //if not find , db.get will throw exception.
 //                }
 //            }
-            const auto &index = db.get_index<up_order_index>().indices().get<by_name>();
-            for(auto itr = index.begin(); itr != index.end(); itr++){
-                std::cout << itr->name << std::endl;
-            }
+//            const auto &index = db.get_index<up_order_index>().indices().get<by_name>();
+//            for(auto itr = index.begin(); itr != index.end(); itr++){
+//                std::cout << itr->name << std::endl;
+//            }
 
 
         } catch (const std::exception &e) {

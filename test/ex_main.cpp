@@ -314,7 +314,7 @@ void test2() {
 //                    helper.packed_transaction(op1);
 //                }
                 helper.packed_transaction(op1);
-                sleep(1);
+                sleep(2);
 
             }
 
@@ -349,6 +349,48 @@ void test2() {
             sleep(2);
         }
     }
+
+
+}
+
+
+
+void test3(){
+
+    testex::test_helper helper("127.0.0.1:8081");
+    helper.set_keys();
+
+
+
+    uint8_t send_type = 1;                  //buy
+    uint8_t send_token_type = 0;            //BRC
+    uint8_t send_buy_type = 1;
+
+
+
+    auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
+    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    /*-----------------------------------------*/
+    dbt::pendingorder_opearaion op1;
+    op1.m_type = 3;
+    op1.m_from = ad1;
+    op1.m_Pendingorder_type = send_type;
+    op1.m_Pendingorder_Token_type = send_token_type;
+    op1.m_Pendingorder_buy_type = send_buy_type;
+    op1.m_Pendingorder_num = 2;
+    op1.m_Pendingorder_price = 2;
+
+
+    dbt::pendingorder_opearaion op2;
+    op2.m_type = 3;
+    op2.m_from = ad2;
+    op2.m_Pendingorder_type = send_type;
+    op2.m_Pendingorder_Token_type = send_token_type;
+    op2.m_Pendingorder_buy_type = send_buy_type;
+    op2.m_Pendingorder_num = 4;
+    op2.m_Pendingorder_price = 4;
+
+
 
 
 }

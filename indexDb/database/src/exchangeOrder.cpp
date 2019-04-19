@@ -138,6 +138,9 @@ namespace dev {
                 } catch (const dev::Exception &e) {
                     std::cout << e.what() << std::endl;
                     return result;
+                } catch (...)
+                {
+                    std::cout << "error exchange_plugin \n";
                 }
                 return result;
             }

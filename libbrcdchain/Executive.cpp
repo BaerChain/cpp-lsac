@@ -416,10 +416,10 @@ void Executive::initialize(Transaction const& _transaction)
 								_pengdingorder_op.m_Pendingorder_Token_type, _pengdingorder_op.m_Pendingorder_buy_type});
                 }
                 break;
-                case transationTool::cancelPendingOrder:
-                {
-					transationTool::pendingorder_opearaion _pengdingorder_op =
-                        transationTool::pendingorder_opearaion(val);
+               // case transationTool::cancelPendingOrder:
+                //{
+				/*	transationTool::cancelPendingorder_operation  _cancel_op =
+                        transationTool::cancelPendingorder_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -448,7 +448,7 @@ void Executive::initialize(Transaction const& _transaction)
                             {Address(0), Address(0), Address(0),u256(0), u256(0), u256(0), bytesConstRef(), {}},
                             u256(0), _pengdingorder_op.m_Pendingorder_Hash,0,0});
                 }
-                break;
+                break;*/
                 default:
                     break;
             }
