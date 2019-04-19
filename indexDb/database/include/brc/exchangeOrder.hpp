@@ -196,6 +196,8 @@ namespace dev {
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
+//                boost::optional<chainbase::database::session> _trx_session;
+
             };
 
 

@@ -147,10 +147,13 @@ void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, Transactio
                                   (bigint)(_t.baseGasRequired(schedule)), (bigint)_t.gas()));
 
     // Avoid transactions that would take us beyond the block gas limit.
-    if (_gasUsed + (bigint)_t.gas() > _header.gasLimit())
+    if (_gasUsed + (bigint)_t.gas() > _header.gasLimit()){
+
         BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementErrorComment(
-                                  (bigint)(_header.gasLimit() - _gasUsed), (bigint)_t.gas(),
-                                  string("_gasUsed + (bigint)_t.gas() > _header.gasLimit()")));
+                (bigint)(_header.gasLimit() - _gasUsed), (bigint)_t.gas(),
+                string("_gasUsed + (bigint)_t.gas() > _header.gasLimit()")));
+    }
+
 
 }
 
