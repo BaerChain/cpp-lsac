@@ -4,13 +4,6 @@
 #include <brc/exception.hpp>
 
 
-//#define GET_ITR_BEGIN_LOWWER(INDEX_TYPE, INDEX, TYPE, PRICE) \
-//     db.get_index<INDEX>().indices().get<INDEX>().lower_bound(boost::tuple<order_token_type, order_token_type>(2, BRC));
-
-#define IF_THROW_EXCEPTION(FLAG, EXP, RETURN) \
-        if(FLAG) { EXP; }else{ return RETURN;}
-
-
 using namespace dev;
 namespace dev {
     namespace brc {
@@ -31,6 +24,7 @@ namespace dev {
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
                 check_db();
+
                 auto session = db->start_undo_session(true);
                 std::vector<result_order> result;
                 try {
@@ -137,15 +131,28 @@ namespace dev {
                     }
                 } catch (const dev::Exception &e) {
                     std::cout << e.what() << std::endl;
+                    exit(0);
                     return result;
-                } catch (...)
-                {
-                    std::cout << "error exchange_plugin \n";
+                } catch (const std::exception &e) {
+                    std::cout << "error exchange_plugin " << e.what() << "\n";
+                    exit(0);
+                } catch (const boost::exception &e) {
+                    std::cout << "error exchange_plugin " << boost::diagnostic_information(e) << "\n";
+                    exit(0);
+                }
+
+                if (result.size() > 0) {
+                    cwarn << "revision" << db->revision();
+                    for (auto it : result) {
+                        cwarn << "sender: " << dev::toJS(it.sender) << " acceptor: " << dev::toJS(it.acceptor);
+                        cwarn << "send_trxid: " << dev::toJS(it.send_trxid) << " to_trxid: " << dev::toJS(it.to_trxid);
+                        cwarn << "amount: " << dev::toJS(it.amount) << " price: " << dev::toJS(it.price) << std::endl;
+                    }
                 }
                 return result;
             }
 
-            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const{
+            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const {
                 check_db();
                 std::vector<exchange_order> ret;
 
@@ -173,7 +180,7 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const{
+            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const {
                 check_db();
                 vector<result_order> ret;
                 const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
@@ -216,7 +223,7 @@ namespace dev {
 
 
             std::vector<exchange_order>
-            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const{
+            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
                 check_db();
                 vector<exchange_order> ret;
                 if (type == buy) {
@@ -255,20 +262,20 @@ namespace dev {
                 auto session = db->start_undo_session(true);
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
-                for(const auto &t : os){
+                for (const auto &t : os) {
                     auto begin = index_trx.lower_bound(t);
                     auto end = index_trx.upper_bound(t);
-                    if(begin == end){
+                    if (begin == end) {
                         BOOST_THROW_EXCEPTION(find_order_trxid_error());
                     }
-                    order   o;
+                    order o;
                     o.trxid = begin->trxid;
                     o.sender = begin->sender;
                     o.buy_type = only_price;
                     o.token_type = begin->token_type;
                     o.type = begin->type;
                     o.time = begin->create_time;
-                    while(begin != end){
+                    while (begin != end) {
                         o.price_token[begin->price] = begin->token_amount;
                     }
                     const auto rm = db->find(begin->id);
@@ -276,7 +283,7 @@ namespace dev {
                     db->remove(*rm);
                     ret.push_back(o);
                 }
-                if(!reset){
+                if (!reset) {
                     session.push();
                 }
                 return ret;

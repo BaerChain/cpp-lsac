@@ -380,10 +380,10 @@ void Client::syncBlockQueue()
 
     if (count)
     {
-        if( bc().number() % 10 == 0){
+//        if( bc().number() % 10 == 0){
             LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
                           << (count / elapsed) << " blocks/s) in #" << bc().number();
-        }
+//        }
 
     }
 
@@ -594,7 +594,7 @@ void Client::rejigSealing()
             {
                 if (m_working.isSealed())
                 {
-                    LOG(m_logger) << "Tried to seal sealed block...";
+//                    LOG(m_logger) << "Tried to seal sealed block...";
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
