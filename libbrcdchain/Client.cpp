@@ -376,6 +376,7 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
+
     tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
     double elapsed = t.elapsed();
 
@@ -419,8 +420,9 @@ void Client::syncTransactionQueue()
             ctrace << "Skipping txq sync for a sealed block.";
             return;
         }
-
+//        cwarn << "syncTransactionQueue: " << m_working.state().rootHash();
         tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
+
     }
 
     if (newPendingReceipts.empty())
@@ -888,6 +890,7 @@ h256 Client::importTransaction(Transaction const& _t)
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
     Block currentBlock = block(bc().currentHash());
+    cwarn << "begin.1 number: " << currentBlock.info().number();
     Executive e(currentBlock, bc());
     e.initialize(_t);
     ImportResult res = m_tq.import(_t.rlp());

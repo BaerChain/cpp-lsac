@@ -170,10 +170,11 @@ namespace testex {
 
 
         void send_raw_transaction(const brc::Transaction &tx) {
+            static int count = 0;
             auto s = toHexPrefixed(tx.rlp());
             std::string rpc =
-                    "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":1}";
-            cwarn << "send trx " << toJS(tx.from()) << "   tx: " << tx.sha3() << " : " << rpc;
+                    "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":"+ std::to_string(count++) +"}";
+            cwarn << "send trx " << toJS(tx.from()) << "   tx: " << toJS(tx.sha3()) << " : " << rpc;
             std::string ret;
             http_post(rpc, ret);
             cwarn << "push transaction ret: " << ret << std::endl;

@@ -397,6 +397,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
+
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
                 DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)r = import(block.verified,
@@ -624,6 +625,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
         Block s(*this, _db, _exdb);
+//        cwarn << "syncBlockQueue: " << s.state().rootHash();
         auto tdIncrease = s.enactOn(_block, *this);
 
         for (unsigned i = 0; i < s.pending().size(); ++i)
