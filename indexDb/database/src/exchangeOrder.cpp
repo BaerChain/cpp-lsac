@@ -217,7 +217,7 @@ namespace dev {
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
                 db->commit(version);
-//                cwarn << "commit version : " << version;
+                cwarn << "commit version : " << version;
                 return true;
             }
 
