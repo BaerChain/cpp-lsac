@@ -131,7 +131,7 @@ namespace testex {
 
         void packed_transaction(const dbt::pendingorder_opearaion &op) {
             auto account = get_address_info(op.m_from);
-            cwarn << "account.nonce " << account.nonce << " from " << op.m_from;
+//            cwarn << "account.nonce " << account.nonce << " from " << op.m_from;
             brc::TransactionSkeleton ts;
             ts.creation = false;
             ts.from = op.m_from;
@@ -173,7 +173,7 @@ namespace testex {
             auto s = toHexPrefixed(tx.rlp());
             std::string rpc =
                     "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":1}";
-            cwarn << "send trx " << toJS(tx.from()) << " : " << rpc;
+            cwarn << "send trx " << toJS(tx.from()) << "   tx: " << tx.sha3() << " : " << rpc;
             std::string ret;
             http_post(rpc, ret);
             cwarn << "push transaction ret: " << ret << std::endl;
@@ -513,7 +513,7 @@ void test_self() {
 
 
     auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
-//    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
     /*-----------------------------------------*/
     dbt::pendingorder_opearaion op1;
     op1.m_type = 3;
@@ -527,10 +527,10 @@ void test_self() {
 
     helper.packed_transaction(op1);
 
-    sleep(1);
+//    sleep(1);
     dbt::pendingorder_opearaion op2;
     op2.m_type = 3;
-    op2.m_from = ad1;
+    op2.m_from = ad2;
     op2.m_Pendingorder_type = 1;
     op2.m_Pendingorder_Token_type = 0;
     op2.m_Pendingorder_buy_type = 1;
@@ -558,9 +558,10 @@ void test_one() {
     op1.m_Pendingorder_buy_type = 1;
     op1.m_Pendingorder_num = 3;
     op1.m_Pendingorder_price = 3;
-
-
     helper.packed_transaction(op1);
+
+
+
 }
 
 

@@ -8,9 +8,64 @@
 #include <brc/types.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonJS.h>
+
+#include <optional>
+
 namespace dev {
     namespace brc {
         namespace ex {
+
+            class ex_session{
+            public:
+                ex_session() = default;
+
+                ex_session(ex_session &&other):_session(std::move(other._session)){
+
+                }
+
+                void squash(){
+                    if(_session){
+                        _session->squash();
+                    }
+                }
+
+                void undo(){
+                    if(_session){
+                        _session->undo();
+                    }
+                }
+
+                void push(){
+                    if(_session){
+                        _session->push();
+                    }
+                }
+
+                ex_session &operator= (ex_session &&o){
+                    if(o._session){
+                        _session = std::move(o._session);
+                        o._session.reset();
+                    }
+                    else{
+                        _session.reset();
+                    }
+                    return *this;
+                }
+
+
+            private:
+                std::optional<chainbase::database::session> _session;
+            };
+
+
+
+
+
+
+
+
+
+
 
             class exchange_plugin {
             public:
@@ -199,9 +254,11 @@ namespace dev {
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
-//                boost::optional<chainbase::database::session> _trx_session;
 
+
+//                ex_session      _db_session;
             };
+
 
 
         }
