@@ -20,10 +20,18 @@
 #include <libdevcrypto/base58.h>
 #include <libdevcore/Common.h>
 
+
+#include <iostream>
+#include <istream>
+#include <ostream>
+#include <string>
+#include <boost/asio.hpp>
+
 namespace dr = dev::brc;
 namespace dre  = dev::brc::ex;
 namespace dbt = dev::brc::transationTool;
-
+using boost::asio::ip::tcp;
+using std::string;
 using namespace dev;
 
 namespace testex {
@@ -165,15 +173,106 @@ namespace testex {
             auto s = toHexPrefixed(tx.rlp());
             std::string rpc =
                     "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":1}";
+            cwarn << "send trx " << toJS(tx.from()) << " : " << rpc;
             std::string ret;
             http_post(rpc, ret);
             cwarn << "push transaction ret: " << ret << std::endl;
         }
 
 
-        void http_post(const std::string &send_msg, std::string &ret) {
+        int http_post(const std::string &send_msg, std::string &reponse_data) {
             jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(url_ip);
-            _httpClient.SendRPCMessage(send_msg, ret);
+            _httpClient.SetTimeout(20 * 1000);
+            _httpClient.SendRPCMessage(send_msg, reponse_data);
+
+
+//            std::string host = "127.0.0.1";
+//            std::string port = "8081";
+//            std::string page = "/";
+//            try
+//            {
+//                boost::asio::io_service io_service;
+//                if(io_service.stopped())
+//                    io_service.reset();
+//
+//                tcp::resolver resolver(io_service);
+//                tcp::resolver::query query(host, port);
+//                tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+//
+//                tcp::socket socket(io_service);
+//                boost::asio::connect(socket, endpoint_iterator);
+//
+//                // Form the request. We specify the "Connection: close" header so that the
+//                // server will close the socket after transmitting the response. This will
+//                // allow us to treat all data up until the EOF as the content.
+//                boost::asio::streambuf request;
+//                std::ostream request_stream(&request);
+//                request_stream << "POST " << page << " HTTP/1.0\r\n";
+//                request_stream << "Host: " << host << ":" << port << "\r\n";
+//                request_stream << "Accept: */*\r\n";
+//                request_stream << "Content-Length: " << send_msg.length() << "\r\n";
+//                request_stream << "Content-Type: application/x-www-form-urlencoded\r\n";
+//                request_stream << "Connection: close\r\n\r\n";
+//                request_stream << send_msg;
+//
+//                // Send the request.
+//                boost::asio::write(socket, request);
+//
+//                // Read the response status line. The response streambuf will automatically
+//                // grow to accommodate the entire line. The growth may be limited by passing
+//                // a maximum size to the streambuf constructor.
+//                boost::asio::streambuf response;
+//                boost::asio::read_until(socket, response, "\r\n");
+//
+//                // Check that response is OK.
+//                std::istream response_stream(&response);
+//                std::string http_version;
+//                response_stream >> http_version;
+//                unsigned int status_code;
+//                response_stream >> status_code;
+//                std::string status_message;
+//                std::getline(response_stream, status_message);
+//                if (!response_stream || http_version.substr(0, 5) != "HTTP/")
+//                {
+//                    reponse_data = "Invalid response";
+//                    return -2;
+//                }
+//                if (status_code != 200)
+//                {
+//                    reponse_data = "Response returned with status code != 200 " ;
+//                    return status_code;
+//                }
+//
+//                std::string header;
+//                std::vector<string> headers;
+//                while (std::getline(response_stream, header) && header != "\r")
+//                    headers.push_back(header);
+//
+//                boost::system::error_code error;
+//                while (boost::asio::read(socket, response,
+//                                         boost::asio::transfer_at_least(1), error))
+//                {
+//                }
+//
+//                if (response.size())
+//                {
+//                    std::istream response_stream(&response);
+//                    std::istreambuf_iterator<char> eos;
+//                    reponse_data = string(std::istreambuf_iterator<char>(response_stream), eos);
+//                }
+//
+//                if (error != boost::asio::error::eof)
+//                {
+//                    reponse_data = error.message();
+//                    return -3;
+//                }
+//            }
+//            catch(std::exception& e)
+//            {
+//                reponse_data = e.what();
+//                return -4;
+//            }
+            return 0;
         }
 
         void set_keys() {
@@ -261,7 +360,7 @@ void test1() {
                 auto s_ac2 = helper.get_address_info(ad2);
 
                 helper.packed_transaction(op1);
-                sleep(1);
+                sleep(2);
                 helper.packed_transaction(op2);
 
                 auto ac1 = helper.get_address_info(ad1);
@@ -354,18 +453,15 @@ void test2() {
 }
 
 
-
-void test3(){
+void test3() {
 
     testex::test_helper helper("127.0.0.1:8081");
     helper.set_keys();
 
 
-
     uint8_t send_type = 1;                  //buy
     uint8_t send_token_type = 0;            //BRC
     uint8_t send_buy_type = 1;
-
 
 
     auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
@@ -374,11 +470,26 @@ void test3(){
     dbt::pendingorder_opearaion op1;
     op1.m_type = 3;
     op1.m_from = ad1;
-    op1.m_Pendingorder_type = send_type;
-    op1.m_Pendingorder_Token_type = send_token_type;
+    op1.m_Pendingorder_type = 2;
+    op1.m_Pendingorder_Token_type = send_token_type ^ 1;
     op1.m_Pendingorder_buy_type = send_buy_type;
-    op1.m_Pendingorder_num = 2;
-    op1.m_Pendingorder_price = 2;
+    op1.m_Pendingorder_num = 1;
+    op1.m_Pendingorder_price = 3;
+
+    dbt::pendingorder_opearaion op3;
+    op3.m_type = 3;
+    op3.m_from = ad1;
+    op3.m_Pendingorder_type = 2;
+    op3.m_Pendingorder_Token_type = send_token_type ^ 1;
+    op3.m_Pendingorder_buy_type = send_buy_type;
+    op3.m_Pendingorder_num = 4;
+    op3.m_Pendingorder_price = 4;
+
+
+    helper.packed_transaction(op1);
+    sleep(1);
+    helper.packed_transaction(op3);
+    sleep(1);
 
 
     dbt::pendingorder_opearaion op2;
@@ -390,15 +501,90 @@ void test3(){
     op2.m_Pendingorder_num = 4;
     op2.m_Pendingorder_price = 4;
 
-
+    helper.packed_transaction(op2);
 
 
 }
 
 
+void test_self() {
+    testex::test_helper helper("127.0.0.1:8081");
+    helper.set_keys();
+
+
+    auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
+//    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    /*-----------------------------------------*/
+    dbt::pendingorder_opearaion op1;
+    op1.m_type = 3;
+    op1.m_from = ad1;
+    op1.m_Pendingorder_type = 2;
+    op1.m_Pendingorder_Token_type = 1;
+    op1.m_Pendingorder_buy_type = 1;
+    op1.m_Pendingorder_num = 3;
+    op1.m_Pendingorder_price = 3;
+
+
+    helper.packed_transaction(op1);
+
+    sleep(1);
+    dbt::pendingorder_opearaion op2;
+    op2.m_type = 3;
+    op2.m_from = ad1;
+    op2.m_Pendingorder_type = 1;
+    op2.m_Pendingorder_Token_type = 0;
+    op2.m_Pendingorder_buy_type = 1;
+    op2.m_Pendingorder_num = 3;
+    op2.m_Pendingorder_price = 3;
+
+    helper.packed_transaction(op2);
+
+
+}
+
+void test_one() {
+    testex::test_helper helper("127.0.0.1:8081");
+    helper.set_keys();
+
+
+    auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
+//    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    /*-----------------------------------------*/
+    dbt::pendingorder_opearaion op1;
+    op1.m_type = 3;
+    op1.m_from = ad1;
+    op1.m_Pendingorder_type = 2;
+    op1.m_Pendingorder_Token_type = 1;
+    op1.m_Pendingorder_buy_type = 1;
+    op1.m_Pendingorder_num = 3;
+    op1.m_Pendingorder_price = 3;
+
+
+    helper.packed_transaction(op1);
+}
+
+
 int main(int argc, char **argv) {
 
-    test2();
+    int c = (int) (**(argv + 1)) - 48;
+
+    switch (c) {
+        case 1:
+            test_one();
+            break;
+        case 2:
+            test2();
+            break;
+        case 3:
+            test3();
+            break;
+        case 4:
+            test_self();
+            break;
+        case 5:
+            test1();
+            break;
+    }
 
     return 0;
 }

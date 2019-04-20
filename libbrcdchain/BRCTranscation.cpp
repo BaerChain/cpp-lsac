@@ -123,23 +123,23 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 		}
 	}
 
-    try
-    {
-        std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
-        order _order = {_pendingOrderHash, _form, (order_buy_type)_buy_type,
-            (order_token_type)_token_type, (order_type)_type, _map, _nowTime};
-        const std::vector<order> _v = {{_order}};
-        _exdb.insert_operation(_v, true, true);
-    }
-    catch (const boost::exception& e)
-    {
-        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
-        return false;
-    }
-    catch (...){
-        cwarn << "unkown exception .";
-        return false;
-    }
+//    try
+//    {
+//        std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
+//        order _order = {_pendingOrderHash, _form, (order_buy_type)_buy_type,
+//            (order_token_type)_token_type, (order_type)_type, _map, _nowTime};
+//        const std::vector<order> _v = {{_order}};
+//        _exdb.insert_operation(_v, true, true);
+//    }
+//    catch (const boost::exception& e)
+//    {
+//        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
+//        return false;
+//    }
+//    catch (...){
+//        cwarn << "unkown exception .";
+//        return false;
+//    }
     return true;
 }
 
