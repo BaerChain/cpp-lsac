@@ -7,6 +7,7 @@
 #include <brc/exception.hpp>
 #include <brc/types.hpp>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonJS.h>
 namespace dev {
     namespace brc {
         namespace ex {
@@ -107,7 +108,7 @@ namespace dev {
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
                                                                                                 u256(-1), 0);
                     auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
-                                                                                                0, INT64_MAX);
+                                                                                                price, INT64_MAX);
 
                     typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
                     typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
@@ -131,6 +132,8 @@ namespace dev {
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
                     if (begin == end) {
+                        cwarn << "reversion: " << db->revision();
+                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
