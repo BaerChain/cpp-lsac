@@ -11,6 +11,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <libbrcdchain/Transaction.h>
 
 using namespace std;
 using namespace dev;
@@ -385,8 +386,15 @@ void Client::syncBlockQueue()
     if (count)
     {
 //        if( bc().number() % 10 == 0){
+            auto txv = bc().transactions();
             LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                          << (count / elapsed) << " blocks/s) in #" << bc().number();
+                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size();
+
+            for(auto itr : txv ){
+                cwarn << " tx id : " << TransactionBase(itr, CheckTransaction::Everything).sha3();
+            }
+
+
 //        }
 
     }
@@ -418,6 +426,7 @@ void Client::syncTransactionQueue()
 
 		cerror << "  Client::syncTransactionQueue blockchain sync ";
         tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
+
     }
 
     if (newPendingReceipts.empty())

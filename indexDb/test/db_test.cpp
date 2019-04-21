@@ -76,6 +76,10 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             uint32_t length = 10;
             dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
             db.add_index<up_order_index>();
+
+
+
+
             {
                 auto session = db.start_undo_session(true);
                 db.create<up_order>([](up_order &order){
@@ -113,31 +117,6 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                 session1.push();
 
             }
-
-            db.
-
-
-//            db.undo();
-//            db.flush();
-
-
-            //read
-//            for (uint32_t i = 0; i < length; i++) {
-//                std::string nn = "test" + std::to_string(i);
-//                const auto itr = db.find<up_order, by_name>(nn);
-//                BOOST_CHECK(itr);           //if  not find ,  itr is nullptr,
-//                std::cout << itr->name << std::endl;
-//                try {
-//                    const auto &ret = db.get<up_order, by_name>(nn);
-//                } catch (const boost::exception &e) {
-//                    //if not find , db.get will throw exception.
-//                }
-//            }
-//            const auto &index = db.get_index<up_order_index>().indices().get<by_name>();
-//            for(auto itr = index.begin(); itr != index.end(); itr++){
-//                std::cout << itr->name << std::endl;
-//            }
-
 
         } catch (const std::exception &e) {
 
@@ -345,6 +324,84 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         std::cout  << boost::format("%1%.%2%.%3%") % 2018 % 11 % 2 << std::endl;
 
         std::cout << boost::format("%|40t|%1% | %|20t|%2%") % "trxid"  % "trxid" << std::endl;
+
+    }
+
+
+    BOOST_AUTO_TEST_CASE(db_test5) {
+        try {
+
+
+            //write
+            bfs::path cur_dir = bfs::current_path();
+            cur_dir /= bfs::unique_path();;
+
+
+            uint32_t length = 10;
+            dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
+            db.add_index<up_order_index>();
+
+//            std::shared_ptr<chainbase::database::session> session = new chainbase::database::session(std::move(db.start_undo_session(true)));
+//            std::shared_ptr<chainbase::database::session> session = std::shared_ptr<chainbase::database::session>(std::move(db.start_undo_session(true)));
+
+            boost::optional<chainbase::database::session>   session = db.start_undo_session(true);
+
+
+            auto itr =  db.create<up_order>([](up_order &order){
+                std::string nn = "1";
+                order.name.assign(nn.begin(), nn.end());
+            });
+
+            db.commit(1);
+            {
+                auto session = db.start_undo_session(true);
+                auto mm = db.find(itr.id);
+                BOOST_CHECK(mm);
+
+                db.modify(*mm, [](up_order &order){
+                    std::string nn = "2";
+                    order.name.assign(nn.begin(), nn.end());
+                });
+                session.push();
+
+            }
+//            session->undo();
+            db.undo();
+
+            {
+                auto ret = db.find(itr.id);
+                std::cout << ret->name << std::endl;
+            }
+            ////////////////////////////////////
+            {
+                auto mm = db.find(itr.id);
+                BOOST_CHECK(mm);
+
+                db.modify(*mm, [](up_order &order){
+                    std::string nn = "3";
+                    order.name.assign(nn.begin(), nn.end());
+                });
+                session->squash();
+            }
+//            db.undo_all();
+            session->undo();
+            {
+                auto ret = db.find(itr.id);
+                std::cout << ret->name << std::endl;
+            }
+
+
+
+
+
+        } catch (const std::exception &e) {
+
+        } catch (const boost::exception &e) {
+
+        } catch (...) {
+
+        }
+
 
     }
 

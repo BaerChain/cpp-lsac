@@ -310,6 +310,7 @@ bool Block::sync(BlockChain const& _bc, h256 const& _block, BlockHeader const& _
 pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQueue& _tq,
     GasPricer const& _gp, unsigned msTimeout)
 {
+
     if (isSealed())
         BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 
@@ -336,12 +337,11 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                     if (t.gasPrice() >= _gp.ask(*this))
                     {
 
-						cerror << " block execute begin";
+					cerror << " block execute begin";
                         //                        Timer t;
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
-                        //                        cnote << "TX took:" << t.elapsed() * 1000;
                     }
                     else if (t.gasPrice() < _gp.ask(*this) * 9 / 10)
                     {

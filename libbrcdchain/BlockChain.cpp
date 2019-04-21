@@ -398,6 +398,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
+
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
 				cerror << "BlockChain::sync   block import ";
