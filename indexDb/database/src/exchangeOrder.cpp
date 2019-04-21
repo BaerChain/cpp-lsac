@@ -2,7 +2,7 @@
 #include <boost/tuple/tuple.hpp>
 
 #include <brc/exception.hpp>
-
+#include <libbrccore/CommonJS.h>
 
 using namespace dev;
 namespace dev {
@@ -217,6 +217,7 @@ namespace dev {
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
                 db->commit(version);
+				cerror << " exdb commit";
 //                cwarn << "commit version : " << version;
                 return true;
             }
