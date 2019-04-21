@@ -117,7 +117,7 @@ void Block::resetCurrent(int64_t _timestamp)
     m_dposTransations.clear();
     // TODO: check.
 
-    m_state.exdb().rollback();
+    //m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
 
@@ -148,7 +148,6 @@ void Block::noteChain(BlockChain const& _bc)
 PopulationStatistics Block::populateFromChain(
     BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
-    cwarn << "populateFromChain";
     noteChain(_bc);
 
     PopulationStatistics ret{0.0, 0.0};
@@ -165,7 +164,7 @@ PopulationStatistics Block::populateFromChain(
     if (bi.number())
     {
         // Non-genesis:
-        cwarn << "begin.1 number: " << bi.number();
+
         // 1. Start at parent's end state (state root).
         BlockHeader bip(_bc.block(bi.parentHash()));
         sync(_bc, bi.parentHash(), bip);
@@ -177,15 +176,17 @@ PopulationStatistics Block::populateFromChain(
             &b, function<void(Exception&)>(), _ir | ImportRequirements::TransactionBasic);
         ret.verify = t.elapsed();
         t.restart();
+
+		cerror << " Block::populateFromChain    block enact";
+
         enact(vb, _bc);
         ret.enact = t.elapsed();
     }
     else
     {
-        cwarn << "number";
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-        m_state = State(m_state.accountStartNonce(), m_state.db(), m_state.exdb(),
+        m_state = State(m_state.accountStartNonce(), m_state.db(),m_state.exdb(),
             BaseState::Empty);  // TODO: try with PreExisting.
         sync(_bc, _h, bi);
     }
@@ -335,7 +336,9 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                 {
                     if (t.gasPrice() >= _gp.ask(*this))
                     {
-                        cwarn << "sync transaction." << t.sha3();
+
+					cerror << " block execute begin";
+                        //                        Timer t;
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
@@ -457,6 +460,9 @@ u256 Block::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc)
 #endif
 
     m_previousBlock = biParent;
+
+
+	cerror << "Block::enactOn block enact ";
     auto ret = enact(_block, _bc);
 
 #if BRC_TIMED_ENACTMENTS
@@ -502,6 +508,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
             if(tr.nonce() == u256(2) && tr.from() == Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad")){
                 cwarn << "Enacting transaction: " << tr.nonce() << " ----  "<< toJS(tr.from()) << " ----  " << toJS(tr.receiveAddress());
             }
+			cerror << "enact block execute";
             execute(_bc.lastBlockHashes(), tr);
         }
         catch (Exception& ex)
@@ -650,7 +657,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
     {
         auto r = rootHash();
         m_state.db().rollback();  // TODO: API in State for this?
-
+		m_state.exdb().rollback();
         // exdb rollback
 
         BOOST_THROW_EXCEPTION(
@@ -661,7 +668,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
     {
         // Rollback the trie.
         m_state.db().rollback();  // TODO: API in State for this?
-
+		m_state.exdb().rollback();
         // exdb rollback
         BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(
                                   bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
@@ -681,6 +688,9 @@ ExecutionResult Block::execute(LastBlockHashesFace const& _lh, Transaction const
     uncommitToSeal();
 
     //
+
+
+	cerror << "Block::execute     m_state.execute";
     std::pair<ExecutionResult, TransactionReceipt> resultReceipt = m_state.execute(EnvInfo(info(), _lh, gasUsed()), *m_sealEngine, _t, _p, _onOp);
 
     if (_p == Permanence::Committed)
@@ -831,10 +841,11 @@ void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData, uint64_
     LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
     LOG(m_loggerDetailed) << m_state;
 
-//    m_currentBlock.setTimestamp(utcTimeMilliSec());
+    //m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
-    m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());
+    m_currentBlock.setRoots(
+        hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());
 
     m_currentBlock.setParentHash(m_previousBlock.hash());
     m_currentBlock.setExtraData(_extraData);
@@ -853,6 +864,7 @@ void Block::uncommitToSeal()
 {
     if (m_committedToSeal)
     {
+		cerror << "Block  uncommitToseal";
         m_state = m_precommit;
         m_committedToSeal = false;
     }
