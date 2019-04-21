@@ -161,7 +161,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             break;
                         }
                         case pendingOrder: {
-                            auto pendingorder_op = new pendingorder_opearaion((op_type) type,
+                            auto pendingorder_op = new pendingorder_opearaion( (op_type)type,
                                                                               Address(op_obj["m_from"].get_str()),
                                                                               (uint8_t) op_obj["m_type"].get_int(),
                                                                               (uint8_t) op_obj["m_token_type"].get_int(),

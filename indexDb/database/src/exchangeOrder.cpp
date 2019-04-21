@@ -132,7 +132,6 @@ namespace dev {
                 } catch (const dev::Exception &e) {
                     std::cout << e.what() << std::endl;
                     exit(0);
-                    return result;
                 } catch (const std::exception &e) {
                     std::cout << "error exchange_plugin " << e.what() << "\n";
                     exit(0);
@@ -217,8 +216,7 @@ namespace dev {
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
                 db->commit(version);
-				cerror << " exdb commit";
-//                cwarn << "commit version : " << version;
+                cwarn << "commit version : " << version;
                 return true;
             }
 

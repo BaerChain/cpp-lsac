@@ -8,14 +8,68 @@
 #include <brc/types.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonJS.h>
+
+#include <optional>
+
 namespace dev {
     namespace brc {
         namespace ex {
 
+//            class ex_session{
+//            public:
+//                ex_session() = default;
+//
+//                ex_session(ex_session &&other):_session(std::move(other._session)){
+//
+//                }
+//
+//                void squash(){
+//                    if(_session){
+//                        _session->squash();
+//                    }
+//                }
+//
+//                void undo(){
+//                    if(_session){
+//                        _session->undo();
+//                    }
+//                }
+//
+//                void push(){
+//                    if(_session){
+//                        _session->push();
+//                    }
+//                }
+//
+//                ex_session &operator= (ex_session &&o){
+//                    if(o._session){
+//                        _session = std::move(o._session);
+//                        o._session.reset();
+//                    }
+//                    else{
+//                        _session.reset();
+//                    }
+//                    return *this;
+//                }
+//
+//
+//            private:
+//                std::optional<chainbase::database::session> _session;
+//            };
+//
+//
+
+
+
+
+
+
+
+
+
             class exchange_plugin {
             public:
                 exchange_plugin() : db(nullptr) {
-
                 }
 
                 ~exchange_plugin();
@@ -132,7 +186,7 @@ namespace dev {
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
                     if (begin == end) {
-                        cwarn << "reversion: " << db->revision();
+                        cwarn << "reversion: " << db->revision() << "  this " << this;
                         cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
@@ -199,9 +253,11 @@ namespace dev {
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
-//                boost::optional<chainbase::database::session> _trx_session;
 
+
+//                ex_session      _db_session;
             };
+
 
 
         }
