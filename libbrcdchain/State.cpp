@@ -92,6 +92,7 @@ void State::populateFrom(AccountMap const &_map) {
     Account a;
     if (it != m_cache.end())
         a = it->second;
+	cerror << "State::populateFrom ";
     brc::commit(_map, m_state);
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
@@ -1050,6 +1051,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
+	cerror << "execute  executeTransaction";
     bool const statusCode = executeTransaction(e, _t, onOp);
 
     bool removeEmptyAccounts = false;
@@ -1080,6 +1082,7 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
         EnvInfo envInfo(_block.info(), _lastHashes, gasUsed);
 
         Executive e(*this, envInfo, _sealEngine);
+		cerror << "executeBlockTransactions  executeTransaction";
         executeTransaction(e, _block.pending()[i], OnOpFunc());
 
         gasUsed += e.gasUsed();
@@ -1091,6 +1094,8 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
+		cerror << "executeTransaction";
+
         _e.initialize(_t);
 
         if (!_e.execute())

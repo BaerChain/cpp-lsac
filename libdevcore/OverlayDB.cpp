@@ -30,6 +30,7 @@ OverlayDB::~OverlayDB() = default;
 
 void OverlayDB::commit()
 {
+	cerror << " overlayDB commit";
     if (m_db)
     {
         auto writeBatch = m_db->createWriteBatch();
@@ -99,7 +100,7 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 
 void OverlayDB::rollback()
 {
-    cwarn << "OverlayDB rollback";
+    cerror << "OverlayDB rollback";
 #if DEV_GUARDED_DB
     WriteGuard l(x_this);
 #endif

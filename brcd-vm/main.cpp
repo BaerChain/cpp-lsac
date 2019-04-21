@@ -308,6 +308,7 @@ int main(int argc, char** argv)
     unsigned total = 0;
     bigint memTotal;
 
+	cerror << "ininitializeit success";
     executive.initialize(t);
     if (!code.empty())
         executive.call(contractDestination, sender, value, gasPrice, &data, gas);
