@@ -148,6 +148,7 @@ void Block::noteChain(BlockChain const& _bc)
 PopulationStatistics Block::populateFromChain(
     BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
+    cwarn << "populateFromChain";
     noteChain(_bc);
 
     PopulationStatistics ret{0.0, 0.0};
@@ -164,7 +165,7 @@ PopulationStatistics Block::populateFromChain(
     if (bi.number())
     {
         // Non-genesis:
-
+        cwarn << "begin.1 number: " << bi.number();
         // 1. Start at parent's end state (state root).
         BlockHeader bip(_bc.block(bi.parentHash()));
         sync(_bc, bi.parentHash(), bip);
@@ -181,9 +182,10 @@ PopulationStatistics Block::populateFromChain(
     }
     else
     {
+        cwarn << "number";
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-        m_state = State(m_state.accountStartNonce(), m_state.db(),m_state.exdb(),
+        m_state = State(m_state.accountStartNonce(), m_state.db(), m_state.exdb(),
             BaseState::Empty);  // TODO: try with PreExisting.
         sync(_bc, _h, bi);
     }
