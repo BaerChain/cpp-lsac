@@ -15,58 +15,6 @@ namespace dev {
     namespace brc {
         namespace ex {
 
-//            class ex_session{
-//            public:
-//                ex_session() = default;
-//
-//                ex_session(ex_session &&other):_session(std::move(other._session)){
-//
-//                }
-//
-//                void squash(){
-//                    if(_session){
-//                        _session->squash();
-//                    }
-//                }
-//
-//                void undo(){
-//                    if(_session){
-//                        _session->undo();
-//                    }
-//                }
-//
-//                void push(){
-//                    if(_session){
-//                        _session->push();
-//                    }
-//                }
-//
-//                ex_session &operator= (ex_session &&o){
-//                    if(o._session){
-//                        _session = std::move(o._session);
-//                        o._session.reset();
-//                    }
-//                    else{
-//                        _session.reset();
-//                    }
-//                    return *this;
-//                }
-//
-//
-//            private:
-//                std::optional<chainbase::database::session> _session;
-//            };
-//
-//
-
-
-
-
-
-
-
-
-
             class exchange_plugin {
             public:
                 exchange_plugin() : db(nullptr) {
@@ -185,12 +133,15 @@ namespace dev {
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
+                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
                     if (begin == end) {
-                        cwarn << "reversion: " << db->revision() << "  this " << this;
                         cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
+
+                        update_dynamic_orders(true);
+
                         return;
                     }
                     auto spend = amount;
@@ -215,6 +166,8 @@ namespace dev {
                         db->create<order_result_object>([&](order_result_object &obj) {
                             obj.set_data(ret);
                         });
+                        update_dynamic_result_orders();
+
 //                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
@@ -222,7 +175,7 @@ namespace dev {
                             if (rm_obj != nullptr) {
                                 begin++;
                                 db->remove(*rm_obj);
-
+                                update_dynamic_orders(false);
                             } else {
                                 if (throw_exception) {
                                     BOOST_THROW_EXCEPTION(remove_object_error());
@@ -239,23 +192,54 @@ namespace dev {
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
                         });
+                        update_dynamic_orders(true);
                     }
 
 
                 }
 
 
+
+                //only for public interface.
+                //mabey remove it.  if use for debug.
                 inline void check_db() const{
                     if (!db) {
                         BOOST_THROW_EXCEPTION(get_db_instance_error());
                     }
+
                 }
+
+                inline void check_version() const{
+                    const auto &obj = get_dynamic_object();
+                    cwarn << "current  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                };
+
+
+                const dynamic_object &get_dynamic_object() const {
+                    return db->get<dynamic_object>();
+                }
+
+                void update_dynamic_orders(bool up){
+                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                        if(up){
+                            obj.orders++;
+                        }else{
+                            obj.orders--;
+                        }
+                    });
+                }
+
+                void update_dynamic_result_orders(){
+                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                        obj.result_orders++;
+                    });
+                }
+
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
 
 
-//                ex_session      _db_session;
             };
 
 

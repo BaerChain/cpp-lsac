@@ -755,7 +755,9 @@ Block Client::block(h256 const& _block) const
 {
     try
     {
+        cwarn << "clinet block 1" ;
         Block ret(bc(), m_stateDB, m_StateExDB);
+        cwarn << "clinet block populateFromChain" ;
         ret.populateFromChain(bc(), _block);
         return ret;
     }
@@ -889,10 +891,13 @@ h256 Client::importTransaction(Transaction const& _t)
     // (e.g. transaction signature, account balance) using the state of
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
+    cwarn << "Transaction : " << _t.sha3();
     Block currentBlock = block(bc().currentHash());
-    cwarn << "begin.1 number: " << currentBlock.info().number();
+    cwarn << "Executive : " << _t.sha3();
     Executive e(currentBlock, bc());
+    cwarn << "initialize : " << _t.sha3();
     e.initialize(_t);
+    cwarn << "import : " << _t.sha3();
     ImportResult res = m_tq.import(_t.rlp());
     switch (res)
     {

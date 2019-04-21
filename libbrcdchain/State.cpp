@@ -1040,7 +1040,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
                                                               Permanence _p, OnOpFunc const &_onOp) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
-    cwarn << "state execu " << _t.sha3();
+    cwarn << "state execu " << _t.sha3() << " state this " << this;
     Executive e(*this, _envInfo, _sealEngine);
     ExecutionResult res;
     e.setResultRecipient(res);
@@ -1092,7 +1092,7 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
-        cwarn << "executeTransaction " << _t.sha3();
+        cwarn << "executeTransaction " << _t.sha3()  << " this: " <<  this;
         _e.initialize(_t);
 
         if (!_e.execute())

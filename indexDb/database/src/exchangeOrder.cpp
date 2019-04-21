@@ -12,9 +12,16 @@ namespace dev {
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
                     : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
 
-
+                cwarn << "create ex............ only one.";
                 db->add_index<order_object_index>();
                 db->add_index<order_result_object_index>();
+                db->add_index<dynamic_object_index>();
+
+
+                if (!db->find<dynamic_object>()) {
+                    db->create<dynamic_object>([](dynamic_object &obj) {
+                    });
+                }
             }
 
             exchange_plugin::~exchange_plugin() {
@@ -23,11 +30,12 @@ namespace dev {
 
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
-                check_db();
-
-                auto session = db->start_undo_session(true);
-                std::vector<result_order> result;
-                try {
+                return db->with_write_lock([&]() {
+                    check_db();
+                    check_version();
+                    auto session = db->start_undo_session(true);
+                    std::vector<result_order> result;
+                    //                try {
                     for (const auto &itr : orders) {
                         if (itr.buy_type == only_price) {
                             for (const auto t :  itr.price_token) {
@@ -129,26 +137,29 @@ namespace dev {
                     if (!reset) {
                         session.push();
                     }
-                } catch (const dev::Exception &e) {
-                    std::cout << e.what() << std::endl;
-                    exit(0);
-                } catch (const std::exception &e) {
-                    std::cout << "error exchange_plugin " << e.what() << "\n";
-                    exit(0);
-                } catch (const boost::exception &e) {
-                    std::cout << "error exchange_plugin " << boost::diagnostic_information(e) << "\n";
-                    exit(0);
-                }
+//                } catch (const dev::Exception &e) {
+//                    std::cout << e.what() << std::endl;
+//                    exit(0);
+//                } catch (const std::exception &e) {
+//                    std::cout << "error exchange_plugin " << e.what() << "\n";
+//                    exit(0);
+//                } catch (const boost::exception &e) {
+//                    std::cout << "error exchange_plugin " << boost::diagnostic_information(e) << "\n";
+//                    exit(0);
+//                }
 
-                if (result.size() > 0) {
-                    cwarn << "revision" << db->revision();
-                    for (auto it : result) {
-                        cwarn << "sender: " << dev::toJS(it.sender) << " acceptor: " << dev::toJS(it.acceptor);
-                        cwarn << "send_trxid: " << dev::toJS(it.send_trxid) << " to_trxid: " << dev::toJS(it.to_trxid);
-                        cwarn << "amount: " << dev::toJS(it.amount) << " price: " << dev::toJS(it.price) << std::endl;
+                    if (result.size() > 0) {
+                        cwarn << "revision" << db->revision();
+                        for (auto it : result) {
+                            cwarn << "sender: " << dev::toJS(it.sender) << " acceptor: " << dev::toJS(it.acceptor);
+                            cwarn << "send_trxid: " << dev::toJS(it.send_trxid) << " to_trxid: "
+                                  << dev::toJS(it.to_trxid);
+                            cwarn << "amount: " << dev::toJS(it.amount) << " price: " << dev::toJS(it.price)
+                                  << std::endl;
+                        }
                     }
-                }
-                return result;
+                    return result;
+                });
             }
 
             std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const {
@@ -207,16 +218,21 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
-//                cwarn << "rollback version : ";
                 check_db();
                 db->undo();
+                const auto &obj = get_dynamic_object();
+                cwarn << "rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
 
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
+                const auto &obj = db->get<dynamic_object>();
+                db->modify(obj, [&](dynamic_object &obj) {
+                    obj.version = version;
+                });
                 db->commit(version);
-                cwarn << "commit version : " << version;
+//                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
 

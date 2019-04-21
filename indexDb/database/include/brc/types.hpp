@@ -103,7 +103,8 @@ namespace dev {
 
             enum object_id {
                 order_object_id = 0,
-                order_result_object_id
+                order_result_object_id,
+                dynamic_object_id
             };
 
 
@@ -249,6 +250,32 @@ namespace dev {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+            class dynamic_object : public chainbase::object<dynamic_object_id, dynamic_object> {
+            public:
+                template<typename Constructor, typename Allocator>
+                dynamic_object(Constructor &&c, Allocator &&a) {
+                    c(*this);
+                }
+                id_type id;
+                int64_t version;
+                uint64_t  orders;           //all orders numbers.
+                uint64_t  result_orders;       // all exchange order .
+            };
+
+
+            typedef multi_index_container<
+                    dynamic_object,
+                    indexed_by<
+                                 ordered_unique<tag<by_id>,
+                                    member<dynamic_object, dynamic_object::id_type, &dynamic_object::id>
+                                 >
+                              >,
+                     chainbase::allocator<dynamic_object>
+            > dynamic_object_index;
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
             struct exchange_order {
                 exchange_order(const order_object &obj)
@@ -267,6 +294,9 @@ namespace dev {
                 order_token_type token_type;
             };
 
+
+
+
         }
     }
 }
@@ -274,3 +304,4 @@ namespace dev {
 
 CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_object, dev::brc::ex::order_object_index)
 CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_result_object, dev::brc::ex::order_result_object_index)
+CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::dynamic_object, dev::brc::ex::dynamic_object_index)

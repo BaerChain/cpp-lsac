@@ -19,8 +19,8 @@ void setThreadName(std::string const& _n);
 /// Set the current thread's log name.
 std::string getThreadName();
 
-#define FILE_AND_LINE   path_to_file(__FILE__) << " " << __LINE__
-#define FORMAT_FILE      "[" << std::setw(15) << std::left << FILE_AND_LINE  << "] "
+#define FILE_AND_LINE   path_to_file(__FILE__) << " " << __LINE__  << " "  << __FUNCTION__
+#define FORMAT_FILE      "[" << std::setw(30) << std::left   << FILE_AND_LINE << std::right  << "] "
 
 
 

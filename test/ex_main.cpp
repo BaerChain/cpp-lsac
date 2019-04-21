@@ -337,14 +337,24 @@ void test1() {
 
     uint8_t token_type[] = {0, 1};
     uint8_t type[] = {1, 2};
+    static uint32_t count = 1;
+
+    std::vector<Address> senders = {Address("0xe523e7c59a0725afd08bc9751c89eed6f8e16dec"),
+                                    Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856"),
+                                    Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad"),
+                                    Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77"),
+                                    Address("0xe53768c8b089cf35adb8c85fa183f36d73616a53")
+    };
+
+
     {
         for (uint8_t i = 0; i < 2; i++) {
             for (uint8_t j = 0; j < 2; j++) {
                 uint8_t send_type = type[i];                  //buy
                 uint8_t send_token_type = token_type[j];            //BRC
                 uint8_t send_buy_type = 1;
-                auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
-                auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+                auto ad1 = senders[count % senders.size()];
+                auto ad2 = senders[(count + 1) % senders.size()];
                 /*-----------------------------------------*/
                 dbt::pendingorder_opearaion op1;
                 op1.m_type = 3;
@@ -352,7 +362,7 @@ void test1() {
                 op1.m_Pendingorder_type = send_type;
                 op1.m_Pendingorder_Token_type = send_token_type;
                 op1.m_Pendingorder_buy_type = send_buy_type;
-                op1.m_Pendingorder_num = 2;
+                op1.m_Pendingorder_num = count;
                 op1.m_Pendingorder_price = 2;
 
                 dbt::pendingorder_opearaion op2 = helper.up_down_op(op1, ad2);
@@ -368,6 +378,7 @@ void test1() {
                 auto ac2 = helper.get_address_info(ad2);
                 s_ac1 % ac1;
                 s_ac2 % ac2;
+                count++;
                 sleep(2);
             }
         }
