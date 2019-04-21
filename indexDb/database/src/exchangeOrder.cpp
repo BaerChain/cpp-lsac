@@ -2,7 +2,7 @@
 #include <boost/tuple/tuple.hpp>
 
 #include <brc/exception.hpp>
-
+#include <libbrccore/CommonJS.h>
 
 using namespace dev;
 namespace dev {
