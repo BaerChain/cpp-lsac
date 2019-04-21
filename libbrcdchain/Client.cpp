@@ -377,6 +377,7 @@ void Client::syncBlockQueue()
     unsigned count;
     Timer t;
 
+    cwarn << "start -----------------syncBlockQueue----";
     tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
     double elapsed = t.elapsed();
 
@@ -407,6 +408,7 @@ void Client::syncBlockQueue()
 
 void Client::syncTransactionQueue()
 {
+    cwarn << "start -----------------syncTransactionQueue----";
     resyncStateFromChain();
     Timer timer;
 
@@ -869,6 +871,7 @@ void Client::rewind(unsigned _n)
 
 h256 Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
 {
+//    cwarn << "submitTransaction: " << _t.
     TransactionSkeleton ts = populateTransactionWithDefaults(_t);
     ts.from = toAddress(_secret);
     Transaction t(ts, _secret);

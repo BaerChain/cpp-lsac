@@ -219,9 +219,11 @@ namespace dev {
 
             bool exchange_plugin::rollback() {
                 check_db();
+                const auto &obj1 = get_dynamic_object();
+                cwarn << "rollback version  exchange database version111 : " << obj1.version << " orders: " << obj1.orders << " ret_orders:" << obj1.result_orders;
                 db->undo();
                 const auto &obj = get_dynamic_object();
-                cwarn << "rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                cwarn << "rollback version  exchange database version222 : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
 
