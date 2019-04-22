@@ -11,6 +11,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <libbrcdchain/Transaction.h>
 
 using namespace std;
 using namespace dev;
@@ -150,6 +151,7 @@ ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
 {
     stopWorking();
+	cerror << " Client::syncQueue   blockChain sync";
     return bc().sync(m_bq, m_stateDB, m_StateExDB,_max);
 }
 
@@ -288,6 +290,8 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         h->reset();
 
     startedWorking();
+
+	cerror << "Client::reopenChain  shdpos dowork ";
     doWork();
 
     startWorking();
@@ -370,19 +374,21 @@ double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
-//  cdebug << "syncBlockQueue()";
 
     ImportRoute ir;
     unsigned count;
     Timer t;
     tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
+
     double elapsed = t.elapsed();
 
     if (count)
     {
         if( bc().number() % 10 == 0){
+            auto txv = bc().transactions();
             LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                          << (count / elapsed) << " blocks/s) in #" << bc().number();
+                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size() <<    m_StateExDB.check_version(false);
+
         }
 
     }
@@ -411,8 +417,8 @@ void Client::syncTransactionQueue()
             ctrace << "Skipping txq sync for a sealed block.";
             return;
         }
-
         tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
+
     }
 
     if (newPendingReceipts.empty())
@@ -439,7 +445,6 @@ void Client::syncTransactionQueue()
     // Tell network about the new transactions.
     if (auto h = m_host.lock())
         h->noteNewTransactions();
-    ctrace << "Processed " << newPendingReceipts.size() << " transactions in" << (timer.elapsed() * 1000) << "(" << (bool)m_syncTransactionQueue << ")";
 }
 
 void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
@@ -594,7 +599,7 @@ void Client::rejigSealing()
             {
                 if (m_working.isSealed())
                 {
-                    LOG(m_logger) << "Tried to seal sealed block...";
+//                    LOG(m_logger) << "Tried to seal sealed block...";
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
@@ -662,11 +667,20 @@ void Client::noteChanged(h256Hash const& _filters)
 void Client::doWork(bool _doWait)
 {
     bool t = true;
-    if (m_syncBlockQueue.compare_exchange_strong(t, false))
+
+
+	cerror << "   Client::doWork :   " << m_needStateReset;
+
+
+	if (m_syncBlockQueue.compare_exchange_strong(t, false))
         syncBlockQueue();
+
+
+
 
     if (m_needStateReset)
     {
+		cerror << " :SHDposClient::doWork   resetState";
         resetState();
         m_needStateReset = false;
     }
@@ -777,6 +791,8 @@ Block Client::block(h256 const& _blockHash, PopulationStatistics* o_stats) const
 
 void Client::flushTransactions()
 {
+
+	cerror << " Client::flushTransactions shdpos dowork ";
     doWork();
 }
 
@@ -916,6 +932,7 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
         t.forceSender(_from);
         if (_ff == FudgeFactor::Lenient)
             temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+
         ret = temp.execute(bc().lastBlockHashes(), t, Permanence::Reverted);
     }
     catch (...)

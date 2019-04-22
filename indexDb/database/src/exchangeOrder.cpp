@@ -2,14 +2,7 @@
 #include <boost/tuple/tuple.hpp>
 
 #include <brc/exception.hpp>
-
-
-//#define GET_ITR_BEGIN_LOWWER(INDEX_TYPE, INDEX, TYPE, PRICE) \
-//     db.get_index<INDEX>().indices().get<INDEX>().lower_bound(boost::tuple<order_token_type, order_token_type>(2, BRC));
-
-#define IF_THROW_EXCEPTION(FLAG, EXP, RETURN) \
-        if(FLAG) { EXP; }else{ return RETURN;}
-
+#include <libbrccore/CommonJS.h>
 
 using namespace dev;
 namespace dev {
@@ -19,9 +12,15 @@ namespace dev {
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
                     : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
 
-
                 db->add_index<order_object_index>();
                 db->add_index<order_result_object_index>();
+                db->add_index<dynamic_object_index>();
+
+
+                if (!db->find<dynamic_object>()) {
+                    db->create<dynamic_object>([](dynamic_object &obj) {
+                    });
+                }
             }
 
             exchange_plugin::~exchange_plugin() {
@@ -30,10 +29,11 @@ namespace dev {
 
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
-                check_db();
-                auto session = db->start_undo_session(true);
-                std::vector<result_order> result;
-                try {
+                return db->with_write_lock([&]() {
+                    check_db();
+                    auto session = db->start_undo_session(true);
+                    std::vector<result_order> result;
+                    //                try {
                     for (const auto &itr : orders) {
                         if (itr.buy_type == only_price) {
                             for (const auto t :  itr.price_token) {
@@ -135,14 +135,12 @@ namespace dev {
                     if (!reset) {
                         session.push();
                     }
-                } catch (const dev::Exception &e) {
-                    std::cout << e.what() << std::endl;
+
                     return result;
-                }
-                return result;
+                });
             }
 
-            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const{
+            std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const {
                 check_db();
                 std::vector<exchange_order> ret;
 
@@ -170,7 +168,7 @@ namespace dev {
                 return ret;
             }
 
-            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const{
+            std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const {
                 check_db();
                 vector<result_order> ret;
                 const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
@@ -198,22 +196,25 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
-//                cwarn << "rollback version : ";
                 check_db();
-                db->undo();
+                db->undo_all();
                 return true;
             }
 
             bool exchange_plugin::commit(int64_t version) {
                 check_db();
+                const auto &obj = db->get<dynamic_object>();
+                db->modify(obj, [&](dynamic_object &obj) {
+                    obj.version = version;
+                });
                 db->commit(version);
-//                cwarn << "commit version : " << version;
+//                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
 
 
             std::vector<exchange_order>
-            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const{
+            exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
                 check_db();
                 vector<exchange_order> ret;
                 if (type == buy) {
@@ -252,20 +253,20 @@ namespace dev {
                 auto session = db->start_undo_session(true);
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
-                for(const auto &t : os){
+                for (const auto &t : os) {
                     auto begin = index_trx.lower_bound(t);
                     auto end = index_trx.upper_bound(t);
-                    if(begin == end){
+                    if (begin == end) {
                         BOOST_THROW_EXCEPTION(find_order_trxid_error());
                     }
-                    order   o;
+                    order o;
                     o.trxid = begin->trxid;
                     o.sender = begin->sender;
                     o.buy_type = only_price;
                     o.token_type = begin->token_type;
                     o.type = begin->type;
                     o.time = begin->create_time;
-                    while(begin != end){
+                    while (begin != end) {
                         o.price_token[begin->price] = begin->token_amount;
                     }
                     const auto rm = db->find(begin->id);
@@ -273,7 +274,7 @@ namespace dev {
                     db->remove(*rm);
                     ret.push_back(o);
                 }
-                if(!reset){
+                if (!reset) {
                     session.push();
                 }
                 return ret;

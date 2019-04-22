@@ -176,8 +176,7 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
     m_curr_varlitors.assign(_currvar.begin(), _currvar.end());
     if (_currvar.empty())
     {
-        LOG(m_warnlog)
-            << "the m_dpos_context's curr_varlitor is empty and try to use genesis varlitor...";
+//        LOG(m_warnlog) << "the m_dpos_context's curr_varlitor is empty and try to use genesis varlitor...";
         if (_gennesis_var.empty())
         {
             LOG(m_logger) << " the genesis varlitor is empty, can't to create block ...";

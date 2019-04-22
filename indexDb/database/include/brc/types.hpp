@@ -103,7 +103,8 @@ namespace dev {
 
             enum object_id {
                 order_object_id = 0,
-                order_result_object_id
+                order_result_object_id,
+                dynamic_object_id
             };
 
 
@@ -156,7 +157,7 @@ namespace dev {
                             ordered_unique<tag<by_id>,
                                     member<order_object, order_object::id_type, &order_object::id>
                             >,
-                            ordered_non_unique<tag<by_trx_id>,
+                            ordered_unique<tag<by_trx_id>,
                                     member<order_object, h256, &order_object::trxid>
                             >,
                             ordered_non_unique<tag<by_price_less>,
@@ -216,10 +217,10 @@ namespace dev {
                 Address acceptor;
                 order_type type;
                 order_token_type token_type;         //sender token type
-                order_buy_type buy_type;
-                Time_ms create_time;        //success time.
-                h256 send_trxid;         //sender trxid;
-                h256 to_trxid;           //which trxid
+                order_buy_type   buy_type;
+                Time_ms create_time;                //success time.
+                h256 send_trxid;                    //sender trxid;
+                h256 to_trxid;                      //which trxid
                 u256 amount;
                 u256 price;
 
@@ -231,10 +232,7 @@ namespace dev {
                     order_result_object,
                     indexed_by<
                             ordered_unique<tag<by_greater_id>,
-                                    composite_key<order_result_object,
-                                        member<order_result_object, order_result_object::id_type, &order_result_object::id>
-                                    >,
-                                    composite_key_compare<std::greater<order_result_object::id_type>>
+                                    member<order_result_object, order_result_object::id_type, &order_result_object::id>
                             >,
                             ordered_non_unique<tag<by_sender>,
                                     composite_key<order_result_object,
@@ -248,6 +246,32 @@ namespace dev {
             > order_result_object_index;
 
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            class dynamic_object : public chainbase::object<dynamic_object_id, dynamic_object> {
+            public:
+                template<typename Constructor, typename Allocator>
+                dynamic_object(Constructor &&c, Allocator &&a) {
+                    c(*this);
+                }
+                id_type id;
+                int64_t version;
+                uint64_t  orders;           //all orders numbers.
+                uint64_t  result_orders;       // all exchange order .
+            };
+
+
+            typedef multi_index_container<
+                    dynamic_object,
+                    indexed_by<
+                                 ordered_unique<tag<by_id>,
+                                    member<dynamic_object, dynamic_object::id_type, &dynamic_object::id>
+                                 >
+                              >,
+                     chainbase::allocator<dynamic_object>
+            > dynamic_object_index;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +294,9 @@ namespace dev {
                 order_token_type token_type;
             };
 
+
+
+
         }
     }
 }
@@ -277,3 +304,4 @@ namespace dev {
 
 CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_object, dev::brc::ex::order_object_index)
 CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::order_result_object, dev::brc::ex::order_result_object_index)
+CHAINBASE_SET_INDEX_TYPE(dev::brc::ex::dynamic_object, dev::brc::ex::dynamic_object_index)

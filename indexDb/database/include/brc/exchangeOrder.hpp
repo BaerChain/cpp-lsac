@@ -7,6 +7,10 @@
 #include <brc/exception.hpp>
 #include <brc/types.hpp>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonJS.h>
+
+#include <optional>
+
 namespace dev {
     namespace brc {
         namespace ex {
@@ -14,7 +18,6 @@ namespace dev {
             class exchange_plugin {
             public:
                 exchange_plugin() : db(nullptr) {
-
                 }
 
                 ~exchange_plugin();
@@ -73,7 +76,14 @@ namespace dev {
                 std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
 
 
-
+                inline std::string check_version(bool p = true) const{
+                    const auto &obj = get_dynamic_object();
+                    std::string ret = "current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+                    if(p){
+                        cwarn << ret;
+                    }
+                    return ret;
+                };
             private:
 
                 /// get iterator by type and price . this only find order of sell.
@@ -107,7 +117,7 @@ namespace dev {
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
                                                                                                 u256(-1), 0);
                     auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
-                                                                                                0, INT64_MAX);
+                                                                                                price, INT64_MAX);
 
                     typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
                     typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
@@ -130,10 +140,15 @@ namespace dev {
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
+//                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
                     if (begin == end) {
+//                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
+
+                        update_dynamic_orders(true);
+
                         return;
                     }
                     auto spend = amount;
@@ -151,13 +166,15 @@ namespace dev {
                             db->modify(*begin, [&](order_object &obj) {
                                 obj.token_amount -= spend;
                             });
-                            ret.set_data(od, begin, amount, begin->price);
+                            ret.set_data(od, begin, spend, begin->price);
                             spend = 0;
                         }
 
                         db->create<order_result_object>([&](order_result_object &obj) {
                             obj.set_data(ret);
                         });
+                        update_dynamic_result_orders();
+
 //                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
@@ -165,7 +182,7 @@ namespace dev {
                             if (rm_obj != nullptr) {
                                 begin++;
                                 db->remove(*rm_obj);
-
+                                update_dynamic_orders(false);
                             } else {
                                 if (throw_exception) {
                                     BOOST_THROW_EXCEPTION(remove_object_error());
@@ -182,21 +199,58 @@ namespace dev {
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
                         });
+                        update_dynamic_orders(true);
                     }
 
 
                 }
 
 
+
+                //only for public interface.
+                //mabey remove it.  if use for debug.
                 inline void check_db() const{
                     if (!db) {
                         BOOST_THROW_EXCEPTION(get_db_instance_error());
                     }
+
                 }
+
+
+
+
+                const dynamic_object &get_dynamic_object() const {
+                    return db->get<dynamic_object>();
+                }
+
+                void update_dynamic_orders(bool up){
+                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                        if(up){
+                            obj.orders++;
+                        }else{
+                            obj.orders--;
+                        }
+                    });
+                }
+
+                void update_dynamic_result_orders(){
+                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                        obj.result_orders++;
+                    });
+                }
+
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
+
+
+
+
+
+
+
             };
+
 
 
         }
