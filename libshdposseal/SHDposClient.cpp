@@ -63,7 +63,7 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
         //compare_exchange_strong(T& expected, T val, ...)
         //比较本身值和expected, 如果相等者旧值=val, 如果不等 expected=旧值
 
-		cerror << "SHDposClient::doWork  : " << m_needStateReset   << "  _dowait : " << _doWait ;
+//		cerror << "SHDposClient::doWork  : " << m_needStateReset   << "  _dowait : " << _doWait ;
 
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
             syncBlockQueue();

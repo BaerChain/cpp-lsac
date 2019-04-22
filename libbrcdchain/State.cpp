@@ -1051,7 +1051,6 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-	cerror << "execute  executeTransaction";
     bool const statusCode = executeTransaction(e, _t, onOp);
 
     bool removeEmptyAccounts = false;
@@ -1068,8 +1067,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
             break;
     }
 
-    TransactionReceipt const receipt =
-            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+    TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
             TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
     return make_pair(res, receipt);
@@ -1094,8 +1092,6 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
-		cerror << "executeTransaction";
-
         _e.initialize(_t);
 
         if (!_e.execute())

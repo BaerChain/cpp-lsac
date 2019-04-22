@@ -173,7 +173,8 @@ namespace testex {
             static int count = 0;
             auto s = toHexPrefixed(tx.rlp());
             std::string rpc =
-                    "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":"+ std::to_string(count++) +"}";
+                    "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + s + "\"],\"id\":" +
+                    std::to_string(count++) + "}";
             cwarn << "send trx " << toJS(tx.from()) << "   tx: " << toJS(tx.sha3()) << " : " << rpc;
             std::string ret;
             http_post(rpc, ret);
@@ -347,42 +348,39 @@ void test1() {
     };
 
 
-    {
-        for (uint8_t i = 0; i < 2; i++) {
-            for (uint8_t j = 0; j < 2; j++) {
-                uint8_t send_type = type[i];                  //buy
-                uint8_t send_token_type = token_type[j];            //BRC
-                uint8_t send_buy_type = 1;
-                auto ad1 = senders[count % senders.size()];
-                auto ad2 = senders[(count + 1) % senders.size()];
-                /*-----------------------------------------*/
-                dbt::pendingorder_opearaion op1;
-                op1.m_type = 3;
-                op1.m_from = ad1;
-                op1.m_Pendingorder_type = send_type;
-                op1.m_Pendingorder_Token_type = send_token_type;
-                op1.m_Pendingorder_buy_type = send_buy_type;
-                op1.m_Pendingorder_num = count;
-                op1.m_Pendingorder_price = 2;
+    for (int mm = 0; mm < 10; mm++) {
+        uint8_t send_type = type[0];                  //buy
+        uint8_t send_token_type = token_type[0];            //BRC
+        uint8_t send_buy_type = 1;
+        auto ad1 = senders[count % senders.size()];
+        auto ad2 = senders[(count + 1) % senders.size()];
+        /*-----------------------------------------*/
+        dbt::pendingorder_opearaion op1;
+        op1.m_type = 3;
+        op1.m_from = ad1;
+        op1.m_Pendingorder_type = send_type;
+        op1.m_Pendingorder_Token_type = send_token_type;
+        op1.m_Pendingorder_buy_type = send_buy_type;
+        op1.m_Pendingorder_num = count;
+        op1.m_Pendingorder_price = 2;
 
-                dbt::pendingorder_opearaion op2 = helper.up_down_op(op1, ad2);
+        dbt::pendingorder_opearaion op2 = helper.up_down_op(op1, ad2);
 
-                auto s_ac1 = helper.get_address_info(ad1);
-                auto s_ac2 = helper.get_address_info(ad2);
+        auto s_ac1 = helper.get_address_info(ad1);
+        auto s_ac2 = helper.get_address_info(ad2);
 
-                helper.packed_transaction(op1);
-                sleep(2);
-                helper.packed_transaction(op2);
+        helper.packed_transaction(op1);
+        helper.packed_transaction(op2);
 
-                auto ac1 = helper.get_address_info(ad1);
-                auto ac2 = helper.get_address_info(ad2);
-                s_ac1 % ac1;
-                s_ac2 % ac2;
-                count++;
-                sleep(2);
-            }
-        }
+        auto ac1 = helper.get_address_info(ad1);
+        auto ac2 = helper.get_address_info(ad2);
+        s_ac1 % ac1;
+        s_ac2 % ac2;
+        count++;
+        sleep(2);
     }
+
+
 }
 
 
@@ -571,7 +569,6 @@ void test_one() {
     op1.m_Pendingorder_num = 3;
     op1.m_Pendingorder_price = 3;
     helper.packed_transaction(op1);
-
 
 
 }

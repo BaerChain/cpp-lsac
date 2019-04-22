@@ -17,7 +17,9 @@ public:
 //            clog(VerbosityDebug, "overlaydb") << "Closing state DB";
             delete db;
         })
-    {}
+    {
+//    	cwarn << "create OverlayDB ......";
+    }
 
     ~OverlayDB();
 
@@ -37,10 +39,11 @@ public:
 
 	bytes lookupAux(h256 const& _h) const;
 
+
 private:
 	using StateCacheDB::clear;
+	std::shared_ptr<db::DatabaseFace> m_db;
 
-    std::shared_ptr<db::DatabaseFace> m_db;
 };
 
 }

@@ -374,28 +374,22 @@ double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
-//  cdebug << "syncBlockQueue()";
 
     ImportRoute ir;
     unsigned count;
     Timer t;
-	cerror << "Client::syncBlockQueue blockchain sync ";
     tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
+
     double elapsed = t.elapsed();
 
     if (count)
     {
-//        if( bc().number() % 10 == 0){
+        if( bc().number() % 10 == 0){
             auto txv = bc().transactions();
             LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size();
+                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size() <<    m_StateExDB.check_version(false);
 
-            for(auto itr : txv ){
-                cwarn << " tx id : " << TransactionBase(itr, CheckTransaction::Everything).sha3();
-            }
-
-
-//        }
+        }
 
     }
 
@@ -423,8 +417,6 @@ void Client::syncTransactionQueue()
             ctrace << "Skipping txq sync for a sealed block.";
             return;
         }
-
-		cerror << "  Client::syncTransactionQueue blockchain sync ";
         tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
 
     }
@@ -453,7 +445,6 @@ void Client::syncTransactionQueue()
     // Tell network about the new transactions.
     if (auto h = m_host.lock())
         h->noteNewTransactions();
-    ctrace << "Processed " << newPendingReceipts.size() << " transactions in" << (timer.elapsed() * 1000) << "(" << (bool)m_syncTransactionQueue << ")";
 }
 
 void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
@@ -906,8 +897,6 @@ h256 Client::importTransaction(Transaction const& _t)
     // we'll catch the exception at the RPC level.
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
-
-	cerror << "initialize   begin";
     e.initialize(_t);
     ImportResult res = m_tq.import(_t.rlp());
     switch (res)
@@ -944,7 +933,6 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
         if (_ff == FudgeFactor::Lenient)
             temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
 
-		cerror << "Client::call block execute begin ";
         ret = temp.execute(bc().lastBlockHashes(), t, Permanence::Reverted);
     }
     catch (...)

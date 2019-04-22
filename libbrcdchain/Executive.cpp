@@ -243,10 +243,6 @@ void Executive::initialize(Transaction const& _transaction)
 
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-		cerror << " m_t.gas() : " << m_t.gas() << "      m_t.gasPrice :" << m_t.gasPrice() << "  gasCost  : " << gasCost;
-		cerror << " m_t.sender : " << m_t.sender();
-
-
         if (!m_t.isVoteTranction())
         {
             bigint totalCost = m_t.value() + gasCost;
