@@ -12,7 +12,6 @@ namespace dev {
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
                     : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
 
-                cwarn << "create ex............ only one.";
                 db->add_index<order_object_index>();
                 db->add_index<order_result_object_index>();
                 db->add_index<dynamic_object_index>();
@@ -32,7 +31,6 @@ namespace dev {
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
                 return db->with_write_lock([&]() {
                     check_db();
-                    check_version();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
                     //                try {
@@ -137,27 +135,7 @@ namespace dev {
                     if (!reset) {
                         session.push();
                     }
-//                } catch (const dev::Exception &e) {
-//                    std::cout << e.what() << std::endl;
-//                    exit(0);
-//                } catch (const std::exception &e) {
-//                    std::cout << "error exchange_plugin " << e.what() << "\n";
-//                    exit(0);
-//                } catch (const boost::exception &e) {
-//                    std::cout << "error exchange_plugin " << boost::diagnostic_information(e) << "\n";
-//                    exit(0);
-//                }
 
-                    if (result.size() > 0) {
-                        cwarn << "revision" << db->revision();
-                        for (auto it : result) {
-                            cwarn << "sender: " << dev::toJS(it.sender) << " acceptor: " << dev::toJS(it.acceptor);
-                            cwarn << "send_trxid: " << dev::toJS(it.send_trxid) << " to_trxid: "
-                                  << dev::toJS(it.to_trxid);
-                            cwarn << "amount: " << dev::toJS(it.amount) << " price: " << dev::toJS(it.price)
-                                  << std::endl;
-                        }
-                    }
                     return result;
                 });
             }
@@ -219,11 +197,7 @@ namespace dev {
 
             bool exchange_plugin::rollback() {
                 check_db();
-                const auto &obj1 = get_dynamic_object();
-                cwarn << "rollback version  exchange database version111 : " << obj1.version << " orders: " << obj1.orders << " ret_orders:" << obj1.result_orders;
-                db->undo();
-                const auto &obj = get_dynamic_object();
-                cwarn << "rollback version  exchange database version222 : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                db->undo_all();
                 return true;
             }
 

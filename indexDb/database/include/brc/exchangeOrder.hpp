@@ -76,7 +76,14 @@ namespace dev {
                 std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
 
 
-
+                inline std::string check_version(bool p = true) const{
+                    const auto &obj = get_dynamic_object();
+                    std::string ret = "current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+                    if(p){
+                        cwarn << ret;
+                    }
+                    return ret;
+                };
             private:
 
                 /// get iterator by type and price . this only find order of sell.
@@ -133,9 +140,9 @@ namespace dev {
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
-                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
+//                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
                     if (begin == end) {
-                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
+//                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
@@ -209,10 +216,7 @@ namespace dev {
 
                 }
 
-                inline void check_version() const{
-                    const auto &obj = get_dynamic_object();
-                    cwarn << "current  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
-                };
+
 
 
                 const dynamic_object &get_dynamic_object() const {
@@ -238,6 +242,11 @@ namespace dev {
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
+
+
+
+
+
 
 
             };
