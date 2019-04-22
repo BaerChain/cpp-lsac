@@ -43,7 +43,7 @@ namespace transationTool
 {
 #define SERIALIZE_MACRO(r, data, elem) data.append(elem);
 #define OPERATION_SERIALIZE(MEMBERS)                             \
-    virtual bytes serialize()                                    \
+    virtual bytes serialize()  const                                  \
     {                                                            \
         RLPStream stream(BOOST_PP_SEQ_SIZE(MEMBERS));            \
         BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS); \
@@ -84,7 +84,7 @@ struct operation
         }
     }
 
-    virtual bytes serialize() { return bytes(); }
+    virtual bytes serialize() const{ return bytes(); }
 };
 struct vote_operation : public operation
 {
@@ -142,23 +142,36 @@ struct pendingorder_opearaion : public operation
     uint8_t m_Pendingorder_buy_type = 0;
 	u256 m_Pendingorder_num = 0;
     u256 m_Pendingorder_price = 0;
-    h256 m_Pendingorder_Hash = h256(0);
+    pendingorder_opearaion(){}
     pendingorder_opearaion(
         op_type type, const Address& from, uint8_t pendingorder_type, uint8_t _pendingorder_token_type,
-		int _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price, h256 pendingorder_hash)
+		int _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price)
       : m_type(type),
         m_from(from),
         m_Pendingorder_type(pendingorder_type),
         m_Pendingorder_Token_type(_pendingorder_token_type),
         m_Pendingorder_buy_type(_pendingorder_buy_type),
         m_Pendingorder_num(pendingorder_num),
-		m_Pendingorder_price(pendingorder_price),
-        m_Pendingorder_Hash(pendingorder_hash)
+		m_Pendingorder_price(pendingorder_price)
     {}
 
-	OPERATION_UNSERIALIZE(pendingorder_opearaion, (m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price)(m_Pendingorder_Hash))
+	OPERATION_UNSERIALIZE(pendingorder_opearaion, (m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
 
-	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price)(m_Pendingorder_Hash))
+	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
+};
+
+struct cancelPendingorder_operation : public operation
+{
+    uint8_t m_type = null;
+    h256 m_hash;
+
+    cancelPendingorder_operation(){}
+    cancelPendingorder_operation(op_type _type, h256 _hash) : m_type(_type),m_hash(_hash)
+    {}
+
+    OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_hash))
+
+    OPERATION_SERIALIZE((m_type)(m_hash))
 };
 
 }  // namespace transationTool

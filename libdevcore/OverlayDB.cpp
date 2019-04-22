@@ -33,7 +33,7 @@ void OverlayDB::commit()
     if (m_db)
     {
         auto writeBatch = m_db->createWriteBatch();
-//      cnote << "Committing nodes to disk DB:";
+//        cwarn << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
         DEV_READ_GUARDED(x_this)
 #endif
@@ -99,7 +99,7 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 
 void OverlayDB::rollback()
 {
-    cwarn << "OverlayDB rollback";
+    cerror << "OverlayDB rollback";
 #if DEV_GUARDED_DB
     WriteGuard l(x_this);
 #endif

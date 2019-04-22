@@ -73,7 +73,7 @@ void formatter(boost::log::record_view const& _rec, boost::log::formatting_ostre
 
     g_timestampFormatter(_rec, _strm);
 
-    _strm << BrcNavy << std::setw(4) << std::left << _rec[threadName] << BrcReset " ";
+    _strm << BrcNavy << std::setw(10) << std::left << _rec[threadName] << BrcReset " ";
     _strm << std::setw(6) << std::left << _rec[channel] << " ";
     if (boost::log::expressions::has_attr(context)(_rec))
         _strm << BrcNavy << _rec[context] << BrcReset " ";

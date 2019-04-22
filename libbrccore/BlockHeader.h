@@ -154,8 +154,8 @@ using Checks = FlagSet<Check>;*/
             void setRoots(h256 const &_t, h256 const &_r, h256 const &_u, h256 const &_s) {
                 m_transactionsRoot = _t;
                 m_receiptsRoot = _r;
-                m_stateRoot = _s;
                 m_sha3Uncles = _u;
+                m_stateRoot = _s;
                 noteDirty();
             }
 
