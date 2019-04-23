@@ -13,7 +13,7 @@ find_path(
 
 find_library(
         MHD_LIBRARY
-        NAMES microhttpd microhttpd-10 libmicrohttpd libmicrohttpd-dll
+        NAMES libmicrohttpd.a       ## microhttpd-10 libmicrohttpd libmicrohttpd-dll
         DOC "microhttpd library"
 )
 
