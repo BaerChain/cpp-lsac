@@ -58,7 +58,7 @@ message(STATUS "GMP_INCLUDE_DIR ${GMP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_LIBRARY}")
 
-add_library(brcd-buildinfo brcd/buildinfo.c brcd/buildinfo.h)
+
 
 ######################  subdirectory ######################
 set(depenlibs_dir "${CMAKE_BINARY_DIR}/deplibs/libs/lib")
