@@ -11,9 +11,7 @@
     {
         ETranscationNull = 0,
         EBRCTranscation,
-		EFBRCFreezeTranscation,
-		EFBRCUnFreezeTranscation,
-        ECookieTranscation,
+		EAssetInjection,
         ETranscationMax
     };
 

@@ -68,6 +68,10 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         try {
 
 
+
+
+
+
             //write
             bfs::path cur_dir = bfs::current_path();
             cur_dir /= bfs::unique_path();;
@@ -78,45 +82,9 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             db.add_index<up_order_index>();
 
 
+            boost::optional<chainbase::database::session> session = db.start_undo_session(true);
 
 
-            {
-                auto session = db.start_undo_session(true);
-                db.create<up_order>([](up_order &order){
-                    std::string nn = "xxxxxxxxxxxxxx";
-                    order.name.assign(nn.begin(), nn.end());
-                });
-
-                session.push();
-
-                db.commit(1);
-            }
-            {
-                auto session = db.start_undo_session(true);
-                db.create<up_order>([](up_order &order){
-                    std::string nn = "xxxxxxxxxxxxxx2";
-                    order.name.assign(nn.begin(), nn.end());
-                });
-
-                session.push();
-
-            }
-            {
-                auto session1 = db.start_undo_session(true);
-                for (uint32_t i = 0; i < length; i++) {
-                    db.create<up_order>([&](up_order &order) {
-                        std::string nn = "test" + std::to_string(i);
-                        order.name.assign(nn.begin(), nn.end());
-
-                        order.time = i;
-                        order.balance = i;
-                        order.type = uint8_t(i & 0xf);
-                        order.price = i * 10;
-                    });
-                }
-                session1.push();
-
-            }
 
         } catch (const std::exception &e) {
 
@@ -338,13 +306,13 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
             uint32_t length = 10;
-            dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
+            chainbase::database db(cur_dir, chainbase::database::read_write, 1024 * 1024 * 1024);
             db.add_index<up_order_index>();
 
 //            std::shared_ptr<chainbase::database::session> session = new chainbase::database::session(std::move(db.start_undo_session(true)));
 //            std::shared_ptr<chainbase::database::session> session = std::shared_ptr<chainbase::database::session>(std::move(db.start_undo_session(true)));
 
-            boost::optional<chainbase::database::session>   session = db.start_undo_session(true);
+//            boost::optional<chainbase::database::session>   session = db.start_undo_session(true);
 
 
             auto itr =  db.create<up_order>([](up_order &order){
@@ -355,41 +323,39 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             db.commit(1);
             {
                 auto session = db.start_undo_session(true);
-                auto mm = db.find(itr.id);
-                BOOST_CHECK(mm);
-
-                db.modify(*mm, [](up_order &order){
+                db.create<up_order>([](up_order &order){
                     std::string nn = "2";
                     order.name.assign(nn.begin(), nn.end());
                 });
-                session.push();
 
-            }
-//            session->undo();
-            db.undo();
-
-            {
-                auto ret = db.find(itr.id);
-                std::cout << ret->name << std::endl;
-            }
-            ////////////////////////////////////
-            {
-                auto mm = db.find(itr.id);
-                BOOST_CHECK(mm);
-
-                db.modify(*mm, [](up_order &order){
+                db.create<up_order>([](up_order &order){
                     std::string nn = "3";
                     order.name.assign(nn.begin(), nn.end());
                 });
-                session->squash();
-            }
-//            db.undo_all();
-            session->undo();
-            {
-                auto ret = db.find(itr.id);
-                std::cout << ret->name << std::endl;
+                session.push();
             }
 
+            {
+                auto session = db.start_undo_session(true);
+                db.create<up_order>([](up_order &order){
+                    std::string nn = "4";
+                    order.name.assign(nn.begin(), nn.end());
+                });
+
+                db.create<up_order>([](up_order &order){
+                    std::string nn = "5";
+                    order.name.assign(nn.begin(), nn.end());
+                });
+                session.push();
+            }
+            db.undo_all();
+
+            const auto &index = db.get_index<up_order_index>().indices().get<by_id_test>();
+            auto begin = index.begin();
+            while(begin != index.end()){
+                std::cout << begin->name << std::endl;
+                begin++;
+            }
 
 
 

@@ -168,7 +168,8 @@ Account *State::account(Address const &_addr) {
                                                    state[4].toInt<u256>(),
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
-                                                   state[9].toInt<u256>(), Account::Unchanged));
+                                                   state[9].toInt<u256>(),
+								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 
     m_unchangedCacheEntries.push_back(_addr);
@@ -1051,7 +1052,6 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-	cerror << "execute  executeTransaction";
     bool const statusCode = executeTransaction(e, _t, onOp);
 
     bool removeEmptyAccounts = false;
@@ -1068,8 +1068,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
             break;
     }
 
-    TransactionReceipt const receipt =
-            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+    TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
             TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
     return make_pair(res, receipt);
@@ -1094,8 +1093,6 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
-		cerror << "executeTransaction";
-
         _e.initialize(_t);
 
         if (!_e.execute())
@@ -1158,6 +1155,20 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
         jv["vote"] = _array;
     }
     return jv;
+}
+
+void dev::brc::State::assetInjection(Address const& _addr)
+{
+	auto a = account(_addr);
+	if(a->assetInjectStatus() == 0)
+    {
+        addBRC(_addr, 1000);
+        addBalance(_addr, 100000000000);
+		a->setAssetInjectStatus();
+	}
+	else {
+		return;
+	}
 }
 
 
@@ -1378,7 +1389,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(10);
+                RLPStream s(11);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1417,6 +1428,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
+				s << i.second.assetInjectStatus();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
