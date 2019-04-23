@@ -147,7 +147,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                              Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
-                                                             op_obj["m_vote_numbers"].get_int());
+                                                             op_obj["m_vote_numbers"].get_int()
+                                                             );
                             tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
                             break;
                         }
@@ -156,7 +157,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                                             Address(op_obj["m_from"].get_str()),
                                                                             Address(op_obj["m_to"].get_str()),
                                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
-                                                                            op_obj["m_transcation_numbers"].get_int());
+                                                                            op_obj["m_transcation_numbers"].get_int()
+                                                                            );
                             tx.ops.push_back(std::shared_ptr<transcation_operation>(transcation_op));
                             break;
                         }
@@ -166,8 +168,9 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                                               (uint8_t) op_obj["m_type"].get_int(),
                                                                               (uint8_t) op_obj["m_token_type"].get_int(),
                                                                               (uint8_t) op_obj["m_buy_type"].get_int(),
-                                                                              (u256) op_obj["m_num"].get_int(),
-                                                                              (u256) op_obj["m_price"].get_int());
+                                                                               u256(fromBigEndian<u256>(fromHex(op_obj["m_num"].get_str()))),
+                                                                               u256(fromBigEndian<u256>(fromHex(op_obj["m_price"].get_str())))
+                                                                              );
                             tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
                             cwarn << "price : " << pendingorder_op->m_Pendingorder_price << " amount : " << pendingorder_op->m_Pendingorder_num;
                             break;
