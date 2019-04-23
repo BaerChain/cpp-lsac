@@ -19,8 +19,6 @@ endif()
 
 ##add cmake file directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-#include(cmake/Compiler.cmake)
-
 message(STATUS "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME} ${APPLE}")
 
 
@@ -33,7 +31,6 @@ find_package(Boost 1.65.1 REQUIRED COMPONENTS
         chrono
         context
         log
-#        fiber
         locale
         )
 
@@ -57,6 +54,7 @@ message(STATUS "GMP_LIBRARY ${GMP_LIBRARY}")
 message(STATUS "GMP_INCLUDE_DIR ${GMP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_LIBRARY}")
+message(STATUS "Found MHD_LIBRARIES : ${MHD_LIBRARIES}")
 
 
 
