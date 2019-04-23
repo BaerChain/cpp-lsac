@@ -275,7 +275,7 @@ public:
     /// Change the function that is called when a new block is imported
     void setOnBlockImport(std::function<void(BlockHeader const&)> _t) { m_onBlockImport = _t; }
 
-    /// Get a pre-made genesis State object.
+    /// cc.
     Block genesisBlock(OverlayDB const& _db, ex::exchange_plugin const& _exdb ) const;
 
     /// Verify block and prepare it for enactment
