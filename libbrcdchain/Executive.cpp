@@ -243,10 +243,6 @@ void Executive::initialize(Transaction const& _transaction)
 
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-		cerror << " m_t.gas() : " << m_t.gas() << "      m_t.gasPrice :" << m_t.gasPrice() << "  gasCost  : " << gasCost;
-		cerror << " m_t.sender : " << m_t.sender();
-
-
         if (!m_t.isVoteTranction())
         {
             bigint totalCost = m_t.value() + gasCost;
@@ -336,10 +332,6 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
-                    if (_transcation_op.m_Transcation_type == ECookieTranscation)
-                    {
-                        totalCost += (bigint)_transcation_op.m_Transcation_numbers;
-                    }
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -380,7 +372,7 @@ void Executive::initialize(Transaction const& _transaction)
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
-                    {
+                    { 
                         LOG(m_execLogger)
                             << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
                             << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
@@ -420,9 +412,9 @@ void Executive::initialize(Transaction const& _transaction)
 								_pengdingorder_op.m_Pendingorder_Token_type, _pengdingorder_op.m_Pendingorder_buy_type});
                 }
                 break;
-               // case transationTool::cancelPendingOrder:
-                //{
-				/*	transationTool::cancelPendingorder_operation  _cancel_op =
+				case transationTool::cancelPendingOrder:
+                {
+					transationTool::cancelPendingorder_operation  _cancel_op =
                         transationTool::cancelPendingorder_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
@@ -437,7 +429,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     if (!m_brctranscation.verifyCancelPendingOrder(m_exdb,
-                            _pengdingorder_op.m_Pendingorder_Hash))
+						_cancel_op.m_hash))
                     {
                         LOG(m_execLogger)
                             << "Cancelpendingorder field > "
@@ -450,9 +442,9 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     m_callParameters_v.push_back({(Executive::Method)(_pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
                             {Address(0), Address(0), Address(0),u256(0), u256(0), u256(0), bytesConstRef(), {}},
-                            u256(0), _pengdingorder_op.m_Pendingorder_Hash,0,0});
+                            u256(0), _cancel_op.m_hash,0,0});
                 }
-                break;*/
+                break;
                 default:
                     break;
             }
@@ -560,27 +552,29 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             LOG(m_execLogger) << BrcYellow " dell vote : method:" << val.m_method
                               << " _from:" << p.senderAddress << " _to:" << p.receiveAddress
                               << " _value:" << p.valueTransfer;
-            if (val.m_method == BuyVotes)
-                m_s.transferBallotBuy(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == SellVotes)
-                m_s.transferBallotSell(p.senderAddress, p.receiveAddress, _p.valueTransfer);
-            else if (val.m_method == Executive::LoginCandidate)
-                m_vote.voteLoginCandidate(p.senderAddress);
-            else if (val.m_method == Executive::LogOutCandidate)
-                m_vote.voteLogoutCandidate(p.senderAddress);
-            else if (val.m_method == Vote)
-                m_vote.addVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == CancelVote)
-                m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == BRCTransaction)
-                m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
-            else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)
-                m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
-                                    val.m_pendingOrderHash,
-                                    val.m_method - (uint8_t)PendingOrderStart,
-                    val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
-            else if (val.m_method == CancelPendingOrder)
-                m_s.cancelPendingOrder(val.m_pendingOrderHash);
+			if (val.m_method == BuyVotes)
+				m_s.transferBallotBuy(p.senderAddress, p.receiveAddress, p.valueTransfer);
+			else if (val.m_method == SellVotes)
+				m_s.transferBallotSell(p.senderAddress, p.receiveAddress, _p.valueTransfer);
+			else if (val.m_method == Executive::LoginCandidate)
+				m_vote.voteLoginCandidate(p.senderAddress);
+			else if (val.m_method == Executive::LogOutCandidate)
+				m_vote.voteLogoutCandidate(p.senderAddress);
+			else if (val.m_method == Vote)
+				m_vote.addVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
+			else if (val.m_method == CancelVote)
+				m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
+			else if (val.m_method == BRCTransaction)
+				m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
+			else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)
+				m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
+					val.m_pendingOrderHash,
+					val.m_method - (uint8_t)PendingOrderStart,
+					val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
+			else if (val.m_method == CancelPendingOrder)
+				m_s.cancelPendingOrder(val.m_pendingOrderHash);
+			else if (val.m_method == AssetInjection)
+				m_s.assetInjection(p.senderAddress);
             else
                 return false;
         }

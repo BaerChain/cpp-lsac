@@ -62,6 +62,7 @@ namespace {
         cout << "brc network protocol version: " << dev::brc::c_protocolVersion << "\n";
         cout << "Client database version: " << dev::brc::c_databaseVersion << "\n";
         cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
+        cout << "git commit hash: " << buildinfo->git_commit_hash << "\n";
     }
 
     bool isTrue(std::string const &_m) {

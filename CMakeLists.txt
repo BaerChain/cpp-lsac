@@ -13,8 +13,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
-    SET(BUILD_SHARED_LIBRARIES OFF)
-    SET(CMAKE_EXE_LINKER_FLAGS "-static")
+#    SET(BUILD_SHARED_LIBRARIES OFF)
+#    SET(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
 ##add cmake file directory
@@ -58,7 +58,7 @@ message(STATUS "GMP_INCLUDE_DIR ${GMP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_LIBRARY}")
 
-add_library(brcd-buildinfo brcd/buildinfo.c brcd/buildinfo.h)
+
 
 ######################  subdirectory ######################
 set(depenlibs_dir "${CMAKE_BINARY_DIR}/deplibs/libs/lib")

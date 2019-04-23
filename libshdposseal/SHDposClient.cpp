@@ -63,7 +63,7 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
         //compare_exchange_strong(T& expected, T val, ...)
         //比较本身值和expected, 如果相等者旧值=val, 如果不等 expected=旧值
 
-		cerror << "SHDposClient::doWork  : " << m_needStateReset   << "  _dowait : " << _doWait ;
+//		cerror << "SHDposClient::doWork  : " << m_needStateReset   << "  _dowait : " << _doWait ;
 
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
             syncBlockQueue();
@@ -164,7 +164,7 @@ void dev::bacd::SHDposClient::rejigSealing()
                 // TODO is that needed? we have "Generating seal on" below
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 // input a seal time to contral the seal transation time
-                m_working.commitToSeal(bc(), m_extraData, dpos()->dposConfig().blockInterval * 2 / 3);
+				m_working.commitToSeal(bc(), m_extraData, dpos()->dposConfig().blockInterval * 2 / 3);
                 //try into next new epoch and check some about varlitor for SH-DPOS
                 dpos()->tryElect(utcTimeMilliSec());
 
@@ -273,3 +273,4 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 //void dev::bacd::SHDposClient::stopSealing() {
 //    Worker::stopWorking();
 //}
+

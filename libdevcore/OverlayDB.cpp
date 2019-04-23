@@ -30,7 +30,6 @@ OverlayDB::~OverlayDB() = default;
 
 void OverlayDB::commit()
 {
-	cerror << " overlayDB commit";
     if (m_db)
     {
         auto writeBatch = m_db->createWriteBatch();
