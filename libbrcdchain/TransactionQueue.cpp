@@ -7,7 +7,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-const size_t c_maxVerificationQueueSize = 8192;
+const size_t c_maxVerificationQueueSize = 10000;
 
 TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
     m_current(PriorityCompare { *this }),
@@ -82,6 +82,12 @@ Transactions TransactionQueue::topTransactions(unsigned _limit, h256Hash const& 
 {
     ReadGuard l(m_lock);
     Transactions ret;
+	if(_limit == 0)
+		_limit = m_current.size();
+	else
+	{
+		_limit = _limit > _avoid.size() ? _limit - _avoid.size() : 0;
+	}
     for (auto t = m_current.begin(); ret.size() < _limit && t != m_current.end(); ++t)
         if (!_avoid.count(t->transaction.sha3()))
             ret.push_back(t->transaction);

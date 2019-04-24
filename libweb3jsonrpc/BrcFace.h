@@ -215,6 +215,11 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_chainId", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_chainIdI);
+
+		this->bindAndAddMethod(jsonrpc::Procedure("brc_getObtainVote", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getObtainVoteI);
+		this->bindAndAddMethod(jsonrpc::Procedure("brc_getVoted", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getVotedI);
+		this->bindAndAddMethod(jsonrpc::Procedure("brc_getElector", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getElectorI);
+           
     }
 
     inline virtual void brc_protocolVersionI(const Json::Value& request, Json::Value& response)
@@ -475,6 +480,18 @@ public:
         (void)request;
         response = this->brc_chainId();
     }
+				inline virtual void brc_getObtainVoteI(const Json::Value &request, Json::Value &response)
+				{
+					response = this->brc_getObtainVote(request[0u].asString(), request[1u].asString());
+				}
+				inline virtual void brc_getVotedI(const Json::Value &request, Json::Value &response)
+				{
+					response = this->brc_getVoted(request[0u].asString(), request[1u].asString());
+				}
+				inline virtual void brc_getElectorI(const Json::Value &request, Json::Value &response)
+				{
+					response = this->brc_getElector(request[0u].asString());
+				}
     virtual std::string brc_protocolVersion() = 0;
     virtual std::string brc_hashrate() = 0;
     virtual std::string brc_coinbase() = 0;
@@ -541,6 +558,9 @@ public:
     virtual Json::Value brc_syncing() = 0;
     virtual std::string brc_estimateGas(const Json::Value& param1) = 0;
     virtual std::string brc_chainId() = 0;
+				virtual Json::Value brc_getObtainVote(const std::string& param1, const std::string& param2) = 0;
+				virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;
+				virtual Json::Value brc_getElector(const std::string& param1) = 0;
 };
 
 }  // namespace rpc

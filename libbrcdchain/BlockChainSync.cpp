@@ -727,7 +727,7 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     RecursiveGuard l(x_sync);
     DEV_INVARIANT_CHECK;
 
-    if (_r.itemCount() != 2)
+    if (_r.itemCount() != 3)
     {
         m_host.disablePeer(_peerID, "NewBlock without 2 data fields.");
         return;

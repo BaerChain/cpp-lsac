@@ -7,6 +7,13 @@
 #include <libdevcore/Worker.h>
 #include "SHDposClient.h"
 #include "SHDposHostCapability.h"
+#include <libdevcore/LevelDB.h>
+#include <libdevcore/DBFactory.h>
+#include <libdevcore/dbfwd.h>
+#include <libdevcore/db.h>
+#include <libdevcore/Address.h>
+#include <boost/filesystem/path.hpp>
+
 
 namespace dev
 {
@@ -38,49 +45,76 @@ namespace dev
 
 			inline void         initNet(std::weak_ptr<SHDposHostcapality> _host) { m_host = _host; }
             inline void         startGeneration() { setName("SHDpos"); startWorking(); }   //loop 开启 
-
 		public:
 			void                onDposMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
 			void                requestStatus(NodeID const & _nodeID, u256 const & _peerCapabilityVersion);
-
 		protected:
 			void                workLoop() override; 
 		private:
 			void                sealAndSend(NodeID const& _nodeid, SHDposPacketType _type, RLPStream const& _msg_s);   // send msg to nodeId
 			void                brocastMsg(SHDposPacketType _type, RLPStream& _msg_s);       //brocastMsg about SH-Dpos           
-		private:
+            void				candidateReplaceVarlitors(size_t& _replaceNum);  //候选人替换惩罚的验证人出块
+            void				addBlackList(std::vector<Address>& _v);  //超过12个坏块，加入黑名单，踢出出块人出块资格
+            bool				isCandidateBlock(Address _addr);  //判断候选人本轮是否能出块
+            bool				chooseBlockAddr(Address const& _addr, bool _isok);
+            void				punishBlockVarlitors(Address const& _addr);
+            bool				punishBlockCandidate(Address& _addr);
+            void				addBadBlockInfo(Address _addr, size_t _badBlockNums);
+            void 				getVarlitorsAndCandidate(std::vector<Address>& _curr_varlitors);
+            bool				isCurrBlock(Address const& _curr);
+			void				addCandidatePunishBlock();
+        private:
             bool                CheckValidator(uint64_t _now);                  //验证是否该当前节点出块
-            void                kickoutValidator();       //剔除不合格验证人，不能参与下一轮竞选
-            void                kickoutcanlidates();      //踢出不合格的候选人, 自定义踢出候选人规则，踢出后也不能成为验证人
+            size_t              kickoutVarlitors();      //踢出不合格的候选人, 自定义踢出候选人规则，踢出后也不能成为验证人
             void                countVotes();
             void                disorganizeVotes();
-
 		public:
-			// verify BadBlock if verfy field will to add bad_msg
-			bool                verifyBadBlock(Address const& _verfyAddr, bytes const& _block, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks);
-			void                getBadVarlitors(std::map<Address, BadBlockRank >& _mapBadRank);
 			void                dellImportBadBlock(bytes const& _block);
-            void				disposeBadBlockpunishment();
-            void				deleteValidatorBlock(std::vector<Address>& _vector);
-
 		private:
 			SignatureStruct     signBadBlock(const Secret &sec, bytes const& _badBlock);
 			bool                verifySignBadBlock( bytes const& _badBlock, SignatureStruct const& _signData);
 			void                addBadBlockLocal(bytes const& _b, Address const& _verifyAddr);
 			void                sendBadBlockToNet(bytes const& _block);
+		private:
+            enum BadBlockType : unsigned
+			{
+			    BadBlockPushs =1,
+                BadBlockDatas,
+                badBlockAll,
+			};
+			inline std::string  getBadBlockData(db::Slice _key)const { return m_badblock_db->lookup(_key); }
+			inline void         insertBadBlock(db::Slice _key, std::string _value)const { m_badblock_db->insert(_key, db::Slice(_value)); }
+			void                openBadBlockDB(boost::filesystem::path const& _dbPath);
+			void                initBadBlockByDB();
+			db::Slice           toSlice(Address const& _h, unsigned _sub );
+			bool                load_key_value(db::Slice _key, db::Slice _val);
+			void                streamBadBlockRLP(RLPStream& _s, Address _addr, BadBlockType _type);
+			void                populateBadBlock(RLP const& _r, Address _addr, BadBlockType _type);
+
+			void                updateBadBlockData();
+			void                insertUpdataSet(Address const& _addr, BadBlockType _type);
 
 		private:
+			std::set<Address>				m_curr_punishVandidate;				//当前需要惩罚的候选人
 			std::vector<Address>            m_curr_varlitors;                   //本轮验证人集合
-            SHDposClient const*               m_dpos_cleint;
-            int64_t                         m_last_create_block_time;           // 上次进入出块周期时间
-            SHDposConfigParams                m_config;                           // dpos 相关配置
+            SHDposClient const*             m_dpos_cleint;
+            int64_t                         m_next_block_time;                  // 上次进入出块周期时间
+			int64_t                         m_last_block_time;
+            SHDposConfigParams              m_config;                           // dpos 相关配置
 
-			mutable  Mutex                  m_mutex;                            // lock for msg_data
+			size_t m_notBlockNum;                   //下一轮不能出块的人数
+			std::vector<Address> m_curr_candidate;								//本轮候选人集合
+            std::map<Address, BadBlockPunish> m_blackList;						 //超过12个坏块，加入黑名单         
+            std::map<Address, BadBlockPunish> m_punishVarlitor;					// 记录出坏块的地址及处罚信息
+            BadBlockNumPunish m_badPunish;		
+			std::map<Address, BadBlocksData>  m_badVarlitors;                   // SH-Dpos the varify field blockes for varlitor
+
+			mutable  Mutex                    m_mutex;                            // lock for msg_data
 			std::weak_ptr<SHDposHostcapality> m_host;                             // SH-Dpos network
 			SHDposMsgQueue                    m_msg_queue;                        // msg-data
 
-			std::map<Address, BadBlocksData>  m_badVarlitors;                   // SH-Dpos the varify field blockes for varlitor
-			std::map<Address, PunishBadBlock> m_punishBadVarlotor;              // 当前论 惩罚记录 新一轮 reset
+			std::unique_ptr<db::DatabaseFace> m_badblock_db;                    // SHDpos badBlock  
+			std::map<Address, BadBlockType>   m_up_set;                         // update cach data
 
 
             Logger m_logger{createLogger(VerbosityDebug, "SH-Dpos")};

@@ -1,9 +1,11 @@
 #include "SHDposClient.h"
 #include "SHDpos.h"
 #include "SHDposHostCapability.h"
+#include "ChainParams.h"
 #include <boost/filesystem/path.hpp>
 #include <libdevcore/Log.h>
 #include <time.h>
+#include <libdevcore/CommonIO.h>
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
@@ -53,6 +55,11 @@ SHDpos* dev::bacd::SHDposClient::dpos() const
 void dev::bacd::SHDposClient::startSealing()
 {
     setName("DposClient");
+	if(m_params.m_block_addr_keys.find(author()) == m_params.m_block_addr_keys.end())
+	{
+		cwarn << " the author:" << author() << " not have private key....";
+		return;
+	}
     Client::startSealing();
 }
 
@@ -118,22 +125,27 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 }
 
 
-dev::Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) const
+Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) const
 {
-	Block _block = blockByNumber(LatestBlock);
-	return _block.mutableVote().getVarlitorSecret(_addr);
+	//Block _block = blockByNumber(LatestBlock);
+	//return _block.mutableVote().getVarlitorSecret(_addr);
+    auto iter = m_params.m_block_addr_keys.find(_addr);
+    if (iter != m_params.m_block_addr_keys.end())
+    {
+        cwarn << "[*1*]: find bad block addr: " << _addr << ": secret: " << iter->second;
+        return iter->second;
+    }
+	return Secret();
 }
 
 void dev::bacd::SHDposClient::printfElectors()
 {
-//	Block _block = blockByNumber(LatestBlock);
-//	std::unordered_map<Address, u256> _m = _block.mutableVote().getElectors();
-//	std::cout << BrcYellow " dpos electors:" << std::endl << "{" << std::endl;;
-//    for (auto val : _m)
-//    {
-//		std::cout << "Address:" << val.first << " tickets:" << val.second << std::endl;
-//    }
-//	std::cout << std::endl << "}" << BrcReset << std::endl;
+
+}
+
+bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey()
+{
+	return m_params.m_block_addr_keys.find(author()) != m_params.m_block_addr_keys.end();
 }
 
 void dev::bacd::SHDposClient::rejigSealing()
@@ -147,76 +159,81 @@ void dev::bacd::SHDposClient::rejigSealing()
         return;
     }
 
-    if((wouldSeal() || remoteActive()) && !isMajorSyncing())
-    {
-        if(sealEngine()->shouldSeal(this))
-        {
-            m_wouldButShouldnot = false;
+	if (!verifyVarlitorPrivatrKey())
+        return;
 
-            LOG(m_loggerDetail) << "Rejigging seal engine...";
-            DEV_WRITE_GUARDED(x_working)
-            {
-                if(m_working.isSealed())
-                {
-//                    LOG(m_logger) << "Tried to seal sealed block...";
-                    return;
-                }
-                // TODO is that needed? we have "Generating seal on" below
-                LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
-                // input a seal time to contral the seal transation time
-				m_working.commitToSeal(bc(), m_extraData, dpos()->dposConfig().blockInterval * 2 / 3);
-                //try into next new epoch and check some about varlitor for SH-DPOS
-                dpos()->tryElect(utcTimeMilliSec());
+	if((wouldSeal() || remoteActive()) && !isMajorSyncing())
+	{
+		if(sealEngine()->shouldSeal(this))
+		{
+			m_wouldButShouldnot = false;
 
-                //add SH-Dpos data
+			LOG(m_loggerDetail) << "Rejigging seal engine...";
+			DEV_WRITE_GUARDED(x_working)
+			{
+				if(m_working.isSealed())
+				{
+					LOG(m_logger) << "Tried to seal sealed block...";
+					return;
+				}
+				// TODO is that needed? we have "Generating seal on" below
+				LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
+				// input a seal time to contral the seal transation time
+				m_working.commitToSeal(bc(), m_extraData);
+				//try into next new epoch and check some about varlitor for SH-DPOS
+				dpos()->tryElect(utcTimeMilliSec());
+
+				//add SH-Dpos data
 				BlockHeader _h;
 				_h.setDposCurrVarlitors(dpos()->currVarlitors());
 				m_working.setDposData(_h);
-				
-                LOG(m_loggerDetail) <<BrcYellow "seal block add dposData is ok" << BrcYellow;
-				printfElectors();
+			}
+			DEV_READ_GUARDED(x_working)
+			{
+				DEV_WRITE_GUARDED(x_postSeal)
+					m_postSeal = m_working;
+				m_sealingInfo = m_working.info();
+				auto author = m_working.author();
 
+				if(!m_params.m_block_addr_keys.count(author))
+				{
+					cerror << "not find author : " << author << "private key , please set private key.";
+					return;
+				}
+				else
+				{
+					m_sealingInfo.sign_block(m_params.m_block_addr_keys.at(author));
+				}
 
-            }
-            DEV_READ_GUARDED(x_working)
-            {
-                DEV_WRITE_GUARDED(x_postSeal)
-                    m_postSeal = m_working;
-                m_sealingInfo = m_working.info();
+			}
+			//出块
+			if(wouldSeal())
+			{
+				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
+				sealEngine()->onSealGenerated([=](bytes const& _header){
+					LOG(m_logger) << "Block sealed #" << BlockHeader(_header, HeaderData).number();
 
-                auto author = m_working.author();
-                if(!m_params.m_miner_priv_keys.count(author)){
-                    cerror << "not find author : " << author << "private key , please set private key.";
-                    return;
-                }
-                else{
-                    m_sealingInfo.sign_block(m_params.m_miner_priv_keys.at(author));
-                }
-
-            }
-            //出块
-            if(wouldSeal())
-            {
-                //调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
-                sealEngine()->onSealGenerated([=](bytes const& _header){
-                    if(this->submitSealed(_header))
-                    {
-                        m_onBlockSealed(_header);
-                    }
-                    else
-                        LOG(m_logger) << "Submitting block failed...";
-                                              });
-                ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
-                sealEngine()->generateSeal(m_sealingInfo);
-            }
-        }
-        else
-            m_wouldButShouldnot = true;
-    }
-	if(!m_wouldSeal)
-	{
-		sealEngine()->cancelGeneration();
+					if(this->submitSealed(_header))
+					{
+						m_onBlockSealed(_header);
+					}
+					else
+						LOG(m_logger) << "Submitting block failed...";
+											  });
+				ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
+				sealEngine()->generateSeal(m_sealingInfo);
+			}
+		}
+		else
+			m_wouldButShouldnot = true;
 	}
+    if (!m_wouldSeal)
+    {
+       sealEngine()->cancelGeneration();
+    }
+
+    return;
+
 }
 
 void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
@@ -261,6 +278,7 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 		cwarn << boost::diagnostic_information(_ex);
 		return;
 	}
+	return; // test
     // SH-DPOS to del bad Block the must be Varlitor
 	std::vector<Address> _varlitor = getCurrHeader().dposCurrVarlitors();
 	auto ret = find(_varlitor.begin(), _varlitor.end(), author());
@@ -268,9 +286,3 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 	    dpos()->dellImportBadBlock(*block);
 	badBlock(*block, _ex.what());
 }
-
-
-//void dev::bacd::SHDposClient::stopSealing() {
-//    Worker::stopWorking();
-//}
-
