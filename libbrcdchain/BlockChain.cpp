@@ -1360,7 +1360,7 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
 
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
-	int64_t _time1;
+	int64_t _time1 = utcTimeMilliSec();
 	VerifiedBlockRef res;
     BlockHeader h;
     try {

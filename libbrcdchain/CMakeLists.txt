@@ -1,5 +1,4 @@
 file(GLOB sources "*.cpp" "*.h")
-#add_definitions(-w)
 add_library(brcdchain STATIC ${sources})
 
 target_include_directories(brcdchain

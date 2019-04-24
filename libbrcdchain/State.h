@@ -340,6 +340,8 @@ public:
 	Json::Value votedMessage(Address const& _addr) const;
 	Json::Value electorMessage(Address _addr) const;
 
+	void assetInjection(Address const& _addr);
+
 private:
     //投票数据
     //获取投出得票数
