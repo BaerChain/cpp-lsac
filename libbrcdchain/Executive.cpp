@@ -428,19 +428,19 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyCancelPendingOrder(m_exdb,
+                    if (!m_brctranscation.verifyCancelPendingOrder(m_s.exdb(), m_t.sender(),
 						_cancel_op.m_hash))
                     {
                         LOG(m_execLogger)
                             << "Cancelpendingorder field > "
-                            << " cancelpendingorder_hash:" << _pengdingorder_op.m_Pendingorder_Hash;
+                            << " cancelpendingorder_hash:" << _cancel_op.m_hash;
                         m_excepted = TransactionException::VerifyVoteField;
                         BOOST_THROW_EXCEPTION(
                             VerifyVoteField()
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    m_callParameters_v.push_back({(Executive::Method)(_pengdingorder_op.m_Pendingorder_type + (uint8_t)TranscationStart),
+                    m_callParameters_v.push_back({(Executive::Method)(_cancel_op.m_type + (uint8_t)TranscationStart),
                             {Address(0), Address(0), Address(0),u256(0), u256(0), u256(0), bytesConstRef(), {}},
                             u256(0), _cancel_op.m_hash,0,0});
                 }
