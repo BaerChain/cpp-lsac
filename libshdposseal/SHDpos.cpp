@@ -96,11 +96,8 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now)
     if (curr_slot <= _now || (next_slot - _now) <= 1)
     {
         m_next_block_time = next_slot;
-        cwarn << " time is ok : _now:" << _now << " next_time:" << m_next_block_time;
         return true;
     }
-    LOG(m_logger) << BrcYellow "the slot time have some error! _now:" << _now << BrcReset;
-
     return false;
 }
 void dev::bacd::SHDpos::workLoop()
@@ -363,14 +360,11 @@ void dev::bacd::SHDpos::tryElect(uint64_t _now)
     }
     else
     {
-        cwarn << "m_curr_candidate:" << m_curr_candidate.size() << "kickoutVarlitors:" << ret;
+        cdebug << "m_curr_candidate:" << m_curr_candidate.size() << "kickoutVarlitors:" << ret;
     }
 
     ////打乱验证人顺序
     disorganizeVotes();
-   
-    LOG(m_logger) << BrcYellow "******Come to new epoch, prevEpoch:" << prveslot
-                  << "nextEpoch:" << currslot << BrcYellow;
 }
 
 

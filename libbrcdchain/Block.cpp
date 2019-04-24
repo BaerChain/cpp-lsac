@@ -733,8 +733,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
         m_transactions[i].streamRLP(txrlp);
         transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
-//        cwarn << "packed tx : " << toJS(m_transactions[i].sha3()) << "  data: " << toJson(m_transactions[i]) << toHexPrefixed(m_transactions[i].rlp());
-
         txs.appendRaw(txrlp.out());
     }
 
@@ -752,10 +750,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
-
-    LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
-    LOG(m_loggerDetailed) << m_state;
-
     m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());

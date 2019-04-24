@@ -981,7 +981,6 @@ BrcdChainPeer& BrcdChainCapability::peer(NodeID const& _peerID)
 
 void dev::brc::BrcdChainCapability::sendNewBlock()
 {
-	cwarn << " into sendNewBlock ... time:" << utcTimeMilliSec();
 	std::vector<VerifiedSendData>const& _blocks = m_bq.getVerifiedBlocks();
 	if(_blocks.empty())
 		return;
