@@ -883,7 +883,6 @@ bool Client::submitSealed(bytes const& _header)
 		if(auto h = this->m_host.lock())
 			h->noteNewBlocksSend();
 	}
-	cwarn <<BrcYellow " block will send:" << utcTimeMilliSec() << BrcReset;
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }

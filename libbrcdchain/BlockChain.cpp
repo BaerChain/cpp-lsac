@@ -1420,7 +1420,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-	cwarn << BrcYellow << " will begin to populate transaction front_use_time:" << utcTimeMilliSec() - _time1 << " time:"<< utcTimeMilliSec();
 	int64_t _time = utcTimeMilliSec();
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
@@ -1546,8 +1545,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 			}
 		}
 	}
-	cwarn << "pupolate transaction:" << res.transactions.size() << " use_time:" << utcTimeMilliSec() - _time<< " time:" << utcTimeMilliSec();
-    res.block = bytesConstRef(_block);                                                                           
+    res.block = bytesConstRef(_block);
     return res;
 }
 
