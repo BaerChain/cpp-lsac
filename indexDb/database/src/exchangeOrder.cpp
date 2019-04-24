@@ -254,6 +254,7 @@ namespace dev {
                 std::vector<order> ret;
                 const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
                 for (const auto &t : os) {
+                    cwarn << toJS(t);
                     auto begin = index_trx.lower_bound(t);
                     auto end = index_trx.upper_bound(t);
                     if (begin == end) {
