@@ -310,9 +310,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
 
-                        cerror << " block execute begin  " << &db() << "  exdb: " << exdb().check_version();
                         execute(_bc.lastBlockHashes(), t);
-                        cerror << " block execute end  " << &db() << "  exdb: " << exdb().check_version();
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
                     } else if (t.gasPrice() < _gp.ask(*this) * 9 / 10) {

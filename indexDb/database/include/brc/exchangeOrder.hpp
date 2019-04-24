@@ -76,9 +76,9 @@ namespace dev {
                 std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
 
 
-                inline std::string check_version(bool p = true) const{
+                inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-                    std::string ret = "current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+                    std::string ret = "  current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
                     if(p){
                         cwarn << ret;
                     }

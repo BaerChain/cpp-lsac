@@ -30,112 +30,123 @@ namespace dev {
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
                 return db->with_write_lock([&]() {
+
                     check_db();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
-                    //                try {
-                    for (const auto &itr : orders) {
-                        if (itr.buy_type == only_price) {
-                            for (const auto t :  itr.price_token) {
+                    try {
+                        for (const auto &itr : orders) {
+                            if (itr.buy_type == only_price) {
+                                for (const auto t :  itr.price_token) {
+                                    if (itr.type == buy) {
+                                        auto find_itr = get_buy_itr(itr.token_type, t.first);
+                                        process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second,
+                                                           result,
+                                                           throw_exception);
+                                    } else { //sell
+                                        auto find_itr = get_sell_itr(itr.token_type, t.first);
+                                        process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second,
+                                                           result,
+                                                           throw_exception);
+                                    }
+
+                                }
+                            } else {
+                                if (itr.price_token.size() != 1) {
+                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+                                }
                                 if (itr.type == buy) {
-                                    auto find_itr = get_buy_itr(itr.token_type, t.first);
-                                    process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second, result,
-                                                       throw_exception);
-                                } else { //sell
-                                    auto find_itr = get_sell_itr(itr.token_type, t.first);
-                                    process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second, result,
-                                                       throw_exception);
-                                }
+                                    auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+                                    auto total_price = itr.price_token.begin()->first;
+                                    auto begin = find_itr.first;
+                                    auto end = find_itr.second;
+                                    if (begin != end) {
+                                        while (total_price > 0 && begin != end) {
+                                            auto begin_total_price = begin->token_amount * begin->price;
+                                            result_order ret;
+                                            if (begin_total_price <= total_price) {   //
 
-                            }
-                        } else {
-                            if (itr.price_token.size() != 1) {
-                                BOOST_THROW_EXCEPTION(all_price_operation_error());
-                            }
-                            if (itr.type == buy) {
-                                auto find_itr = get_buy_itr(itr.token_type, u256(-1));
-                                auto total_price = itr.price_token.begin()->first;
-                                auto begin = find_itr.first;
-                                auto end = find_itr.second;
-                                if (begin != end) {
-                                    while (total_price > 0 && begin != end) {
-                                        auto begin_total_price = begin->token_amount * begin->price;
-                                        result_order ret;
-                                        if (begin_total_price <= total_price) {   //
+                                                total_price -= begin_total_price;
 
-                                            total_price -= begin_total_price;
+                                                ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                                result.push_back(ret);
 
-                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                            result.push_back(ret);
+                                                const auto rm_obj = db->find(begin->id);
+                                                begin++;
+                                                db->remove(*rm_obj);
+                                            } else if (begin_total_price > total_price) {
 
-                                            const auto rm_obj = db->find(begin->id);
-                                            begin++;
-                                            db->remove(*rm_obj);
-                                        } else if (begin_total_price > total_price) {
-
-                                            auto can_buy_amount = total_price / begin->price;
-                                            if (can_buy_amount == 0) {
-                                                break;
+                                                auto can_buy_amount = total_price / begin->price;
+                                                if (can_buy_amount == 0) {
+                                                    break;
+                                                }
+                                                ret.set_data(itr, begin, can_buy_amount, begin->price);
+                                                result.push_back(ret);
+                                                const auto rm_obj = db->find(begin->id);
+                                                db->modify(*rm_obj, [&](order_object &obj) {
+                                                    obj.token_amount -= can_buy_amount;
+                                                });
+                                                begin++;
                                             }
-                                            ret.set_data(itr, begin, can_buy_amount, begin->price);
-                                            result.push_back(ret);
-                                            const auto rm_obj = db->find(begin->id);
-                                            db->modify(*rm_obj, [&](order_object &obj) {
-                                                obj.token_amount -= can_buy_amount;
-                                            });
-                                            begin++;
-                                        }
 
-                                        db->create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
-                                    }
-                                } else {
-                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
-                                }
-                            } else {   //all_price  , sell,
-                                auto find_itr = get_sell_itr(itr.token_type, u256(0));
-                                auto begin = find_itr.first;
-                                auto end = find_itr.second;
-                                auto total_amount = itr.price_token.begin()->second;
-                                if (begin != end) {
-                                    while (total_amount > 0 && begin != end) {
-                                        result_order ret;
-                                        if (begin->token_amount >= total_amount) {
-                                            ret.set_data(itr, begin, total_amount, begin->price);
-                                            result.push_back(ret);
-                                            const auto rm_obj = db->find(begin->id);
-                                            db->modify(*rm_obj, [&](order_object &obj) {
-                                                obj.token_amount -= total_amount;
+                                            db->create<order_result_object>([&](order_result_object &obj) {
+                                                obj.set_data(ret);
                                             });
-                                            total_amount = 0;
-                                        } else {
-                                            total_amount -= begin->token_amount;
-                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                            result.push_back(ret);
-                                            const auto rm_obj = db->find(begin->id);
-                                            begin++;
-                                            db->remove(*rm_obj);
                                         }
-                                        db->create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
+                                    } else {
+                                        BOOST_THROW_EXCEPTION(all_price_operation_error());
                                     }
-                                } else {
-                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+                                } else {   //all_price  , sell,
+                                    auto find_itr = get_sell_itr(itr.token_type, u256(0));
+                                    auto begin = find_itr.first;
+                                    auto end = find_itr.second;
+                                    auto total_amount = itr.price_token.begin()->second;
+                                    if (begin != end) {
+                                        while (total_amount > 0 && begin != end) {
+                                            result_order ret;
+                                            if (begin->token_amount >= total_amount) {
+                                                ret.set_data(itr, begin, total_amount, begin->price);
+                                                result.push_back(ret);
+                                                const auto rm_obj = db->find(begin->id);
+                                                db->modify(*rm_obj, [&](order_object &obj) {
+                                                    obj.token_amount -= total_amount;
+                                                });
+                                                total_amount = 0;
+                                            } else {
+                                                total_amount -= begin->token_amount;
+                                                ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                                result.push_back(ret);
+                                                const auto rm_obj = db->find(begin->id);
+                                                begin++;
+                                                db->remove(*rm_obj);
+                                            }
+                                            db->create<order_result_object>([&](order_result_object &obj) {
+                                                obj.set_data(ret);
+                                            });
+                                        }
+                                    } else {
+                                        BOOST_THROW_EXCEPTION(all_price_operation_error());
+                                    }
                                 }
+
+
                             }
-
 
                         }
 
+                        if (!reset) {
+                            session.push();
+                        }
+                    } catch (const std::exception &e) {
+                        session.undo();
+                        BOOST_THROW_EXCEPTION(e);
+                    } catch (const dev::Exception &e) {
+                        session.undo();
+                        BOOST_THROW_EXCEPTION(e);
+                    }catch (...){
+                        session.undo();
+                        BOOST_THROW_EXCEPTION(createOrderError());
                     }
-
-
-                    if (!reset) {
-                        session.push();
-                    }
-
                     return result;
                 });
             }
@@ -274,8 +285,6 @@ namespace dev {
                     }
                     ret.push_back(o);
                 }
-
-
 
 
                 if (!reset) {

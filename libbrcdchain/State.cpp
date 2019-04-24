@@ -549,7 +549,7 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
     }
     catch (const boost::exception &e) {
         cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
-        return;
+        BOOST_THROW_EXCEPTION(NotEnoughCash());
     }
 
     u256 CombinationNum = 0;

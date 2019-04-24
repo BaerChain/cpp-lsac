@@ -377,7 +377,6 @@ void test1() {
         s_ac1 % ac1;
         s_ac2 % ac2;
         count++;
-        sleep(2);
     }
 
 
@@ -423,7 +422,6 @@ void test2() {
 //                    helper.packed_transaction(op1);
 //                }
                 helper.packed_transaction(op1);
-                sleep(2);
 
             }
 
@@ -444,7 +442,6 @@ void test2() {
 
             helper.packed_transaction(op2);
 
-            sleep(1);
             for (uint32_t i = 0; i < senders.size(); i++) {
                 auto ad1 = pre_accounts[i].address;
                 auto ac = helper.get_address_info(ad1);
@@ -455,7 +452,6 @@ void test2() {
 
             pre_accounts.clear();
             cwarn << "-------------------------- clear --------------------------";
-            sleep(2);
         }
     }
 
@@ -497,9 +493,7 @@ void test3() {
 
 
     helper.packed_transaction(op1);
-    sleep(1);
     helper.packed_transaction(op3);
-    sleep(1);
 
 
     dbt::pendingorder_opearaion op2;
@@ -537,7 +531,6 @@ void test_self() {
 
     helper.packed_transaction(op1);
 
-//    sleep(1);
     dbt::pendingorder_opearaion op2;
     op2.m_type = 3;
     op2.m_from = ad2;
