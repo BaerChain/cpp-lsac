@@ -89,11 +89,11 @@ struct operation
 };
 struct vote_operation : public operation
 {
-    uint8_t m_type = null;
     Address m_from;
     Address m_to;
-    uint8_t m_vote_type = 0;
     size_t m_vote_numbers = 0;
+    uint8_t m_type = null;
+    uint8_t m_vote_type = 0;
     vote_operation(
         op_type type, const Address& from, const Address& to, uint8_t vote_type, size_t vote_num)
       : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
@@ -138,11 +138,11 @@ struct pendingorder_opearaion : public operation
 {
     uint8_t m_type = null;
     Address m_from;
+    u256 m_Pendingorder_num = 0;
+    u256 m_Pendingorder_price = 0;
     uint8_t m_Pendingorder_type = 0;
     uint8_t m_Pendingorder_Token_type = 0;
     uint8_t m_Pendingorder_buy_type = 0;
-	u256 m_Pendingorder_num = 0;
-    u256 m_Pendingorder_price = 0;
     pendingorder_opearaion(){}
     pendingorder_opearaion(
         op_type type, const Address& from, uint8_t pendingorder_type, uint8_t _pendingorder_token_type,
@@ -163,12 +163,12 @@ struct pendingorder_opearaion : public operation
 
 struct cancelPendingorder_operation : public operation
 {
-    uint8_t m_type = null;
-	uint8_t m_cancelType = null;
-	h256 m_hash;
+    h256 m_hash;
+    uint8_t m_type = 4;
+    uint8_t m_cancelType = 3;
 
     cancelPendingorder_operation(){}
-    cancelPendingorder_operation(op_type _type, uint8_t _cancelType, h256 _hash) : m_type(_type),m_hash(_hash),m_cancelType(_cancelType)
+    cancelPendingorder_operation(uint8_t type, uint8_t cancel_type,h256 _hash):m_type(type), m_cancelType(cancel_type), m_hash(_hash)
     {}
 
     OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))

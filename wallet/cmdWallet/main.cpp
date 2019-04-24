@@ -176,9 +176,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             break;
                         }
 						case cancelPendingOrder: {
-							auto cancel_op = new cancelPendingorder_operation((op_type)type,
-							        h256(op_obj["m_hash"].get_str())
-							        );
+							auto cancel_op = new cancelPendingorder_operation((op_type)type, 3,h256(op_obj["m_hash"].get_str()));
 							tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
 							break;
 						}
