@@ -140,22 +140,18 @@ namespace dev {
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
-//                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
                     if (begin == end) {
-//                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
 
                         update_dynamic_orders(true);
-
                         return;
                     }
                     auto spend = amount;
 
                     bool rm = false;
                     while (spend > 0 && begin != end) {
-//                        cwarn << "spent : " << (std::string)od();
                         result_order ret;
                         if (begin->token_amount <= spend) {
                             spend -= begin->token_amount;
@@ -175,7 +171,6 @@ namespace dev {
                         });
                         update_dynamic_result_orders();
 
-//                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
                             const auto rm_obj = db->find(begin->id);

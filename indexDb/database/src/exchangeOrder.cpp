@@ -65,15 +65,13 @@ namespace dev {
                                             auto begin_total_price = begin->token_amount * begin->price;
                                             result_order ret;
                                             if (begin_total_price <= total_price) {   //
-
                                                 total_price -= begin_total_price;
-
                                                 ret.set_data(itr, begin, begin->token_amount, begin->price);
                                                 result.push_back(ret);
-
                                                 const auto rm_obj = db->find(begin->id);
                                                 begin++;
                                                 db->remove(*rm_obj);
+                                                update_dynamic_orders(false);
                                             } else if (begin_total_price > total_price) {
 
                                                 auto can_buy_amount = total_price / begin->price;
@@ -92,6 +90,7 @@ namespace dev {
                                             db->create<order_result_object>([&](order_result_object &obj) {
                                                 obj.set_data(ret);
                                             });
+                                            update_dynamic_result_orders();
                                         }
                                     } else {
                                         BOOST_THROW_EXCEPTION(all_price_operation_error());
@@ -119,10 +118,12 @@ namespace dev {
                                                 const auto rm_obj = db->find(begin->id);
                                                 begin++;
                                                 db->remove(*rm_obj);
+                                                update_dynamic_orders(false);
                                             }
                                             db->create<order_result_object>([&](order_result_object &obj) {
                                                 obj.set_data(ret);
                                             });
+                                            update_dynamic_result_orders();
                                         }
                                     } else {
                                         BOOST_THROW_EXCEPTION(all_price_operation_error());
@@ -147,6 +148,7 @@ namespace dev {
                         session.undo();
                         BOOST_THROW_EXCEPTION(createOrderError());
                     }
+
                     return result;
                 });
             }
