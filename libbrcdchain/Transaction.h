@@ -36,7 +36,8 @@ enum class TransactionException
 	VerifyPendingOrderFiled,
     BadSystemAddress,
     BadVoteParamter,
-    BadBRCTransactionParamter
+    BadBRCTransactionParamter,
+	DefaultError
 };
 
 namespace transationTool
@@ -163,15 +164,16 @@ struct pendingorder_opearaion : public operation
 struct cancelPendingorder_operation : public operation
 {
     uint8_t m_type = null;
-    h256 m_hash;
+	uint8_t m_cancelType = null;
+	h256 m_hash;
 
     cancelPendingorder_operation(){}
-    cancelPendingorder_operation(op_type _type, h256 _hash) : m_type(_type),m_hash(_hash)
+    cancelPendingorder_operation(op_type _type, uint8_t _cancelType, h256 _hash) : m_type(_type),m_hash(_hash),m_cancelType(_cancelType)
     {}
 
-    OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_hash))
+    OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))
 
-    OPERATION_SERIALIZE((m_type)(m_hash))
+    OPERATION_SERIALIZE((m_type)(m_cancelType)(m_hash))
 };
 
 }  // namespace transationTool
