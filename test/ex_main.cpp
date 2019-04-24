@@ -383,6 +383,38 @@ void test1() {
 }
 
 
+
+
+
+uint8_t method_int(const std::string &str)
+{
+    if(str == "buy"){
+        return 2;
+    }
+    if(str == "sell"){
+        return 1;
+    }
+
+    if(str == "BRC"){
+        return 0;
+    }
+    if(str == "FUEL"){
+        return 1;
+    }
+
+    if(str == "all_price"){
+        return 0;
+    }
+    if(str == "only_price"){
+        return 1;
+    }
+    exit(1);
+}
+
+
+
+
+
 void test2() {
     testex::test_helper helper("127.0.0.1:8081");
     helper.set_keys();
@@ -396,15 +428,15 @@ void test2() {
     std::vector<testex::account> pre_accounts;
 
 
-    uint8_t type[] = {1, 2};
-    uint8_t token_type[] = {0, 1};
+//    std::vector<std::string> type = {"buy", "sell"};
+//    std::vector<std::string> token_type[] = {"BRC", "FUEL"};
 
-    for (uint8_t i = 0; i < 2; i++) {
-        for (uint8_t j = 0; j < 2; j++) {
+//    for (uint8_t i = 0; i < 2; i++) {
+//        for (uint8_t j = 0; j < 2; j++) {
 
-            uint8_t send_type = type[i];                  //buy
-            uint8_t send_token_type = token_type[j];            //BRC
-            uint8_t send_buy_type = 1;
+            auto send_type = "buy";                  //buy
+            auto send_token_type = "BRC";            //BRC
+            auto send_buy_type = 1;
 
             for (uint32_t k = 0; k < senders.size(); k++) {
 
@@ -413,16 +445,12 @@ void test2() {
                 dbt::pendingorder_opearaion op1;
                 op1.m_type = 3;
                 op1.m_from = ad1;
-                op1.m_Pendingorder_type = send_type;
-                op1.m_Pendingorder_Token_type = send_token_type;
+                op1.m_Pendingorder_type = method_int("sell");;
+                op1.m_Pendingorder_Token_type = method_int("FUEL");;
                 op1.m_Pendingorder_buy_type = send_buy_type;
                 op1.m_Pendingorder_num = k + 1;
                 op1.m_Pendingorder_price = k + 1;
-//                if(i == 1 && j == 0 && k == 3){
-//                    helper.packed_transaction(op1);
-//                }
                 helper.packed_transaction(op1);
-
             }
 
             //
@@ -432,13 +460,11 @@ void test2() {
             dbt::pendingorder_opearaion op2;
             op2.m_type = 3;
             op2.m_from = from;
-            op2.m_Pendingorder_type = send_type;
-            op2.m_Pendingorder_Token_type = send_token_type;
+            op2.m_Pendingorder_type = method_int("buy");
+            op2.m_Pendingorder_Token_type = method_int("BRC");
             op2.m_Pendingorder_buy_type = send_buy_type;
             op2.m_Pendingorder_num = 5;
             op2.m_Pendingorder_price = 3;
-
-            op2 = helper.up_down_op(op2, from);
 
             helper.packed_transaction(op2);
 
@@ -452,8 +478,8 @@ void test2() {
 
             pre_accounts.clear();
             cwarn << "-------------------------- clear --------------------------";
-        }
-    }
+//        }
+//    }
 
 
 }
@@ -465,47 +491,57 @@ void test3() {
     helper.set_keys();
 
 
-    uint8_t send_type = 1;                  //buy
-    uint8_t send_token_type = 0;            //BRC
-    uint8_t send_buy_type = 1;
-
-
     auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
     auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    auto ad3 = Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77");
     /*-----------------------------------------*/
+    auto s_ac1 = helper.get_address_info(ad1);
+    auto s_ac2 = helper.get_address_info(ad2);
+    auto s_ac3 = helper.get_address_info(ad3);
+
+
+    uint8_t o_type = 1;
+    uint8_t token_type = 0;
+
     dbt::pendingorder_opearaion op1;
     op1.m_type = 3;
     op1.m_from = ad1;
-    op1.m_Pendingorder_type = 2;
-    op1.m_Pendingorder_Token_type = send_token_type ^ 1;
-    op1.m_Pendingorder_buy_type = send_buy_type;
-    op1.m_Pendingorder_num = 1;
+    op1.m_Pendingorder_type = o_type;
+    op1.m_Pendingorder_Token_type = token_type;
+    op1.m_Pendingorder_buy_type = 1;
+    op1.m_Pendingorder_num = 3;
     op1.m_Pendingorder_price = 3;
 
-    dbt::pendingorder_opearaion op3;
-    op3.m_type = 3;
-    op3.m_from = ad1;
-    op3.m_Pendingorder_type = 2;
-    op3.m_Pendingorder_Token_type = send_token_type ^ 1;
-    op3.m_Pendingorder_buy_type = send_buy_type;
-    op3.m_Pendingorder_num = 4;
-    op3.m_Pendingorder_price = 4;
-
-
-    helper.packed_transaction(op1);
-    helper.packed_transaction(op3);
 
 
     dbt::pendingorder_opearaion op2;
     op2.m_type = 3;
     op2.m_from = ad2;
-    op2.m_Pendingorder_type = send_type;
-    op2.m_Pendingorder_Token_type = send_token_type;
-    op2.m_Pendingorder_buy_type = send_buy_type;
+    op2.m_Pendingorder_type = o_type;
+    op2.m_Pendingorder_Token_type = token_type;
+    op2.m_Pendingorder_buy_type = 1;
     op2.m_Pendingorder_num = 4;
     op2.m_Pendingorder_price = 4;
 
+    helper.packed_transaction(op1);
     helper.packed_transaction(op2);
+
+
+    /////////////////////////////////////////
+    dbt::pendingorder_opearaion op3;
+    op3.m_type = 3;
+    op3.m_from = ad3;
+    op3.m_Pendingorder_type = o_type == 1 ?  2 : 1;
+    op3.m_Pendingorder_Token_type = token_type ^ 1;
+    op3.m_Pendingorder_buy_type = 1;
+    op3.m_Pendingorder_num = 0;
+    op3.m_Pendingorder_price = 15;
+
+    helper.packed_transaction(op3);
+
+    s_ac1 % helper.get_address_info(ad1);
+    s_ac2 % helper.get_address_info(ad2);
+    s_ac3 % helper.get_address_info(ad3);
 
 
 }
@@ -567,6 +603,68 @@ void test_one() {
 }
 
 
+void test_all_price() {
+
+
+    testex::test_helper helper("127.0.0.1:8081");
+    helper.set_keys();
+
+
+    auto ad1 = Address("0xb0de975d99fa9a3f94946fb9ee8ac7a166a5a856");
+    auto ad2 = Address("0x2e7abb8dc2ef5743d66bf83bca574008dd2c00ad");
+    auto ad3 = Address("0x6aeef4abd6eb8e13ae5ab009e2d45fca9ed18f77");
+    /*-----------------------------------------*/
+    auto s_ac1 = helper.get_address_info(ad1);
+    auto s_ac2 = helper.get_address_info(ad2);
+    auto s_ac3 = helper.get_address_info(ad3);
+
+
+    uint8_t o_type = 1;
+    uint8_t token_type = 0;
+
+    dbt::pendingorder_opearaion op1;
+    op1.m_type = 3;
+    op1.m_from = ad1;
+    op1.m_Pendingorder_type = o_type;
+    op1.m_Pendingorder_Token_type = token_type;
+    op1.m_Pendingorder_buy_type = 1;
+    op1.m_Pendingorder_num = 3;
+    op1.m_Pendingorder_price = 3;
+
+
+
+    dbt::pendingorder_opearaion op2;
+    op2.m_type = 3;
+    op2.m_from = ad2;
+    op2.m_Pendingorder_type = o_type;
+    op2.m_Pendingorder_Token_type = token_type;
+    op2.m_Pendingorder_buy_type = 1;
+    op2.m_Pendingorder_num = 4;
+    op2.m_Pendingorder_price = 4;
+
+    helper.packed_transaction(op1);
+    helper.packed_transaction(op2);
+
+
+    /////////////////////////////////////////
+    dbt::pendingorder_opearaion op3;
+    op3.m_type = 3;
+    op3.m_from = ad3;
+    op3.m_Pendingorder_type = o_type == 1 ?  2 : 1;
+    op3.m_Pendingorder_Token_type = token_type ^ 1;
+    op3.m_Pendingorder_buy_type = 0;
+    op3.m_Pendingorder_num = 0;
+    op3.m_Pendingorder_price = 15;
+
+    helper.packed_transaction(op3);
+
+    s_ac1 % helper.get_address_info(ad1);
+    s_ac2 % helper.get_address_info(ad2);
+    s_ac3 % helper.get_address_info(ad3);
+
+
+}
+
 int main(int argc, char **argv) {
 
     int c = (int) (**(argv + 1)) - 48;
@@ -586,6 +684,9 @@ int main(int argc, char **argv) {
             break;
         case 5:
             test1();
+            break;
+        case 6:
+            test_all_price();
             break;
     }
 
