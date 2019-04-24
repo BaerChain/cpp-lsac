@@ -756,6 +756,44 @@ Json::Value Brc::brc_fetchQueuedTransactions(string const& _accountId)
     }
 }
 
+Json::Value dev::rpc::Brc::brc_getObtainVote(const std::string& _address, const std::string& _blockNumber)
+{
+	try
+	{
+		return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+	}
+	catch(...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+
+Json::Value dev::rpc::Brc::brc_getVoted(const std::string& _address, const std::string& _blockNumber)
+{
+	try
+	{
+		return client()->votedMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+	}
+	catch(...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+
+Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
+{
+	try
+	{
+		return client()->electorMessage(jsToBlockNumber(_blockNumber));
+	}
+	catch(...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;
@@ -802,26 +840,30 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";
     }
-    catch (InvalidSignature const&)
-    {
-        ret = "Invalid transaction signature.";
-    }
-    // Acount holder exceptions
-    catch (AccountLocked const&)
-    {
-        ret = "Account is locked.";
-    }
-    catch (UnknownAccount const&)
-    {
-        ret = "Unknown account.";
-    }
-    catch (TransactionRefused const&)
-    {
-        ret = "Transaction rejected by user.";
-    }
-    catch (...)
-    {
-        ret = "Invalid RPC parameters.";
-    }
-    return ret;
+    catch(VerifyVoteField const& ex)
+	{
+		ret = "Account vote verify is error!" + std::string(ex.what());
+	}
+	catch (InvalidSignature const&)
+	{
+		ret = "Invalid transaction signature.";
+	}
+	// Acount holder exceptions
+	catch (AccountLocked const&)
+	{
+		ret = "Account is locked.";
+	}
+	catch (UnknownAccount const&)
+	{
+		ret = "Unknown account.";
+	}
+	catch (TransactionRefused const&)
+	{
+		ret = "Transaction rejected by user.";
+	}
+	catch (...)
+	{
+		ret = "Invalid RPC parameters.";
+	}
+	return ret;
 }

@@ -188,6 +188,8 @@ int main(int argc, char **argv) {
     string remoteHost;
     unsigned short remotePort = dev::p2p::c_defaultIPPort;
 
+	unsigned int http_port = 8081;
+
     unsigned peers = 11;
     unsigned peerStretch = 7;
     std::map<p2p::NodeID, pair<NodeIPEndpoint, bool>> preferredNodes;
@@ -239,8 +241,12 @@ int main(int argc, char **argv) {
 
     bool listenSet = false;
     bool chainConfigIsSet = false;
+    bool chainAccountJsonIsSet = false;
     fs::path configPath;
     string configJSON;
+
+	fs::path accountPath;
+    string accountJSON;
 
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
@@ -250,6 +256,8 @@ int main(int argc, char **argv) {
     addClientOption("test", "Testing mode; disable PoW and provide test rpc interface");
     addClientOption("config", po::value<string>()->value_name("<file>"),
                     "Configure specialised blockchain using given JSON information\n");
+    addClientOption("accountJson", po::value<string>()->value_name("<file>"),
+        "AccountJson specialised blockchain using given JSON information\n");
     addClientOption("mode,o", po::value<string>()->value_name("<full/peer>"),
                     "Start a full node or a peer node (default: full)\n");
     addClientOption("ipc", "Enable IPC server (default: on)");
@@ -311,6 +319,8 @@ int main(int argc, char **argv) {
                         "Listen on the given IP for incoming connections (default: 0.0.0.0)");
     addNetworkingOption("listen", po::value<unsigned short>()->value_name("<port>"),
                         "Listen on the given port for incoming connections (default: 30303)");
+	addNetworkingOption("http_port", po::value<unsigned short>()->value_name("<port>"),
+						"http on the given port for incoming connections (default: 30303)");
     addNetworkingOption("remote,r", po::value<string>()->value_name("<host>(:<port>)"),
                         "Connect to the given remote host (default: none)");
     addNetworkingOption("port", po::value<short>()->value_name("<port>"),
@@ -517,6 +527,25 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
+
+	if (vm.count("accountJson"))
+    {
+        try
+        {
+            accountPath = vm["accountJson"].as<string>();
+            accountJSON = contentsString(accountPath.string());
+            if (accountJSON.empty())
+            {
+                cerr << "accountJson file not found or empty (" << accountPath.string() << ")\n";
+                //return -1;
+            }
+        }
+        catch (...)
+        {
+            cerr << "Bad --accountJson option: " << vm["accountJson"].as<string>() << "\n";
+            return -1;
+        }
+    }
     if (vm.count("extra-data")) {
         try {
             extraData = fromHex(vm["extra-data"].as<string>());
@@ -529,10 +558,12 @@ int main(int argc, char **argv) {
     if (vm.count("mainnet")) {
         chainParams = ChainParams(genesisInfo(brc::Network::MainNetwork), genesisStateRoot(brc::Network::MainNetwork));
         chainConfigIsSet = true;
+        chainAccountJsonIsSet = true;
     }
     if (vm.count("ropsten")) {
         chainParams = ChainParams(genesisInfo(brc::Network::Ropsten), genesisStateRoot(brc::Network::Ropsten));
         chainConfigIsSet = true;
+        chainAccountJsonIsSet = true;
     }
     if (vm.count("ask")) {
         try {
@@ -556,6 +587,10 @@ int main(int argc, char **argv) {
         listenIP = vm["listen-ip"].as<string>();
         listenSet = true;
     }
+	if(vm.count("http_port"))
+	{
+        http_port = vm["http_port"].as<unsigned short>();
+	}
     if (vm.count("listen")) {
         listenPort = vm["listen"].as<unsigned short>();
         listenSet = true;
@@ -687,6 +722,22 @@ int main(int argc, char **argv) {
         }
         catch (...) {
             cerr << "provided configuration is not well formatted\n";
+            cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
+            return 0;
+        }
+    }
+
+     if (!accountJSON.empty())
+    {
+        try
+        {
+            chainParams.saveBlockAddress(accountJSON, {}, accountPath);
+            //ctrace << "saveBlockAddress success!";
+            chainAccountJsonIsSet = true;
+        }
+        catch (...)
+        {
+            cerr << "provided accountJson is not well formatted\n";
             cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
             return 0;
         }
@@ -1013,7 +1064,7 @@ int main(int argc, char **argv) {
                     new rpc::Debug(*web3.brcdChain()),
                     nullptr
             );
-            auto httpConnector = new SafeHttpServer("0.0.0.0", 8081, "", "", 4);
+            auto httpConnector = new SafeHttpServer("0.0.0.0", (int)http_port, "", "", 4);
             httpConnector->setAllowedOrigin("");
             jsonrpcHttpServer->addConnector(httpConnector);
             jsonrpcHttpServer->StartListening();

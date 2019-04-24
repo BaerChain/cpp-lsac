@@ -49,8 +49,10 @@ struct ChainParams: public ChainOperationParams
 
     //Poa 
     std::vector<Address> poaValidatorAccount;
+	std::vector<Address> poaBlockAccount;
 
     std::map<Address, Secret>       m_miner_priv_keys;      ///key: address, value : private key , packed block and sign
+    std::map<Address, Secret> m_block_addr_keys;
 
     h256 calculateStateRoot(bool _force = false) const;
 
@@ -60,6 +62,9 @@ struct ChainParams: public ChainOperationParams
     /// load config
     ChainParams loadConfig(std::string const& _json, h256 const& _stateRoot = {},
         const boost::filesystem::path& _configPath = {}) const;
+
+    void saveBlockAddress(std::string const& _json, h256 const& _stateRoot = {},
+        const boost::filesystem::path& _aSccountJsonPath = {});
 
 private:
     void populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state);
