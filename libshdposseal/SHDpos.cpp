@@ -508,7 +508,6 @@ void dev::bacd::SHDpos::getVarlitorsAndCandidate(std::vector<Address>& _curr_var
     _curr_varlitors.clear();
     m_curr_candidate.clear();
 
-	cwarn << " 333333333333333";
 	auto index = m_config.maxValitorNum;
 	for(auto v : _v)
 	{
@@ -520,8 +519,6 @@ void dev::bacd::SHDpos::getVarlitorsAndCandidate(std::vector<Address>& _curr_var
 		else
 			m_curr_candidate.push_back(v);
 	}
-	cwarn << " 4444444444444444444";
-
 }
 
 // 超过12个坏块，加入黑名单
