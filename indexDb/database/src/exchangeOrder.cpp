@@ -272,7 +272,6 @@ namespace dev {
                         db->remove(*rm);
                         begin++;
                     }
-                    cwarn << (std::string)o();
                     ret.push_back(o);
                 }
 
