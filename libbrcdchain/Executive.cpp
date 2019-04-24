@@ -428,7 +428,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyCancelPendingOrder(m_exdb, m_t.sender,
+                    if (!m_brctranscation.verifyCancelPendingOrder(m_exdb, m_t.sender(),
 						_cancel_op.m_hash))
                     {
                         LOG(m_execLogger)
