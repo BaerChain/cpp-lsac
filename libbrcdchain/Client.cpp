@@ -387,7 +387,7 @@ void Client::syncBlockQueue()
         if( bc().number() % 10 == 0){
             auto txv = bc().transactions();
             LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size() <<    m_StateExDB.check_version(false);
+                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size() << "  " << m_StateExDB.check_version(false);
 
         }
 
