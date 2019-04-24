@@ -268,10 +268,10 @@ namespace dev {
                     o.time = begin->create_time;
                     while (begin != end) {
                         o.price_token[begin->price] = begin->token_amount;
+                        const auto rm = db->find(begin->id);
+                        db->remove(*rm);
+                        begin++;
                     }
-                    const auto rm = db->find(begin->id);
-                    begin++;
-                    db->remove(*rm);
                     ret.push_back(o);
                 }
                 if (!reset) {
