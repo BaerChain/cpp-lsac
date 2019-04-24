@@ -177,7 +177,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
 						case cancelPendingOrder: {
 							auto cancel_op = new cancelPendingorder_operation((op_type)type,
-								(h256)op_obj["m_hash"].get_int());
+                                    h256(op_obj["m_hash"].get_str()));
 							tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
 							break;
 						}
@@ -290,50 +290,60 @@ void generate_key(const std::string &seed){
 
 int main(int argc, char *argv[]) {
 
-    bpo::options_description description("command line ");
-    description.add_options()
-            ("help,h", "show help message.")
-            ("json,j", bpo::value<bfs1::path>(), "read from data from file.")
-            ("send,s", bpo::value<std::string>(), "get the http ip and port, use this option will auto to send rawTransation to http host...")
-            ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
-            ("create,c", "create simple \"data.json\" to file on current path.")
-            ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
-            ;
-    // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
-    //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
+    try {
+        bpo::options_description description("command line ");
+        description.add_options()
+                ("help,h", "show help message.")
+                ("json,j", bpo::value<bfs1::path>(), "read from data from file.")
+                ("send,s", bpo::value<std::string>(), "get the http ip and port, use this option will auto to send rawTransation to http host...")
+                ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
+                ("create,c", "create simple \"data.json\" to file on current path.")
+                ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
+                ;
+        // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
+        //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
 
-    bpo::variables_map args_map;
-    bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, description);
-    bpo::store(parsed, args_map);
+        bpo::variables_map args_map;
+        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, description);
+        bpo::store(parsed, args_map);
 
-    bfs1::path json_path;
+        bfs1::path json_path;
 
-    if (args_map.count("help")) {
-        std::cout << description << std::endl;
-        return 0;
-    }
-    if (args_map.count("create")) {
-        auto p = bfs1::current_path().string() + "/data.json";
-        write_simple_to_file(bfs1::path(p));
+        if (args_map.count("help")) {
+            std::cout << description << std::endl;
+            return 0;
+        }
+        if (args_map.count("create")) {
+            auto p = bfs1::current_path().string() + "/data.json";
+            write_simple_to_file(bfs1::path(p));
+        }
+
+        bool _is_send = false;
+        std::string _ip = "";
+        if (args_map.count("send")) {
+            _is_send = true;
+            _ip = args_map["send"].as<std::string>();
+        }
+        if (args_map.count("json")) {
+            json_path = args_map["json"].as<bfs1::path>();
+            sign_trx_from_json(json_path, _is_send, _ip);
+            return 0;
+        }
+        if (args_map.count("nonce")) {
+            nonce = (size_t) args_map["nonce"].as<int>();
+        }
+        if (args_map.count("generate-key")) {
+            generate_key(args_map["generate-key"].as<std::string>());
+        }
+    }catch (const std::exception &e){
+        cwarn << e.what();
+    }catch (const boost::exception &e){
+        cwarn << boost::diagnostic_information(e);
+    }catch (...){
+
     }
 
-    bool _is_send = false;
-    std::string _ip = "";
-    if (args_map.count("send")) {
-        _is_send = true;
-        _ip = args_map["send"].as<std::string>();
-    }
-    if (args_map.count("json")) {
-        json_path = args_map["json"].as<bfs1::path>();
-        sign_trx_from_json(json_path, _is_send, _ip);
-        return 0;
-    }
-    if (args_map.count("nonce")) {
-        nonce = (size_t) args_map["nonce"].as<int>();
-    }
-    if (args_map.count("generate-key")) {
-        generate_key(args_map["generate-key"].as<std::string>());
-    }
+
 
 
     return 0;
