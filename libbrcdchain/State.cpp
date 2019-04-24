@@ -1156,6 +1156,55 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     return jv;
 }
 
+Json::Value dev::brc::State::votedMessage(Address const& _addr) const
+{
+	Json::Value jv;
+	if(auto a = account(_addr))
+	{
+		std::unordered_map<Address, u256> const& _data = a->voteData();
+		Json::Value _arry;
+		int _num = 0;
+		for(auto val : a->voteData())
+		{
+			Json::Value _v;
+			_v["address"] = toJS(val.first);
+			_v["voted_num"] = toJS(val.second);
+			_arry.append(_v);
+			_num += (int)val.second;
+		}
+		jv["vote"] = _arry;
+		jv["total_voted_num"] = toJS(_num);
+	}
+	return jv;
+}
+
+Json::Value dev::brc::State::electorMessage(Address _addr) const
+{
+	Json::Value jv;
+	Json::Value _arry;
+	std::unordered_map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
+	if(_addr == ZeroAddress)
+	{
+		for(auto val : _data)
+		{
+			Json::Value _v;
+			_v["address"] = toJS(val.first);
+			_v["vote_num"] = toJS(val.second);
+			_arry.append(_v);
+		}
+		jv["electors"] = _arry;
+	}
+	else
+	{
+		jv["addrsss"] = toJS(_addr);
+		auto ret = _data.find(_addr);
+		if(ret != _data.end())
+			jv["obtain_vote"] = toJS(ret->second);
+		else
+			jv["ret"] = "not is the eletor";
+	}
+	return jv;
+}
 
 dev::u256 dev::brc::State::voteAll(Address const &_id) const {
     if (auto a = account(_id))

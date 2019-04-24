@@ -103,7 +103,8 @@ public:
     bool isSyncing() const;
 
     void noteNewTransactions() { m_newTransactions = true; }
-    void noteNewBlocks() { m_newBlocks = true; }
+	void noteNewBlocks() { m_newBlocks = true; }
+	void noteNewBlocksSend() { m_newSend = true; }
     void onBlockImported(BlockHeader const& _info) { m_sync->onBlockImported(_info); }
 
     BlockChain const& chain() const { return m_chain; }
@@ -152,6 +153,7 @@ private:
     /// Do we presently need syncing with this peer?
     bool needsSyncing(NodeID const& _peerID) const;
 
+	void sendNewBlock();
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
 
     BlockChain const& m_chain;
@@ -166,6 +168,8 @@ private:
 
     std::atomic<bool> m_newTransactions = {false};
     std::atomic<bool> m_newBlocks = {false};
+
+	std::atomic<bool> m_newSend = { false };
 
     std::shared_ptr<BlockChainSync> m_sync;
     std::atomic<time_t> m_lastTick = { 0 };
@@ -182,6 +186,7 @@ private:
     Logger m_logger{createLogger(VerbosityDebug, "brccap")};
     /// Logger for messages about impolite behaivour of peers.
     Logger m_loggerImpolite{createLogger(VerbosityDebug, "impolite")};
+	Logger m_log_test{createLogger(VerbosityInfo, "test_info")};
 };
 
 }

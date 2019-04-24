@@ -428,11 +428,11 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
             }
             catch (dev::brc::FutureTime const &) {
                 cwarn << "ODD: Import queue contains a block with future time.";
-                this_thread::sleep_for(chrono::seconds(1));
+                this_thread::sleep_for(chrono::milliseconds(200));
                 continue;
             }
             catch (dev::brc::TransientError const &) {
-                this_thread::sleep_for(chrono::milliseconds(100));
+                this_thread::sleep_for(chrono::milliseconds(50));
                 continue;
             }
             catch (Exception &ex) {
@@ -1360,7 +1360,8 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
 
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
-    VerifiedBlockRef res;
+	int64_t _time1;
+	VerifiedBlockRef res;
     BlockHeader h;
     try {
         h = BlockHeader(_block);
@@ -1419,28 +1420,134 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-    if (_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
-        for (RLP const &tr: r[1]) {
-            bytesConstRef d = tr.data();
-            try {
-                Transaction t(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything
-                                                                                   : CheckTransaction::None);
-                m_sealEngine->verifyTransaction(_ir, t, h,
-                                                0); // the gasUsed vs blockGasLimit is checked later in enact function
-                res.transactions.push_back(t);
-            }
-            catch (Exception &ex) {
-                ex << errinfo_phase(1);
-                ex << errinfo_transactionIndex(i);
-                ex << errinfo_transaction(d.toBytes());
-                addBlockInfo(ex, h, _block.toBytes());
-                if (_onBad)
-                    _onBad(ex);
-                throw;
-            }
-            ++i;
-        }
-    res.block = bytesConstRef(_block);
+	cwarn << BrcYellow << " will begin to populate transaction front_use_time:" << utcTimeMilliSec() - _time1 << " time:"<< utcTimeMilliSec();
+	int64_t _time = utcTimeMilliSec();
+    if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
+	{
+        if(false)
+		{
+			size_t thread_num = 4;
+			std::vector< std::vector<TransactionByte> > _transs; //{thread_num, std::vector<TransactionByte>()};
+			for(int j = 0; j < thread_num; j++)
+				_transs.push_back(std::vector<TransactionByte>());
+			std::vector<TransactionByte> _rTranBytes;
+			size_t _tIndex = 0;
+			for(auto _r : r[1])
+				_rTranBytes.push_back({ ++_tIndex, _r.data() });
+
+			size_t _push_num = 0;
+			size_t _rang_num = _rTranBytes.size() / thread_num;
+			size_t _thread_index = 0;
+			for(auto val : _rTranBytes)
+			{
+				if(++_push_num >= _rang_num && _thread_index < (thread_num - 1))
+				{
+					_push_num = 0;
+					++_thread_index;
+				}
+				_transs[_thread_index].push_back(val);
+			}
+
+			int64_t _time2 = utcTimeMilliSec();
+			cwarn << " init data use_time:" << _time2 - _time << " time:" << _time2;
+			Timer _timer;
+			std::vector<TransactionIndex> _trans;
+			std::vector<Exception> _exceptions;
+			size_t _over_num = 0;
+			std::mutex _lock_tr;
+			try
+			{
+				int th = 0;
+				for(auto _tb : _transs)
+				{
+					++th;
+					if(_tb.empty())
+					{
+						_over_num++;
+						continue;
+					}
+					thread t([=, &_trans, &_over_num, &_lock_tr, &_exceptions]{
+						for(auto trb : _tb)
+						{
+							try
+							{
+								Transaction _tr(trb.data_b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+								m_sealEngine->verifyTransaction(_ir, _tr, h, 0); // the gasUsed vs blockGasLimit is checked later in enact function
+								std::lock_guard<std::mutex> guard(_lock_tr);
+								_trans.push_back({ trb.index, _tr });
+							}
+							catch(Exception& ex)
+							{
+								_over_num++;
+								ex << errinfo_phase(th);
+								ex << errinfo_transactionIndex(trb.index);
+								ex << errinfo_transaction(trb.data_b.toBytes());
+								addBlockInfo(ex, h, _block.toBytes());
+								//throw;
+								std::lock_guard<std::mutex> guard(_lock_tr);
+								_exceptions.push_back(ex);
+							}
+						}
+						// populate ok 
+						cwarn << "thread:" << th << " populate tranction:" << _tb.size() << " is ok use_time:" << _timer.elapsed() * 1000;
+						_over_num++;
+							 });
+					t.detach();
+				}
+			}
+			catch(Exception& _e) //std::exception const& _e
+			{
+				cwarn << "Exception thrown in Block verifyTransaction thread: " << _e.what();
+			}
+
+			while(_over_num < thread_num)
+			{
+				// wait for populate all transaction
+				usleep(5);
+			}
+			if(!_exceptions.empty())
+			{
+				if(_onBad)
+					_onBad(_exceptions[0]);
+				throw _exceptions[0];
+			}
+			std::sort(_trans.begin(), _trans.end());
+			for(auto val : _trans)
+			{
+				res.transactions.push_back(std::move(val.transaction));
+			}
+			cwarn << " 1000 transaction use_time:" << utcTimeMilliSec() - _time << " time:" << utcTimeMilliSec() << " transaction_size:" << res.transactions.size();
+		}
+		else
+		{
+			Timer _timer;
+			double p_time = 0;
+			double v_time = 0;
+			for(RLP const& tr : r[1])
+			{
+				bytesConstRef d = tr.data();
+				try
+				{
+					Transaction t(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+					m_sealEngine->verifyTransaction(_ir, t, h, 0); // the gasUsed vs blockGasLimit is checked later in enact function
+					res.transactions.push_back(t);
+				}
+				catch(Exception& ex)
+				{
+					ex << errinfo_phase(1);
+					ex << errinfo_transactionIndex(i);
+					ex << errinfo_transaction(d.toBytes());
+					addBlockInfo(ex, h, _block.toBytes());
+					if(_onBad)
+						_onBad(ex);
+					throw;
+				}
+				++i;
+			}
+		}
+	}
+	cwarn << "pupolate transaction:" << res.transactions.size() << " use_time:" << utcTimeMilliSec() - _time<< " time:" << utcTimeMilliSec();
+    res.block = bytesConstRef(_block);                                                                           
     return res;
 }
 

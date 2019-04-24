@@ -447,6 +447,11 @@ void BrcdChainCapability::doBackgroundWork()
             maintainBlocks(h);
         }
     }
+    if(m_newSend)
+	{
+		m_newSend = false;
+		sendNewBlock();
+	}
 
     time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
     if (now - m_lastTick >= 1)
@@ -463,15 +468,17 @@ void BrcdChainCapability::doBackgroundWork()
     }
 
     if (m_backgroundWorkEnabled)
-        m_host->scheduleExecution(c_backroundWorkPeriodMs, [this]() { doBackgroundWork(); });
+		m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
+	    //m_host->scheduleExecution(c_backroundWorkPeriodMs, [this](){ doBackgroundWork(); });
 }
 
 void BrcdChainCapability::maintainTransactions()
 {
     // Send any new transactions.
     unordered_map<NodeID, std::vector<size_t>> peerTransactions;
-    auto ts = m_tq.topTransactions(c_maxSendTransactions);
-    {
+    //auto ts = m_tq.topTransactions(c_maxSendTransactions);
+    auto ts = m_tq.topTransactions(0);
+	{
         for (size_t i = 0; i < ts.size(); ++i)
         {
             auto const& t = ts[i];
@@ -487,26 +494,75 @@ void BrcdChainCapability::maintainTransactions()
             m_transactionsSent.insert(t.sha3());
     }
 
-    for (auto& peer : m_peers)
-    {
-        bytes b;
-        unsigned n = 0;
-        for (auto const& i : peerTransactions[peer.first])
-        {
-            peer.second.markTransactionAsKnown(ts[i].sha3());
-            b += ts[i].rlp();
-            ++n;
-        }
+	while(true)
+	{
+		bool _send_ok = true;
+		for(auto& peer : m_peers)
+		{
+			bytes b;
+			unsigned n = 0;
+			auto _iter_index = peerTransactions[peer.first].begin();
+			for(auto const& i : peerTransactions[peer.first])
+			{
+				peer.second.markTransactionAsKnown(ts[i].sha3());
+				b += ts[i].rlp();
+				++n;
+				if(n >= c_maxSendTransactions)
+				{
+					if( (ts.begin() + i)!= ts.end())
+						_send_ok = false;
+					break;
+				}
+			}
+			if(n >= peerTransactions[peer.first].size())
+				n = peerTransactions[peer.first].size();
+			peerTransactions[peer.first].erase(_iter_index, _iter_index + n);
 
-        if (n || peer.second.isWaitingForTransactions())
-        {
-            RLPStream ts;
-            m_host->prep(peer.first, name(), ts, TransactionsPacket, n).appendRaw(b, n);
-            m_host->sealAndSend(peer.first, ts);
-            LOG(m_logger) << "Sent " << n << " transactions to " << peer.first;
-        }
-        peer.second.setWaitingForTransactions(false);
-    }
+			if(n || peer.second.isWaitingForTransactions())
+			{
+				RLPStream ts;
+				m_host->prep(peer.first, name(), ts, TransactionsPacket, n).appendRaw(b, n);
+				m_host->sealAndSend(peer.first, ts);
+				LOG(m_logger) << "Send " << n << " transactions to " << peer.first;
+			}
+			//peer.second.setWaitingForTransactions(false);
+		}
+		for(auto& peer : m_peers)
+			peer.second.setWaitingForTransactions(false);
+
+        if( _send_ok || peerTransactions.empty())
+            break;
+	}
+
+    /*
+	for(auto& peer : m_peers)
+	{
+		bytes b;
+		unsigned n = 0;
+		h256 _hash = h256();
+		for(auto const& i : peerTransactions[peer.first])
+		{
+			peer.second.markTransactionAsKnown(ts[i].sha3());
+			b += ts[i].rlp();
+			++n;
+			if(n >= c_maxSendTransactions)
+			{
+				_hash = ts[i];
+				break;
+			}
+		}
+
+
+		if(n || peer.second.isWaitingForTransactions())
+		{
+			RLPStream ts;
+			m_host->prep(peer.first, name(), ts, TransactionsPacket, n).appendRaw(b, n);
+			m_host->sealAndSend(peer.first, ts);
+			LOG(m_logger) << "Sent " << n << " transactions to " << peer.first;
+		}
+		//peer.second.setWaitingForTransactions(false);
+	}*/
+
 }
 
 tuple<vector<NodeID>, vector<NodeID>> BrcdChainCapability::randomSelection(
@@ -559,9 +615,10 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 for (auto const& b: blocks)
                 {
                     RLPStream ts;
-                    m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
+                    m_host->prep(peerID, name(), ts, NewBlockPacket, 3)
                         .appendRaw(m_chain.block(b), 1)
-                        .append(m_chain.details(b).totalDifficulty);
+                        .append(m_chain.details(b).totalDifficulty)
+						.append(u256(utcTimeMilliSec()));       // test for send data time in net 
 
                     auto itPeer = m_peers.find(peerID);
                     if (itPeer != m_peers.end())
@@ -920,4 +977,57 @@ BrcdChainPeer& BrcdChainCapability::peer(NodeID const& _peerID)
         BOOST_THROW_EXCEPTION(PeerDisconnected() << errinfo_nodeID(_peerID));
 
     return peer->second;
+}
+
+void dev::brc::BrcdChainCapability::sendNewBlock()
+{
+	cwarn << " into sendNewBlock ... time:" << utcTimeMilliSec();
+	std::vector<VerifiedSendData>const& _blocks = m_bq.getVerifiedBlocks();
+	if(_blocks.empty())
+		return;
+	
+    for (auto b: _blocks)
+    {
+		BlockHeader _h = BlockHeader(b.m_block);
+		h256 _hash = _h.hash();
+
+		auto s = randomSelection(25, [&](BrcdChainPeer const& _peer){
+			return !_peer.isBlockKnown(_hash);
+								 });
+		for(NodeID const& peerID : get<0>(s))
+		{
+			Timer _timer;
+			RLPStream ts;
+			m_host->prep(peerID, name(), ts, NewBlockPacket, 3)
+				.appendRaw(b.m_block, 1)
+				.append(b.m_totalDiff)
+				.append(u256(utcTimeMilliSec()));       // test for send data time in net 
+
+			auto itPeer = m_peers.find(peerID);
+			if(itPeer != m_peers.end())
+			{
+				m_host->sealAndSend(peerID, ts);
+				itPeer->second.clearKnownBlocks();
+			}
+			cwarn << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
+		}
+
+		/*for(NodeID const& peerID : get<1>(s))
+		{
+			RLPStream ts;
+			m_host->prep(peerID, name(), ts, NewBlockHashesPacket,1);
+			ts.appendList(2);
+			ts.append(_hash);
+			ts.append(_h.number());
+
+			auto itPeer = m_peers.find(peerID);
+			if(itPeer != m_peers.end())
+			{
+				m_host->sealAndSend(peerID, ts);
+				itPeer->second.clearKnownBlocks();
+			}
+		}*/
+		m_latestBlockSent = _hash;
+    }
+	m_bq.clearVerifiedBlocks();
 }
