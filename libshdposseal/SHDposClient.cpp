@@ -286,8 +286,3 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 	    dpos()->dellImportBadBlock(*block);
 	badBlock(*block, _ex.what());
 }
-
-
-//void dev::bacd::SHDposClient::stopSealing() {
-//    Worker::stopWorking();
-//}

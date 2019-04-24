@@ -8,7 +8,7 @@ bool dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, size_t _transcationNum)
 {
     if (_type <= dev::brc::TranscationEnum::ETranscationNull ||
-        _type >= dev::brc::TranscationEnum::ETranscationMax || _transcationNum == 0)
+        _type >= dev::brc::TranscationEnum::ETranscationMax || ( _type == dev::brc::TranscationEnum::EBRCTranscation && _transcationNum == 0))
     {
         return false;
     }
@@ -25,38 +25,10 @@ bool dev::brc::BRCTranscation::verifyTranscation(
         }
         return true;
     }
-    else if (_type == dev::brc::TranscationEnum::EFBRCFreezeTranscation)
-    {
-        if (_form != _to)
-        {
-            return false;
-        }
-        if (_transcationNum > (size_t)m_state.BRC(_form))
-        {
-            return false;
-        }
-        return true;
-    }
-    else if (_type == dev::brc::TranscationEnum::EFBRCUnFreezeTranscation)
-    {
-        if (_form != _to)
-        {
-            return false;
-        }
-        if (_transcationNum > (size_t)m_state.FBRC(_form))
-        {
-            return false;
-        }
-        return true;
-    }
-    else if (_type == dev::brc::TranscationEnum::ECookieTranscation)
-    {
-        if (_form == _to || _to != Address() || _transcationNum == 0)
-        {
-            return false;
-        }
-        return true;
-    }
+	else if (_type == dev::brc::TranscationEnum::EAssetInjection)
+	{
+		return true;
+	}
 
     return false;
 }
@@ -144,23 +116,32 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 }
 
 
-bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb ,h256 _hash)
+bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb, Address _addr, h256 _hash)
 {
 	if (_hash == h256(0))
 	{
 		return false;
 	}
 
-
+	std::vector <ex::order> _resultV;
 	try
 	{
 		const std::vector<h256> _HashV = { {_hash} };
-		_exdb.cancel_order_by_trxid(_HashV, true);
+		_resultV = _exdb.cancel_order_by_trxid(_HashV, true);
 	}
 	catch (const boost::exception& e)
 	{
 		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
 		return false;
 	}
+
+	for (auto val : _resultV)
+	{
+		if (_addr != val.sender)
+		{
+			return false;
+		}
+	}
+
 	return true;
 }

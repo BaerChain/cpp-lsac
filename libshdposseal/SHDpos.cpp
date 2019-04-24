@@ -719,6 +719,7 @@ bool dev::bacd::SHDpos::load_key_value(db::Slice _key, db::Slice _val)
 		cerror << ex.what();
 		return false;
 	}
+	return true;
 }
 
 

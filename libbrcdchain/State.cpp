@@ -168,7 +168,8 @@ Account *State::account(Address const &_addr) {
                                                    state[4].toInt<u256>(),
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
-                                                   state[9].toInt<u256>(), Account::Unchanged));
+                                                   state[9].toInt<u256>(),
+								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 
     m_unchangedCacheEntries.push_back(_addr);
@@ -1206,6 +1207,20 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	return jv;
 }
 
+void dev::brc::State::assetInjection(Address const& _addr)
+{
+	auto a = account(_addr);
+	if(a->assetInjectStatus() == 0)
+    {
+        addBRC(_addr, 1000);
+        addBalance(_addr, 100000000000);
+		a->setAssetInjectStatus();
+	}
+	else {
+		return;
+	}
+}
+
 dev::u256 dev::brc::State::voteAll(Address const &_id) const {
     if (auto a = account(_id))
         return a->voteAll();
@@ -1423,7 +1438,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(10);
+                RLPStream s(11);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1462,6 +1477,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
+				s << i.second.assetInjectStatus();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

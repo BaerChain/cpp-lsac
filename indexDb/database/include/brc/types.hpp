@@ -52,9 +52,9 @@ namespace dev {
 
                 std::string operator()() const{
                     std::string ret = "trxid : " +  trxid.abridged()
-                                        + "sender" + sender.abridged()
-                                        + "buy_type" + std::to_string(buy_type)
-                                        + "token_type " + std::to_string(token_type);
+                                        + " sender:" + sender.abridged()
+                                        + " buy_type:" + std::to_string(buy_type)
+                                        + " token_type:" + std::to_string(token_type);
 
                     return ret;
                 }
