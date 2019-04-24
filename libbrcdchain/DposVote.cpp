@@ -122,7 +122,6 @@ void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t
         if(ret != _eletors_temp.end())
 			_eletors_temp.erase(ret);
     }
-	cwarn << " 1111111111111111111";
     std::vector<DposVarlitorVote> _v;
     for (auto val : _eletors_temp)
         _v.push_back({val.first, (size_t)m_state.poll(val.first), 0});
@@ -135,8 +134,6 @@ void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t
 			return;
 		_electors.push_back(val.m_addr);
 	}
-	cwarn << " 2222222222222222222";
-
     //在比较属性相同的区段数据打乱顺序
     //取出相同区段数据
     /*std::vector<std::vector<DposVarlitorVote> > randVarlitors;
