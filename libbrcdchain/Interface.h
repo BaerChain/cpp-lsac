@@ -149,6 +149,11 @@ public:
         uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
     virtual Json::Value pendingOrderPoolForAddrMessage(
         Address _a, uint32_t _getSize, BlockNumber _block) const = 0;
+		
+	virtual Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const = 0;
+	virtual Json::Value votedMessage(Address _a, BlockNumber _block) const = 0;
+	virtual Json::Value electorMessage(BlockNumber _block) const = 0;
+	
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;

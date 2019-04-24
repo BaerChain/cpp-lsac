@@ -34,6 +34,72 @@ enum BadBlockRank
 	Rank_Two,
 	Rank_Three
 };
+// bad block num
+enum BadBlockNum
+{
+    BadNum_zero = 0,
+    BadNum_One = 3,
+    BadNum_Two = 7,
+    BadNum_Three = 12
+};
+
+//惩罚出块轮数或者块数
+enum PunishBlcokNum
+{
+    BlockNum_Zero = 0,
+    BlockNum_One = 1,    //剔除1轮出块资格
+    BlockNum_Two = 100,  //剔除100块出块资格
+    BlockNum_Max
+};
+
+struct BadBlockNumPunish
+{
+    std::map<size_t, size_t> m_badBlockNumPunish;
+    BadBlockNumPunish()
+    {
+        m_badBlockNumPunish.insert(std::make_pair<size_t, size_t>(BadNum_zero, BlockNum_Zero));
+        m_badBlockNumPunish.insert(std::make_pair<size_t, size_t>(BadNum_One, BlockNum_One));
+        m_badBlockNumPunish.insert(std::make_pair<size_t, size_t>(BadNum_Two, BlockNum_Two));
+        m_badBlockNumPunish.insert(std::make_pair<size_t, size_t>(BadNum_Three, BlockNum_Max));
+    }
+};
+
+// 惩罚信息
+struct BadBlockPunish
+{
+    size_t m_badBlockNum;   //坏块数量
+    size_t m_punishEcoph;   // 需要惩罚的不出块轮数或块数
+    size_t m_currentEcoph;  //当前惩罚不出块轮数或者块数
+    bool m_isPunish;        //是否惩罚 true表示未惩罚完成
+    BadBlockPunish(size_t _badBlockNum = 0, size_t _punishEcoph = 0, size_t _crrentEcoph = 0,
+        bool _isPunish = false)
+      : m_badBlockNum(_badBlockNum),
+        m_punishEcoph(_punishEcoph),
+        m_currentEcoph(_crrentEcoph),
+        m_isPunish(_isPunish)
+    {}
+    void streamRLP(RLPStream& _s) const
+	{
+		_s << m_badBlockNum << m_punishEcoph << m_currentEcoph << (size_t)m_isPunish;
+	}
+    void populate(RLP const& _l)
+	{
+		int index = 0;
+		try
+		{
+			m_badBlockNum = _l[index = 0].toInt<size_t>();
+			m_punishEcoph = _l[index = 1].toInt<size_t>();
+			m_currentEcoph = _l[index = 2].toInt<size_t>();
+			m_isPunish = (bool)_l[index = 3].toInt<size_t>();
+		}           
+		catch(Exception& ex)
+		{
+			cerror << " error populate BadBlockPunish index:" << index;
+			throw;
+		}
+	}
+};
+
 
 struct SHDposConfigParams
 {
@@ -42,6 +108,7 @@ struct SHDposConfigParams
 	size_t blockInterval = 1000;         //  a block created need time ms
 	size_t valitorNum = 2;               //  check the varlitor for min num 
 	size_t maxValitorNum = 21;           //  check the varlitor for max nu
+    size_t totalElectorNum = 51;
 	size_t verifyVoteNum = 6;            //  the vote chencked about block num 
 	bool   isGensisVarNext = false;      
 	u256   candidateBlance = 1000000;    // to be candidatator need brc
@@ -89,6 +156,31 @@ struct BadBlockVarlitor
 		m_badBlock = _b;
 		m_varlitors.insert(_addr);
 	}
+    bytes streamRLPByte() const
+	{
+		RLPStream _s;
+		_s.appendList(3);
+		_s << (u256)m_headerHash;
+		_s << m_badBlock;
+		_s.append<Address>(m_varlitors);
+
+		return _s.out();
+	}
+    void populate(RLP const& _r)
+	{
+	    try
+		{
+			int index = 0;
+			m_headerHash = (dev::h256)_r[index = 0].toInt<u256>();
+			m_badBlock = _r[index = 1].toBytes();
+			m_varlitors = _r[index = 2].toSet<Address>();
+		}
+        catch(Exception& ex)
+		{
+			cerror << " populate BadBlockVarlitor error index:";
+			throw;
+		}
+	}
 };                                                               
 struct BadBlocksData
 {
@@ -117,18 +209,47 @@ struct BadBlocksData
 	{
 		return m_BadBlocks.find(_hash) != m_BadBlocks.end();
 	}
+
+    void streamRLP(RLPStream& _s) const
+	{
+		size_t num = m_BadBlocks.size() +1;
+		_s.appendList(num);
+		_s << m_BadBlocks.size();
+        for( auto val : m_BadBlocks)
+		{
+			_s.append(std::make_pair(val.first, val.second.streamRLPByte()));
+		}
+	}
+    void populate(RLP const& _r)
+	{
+		try
+		{
+			size_t num = _r[0].toInt<size_t>();
+            for (int i=1; i< num; i++)
+            {
+				auto _p = _r[i].toPair<dev::h256, bytes>();
+				BadBlockVarlitor _bv;
+				_bv.populate(RLP(_p.second));
+				m_BadBlocks[_p.first] = _bv;
+            }
+		}
+		catch(Exception& ex)
+		{
+
+		}
+	}
 };
 
 //  Punish the badBlock's varlitor data 
-struct PunishBadBlock
-{
-	BadBlockRank    m_rank; //惩罚等级
-	size_t          m_ecoph; //当前轮数
-	size_t          m_height; //区块高度
-	size_t          m_blockNum; //坏块数量
-	bool operator < (PunishBadBlock const& _p) { return m_height < _p.m_height; }
-	bool operator == (PunishBadBlock const& _p) { return m_rank == _p.m_rank; }
-};
+//struct PunishBadBlock
+//{
+//	BadBlockRank    m_rank; //惩罚等级
+//	size_t          m_ecoph; //当前轮数
+//	size_t          m_height; //区块高度
+//	size_t          m_blockNum; //坏块数量
+//	bool operator < (PunishBadBlock const& _p) { return m_height < _p.m_height; }
+//	bool operator == (PunishBadBlock const& _p) { return m_rank == _p.m_rank; }
+//};
 
 /***************************网络数据包 封装业务数据 start*********************************************/
 struct SHDposMsgPacket

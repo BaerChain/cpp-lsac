@@ -279,6 +279,7 @@ void Executive::initialize(Transaction const& _transaction)
 
             for (auto val : _ops)
             {
+				std::string _ret = "";
                 transationTool::op_type _type = transationTool::operation::get_type(val);
                 switch (_type)
                 {
@@ -310,7 +311,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(m_t.sender().hex()));
                     }
                     if (!m_vote.verifyVote(m_t.sender(), _vote_op.m_to,
-                            (size_t)_vote_op.m_vote_type, _vote_op.m_vote_numbers))
+                            (size_t)_vote_op.m_vote_type, _ret, _vote_op.m_vote_numbers))
                     {
                         LOG(m_execLogger)
                             << "verifyVote field > "
@@ -321,7 +322,7 @@ void Executive::initialize(Transaction const& _transaction)
                         BOOST_THROW_EXCEPTION(
                             VerifyVoteField()
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment(m_t.sender().hex()));
+                            << errinfo_comment( _ret));
                     }
                     m_callParameters_v.push_back({(Executive::Method)(_vote_op.m_vote_type + (uint8_t)Executive::Method::VoteStart),
                         {m_t.sender(), _vote_op.m_to, _vote_op.m_to, _vote_op.m_vote_numbers,

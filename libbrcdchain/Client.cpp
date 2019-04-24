@@ -572,6 +572,38 @@ void Client::onPostStateChanged()
     m_remoteWorking = false;
 }
 
+bool Client::startedSealing()
+{
+    if (m_wouldSeal)
+    {
+        return true;
+    }
+    LOG(m_logger) << "Mining Beneficiary: " << author();
+    if (author())
+    {
+        ChainParams cp;
+        auto ret = find(cp.poaBlockAccount.begin(), cp.poaBlockAccount.end(), author());
+        if (ret != cp.poaBlockAccount.end()) 
+        {
+            m_wouldSeal = true;
+            m_signalled.notify_all();
+            LOG(m_logger) << "start mining: " << author();
+            return true;
+        }
+        else
+        {
+            cwarn << "not root node: " << author();
+            return false;
+        }
+    }
+    else
+    {
+        LOG(m_logger) << "You need to set an author in order to seal!";
+        return false;
+    }
+    
+}
+
 void Client::startSealing()
 {
     if (m_wouldSeal == true)
@@ -843,7 +875,15 @@ bool Client::submitSealed(bytes const& _header)
             m_postSeal = m_working;
         newBlock = m_working.blockData();
     }
-
+	{
+		// init the blockqueue send data and inform the capality send block
+		u256 _diff = m_bc.details().totalDifficulty + 20;
+		//m_bq.clearVerifiedBlocks();
+		m_bq.insertSendBlock({ _diff, newBlock });
+		if(auto h = this->m_host.lock())
+			h->noteNewBlocksSend();
+	}
+	cwarn <<BrcYellow " block will send:" << utcTimeMilliSec() << BrcReset;
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }

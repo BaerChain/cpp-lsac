@@ -336,6 +336,9 @@ public:
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
+	//get vote/eletor message
+	Json::Value votedMessage(Address const& _addr) const;
+	Json::Value electorMessage(Address _addr) const;
 
 	void assetInjection(Address const& _addr);
 
