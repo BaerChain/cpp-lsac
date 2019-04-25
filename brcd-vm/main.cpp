@@ -310,6 +310,7 @@ int main(int argc, char** argv)
 
 	cerror << "ininitializeit success";
     executive.initialize(t);
+    cwarn << "[*13*]11111111111111111111111:";
     if (!code.empty())
         executive.call(contractDestination, sender, value, gasPrice, &data, gas);
     else
@@ -342,6 +343,7 @@ int main(int argc, char** argv)
         cout << "Gas used: " << res.gasUsed << " (+"
              << t.baseGasRequired(se->brcSchedule(envInfo.number())) << " for transaction, -"
              << res.gasRefunded << " refunded)\n";
+        cwarn << "[*40*]:1111111111111";
         cout << "Output: " << toHex(output) << "\n";
         LogEntries logs = executive.logs();
         cout << logs.size() << " logs" << (logs.empty() ? "." : ":") << "\n";
@@ -377,8 +379,10 @@ int main(int argc, char** argv)
         cout << "output: '" << toHex(output) << "'\n";
         cout << "exception: " << boolalpha << exception << '\n';
         cout << "gas used: " << res.gasUsed << '\n';
+        cwarn << "[*41*]:1111111111111";
         cout << "gas/sec: " << scientific << setprecision(3) << uint64_t(res.gasUsed) / execTime
              << '\n';
+        cwarn << "[*42*]:1111111111111";
         cout << "exec time: " << fixed << setprecision(6) << execTime << '\n';
     }
     return 0;

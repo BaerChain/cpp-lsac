@@ -108,7 +108,7 @@ struct Change
         Vote,
         SysVoteData,
         BRC,
-        FBRC,               // = 12
+        FBRC,  // = 12
         FBalance
     };
 
@@ -193,8 +193,8 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
-        BaseState _bs = BaseState::PreExisting);
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db,
+        ex::exchange_plugin const& _exdb, BaseState _bs = BaseState::PreExisting);
 
     enum NullType
     {
@@ -300,29 +300,21 @@ public:
     void cancelPendingOrder(h256 _pendingOrderHash);
 
 
-	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-		uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType);
+    void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+        uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType);
 
-	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
+    void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
         u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
         uint8_t _pendingOrderBuyTypes);
 
-	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
+    Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
-	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
+    Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
 
-	Json::Value successPendingOrderMsg(uint32_t _getSize);
+    Json::Value successPendingOrderMsg(uint32_t _getSize);
 
-	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
-
-    //计算每笔交易所需要扣除的手续费
-    u256 transactionForCookie()
-    {
-        //通过计算BRC跟Cookie的兑换比例来决定手续费扣除
-        u256 _serviceCharge = 21000;
-        return _serviceCharge;
-    }
-
+    std::tuple<std::string, std::string, std::string> enumToString(
+        ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -336,13 +328,30 @@ public:
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
-	//get vote/eletor message
-	Json::Value votedMessage(Address const& _addr) const;
-	Json::Value electorMessage(Address _addr) const;
+    // get vote/eletor message
+    Json::Value votedMessage(Address const& _addr) const;
+    Json::Value electorMessage(Address _addr) const;
 
-	void assetInjection(Address const& _addr);
+    void assetInjection(Address const& _addr);
+
+    //计算每笔交易所需要扣除的手续费
+    u256 transactionForCookie(uint8_t _type);
+
+
+    u256 getGas() { return m_gasNum; }
+    u256 getGasPrice() {return m_gasPriceValue;}
+    u256 getModifyValue(uint8_t _type)
+	{
+		//todo  Get the modified value according to the type
+
+		return m_modifyValue;
+	}
+
 
 private:
+    u256 m_gasNum = 22000;
+    u256 m_modifyValue = 10000;
+    u256 m_gasPriceValue = 10000;
     //投票数据
     //获取投出得票数
     u256 voteAll(Address const& _id) const;
@@ -371,8 +380,7 @@ public:
      */
     void transferBalance(Address const& _from, Address const& _to, u256 const& _value)
     {
-
-		//TO DO : Do not allow ordinary users to transfer money
+        // TO DO : Do not allow ordinary users to transfer money
         subBalance(_from, _value);
         addBalance(_to, _value);
     }

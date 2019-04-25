@@ -15,6 +15,7 @@ using namespace dev::brc;
 std::ostream& dev::brc::operator<<(std::ostream& _out, ExecutionResult const& _er)
 {
     _out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex(_er.output) << "}";
+    cwarn << "[*33*]:1111111111111";
     return _out;
 }
 

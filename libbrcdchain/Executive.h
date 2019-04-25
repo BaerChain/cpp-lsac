@@ -221,14 +221,17 @@ private:
         h256 m_pendingOrderHash = h256(0);
         uint8_t m_pendingOrder_Token_Type = 0;
         uint8_t m_pendingOrder_Buy_Type = 0;
+        bigint m_total_gas_cost;
         TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0), uint8_t _pendingOrder_Token_Type = 0, uint8_t _pendingOrder_Buy_Type = 0)
+                             h256 _pendingOrderHash = h256(0), uint8_t _pendingOrder_Token_Type = 0,
+                             uint8_t _pendingOrder_Buy_Type = 0, bigint _total_gas_cost = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
             m_pendingOrderHash(_pendingOrderHash),
 			m_pendingOrder_Token_Type(_pendingOrder_Token_Type),
-			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type)
+			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type),
+            m_total_gas_cost(_total_gas_cost)
         {}
     };
 

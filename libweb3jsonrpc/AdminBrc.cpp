@@ -210,9 +210,15 @@ Json::Value AdminBrc::admin_brc_vmTrace(string const& _blockNumberOrHash, int _t
             StandardTrace st;
             st.setShowMnemonics();
             e.initialize(t);
-            if (!e.execute())
-                e.go(st.onOp());
+			 cwarn << "[*1-5*]11111111111111111111111:";
+			if (!e.execute())
+			{
+				 e.go(st.onOp());
+				cwarn << "[*44*]:1111111111111";
+			}
+               
             e.finalize();
+			cwarn << "[*45*]:1111111111111";
             ret["structLogs"] = st.jsonValue();
         }
         catch(Exception const& _e)

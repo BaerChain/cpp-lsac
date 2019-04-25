@@ -937,6 +937,7 @@ h256 Client::importTransaction(Transaction const& _t)
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
     e.initialize(_t);
+    cwarn << "[*1-2*]11111111111111111111111:";
     ImportResult res = m_tq.import(_t.rlp());
     switch (res)
     {

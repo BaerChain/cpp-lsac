@@ -126,12 +126,13 @@ struct transcation_operation : public operation
     {}
     /// unserialize from data
     /// \param Data
-    OPERATION_UNSERIALIZE(
-        transcation_operation, (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+    OPERATION_UNSERIALIZE(transcation_operation,
+        (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
 
     /// bytes serialize this struct
     /// \return  bytes
-    OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+    OPERATION_SERIALIZE(
+        (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
 };
 
 struct pendingorder_opearaion : public operation

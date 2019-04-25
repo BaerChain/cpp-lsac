@@ -71,6 +71,7 @@ Json::Value Debug::traceTransaction(Executive& _e, Transaction const& _t, Json::
     st.setShowMnemonics();
     st.setOptions(debugOptions(_json));
     _e.initialize(_t);
+    cwarn << "[*1-4*]11111111111111111111111:";
     if (!_e.execute())
         _e.go(st.onOp());
     _e.finalize();
