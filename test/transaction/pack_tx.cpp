@@ -31,7 +31,6 @@ struct Task{
 
     }
 
-
     template <typename CONVERT>
     void go_task(const value_source &source, value_result &result, CONVERT conver_func){
         std::vector<std::vector<T>>  split_source(m_thread);
@@ -63,7 +62,7 @@ struct Task{
 
         for(int i = 0; i < m_thread; i++){
             vec_ff[i].wait();
-            split_result[i] = vec_ff[i].get();
+            split_result[i] = std::move(vec_ff[i].get());
         }
 
         for(auto i = 0 ; i < m_thread; i++){
@@ -72,8 +71,6 @@ struct Task{
 
 
     }
-
-
 
 private:
     uint32_t  m_thread;
@@ -97,7 +94,7 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
         bytes data = cancel_op.serialize();
 
 
-        for(auto i = 0 ; i < 1001; i++){
+        for(auto i = 0 ; i < 10001; i++){
             auto key_pair = KeyPair::create();
             auto sec = key_pair.secret();
             address_secret[key_pair.address()] = key_pair.secret();
@@ -128,7 +125,7 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
             }
 
             std::cout << t.elapsed() << std::endl;
-            for(auto count = 1; count < 10; count++){
+            for(auto count = 1; count < 12; count++){
                 t.restart();
                 Task<bytes, dev::brc::Transaction> task(count);
                 std::vector<dev::brc::Transaction> ret;

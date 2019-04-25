@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
 
-    bool ipc = true;
+    bool ipc = false;
 
     string jsonAdmin;
     ChainParams chainParams;
