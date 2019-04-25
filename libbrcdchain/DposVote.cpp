@@ -19,7 +19,7 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 		{
 			if(m_state.BRC(_to) < tickets* BALLOTPRICE)
 			{
-				_ex_info = "Not enough cash to buy tickets:"+ tickets;
+				_ex_info = "Not enough cash to buy tickets:"+ std::to_string(tickets);
 				return false;
 
 			}
