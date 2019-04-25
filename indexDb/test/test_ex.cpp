@@ -12,7 +12,7 @@
 #include <boost/format.hpp>
 #include <libdevcrypto/base58.h>
 
-namespace bfs = boost::filesystem;
+namespace bbfs = boost::filesystem;
 using namespace dev::brc::ex;
 using namespace dev;
 
@@ -190,14 +190,14 @@ int main(int argc, char *argv[]) {
     system("export TERM=linux");
 
 
-    bfs::path cur_dir = bfs::current_path();
-    cur_dir /= bfs::path("data");
+    bbfs::path cur_dir = bbfs::current_path();
+    cur_dir /= bbfs::path("data");
 
 
     test_helper th;
     th.log_name = cur_dir.string() + "/log.log";;
     th.open_log();
-    cur_dir /= bfs::unique_path();
+    cur_dir /= bbfs::unique_path();
     dev::brc::ex::exchange_plugin db(cur_dir);
 
     std::vector<order> os = th.get_random_order(200, sell, BRC, only_price);
