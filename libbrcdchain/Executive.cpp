@@ -339,7 +339,7 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::brcTranscation:
                 {
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
-					cwarn << "[*1*]1111111111111111111111111111111111";
+                    cwarn << "[*1*]1111111111111111111111111111111111:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -480,6 +480,7 @@ bool Executive::execute()
     for (auto val : m_callParameters_v)
     {
         u256 _gas = (u256)val.m_total_gas_cost;
+        cwarn << "[*1-1*]11111111111111111111111" << _gas;
         Address _addr = val.m_callParameters.senderAddress;
         m_s.subBalance(_addr, _gas);
     }
