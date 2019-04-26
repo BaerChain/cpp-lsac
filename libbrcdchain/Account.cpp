@@ -147,7 +147,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 			else if (accountMaskJson.count(c_finney))
 				balance = u256Safe(accountMaskJson.at(c_finney).get_str()) * finney;
 			else if (accountMaskJson.count(c_balance))
-				balance = u256Safe(accountMaskJson.at(c_balance).get_str()) * shannon;
+				balance = u256Safe(accountMaskJson.at(c_balance).get_str()) * brcer;
 
             u256 nonce =
                 haveNonce ? u256Safe(accountMaskJson.at(c_nonce).get_str()) : _defaultNonce;
