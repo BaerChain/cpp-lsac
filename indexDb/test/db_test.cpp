@@ -60,7 +60,7 @@ typedef multi_index_container<
 CHAINBASE_SET_INDEX_TYPE(up_order, up_order_index)
 
 
-namespace bfs = boost::filesystem;
+namespace bbfs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(test_brc_db)
 
@@ -73,8 +73,8 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
             //write
-            bfs::path cur_dir = bfs::current_path();
-            cur_dir /= bfs::unique_path();;
+            bbfs::path cur_dir = bbfs::current_path();
+            cur_dir /= bbfs::unique_path();;
 
 
             uint32_t length = 10;
@@ -130,8 +130,8 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
         os.push_back(o3);
         os.push_back(o4);
         try{
-            bfs::path cur_dir = bfs::current_path();
-            cur_dir += bfs::unique_path();
+            bbfs::path cur_dir = bbfs::current_path();
+            cur_dir += bbfs::unique_path();
 
             dev::brc::ex::database db(cur_dir, chainbase::database::read_write, 1024 * 64);
 
@@ -213,9 +213,9 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
 
-        bfs::path cur_dir = bfs::current_path()  ;
-        cur_dir /= bfs::path("data");
-        cur_dir /= bfs::unique_path();
+        bbfs::path cur_dir = bbfs::current_path()  ;
+        cur_dir /= bbfs::path("data");
+        cur_dir /= bbfs::unique_path();
 
 
         try{
@@ -301,8 +301,8 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
 
 
             //write
-            bfs::path cur_dir = bfs::current_path();
-            cur_dir /= bfs::unique_path();;
+            bbfs::path cur_dir = bbfs::current_path();
+            cur_dir /= bbfs::unique_path();;
 
 
             uint32_t length = 10;
