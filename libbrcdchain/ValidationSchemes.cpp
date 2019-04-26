@@ -16,6 +16,7 @@ namespace dev {
             string const c_balance = "balance";
             string const c_wei = "wei";
             string const c_finney = "finney";
+			string const c_gwei = "gwei";
             string const c_author = "author";
             string const c_coinbase = "coinbase";
             string const c_nonce = "nonce";

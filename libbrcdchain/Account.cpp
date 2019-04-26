@@ -53,7 +53,7 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 
 void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {
-	// ¸Ã½Ó¿Ú ±£ÁôÆ±ÊıÎª0µÄÊı¾İ  µ±ÊÇ³ÉÎª»òÕß³·Ïú¾ºÑ¡ÈËÊÇ·ñ£¬_tickets Îª0
+	// è¯¥æ¥å£ ä¿ç•™ç¥¨æ•°ä¸º0çš„æ•°æ®  å½“æ˜¯æˆä¸ºæˆ–è€…æ’¤é”€ç«é€‰äººæ˜¯å¦ï¼Œ_tickets ä¸º0
 	auto ret = m_voteDate.find(_otherAddr);
 	if(_isLogin && ret == m_voteDate.end())
 	{
@@ -133,7 +133,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         auto const& accountMaskJson = account.second.get_obj();
 
         bool haveBalance = (accountMaskJson.count(c_wei) || accountMaskJson.count(c_finney) ||
-                            accountMaskJson.count(c_balance));
+                            accountMaskJson.count(c_balance) || accountMaskJson.count(c_gwei));
         bool haveNonce = accountMaskJson.count(c_nonce);
         bool haveCode = accountMaskJson.count(c_code) || accountMaskJson.count(c_codeFromFile);
         bool haveStorage = accountMaskJson.count(c_storage);
@@ -142,12 +142,12 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if (haveStorage || haveCode || haveNonce || haveBalance)
         {
             u256 balance = 0;
-            if (accountMaskJson.count(c_wei))
-                balance = u256Safe(accountMaskJson.at(c_wei).get_str());
-            else if (accountMaskJson.count(c_finney))
-                balance = u256Safe(accountMaskJson.at(c_finney).get_str()) * finney;
-            else if (accountMaskJson.count(c_balance))
-                balance = u256Safe(accountMaskJson.at(c_balance).get_str());
+			if (accountMaskJson.count(c_wei))
+				balance = u256Safe(accountMaskJson.at(c_wei).get_str());
+			else if (accountMaskJson.count(c_finney))
+				balance = u256Safe(accountMaskJson.at(c_finney).get_str()) * finney;
+			else if (accountMaskJson.count(c_balance))
+				balance = u256Safe(accountMaskJson.at(c_balance).get_str()) * shannon;
 
             u256 nonce =
                 haveNonce ? u256Safe(accountMaskJson.at(c_nonce).get_str()) : _defaultNonce;

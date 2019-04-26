@@ -718,6 +718,8 @@ int main(int argc, char **argv) {
 
     if (!configJSON.empty()) {
         try {
+			cerror << "  configPath :" << configPath;
+			cerror << "  sizeof (u256) : " << sizeof(u256);
             chainParams = chainParams.loadConfig(configJSON, {}, configPath);
             chainConfigIsSet = true;
         }

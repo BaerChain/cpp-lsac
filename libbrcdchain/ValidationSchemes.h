@@ -13,6 +13,7 @@ extern std::string const c_genesis;
 extern std::string const c_accounts;
 extern std::string const c_balance;
 extern std::string const c_wei;
+extern std::string const c_gwei;
 extern std::string const c_finney;
 extern std::string const c_author;
 extern std::string const c_coinbase;
