@@ -18,7 +18,7 @@ const struct buildinfo* brcd_get_buildinfo()
         .git_commit_hash = GIT_VERSION,
         .system_name = SYSTEM_NAME,
         .system_processor = SYSTEM_PROCESSOR,
-        .compiler_id = SYSTEM_PROCESSOR,
+        .compiler_id = COMPILER_ID,
         .compiler_version = BUILD_COMPILER_VERSION,
         .build_type = BUILD_TYPE,
     };
