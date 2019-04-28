@@ -313,7 +313,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
 
     // Open a fresh state DB
 
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),  State::openExdb(fs::path(path.string() + std::string("/exdb" ))));
+    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),  State::openExdb(fs::path(path.string() + std::string("/exdb" )), WithExisting::Kill));
 
     // Clear all memos ready for replay.
     m_details.clear();
@@ -327,7 +327,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
     m_lastBlockNumber = 0;
 
     m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
-
+    m_details[m_lastBlockHash].number = s.info().number();
     m_extrasDB->insert(toSlice(m_lastBlockHash, ExtraDetails),
                        (db::Slice) dev::ref(m_details[m_lastBlockHash].rlp()));
 
