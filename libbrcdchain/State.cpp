@@ -21,8 +21,8 @@ using namespace dev::brc::ex;
 
 namespace fs = boost::filesystem;
 
-#define BRCNUM 1000;
-#define COOKIENUM 100000000000;
+#define BRCNUM 1000
+#define COOKIENUM 100000000000
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -1391,8 +1391,12 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 
 void dev::brc::State::assetInjection(Address const& _addr)
 {
-    if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
+    // if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
     //    return;
+    auto it = account(dev::VoteAddress);
+    if (it->balance() < COOKIENUM || it->BRC() < BRCNUM)
+        return;
+
     auto a = account(_addr);
     if (a->assetInjectStatus() == 0)
     {
