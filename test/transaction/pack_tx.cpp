@@ -106,7 +106,7 @@ struct task_work {
                     while (m_queue.pop(cxt)){
                         if(cxt->empty()){
                             for(auto itr = cxt->input->begin(); itr != cxt->input->end(); itr++){
-                                cxt->output->push_back( cxt->ff(*itr));
+                                cxt->output->emplace_back(std::move(cxt->ff(*itr)));
                             }
                             cxt->ret->set_value();
                         }
@@ -135,27 +135,15 @@ struct task_work {
         std::vector< request_context>           contexts(m_thread);
         for(int i = 0; i < m_thread; i++){
             if(i == m_thread - 1 && sp_size != 0){  //add surplus to last thread
-
                 split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size + sp_size);
-
-                contexts[i].ff = f;
-                contexts[i].input = &split_source[i];
-                contexts[i].output = &split_result[i];
-                contexts[i].ret = &proms[i];
-                m_queue.push(&contexts[i]);
-
-
             }else{
                 split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size);
-
-
-                contexts[i].ff = f;
-                contexts[i].input = &split_source[i];
-                contexts[i].output = &split_result[i];
-                contexts[i].ret = &proms[i];
-                m_queue.push(&contexts[i]);
             }
-
+            contexts[i].ff = f;
+            contexts[i].input = &split_source[i];
+            contexts[i].output = &split_result[i];
+            contexts[i].ret = &proms[i];
+            m_queue.push(&contexts[i]);
         }
 
         for(auto &itr : proms){

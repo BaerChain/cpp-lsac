@@ -57,12 +57,17 @@ namespace {
     unsigned const c_lineWidth = 160;
 
     void version() {
-        const auto *buildinfo = brcd_get_buildinfo();
-        cout << "brcd " << buildinfo->project_version << "\n";
+        const auto *info = brcd_get_buildinfo();
         cout << "brc network protocol version: " << dev::brc::c_protocolVersion << "\n";
         cout << "Client database version: " << dev::brc::c_databaseVersion << "\n";
-        cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
-        cout << "git commit hash: " << buildinfo->git_commit_hash << "\n";
+        std::cout << "project_name: " << info->project_name << std::endl;
+        std::cout << "project_version: " << info->project_version << std::endl;
+        std::cout << "git_commit_hash: " << info->git_commit_hash << std::endl;
+        std::cout << "system_name: " << info->system_name << std::endl;
+        std::cout << "system_processor: " << info->system_processor << std::endl;
+        std::cout << "compiler_id: " << info->compiler_id << std::endl;
+        std::cout << "compiler_version: " << info->compiler_version << std::endl;
+        std::cout << "build_type: " << info->build_type << std::endl;
     }
 
     bool isTrue(std::string const &_m) {
