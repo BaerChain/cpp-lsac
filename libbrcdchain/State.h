@@ -210,12 +210,11 @@ public:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash,
-        WithExisting _we = WithExisting::Trust);
+    static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust);
     ex::exchange_plugin const& exdb() const { return m_exdb; }
     ex::exchange_plugin& exdb() { return m_exdb; }
 
