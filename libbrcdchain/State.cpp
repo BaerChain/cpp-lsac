@@ -13,12 +13,17 @@
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 
+
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
 using namespace dev::brc::ex;
 
 namespace fs = boost::filesystem;
+
+#define BRCNUM 1000;
+#define COOKIENUM 100000000000;
+
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
@@ -1386,11 +1391,13 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 
 void dev::brc::State::assetInjection(Address const& _addr)
 {
+    if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
+    //    return;
     auto a = account(_addr);
     if (a->assetInjectStatus() == 0)
     {
-        addBRC(_addr, 1000);
-        addBalance(_addr, 100000000000);
+        addBRC(_addr, BRCNUM);
+        addBalance(_addr, COOKIENUM);
         a->setAssetInjectStatus();
     }
     else
@@ -1400,11 +1407,11 @@ void dev::brc::State::assetInjection(Address const& _addr)
 }
 
 u256 dev::brc::State::transactionForCookie(uint8_t _type)
-{ 
-    if (_type == transationTool::vote || _type ==  transationTool::pendingOrder ||
+{
+    if (_type == transationTool::vote || _type == transationTool::pendingOrder ||
         _type == transationTool::cancelPendingOrder)
     {
-		return (getGas() + getModifyValue(_type)) * getGasPrice();
+        return (getGas() + getModifyValue(_type)) * getGasPrice();
     }
     return getGas() * getGasPrice();
 }

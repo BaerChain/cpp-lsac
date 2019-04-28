@@ -385,6 +385,7 @@ void Executive::initialize(Transaction const& _transaction)
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::pendingOrder);
+					
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -480,11 +481,12 @@ bool Executive::execute()
 	u256 totalGas;
     for (auto val : m_callParameters_v)
     {
-        u256 _gas = (u256)val.m_total_gas_cost;
+		u256 _gas = (u256)val.m_total_gas_cost;
         cwarn << "[*1-1*]11111111111111111111111" << _gas;
         Address _addr = val.m_callParameters.senderAddress;
 		totalGas += _gas;
         m_s.subBalance(_addr, _gas);
+        m_s.addBalance(VoteAddress, _gas);
     }
     assert(totalGas >= (u256)m_baseGasRequired);
     //assert(m_t.gas() >= (u256)m_baseGasRequired);

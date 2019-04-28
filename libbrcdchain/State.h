@@ -28,6 +28,9 @@ class StateLoader;
 
 namespace brc
 {
+//const Address SysElectorAddress{"0x000000000000456c6563746f7241646472657373"};
+//const Address SysVarlitorAddress{"0x00000000005661726c69746f7241646472657373"};
+
 // Import-specific errinfos
 using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
 using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
@@ -351,7 +354,7 @@ public:
 private:
     u256 m_gasNum = 22000;
     u256 m_modifyValue = 10000;
-    u256 m_gasPriceValue = 10000;
+    u256 m_gasPriceValue = 1000000000;
     //投票数据
     //获取投出得票数
     u256 voteAll(Address const& _id) const;

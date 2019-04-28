@@ -13,7 +13,8 @@ namespace dev {
             string const c_params = "params";
             string const c_genesis = "genesis";
             string const c_accounts = "accounts";
-            string const c_balance = "balance";
+            string const c_balance = "cookies";
+            string const c_brc = "brc";
             string const c_wei = "wei";
             string const c_finney = "finney";
 			string const c_gwei = "gwei";
