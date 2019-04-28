@@ -477,14 +477,16 @@ void Executive::initialize(Transaction const& _transaction)
 
 bool Executive::execute()
 {
+	u256 totalGas;
     for (auto val : m_callParameters_v)
     {
         u256 _gas = (u256)val.m_total_gas_cost;
         cwarn << "[*1-1*]11111111111111111111111" << _gas;
         Address _addr = val.m_callParameters.senderAddress;
+		totalGas += _gas;
         m_s.subBalance(_addr, _gas);
     }
-    assert(m_s.getGas() >= (u256)m_baseGasRequired);
+    assert(totalGas >= (u256)m_baseGasRequired);
     //assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
