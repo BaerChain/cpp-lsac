@@ -477,15 +477,15 @@ void BrcdChainCapability::maintainTransactions()
     // Send any new transactions.
     unordered_map<NodeID, std::vector<size_t>> peerTransactions;
     //auto ts = m_tq.topTransactions(c_maxSendTransactions);
-    auto ts = m_tq.topTransactions(0);
+    auto ts = m_tq.topTransactions(0, m_transactionsSent);
 	{
         for (size_t i = 0; i < ts.size(); ++i)
         {
             auto const& t = ts[i];
-            bool unsent = !m_transactionsSent.count(t.sha3());
+            //bool unsent = !m_transactionsSent.count(t.sha3());
             auto peers = get<1>(randomSelection(0, [&](BrcdChainPeer const& _peer) {
-                return _peer.isWaitingForTransactions() ||
-                       (unsent && !_peer.isTransactionKnown(t.sha3()));
+                return _peer.isWaitingForTransactions() || (!_peer.isTransactionKnown(t.sha3()));
+                       //(unsent && !_peer.isTransactionKnown(t.sha3()));
             }));
             for (auto const& p: peers)
                 peerTransactions[p].push_back(i);
@@ -1006,7 +1006,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			if(itPeer != m_peers.end())
 			{
 				m_host->sealAndSend(peerID, ts);
-				itPeer->second.clearKnownBlocks();
+				//itPeer->second.clearKnownBlocks();
 			}
 			cwarn << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
 		}
