@@ -217,9 +217,6 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
                 task.go_task(vec_trx, ret, [](const bytes &b){
                     return dev::brc::Transaction(b, dev::brc::CheckTransaction::Everything);
                 });
-
-//                std::cout << "t : " << count << "  " << t.elapsed() << std::endl;
-
 //                BOOST_CHECK(ret1 == ret);
             }
 
@@ -237,9 +234,6 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
                 tw.add_task(vec_trx, ret, [](const bytes &b){
                     return dev::brc::Transaction(b, dev::brc::CheckTransaction::Everything);
                 });
-
-//                std::cout << "t : " << count << "  " << t.elapsed() << std::endl;
-
 //                BOOST_CHECK(ret1 == ret);
             }
             std::cout << "all : " << all.elapsed() << std::endl;
