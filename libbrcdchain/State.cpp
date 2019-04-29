@@ -526,9 +526,9 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
 
 
 //交易挂单接口
-void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-                         uint8_t _pendingOrderBuyType, int64_t _nowTime) {
+void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+                         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime) {
     // add
     //freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
       //           _pendingOrderTokenType, _pendingOrderBuyType);
@@ -600,9 +600,9 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 	}
 }
 
-void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 _toPendingOrderNum,
-                                 u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-                                 uint8_t _pendingOrderBuyTypes) {
+void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
+                                 u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+                                 ex::order_buy_type _pendingOrderBuyTypes) {
 
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
         _pendingOrderBuyTypes == order_buy_type::only_price) {
@@ -664,8 +664,8 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
     }
 }
 
-void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType) {
+void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType, ex::order_buy_type _pendingOrderBuyType) {
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
         _pendingOrderBuyType == order_buy_type::only_price) {
         subBRC(_addr, _pendingOrderNum * _pendingOrderPrice);
@@ -773,10 +773,10 @@ std::tuple<std::string, std::string, std::string>
 State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
     std::string _type, _token_type, _buy_type;
     switch (type) {
-        case dev::brc::ex::sell:
+        case dev::brc::ex::order_type::sell:
             _type = std::string("sell");
             break;
-        case dev::brc::ex::buy:
+        case dev::brc::ex::order_type::buy:
             _type = std::string("buy");
             break;
         default:
@@ -785,10 +785,10 @@ State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::or
     }
 
     switch (token_type) {
-        case dev::brc::ex::BRC:
+        case dev::brc::ex::order_token_type::BRC:
             _token_type = std::string("BRC");
             break;
-        case dev::brc::ex::FUEL:
+        case dev::brc::ex::order_token_type::FUEL:
             _token_type = std::string("FUEL");
             break;
         default:
@@ -797,10 +797,10 @@ State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::or
     }
 
     switch (buy_type) {
-        case dev::brc::ex::all_price:
+        case dev::brc::ex::order_buy_type::all_price:
             _buy_type = std::string("all_price");
             break;
-        case dev::brc::ex::only_price:
+        case dev::brc::ex::order_buy_type::only_price:
             _buy_type = std::string("only_price");
             break;
         default:
