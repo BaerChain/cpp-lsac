@@ -1410,6 +1410,43 @@ void dev::brc::State::assetInjection(Address const& _addr)
     }
 }
 
+void dev::brc::State::systemPendingorder(int64_t _time)
+{
+    auto u256Safe = [](std::string const& s) -> u256 {
+        bigint ret(s);
+        if (ret >= bigint(1) << 256)
+            BOOST_THROW_EXCEPTION(
+                ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
+        return (u256)ret;
+    };
+
+	auto a = account(dev::VoteAddress);
+	std::string _num = "29000000000000000000000000";
+	u256 systenCookie = u256Safe(_num);
+	subBalance(dev::VoteAddress, systenCookie);
+	addFBalance(dev::VoteAddress, systenCookie);
+	std::map<u256, u256> _map = { {u256(1), systenCookie} };
+	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	std::vector<order> _v = { {_order} };
+
+    cerror << m_exdb.check_version(false);
+	try
+	{
+		m_exdb.insert_operation(_v, false, true);
+	}
+	catch (const boost::exception& e)
+	{
+		exit(1);
+	}
+	catch (...)
+	{
+		exit(1);
+	}
+	cerror << m_exdb.check_version(false);
+	m_exdb.commit(1);
+	cerror << m_exdb.check_version(false);
+}
+
 u256 dev::brc::State::transactionForCookie(uint8_t _type)
 {
     if (_type == transationTool::vote || _type == transationTool::pendingOrder ||

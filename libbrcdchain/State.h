@@ -350,6 +350,8 @@ public:
 		return m_modifyValue;
 	}
 
+	void systemPendingorder(int64_t _time);
+
 
 private:
     u256 m_gasNum = 22000;

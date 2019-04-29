@@ -150,7 +150,9 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 balance = u256Safe(accountMaskJson.at(c_finney).get_str()) * finney;
             else if (accountMaskJson.count(c_balance))
                 balance = u256Safe(accountMaskJson.at(c_balance).get_str());
-            else if (accountMaskJson.count(c_brc))
+
+
+			if (accountMaskJson.count(c_brc))
                 brcNum = u256Safe(accountMaskJson.at(c_brc).get_str());
 
 

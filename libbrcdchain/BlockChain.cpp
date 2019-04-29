@@ -1345,7 +1345,11 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
         ret.noteChain(*this);
         dev::brc::commit(m_params.genesisState,
                          ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
-        ret.mutableState().db().commit();                                           // have to use this db() since it's the one that has been altered with the above commit.
+		ret.mutableState().systemPendingorder(ret.info().timestamp());
+		ret.mutableState().db().commit();
+
+
+		// have to use this db() since it's the one that has been altered with the above commit.
         if (ret.mutableState().rootHash() != r) {
             cwarn << "Hinted genesis block's state root hash is incorrect!";
             cwarn << "Hinted" << r << ", computed" << ret.mutableState().rootHash();
@@ -1353,8 +1357,10 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
             exit(-1);
         }
     }
+	cerror << " voteAddress:" <<ret.mutableState().balance(dev::VoteAddress);
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();
+	cerror << " voteAddress:" << ret.mutableState().balance(dev::VoteAddress);
     return ret;
 }
 

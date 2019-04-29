@@ -29,9 +29,8 @@ namespace dev {
 
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
-                return db->with_write_lock([&]() {
-
-                    check_db();
+				check_db();
+				return db->with_write_lock([&]() {
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
                     try {
@@ -148,8 +147,7 @@ namespace dev {
                         session.undo();
                         BOOST_THROW_EXCEPTION(createOrderError());
                     }
-
-                    return result;
+					return result;
                 });
             }
 
