@@ -221,6 +221,7 @@ namespace dev {
                     obj.version = version;
                 });
                 db->commit(version);
+                db->flush();
 //                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
