@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <brc/database.hpp>
+
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 #include <brc/exception.hpp>
@@ -9,7 +9,9 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonJS.h>
 
-#include <optional>
+#include <brc/objects.hpp>
+
+#include <brc/database.hpp>
 
 namespace dev {
     namespace brc {
@@ -91,12 +93,12 @@ namespace dev {
                 /// \param price        upper price.
                 /// \return         std::pair<lower iterator, upper iterator>
                 auto get_buy_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
 
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, find_token,
                                                                                                 u256(0), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, find_token,
                                                                                                 price, INT64_MAX);
 
                     typedef decltype(index_greater.lower_bound(find_lower)) Lower_Type;
@@ -111,12 +113,12 @@ namespace dev {
                 /// \param price        lower price.
                 /// \return             std::pair<lower iterator, upper iterator>
                 auto get_sell_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
 
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
                                                                                                 u256(-1), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
                                                                                                 price, INT64_MAX);
 
                     typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;

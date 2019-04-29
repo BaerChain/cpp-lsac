@@ -1,11 +1,10 @@
 #pragma once
 
-#include <chainbase/chainbase.hpp>
 #include <boost/filesystem.hpp>
 
-#include <brc/types.hpp>
 
-using namespace chainbase;
+#include <brc/objects.hpp>
+//using namespace chainbase;
 
 
 

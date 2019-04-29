@@ -1,10 +1,15 @@
 #include <brc/exchangeOrder.hpp>
-#include <boost/tuple/tuple.hpp>
 
+
+
+#include <boost/tuple/tuple.hpp>
 #include <brc/exception.hpp>
 #include <libbrccore/CommonJS.h>
+#include <vector>
+
 
 using namespace dev;
+using namespace std;
 namespace dev {
     namespace brc {
         namespace ex {
@@ -36,9 +41,9 @@ namespace dev {
                     std::vector<result_order> result;
                     try {
                         for (const auto &itr : orders) {
-                            if (itr.buy_type == only_price) {
+                            if (itr.buy_type == order_buy_type::only_price) {
                                 for (const auto t :  itr.price_token) {
-                                    if (itr.type == buy) {
+                                    if (itr.type == order_type::buy) {
                                         auto find_itr = get_buy_itr(itr.token_type, t.first);
                                         process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second,
                                                            result,
@@ -55,7 +60,7 @@ namespace dev {
                                 if (itr.price_token.size() != 1) {
                                     BOOST_THROW_EXCEPTION(all_price_operation_error());
                                 }
-                                if (itr.type == buy) {
+                                if (itr.type == order_type::buy) {
                                     auto find_itr = get_buy_itr(itr.token_type, u256(-1));
                                     auto total_price = itr.price_token.begin()->first;
                                     auto begin = find_itr.first;
@@ -138,10 +143,10 @@ namespace dev {
                         if (!reset) {
                             session.push();
                         }
-                    } catch (const std::exception &e) {
+                    } catch (const dev::Exception &e) {
                         session.undo();
                         BOOST_THROW_EXCEPTION(e);
-                    } catch (const dev::Exception &e) {
+                    } catch (const std::exception &e) {
                         session.undo();
                         BOOST_THROW_EXCEPTION(e);
                     }catch (...){
@@ -170,7 +175,7 @@ namespace dev {
 
             std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size) const {
                 check_db();
-                vector<exchange_order> ret;
+                std::vector<exchange_order> ret;
                 const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
                 auto begin = index.begin();
                 while (begin != index.end() && size > 0) {
@@ -221,6 +226,7 @@ namespace dev {
                     obj.version = version;
                 });
                 db->commit(version);
+                db->flush();
 //                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
                 return true;
             }
@@ -230,11 +236,11 @@ namespace dev {
             exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
                 check_db();
                 vector<exchange_order> ret;
-                if (type == buy) {
+                if (type == order_type::buy) {
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, token_type,
                                                                                                 u256(-1), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, token_type,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, token_type,
                                                                                                 u256(0), INT64_MAX);
                     auto begin = index_greater.lower_bound(find_lower);
                     auto end = index_greater.upper_bound(find_upper);
@@ -246,9 +252,9 @@ namespace dev {
                     }
                 } else {
                     const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, token_type,
                                                                                                 u256(0), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, token_type,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, token_type,
                                                                                                 u256(-1), INT64_MAX);
                     auto begin = index_less.lower_bound(find_lower);
                     auto end = index_less.upper_bound(find_upper);
@@ -275,7 +281,7 @@ namespace dev {
                     order o;
                     o.trxid = begin->trxid;
                     o.sender = begin->sender;
-                    o.buy_type = only_price;
+                    o.buy_type = order_buy_type::only_price;
                     o.token_type = begin->token_type;
                     o.type = begin->type;
                     o.time = begin->create_time;

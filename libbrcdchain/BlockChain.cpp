@@ -1353,6 +1353,9 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
+
+
+
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();

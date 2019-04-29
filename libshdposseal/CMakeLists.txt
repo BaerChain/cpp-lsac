@@ -10,5 +10,8 @@ set(sources
 )
 
 add_library(shdposseal ${sources})
-target_include_directories(shdposseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} )
+target_include_directories(shdposseal PUBLIC ../utils ${CMAKE_SOURCE_DIR}
+        "${CMAKE_SOURCE_DIR}/indexDb/database/include"
+        "${CMAKE_SOURCE_DIR}/indexDb/chainbase/include"
+        )
 target_link_libraries(shdposseal PUBLIC brcdchain p2p brccore devcore)
