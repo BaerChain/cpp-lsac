@@ -784,6 +784,8 @@ void Client::checkWatchGarbage()
 
 void Client::prepareForTransaction()
 {
+	if(isWorking())
+		return;
     startWorking();
 }
 
@@ -953,7 +955,9 @@ h256 Client::importTransaction(Transaction const& _t)
         default:
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
-
+	// Tell network about the new transactions.
+	if(auto h = m_host.lock())
+		h->noteNewTransactions();
     return _t.sha3();
 }
 
