@@ -395,8 +395,8 @@ void Executive::initialize(Transaction const& _transaction)
                         LOG(m_execLogger)
                             << "pendingorder field > "
                             << "m_t.sender:" << m_t.sender() << " * "
-                            << " pendingorder_type:" << _pengdingorder_op.m_Pendingorder_type
-                            << " pendingorder_num:" << _pengdingorder_op.m_Pendingorder_num;
+                            << " pendingorder_type:" << (uint8_t)_pengdingorder_op.m_Pendingorder_type
+                            << " pendingorder_num:" << (uint8_t)_pengdingorder_op.m_Pendingorder_num;
                         m_excepted = TransactionException::VerifyPendingOrderFiled;
                         BOOST_THROW_EXCEPTION(
                             VerifyPendingOrderFiled()
@@ -443,7 +443,7 @@ void Executive::initialize(Transaction const& _transaction)
                     }
                     m_callParameters_v.push_back({(Executive::Method)(_cancel_op.m_cancelType + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0),u256(0), u256(0), u256(0), bytesConstRef(), {}},
-                            u256(0), _cancel_op.m_hash,0,0});
+                            u256(0), _cancel_op.m_hash});
                 }
                 break;
                 default:
@@ -574,7 +574,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 			else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)
 				m_s.pendingOrder(p.senderAddress, p.valueTransfer, val.m_PendingOrderPrice,
 					val.m_pendingOrderHash,
-					val.m_method - (uint8_t)PendingOrderStart,
+                                 ex::order_type(val.m_method - (uint8_t)PendingOrderStart),
 					val.m_pendingOrder_Token_Type, val.m_pendingOrder_Buy_Type, m_envInfo.timestamp());
 			else if (val.m_method == CancelPendingOrder)
 				m_s.cancelPendingOrder(val.m_pendingOrderHash);

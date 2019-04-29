@@ -27,17 +27,17 @@ std::string enum_to_string(T type) {
 
 template<>
 std::string enum_to_string<order_type>(order_type type) {
-    return type == buy ? "buy" : "sell";
+    return type == order_type::buy ? "buy" : "sell";
 }
 
 template<>
 std::string enum_to_string<order_token_type>(order_token_type type) {
-    return type == BRC ? "BRC" : "FUEL";
+    return type == order_token_type::BRC ? "BRC" : "FUEL";
 }
 
 template<>
 std::string enum_to_string<order_buy_type>(order_buy_type type) {
-    return type == all_price ? "all" : "only";
+    return type == order_buy_type::all_price ? "all" : "only";
 }
 
 
@@ -140,7 +140,7 @@ public:
     }
 
 
-    std::vector<order> get_random_order(uint32_t create_size, order_type type = sell, order_token_type t_type = BRC, order_buy_type buy_type = only_price) {
+    std::vector<order> get_random_order(uint32_t create_size, order_type type = order_type::sell, order_token_type t_type = order_token_type::BRC, order_buy_type buy_type = order_buy_type::only_price) {
 
 
         auto get_random_price = [](uint64_t down, uint64_t up) -> h256 {
@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
     cur_dir /= bbfs::unique_path();
     dev::brc::ex::exchange_plugin db(cur_dir);
 
-    std::vector<order> os = th.get_random_order(200, sell, BRC, only_price);
+    std::vector<order> os = th.get_random_order(200, order_type::sell, order_token_type::BRC, order_buy_type::only_price);
 //    std::vector<order> os1 = th.get_random_order(100, buy, FUEL);
 //    std::vector<order> os3 = get_random_order(1000, sell, BRC);
 //    std::vector<order> os4 = get_random_order(1000, sell, BRC);
@@ -208,13 +208,13 @@ int main(int argc, char *argv[]) {
 
     db.insert_operation(os, false, true);
 
-    th.print_formmat(db.get_order_by_type(sell, BRC, 30));
+    th.print_formmat(db.get_order_by_type(order_type::sell, order_token_type::BRC, 30));
 
     int count = 100;
     while (count--) {
         sleep(2);
-        auto ret = db.insert_operation(th.get_random_order(1, buy, FUEL, all_price), false, true);
-        auto goyt = db.get_order_by_type(sell, BRC, 30);
+        auto ret = db.insert_operation(th.get_random_order(1, order_type::buy, order_token_type::FUEL, order_buy_type::all_price), false, true);
+        auto goyt = db.get_order_by_type(order_type::sell, order_token_type::BRC, 30);
         th.print_formmat(goyt);
         th.print_sys_result(db.get_result_orders_by_news(5));
     }

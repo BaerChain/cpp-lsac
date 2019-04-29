@@ -12,7 +12,9 @@ set(sources
 )
 
 add_library(brchashseal ${sources})
-target_include_directories(brchashseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} )
+target_include_directories(brchashseal PRIVATE ../utils ${CMAKE_SOURCE_DIR}
+        "${CMAKE_SOURCE_DIR}/indexDb/database/include"
+        "${CMAKE_SOURCE_DIR}/indexDb/chainbase/include")
 target_link_libraries(brchashseal PUBLIC brcdchain brccore)
 
 
