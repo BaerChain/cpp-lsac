@@ -9,5 +9,6 @@ set(sources
 )
 
 add_library(poaseal ${sources})
-target_include_directories(poaseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} )
+target_include_directories(poaseal PRIVATE ../utils ${CMAKE_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/indexDb/database/include"
+		"${CMAKE_SOURCE_DIR}/indexDb/chainbase/include")
 target_link_libraries(poaseal PUBLIC brcdchain brccore)
