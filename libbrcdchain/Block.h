@@ -230,7 +230,7 @@ public:
     /// @returns a list of receipts one for each transaction placed from the queue into the state
     /// and bool, true iff there are more transactions to be processed.
     std::pair<TransactionReceipts, bool> sync(BlockChain const& _bc, TransactionQueue& _tq,
-        GasPricer const& _gp, unsigned _msTimeout = 100);
+        GasPricer const& _gp, unsigned _msTimeout = 200);
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the
@@ -343,6 +343,8 @@ private:
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
 
     std::vector<bytes> m_dposTransations;  // the dpos vote transation cache
+
+	size_t  m_seal_tx = 2500;
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};
