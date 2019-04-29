@@ -4,6 +4,7 @@
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 #include "State.h"
+#include "ThreadPackTransactions.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/DBFactory.h>
