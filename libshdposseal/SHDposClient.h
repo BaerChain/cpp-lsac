@@ -43,8 +43,8 @@ public:
     inline h256s                getTransationsHashByBlockNum(size_t num) const { return transactionHashes(hashFromNumber(num)); }
 
 	void getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector = std::vector<Address>()) const;
+	void getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const;
 	Secret getVarlitorSecret(Address const& _addr) const;
-	void   printfElectors();
 
     bool verifyVarlitorPrivatrKey();
 

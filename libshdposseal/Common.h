@@ -52,6 +52,12 @@ enum PunishBlcokNum
     BlockNum_Max
 };
 
+enum CreaterType
+{
+	Varlitor = 0,
+	Canlitor
+};
+
 struct BadBlockNumPunish
 {
     std::map<size_t, size_t> m_badBlockNumPunish;
@@ -103,14 +109,11 @@ struct BadBlockPunish
 
 struct SHDposConfigParams
 {
-	size_t epochInterval = 6000;         //  sh-dpos a epoch need time ms
+	size_t epochInterval = 0;         //  sh-dpos a epoch need time ms
 	size_t varlitorInterval = 1000;      //  a varlitor to create block time ms     
 	size_t blockInterval = 1000;         //  a block created need time ms
-	size_t valitorNum = 2;               //  check the varlitor for min num 
 	size_t maxValitorNum = 21;           //  check the varlitor for max nu
     size_t totalElectorNum = 51;
-	size_t verifyVoteNum = 6;            //  the vote chencked about block num 
-	bool   isGensisVarNext = false;      
 	u256   candidateBlance = 1000000;    // to be candidatator need brc
 
 	size_t badBlockNum_nextEpochDelete = 3;  // bad block num for will delete varlitor next epoch
@@ -123,17 +126,13 @@ struct SHDposConfigParams
 		epochInterval = _f.epochInterval;
 		varlitorInterval = _f.varlitorInterval;
 		blockInterval = _f.blockInterval;
-		valitorNum = _f.valitorNum;
 		maxValitorNum = _f.maxValitorNum;
-		verifyVoteNum = _f.verifyVoteNum;
-		isGensisVarNext = _f.isGensisVarNext;
 	}
 	friend std::ostream& operator << (std::ostream& out, SHDposConfigParams const& _f) 
 	{
 		out << "epochInterval:" << _f.epochInterval << "ms|varlitorInterval:" << _f.varlitorInterval <<
-			"ms|blockInterval:" << _f.blockInterval << "ms|checkvarlitorNum:" << _f.valitorNum <<
-			"|maxValitorNum:" << _f.maxValitorNum << "|verifyVoteNum:" << _f.verifyVoteNum <<
-			"| isGensisVarNext:" << _f.isGensisVarNext;
+			"ms|blockInterval:" << _f.blockInterval << "ms|checkvarlitorNum:" <<
+			"|maxValitorNum:" << _f.maxValitorNum ;
 		return out;
 	}
 };

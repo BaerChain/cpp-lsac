@@ -36,12 +36,11 @@ struct ChainParams: public ChainOperationParams
     AccountMap genesisState;
 
 
-	size_t   epochInterval = 1;           // һ��������ѯ���� ms
-	size_t   varlitorInterval = 1;        // һ��������һ�γ���ʱ��
-	size_t   blockInterval = 1;           // һ������̳���ʱ�� ms
-	size_t   checkVarlitorNum = 1;        // ɸѡ��֤�˵��������ֵ
-	size_t   maxVarlitorNum = 1;          // �����֤������
-	size_t   verifyVoteNum = 1;           // ͶƱ����ȷ����
+	size_t   epochInterval = 0;           /// shdpos epoch time if 0 shdpos will only one epoch 
+	size_t   varlitorInterval = 1000;        /// creater seal block time
+	size_t   blockInterval = 1000;           /// a block sealed time
+	size_t   checkVarlitorNum = 1;        // 
+	size_t   maxVarlitorNum = 21;          /// variltor num
 
     SignatureStruct     m_sign_data;
     unsigned sealFields = 0;
@@ -72,7 +71,7 @@ private:
     /// load genesis
     ChainParams loadGenesis(std::string const& _json, h256 const& _stateRoot = {}) const;
     // laod Poa validators account
-    ChainParams loadpoaValidators(std::string const& _json, h256 const& _stateRoot = {}) const;
+    //ChainParams loadpoaValidators(std::string const& _json, h256 const& _stateRoot = {}) const;
 };
 
 }

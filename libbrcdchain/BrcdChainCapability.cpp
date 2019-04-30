@@ -1008,7 +1008,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				m_host->sealAndSend(peerID, ts);
 				//itPeer->second.clearKnownBlocks();
 			}
-			cwarn << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
+			clog << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
 		}
 
 		/*for(NodeID const& peerID : get<1>(s))
