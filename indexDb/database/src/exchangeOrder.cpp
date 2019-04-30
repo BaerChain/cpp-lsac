@@ -39,7 +39,7 @@ namespace dev {
                     check_db();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
-                    try {
+//                    try {
                         for (const auto &itr : orders) {
                             if (itr.buy_type == order_buy_type::only_price) {
                                 for (const auto t :  itr.price_token) {
@@ -143,16 +143,16 @@ namespace dev {
                         if (!reset) {
                             session.push();
                         }
-                    } catch (const dev::Exception &e) {
-                        session.undo();
-                        BOOST_THROW_EXCEPTION(e);
-                    } catch (const std::exception &e) {
-                        session.undo();
-                        BOOST_THROW_EXCEPTION(e);
-                    }catch (...){
-                        session.undo();
-                        BOOST_THROW_EXCEPTION(createOrderError());
-                    }
+//                    } catch (const dev::Exception &e) {
+//                        session.undo();
+//                        BOOST_THROW_EXCEPTION(e);
+//                    } catch (const std::exception &e) {
+//                        session.undo();
+//                        BOOST_THROW_EXCEPTION(e);
+//                    }catch (...){
+//                        session.undo();
+//                        BOOST_THROW_EXCEPTION(createOrderError());
+//                    }
 
                     return result;
                 });
