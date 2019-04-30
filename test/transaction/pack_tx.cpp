@@ -27,6 +27,7 @@ template<typename T, typename R>
 struct Task {
     typedef std::vector<T> value_source;
     typedef std::vector<R> value_result;
+    typedef typename std::vector<T>::const_iterator Iterator;
 
     Task(uint32_t numbers = 4) : m_thread(numbers) {
 
@@ -43,21 +44,24 @@ struct Task {
 
 
         for (int i = 0; i < m_thread; i++) {
-            if (i == m_thread - 1 && sp_size != 0) {  //add surplus to last thread
-                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size + sp_size);
-            } else {
-                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size);
-            }
-            std::packaged_task<value_result(value_source)> task([&](const value_source &d) {
-                value_result ret;
-                for (auto itr : d) {
-                    ret.push_back(conver_func(itr));
 
+
+            std::packaged_task<value_result(Iterator, Iterator)> task([&](Iterator begin, Iterator end) -> value_result{
+                value_result ret;
+                while (begin != end) {
+                    ret.push_back(conver_func(*begin));
+                    begin++;
                 }
                 return ret;
             });
             vec_ff.push_back(task.get_future());
-            std::thread(std::move(task), split_source[i]).detach();
+            if (i == m_thread - 1 && sp_size != 0) {  //add surplus to last thread
+//                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size + sp_size);
+                std::thread(std::move(task), source.begin() + i * one_size, source.end()).detach();
+            } else {
+//                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size);
+                std::thread(std::move(task), source.begin() + i * one_size, source.begin() + + (i + 1) * one_size).detach();
+            }
         }
 
 
@@ -83,16 +87,24 @@ struct task_work {
 
     typedef std::vector<T> source_value;
     typedef std::vector<R> result_value;
+
+    typedef typename std::vector<T>::const_iterator Iterator;
+
+
     typedef std::function<R(const T &)> CONVERT;
 
     struct request_context {
-        source_value *input = nullptr;
+        Iterator begin;
+        Iterator end;
         result_value *output = nullptr;
         CONVERT ff = nullptr;
         boost::promise<void> *ret = nullptr;
 
         bool empty() {
-            return input != nullptr && output != nullptr && ret != nullptr;
+            return
+//            input != nullptr &&
+                    output != nullptr &&
+                    ret != nullptr;
         }
 
     };
@@ -105,9 +117,12 @@ struct task_work {
 
                     while (m_queue.pop(cxt)) {
                         if (cxt->empty()) {
-                            for (auto itr = cxt->input->begin(); itr != cxt->input->end(); itr++) {
-                                cxt->output->emplace_back(std::move(cxt->ff(*itr)));
+                            while (cxt->begin != cxt->end) {
+                                cxt->output->emplace_back(std::move(cxt->ff(*cxt->begin)));
+                                cxt->begin++;
                             }
+
+
                             cxt->ret->set_value();
                         } else {
                             if (cxt->ret) {
@@ -134,12 +149,13 @@ struct task_work {
         std::vector<request_context> contexts(m_thread);
         for (int i = 0; i < m_thread; i++) {
             if (i == m_thread - 1 && sp_size != 0) {  //add surplus to last thread
-                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size + sp_size);
+                contexts[i].begin = source.begin() + i * one_size;
+                contexts[i].end = source.end();
             } else {
-                split_source[i].assign(source.begin() + i * one_size, source.begin() + (i + 1) * one_size);
+                contexts[i].begin = source.begin() + i * one_size;
+                contexts[i].end = source.begin() + (i + 1) * one_size;
             }
             contexts[i].ff = f;
-            contexts[i].input = &split_source[i];
             contexts[i].output = &split_result[i];
             contexts[i].ret = &proms[i];
             m_queue.push(&contexts[i]);
@@ -175,7 +191,7 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
         bytes data = cancel_op.serialize();
 
 
-        for (auto i = 0; i < 6; i++) {
+        for (auto i = 0; i < 1001; i++) {
             auto key_pair = KeyPair::create();
             auto sec = key_pair.secret();
             address_secret[key_pair.address()] = key_pair.secret();
@@ -209,33 +225,34 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
             Timer all;
             Timer t;
 
-            for (auto count = 1; count < 100; count++) {
-                t.restart();
-                Task<bytes, dev::brc::Transaction> task(6);
-                std::vector<dev::brc::Transaction> ret;
-                task.go_task(vec_trx, ret, [](const bytes &b) {
-                    return dev::brc::Transaction(b, dev::brc::CheckTransaction::Everything);
-                });
-//                BOOST_CHECK(ret1 == ret);
-            }
+//            for (auto count = 1; count < 100; count++) {
+            t.restart();
+            Task<bytes, dev::brc::Transaction> task(6);
+            std::vector<dev::brc::Transaction> ret;
+            task.go_task(vec_trx, ret, [](const bytes &b) {
+                return dev::brc::Transaction(b, dev::brc::CheckTransaction::Cheap);
+            });
+
+//            }
 
             std::cout << "all : " << all.elapsed() << std::endl;
-
+            BOOST_CHECK(ret1 == ret);
         }
 
         {
             Timer all;
             Timer t;
             task_work<bytes, dev::brc::Transaction> tw(6);
-            for (auto count = 1; count < 100; count++) {
-                t.restart();
-                std::vector<dev::brc::Transaction> ret;
-                tw.add_task(vec_trx, ret, [](const bytes &b) {
-                    return dev::brc::Transaction(b, dev::brc::CheckTransaction::Everything);
-                });
-//                BOOST_CHECK(ret1 == ret);
-            }
+//            for (auto count = 1; count < 100; count++) {
+            t.restart();
+            std::vector<dev::brc::Transaction> ret;
+            tw.add_task(vec_trx, ret, [](const bytes &b) {
+                return dev::brc::Transaction(b, dev::brc::CheckTransaction::Cheap);
+            });
+
+//            }
             std::cout << "all : " << all.elapsed() << std::endl;
+            BOOST_CHECK(ret1 == ret);
         }
 
 
@@ -243,7 +260,8 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
 
     BOOST_AUTO_TEST_CASE(pack_test_2) {
         std::map<Address, Secret> address_secret;
-        auto cancel_op = cancelPendingorder_operation(4, 3, h256("0xf42bfa5c6d13de747541078dcad69d331066c176685f579e730c961e1dd25ff0"));
+        auto cancel_op = cancelPendingorder_operation(4, 3,
+                                                      h256("0xf42bfa5c6d13de747541078dcad69d331066c176685f579e730c961e1dd25ff0"));
         bytes data = cancel_op.serialize();
         auto key_pair = KeyPair::create();
         auto sec = key_pair.secret();
@@ -264,7 +282,7 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
 
         auto tx_rlp = sign_t.rlp();
         Timer t;
-        for(int i = 0; i < 1; i++){
+        for (int i = 0; i < 1; i++) {
             dev::brc::Transaction(tx_rlp, dev::brc::CheckTransaction::Everything);
         }
 
