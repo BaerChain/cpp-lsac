@@ -207,10 +207,11 @@ namespace dev {
                 //only for public interface.
                 //mabey remove it.  if use for debug.
                 inline void check_db() const{
+#ifndef NDEBUG
                     if (!db) {
                         BOOST_THROW_EXCEPTION(get_db_instance_error());
                     }
-
+#endif
                 }
 
 
