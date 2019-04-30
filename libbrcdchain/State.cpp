@@ -1423,8 +1423,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	auto a = account(dev::VoteAddress);
 	std::string _num = "29000000000000000000000000";
 	u256 systenCookie = u256Safe(_num);
-	subBalance(dev::VoteAddress, systenCookie);
-	addFBalance(dev::VoteAddress, systenCookie);
 	std::map<u256, u256> _map = { {u256(1), systenCookie} };
 	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };

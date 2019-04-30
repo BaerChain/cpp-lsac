@@ -15,6 +15,7 @@ namespace dev {
             string const c_accounts = "accounts";
             string const c_balance = "cookies";
             string const c_brc = "brc";
+			string const c_fcookie = "fcookie";
             string const c_wei = "wei";
             string const c_finney = "finney";
 			string const c_gwei = "gwei";
@@ -108,7 +109,8 @@ namespace dev {
                                        {{c_precompiled, {{js::obj_type}, JsonFieldPresence::Required}},
                                        {c_wei,         {{js::str_type}, JsonFieldPresence::Optional}},
                                        {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}},
-										{c_brc,			{{js::str_type}, JsonFieldPresence::Optional}}});
+										{c_brc,			{{js::str_type}, JsonFieldPresence::Optional}},
+										{c_fcookie,		{{js::str_type}, JsonFieldPresence::Optional}}});
                 } else if (_obj.size() == 1) {
                     // A genesis account with only balance set
                     if (_obj.count(c_balance))

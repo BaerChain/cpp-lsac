@@ -1357,10 +1357,8 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
             exit(-1);
         }
     }
-	cerror << " voteAddress:" <<ret.mutableState().balance(dev::VoteAddress);
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();
-	cerror << " voteAddress:" << ret.mutableState().balance(dev::VoteAddress);
     return ret;
 }
 

@@ -53,12 +53,13 @@ public:
       : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
     {}
 
-	Account(u256 _nonce, u256 _balance, u256 _BRC ,Changedness _c = Changed)
+	Account(u256 _nonce, u256 _balance, u256 _BRC ,u256 _fbalance = 0, Changedness _c = Changed)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
         m_balance(_balance),
-        m_BRC(_BRC)
+        m_BRC(_BRC),
+		m_FBalance(_fbalance)
     {}
 
     /// Explicit constructor for wierd cases of construction or a contract account.

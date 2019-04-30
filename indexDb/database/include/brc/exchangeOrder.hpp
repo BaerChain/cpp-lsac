@@ -84,6 +84,12 @@ namespace dev {
                     }
                     return ret;
                 };
+
+				int64_t return_version() const
+				{
+					const auto &obj = get_dynamic_object();
+					return obj.version;
+				}
             private:
 
                 /// get iterator by type and price . this only find order of sell.
