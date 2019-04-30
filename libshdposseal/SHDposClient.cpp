@@ -124,6 +124,18 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 	_block.mutableVote().getSortElectors(_v, _num, _vector);
 }
 
+void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
+{
+	Block _block = blockByNumber(LatestBlock);
+	std::unordered_map<Address, u256> creaters;
+	if(_type == CreaterType::Canlitor)
+		creaters = _block.mutableVote().CanlitorAddress();
+	else if(_type == CreaterType::Varlitor)
+		creaters = _block.mutableVote().VarlitorsAddress();
+	for(auto const& val : creaters)
+		_creaters.push_back(val.first);
+}
+
 
 Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) const
 {
@@ -136,11 +148,6 @@ Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) const
         return iter->second;
     }
 	return Secret();
-}
-
-void dev::bacd::SHDposClient::printfElectors()
-{
-
 }
 
 bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey()
@@ -185,7 +192,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 
 				//add SH-Dpos data
 				BlockHeader _h;
-				_h.setDposCurrVarlitors(dpos()->currVarlitors());
+				//_h.setDposCurrVarlitors(dpos()->currVarlitors());
 				m_working.setDposData(_h);
 			}
 			DEV_READ_GUARDED(x_working)
@@ -279,7 +286,7 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
 	}
 	return; // test
     // SH-DPOS to del bad Block the must be Varlitor
-	std::vector<Address> _varlitor = getCurrHeader().dposCurrVarlitors();
+	std::vector<Address> _varlitor; //= getCurrHeader().dposCurrVarlitors();
 	auto ret = find(_varlitor.begin(), _varlitor.end(), author());
     if(ret != _varlitor.end())
 	    dpos()->dellImportBadBlock(*block);

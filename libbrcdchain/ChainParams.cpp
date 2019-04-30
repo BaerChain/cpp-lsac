@@ -88,12 +88,10 @@ ChainParams ChainParams::loadConfig(
 		cp.checkVarlitorNum = size_t(params.at(c_checkVarlitorNum).get_int());
 	if(params.count(c_maxVarlitorNum))
 		cp.maxVarlitorNum = size_t(params.at(c_maxVarlitorNum).get_int());
-	if(params.count(c_verifyVoteNum))
-		cp.verifyVoteNum = size_t(params.at(c_verifyVoteNum).get_int());
 
-    //Poa Validators
-    string poaStr = js::write_string(obj[c_poa], false);
-    cp = cp.loadpoaValidators(poaStr, _stateRoot);
+    ////Poa Validators
+    //string poaStr = js::write_string(obj[c_poa], false);
+    //cp = cp.loadpoaValidators(poaStr, _stateRoot);
     // genesis
     string genesisStr = js::write_string(obj[c_genesis], false);
     cp = cp.loadGenesis(genesisStr, _stateRoot);
@@ -140,60 +138,51 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     return cp;
 }
 
-ChainParams dev::brc::ChainParams::loadpoaValidators(
-    std::string const& _json, h256 const& _stateRoot) const
-{
-    ChainParams cp(*this);
-    try {
-        js::mValue val;
-        js::read_string(_json, val);
-        js::mObject poa = val.get_obj();
-        js::mArray poaArray = poa["validators"].get_array();
-        //cp.poaValidatorAccount.clear();
-        js::mArray::const_iterator iter;
-        for (auto val : poaArray)
-        {
-			auto address = val.get_str();
-			cp.poaValidatorAccount.push_back(Address(address));
-			//cwarn << "find address: " << address;
-        }
-        cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
-    }catch (const std::exception &e){
-        cerror <<  "init private-key error :"  << e.what() << std::endl;
-    }catch(const boost::exception &e){
-        cerror <<  "init private-key error :" << boost::diagnostic_information(e);
-    }catch (...){
-        cerror <<  "init private-key error :" << std::endl;
-    }
-
-    return cp;
-}
+//ChainParams dev::brc::ChainParams::loadpoaValidators(
+//    std::string const& _json, h256 const& _stateRoot) const
+//{
+//    ChainParams cp(*this);
+//    try {
+//        js::mValue val;
+//        js::read_string(_json, val);
+//        js::mObject poa = val.get_obj();
+//        js::mArray poaArray = poa["validators"].get_array();
+//        js::mArray::const_iterator iter;
+//        for (auto val : poaArray)
+//        {
+//			auto address = val.get_str();
+//			cp.poaValidatorAccount.push_back(Address(address));
+//			//cwarn << "find address: " << address;
+//        }
+//        cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
+//    }catch (const std::exception &e){
+//        cerror <<  "init private-key error :"  << e.what() << std::endl;
+//    }catch(const boost::exception &e){
+//        cerror <<  "init private-key error :" << boost::diagnostic_information(e);
+//    }catch (...){
+//        cerror <<  "init private-key error :" << std::endl;
+//    }
+//
+//    return cp;
+//}
 
 void dev::brc::ChainParams::saveBlockAddress(std::string const& _json,
     h256 const& _stateRoot, const boost::filesystem::path& _accountJsonPath)
 {
     js::mValue val;
     js::read_string_or_throw(_json, val);
-    js::mObject poa = val.get_obj();
-    js::mArray poaArray = poa["account"].get_array();
+    js::mObject _obj = val.get_obj();
+    js::mArray private_key_array = _obj["account"].get_array();
     //cwarn << "accout size is :" << poaArray.size();
 
     js::mArray::const_iterator iter;
-    for (auto val : poaArray)
+    for (auto val : private_key_array)
     {
         auto _key = val.get_str();
         auto secret = Secret(dev::crypto::from_base58(_key));
         auto address = toAddress(toPublic(secret));
-        auto ret = find(poaValidatorAccount.begin(), poaValidatorAccount.end(), address);
-        if (ret != poaValidatorAccount.end())
-        {
-            this->m_block_addr_keys.insert(pair<Address, Secret>(address, secret));
-		
-            //poaBlockAccount.push_back(address);
-            //cwarn << "insert m_block_addr_keys:" << this->m_block_addr_keys;
-        }
-        else
-            cwarn << "not find block address!";
+        this->m_block_addr_keys.insert(pair<Address, Secret>(address, secret));
+
     }
 }
 
@@ -225,7 +214,6 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
     timestamp = bi.timestamp();
     extraData = bi.extraData();
     m_sign_data = bi.sign_data();
-	poaValidatorAccount.assign(bi.dposCurrVarlitors().begin(), bi.dposCurrVarlitors().end());
     genesisState = _state;
     RLP r(_genesisRLP);
     sealFields = r[0].itemCount() - BlockHeader::BasicFields;
@@ -281,12 +269,7 @@ bytes ChainParams::genesisBlock() const
             << gasUsed			// gasUsed
             << timestamp
             << extraData
-            << h520(m_sign_data)
-            ;
-	//dposcontext.streamRLPFields(block);
-	RLPStream _s;
-	_s.appendVector<Address>(poaValidatorAccount);
-	block << _s.out();
+            << h520(m_sign_data);
 
     block.appendRaw(sealRLP, sealFields);
     block.appendRaw(RLPEmptyList);

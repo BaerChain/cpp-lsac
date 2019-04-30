@@ -293,7 +293,7 @@ public:
     // set Header dposData
     void setDposData(BlockHeader const& _h)
     {
-        m_currentBlock.setDposCurrVarlitors(_h.dposCurrVarlitors());
+        //m_currentBlock.setDposCurrVarlitors(_h.dposCurrVarlitors());
     }
     // get dposTransation cache
     std::vector<bytes> const& getDposTransations() const { return m_dposTransations; }
