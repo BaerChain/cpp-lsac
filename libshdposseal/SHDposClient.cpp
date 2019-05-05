@@ -221,8 +221,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);
-						//testlog << " sealed trans:" << m_working.getSealTxNum() << " use_time:" << _timer.elapsed() * 1000 
-							<< " time:"<< utcTimeMilliSec();
+						//testlog << " sealed trans:" << m_working.getSealTxNum() << " use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
 					}
 					else
 						LOG(m_logger) << "Submitting block failed...";
