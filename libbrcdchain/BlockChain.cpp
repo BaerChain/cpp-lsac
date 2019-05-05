@@ -399,16 +399,13 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
-
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
-                DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)r = import(block.verified,
-                                                                                                         _stateDB,
-                                                                                                         _stateExDB,
-                                                                                                         (ImportRequirements::Everything &
-                                                                                                          ~ImportRequirements::ValidSeal &
-                                                                                                          ~ImportRequirements::CheckUncles) !=
-                                                                                                         0);
+                //DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
+					r = import(block.verified, _stateDB, _stateExDB,
+                                 (ImportRequirements::Everything &
+                                  ~ImportRequirements::ValidSeal &
+                                  ~ImportRequirements::CheckUncles) != 0);
                 fresh += r.liveBlocks;
                 dead += r.deadBlocks;
                 goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
@@ -613,10 +610,10 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     }
 
     checkBlockTimestamp(_block.info);
-
+	Timer _timer;
     // Verify parent-critical parts
     verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
-
+	//testlog << "verifyBlock  InOrderChecks use_time:" << _timer.elapsed() * 1000;
     LOG(m_loggerDetail) << "Attempting import of " << _block.info.hash() << " ...";
 
     performanceLogger.onStageFinished("preliminaryChecks");
@@ -626,6 +623,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     try {
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
+		_timer.restart();
         Block s(*this, _db, _exdb);
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -633,7 +631,19 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         s.cleanup();
         td = pd.totalDifficulty + tdIncrease;
         performanceLogger.onStageFinished("enactment");
-
+		//testlog << " enactOn use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
+		//_timer.restart();
+		//// shdpos data
+		//{
+		//	std::vector<Address> _var;
+		//	std::vector<Address> _can;
+		//	for(auto const& val : s.mutableVote().VarlitorsAddress())
+		//		_var.push_back(val.first);
+		//	for(auto const& val : s.mutableVote().CanlitorAddress())
+		//		_can.push_back(val.first);
+		//	m_sealEngine->resetSHDposCreater(_var, _can);
+		//}
+		//testlog << " init shdpos data use_time:" << _timer.elapsed() * 1000;
 #if BRC_PARANOIA
         checkConsistency();
 #endif // BRC_PARANOIA
@@ -649,7 +659,6 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         addBlockInfo(ex, _block.info, _block.block.toBytes());
         throw;
     }
-
     // All ok - insert into DB
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
@@ -692,7 +701,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
-
+	Timer _timer;
     try {
         // ensure parent is cached for later addition.
         // TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
@@ -903,6 +912,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             dead.push_back(h);
         else
             fresh.push_back(h);
+	//testlog << " into  DB use_time:" << _timer.elapsed() * 1000 ;
     return ImportRoute{dead, fresh, _block.transactions};
 }
 
@@ -1364,7 +1374,7 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
 
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
-	int64_t _time1 = utcTimeMilliSec();
+	Timer _timer;
 	VerifiedBlockRef res;
     BlockHeader h;
     try {
@@ -1424,106 +1434,45 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-	int64_t _time = utcTimeMilliSec();
+	//testlog << " verify trans front_populate use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
+	_timer.restart();
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
-        if(false)
+        if(r[1].itemCount() > 300)
 		{
-			size_t thread_num = 4;
-			std::vector< std::vector<TransactionByte> > _transs; //{thread_num, std::vector<TransactionByte>()};
-			for(int j = 0; j < thread_num; j++)
-				_transs.push_back(std::vector<TransactionByte>());
-			std::vector<TransactionByte> _rTranBytes;
-			size_t _tIndex = 0;
-			for(auto _r : r[1])
-				_rTranBytes.push_back({ ++_tIndex, _r.data() });
+			// more thread to do
+			size_t th_num = r[1].itemCount() / 200 + 1;   //test for : the transaction num:150 for one thread todo
+			th_num = (th_num % 2 != 0) ? th_num - 1 : th_num;
+			th_num = th_num > 8 ? 8 : th_num;
+			//th_num = 6;
+			std::vector<bytes> v_trxb;
+               for(auto val : r[1])
+				v_trxb.push_back(val.data().toBytes());
+			std::vector<Transaction> ret_t;
+			Task<bytes, Transaction> task_t(th_num);
 
-			size_t _push_num = 0;
-			size_t _rang_num = _rTranBytes.size() / thread_num;
-			size_t _thread_index = 0;
-			for(auto val : _rTranBytes)
+            try 
 			{
-				if(++_push_num >= _rang_num && _thread_index < (thread_num - 1))
-				{
-					_push_num = 0;
-					++_thread_index;
-				}
-				_transs[_thread_index].push_back(val);
+			    task_t.go_task(v_trxb, ret_t, [&_ir](bytes const& b){
+				    return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+				    //return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+			    });
 			}
-
-			int64_t _time2 = utcTimeMilliSec();
-			cwarn << " init data use_time:" << _time2 - _time << " time:" << _time2;
-			Timer _timer;
-			std::vector<TransactionIndex> _trans;
-			std::vector<Exception> _exceptions;
-			size_t _over_num = 0;
-			std::mutex _lock_tr;
-			try
+            catch(Exception& ex)
 			{
-				int th = 0;
-				for(auto _tb : _transs)
-				{
-					++th;
-					if(_tb.empty())
-					{
-						_over_num++;
-						continue;
-					}
-					thread t([=, &_trans, &_over_num, &_lock_tr, &_exceptions]{
-						for(auto trb : _tb)
-						{
-							try
-							{
-								Transaction _tr(trb.data_b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
-								m_sealEngine->verifyTransaction(_ir, _tr, h, 0); // the gasUsed vs blockGasLimit is checked later in enact function
-								std::lock_guard<std::mutex> guard(_lock_tr);
-								_trans.push_back({ trb.index, _tr });
-							}
-							catch(Exception& ex)
-							{
-								_over_num++;
-								ex << errinfo_phase(th);
-								ex << errinfo_transactionIndex(trb.index);
-								ex << errinfo_transaction(trb.data_b.toBytes());
-								addBlockInfo(ex, h, _block.toBytes());
-								//throw;
-								std::lock_guard<std::mutex> guard(_lock_tr);
-								_exceptions.push_back(ex);
-							}
-						}
-						// populate ok 
-						cwarn << "thread:" << th << " populate tranction:" << _tb.size() << " is ok use_time:" << _timer.elapsed() * 1000;
-						_over_num++;
-							 });
-					t.detach();
-				}
-			}
-			catch(Exception& _e) //std::exception const& _e
-			{
-				cwarn << "Exception thrown in Block verifyTransaction thread: " << _e.what();
-			}
-
-			while(_over_num < thread_num)
-			{
-				// wait for populate all transaction
-				usleep(5);
-			}
-			if(!_exceptions.empty())
-			{
+				ex << errinfo_phase(1);
+				ex << errinfo_transactionIndex(i);
+				//ex << errinfo_transaction(d.toBytes());
+				addBlockInfo(ex, h, _block.toBytes());
 				if(_onBad)
-					_onBad(_exceptions[0]);
-				throw _exceptions[0];
+					_onBad(ex);
+				throw;
 			}
-			std::sort(_trans.begin(), _trans.end());
-			for(auto val : _trans)
-			{
-				res.transactions.push_back(std::move(val.transaction));
-			}
-			cwarn << " 1000 transaction use_time:" << utcTimeMilliSec() - _time << " time:" << utcTimeMilliSec() << " transaction_size:" << res.transactions.size();
+			res.transactions.clear();
+			res.transactions = ret_t;
 		}
-		else
+        else
 		{
-			Timer _timer;
 			double p_time = 0;
 			double v_time = 0;
 			for(RLP const& tr : r[1])
@@ -1548,7 +1497,9 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 				++i;
 			}
 		}
+		
 	}
+	//testlog << " populate trans:" << res.transactions.size() << " use_time:" << _timer.elapsed() * 1000 << "time:" << utcTimeMilliSec();
     res.block = bytesConstRef(_block);
     return res;
 }

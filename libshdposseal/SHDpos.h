@@ -36,8 +36,7 @@ namespace dev
             void                initConfigAndGenesis(ChainParams const& m_params);
             void                setDposClient(SHDposClient const* _c) { m_dpos_cleint = _c; }
             SHDposConfigParams const& dposConfig() { return m_config; }
-			std::vector<Address> const& currVarlitors() { return m_curr_varlitors; }
-			
+
             bool                isBolckSeal(uint64_t _now);
             bool                checkDeadline(uint64_t _now);           //验证出块时间周期
 			void                tryElect(uint64_t _now);   //判断是否完成了本轮出块，选出新一轮验证人
@@ -97,13 +96,13 @@ namespace dev
 		private:
 			std::set<Address>				m_curr_punishVandidate;				//当前需要惩罚的候选人
 			std::vector<Address>            m_curr_varlitors;                   //本轮验证人集合
+			std::vector<Address>            m_curr_candidate;								//本轮候选人集合
             SHDposClient const*             m_dpos_cleint;
             int64_t                         m_next_block_time;                  // 上次进入出块周期时间
 			int64_t                         m_last_block_time;
             SHDposConfigParams              m_config;                           // dpos 相关配置
 
 			size_t m_notBlockNum;                   //下一轮不能出块的人数
-			std::vector<Address> m_curr_candidate;								//本轮候选人集合
             std::map<Address, BadBlockPunish> m_blackList;						 //超过12个坏块，加入黑名单         
             std::map<Address, BadBlockPunish> m_punishVarlitor;					// 记录出坏块的地址及处罚信息
             BadBlockNumPunish m_badPunish;		

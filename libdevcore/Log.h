@@ -85,6 +85,8 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(
     BOOST_LOG_STREAM_WITH_PARAMS(dev::g_clogLogger::get(), \
         (boost::log::keywords::severity = SEVERITY)(boost::log::keywords::channel = CHANNEL)) << FORMAT_FILE
 
+#define testlog LOG(dev::g_warnLogger::get())
+
 
 struct LoggingOptions
 {

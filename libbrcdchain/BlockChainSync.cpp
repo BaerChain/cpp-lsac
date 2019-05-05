@@ -727,7 +727,7 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     RecursiveGuard l(x_sync);
     DEV_INVARIANT_CHECK;
 
-    if (_r.itemCount() != 3)
+    if (_r.itemCount() != 2)
     {
         m_host.disablePeer(_peerID, "NewBlock without 2 data fields.");
         return;
@@ -746,6 +746,10 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         syncPeer(_peerID, true);
         return;
     }
+	int64_t _time_s = utcTimeMilliSec();
+	cwarn << "BlockChain import new block autor:" << info.author() << "  num:" << info.number() << "  parent_hash:"
+		<< info.parentHash() << "   get_time:" << _time_s << " create_time" << info.timestamp()
+		<< " net_use_time:" << _time_s - info.timestamp();
     switch (host().bq().import(_r[0].data()))
     {
     case ImportResult::Success:

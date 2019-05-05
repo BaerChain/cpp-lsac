@@ -61,10 +61,10 @@ public:
 	}
 	virtual bigint costOfPrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).cost(_in); }
 	virtual std::pair<bool, bytes> executePrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).execute(_in); }
-
-	virtual bool dealDposVote(TransactionBase const& _t);
-    /// verfy votedata  paramter : _from, _to, _type, _vote
-	virtual bool  verifyVote(Address const& /*_from*/, Address const& /*_to*/, size_t /*_type*/, size_t/* _vote = 1*/) const { return false; }
+    
+    /// init shdpos data interface
+	virtual void resetSHDposCreater(std::vector<Address>const& /*_var*/, std::vector<Address> const& /*_can*/ ) { }
+    
 
 protected:
 	virtual bool onOptionChanging(std::string const&, bytes const&) { return true; }

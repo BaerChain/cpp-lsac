@@ -24,7 +24,7 @@ namespace fs = boost::filesystem;
 
 #define BRC_TIMED_ENACTMENTS 0
 
-static const unsigned c_maxSyncTransactions = 2200;
+static const unsigned c_maxSyncTransactions = 2400;
 
 //namespace
 //{
@@ -109,7 +109,6 @@ void Block::resetCurrent(int64_t _timestamp) {
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
-    m_dposTransations.clear();
     // TODO: check.
 
 //    m_state.exdb().rollback();
@@ -411,16 +410,18 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     populateGrand = t.elapsed();
     t.restart();
 #endif
-
+	Timer _timer;
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
-
+	//testlog << " sync parentblock use_time:" << _timer.elapsed() * 1000;
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
 #endif
+	_timer.restart();
     m_previousBlock = biParent;
     auto ret = enact(_block, _bc);
+	//testlog << " enact use_time:" << _timer.elapsed() * 1000;
 
 #if BRC_TIMED_ENACTMENTS
     enactment = t.elapsed();
@@ -723,7 +724,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
 
     RLPStream txs;
     txs.appendList(m_transactions.size());
-    m_dposTransations.clear();
     uint64_t _startTime = utcTimeMilliSec();
     for (unsigned i = 0; i < m_transactions.size(); ++i) {
         RLPStream k;

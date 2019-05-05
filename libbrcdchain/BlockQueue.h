@@ -278,9 +278,6 @@ public:
 	 }
 	void insertSendBlock(VerifiedSendData const& _data) { m_verified_send.push_back(_data); }
 	void clearVerifiedBlocks() { m_verified_send.clear(); }
-	bool isOurWillSend(h256 const& _h);
-	void insertOurSend(h256 const& _h) { m_unverifeid_send.insert(_h); }
-	void onSendNew(std::function<void()> _t) { m_verified_send_f = _t; cwarn << "set called fun ok .."; }
 
 private:
     struct UnverifiedBlock
