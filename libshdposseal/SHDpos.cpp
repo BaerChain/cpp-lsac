@@ -36,9 +36,7 @@ void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)
     m_config.epochInterval = m_params.epochInterval;
     m_config.blockInterval = m_params.blockInterval;
     m_config.varlitorInterval = m_params.varlitorInterval;
-    m_config.valitorNum = m_params.checkVarlitorNum;
     m_config.maxValitorNum = m_params.maxVarlitorNum;
-    m_config.verifyVoteNum = m_params.verifyVoteNum;
     LOG(m_logger) << BrcYellow "dpos config:" << m_config;
 }
 
@@ -179,39 +177,28 @@ void dev::bacd::SHDpos::brocastMsg(SHDposPacketType _type, RLPStream& _msg_s)
 bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 {
     cdebug << " into CheckValidator...";
-    const BlockHeader _h = m_dpos_cleint->getCurrHeader();
-	std::vector<Address> const& _currvar = _h.dposCurrVarlitors();  //
-	std::vector<Address> const& _gennesis_var = m_dpos_cleint->getGenesisHeader().dposCurrVarlitors(); //
-    m_curr_varlitors.clear();
-    m_curr_varlitors.assign(_currvar.begin(), _currvar.end());
-    if (_currvar.empty())
-    {
-//        LOG(m_warnlog) << "the m_dpos_context's curr_varlitor is empty and try to use genesis varlitor...";
-        if (_gennesis_var.empty())
-        {
-            LOG(m_logger) << " the genesis varlitor is empty, can't to create block ...";
-            return false;
-        }
-        m_curr_varlitors.clear();
-        m_curr_varlitors.assign(_gennesis_var.begin(), _gennesis_var.end());
-    }
 
+	m_curr_varlitors.clear();
+	m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
+	if(m_curr_varlitors.empty())
+	{
+		cerror << " not have Varlitors to create block!";
+			return false;
+	}
     std::vector<Address> _vector = m_curr_varlitors;
-
-
-    uint64_t offet = _now % m_config.epochInterval;  // 当前轮 进入了多时间
-    LOG(m_logger) << "offet = _now % epochInterval:" << offet;
+    uint64_t offet = _now % (m_config.epochInterval ? m_config.epochInterval : timesc_20y);  // 当前轮 进入了多时间
+    //LOG(m_logger) << "offet = _now % epochInterval:" << offet;
     offet /= m_config.varlitorInterval;
-    LOG(m_logger) << "offet /= varlitorInterval:" << offet;
+    //LOG(m_logger) << "offet /= varlitorInterval:" << offet;
     //offet %= m_curr_varlitors.size();
     offet %= _vector.size();
-    LOG(m_logger) << "offet %= varlitors.size():" << offet;
+    //LOG(m_logger) << "offet %= varlitors.size():" << offet;
     //Address const& curr_valitor = m_curr_varlitors[offet];  //得到当验证人
     Address const& curr_valitor = _vector[offet];
-    for (/*auto val : m_curr_varlitors*/ auto val : _vector)
-    {
-        cdebug << val << "offet:" << offet;
-    }
+    //for (/*auto val : m_curr_varlitors*/ auto val : _vector)
+    //{
+    //    cdebug << val << "offet:" << offet;
+    //}
 
     bool ret = isCurrBlock(curr_valitor);
     return chooseBlockAddr(curr_valitor, ret);
@@ -338,6 +325,8 @@ void dev::bacd::SHDpos::tryElect(uint64_t _now)
 {
     //这里 验证人已经通过 尝试统计投票
     //尝试后继续出块 则继续出块
+	if(!m_config.epochInterval)
+		return;
     const BlockHeader _h = m_dpos_cleint->getCurrHeader();
     uint64_t _last_time = _h.timestamp();
     unsigned int prveslot = _last_time / m_config.epochInterval;  //上一个块的周期

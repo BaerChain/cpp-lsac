@@ -9,7 +9,6 @@ namespace dev {
     namespace brc {
         namespace validation {
             string const c_sealEngine = "sealEngine";
-            string const c_poa = "poa";
             string const c_params = "params";
             string const c_genesis = "genesis";
             string const c_accounts = "accounts";
@@ -32,6 +31,7 @@ namespace dev {
             string const c_gasUsed = "gasUsed";
             string const c_codeFromFile = "codeFromFile";  ///< A file containg a code as bytes.
             string const c_shouldnotexist = "shouldnotexist";
+			string const c_genesisVarlitor = "genesisVarlitor";
 
             string const c_minGasLimit = "minGasLimit";
             string const c_maxGasLimit = "maxGasLimit";
@@ -60,12 +60,10 @@ namespace dev {
             string const c_blockInterval = "dposBlockInterval";
             string const c_checkVarlitorNum = "dposCheckVarlitorNum";
             string const c_maxVarlitorNum = "dposMaxvarlitorNum";
-            string const c_verifyVoteNum = "dposVerifyVoteNum";
 
             void validateConfigJson(js::mObject const &_obj) {
                 requireJsonFields(_obj, "ChainParams::loadConfig",
                                   {{c_sealEngine, {{js::str_type}, JsonFieldPresence::Required}},
-                                   {c_poa,        {{js::obj_type}, JsonFieldPresence::Required}},
                                    {c_params,     {{js::obj_type}, JsonFieldPresence::Required}},
                                    {c_genesis,    {{js::obj_type}, JsonFieldPresence::Required}},
                                    {c_accounts,   {{js::obj_type}, JsonFieldPresence::Required}}});
@@ -100,34 +98,46 @@ namespace dev {
             }
 
             void validateAccountObj(js::mObject const &_obj) {
-                if (_obj.count(c_precompiled)) {
+                if (_obj.count(c_precompiled))
+				{
                     // A precompiled contract
                     requireJsonFields(_obj, "validateAccountObj",
                                        {{c_precompiled, {{js::obj_type}, JsonFieldPresence::Required}},
                                        {c_wei,         {{js::str_type}, JsonFieldPresence::Optional}},
-                                       {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}}});
-                } else if (_obj.size() == 1) {
+									   {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}}
+									  });
+                } 
+				else if (_obj.size() == 1) 
+				{
                     // A genesis account with only balance set
                     if (_obj.count(c_balance))
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_balance, {{js::str_type}, JsonFieldPresence::Required}}});
-                    else
+                    else if(_obj.count(c_wei))
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_wei, {{js::str_type}, JsonFieldPresence::Required}}});
-                } else {
-                    if (_obj.count(c_codeFromFile)) {
+					else 
+						requireJsonFields(_obj, "validateAccountObj",
+										  { {c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}} });
+                } 
+				else
+				{
+                    if (_obj.count(c_codeFromFile)) 
+					{
                         // A standart account with external code
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_codeFromFile, {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_nonce,        {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_storage,      {{js::obj_type}, JsonFieldPresence::Required}},
                                            {c_balance,      {{js::str_type}, JsonFieldPresence::Required}}});
-                    } else {
+                    }
+					else 
+					{
                         // A standart account with all fields
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_code,    {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_nonce,   {{js::str_type}, JsonFieldPresence::Required}},
-                                           {c_storage, {{js::obj_type}, JsonFieldPresence::Required}},
+										   {c_storage, {{js::obj_type}, JsonFieldPresence::Required}},
                                            {c_balance, {{js::str_type}, JsonFieldPresence::Required}}});
                     }
                 }
