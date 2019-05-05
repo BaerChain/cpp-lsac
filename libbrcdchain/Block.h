@@ -290,14 +290,7 @@ public:
     /// Get the header information on the present block.
     BlockHeader const& info() const { return m_currentBlock; }
 
-    // set Header dposData
-    void setDposData(BlockHeader const& _h)
-    {
-        //m_currentBlock.setDposCurrVarlitors(_h.dposCurrVarlitors());
-    }
-    // get dposTransation cache
-    std::vector<bytes> const& getDposTransations() const { return m_dposTransations; }
-
+	size_t getSealTxNum() { return m_transactions.size(); }
 
 private:
     SealEngineFace* sealEngine() const;
@@ -341,10 +334,6 @@ private:
     Address m_author;  ///< Our address (i.e. the address to which fees go).
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
-
-    std::vector<bytes> m_dposTransations;  // the dpos vote transation cache
-
-	size_t  m_seal_tx = 2500;
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};

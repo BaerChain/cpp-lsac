@@ -104,7 +104,7 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
         if(!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())
         {
             std::unique_lock<std::mutex> l(x_signalled);
-            m_signalled.wait_for(l, chrono::milliseconds(dpos()->dposConfig().blockInterval));
+            m_signalled.wait_for(l, chrono::milliseconds(10));
         }
     }catch (const boost::exception &e){
         cwarn <<  boost::diagnostic_information(e);
@@ -124,14 +124,16 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 	_block.mutableVote().getSortElectors(_v, _num, _vector);
 }
 
+/// if the block have manch transaction this function will use much time 
+/// so can't use the function
 void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
 {
-	Block _block = blockByNumber(LatestBlock);
+	//Block _block = blockByNumber(LatestBlock);
 	std::unordered_map<Address, u256> creaters;
 	if(_type == CreaterType::Canlitor)
-		creaters = _block.mutableVote().CanlitorAddress();
+		creaters = preSeal().mutableVote().CanlitorAddress();
 	else if(_type == CreaterType::Varlitor)
-		creaters = _block.mutableVote().VarlitorsAddress();
+		creaters = preSeal().mutableVote().VarlitorsAddress();
 	for(auto const& val : creaters)
 		_creaters.push_back(val.first);
 }
@@ -159,6 +161,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 {
     if(!m_wouldSeal)
         return;
+	Timer _timer;
     //打包出块验证 包括出块周期，出块时间，出块人验证
     uint64_t _time = utcTimeMilliSec();            //get the systemTime
     if(!isBlockSeal(_time))
@@ -175,7 +178,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 		{
 			m_wouldButShouldnot = false;
 
-			LOG(m_loggerDetail) << "Rejigging seal engine...";
+			//LOG(m_loggerDetail) << "Rejigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
 			{
 				if(m_working.isSealed())
@@ -184,16 +187,12 @@ void dev::bacd::SHDposClient::rejigSealing()
 					return;
 				}
 				// TODO is that needed? we have "Generating seal on" below
-				LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
+				//testlog << " front use_time:" << utcTimeMilliSec() - _time;
+				//testlog <<BrcYellow "Starting to seal block #" << m_working.info().number() <<" time:"<< utcTimeMilliSec() << BrcReset;
 				// input a seal time to contral the seal transation time
 				m_working.commitToSeal(bc(), m_extraData);
 				//try into next new epoch and check some about varlitor for SH-DPOS
 				dpos()->tryElect(utcTimeMilliSec());
-
-				//add SH-Dpos data
-				BlockHeader _h;
-				//_h.setDposCurrVarlitors(dpos()->currVarlitors());
-				m_working.setDposData(_h);
 			}
 			DEV_READ_GUARDED(x_working)
 			{
@@ -222,6 +221,8 @@ void dev::bacd::SHDposClient::rejigSealing()
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);
+						//testlog << " sealed trans:" << m_working.getSealTxNum() << " use_time:" << _timer.elapsed() * 1000 
+							<< " time:"<< utcTimeMilliSec();
 					}
 					else
 						LOG(m_logger) << "Submitting block failed...";

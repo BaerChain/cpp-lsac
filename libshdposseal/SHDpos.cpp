@@ -176,15 +176,24 @@ void dev::bacd::SHDpos::brocastMsg(SHDposPacketType _type, RLPStream& _msg_s)
 
 bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 {
-    cdebug << " into CheckValidator...";
-
+	Timer _timer;
+	/*if(m_curr_varlitors.empty())
+	{
+		m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
+		if(m_curr_varlitors.empty())
+		{
+			cerror << " not have Varlitors to create block!";
+			return false;
+		}
+	}*/
 	m_curr_varlitors.clear();
 	m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
 	if(m_curr_varlitors.empty())
 	{
 		cerror << " not have Varlitors to create block!";
-			return false;
+		return false;
 	}
+	//testlog << " get varlitor use_time:" << _timer.elapsed()*1000 << " time:"<< utcTimeMilliSec();
     std::vector<Address> _vector = m_curr_varlitors;
     uint64_t offet = _now % (m_config.epochInterval ? m_config.epochInterval : timesc_20y);  // 当前轮 进入了多时间
     //LOG(m_logger) << "offet = _now % epochInterval:" << offet;

@@ -997,10 +997,10 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 		{
 			Timer _timer;
 			RLPStream ts;
-			m_host->prep(peerID, name(), ts, NewBlockPacket, 3)
+			m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
 				.appendRaw(b.m_block, 1)
-				.append(b.m_totalDiff)
-				.append(u256(utcTimeMilliSec()));       // test for send data time in net 
+				.append(b.m_totalDiff);
+				//.append(u256(utcTimeMilliSec()));       // test for send data time in net 
 
 			auto itPeer = m_peers.find(peerID);
 			if(itPeer != m_peers.end())
