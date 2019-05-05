@@ -20,9 +20,8 @@ namespace dev
     namespace bacd
     {
         using namespace dev ::brc;
-        typedef std::function<BlockHeader ()> OnGetHeader;
-
-        class SHDpos: public SealEngineBase , Worker
+		const size_t timesc_20y = 60 * 60 * 24 * 365 * 20;
+		class SHDpos: public SealEngineBase , Worker
         {
         public:
             SHDpos();
@@ -53,7 +52,8 @@ namespace dev
 		private:
 			void                sealAndSend(NodeID const& _nodeid, SHDposPacketType _type, RLPStream const& _msg_s);   // send msg to nodeId
 			void                brocastMsg(SHDposPacketType _type, RLPStream& _msg_s);       //brocastMsg about SH-Dpos           
-            void				candidateReplaceVarlitors(size_t& _replaceNum);  //候选人替换惩罚的验证人出块
+            
+			void				candidateReplaceVarlitors(size_t& _replaceNum);  //候选人替换惩罚的验证人出块
             void				addBlackList(std::vector<Address>& _v);  //超过12个坏块，加入黑名单，踢出出块人出块资格
             bool				isCandidateBlock(Address _addr);  //判断候选人本轮是否能出块
             bool				chooseBlockAddr(Address const& _addr, bool _isok);
