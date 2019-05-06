@@ -24,7 +24,7 @@ namespace fs = boost::filesystem;
 
 #define BRC_TIMED_ENACTMENTS 0
 
-static const unsigned c_maxSyncTransactions = 1024;
+static const unsigned c_maxSyncTransactions = 2400;
 
 //namespace
 //{
@@ -109,7 +109,6 @@ void Block::resetCurrent(int64_t _timestamp) {
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
-    m_dposTransations.clear();
     // TODO: check.
 
 //    m_state.exdb().rollback();
@@ -295,10 +294,16 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 
     // TRANSACTIONS
     pair<TransactionReceipts, bool> ret;
-
-    Transactions transactions = _tq.topTransactions(c_maxSyncTransactions, m_transactionSet);
-    ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
-    // if we hit the limit
+	size_t  transactionNum = m_transactions.size() < c_maxSyncTransactions ? c_maxSyncTransactions - m_transactions.size() : 0;
+    if(!transactionNum)
+	{
+		ret.second = true;
+		return ret;
+	}
+	Transactions transactions = _tq.topTransactions(transactionNum, m_transactionSet);
+	ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
+	//ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
+	// if we hit the limit
 
     assert(_bc.currentHash() == m_currentBlock.parentHash());
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
@@ -310,9 +315,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
 
-                        cerror << " block execute begin  " << &db() << "  exdb: " << exdb().check_version();
                         execute(_bc.lastBlockHashes(), t);
-                        cerror << " block execute end  " << &db() << "  exdb: " << exdb().check_version();
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
                     } else if (t.gasPrice() < _gp.ask(*this) * 9 / 10) {
@@ -407,16 +410,18 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     populateGrand = t.elapsed();
     t.restart();
 #endif
-
+	Timer _timer;
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
-
+	//testlog << " sync parentblock use_time:" << _timer.elapsed() * 1000;
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
 #endif
+	_timer.restart();
     m_previousBlock = biParent;
     auto ret = enact(_block, _bc);
+	//testlog << " enact use_time:" << _timer.elapsed() * 1000;
 
 #if BRC_TIMED_ENACTMENTS
     enactment = t.elapsed();
@@ -719,7 +724,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
 
     RLPStream txs;
     txs.appendList(m_transactions.size());
-    m_dposTransations.clear();
     uint64_t _startTime = utcTimeMilliSec();
     for (unsigned i = 0; i < m_transactions.size(); ++i) {
         RLPStream k;
@@ -732,8 +736,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
         RLPStream txrlp;
         m_transactions[i].streamRLP(txrlp);
         transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
-
-//        cwarn << "packed tx : " << toJS(m_transactions[i].sha3()) << "  data: " << toJson(m_transactions[i]) << toHexPrefixed(m_transactions[i].rlp());
 
         txs.appendRaw(txrlp.out());
     }
@@ -752,11 +754,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
-
-    LOG(m_loggerDetailed) << "Post-reward stateRoot: " << m_state.rootHash();
-    LOG(m_loggerDetailed) << m_state;
-
-    //m_currentBlock.setTimestamp(utcTimeMilliSec());
+    m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());

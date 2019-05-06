@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 #include <libbrccore/ChainOperationParams.h>
 #include <libbrccore/Common.h>
 #include <libbrccore/TransactionBase.h>
@@ -7,10 +9,16 @@
 #include <libdevcore/SHA3.h>
 #include <boost/preprocessor/seq.hpp>
 
+//#include "brc/types.hpp"
+#include <brc/types.hpp>
+
+
 namespace dev
 {
 namespace brc
 {
+
+
 enum class TransactionException
 {
     None = 0,
@@ -36,7 +44,8 @@ enum class TransactionException
 	VerifyPendingOrderFiled,
     BadSystemAddress,
     BadVoteParamter,
-    BadBRCTransactionParamter
+    BadBRCTransactionParamter,
+	DefaultError
 };
 
 namespace transationTool
@@ -88,11 +97,11 @@ struct operation
 };
 struct vote_operation : public operation
 {
-    uint8_t m_type = null;
     Address m_from;
     Address m_to;
-    uint8_t m_vote_type = 0;
     size_t m_vote_numbers = 0;
+    uint8_t m_type = null;
+    uint8_t m_vote_type = 0;
     vote_operation(
         op_type type, const Address& from, const Address& to, uint8_t vote_type, size_t vote_num)
       : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
@@ -137,15 +146,15 @@ struct pendingorder_opearaion : public operation
 {
     uint8_t m_type = null;
     Address m_from;
-    uint8_t m_Pendingorder_type = 0;
-    uint8_t m_Pendingorder_Token_type = 0;
-    uint8_t m_Pendingorder_buy_type = 0;
-	u256 m_Pendingorder_num = 0;
+    u256 m_Pendingorder_num = 0;
     u256 m_Pendingorder_price = 0;
+    ex::order_type m_Pendingorder_type = ex::order_type::null_type;
+    ex::order_token_type m_Pendingorder_Token_type = ex::order_token_type::BRC;
+    ex::order_buy_type m_Pendingorder_buy_type = ex::order_buy_type::all_price;
     pendingorder_opearaion(){}
     pendingorder_opearaion(
-        op_type type, const Address& from, uint8_t pendingorder_type, uint8_t _pendingorder_token_type,
-		int _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price)
+        op_type type, const Address& from, ex::order_type pendingorder_type, ex::order_token_type _pendingorder_token_type,
+        ex::order_buy_type _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price)
       : m_type(type),
         m_from(from),
         m_Pendingorder_type(pendingorder_type),
@@ -155,23 +164,46 @@ struct pendingorder_opearaion : public operation
 		m_Pendingorder_price(pendingorder_price)
     {}
 
-	OPERATION_UNSERIALIZE(pendingorder_opearaion, (m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
+//	OPERATION_UNSERIALIZE(pendingorder_opearaion, (m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
+	pendingorder_opearaion(const bytes& Data){
+        RLP rlp(Data);
+        m_type = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
+        m_from = rlp[1].convert<Address>(RLP::LaissezFaire);
+        m_Pendingorder_type = (ex::order_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_Token_type = (ex::order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_buy_type = (ex::order_buy_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_num = rlp[5].convert<u256>(RLP::LaissezFaire);
+        m_Pendingorder_price = rlp[6].convert<u256>(RLP::LaissezFaire);
+    }
 
-	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
+
+//	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
+    virtual bytes serialize()  const{
+        RLPStream stream(7);
+        stream.append((uint8_t)m_type);
+        stream.append(m_from);
+        stream.append((uint8_t)m_Pendingorder_type);
+        stream.append((uint8_t)m_Pendingorder_Token_type);
+        stream.append((uint8_t)m_Pendingorder_buy_type);
+        stream.append(m_Pendingorder_num);
+        stream.append(m_Pendingorder_price);
+        return stream.out();
+    }
 };
 
 struct cancelPendingorder_operation : public operation
 {
-    uint8_t m_type = null;
     h256 m_hash;
+    uint8_t m_type = 4;
+    uint8_t m_cancelType = 3;
 
     cancelPendingorder_operation(){}
-    cancelPendingorder_operation(op_type _type, h256 _hash) : m_type(_type),m_hash(_hash)
+    cancelPendingorder_operation(uint8_t type, uint8_t cancel_type,h256 _hash):m_type(type), m_cancelType(cancel_type), m_hash(_hash)
     {}
 
-    OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_hash))
+    OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))
 
-    OPERATION_SERIALIZE((m_type)(m_hash))
+    OPERATION_SERIALIZE((m_type)(m_cancelType)(m_hash))
 };
 
 }  // namespace transationTool

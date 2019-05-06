@@ -73,7 +73,7 @@ using Checks = FlagSet<Check>;*/
             friend class BlockChain;
 
         public:
-            static const unsigned BasicFields = 14;
+            static const unsigned BasicFields = 13;
 
             BlockHeader();
 
@@ -200,13 +200,6 @@ using Checks = FlagSet<Check>;*/
             template<class T>
             void setSeal(T const &_value) { setSeal(0, _value); }
 
-            //void setDposContext(DposContext const& _v) { m_dposContext = _v; noteDirty(); }
-            void setDposCurrVarlitors(std::vector<Address> const &_vars) {
-                m_currVarlitors.clear();
-                m_currVarlitors.assign(_vars.begin(), _vars.end());
-                noteDirty();
-            }
-
             h256 const &parentHash() const { return m_parentHash; }
 
             h256 const &sha3Uncles() const { return m_sha3Uncles; }
@@ -242,10 +235,6 @@ using Checks = FlagSet<Check>;*/
                 if (_offset < m_seal.size()) ret = RLP(m_seal[_offset]).convert<T>(RLP::VeryStrict);
                 return ret;
             }
-
-            //DposContext const& dposContext() const { return m_dposContext; }
-            std::vector<Address> const &dposCurrVarlitors() const { return m_currVarlitors; }
-
 
             /// sign block by Secret
             /// \param sec  private key
@@ -295,11 +284,6 @@ using Checks = FlagSet<Check>;*/
             mutable h256 m_hash;            ///< (Memoised) SHA3 hash of the block header with seal.
             mutable h256 m_hashWithout;        ///< (Memoised) SHA3 hash of the block header without seal.
             mutable Mutex m_hashLock;        ///< A lock for both m_hash and m_hashWithout.
-
-            //DposContext m_dposContext;      //  dpos
-
-            std::vector<Address> m_currVarlitors;  // dpos
-
 
             SignatureStruct m_sign_data;            //sign block data
 

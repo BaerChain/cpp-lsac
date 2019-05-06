@@ -5,10 +5,12 @@
  */
 #pragma once
 #include <libp2p/Host.h>
+#include "ChainParams.h"
 #include <libbrccore/KeyManager.h>
 #include <libbrcdchain/Client.h>
 #include <boost/filesystem/path.hpp>
 #include "libbrcdchain/Interface.h"
+#include "Common.h"
 
 namespace dev
 {
@@ -25,7 +27,7 @@ public:
         std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath = {},
         boost::filesystem::path const& _snapshotPath = {},
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024});
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{102400, 102400});
 
     ~SHDposClient();
 
@@ -40,13 +42,11 @@ public:
     inline BlockHeader const&   getGenesisHeader()const  { return m_bc.genesis(); }
     inline h256s                getTransationsHashByBlockNum(size_t num) const { return transactionHashes(hashFromNumber(num)); }
 
-	void getEletorsByNum(std::vector<Address>& _v, size_t _num,
-        std::vector<Address> _vector = std::vector<Address>()) const;
+	void getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector = std::vector<Address>()) const;
+	void getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const;
 	Secret getVarlitorSecret(Address const& _addr) const;
-	void   printfElectors();
 
-//	virtual  void stopSealing() override;
-
+    bool verifyVarlitorPrivatrKey();
 
 protected:
     void rejigSealing();
@@ -59,6 +59,9 @@ private:
 private:
     ChainParams                     m_params;          //配置
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
+
+	int64_t                         m_startSeal_time =0;
+
 };
 
 SHDposClient& asDposClient(Interface& _c);

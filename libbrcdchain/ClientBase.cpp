@@ -134,6 +134,23 @@ Json::Value dev::brc::ClientBase::successPendingOrderMessage(uint32_t _getSize, 
 	return blockByNumber(_block).mutableState().successPendingOrderMsg(_getSize);
 }
 
+Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _block) const
+{
+	return blockByNumber(_block).mutableState().electorMessage(_a);
+}
+
+
+Json::Value dev::brc::ClientBase::votedMessage(Address _a, BlockNumber _block) const
+{
+	return blockByNumber(_block).mutableState().votedMessage(_a);
+}
+
+
+Json::Value dev::brc::ClientBase::electorMessage(BlockNumber _block) const
+{
+	return blockByNumber(_block).mutableState().electorMessage(ZeroAddress);
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {

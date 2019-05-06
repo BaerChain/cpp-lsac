@@ -102,6 +102,10 @@ public:
 	virtual bool brc_notePassword(std::string const&) override { return false; }
 	virtual Json::Value brc_syncing() override;
 	virtual std::string brc_chainId() override;
+
+	virtual Json::Value brc_getObtainVote(const std::string& _address, const std::string& _blockNumber) override;
+	virtual Json::Value brc_getVoted(const std::string& _address, const std::string& _blockNumber) override;
+	virtual Json::Value brc_getElector(const std::string& _blockNumber) override;
 	
 	void setTransactionDefaults(brc::TransactionSkeleton& _t);
 protected:

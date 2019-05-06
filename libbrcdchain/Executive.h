@@ -204,8 +204,7 @@ private:
 		VoteEnd,
 		TranscationStart,
         BRCTransaction,
-        BRCFreezeTranscation,
-        BRCUnfreezeTranscation,
+		AssetInjection,
         TranscationEnd,
         PendingOrderStart,
         SellPendingOrder,
@@ -220,10 +219,10 @@ private:
         CallParameters m_callParameters;
         u256 m_PendingOrderPrice = 0;
         h256 m_pendingOrderHash = h256(0);
-        uint8_t m_pendingOrder_Token_Type = 0;
-        uint8_t m_pendingOrder_Buy_Type = 0;
+        ex::order_token_type m_pendingOrder_Token_Type;
+        ex::order_buy_type m_pendingOrder_Buy_Type;
         TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0), uint8_t _pendingOrder_Token_Type = 0, uint8_t _pendingOrder_Buy_Type = 0)
+            h256 _pendingOrderHash = h256(0), ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC, ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),

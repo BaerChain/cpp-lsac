@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <brc/database.hpp>
+
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 #include <brc/exception.hpp>
@@ -9,7 +9,9 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonJS.h>
 
-#include <optional>
+#include <brc/objects.hpp>
+
+#include <brc/database.hpp>
 
 namespace dev {
     namespace brc {
@@ -76,9 +78,9 @@ namespace dev {
                 std::vector<order>  cancel_order_by_trxid(const std::vector<h256> &os, bool reset);
 
 
-                inline std::string check_version(bool p = true) const{
+                inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-                    std::string ret = "current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+                    std::string ret = "  current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
                     if(p){
                         cwarn << ret;
                     }
@@ -91,12 +93,12 @@ namespace dev {
                 /// \param price        upper price.
                 /// \return         std::pair<lower iterator, upper iterator>
                 auto get_buy_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
 
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, find_token,
                                                                                                 u256(0), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(sell, find_token,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, find_token,
                                                                                                 price, INT64_MAX);
 
                     typedef decltype(index_greater.lower_bound(find_lower)) Lower_Type;
@@ -111,12 +113,12 @@ namespace dev {
                 /// \param price        lower price.
                 /// \return             std::pair<lower iterator, upper iterator>
                 auto get_sell_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == BRC ? FUEL : BRC;
+                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
 
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
                                                                                                 u256(-1), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(buy, find_token,
+                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
                                                                                                 price, INT64_MAX);
 
                     typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
@@ -140,22 +142,18 @@ namespace dev {
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
                               std::vector<result_order> &result, bool throw_exception) {
-//                    cwarn << "reversion: " << db->revision() << "  this " << this << "  db: " <<  db.get();
                     if (begin == end) {
-//                        cwarn << "create obj " << dev::toJS(od.sender) << " tx: " << dev::toJS(od.trxid);
                         db->create<order_object>([&](order_object &obj) {
                             obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
                         });
 
                         update_dynamic_orders(true);
-
                         return;
                     }
                     auto spend = amount;
 
                     bool rm = false;
                     while (spend > 0 && begin != end) {
-//                        cwarn << "spent : " << (std::string)od();
                         result_order ret;
                         if (begin->token_amount <= spend) {
                             spend -= begin->token_amount;
@@ -175,7 +173,6 @@ namespace dev {
                         });
                         update_dynamic_result_orders();
 
-//                        cwarn << "create resutl object " << ret.sender << "  acceptor " << ret.acceptor;
                         result.push_back(ret);
                         if (rm) {
                             const auto rm_obj = db->find(begin->id);
@@ -210,10 +207,11 @@ namespace dev {
                 //only for public interface.
                 //mabey remove it.  if use for debug.
                 inline void check_db() const{
+#ifndef NDEBUG
                     if (!db) {
                         BOOST_THROW_EXCEPTION(get_db_instance_error());
                     }
-
+#endif
                 }
 
 

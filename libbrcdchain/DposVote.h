@@ -11,8 +11,9 @@ namespace brc
 //using SysElectorAddress = ElectorAddress;    // 竞选人集合地址
 //using SysVarlitorAddress = VarlitorAddress;  // 验证人集合地址
 
-const Address SysElectorAddress { "0x000000000000456c6563746f7241646472657373" };
-const Address SysVarlitorAddress { "0x00000000005661726c69746f7241646472657373" };
+const Address SysElectorAddress  { "0x000000000000456c6563746f7241646472657373" };
+const Address SysVarlitorAddress { "000000000067656e657369735661726c69746f72" };
+const Address SysCanlitorAddress { "0000000067656e6573697343616e646964617465" };
 
 //投票类型
 enum VoteType
@@ -56,8 +57,9 @@ public:
 public:
 	// 投票等操作 在State 中已实现
     // 验证投票合法
-    bool verifyVote(Address const& _from, Address const& _to, size_t _type, size_t tickets = 0);
-	std::unordered_map<Address, u256>  VarlitorSAddress() { return m_state.voteDate(SysVarlitorAddress); }
+    bool verifyVote(Address const& _from, Address const& _to, size_t _type, std::string& _ex_info, size_t tickets = 0);
+	std::unordered_map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
+	std::unordered_map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
 	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.addVote(_id, _recivedAddr, _value);} 
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);} 

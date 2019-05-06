@@ -114,13 +114,6 @@ void SealEngineFace::populateFromParent(BlockHeader& _bi, BlockHeader const& _pa
     _bi.populateFromParent(_parent);
 }
 
-bool SealEngineFace::dealDposVote(TransactionBase const & _t)
-{
-    if(_t.isVoteTranction()) 
-        return true;
-    return false;
-}
-
 void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, TransactionBase const& _t,
                                        BlockHeader const& _header, u256 const& _gasUsed) const
 {

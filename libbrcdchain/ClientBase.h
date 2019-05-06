@@ -78,6 +78,11 @@ public:
     Json::Value pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
     Json::Value pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize, BlockNumber _block) const override;
 	Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const override;
+	
+	Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
+	Json::Value votedMessage(Address _a, BlockNumber _block) const override;
+	Json::Value electorMessage(BlockNumber _block) const override;
+	
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
     virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;

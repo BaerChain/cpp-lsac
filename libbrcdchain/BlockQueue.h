@@ -194,6 +194,17 @@ private:
     std::atomic<size_t> m_size = {0};	///< Tracks total size in bytes
 };
 
+struct VerifiedSendData
+{
+	u256 m_totalDiff;
+	bytes m_block;
+    VerifiedSendData(u256 _di, bytes const& _b)
+	{
+		m_totalDiff = _di;
+		m_block.assign(_b.begin(), _b.end());
+	}
+};
+
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
@@ -255,6 +266,19 @@ public:
     u256 difficulty() const;	// Total difficulty of queueud blocks
     bool isActive() const;
 
+	std::vector<VerifiedSendData>  getVerifiedBlocks() 
+	{ 
+		std::vector<VerifiedSendData> _v; 
+	    for (auto val: m_verified_send)
+	    {
+		    _v.push_back({ val.m_totalDiff, val.m_block });
+	    }
+		m_verified_send.clear();
+		return _v;
+	 }
+	void insertSendBlock(VerifiedSendData const& _data) { m_verified_send.push_back(_data); }
+	void clearVerifiedBlocks() { m_verified_send.clear(); }
+
 private:
     struct UnverifiedBlock
     {
@@ -304,7 +328,12 @@ private:
     u256 m_drainingDifficulty;											///< Total difficulty of blocks in draining
 
     Logger m_logger{createLogger(VerbosityDebug, "bq")};
-    Logger m_loggerDetail{createLogger(VerbosityTrace, "bq")};
+	Logger m_loggerDetail { createLogger(VerbosityTrace, "bq") };
+	Logger m_logger_info { createLogger(VerbosityInfo, "bq") };
+
+	std::vector<VerifiedSendData> m_verified_send;                         // will to send other peer
+	std::function<void()> m_verified_send_f;
+	std::set<u256>     m_unverifeid_send;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);

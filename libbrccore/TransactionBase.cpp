@@ -179,7 +179,7 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
             int const vOffset = m_chainId * 2 + 35 + m_vrs->v;
             _s << (vOffset);
         }
-        _s << m_vrs->r << m_vrs->s;
+        _s << (u256)m_vrs->r << (u256)m_vrs->s;
     }
     else if (_forEip155hash)
         _s << m_chainId << 0 << 0;

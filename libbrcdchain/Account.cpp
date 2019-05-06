@@ -53,7 +53,7 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 
 void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {
-	// ¸Ã½Ó¿Ú ±£ÁôÆ±ÊýÎª0µÄÊý¾Ý  µ±ÊÇ³ÉÎª»òÕß³·Ïú¾ºÑ¡ÈËÊÇ·ñ£¬_tickets Îª0
+	// è¯¥æŽ¥å£ ä¿ç•™ç¥¨æ•°ä¸º0çš„æ•°æ®  å½“æ˜¯æˆä¸ºæˆ–è€…æ’¤é”€ç«žé€‰äººæ˜¯å¦ï¼Œ_tickets ä¸º0
 	auto ret = m_voteDate.find(_otherAddr);
 	if(_isLogin && ret == m_voteDate.end())
 	{
@@ -138,6 +138,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         bool haveCode = accountMaskJson.count(c_code) || accountMaskJson.count(c_codeFromFile);
         bool haveStorage = accountMaskJson.count(c_storage);
         bool shouldNotExists = accountMaskJson.count(c_shouldnotexist);
+		bool haveGenesisCreator = accountMaskJson.count(c_genesisVarlitor);
 
         if (haveStorage || haveCode || haveNonce || haveBalance)
         {
@@ -209,6 +210,17 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         {
             js::mObject p = accountMaskJson.at(c_precompiled).get_obj();
             o_precompiled->insert(make_pair(a, createPrecompiledContract(p)));
+        }
+
+        if ( haveGenesisCreator)
+        {
+			ret[a] = Account(0, 0);
+			js::mArray creater = accountMaskJson.at(c_genesisVarlitor).get_array();
+			for(auto const& val : creater)
+			{
+			    Address _addr= Address(val.get_str());
+				ret[a].manageSysVote(_addr, true, 0);
+			}
         }
     }
 

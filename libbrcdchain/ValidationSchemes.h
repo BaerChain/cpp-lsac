@@ -30,7 +30,7 @@ extern std::string const c_code;
 extern std::string const c_gasUsed;
 extern std::string const c_codeFromFile;
 extern std::string const c_shouldnotexist;
-extern std::string const c_poa;
+extern std::string const c_genesisVarlitor;
 
 extern std::string const c_minGasLimit;
 extern std::string const c_maxGasLimit;
@@ -58,7 +58,6 @@ extern std::string const c_varlitorInterval;
 extern std::string const c_blockInterval;
 extern std::string const c_checkVarlitorNum;
 extern std::string const c_maxVarlitorNum;
-extern std::string const c_verifyVoteNum;
 
 // Validate config.json that contains chain params and genesis state
 void validateConfigJson(json_spirit::mObject const& _obj);

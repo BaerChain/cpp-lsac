@@ -38,7 +38,6 @@ BlockHeader::BlockHeader(BlockHeader const &_other)
           m_hash(_other.hashRawRead()),
           m_hashWithout(_other.hashWithoutRawRead()),
           m_sign_data(_other.m_sign_data) {
-    m_currVarlitors.assign(_other.dposCurrVarlitors().begin(), _other.dposCurrVarlitors().end());
     assert(*this == _other);
 }
 
@@ -70,7 +69,6 @@ BlockHeader &BlockHeader::operator=(BlockHeader const &_other) {
         m_hash = std::move(hash);
         m_hashWithout = std::move(hashWithout);
     }
-    m_currVarlitors.assign(_other.dposCurrVarlitors().begin(), _other.dposCurrVarlitors().end());
     m_sign_data = _other.m_sign_data;
     assert(*this == _other);
     return *this;
@@ -91,10 +89,6 @@ void BlockHeader::clear() {
     m_timestamp = -1;
     m_extraData.clear();
     m_seal.clear();
-    m_currVarlitors.clear();
-//	m_sign_data.r.clear();
-//	m_sign_data.s.clear();
-//	m_sign_data.v.clear();
     noteDirty();
 }
 
@@ -118,11 +112,6 @@ void BlockHeader::streamRLPFields(RLPStream &_s, IncludeSeal _i /* = WithoutSign
     if ((_i & WithoutSign) != WithoutSign) {
         _s << (h520) (m_sign_data);
     }
-
-    //m_dposContext.streamRLPFields(_s);
-    RLPStream s;
-    s.appendVector<Address>(m_currVarlitors);
-    _s << s.out();
 }
 
 void BlockHeader::streamRLP(RLPStream &_s, IncludeSeal _i) const {
@@ -180,12 +169,6 @@ void BlockHeader::populate(RLP const &_header) {
         m_timestamp = int64_t(_header[field = 11].toInt<u256>());
         m_extraData = _header[field = 12].toBytes();
         m_sign_data = _header[field = 13].toHash<h520>(RLP::VeryStrict);
-        //m_dposContext.populate(_header, field);
-        const bytes _data = _header[field = 14].toBytes();
-        RLP _r = RLP(_data);
-        m_currVarlitors.clear();
-        m_currVarlitors = _r.toVector<Address>();
-
         m_seal.clear();
         for (unsigned i = 14; i < _header.itemCount(); ++i)
             m_seal.push_back(_header[i].data().toBytes());
@@ -276,19 +259,11 @@ void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRe
 bool BlockHeader::sign_block(const Secret &sec) {
     RLPStream stream;
     auto current_block_hash = hash((IncludeSeal)(WithoutSign | WithoutSeal));
-//    auto trx_root_hash = transactionsRoot();
 
     stream.append(current_block_hash);
-//    stream.append(trx_root_hash);
 
     auto hash = sha3(stream.out());
     m_sign_data = SignatureStruct(sign(sec, hash));
-////    std::cout << m_sign_data->isValid() << std::endl;
-
-
-
-
-
     return true;
 }
 
