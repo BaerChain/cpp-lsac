@@ -1,5 +1,4 @@
 file(GLOB sources "*.cpp" "*.h")
-#add_definitions(-w)
 add_library(brcdchain STATIC ${sources})
 
 target_include_directories(brcdchain
@@ -7,7 +6,10 @@ target_include_directories(brcdchain
 		"${UTILS_INCLUDE_DIR}"
 		${CMAKE_SOURCE_DIR}
 		${CMAKE_SOURCE_DIR}/evmc/include
-		${CMAKE_SOURCE_DIR}/indexDb/database/include)
+		PRIVATE
+		"${CMAKE_SOURCE_DIR}/indexDb/database/include"
+		)
+
 target_link_libraries(brcdchain
         PUBLIC
             loader
@@ -17,10 +19,11 @@ target_link_libraries(brcdchain
             devcrypto
             devcore
 			libvm
-			brc_db
+
             jsoncpp_lib_static
             ${SNAPPY_LIBRARIES}
             ${Boost_LIBRARIES}
             dl
+			brc_db
         )
 #target_compile_options(devcore PUBLIC -DBOOST_ALL_DYN_LINK )

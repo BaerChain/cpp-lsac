@@ -382,24 +382,16 @@ void Client::syncBlockQueue()
 
     double elapsed = t.elapsed();
 
-    if (count)
-    {
-        if( bc().number() % 10 == 0){
-            auto txv = bc().transactions();
-            LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                          << (count / elapsed) << " blocks/s) in #" << bc().number() << " trx : " << bc().transactions().size() <<    m_StateExDB.check_version(false);
-
-        }
-
-    }
-
+	//testlog << "sync block ex trans and into DB ok use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
+	t.restart();
     onChainChanged(ir);
+	//testlog << " drop old data and init new data use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
 }
 
 void Client::syncTransactionQueue()
@@ -442,9 +434,7 @@ void Client::syncTransactionQueue()
     // Tell watches about the new transactions.
     noteChanged(changeds);
 
-    // Tell network about the new transactions.
-    if (auto h = m_host.lock())
-        h->noteNewTransactions();
+	cwarn << " sync transactions:" << m_working.getSealTxNum() << " use_time:" << timer.elapsed() * 1000 << " time:" << utcTimeMilliSec();
 }
 
 void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
@@ -455,9 +445,8 @@ void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
         LOG(m_loggerDetail) << "Dead block: " << h;
         for (auto const& t: bc().transactions(h))
         {
-            LOG(m_loggerDetail) << "Resubmitting dead-block transaction "
-                                << Transaction(t, CheckTransaction::None);
-            ctrace << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
+            //LOG(m_loggerDetail) << "Resubmitting dead-block transaction "<< Transaction(t, CheckTransaction::None);
+            //ctrace << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
             m_tq.import(t, IfDropped::Retry);
         }
     }
@@ -570,6 +559,38 @@ void Client::onPostStateChanged()
     LOG(m_loggerDetail) << "Post state changed.";
     m_signalled.notify_all();
     m_remoteWorking = false;
+}
+
+bool Client::startedSealing()
+{
+    if (m_wouldSeal)
+    {
+        return true;
+    }
+    LOG(m_logger) << "Mining Beneficiary: " << author();
+    if (author())
+    {
+        ChainParams cp;
+        auto ret = find(cp.poaBlockAccount.begin(), cp.poaBlockAccount.end(), author());
+        if (ret != cp.poaBlockAccount.end()) 
+        {
+            m_wouldSeal = true;
+            m_signalled.notify_all();
+            LOG(m_logger) << "start mining: " << author();
+            return true;
+        }
+        else
+        {
+            cwarn << "not root node: " << author();
+            return false;
+        }
+    }
+    else
+    {
+        LOG(m_logger) << "You need to set an author in order to seal!";
+        return false;
+    }
+    
 }
 
 void Client::startSealing()
@@ -752,6 +773,8 @@ void Client::checkWatchGarbage()
 
 void Client::prepareForTransaction()
 {
+	if(isWorking())
+		return;
     startWorking();
 }
 
@@ -843,7 +866,14 @@ bool Client::submitSealed(bytes const& _header)
             m_postSeal = m_working;
         newBlock = m_working.blockData();
     }
-
+	{
+		// init the blockqueue send data and inform the capality send block
+		u256 _diff = m_bc.details().totalDifficulty + 20;
+		//m_bq.clearVerifiedBlocks();
+		m_bq.insertSendBlock({ _diff, newBlock });
+		if(auto h = this->m_host.lock())
+			h->noteNewBlocksSend();
+	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }
@@ -914,7 +944,9 @@ h256 Client::importTransaction(Transaction const& _t)
         default:
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
-
+	// Tell network about the new transactions.
+	if(auto h = m_host.lock())
+		h->noteNewTransactions();
     return _t.sha3();
 }
 

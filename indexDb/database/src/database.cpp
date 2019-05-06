@@ -13,7 +13,7 @@ namespace dev {
             }
 
             database::~database() {
-                std::cout << __FUNCTION__ << "  " <<  __LINE__ << "  : try to close exdb.\n";
+                std::cout << __FUNCTION__ << "  " <<  __LINE__ << "  : close exdb complete.\n";
             }
         }
     }

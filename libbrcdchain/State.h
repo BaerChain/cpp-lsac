@@ -13,7 +13,6 @@
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <array>
-#include <brc/database.hpp>
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <unordered_map>
@@ -210,12 +209,11 @@ public:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash,
-        WithExisting _we = WithExisting::Trust);
+    static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path);
+    static ex::exchange_plugin openExdb(boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust);
     ex::exchange_plugin const& exdb() const { return m_exdb; }
     ex::exchange_plugin& exdb() { return m_exdb; }
 
@@ -294,18 +292,18 @@ public:
 
     //交易挂单接口
     void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-        h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-        uint8_t _pendingOrderBuyType, int64_t _nowTime);
+        h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+        ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);
 
     void cancelPendingOrder(h256 _pendingOrderHash);
 
 
 	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-		uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType);
+		ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType, ex::order_buy_type _pendingOrderBuyType);
 
 	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
-        u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-        uint8_t _pendingOrderBuyTypes);
+        u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+        ex::order_buy_type _pendingOrderBuyTypes);
 
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
@@ -336,6 +334,11 @@ public:
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
+	//get vote/eletor message
+	Json::Value votedMessage(Address const& _addr) const;
+	Json::Value electorMessage(Address _addr) const;
+
+	void assetInjection(Address const& _addr);
 
 private:
     //投票数据

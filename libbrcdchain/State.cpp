@@ -76,7 +76,11 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
     }
 }
 
-ex::exchange_plugin State::openExdb(boost::filesystem::path const &_path) {
+ex::exchange_plugin State::openExdb(boost::filesystem::path const &_path, WithExisting _we) {
+    if (_we == WithExisting::Kill) {
+        clog(VerbosityDebug, "exdb") << "Killing state database (WithExisting::Kill).";
+        fs::remove_all(_path);
+    }
     try {
         ex::exchange_plugin exdb = ex::exchange_plugin(_path);
         return exdb;
@@ -168,7 +172,8 @@ Account *State::account(Address const &_addr) {
                                                    state[4].toInt<u256>(),
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
-                                                   state[9].toInt<u256>(), Account::Unchanged));
+                                                   state[9].toInt<u256>(),
+								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 
     m_unchangedCacheEntries.push_back(_addr);
@@ -521,9 +526,9 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
 
 
 //交易挂单接口
-void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         h256 _pendingOrderHash, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-                         uint8_t _pendingOrderBuyType, int64_t _nowTime) {
+void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+                         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime) {
     // add
     //freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
       //           _pendingOrderTokenType, _pendingOrderBuyType);
@@ -548,7 +553,7 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
     }
     catch (const boost::exception &e) {
         cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
-        return;
+        BOOST_THROW_EXCEPTION(NotEnoughCash());
     }
 
     u256 CombinationNum = 0;
@@ -567,14 +572,20 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 	if (_pendingOrderBuyType == order_buy_type::only_price)
 	{
 		if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC)
-		{
-			subBRC(_addr, _totalSum - CombinationTotalAmount);
-			addFBRC(_addr, _totalSum - CombinationTotalAmount);
+        {
+            if(CombinationNum < _pendingOrderNum) {
+                subBRC(_addr, _totalSum - CombinationTotalAmount);
+                addFBRC(_addr, _totalSum - CombinationTotalAmount);
+            }
 		}
 		else if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::FUEL)
 		{
-			subBalance(_addr, _totalSum - CombinationTotalAmount);
-			addFBalance(_addr, _totalSum - CombinationTotalAmount);
+            if(CombinationNum < _pendingOrderNum)
+            {
+                subBalance(_addr, _totalSum - CombinationTotalAmount);
+                addFBalance(_addr, _totalSum - CombinationTotalAmount);
+            }
+
 		}
 		else if (_pendingOrderType == order_type::sell && _pendingOrderTokenType == order_token_type::BRC)
 		{
@@ -589,9 +600,9 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 	}
 }
 
-void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 _toPendingOrderNum,
-                                 u256 _toPendingOrderPrice, uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType,
-                                 uint8_t _pendingOrderBuyTypes) {
+void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
+                                 u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+                                 ex::order_buy_type _pendingOrderBuyTypes) {
 
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
         _pendingOrderBuyTypes == order_buy_type::only_price) {
@@ -610,7 +621,7 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
 		//subFBalance(_to, _toPendingOrderNum);
 		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subBalance(_to, _toPendingOrderNum);
+		subFBalance(_to, _toPendingOrderNum);
 		addBalance(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::FUEL &&
@@ -626,9 +637,9 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                _pendingOrderBuyTypes == order_buy_type::all_price) {
         //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
+		subBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subBRC(_from, _toPendingOrderNum);
+		subFBRC(_to, _toPendingOrderNum);
 		addBRC(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::BRC &&
@@ -636,10 +647,10 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         //subFBRC(_from, _toPendingOrderNum);
 		//subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		subBRC(_from, _toPendingOrderNum);
-		addBRC(_to, _toPendingOrderNum);
+        subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
+        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
+        subBRC(_from, _toPendingOrderNum);
+        addBRC(_to, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::FUEL &&
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
@@ -648,13 +659,13 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
 		//subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
 		subBalance(_from, _toPendingOrderNum);
 		addBalance(_to, _toPendingOrderNum);
-		subBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
+		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
 		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
     }
 }
 
-void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         uint8_t _pendingOrderType, uint8_t _pendingOrderTokenType, uint8_t _pendingOrderBuyType) {
+void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType, ex::order_buy_type _pendingOrderBuyType) {
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
         _pendingOrderBuyType == order_buy_type::only_price) {
         subBRC(_addr, _pendingOrderNum * _pendingOrderPrice);
@@ -762,10 +773,10 @@ std::tuple<std::string, std::string, std::string>
 State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
     std::string _type, _token_type, _buy_type;
     switch (type) {
-        case dev::brc::ex::sell:
+        case dev::brc::ex::order_type::sell:
             _type = std::string("sell");
             break;
-        case dev::brc::ex::buy:
+        case dev::brc::ex::order_type::buy:
             _type = std::string("buy");
             break;
         default:
@@ -774,10 +785,10 @@ State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::or
     }
 
     switch (token_type) {
-        case dev::brc::ex::BRC:
+        case dev::brc::ex::order_token_type::BRC:
             _token_type = std::string("BRC");
             break;
-        case dev::brc::ex::FUEL:
+        case dev::brc::ex::order_token_type::FUEL:
             _token_type = std::string("FUEL");
             break;
         default:
@@ -786,10 +797,10 @@ State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::or
     }
 
     switch (buy_type) {
-        case dev::brc::ex::all_price:
+        case dev::brc::ex::order_buy_type::all_price:
             _buy_type = std::string("all_price");
             break;
-        case dev::brc::ex::only_price:
+        case dev::brc::ex::order_buy_type::only_price:
             _buy_type = std::string("only_price");
             break;
         default:
@@ -1156,6 +1167,69 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     return jv;
 }
 
+Json::Value dev::brc::State::votedMessage(Address const& _addr) const
+{
+	Json::Value jv;
+	if(auto a = account(_addr))
+	{
+		std::unordered_map<Address, u256> const& _data = a->voteData();
+		Json::Value _arry;
+		int _num = 0;
+		for(auto val : a->voteData())
+		{
+			Json::Value _v;
+			_v["address"] = toJS(val.first);
+			_v["voted_num"] = toJS(val.second);
+			_arry.append(_v);
+			_num += (int)val.second;
+		}
+		jv["vote"] = _arry;
+		jv["total_voted_num"] = toJS(_num);
+	}
+	return jv;
+}
+
+Json::Value dev::brc::State::electorMessage(Address _addr) const
+{
+	Json::Value jv;
+	Json::Value _arry;
+	std::unordered_map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
+	if(_addr == ZeroAddress)
+	{
+		for(auto val : _data)
+		{
+			Json::Value _v;
+			_v["address"] = toJS(val.first);
+			_v["vote_num"] = toJS(val.second);
+			_arry.append(_v);
+		}
+		jv["electors"] = _arry;
+	}
+	else
+	{
+		jv["addrsss"] = toJS(_addr);
+		auto ret = _data.find(_addr);
+		if(ret != _data.end())
+			jv["obtain_vote"] = toJS(ret->second);
+		else
+			jv["ret"] = "not is the eletor";
+	}
+	return jv;
+}
+
+void dev::brc::State::assetInjection(Address const& _addr)
+{
+	auto a = account(_addr);
+	if(a->assetInjectStatus() == 0)
+    {
+        addBRC(_addr, 1000);
+        addBalance(_addr, 100000000000);
+		a->setAssetInjectStatus();
+	}
+	else {
+		return;
+	}
+}
 
 dev::u256 dev::brc::State::voteAll(Address const &_id) const {
     if (auto a = account(_id))
@@ -1374,7 +1448,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(10);
+                RLPStream s(11);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1413,6 +1487,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
+				s << i.second.assetInjectStatus();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

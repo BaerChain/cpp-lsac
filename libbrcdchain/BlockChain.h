@@ -78,6 +78,21 @@ public:
     VersionChecker(boost::filesystem::path const& _dbPath, h256 const& _genesisHash);
 };
 
+struct TransactionByte
+{
+	size_t index;
+	bytesConstRef data_b;
+	TransactionByte(size_t _index, bytesConstRef const& _data) : index(_index), data_b(_data) { }
+};
+struct TransactionIndex
+{
+	size_t index;
+	Transaction transaction;
+	TransactionIndex(size_t _index, Transaction const& _t) : index(_index), transaction(std::move(_t)) { }
+	bool operator < (TransactionIndex const& _t) const { return this->index < _t.index; }
+};
+
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
@@ -275,7 +290,7 @@ public:
     /// Change the function that is called when a new block is imported
     void setOnBlockImport(std::function<void(BlockHeader const&)> _t) { m_onBlockImport = _t; }
 
-    /// Get a pre-made genesis State object.
+    /// cc.
     Block genesisBlock(OverlayDB const& _db, ex::exchange_plugin const& _exdb ) const;
 
     /// Verify block and prepare it for enactment
@@ -400,7 +415,8 @@ private:
 
     mutable Logger m_logger{createLogger(VerbosityDebug, "chain")};
     mutable Logger m_loggerDetail{createLogger(VerbosityTrace, "chain")};
-    mutable Logger m_loggerError{createLogger(VerbosityError, "chain")};
+	mutable Logger m_loggerError { createLogger(VerbosityError, "chain") };
+	mutable Logger m_loggerInfo { createLogger(VerbosityInfo, "chain") };
 
     friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };

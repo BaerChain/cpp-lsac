@@ -13,6 +13,7 @@
 #include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/exception_handler.hpp>
+#include <boost/log/utility/setup/file.hpp>
 
 #if defined(NDEBUG)
 #include <boost/log/sinks/async_frontend.hpp>
@@ -23,7 +24,7 @@ using log_sink = boost::log::sinks::asynchronous_sink<T>;
 template <class T>
 using log_sink = boost::log::sinks::synchronous_sink<T>;
 #endif
-
+namespace keywords = boost::log::keywords;
 namespace dev
 {
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
@@ -47,6 +48,10 @@ auto const g_timestampFormatter =
     (boost::log::expressions::stream
         << BrcViolet << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
         << BrcReset " ");
+auto const g_timestampFormatter_file =
+    (boost::log::expressions::stream
+        << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
+        << " ");
 
 std::string verbosityToString(int _verbosity)
 {
@@ -73,12 +78,24 @@ void formatter(boost::log::record_view const& _rec, boost::log::formatting_ostre
 
     g_timestampFormatter(_rec, _strm);
 
-    _strm << BrcNavy << std::setw(10) << std::left << _rec[threadName] << BrcReset " ";
+    _strm << BrcNavy << std::setw(4) << std::left << _rec[threadName] << BrcReset " ";
     _strm << std::setw(6) << std::left << _rec[channel] << " ";
     if (boost::log::expressions::has_attr(context)(_rec))
         _strm << BrcNavy << _rec[context] << BrcReset " ";
 
     _strm << _rec[boost::log::expressions::smessage];
+}
+
+void formatterFile(boost::log::record_view const& _rec, boost::log::formatting_ostream& _strm)
+{
+	_strm << std::setw(5) << std::left << verbosityToString(_rec.attribute_values()[severity].get())
+		<< " ";
+	g_timestampFormatter_file(_rec, _strm);
+	_strm << std::setw(4) << std::left << _rec[threadName] <<" ";
+	_strm << std::setw(6) << std::left << _rec[channel] << " ";
+	if(boost::log::expressions::has_attr(context)(_rec))
+		_strm << _rec[context]<< " ";
+	_strm << _rec[boost::log::expressions::smessage];
 }
 
 }  // namespace
@@ -124,7 +141,32 @@ void setupLogging(LoggingOptions const& _options)
 
     sink->set_formatter(&formatter);
 
-    boost::log::core::get()->add_sink(sink);
+	auto file_sink = boost::log::add_file_log(
+		keywords::file_name = "%Y-%m-%d_%N.log",            //log fileName
+		keywords::rotation_size = 10 * 1024 * 1024,         //a file size
+		keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0)    //rebuild everyday    
+	);
+	file_sink->locked_backend()->set_file_collector(boost::log::sinks::file::make_collector(
+		keywords::target = "logs",                      //logs dir name 
+		keywords::max_size = 50 * 1024 * 1024,          //dir max size
+		keywords::min_free_space = 100 * 1024 * 1024    //reserved dir size
+	));
+	file_sink->set_filter([_options](boost::log::attribute_value_set const& _set){
+		if(_set[severity] > _options.verbosity)
+			return false;
+		auto const messageChannel = _set[channel];
+		return (_options.includeChannels.empty() ||
+				contains(_options.includeChannels, messageChannel)) &&
+			!contains(_options.excludeChannels, messageChannel);
+	});
+	file_sink->set_formatter(&formatterFile);
+	file_sink->locked_backend()->scan_for_files();
+	file_sink->locked_backend()->auto_flush(true);
+	//file_sink->imbue(std::locale("zh_CN.UTF-8"));
+	//file_sink->locked_backend()->add_stream(stream)
+
+	boost::log::core::get()->add_sink(sink);    
+	boost::log::core::get()->add_sink(file_sink);
 
     boost::log::core::get()->add_global_attribute(
         "ThreadName", boost::log::attributes::make_function(&getThreadName));

@@ -6,6 +6,7 @@
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "StateImporter.h"
+#include "ChainParams.h"
 //#include "WarpCapability.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
@@ -60,7 +61,7 @@ public:
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024});
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{102400, 102400});
     /// Destructor.
     virtual ~Client();
 
@@ -145,6 +146,9 @@ public:
 
     /// Start sealing.
     void startSealing() override;
+
+	bool startedSealing();
+
     /// Stop sealing.
     void stopSealing() override { m_wouldSeal = false; }
     /// Are we sealing now?

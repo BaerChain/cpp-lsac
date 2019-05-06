@@ -19,9 +19,8 @@ void setThreadName(std::string const& _n);
 /// Set the current thread's log name.
 std::string getThreadName();
 
-#define FILE_AND_LINE   path_to_file(__FILE__) << " " << __LINE__  << " "  << __FUNCTION__
-#define FORMAT_FILE      "[" << std::setw(20) << std::left   << FILE_AND_LINE  << "]"  << std::right
-
+#define FILE_AND_LINE   path_to_file(__FILE__) << " " << __LINE__ 
+#define FORMAT_FILE      "[" << std::setw(10) << std::left   << FILE_AND_LINE  << "]  "
 
 
 #define LOG(X) BOOST_LOG(X) << FORMAT_FILE
@@ -85,6 +84,8 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(
 #define clog(SEVERITY, CHANNEL)                            \
     BOOST_LOG_STREAM_WITH_PARAMS(dev::g_clogLogger::get(), \
         (boost::log::keywords::severity = SEVERITY)(boost::log::keywords::channel = CHANNEL)) << FORMAT_FILE
+
+#define testlog LOG(dev::g_warnLogger::get())
 
 
 struct LoggingOptions
