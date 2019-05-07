@@ -273,11 +273,13 @@ public:
 	    {
 		    _v.push_back({ val.m_totalDiff, val.m_block });
 	    }
-		m_verified_send.clear();
 		return _v;
 	 }
 	void insertSendBlock(VerifiedSendData const& _data) { m_verified_send.push_back(_data); }
 	void clearVerifiedBlocks() { m_verified_send.clear(); }
+
+	void insertSendedHash(h256 _hash) { m_verifeid_sended.insert(_hash); }
+	bool inSended(h256 _hash) const { return m_verifeid_sended.find(_hash) != m_verifeid_sended.end(); }
 
 private:
     struct UnverifiedBlock
@@ -333,7 +335,7 @@ private:
 
 	std::vector<VerifiedSendData> m_verified_send;                         // will to send other peer
 	std::function<void()> m_verified_send_f;
-	std::set<u256>     m_unverifeid_send;
+	std::set<h256>     m_verifeid_sended;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);

@@ -187,7 +187,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 					return;
 				}
 				// TODO is that needed? we have "Generating seal on" below
-				//testlog << " front use_time:" << utcTimeMilliSec() - _time;
+				////testlog << " front use_time:" << utcTimeMilliSec() - _time;
 				//testlog <<BrcYellow "Starting to seal block #" << m_working.info().number() <<" time:"<< utcTimeMilliSec() << BrcReset;
 				// input a seal time to contral the seal transation time
 				m_working.commitToSeal(bc(), m_extraData);

@@ -373,7 +373,7 @@ void Host::onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e)
 
 void Host::determinePublic()
 {
-    // set m_tcpPublic := listenIP (if public) > public > upnp > unspecified address.
+   // set m_tcpPublic := listenIP (if public) > public > upnp > unspecified address.
     
     auto ifAddresses = Network::getInterfaceAddresses();
     auto laddr = m_netConfig.listenIPAddress.empty() ? bi::address() : bi::address::from_string(m_netConfig.listenIPAddress);
@@ -398,7 +398,7 @@ void Host::determinePublic()
     else if (m_netConfig.traverseNAT)
     {
         bi::address natIFAddr;
-        //ep = Network::traverseNAT(lset && ifAddresses.count(laddr) ? std::set<bi::address>({laddr}) : ifAddresses, m_listenPort, natIFAddr);
+        ep = Network::traverseNAT(lset && ifAddresses.count(laddr) ? std::set<bi::address>({laddr}) : ifAddresses, m_listenPort, natIFAddr);
         
         if (lset && natIFAddr != laddr)
             // if listen address is set, Host will use it, even if upnp returns different
@@ -477,16 +477,16 @@ std::unordered_map<Public, std::string> Host::pocHosts()
 {
     return {
         // Mainnet:
-        { Public("a979fb575495b8d6db44f750317d0f4622bf4c2aa3365d6af7c284339968eef29b69ad0dce72a4d8db5ebb4968de0e3bec910127f134779fbcb0cb6d3331163c"), "52.16.188.185:30303" },
-        { Public("3f1d12044546b76342d59d4a05532c14b85aa669704bfe1f864fe079415aa2c02d743e03218e57a33fb94523adb54032871a6c51b2cc5514cb7c7e35b3ed0a99"), "13.93.211.84:30303" },
-        { Public("78de8a0916848093c73790ead81d1928bec737d565119932b98c6b100d944b7a95e94f847f689fc723399d2e31129d182f7ef3863f2b4c820abbf3ab2722344d"), "191.235.84.50:30303" },
-        { Public("158f8aab45f6d19c6cbf4a089c2670541a8da11978a2f90dbf6a502a4a3bab80d288afdbeb7ec0ef6d92de563767f3b1ea9e8e334ca711e9f8e2df5a0385e8e6"), "13.75.154.138:30303" },
-        { Public("1118980bf48b0a3640bdba04e0fe78b1add18e1cd99bf22d53daac1fd9972ad650df52176e7c7d89d1114cfef2bc23a2959aa54998a46afcf7d91809f0855082"), "52.74.57.123:30303" },
-        // Ropsten:
-        { Public("30b7ab30a01c124a6cceca36863ece12c4f5fa68e3ba9b0b51407ccc002eeed3b3102d20a88f1c1d3c3154e2449317b8ef95090e77b312d5cc39354f86d5d606"), "52.176.7.10:30303" },
-        { Public("865a63255b3bb68023b6bffd5095118fcc13e79dcf014fe4e47e065c350c7cc72af2e53eff895f11ba1bbb6a2b33271c1116ee870f266618eadfc2e78aa7349c"), "52.176.100.77:30303" },
-        { Public("6332792c4a00e3e4ee0926ed89e0d27ef985424d97b6a45bf0f23e51f0dcb5e66b875777506458aea7af6f9e4ffb69f43f3778ee73c81ed9d34c51c4b16b0b0f"), "52.232.243.152:30303" },
-        { Public("94c15d1b9e2fe7ce56e458b9a3b672ef11894ddedd0c6f247e0f1d3487f52b66208fb4aeb8179fce6e3a749ea93ed147c37976d67af557508d199d9594c35f09"), "192.81.208.223:30303" },
+		{ Public("b65bfe4ea42fb8c218a915cfc99ee61dad5610bf53c57e2155854ead945391818feb07329aae60dfb7fe3874037dc6b0fb8ff4b40391a103c8ffd13faee08aa0"), "10.0.6.122:30049" },
+		{ Public("6382a78d0f0a49112cd52d417a952d3901d4899978e9cbe34d7417b61118a14b7e7efe903b230d68484c9c3d52e558df7f5b797df55a667a1cd204a056dab457"), "10.0.6.122:30047" },
+		{ Public("bbeb1227390ded14b14bffa248d2f4fc2f3b7c0a036f112147291b804020435554dd639e0465ec2542e521fe5cdb339d51b21670cfa4d562d2f3b6bd9623e097"), "10.0.6.122:30042" },
+		{ Public("b2280991838a4e92e6cd406de45a6c76d04bf1efb869f47c44398180bb07af5b9aa08cf43c9217e396306661147c7176f11431c930bd90e9d98f33f440fa4cd1"), "10.0.6.122:30044" },
+		{ Public("bf9ba86b36c6469377988c8193fafa72a5a106b33d4e0d5469ab90d5a36e95b4812338233fc8156097dc2bed71c08fe3b53a294f417a7ab7610a8e4a33e35092"), "10.0.6.122:30045" },
+		{ Public("48317bd546dc51eb6def9356923f0d0616ba4434e974bbc7eaf92d794904c7ab39ad4a272fa095b752e21ef443ffc1f4f5eb9d2aed55dbc8a6ae15d4aad90662"), "10.0.6.122:30041" },
+		{ Public("5541dde489d2821867c24ad806e539ab7b1af59c7fdb61122fcc7b82b98d5e75121c409d007e98ef28763557557336a5a8cbec703e1a1c3ded80e05a3dff8b1f"), "10.0.6.122:30043" },
+		{ Public("0c2c19126511be5f7b7554a54418b97577ccaddfaf346980be9fcefe775a2ccc6470e1fa59b74deede66dfc69258b560fbdd5347170f09dac8c62c63afc3afb0"), "10.0.6.122:30048" },
+		{ Public("2e56133bf91b150318dc827cd911991917c6868ae9100d40467c692b013d2e01ea85e6c37861af63dd229d42b90b398d079da0d258a624ea889341849adb239d"), "10.0.6.122:30046" },
+        
     };
 }
 

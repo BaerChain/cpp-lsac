@@ -43,6 +43,7 @@ private:
 };
 
 static constexpr int64_t c_infiniteBlockNumer = std::numeric_limits<int64_t>::max();
+static constexpr int64_t c_initBlockNumer = 0;
 
 struct ChainOperationParams
 {
@@ -66,14 +67,14 @@ public:
     u256 minGasLimit;
     u256 maxGasLimit;
     u256 gasLimitBoundDivisor;
-    u256 homesteadForkBlock = c_infiniteBlockNumer;
-    u256 EIP150ForkBlock = c_infiniteBlockNumer;
-    u256 EIP158ForkBlock = c_infiniteBlockNumer;
-    u256 byzantiumForkBlock = c_infiniteBlockNumer;
-    u256 eWASMForkBlock = c_infiniteBlockNumer;
-    u256 constantinopleForkBlock = c_infiniteBlockNumer;
-    u256 daoHardforkBlock = c_infiniteBlockNumer;
-    u256 experimentalForkBlock = c_infiniteBlockNumer;
+    u256 homesteadForkBlock = c_initBlockNumer;
+    u256 EIP150ForkBlock = c_initBlockNumer;
+    u256 EIP158ForkBlock = c_initBlockNumer;
+    u256 byzantiumForkBlock = c_initBlockNumer;
+    u256 eWASMForkBlock = c_initBlockNumer;
+    u256 constantinopleForkBlock = c_initBlockNumer;
+    u256 daoHardforkBlock = c_initBlockNumer;
+    u256 experimentalForkBlock = c_initBlockNumer;
     int chainID = 0;    // Distinguishes different chains (mainnet, Ropsten, etc).
     int networkID = 0;  // Distinguishes different sub protocols.
 
