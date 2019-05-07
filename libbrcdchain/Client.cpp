@@ -382,13 +382,14 @@ void Client::syncBlockQueue()
 
     double elapsed = t.elapsed();
 
-	//testlog << "sync block ex trans and into DB ok use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
+	////testlog << "sync block ex trans and into DB ok use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
+	//testlog << "sync block ex trans and into DB use_time" << t.elapsed() * 1000;
 	t.restart();
     onChainChanged(ir);
 	//testlog << " drop old data and init new data use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
@@ -397,11 +398,9 @@ void Client::syncBlockQueue()
 void Client::syncTransactionQueue()
 {
     resyncStateFromChain();
-    Timer timer;
 
     h256Hash changeds;
     TransactionReceipts newPendingReceipts;
-
     DEV_WRITE_GUARDED(x_working)
     {
         if (m_working.isSealed())
@@ -433,8 +432,6 @@ void Client::syncTransactionQueue()
 
     // Tell watches about the new transactions.
     noteChanged(changeds);
-
-	cwarn << " sync transactions:" << m_working.getSealTxNum() << " use_time:" << timer.elapsed() * 1000 << " time:" << utcTimeMilliSec();
 }
 
 void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
@@ -870,6 +867,7 @@ bool Client::submitSealed(bytes const& _header)
 		// init the blockqueue send data and inform the capality send block
 		u256 _diff = m_bc.details().totalDifficulty + 20;
 		//m_bq.clearVerifiedBlocks();
+		//m_working.info().hash();
 		m_bq.insertSendBlock({ _diff, newBlock });
 		if(auto h = this->m_host.lock())
 			h->noteNewBlocksSend();

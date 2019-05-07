@@ -177,15 +177,6 @@ void dev::bacd::SHDpos::brocastMsg(SHDposPacketType _type, RLPStream& _msg_s)
 bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 {
 	Timer _timer;
-	/*if(m_curr_varlitors.empty())
-	{
-		m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
-		if(m_curr_varlitors.empty())
-		{
-			cerror << " not have Varlitors to create block!";
-			return false;
-		}
-	}*/
 	m_curr_varlitors.clear();
 	m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
 	if(m_curr_varlitors.empty())
@@ -193,21 +184,15 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 		cerror << " not have Varlitors to create block!";
 		return false;
 	}
-	//testlog << " get varlitor use_time:" << _timer.elapsed()*1000 << " time:"<< utcTimeMilliSec();
     std::vector<Address> _vector = m_curr_varlitors;
     uint64_t offet = _now % (m_config.epochInterval ? m_config.epochInterval : timesc_20y);  // 当前轮 进入了多时间
-    //LOG(m_logger) << "offet = _now % epochInterval:" << offet;
     offet /= m_config.varlitorInterval;
-    //LOG(m_logger) << "offet /= varlitorInterval:" << offet;
-    //offet %= m_curr_varlitors.size();
     offet %= _vector.size();
-    //LOG(m_logger) << "offet %= varlitors.size():" << offet;
-    //Address const& curr_valitor = m_curr_varlitors[offet];  //得到当验证人
     Address const& curr_valitor = _vector[offet];
-    //for (/*auto val : m_curr_varlitors*/ auto val : _vector)
-    //{
-    //    cdebug << val << "offet:" << offet;
-    //}
+	/*for(auto val : _vector)
+	{
+		//testlog << val << "offet:" << offet;
+	}*/
 
     bool ret = isCurrBlock(curr_valitor);
     return chooseBlockAddr(curr_valitor, ret);
