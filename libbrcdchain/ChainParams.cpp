@@ -47,8 +47,9 @@ ChainParams ChainParams::loadConfig(
     js::mObject params = obj[c_params].get_obj();
     cp.accountStartNonce = u256(fromBigEndian<u256>(fromHex(params[c_accountStartNonce].get_str())));
     cp.maximumExtraDataSize = u256(fromBigEndian<u256>(fromHex(params[c_maximumExtraDataSize].get_str())));
-    cp.tieBreakingGas = params.count(c_tieBreakingGas) ? params[c_tieBreakingGas].get_bool() : true;
-    cp.setBlockReward(u256(fromBigEndian<u256>(fromHex(params[c_blockReward].get_str()))));
+	cp.tieBreakingGas = false; //params.count(c_tieBreakingGas) ? params[c_tieBreakingGas].get_bool() : true;
+    if(params.count(c_blockReward))
+        cp.setBlockReward(u256(fromBigEndian<u256>(fromHex(params[c_blockReward].get_str()))));
 
     auto setOptionalU256Parameter = [&params](u256 &_destination, string const& _name)
     {
