@@ -224,26 +224,9 @@ int main(int argc, char **argv) {
     /// Whisper
     bool testingMode = false;
 
-    fs::path configFile = getDataDir() / fs::path("config.rlp");
-    bytes b = contents(configFile);
-
     strings passwordsToNote;
     Secrets toImport;
-    if (b.size()) {
-        try {
-            RLP config(b);
-            author = config[1].toHash<Address>();
-        }
-        catch (...) {}
-    }
-
-    if (argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account")) {
-        AccountManager accountm;
-        return !accountm.execute(argc, argv);
-    }
-
-
-    MinerCLI miner(MinerCLI::OperationMode::None);
+	MinerCLI miner(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
     bool chainConfigIsSet = false;
@@ -764,6 +747,23 @@ int main(int argc, char **argv) {
     if (loggingOptions.verbosity > 0)
         cout << BrcGrayBold "brcd, a C++ BrcdChain client" BrcReset << "\n";
 
+	fs::path configFile = getDataDir() / fs::path("config.rlp");
+	bytes b = contents(configFile);
+	if(b.size())
+	{
+		try
+		{
+			RLP config(b);
+			author = config[1].toHash<Address>();
+		}
+		catch(...) { }
+	}
+	if(argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account"))
+	{
+		AccountManager accountm;
+		return !accountm.execute(argc, argv);
+	}
+
     miner.execute();
 
     fs::path secretsPath;
@@ -819,7 +819,6 @@ int main(int argc, char **argv) {
 
     if (testingMode)
         chainParams.allowFutureBlocks = true;
-
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("brcd"), db::databasePath(),
                              snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
                              netPrefs, &nodesState, testingMode);
@@ -1005,7 +1004,7 @@ int main(int argc, char **argv) {
 
     if (bootstrap || !remoteHost.empty() || enableDiscovery || listenSet || !preferredNodes.empty()) {
         web3.startNetwork();
-        cout << "Node ID: " << web3.enode() << "\n";
+        cout << "Node ID: " << web3.enode() << " listenPort:" << listenPort <<"\n";
     } else
         cout << "Networking disabled. To start, use netstart or pass --bootstrap or a remote host.\n";
 
@@ -1126,9 +1125,9 @@ int main(int argc, char **argv) {
         else
             web3.addNode(p.first, p.second.first);
 
-    if (bootstrap && privateChain.empty())
-        for (auto const &i: Host::pocHosts())
-            web3.requirePeer(i.first, i.second);
+	if (bootstrap && privateChain.empty())
+		for (auto const &i: Host::pocHosts())
+			web3.requirePeer(i.first, i.second);
     if (!remoteHost.empty())
         web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));
 

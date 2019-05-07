@@ -730,11 +730,14 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     if (_r.itemCount() != 2)
     {
         m_host.disablePeer(_peerID, "NewBlock without 2 data fields.");
+		cerror << " block data RLP error!";
         return;
     }
     BlockHeader info(_r[0][0].data(), HeaderData);
     auto h = info.hash();
     auto& peer = m_host.peer(_peerID);
+	if(peer.isBlockKnown(h))
+		return;
     peer.markBlockAsKnown(h);
     unsigned blockNumber = static_cast<unsigned>(info.number());
     if (blockNumber > (m_lastImportedBlock + 1))
@@ -747,9 +750,6 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         return;
     }
 	int64_t _time_s = utcTimeMilliSec();
-	cwarn << "BlockChain import new block autor:" << info.author() << "  num:" << info.number() << "  parent_hash:"
-		<< info.parentHash() << "   get_time:" << _time_s << " create_time" << info.timestamp()
-		<< " net_use_time:" << _time_s - info.timestamp();
     switch (host().bq().import(_r[0].data()))
     {
     case ImportResult::Success:
@@ -775,6 +775,9 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
             }
             completeSync();
         }
+		//testlog << "BlockChain import new block autor:" << info.author() << "  num:" << info.number() << "  parent_hash:"
+			//<< info.parentHash() << "   get_time:" << _time_s << " create_time" << info.timestamp()
+			//<< " net_use_time:" << _time_s - info.timestamp();
         break;
     case ImportResult::FutureTimeKnown:
         //TODO: Rating dependent on how far in future it is.

@@ -582,9 +582,14 @@ tuple<vector<NodeID>, vector<NodeID>> BrcdChainCapability::randomSelection(
     {
         return make_tuple(move(chosen), move(allowed));
     }
+    if(_percent >=100)
+	{
+		chosen = allowed;
+		allowed.erase(allowed.begin(), allowed.end());
+		return make_tuple(move(chosen), move(allowed));
+	}
 
     std::shuffle(allowed.begin(), allowed.end(), m_urng);
-
     // Remove elements from the end of the shuffled allowed vector and move them to chosen.
     size_t chosenSize = percentDecimal * allowed.size();
     chosen.reserve(chosenSize);
@@ -605,26 +610,26 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
             // don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
             LOG(m_logger) << "Sending a new block (current is " << _currentHash << ", was "
                           << m_latestBlockSent << ")";
-
+			if(m_bq.inSended(_currentHash))
+				return;
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-            auto s = randomSelection(25, [&](BrcdChainPeer const& _peer) {
+            auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
             for (NodeID const& peerID : get<0>(s))
                 for (auto const& b: blocks)
                 {
                     RLPStream ts;
-                    m_host->prep(peerID, name(), ts, NewBlockPacket, 3)
+                    m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
                         .appendRaw(m_chain.block(b), 1)
-                        .append(m_chain.details(b).totalDifficulty)
-						.append(u256(utcTimeMilliSec()));       // test for send data time in net 
+                        .append(m_chain.details(b).totalDifficulty);        
 
                     auto itPeer = m_peers.find(peerID);
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
-                        itPeer->second.clearKnownBlocks();
+                        //itPeer->second.clearKnownBlocks();
                     }
                 }
             for (NodeID const& peerID : get<1>(s))
@@ -642,7 +647,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 if (itPeer != m_peers.end())
                 {
                     m_host->sealAndSend(peerID, ts);
-                    itPeer->second.clearKnownBlocks();
+                    //itPeer->second.clearKnownBlocks();
                 }
             }
         }
@@ -989,10 +994,12 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
     {
 		BlockHeader _h = BlockHeader(b.m_block);
 		h256 _hash = _h.hash();
-
-		auto s = randomSelection(25, [&](BrcdChainPeer const& _peer){
+        if(m_bq.inSended(_hash))
+            continue;
+		auto s = randomSelection(100, [&](BrcdChainPeer const& _peer){
 			return !_peer.isBlockKnown(_hash);
 								 });
+		//testlog <<BrcYellow " get<0> size:" << get<0>(s).size()<< "get<1> :"<< get<1>(s).size() << BrcReset;
 		for(NodeID const& peerID : get<0>(s))
 		{
 			Timer _timer;
@@ -1006,12 +1013,13 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			if(itPeer != m_peers.end())
 			{
 				m_host->sealAndSend(peerID, ts);
+				itPeer->second.markBlockAsKnown(_hash);
 				//itPeer->second.clearKnownBlocks();
 			}
-			cnote << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
+			//testlog << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
 		}
 
-		/*for(NodeID const& peerID : get<1>(s))
+		for(NodeID const& peerID : get<1>(s))
 		{
 			RLPStream ts;
 			m_host->prep(peerID, name(), ts, NewBlockHashesPacket,1);
@@ -1023,10 +1031,11 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			if(itPeer != m_peers.end())
 			{
 				m_host->sealAndSend(peerID, ts);
-				itPeer->second.clearKnownBlocks();
+				//itPeer->second.clearKnownBlocks();
 			}
-		}*/
+		}
 		m_latestBlockSent = _hash;
+		m_bq.inSended(_hash);
     }
 	m_bq.clearVerifiedBlocks();
 }
