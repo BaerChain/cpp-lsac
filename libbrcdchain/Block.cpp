@@ -596,7 +596,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     }
 
     if (m_currentBlock.gasUsed() != gasUsed()) {
-        cwarn << "[*31-1*]:1111111111111";
         // Rollback the trie.
         m_state.db().rollback();  // TODO: API in State for this?
         m_state.exdb().rollback();
@@ -604,7 +603,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
         BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(
                 bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
     }
-    cwarn << "[*31*]:1111111111111";
     return tdIncrease;
 }
 
@@ -618,7 +616,6 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
     uncommitToSeal();
     std::pair<ExecutionResult, TransactionReceipt> resultReceipt = m_state.execute(EnvInfo(info(), _lh, gasUsed()),
                                                                                    *m_sealEngine, _t, _p, _onOp);
-    cwarn << "[*37*]:1111111111111";
 
     if (_p == Permanence::Committed) {
         // Add to the user-originated transactions that we've executed.
@@ -754,8 +751,8 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
                                                  State::CommitBehaviour::KeepEmptyAccounts);
     m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
+	cerror << " commitToseal gasUsed : " << gasUsed();
     m_currentBlock.setGasUsed(gasUsed());
-    cwarn << "[*38*]:1111111111111";
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());
 
     m_currentBlock.setParentHash(m_previousBlock.hash());

@@ -354,7 +354,7 @@ public:
 
 
 private:
-    u256 m_gasNum = 22000;
+    u256 m_gasNum = 31000;
     u256 m_modifyValue = 10000;
     u256 m_gasPriceValue = 1000000000;
     //投票数据

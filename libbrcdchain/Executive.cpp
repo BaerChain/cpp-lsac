@@ -193,7 +193,8 @@ Executive::Executive(
 
 u256 Executive::gasUsed() const
 {
-    return m_s.getGas() - m_gas;
+	cerror << " m_s.getGas() : " << m_s.getGas() << "   m_gas : " << m_gas;
+	return m_s.getGas() - m_gas;
 	//return m_t.gas() - m_gas;
 }
 
@@ -205,9 +206,9 @@ void Executive::accrueSubState(SubState& _parentContext)
 
 void Executive::initialize(Transaction const& _transaction)
 {
-    LOG(m_execLogger) << "debug001 init";
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
+	cerror << "m_baseGasRequired :" << m_baseGasRequired;
     try
     {
         m_sealEngine.verifyTransaction(
@@ -339,7 +340,7 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::brcTranscation:
                 {
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
-                    cwarn << "[*1*]1111111111111111111111111111111111:" << totalCost;
+                    cwarn << " totalCost:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -478,24 +479,21 @@ void Executive::initialize(Transaction const& _transaction)
 
 bool Executive::execute()
 {
-	u256 totalGas;
     for (auto val : m_callParameters_v)
     {
 		u256 _gas = (u256)val.m_total_gas_cost;
-        cwarn << "[*1-1*]11111111111111111111111" << _gas;
+        cwarn << "Executive _gas: " << _gas;
         Address _addr = val.m_callParameters.senderAddress;
-		totalGas += _gas;
+		m_totalGas += _gas;
         m_s.subBalance(_addr, _gas);
-        m_s.addBalance(VoteAddress, _gas);
     }
-    assert(totalGas >= (u256)m_baseGasRequired);
+    assert(m_s.getGas() >= (u256)m_baseGasRequired);
     //assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
     else
     {
-        cwarn << "[*2*]11111111111111111111111";
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
             bytesConstRef(&m_t.data()), m_s.getGas() - (u256)m_baseGasRequired);
 		//return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
@@ -511,7 +509,6 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 {
     CallParameters params{
         _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data, {}};
-    cwarn << "[*3*]11111111111111111111111";
     return call(params, _gasPrice, _senderAddress);
 }
 
@@ -527,7 +524,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         {
             m_s.incNonce(_p.senderAddress);
-            cwarn << "[*4*]11111111111111111111111";
         }
     }
 
@@ -535,11 +531,12 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
-        cwarn << "[*5*]11111111111111111111111";
         bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+
+		cerror << " _p.gas :" << _p.gas;
+		cerror << " g:" << g;
         if (_p.gas < g)
         {
-            cwarn << "[*5-1*]11111111111111111111111";
 			m_excepted = TransactionException::OutOfGasBase;
             if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
                 m_s.addBalance(_p.codeAddress, 0);
@@ -549,7 +546,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         }
         else
         {
-            cwarn << "[*6*]11111111111111111111111";
             m_gas = (u256)(_p.gas - g);
             bytes output;
             bool success;
@@ -559,7 +555,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             m_output = owning_bytes_ref{std::move(output), 0, outputSize};
             if (!success)
             {
-                cwarn << "[*5-2*]11111111111111111111111";
                 m_gas = 0;
                 m_excepted = TransactionException::OutOfGas;
                 return true;  // true means no need to run go().
@@ -576,7 +571,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                 m_depth, false, _p.staticCall);
-            cwarn << "[*7*]11111111111111111111111";
         }
     }
     // Transfer brcer.
@@ -584,7 +578,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
     else
     {
-        cwarn << "[*8*]11111111111111111111111";
         LOG(m_execLogger) << BrcYellow " start to dell vote _p.senderAddress:" << _p.senderAddress
                           << "  _p.receiveAddress:" << _p.receiveAddress
                           << "  _p.valueTransfer:" << _p.valueTransfer;
@@ -610,7 +603,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             else if (val.m_method == BRCTransaction)
             {
                 m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
-				cwarn << "[*9*]11111111111111111111111";
             }
            
             else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)
@@ -624,10 +616,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             else return false;
         }
         m_callParameters_v.clear();
-        cwarn << "[*10*]11111111111111111111111";
         return true;
     }
-    cwarn << "[*11*]11111111111111111111111";
     return !m_ext;
 }
 
@@ -827,16 +817,15 @@ bool Executive::finalize()
         assert(m_ext->sub.refunds >= 0);
         int64_t maxRefund = (static_cast<int64_t>(m_t.gas()) - static_cast<int64_t>(m_gas)) / 2;
         m_gas += min(maxRefund, m_ext->sub.refunds);
-        cwarn << "[*18*]11111111111111111111111:";
     }
 
     if (m_t)
     {
+		m_s.addBalance(m_envInfo.author(), m_totalGas);
         // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
-        u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
+        //u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
         // m_s.addBalance(m_envInfo.author(), feesEarned);
-        cwarn << "[*19*]11111111111111111111111:";
     }
 
     // Suicides...
@@ -854,9 +843,7 @@ bool Executive::finalize()
         m_res->excepted = m_excepted;  // TODO: m_except is used only in ExtVM::call
         m_res->newAddress = m_newAddress;
         m_res->gasRefunded = m_ext ? m_ext->sub.refunds : 0;
-        cwarn << "[*20*]11111111111111111111111:";
     }
-    cwarn << "[*21*]11111111111111111111111:";
     return (m_excepted == TransactionException::None);
 }
 

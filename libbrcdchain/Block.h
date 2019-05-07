@@ -314,7 +314,6 @@ private:
 
     /// @returns gas used by transactions thus far executed.
     u256 gasUsed() const {
-        cwarn << "[*51*]:1111111111111";
 		return m_receipts.size() ? m_receipts.back().cumulativeGasUsed() : 0;
 	}
 

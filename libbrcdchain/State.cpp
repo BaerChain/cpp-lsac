@@ -643,6 +643,10 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     {
         result_order _result_order = _result_v[i];
 
+        //TO DO : Deduction of matching charges;
+
+
+
         pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
             _result_order.price, _result_order.type, _result_order.token_type,
             _result_order.buy_type);
@@ -1216,6 +1220,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);
 
+
     bool removeEmptyAccounts = false;
     switch (_p)
     {
@@ -1235,6 +1240,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
             TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
+	
+
     return make_pair(res, receipt);
 }
 
@@ -1262,14 +1269,11 @@ bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc co
     try
     {
         _e.initialize(_t);
-        cwarn << "[*1-1*]11111111111111111111111:";
 
         if (!_e.execute())
         {
             _e.go(_onOp);
-            cwarn << "[*15*]11111111111111111111111:";
         }
-        cwarn << "[*16*]11111111111111111111111:";
         return _e.finalize();
     }
     catch (Exception const&)
