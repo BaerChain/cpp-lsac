@@ -24,7 +24,7 @@ namespace fs = boost::filesystem;
 
 #define BRC_TIMED_ENACTMENTS 0
 
-static const unsigned c_maxSyncTransactions = 2400;
+static const unsigned c_maxSyncTransactions = 2000;
 
 //namespace
 //{
