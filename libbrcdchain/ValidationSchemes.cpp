@@ -19,6 +19,7 @@ namespace dev {
             string const c_finney = "finney";
             string const c_author = "author";
             string const c_coinbase = "coinbase";
+			string const c_currency = "currency";
             string const c_nonce = "nonce";
             string const c_gasLimit = "gasLimit";
             string const c_timestamp = "timestamp";
@@ -108,7 +109,9 @@ namespace dev {
                                        {c_wei,         {{js::str_type}, JsonFieldPresence::Optional}},
                                        {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}},
 										{c_brc,			{{js::str_type}, JsonFieldPresence::Optional}},
-										{c_fcookie,		{{js::str_type}, JsonFieldPresence::Optional}}});
+										{c_fcookie,		{{js::str_type}, JsonFieldPresence::Optional}},
+										{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Optional}},
+										{c_currency, {{js::obj_type}, JsonFieldPresence::Optional}}});
                 } else if (_obj.size() == 1) {
                     // A genesis account with only balance set
                     if (_obj.count(c_balance))
@@ -117,16 +120,12 @@ namespace dev {
                     else if(_obj.count(c_wei))
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_wei, {{js::str_type}, JsonFieldPresence::Required}}});
+					else if(_obj.count(c_genesisVarlitor))
+						requireJsonFields(_obj, "validateAccountObj",
+										  {{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}}});
 					else
 						requireJsonFields(_obj, "validateAccountObj",
-										  { {c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}} });
-				}
-				else if (_obj.count(c_brc) || _obj.count(c_fcookie))
-				{
-                    requireJsonFields(_obj, "validateAccountObj",
-                        {{c_balance, {{js::str_type}, JsonFieldPresence::Required}},
-						{c_brc, {{js::str_type}, JsonFieldPresence::Required}},
-						{c_fcookie, {{js::str_type}, JsonFieldPresence::Required}}});
+										{{c_currency, {{js::obj_type}, JsonFieldPresence::Required}}});
 				}
 				else
 				{
@@ -137,7 +136,9 @@ namespace dev {
                                           {{c_codeFromFile, {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_nonce,        {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_storage,      {{js::obj_type}, JsonFieldPresence::Required}},
-                                           {c_balance,      {{js::str_type}, JsonFieldPresence::Required}}});
+                                           {c_balance,      {{js::str_type}, JsonFieldPresence::Required}},
+											{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Optional}},
+											{c_currency, {{js::obj_type}, JsonFieldPresence::Optional}}});
                     }
 					else 
 					{
@@ -146,7 +147,9 @@ namespace dev {
                                           {{c_code,    {{js::str_type}, JsonFieldPresence::Required}},
                                            {c_nonce,   {{js::str_type}, JsonFieldPresence::Required}},
 										   {c_storage, {{js::obj_type}, JsonFieldPresence::Required}},
-                                           {c_balance, {{js::str_type}, JsonFieldPresence::Required}}});
+                                           {c_balance, {{js::str_type}, JsonFieldPresence::Required}},
+											{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Optional}},
+											{c_currency, {{js::obj_type}, JsonFieldPresence::Optional}}});
                     }
                 }
             }
