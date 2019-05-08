@@ -822,6 +822,7 @@ bool Executive::finalize()
     if (m_t)
     {
 		m_s.addBalance(m_envInfo.author(), m_totalGas);
+		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas);
         // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
         //u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();

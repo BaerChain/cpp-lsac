@@ -112,6 +112,7 @@ public:
         m_ballot = 0;
 		m_assetInjectStatus = 0;
         m_voteDate.clear();
+		m_BlockReward.clear();
         changed();
     }
 
@@ -274,6 +275,16 @@ public:
     // 系统管理竞选人/验证人
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
 
+
+	void addBlockRewardRecoding(u256 _blockNum, u256 _rewardNum)
+	{
+		u256 _mapNum = m_BlockReward[_blockNum];
+		_mapNum += _rewardNum;
+		m_BlockReward[_blockNum] = _mapNum;
+	}
+	void setBlockReward(std::unordered_map<u256, u256> const& _blockReward) { m_BlockReward.clear(); m_BlockReward.insert(_blockReward.begin(), _blockReward.end()); }
+	std::unordered_map<u256, u256> const& blockReward() const { return m_BlockReward; }
+
 private:
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -325,6 +336,8 @@ private:
        当该Account 为系统预制地址表表示为 竞选人集合
     */
     std::unordered_map<Address, u256> m_voteDate;
+
+	std::unordered_map<u256, u256> m_BlockReward;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;

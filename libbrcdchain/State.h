@@ -352,6 +352,7 @@ public:
 
 	void systemPendingorder(int64_t _time);
 
+	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
 private:
     u256 m_gasNum = 31000;

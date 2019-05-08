@@ -189,12 +189,23 @@ Account* State::account(Address const& _addr)
         _vote.insert(_pair);
     }
 
+	const bytes _bBlockReward = state[11].toBytes();
+	RLP _rlpBlockReward(_bBlockReward);
+	num = _rlpBlockReward[0].toInt<size_t>();
+	std::unordered_map<u256, u256> _blockReward;
+	for (size_t k = 1; k <= num; k++)
+	{
+		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
+		_blockReward.insert(_blockpair);
+	}
+
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
         std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
             state[2].toHash<h256>(), state[3].toHash<h256>(), state[4].toInt<u256>(),
             state[5].toInt<u256>(), state[7].toInt<u256>(), state[8].toInt<u256>(),
             state[9].toInt<u256>(), Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
+	i.first->second.setBlockReward(_blockReward);
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -973,6 +984,14 @@ void State::cancelPendingOrder(h256 _pendingOrderHash)
     }
 }
 
+void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
+{
+	if (auto a = account(_addr))
+	{
+		a->addBlockRewardRecoding(_blockNum, _rewardNum);
+	}
+}
+
 void State::createContract(Address const& _address)
 {
     createAccount(_address, {requireAccountStartNonce(), 0});
@@ -1339,6 +1358,18 @@ Json::Value dev::brc::State::accoutMessage(Address const& _addr)
             _array.append(_v);
         }
         jv["vote"] = _array;
+		Json::Value _rewardArray;
+		if (a->blockReward().size() > 0)
+		{
+			for (auto it : a->blockReward())
+			{
+				Json::Value _vReward;
+				_vReward["blockNum"] = toJS(it.first);
+				_vReward["rewardNum"] = toJS(it.second);
+				_rewardArray.append(_vReward);
+			}
+			jv["BlockReward"] = _rewardArray;
+		}
     }
     return jv;
 }
@@ -1705,7 +1736,7 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else
             {
-                RLPStream s(11);
+                RLPStream s(12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty())
                 {
@@ -1751,6 +1782,18 @@ AddressHash dev::brc::commit(AccountMap const& _cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
+				{
+					RLPStream _rlp;
+					size_t _num = i.second.blockReward().size();
+					_rlp.appendList(_num + 1);
+					_rlp << _num;
+					for (auto it : i.second.blockReward())
+					{
+						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+					}
+					s << _rlp.out();
+				}
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
