@@ -53,7 +53,7 @@ public:
       : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
     {}
 
-	Account(u256 _nonce, u256 _balance, u256 _BRC ,u256 _fbalance = 0, Changedness _c = Changed)
+	Account(u256 _nonce, u256 _balance, u256 _BRC, u256 _fbalance = 0, Changedness _c = Changed)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
@@ -324,7 +324,7 @@ private:
     u256 m_poll = 0;
 
 	// Account's BRC
-    u256 m_BRC = 100;
+    u256 m_BRC = 0;
 
     // Account's FBRC
     u256 m_FBRC = 0;

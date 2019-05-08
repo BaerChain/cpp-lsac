@@ -134,18 +134,16 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 
         bool haveBalance = (accountMaskJson.count(c_wei) || accountMaskJson.count(c_finney) ||
                             accountMaskJson.count(c_balance));
-        bool haveBrc = accountMaskJson.count(c_brc);
         bool haveNonce = accountMaskJson.count(c_nonce);
         bool haveCode = accountMaskJson.count(c_code) || accountMaskJson.count(c_codeFromFile);
         bool haveStorage = accountMaskJson.count(c_storage);
         bool shouldNotExists = accountMaskJson.count(c_shouldnotexist);
 		bool haveGenesisCreator = accountMaskJson.count(c_genesisVarlitor);
+		bool haveCurrency = accountMaskJson.count(c_currency);
 
-        if (haveStorage || haveCode || haveNonce || haveBalance || haveBrc)
+        if (haveStorage || haveCode || haveNonce || haveBalance)
         {
             u256 balance = 0;
-            u256 brcNum = 0;
-			u256 fbalance = 0;
             if (accountMaskJson.count(c_wei))
                 balance = u256Safe(accountMaskJson.at(c_wei).get_str());
             else if (accountMaskJson.count(c_finney))
@@ -153,17 +151,10 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
             else if (accountMaskJson.count(c_balance))
                 balance = u256Safe(accountMaskJson.at(c_balance).get_str());
 
-
-			if (accountMaskJson.count(c_brc))
-                brcNum = u256Safe(accountMaskJson.at(c_brc).get_str());
-
-			if (accountMaskJson.count(c_fcookie))
-				fbalance = u256Safe(accountMaskJson.at(c_fcookie).get_str());
-
             u256 nonce =
                 haveNonce ? u256Safe(accountMaskJson.at(c_nonce).get_str()) : _defaultNonce;
 
-            ret[a] = Account(nonce, balance, brcNum, fbalance);
+            ret[a] = Account(nonce, balance);
             auto codeIt = accountMaskJson.find(c_code);
             if (codeIt != accountMaskJson.end())
             {
@@ -232,6 +223,27 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 				ret[a].manageSysVote(_addr, true, 0);
 			}
         }
+
+		if (haveCurrency)
+		{
+			u256 cookie = 0;
+			u256 fcookie = 0;
+			u256 BRC = 0;
+			js::mObject _v = accountMaskJson.at(c_currency).get_obj();
+			if (_v.count(c_brc))
+			{
+				BRC = u256Safe(_v["brc"].get_str());
+			}
+			if (_v.count(c_balance))
+			{
+				cookie = u256Safe(_v["cookies"].get_str());
+			}
+			if (_v.count(c_fcookie))
+			{
+				fcookie = u256Safe(_v["fcookie"].get_str());
+			}
+			ret[a] = Account(0, cookie, BRC, fcookie);
+		}
     }
 
     return ret;
