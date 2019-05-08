@@ -221,14 +221,16 @@ private:
         h256 m_pendingOrderHash = h256(0);
         ex::order_token_type m_pendingOrder_Token_Type;
         ex::order_buy_type m_pendingOrder_Buy_Type;
+		bigint m_total_gas_cost;
         TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0), ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC, ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price)
+            h256 _pendingOrderHash = h256(0), ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC, ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price,bigint _total_gas_cost = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
             m_pendingOrderHash(_pendingOrderHash),
 			m_pendingOrder_Token_Type(_pendingOrder_Token_Type),
-			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type)
+			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type),
+            m_total_gas_cost(_total_gas_cost)
         {}
     };
 
@@ -262,6 +264,7 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
+	u256 m_totalGas = 0;
     u256 m_value = 0;
     u256 m_ballots = 0;
     Method m_method = Other;

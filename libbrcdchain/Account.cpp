@@ -134,15 +134,18 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 
         bool haveBalance = (accountMaskJson.count(c_wei) || accountMaskJson.count(c_finney) ||
                             accountMaskJson.count(c_balance));
+        bool haveBrc = accountMaskJson.count(c_brc);
         bool haveNonce = accountMaskJson.count(c_nonce);
         bool haveCode = accountMaskJson.count(c_code) || accountMaskJson.count(c_codeFromFile);
         bool haveStorage = accountMaskJson.count(c_storage);
         bool shouldNotExists = accountMaskJson.count(c_shouldnotexist);
 		bool haveGenesisCreator = accountMaskJson.count(c_genesisVarlitor);
 
-        if (haveStorage || haveCode || haveNonce || haveBalance)
+        if (haveStorage || haveCode || haveNonce || haveBalance || haveBrc)
         {
             u256 balance = 0;
+            u256 brcNum = 0;
+			u256 fbalance = 0;
             if (accountMaskJson.count(c_wei))
                 balance = u256Safe(accountMaskJson.at(c_wei).get_str());
             else if (accountMaskJson.count(c_finney))
@@ -150,10 +153,17 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
             else if (accountMaskJson.count(c_balance))
                 balance = u256Safe(accountMaskJson.at(c_balance).get_str());
 
+
+			if (accountMaskJson.count(c_brc))
+                brcNum = u256Safe(accountMaskJson.at(c_brc).get_str());
+
+			if (accountMaskJson.count(c_fcookie))
+				fbalance = u256Safe(accountMaskJson.at(c_fcookie).get_str());
+
             u256 nonce =
                 haveNonce ? u256Safe(accountMaskJson.at(c_nonce).get_str()) : _defaultNonce;
 
-            ret[a] = Account(nonce, balance);
+            ret[a] = Account(nonce, balance, brcNum, fbalance);
             auto codeIt = accountMaskJson.find(c_code);
             if (codeIt != accountMaskJson.end())
             {

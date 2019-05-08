@@ -841,7 +841,7 @@ void Block::cleanup() {
     }
 
     m_state.db().commit();  // TODO: State API for this?
-    m_state.exdb().commit(info().number());
+    m_state.exdb().commit(info().number() + 1);
 
     LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
                   << " = " << toHex(asBytes(db().lookup(rootHash())));

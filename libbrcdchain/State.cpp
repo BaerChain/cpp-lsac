@@ -20,9 +20,14 @@ using namespace dev::brc::ex;
 
 namespace fs = boost::filesystem;
 
-State::State(u256 const &_accountStartNonce, OverlayDB const &_db, ex::exchange_plugin const &_exdb,
-             BaseState _bs)
-        : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce) {
+#define BRCNUM 1000
+#define COOKIENUM 100000000000
+
+
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
+    BaseState _bs)
+  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
+{
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -166,6 +171,16 @@ Account *State::account(Address const &_addr) {
         _vote.insert(_pair);
     }
 
+	const bytes _bBlockReward = state[11].toBytes();
+	RLP _rlpBlockReward(_bBlockReward);
+	num = _rlpBlockReward[0].toInt<size_t>();
+	std::unordered_map<u256, u256> _blockReward;
+	for (size_t k = 1; k <= num; k++)
+	{
+		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
+		_blockReward.insert(_blockpair);
+	}
+
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
                                                    state[2].toHash<h256>(), state[3].toHash<h256>(),
@@ -175,6 +190,7 @@ Account *State::account(Address const &_addr) {
                                                    state[9].toInt<u256>(),
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
+	i.first->second.setBlockReward(_blockReward);
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -840,7 +856,16 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 }
 
-void State::createContract(Address const &_address) {
+void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
+{
+	if (auto a = account(_addr))
+	{
+		a->addBlockRewardRecoding(_blockNum, _rewardNum);
+	}
+}
+
+void State::createContract(Address const& _address)
+{
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
 
@@ -1163,6 +1188,18 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
+		Json::Value _rewardArray;
+		if (a->blockReward().size() > 0)
+		{
+			for (auto it : a->blockReward())
+			{
+				Json::Value _vReward;
+				_vReward["blockNum"] = toJS(it.first);
+				_vReward["rewardNum"] = toJS(it.second);
+				_rewardArray.append(_vReward);
+			}
+			jv["BlockReward"] = _rewardArray;
+		}
     }
     return jv;
 }
@@ -1219,19 +1256,72 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 
 void dev::brc::State::assetInjection(Address const& _addr)
 {
-	auto a = account(_addr);
-	if(a->assetInjectStatus() == 0)
+    // if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
+    //    return;
+    auto it = account(dev::VoteAddress);
+    if (it->balance() < COOKIENUM || it->BRC() < BRCNUM)
+        return;
+
+    auto a = account(_addr);
+    if (a->assetInjectStatus() == 0)
     {
-        addBRC(_addr, 1000);
-        addBalance(_addr, 100000000000);
-		a->setAssetInjectStatus();
-	}
-	else {
-		return;
-	}
+        addBRC(_addr, BRCNUM);
+        addBalance(_addr, COOKIENUM);
+        a->setAssetInjectStatus();
+    }
+    else
+    {
+        return;
+    }
 }
 
-dev::u256 dev::brc::State::voteAll(Address const &_id) const {
+void dev::brc::State::systemPendingorder(int64_t _time)
+{
+    auto u256Safe = [](std::string const& s) -> u256 {
+        bigint ret(s);
+        if (ret >= bigint(1) << 256)
+            BOOST_THROW_EXCEPTION(
+                ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
+        return (u256)ret;
+    };
+
+	auto a = account(dev::VoteAddress);
+	std::string _num = "29000000000000000000000000";
+	u256 systenCookie = u256Safe(_num);
+	std::map<u256, u256> _map = { {u256(1), systenCookie} };
+	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	std::vector<order> _v = { {_order} };
+
+    cerror << m_exdb.check_version(false);
+	try
+	{
+		m_exdb.insert_operation(_v, false, true);
+	}
+	catch (const boost::exception& e)
+	{
+		exit(1);
+	}
+	catch (...)
+	{
+		exit(1);
+	}
+	cerror << m_exdb.check_version(false);
+	m_exdb.commit(1);
+	cerror << m_exdb.check_version(false);
+}
+
+u256 dev::brc::State::transactionForCookie(uint8_t _type)
+{
+    if (_type == transationTool::vote || _type == transationTool::pendingOrder ||
+        _type == transationTool::cancelPendingOrder)
+    {
+        return (getGas() + getModifyValue(_type)) * getGasPrice();
+    }
+    return getGas() * getGasPrice();
+}
+
+dev::u256 dev::brc::State::voteAll(Address const& _id) const
+{
     if (auto a = account(_id))
         return a->voteAll();
     else
@@ -1448,7 +1538,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(11);
+                RLPStream s(12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1487,7 +1577,19 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
-				s << i.second.assetInjectStatus();
+                s << i.second.assetInjectStatus();
+				{
+					RLPStream _rlp;
+					size_t _num = i.second.blockReward().size();
+					_rlp.appendList(_num + 1);
+					_rlp << _num;
+					for (auto it : i.second.blockReward())
+					{
+						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+					}
+					s << _rlp.out();
+				}
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

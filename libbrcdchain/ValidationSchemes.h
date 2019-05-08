@@ -12,6 +12,8 @@ extern std::string const c_params;
 extern std::string const c_genesis;
 extern std::string const c_accounts;
 extern std::string const c_balance;
+extern std::string const c_brc;
+extern std::string const c_fcookie;
 extern std::string const c_wei;
 extern std::string const c_finney;
 extern std::string const c_author;
