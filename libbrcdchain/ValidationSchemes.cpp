@@ -12,7 +12,9 @@ namespace dev {
             string const c_params = "params";
             string const c_genesis = "genesis";
             string const c_accounts = "accounts";
-            string const c_balance = "balance";
+            string const c_balance = "cookies";
+            string const c_brc = "brc";
+			string const c_fcookie = "fcookie";
             string const c_wei = "wei";
             string const c_finney = "finney";
             string const c_author = "author";
@@ -104,11 +106,10 @@ namespace dev {
                     requireJsonFields(_obj, "validateAccountObj",
                                        {{c_precompiled, {{js::obj_type}, JsonFieldPresence::Required}},
                                        {c_wei,         {{js::str_type}, JsonFieldPresence::Optional}},
-									   {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}}
-									  });
-                } 
-				else if (_obj.size() == 1) 
-				{
+                                       {c_balance,     {{js::str_type}, JsonFieldPresence::Optional}},
+										{c_brc,			{{js::str_type}, JsonFieldPresence::Optional}},
+										{c_fcookie,		{{js::str_type}, JsonFieldPresence::Optional}}});
+                } else if (_obj.size() == 1) {
                     // A genesis account with only balance set
                     if (_obj.count(c_balance))
                         requireJsonFields(_obj, "validateAccountObj",
@@ -116,10 +117,17 @@ namespace dev {
                     else if(_obj.count(c_wei))
                         requireJsonFields(_obj, "validateAccountObj",
                                           {{c_wei, {{js::str_type}, JsonFieldPresence::Required}}});
-					else 
+					else
 						requireJsonFields(_obj, "validateAccountObj",
 										  { {c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}} });
-                } 
+				}
+				else if (_obj.count(c_brc) || _obj.count(c_fcookie))
+				{
+                    requireJsonFields(_obj, "validateAccountObj",
+                        {{c_balance, {{js::str_type}, JsonFieldPresence::Required}},
+						{c_brc, {{js::str_type}, JsonFieldPresence::Required}},
+						{c_fcookie, {{js::str_type}, JsonFieldPresence::Required}}});
+				}
 				else
 				{
                     if (_obj.count(c_codeFromFile)) 
