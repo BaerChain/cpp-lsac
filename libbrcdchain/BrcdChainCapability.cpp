@@ -999,7 +999,6 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 		auto s = randomSelection(100, [&](BrcdChainPeer const& _peer){
 			return !_peer.isBlockKnown(_hash);
 								 });
-		//testlog <<BrcYellow " get<0> size:" << get<0>(s).size()<< "get<1> :"<< get<1>(s).size() << BrcReset;
 		for(NodeID const& peerID : get<0>(s))
 		{
 			Timer _timer;
@@ -1007,16 +1006,13 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
 				.appendRaw(b.m_block, 1)
 				.append(b.m_totalDiff);
-				//.append(u256(utcTimeMilliSec()));       // test for send data time in net 
 
 			auto itPeer = m_peers.find(peerID);
 			if(itPeer != m_peers.end())
 			{
 				m_host->sealAndSend(peerID, ts);
 				itPeer->second.markBlockAsKnown(_hash);
-				//itPeer->second.clearKnownBlocks();
 			}
-			//testlog << " send block:"<< _h.number()<< " hash:" << _hash << " to:" << peerID << " time:"<< utcTimeMilliSec();
 		}
 
 		for(NodeID const& peerID : get<1>(s))
@@ -1031,11 +1027,10 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			if(itPeer != m_peers.end())
 			{
 				m_host->sealAndSend(peerID, ts);
-				//itPeer->second.clearKnownBlocks();
 			}
 		}
 		m_latestBlockSent = _hash;
-		m_bq.inSended(_hash);
+		m_bq.insertSendedHash(_hash);
     }
 	m_bq.clearVerifiedBlocks();
 }

@@ -610,10 +610,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     }
 
     checkBlockTimestamp(_block.info);
-	Timer _timer;
     // Verify parent-critical parts
     verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
-	////testlog << "verifyBlock  InOrderChecks use_time:" << _timer.elapsed() * 1000;
     LOG(m_loggerDetail) << "Attempting import of " << _block.info.hash() << " ...";
 
     performanceLogger.onStageFinished("preliminaryChecks");
@@ -623,7 +621,6 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     try {
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
-		_timer.restart();
         Block s(*this, _db, _exdb);
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -631,19 +628,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         s.cleanup();
         td = pd.totalDifficulty + tdIncrease;
         performanceLogger.onStageFinished("enactment");
-		////testlog << " enactOn use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
-		//_timer.restart();
-		//// shdpos data
-		//{
-		//	std::vector<Address> _var;
-		//	std::vector<Address> _can;
-		//	for(auto const& val : s.mutableVote().VarlitorsAddress())
-		//		_var.push_back(val.first);
-		//	for(auto const& val : s.mutableVote().CanlitorAddress())
-		//		_can.push_back(val.first);
-		//	m_sealEngine->resetSHDposCreater(_var, _can);
-		//}
-		////testlog << " init shdpos data use_time:" << _timer.elapsed() * 1000;
+		
 #if BRC_PARANOIA
         checkConsistency();
 #endif // BRC_PARANOIA
@@ -701,7 +686,6 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
-	Timer _timer;
     try {
         // ensure parent is cached for later addition.
         // TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
@@ -912,7 +896,6 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             dead.push_back(h);
         else
             fresh.push_back(h);
-	////testlog << " into  DB use_time:" << _timer.elapsed() * 1000 ;
     return ImportRoute{dead, fresh, _block.transactions};
 }
 
@@ -1374,7 +1357,6 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
 
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
-	Timer _timer;
 	VerifiedBlockRef res;
     BlockHeader h;
     try {
@@ -1434,8 +1416,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-	////testlog << " verify trans front_populate use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
-	_timer.restart();
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
         if(r[1].itemCount() > 300)
@@ -1455,14 +1435,12 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 			{
 			    task_t.go_task(v_trxb, ret_t, [&_ir](bytes const& b){
 				    return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
-				    //return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
 			    });
 			}
             catch(Exception& ex)
 			{
 				ex << errinfo_phase(1);
 				ex << errinfo_transactionIndex(i);
-				//ex << errinfo_transaction(d.toBytes());
 				addBlockInfo(ex, h, _block.toBytes());
 				if(_onBad)
 					_onBad(ex);
@@ -1499,7 +1477,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 		}
 		
 	}
-	////testlog << " populate trans:" << res.transactions.size() << " use_time:" << _timer.elapsed() * 1000 << "time:" << utcTimeMilliSec();
     res.block = bytesConstRef(_block);
     return res;
 }

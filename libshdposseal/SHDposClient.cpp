@@ -68,13 +68,9 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
     try{
         bool t = true;
         //compare_exchange_strong(T& expected, T val, ...)
-        //比较本身值和expected, 如果相等者旧值=val, 如果不等 expected=旧值
-
-//		cerror << "SHDposClient::doWork  : " << m_needStateReset   << "  _dowait : " << _doWait ;
 
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
             syncBlockQueue();
-
 
         if(m_needStateReset)
         {
@@ -187,9 +183,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 					return;
 				}
 				// TODO is that needed? we have "Generating seal on" below
-				////testlog << " front use_time:" << utcTimeMilliSec() - _time;
-				//testlog <<BrcYellow "Starting to seal block #" << m_working.info().number() <<" time:"<< utcTimeMilliSec() << BrcReset;
-				// input a seal time to contral the seal transation time
+			    LOG(m_logger) << "Starting to seal block #" << m_working.info().number() <<" time:"<< utcTimeMilliSec();
 				m_working.commitToSeal(bc(), m_extraData);
 				//try into next new epoch and check some about varlitor for SH-DPOS
 				dpos()->tryElect(utcTimeMilliSec());
@@ -221,7 +215,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);
-						//testlog << " sealed trans:" << m_working.getSealTxNum() << " use_time:" << _timer.elapsed() * 1000 << " time:"<< utcTimeMilliSec();
 					}
 					else
 						LOG(m_logger) << "Submitting block failed...";

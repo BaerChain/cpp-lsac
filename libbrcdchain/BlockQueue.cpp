@@ -82,11 +82,9 @@ void BlockQueue::verifierBody()
 
         VerifiedBlock res;
         swap(work.blockData, res.blockData);
-		Timer _timer;
         try
         {
             res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, ImportRequirements::OutOfOrderChecks);
-			////testlog << " verifyBlock OutOfOrderChecks use_time:" << _timer.elapsed() * 1000 << " time:"<<utcTimeMilliSec();
         }
         catch (std::exception const& _ex)
         {
@@ -129,7 +127,6 @@ void BlockQueue::verifierBody()
         }
         if (ready)
             m_onReady();
-		//testlog << " tell thread to sync block... time:" << utcTimeMilliSec();
     }
 }
 
@@ -170,9 +167,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     {
         // TODO: quick verification of seal - will require BlockQueue to be templated on SealEngine
         // VERIFY: populates from the block and checks the block is internally coherent.
-		Timer _timer;
         bi = m_bc->verifyBlock(_block, m_onBad, ImportRequirements::PostGenesis).info;
-		////testlog << " verifyBlock verifyBlock use_time:" << _timer.elapsed() * 1000 << " time:" << utcTimeMilliSec();
     }
     catch (Exception const& _e)
     {

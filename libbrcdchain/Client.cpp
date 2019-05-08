@@ -378,21 +378,27 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
-    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
+    
+	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
 
     double elapsed = t.elapsed();
+	if(count)
+	{
+		if(bc().number() % 10 == 0)
+		{
+			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+				<< (count / elapsed) << " blocks/s) in #" << bc().number();
+		}
+	}
 
-	////testlog << "sync block ex trans and into DB ok use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
-	//testlog << "sync block ex trans and into DB use_time" << t.elapsed() * 1000;
 	t.restart();
     onChainChanged(ir);
-	//testlog << " drop old data and init new data use_time:" << t.elapsed() * 1000 << " time:" << utcTimeMilliSec();
 }
 
 void Client::syncTransactionQueue()
