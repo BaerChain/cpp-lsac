@@ -189,14 +189,9 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
     offet /= m_config.varlitorInterval;
     offet %= _vector.size();
     Address const& curr_valitor = _vector[offet];
-	/*for(auto val : _vector)
-	{
-		//testlog << val << "offet:" << offet;
-	}*/
 
     bool ret = isCurrBlock(curr_valitor);
     return chooseBlockAddr(curr_valitor, ret);
-	//return m_dpos_cleint->author() == curr_valitor;
 }
 
 bool dev::bacd::SHDpos::chooseBlockAddr(Address const& _addr, bool _isok)
