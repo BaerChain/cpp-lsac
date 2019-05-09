@@ -341,8 +341,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
                     cwarn << " totalCost:" << totalCost;
-                    transationTool::transcation_operation _transcation_op =
-                        transationTool::transcation_operation(val);
+                    transationTool::transcation_operation _transcation_op =  transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)

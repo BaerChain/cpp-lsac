@@ -123,7 +123,7 @@ struct transcation_operation : public operation
     Address m_from;
     Address m_to;
     uint8_t m_Transcation_type = 0;
-    size_t m_Transcation_numbers = 0;
+    u256 m_Transcation_numbers = 0;
     transcation_operation(op_type type, const Address& from, const Address& to,
         uint8_t transcation_type, size_t transcation_num)
       : m_type(type),

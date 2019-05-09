@@ -5,7 +5,7 @@
 using namespace dev::brc::ex;
 
 bool dev::brc::BRCTranscation::verifyTranscation(
-    Address const& _form, Address const& _to, size_t _type, size_t _transcationNum)
+    Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
     if (_type <= dev::brc::TranscationEnum::ETranscationNull ||
         _type >= dev::brc::TranscationEnum::ETranscationMax || ( _type == dev::brc::TranscationEnum::EBRCTranscation && _transcationNum == 0))
@@ -19,7 +19,7 @@ bool dev::brc::BRCTranscation::verifyTranscation(
         {
             return false;
         }
-        if (_transcationNum > (size_t)m_state.BRC(_form))
+        if (_transcationNum > m_state.BRC(_form))
         {
             return false;
         }
