@@ -490,7 +490,6 @@ bool Executive::execute()
         m_s.subBalance(_addr, _gas);
     }
     assert(m_s.getGas() >= (u256)m_baseGasRequired);
-    //assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
@@ -498,12 +497,8 @@ bool Executive::execute()
     {
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
             bytesConstRef(&m_t.data()), m_s.getGas() - (u256)m_baseGasRequired);
-		//return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-  //          bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
     }
 
-    /*else
-        return call(m_callParameters, m_t.gasPrice(), m_t.sender());*/
 }
 
 bool Executive::call(Address const& _receiveAddress, Address const& _senderAddress,

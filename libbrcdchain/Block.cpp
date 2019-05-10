@@ -118,7 +118,7 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_committedToSeal = false;
     m_vote.setState(m_state);
 
-    performIrregularModifications();
+//    performIrregularModifications();
     updateBlockhashContract();
 }
 
