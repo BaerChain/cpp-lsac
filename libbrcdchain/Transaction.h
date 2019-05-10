@@ -73,7 +73,9 @@ enum op_type : uint8_t
     vote = 1,
     brcTranscation = 2,
     pendingOrder = 3,
-	cancelPendingOrder = 4
+	cancelPendingOrder = 4,
+	deployContract =5,
+    executeContract =6
 };
 struct operation
 {
@@ -204,6 +206,16 @@ struct cancelPendingorder_operation : public operation
     OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))
 
     OPERATION_SERIALIZE((m_type)(m_cancelType)(m_hash))
+};
+
+struct contract_operation : public operation
+{
+	op_type m_type;
+	bytes m_date;
+    contract_operation(){}
+	contract_operation(op_type _type, bytes _d):m_type(_type) { m_date = _d; }
+	OPERATION_UNSERIALIZE(contract_operation, (m_date))
+	OPERATION_SERIALIZE((m_date))
 };
 
 }  // namespace transationTool

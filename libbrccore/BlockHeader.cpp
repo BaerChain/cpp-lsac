@@ -195,6 +195,7 @@ void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRe
     if (m_number > ~(unsigned) 0)
         BOOST_THROW_EXCEPTION(InvalidNumber());
 
+	testlog << " m_gasUsed:" << m_gasUsed << " m_gasLimit:" << m_gasLimit;
     if (_s != CheckNothingNew && m_gasUsed > m_gasLimit)
         BOOST_THROW_EXCEPTION(
                 TooMuchGasUsed() << RequirementError(bigint(m_gasLimit), bigint(m_gasUsed)));
