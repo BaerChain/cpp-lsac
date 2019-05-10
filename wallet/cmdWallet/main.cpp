@@ -71,6 +71,12 @@ bool validate_obj(const json_spirit::mObject &obj) {
 
 
 struct trx_source {
+    enum Contract
+	{
+        null =0,
+        deploy =1,
+        execute
+	};
     Address from;
     Address to;
     u256 value;
@@ -79,9 +85,8 @@ struct trx_source {
     u256 gas = Invalid256;
     u256 gasPrice = Invalid256;
     std::vector<std::shared_ptr<operation>> ops;
+	Contract isContract = Contract::null;
 };
-
-
 
 
 
@@ -130,8 +135,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
         if (obj.count("source")) {
             auto array = obj["source"].get_array();
             for (auto &data : array) {
+				trx_source tx;
                 auto d_obj = data.get_obj();
-                trx_source tx;
                 tx.from = Address(d_obj[DATA_KEY_FROM].get_str());
                 tx.to = Address(d_obj[DATA_KEY_TO].get_str());
                 tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
@@ -180,7 +185,18 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 							tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
 							break;
 						}
-                    }
+						case deployContract: {
+							tx.to = Address();
+							tx.isContract = trx_source::Contract::deploy ;
+							tx.data = fromHex(op_obj["contract"].get_str());
+                            break;
+						}
+                        case executeContract:{						
+							tx.data = fromHex(op_obj["contract"].get_str());
+							tx.isContract = trx_source::Contract::execute;
+                            break;
+						}     
+					}
                 }
                 trx_datas.push_back(tx);
             }
@@ -206,13 +222,24 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
         std::vector<brc::Transaction> sign_trxs;
         for (auto &t : trx_datas) {
             if (keys.count(t.from)) {
-                bytes data = packed_operation_data(t.ops);
-                brc::TransactionSkeleton ts;
-                ts.creation = false;
+				brc::TransactionSkeleton ts;
+                if(t.isContract == trx_source::Contract::null)
+				{
+					bytes data = packed_operation_data(t.ops);
+					ts.data = data;
+				}
+				else if(t.isContract == trx_source::Contract::deploy)
+				{
+					ts.data = t.data;
+					ts.creation = true;
+				}
+				else if(t.isContract == trx_source::Contract::execute)
+				{
+					ts.data = t.data;
+				}
                 ts.from = t.from;
                 ts.to = t.to;
                 ts.value = t.value;
-                ts.data = data;
                 ts.nonce = t.nonce;
                 if (nonce != 0)
                     ts.nonce = nonce;

@@ -559,7 +559,6 @@ bool Client::remoteActive() const
 
 void Client::onPostStateChanged()
 {
-    LOG(m_loggerDetail) << "Post state changed.";
     m_signalled.notify_all();
     m_remoteWorking = false;
 }
@@ -627,7 +626,7 @@ void Client::rejigSealing()
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
+//                LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 m_working.commitToSeal(bc(), m_extraData);
             }
             DEV_READ_GUARDED(x_working)

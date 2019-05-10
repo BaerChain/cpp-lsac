@@ -265,6 +265,7 @@ private:
 
     u256 m_gasCost;
 	u256 m_totalGas = 0;
+	u256 m_needRefundGas = 0;
     u256 m_value = 0;
     u256 m_ballots = 0;
     Method m_method = Other;
