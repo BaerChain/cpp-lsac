@@ -44,6 +44,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
         m_receiveAddress = rlp[3].isEmpty() ? Address() : rlp[3].toHash<Address>(RLP::VeryStrict);
 
+		testlog <<BrcYellow " m_type:" << m_type << " sender:"<< m_sender<< BrcReset;
         if (!rlp[3].isEmpty() && m_receiveAddress == VoteAddress)
         {
             m_type = VoteMassage;
@@ -82,6 +83,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
 
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
+		testlog << BrcYellow " m_type:" << m_type << " sender:" << m_sender << BrcReset;
 
         if (rlp.itemCount() > 9 /*10*/)
             BOOST_THROW_EXCEPTION(InvalidTransactionFormat()

@@ -247,12 +247,16 @@ void Executive::initialize(Transaction const& _transaction)
         //bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
         if (!m_t.isVoteTranction())
         {
-            bigint totalCost =
-                m_t.value() + (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
+			bigint totalCost =
+				(bigint)m_t.value() +
+				(bigint)m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) *
+				m_s.getGasPrice();
+
             if (m_s.balance(m_t.sender()) < totalCost)
             {
                 LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = "
-                                  << m_s.getGas() << " * " << m_s.getGasPrice() << " + "
+                                  << m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) 
+					              << " * " << m_s.getGasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.balance(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
@@ -492,9 +496,14 @@ bool Executive::execute()
     }
     assert(m_s.getGas() >= (u256)m_baseGasRequired);
     //assert(m_t.gas() >= (u256)m_baseGasRequired);
-    if (m_t.isCreation())
-        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+	testlog << "m_s.getGas():" << m_s.getGas() << " m_baseGasRequired:" << m_baseGasRequired;
+	if(m_t.isCreation())
+	{
+		u256 _gas = m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number());
+		return create(m_t.sender(), m_t.value(), m_s.getGasPrice(), _gas - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+	}
+		//return create(m_t.sender(), m_t.value(), m_t.gasPrice(), 0, &m_t.data(), m_t.sender());
+	    
     else
     {
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
@@ -644,6 +653,7 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
     u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
+	testlog << " data:" << _init.toBytes();
     if (_sender != MaxAddress ||
         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);
