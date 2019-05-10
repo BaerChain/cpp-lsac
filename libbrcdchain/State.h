@@ -7,6 +7,7 @@
 #include "TransactionReceipt.h"
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
+#include <libbrccore/SealEngine.h>
 #include <libbrcdchain/CodeSizeCache.h>
 #include <libbrccore/SealEngine.h>
 #include <libbvm/ExtVMFace.h>
@@ -337,7 +338,6 @@ public:
     //计算每笔交易所需要扣除的手续费
     u256 transactionForCookie(uint8_t _type);
 
-
     u256 getGas() { return m_gasNum; }
     u256 getGasPrice() {return m_gasPriceValue;}
     u256 getModifyValue(uint8_t _type)
@@ -350,11 +350,6 @@ public:
 	void systemPendingorder(int64_t _time);
 
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
-
-	u256 getContractGas(Transaction _t, SealEngineFace const& _s, u256 _blockNum)
-	{
-		return _t.baseGasRequired(_s.brcSchedule(_blockNum));
-	}
 
 private:
     u256 m_gasNum = 31000;

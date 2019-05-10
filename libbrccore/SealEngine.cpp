@@ -82,13 +82,13 @@ void SealEngineFace::verify(Strictness _s, BlockHeader const& _bi, BlockHeader c
                         << errinfo_extraData(_bi.extraData()));
         }
 
-        u256 const& daoHardfork = chainParams().daoHardforkBlock;
-        if (daoHardfork != 0 && daoHardfork + 9 >= daoHardfork && _bi.number() >= daoHardfork &&
-                _bi.number() <= daoHardfork + 9)
-            if (_bi.extraData() != fromHex("0x64616f2d686172642d666f726b"))
-                BOOST_THROW_EXCEPTION(
-                            ExtraDataIncorrect()
-                            << errinfo_comment("Received block from the wrong fork (invalid extradata)."));
+//        u256 const& daoHardfork = chainParams().daoHardforkBlock;
+//        if (daoHardfork != 0 && daoHardfork + 9 >= daoHardfork && _bi.number() >= daoHardfork &&
+//                _bi.number() <= daoHardfork + 9)
+//            if (_bi.extraData() != fromHex("0x64616f2d686172642d666f726b"))
+//                BOOST_THROW_EXCEPTION(
+//                            ExtraDataIncorrect()
+//                            << errinfo_comment("Received block from the wrong fork (invalid extradata)."));
     }
 
     if (_parent)

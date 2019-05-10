@@ -194,8 +194,8 @@ Executive::Executive(
 u256 Executive::gasUsed() const
 {
 	cerror << " m_s.getGas() : " << m_s.getGas() << "   m_gas : " << m_gas;
-	return m_s.getGas() - m_gas;
-	//return m_t.gas() - m_gas;
+//	return m_s.getGas() - m_gas;
+	return m_t.gas() - m_gas;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -244,15 +244,16 @@ void Executive::initialize(Transaction const& _transaction)
         }
 
         // Avoid unaffordable transactions.
-        //bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
+        bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
         if (!m_t.isVoteTranction())
         {
-            bigint totalCost =
-                m_t.value() + (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
+			bigint totalCost = (bigint)m_t.value() + gasCost;
+
             if (m_s.balance(m_t.sender()) < totalCost)
             {
-                LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = "
-                                  << m_s.getGas() << " * " << m_s.getGasPrice() << " + "
+				LOG(m_execLogger) << "Not enough cash: Require > " << "totalCost " << " = "
+					<< totalCost << "  m_t.gas() = " << m_t.gas()
+					              << " * m_t.gasPrice()" << m_t.gasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.balance(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
@@ -263,7 +264,6 @@ void Executive::initialize(Transaction const& _transaction)
         }
         else
         {
-            bigint totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
             m_callParameters_v.clear();
             RLP _r(m_t.data());
             std::vector<bytes> _ops = _r.toVector<bytes>();
@@ -290,24 +290,23 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::vote_operation _vote_op = transationTool::vote_operation(val);
                     size_t _tickets = 0;
-					LOG(m_execLogger) << BrcYellow " init transation _from:" << _vote_op.m_from
-						<< " _to:"<<_vote_op.m_to << " _vote_type:" << (size_t)_vote_op.m_vote_type
-						<< " _value:" << _vote_op.m_vote_numbers << BrcReset;
-                    // bigint totalCost = gasCost;
+                    LOG(m_execLogger) << BrcYellow " init transation _from:" << _vote_op.m_from
+                                      << " _to:" << _vote_op.m_to
+                                      << " _vote_type:" << (size_t)_vote_op.m_vote_type
+                                      << " _value:" << _vote_op.m_vote_numbers << BrcReset;
+                    bigint totalCost = gasCost;
                     if (_vote_op.m_vote_type == 1)
                     {
                         //买票 要验证 买票前
                         _tickets = _vote_op.m_vote_numbers;
                     }
-                    //totalCost += (bigint)_tickets * u256(BALLOTPRICE);
-                    totalCost = (bigint)m_s.transactionForCookie(transationTool::vote);
+                    totalCost += (bigint)_tickets * u256(BALLOTPRICE);
 					bigint _brc = (bigint)_tickets * u256(BALLOTPRICE);
                     if (m_s.balance(m_t.sender()) < (totalCost) || m_s.BRC(m_t.sender()) < _brc)
                     {
                         LOG(m_execLogger)
-                            << "Not enough cash: Require > " << totalCost << " = (" << m_s.getGas()
-                            << " + " << m_s.getModifyValue(transationTool::vote) 
-                            << " ) * " << m_s.getGasPrice() << " + " << m_t.value() << " Got"
+                            << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                            << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                             << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
                         m_excepted = TransactionException::NotEnoughCash;
                         BOOST_THROW_EXCEPTION(
@@ -339,15 +338,15 @@ void Executive::initialize(Transaction const& _transaction)
                 break;
                 case transationTool::brcTranscation:
                 {
-                    totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
+					bigint totalCost = gasCost;
                     cwarn << " totalCost:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
-                            << "Not enough cash: Require > " << totalCost << " = " << m_s.getGas()
-                            << " * " << m_s.getGasPrice() << " + " << m_t.value() << " Got"
+                            << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                            << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                             << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
                         m_excepted = TransactionException::NotEnoughCash;
                         BOOST_THROW_EXCEPTION(
@@ -384,14 +383,12 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
-                    totalCost = (bigint)m_s.transactionForCookie(transationTool::pendingOrder);
-					
+					bigint totalCost = gasCost;
                     if (m_s.balance(m_t.sender()) < totalCost)
                     { 
                         LOG(m_execLogger)
-                            << "Not enough cash: Require > " << totalCost << " = ( " << m_s.getGas()
-                            << " + " << m_s.getModifyValue(transationTool::pendingOrder)
-                            << " ) * " << m_s.getGasPrice() << " + " << m_t.value() << " Got"
+                            << "Not enough cash: Require > " << totalCost << " = ( " << m_t.gas()
+                            << " ) * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                             << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
                         m_excepted = TransactionException::NotEnoughCash;
                         BOOST_THROW_EXCEPTION(
@@ -433,14 +430,12 @@ void Executive::initialize(Transaction const& _transaction)
                 {
 					transationTool::cancelPendingorder_operation  _cancel_op =
                         transationTool::cancelPendingorder_operation(val);
-                    totalCost =
-                        (bigint)m_s.transactionForCookie(transationTool::cancelPendingOrder);
+					bigint totalCost = gasCost;
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
-                            << "Not enough cash: Require > " << totalCost << " = (" << m_s.getGas()
-                            << " + " << m_s.getModifyValue(transationTool::cancelPendingOrder)
-                            << " ) * " << m_s.getGasPrice() << " + " << m_t.value() << " Got"
+                            << "Not enough cash: Require > " << totalCost << " = (" << m_t.gas()
+                            << " ) * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                             << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
                         m_excepted = TransactionException::NotEnoughCash;
                         BOOST_THROW_EXCEPTION(
@@ -488,23 +483,20 @@ bool Executive::execute()
         cwarn << "Executive _gas: " << _gas;
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
-        m_s.subBalance(_addr, _gas);
-    }
-    assert(m_s.getGas() >= (u256)m_baseGasRequired);
-    //assert(m_t.gas() >= (u256)m_baseGasRequired);
-    if (m_t.isCreation())
-        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
-    else
-    {
-        return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
-            bytesConstRef(&m_t.data()), m_s.getGas() - (u256)m_baseGasRequired);
-		//return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-  //          bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
+		m_needRefundGas += _gas - (u256)m_baseGasRequired * m_t.gasPrice();
     }
 
-    /*else
-        return call(m_callParameters, m_t.gasPrice(), m_t.sender());*/
+    assert(m_t.gas() >= (u256)m_baseGasRequired);
+    if (m_t.isCreation())
+        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
+            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+    else
+    {
+        assert(m_s.getGas() >= (u256)m_baseGasRequired);
+        return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
+            bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
+
+    }
 }
 
 bool Executive::call(Address const& _receiveAddress, Address const& _senderAddress,
@@ -644,6 +636,7 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
     u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
+	testlog << " data:" << _init.toBytes();
     if (_sender != MaxAddress ||
         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);
@@ -656,6 +649,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
+    cwarn << "m_gas : " << m_gas;
     bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
     if (accountAlreadyExist)
     {
@@ -709,6 +703,7 @@ OnOpFunc Executive::simpleTrace()
 
 bool Executive::go(OnOpFunc const& _onOp)
 {
+    bool success = false;
     if (m_ext)
     {
 #if BRC_TIMED_EXECUTIONS
@@ -720,6 +715,7 @@ bool Executive::go(OnOpFunc const& _onOp)
             auto vm = VMFactory::create();
             if (m_isCreation)
             {
+                cwarn << "exe gas : " << m_gas ;
                 auto out = vm->exec(m_gas, *m_ext, _onOp);
                 if (m_res)
                 {
@@ -749,8 +745,11 @@ bool Executive::go(OnOpFunc const& _onOp)
                     m_res->output = out.toVector();  // copy output to execution result
                 m_s.setCode(m_ext->myAddress, out.toVector());
             }
-            else
+            else{
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
+
+            }
+            success = true;
         }
         catch (RevertInstruction& _e)
         {
@@ -800,7 +799,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 #endif
     }
-    return true;
+    return success;
 }
 
 bool Executive::finalize()
@@ -818,8 +817,9 @@ bool Executive::finalize()
 
     if (m_t)
     {
-		m_s.addBalance(m_envInfo.author(), m_totalGas);
-		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas);
+		m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+		m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
+		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
         //u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
