@@ -341,7 +341,8 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
                     cwarn << " totalCost:" << totalCost;
-                    transationTool::transcation_operation _transcation_op =  transationTool::transcation_operation(val);
+                    transationTool::transcation_operation _transcation_op =
+                        transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -493,7 +494,7 @@ bool Executive::execute()
     //assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+            m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
     else
     {
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
