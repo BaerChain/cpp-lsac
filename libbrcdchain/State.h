@@ -8,6 +8,7 @@
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrcdchain/CodeSizeCache.h>
+#include <libbrccore/SealEngine.h>
 #include <libbvm/ExtVMFace.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
@@ -349,6 +350,11 @@ public:
 	void systemPendingorder(int64_t _time);
 
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
+
+	u256 getContractGas(Transaction _t, SealEngineFace const& _s, u256 _blockNum)
+	{
+		return _t.baseGasRequired(_s.brcSchedule(_blockNum));
+	}
 
 private:
     u256 m_gasNum = 31000;
