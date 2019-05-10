@@ -194,8 +194,8 @@ Executive::Executive(
 u256 Executive::gasUsed() const
 {
 	cerror << " m_s.getGas() : " << m_s.getGas() << "   m_gas : " << m_gas;
-	return m_s.getGas() - m_gas;
-	//return m_t.gas() - m_gas;
+	//return m_s.getGas() - m_gas;
+	return m_t.gas() - m_gas;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -499,8 +499,10 @@ bool Executive::execute()
 	testlog << "m_s.getGas():" << m_s.getGas() << " m_baseGasRequired:" << m_baseGasRequired;
 	if(m_t.isCreation())
 	{
+		testlog << " m_t.gas():" << m_t.gas() << " m_baseGasRequired:" << m_baseGasRequired;
 		u256 _gas = m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number());
-		return create(m_t.sender(), m_t.value(), m_s.getGasPrice(), _gas - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+		//return create(m_t.sender(), m_t.value(), m_s.getGasPrice(), _gas - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
 	}
 		//return create(m_t.sender(), m_t.value(), m_t.gasPrice(), 0, &m_t.data(), m_t.sender());
 	    
@@ -761,6 +763,8 @@ bool Executive::go(OnOpFunc const& _onOp)
             }
             else
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
+            
+			testlog <<BrcYellow "out::" << m_output.toVector() <<BrcReset;
         }
         catch (RevertInstruction& _e)
         {
