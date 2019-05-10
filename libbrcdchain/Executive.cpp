@@ -194,8 +194,8 @@ Executive::Executive(
 u256 Executive::gasUsed() const
 {
 	cerror << " m_s.getGas() : " << m_s.getGas() << "   m_gas : " << m_gas;
-	return m_s.getGas() - m_gas;
-	//return m_t.gas() - m_gas;
+//	return m_s.getGas() - m_gas;
+	return m_t.gas() - m_gas;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
