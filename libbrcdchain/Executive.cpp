@@ -276,7 +276,7 @@ void Executive::initialize(Transaction const& _transaction)
 					<< " to:" << m_t.receiveAddress();
 				m_excepted = TransactionException::BadRLP;
 				BOOST_THROW_EXCEPTION( BadRLP()
-					<< RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
+					<< RequirementError((bigint)m_s.balance(m_t.sender()))
 					<< errinfo_comment(m_t.sender().hex()));
 			}
 
