@@ -247,12 +247,16 @@ void Executive::initialize(Transaction const& _transaction)
         //bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
         if (!m_t.isVoteTranction())
         {
-            bigint totalCost =
-                m_t.value() + (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
+			bigint totalCost =
+				(bigint)m_t.value() +
+				(bigint)m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) *
+				m_s.getGasPrice();
+
             if (m_s.balance(m_t.sender()) < totalCost)
             {
                 LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = "
-                                  << m_s.getGas() << " * " << m_s.getGasPrice() << " + "
+                                  << m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number()) 
+					              << " * " << m_s.getGasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.balance(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
@@ -341,7 +345,8 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     totalCost = (bigint)m_s.transactionForCookie(transationTool::brcTranscation);
                     cwarn << " totalCost:" << totalCost;
-                    transationTool::transcation_operation _transcation_op =  transationTool::transcation_operation(val);
+                    transationTool::transcation_operation _transcation_op =
+                        transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -489,16 +494,23 @@ bool Executive::execute()
 		m_totalGas += _gas;
         m_s.subBalance(_addr, _gas);
     }
-    assert(m_s.getGas() >= (u256)m_baseGasRequired);
-    if (m_t.isCreation())
-        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+
+    //assert(m_t.gas() >= (u256)m_baseGasRequired);
+	testlog << "m_s.getGas():" << m_t.gas() << " m_baseGasRequired:" << m_baseGasRequired;
+	if(m_t.isCreation())
+	{
+        u256 _gas = m_s.getContractGas(m_t, m_sealEngine, m_envInfo.number());
+        assert(_gas >= (u256)m_baseGasRequired);
+//		return create(m_t.sender(), m_t.value(), m_s.getGasPrice(), m_s.getGas(), &m_t.data(), m_t.sender());
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+	}
     else
     {
+        assert(m_s.getGas() >= (u256)m_baseGasRequired);
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_s.getGasPrice(),
             bytesConstRef(&m_t.data()), m_s.getGas() - (u256)m_baseGasRequired);
-    }
 
+    }
 }
 
 bool Executive::call(Address const& _receiveAddress, Address const& _senderAddress,
@@ -638,6 +650,7 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
     u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
+	testlog << " data:" << _init.toBytes();
     if (_sender != MaxAddress ||
         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);
@@ -650,6 +663,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
+    cwarn << "m_gas : " << m_gas;
     bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
     if (accountAlreadyExist)
     {
@@ -703,6 +717,7 @@ OnOpFunc Executive::simpleTrace()
 
 bool Executive::go(OnOpFunc const& _onOp)
 {
+    bool success = false;
     if (m_ext)
     {
 #if BRC_TIMED_EXECUTIONS
@@ -714,6 +729,7 @@ bool Executive::go(OnOpFunc const& _onOp)
             auto vm = VMFactory::create();
             if (m_isCreation)
             {
+                cwarn << "exe gas : " << m_gas ;
                 auto out = vm->exec(m_gas, *m_ext, _onOp);
                 if (m_res)
                 {
@@ -743,8 +759,11 @@ bool Executive::go(OnOpFunc const& _onOp)
                     m_res->output = out.toVector();  // copy output to execution result
                 m_s.setCode(m_ext->myAddress, out.toVector());
             }
-            else
+            else{
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
+
+            }
+            success = true;
         }
         catch (RevertInstruction& _e)
         {
@@ -794,7 +813,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 #endif
     }
-    return true;
+    return success;
 }
 
 bool Executive::finalize()
