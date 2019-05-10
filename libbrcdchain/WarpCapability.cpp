@@ -224,9 +224,7 @@ private:
         if (_r.itemCount() != 1)
             return false;
 
-        BlockHeader info(_r[0].data(), HeaderData);
-        return info.number() == m_daoForkBlock &&
-               info.extraData() == fromHex("0x64616f2d686172642d666f726b");
+        return false;
     }
 
     void downloadChunks()
