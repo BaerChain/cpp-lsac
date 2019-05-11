@@ -24,7 +24,7 @@ namespace fs = boost::filesystem;
 
 #define BRC_TIMED_ENACTMENTS 0
 
-static const unsigned c_maxSyncTransactions = 1500;
+//static const unsigned c_maxSyncTransactions = 1000;
 
 //namespace
 //{
@@ -294,14 +294,15 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 
     // TRANSACTIONS
     pair<TransactionReceipts, bool> ret;
-	size_t  transactionNum = m_transactions.size() < c_maxSyncTransactions ? c_maxSyncTransactions - m_transactions.size() : 0;
+	unsigned int max_num = _bc.getMaxSealTransaction();
+	size_t  transactionNum = m_transactions.size() < max_num ? max_num - m_transactions.size() : 0;
     if(!transactionNum)
 	{
 		ret.second = true;
 		return ret;
 	}
 	Transactions transactions = _tq.topTransactions(transactionNum, m_transactionSet);
-	ret.second = (transactions.size() == c_maxSyncTransactions);  // say there's more to the caller
+	ret.second = (transactions.size() == max_num);  // say there's more to the caller
 	// if we hit the limit
 
     assert(_bc.currentHash() == m_currentBlock.parentHash());
