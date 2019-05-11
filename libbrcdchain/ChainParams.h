@@ -14,6 +14,14 @@ namespace brc
 
 class SealEngineFace;
 
+struct ConnectPeers 
+{
+	ConnectPeers(Address const& _addr, Public const& _p, std::string const& _s) :
+		m_addr(_addr), m_node_id(_p), m_host(_s){}
+	Address m_addr;
+	Public  m_node_id;
+	std::string m_host;
+};
 struct ChainParams: public ChainOperationParams
 {
     ChainParams();
@@ -51,7 +59,11 @@ struct ChainParams: public ChainOperationParams
 	std::vector<Address> poaBlockAccount;
 
     std::map<Address, Secret>       m_miner_priv_keys;      ///key: address, value : private key , packed block and sign
-    std::map<Address, Secret> m_block_addr_keys;
+    std::map<Address, Secret>       m_block_addr_keys;
+
+	std::unordered_map <Public, std::string> m_mpeers;
+
+	std::vector<ConnectPeers> m_peers;
 
     h256 calculateStateRoot(bool _force = false) const;
 
@@ -62,8 +74,10 @@ struct ChainParams: public ChainOperationParams
     ChainParams loadConfig(std::string const& _json, h256 const& _stateRoot = {},
         const boost::filesystem::path& _configPath = {}) const;
 
-    void saveBlockAddress(std::string const& _json, h256 const& _stateRoot = {},
-        const boost::filesystem::path& _aSccountJsonPath = {});
+    void saveBlockAddress(std::string const& _json);
+
+	std::unordered_map <Public, std::string> getConnectPeers() const;
+	std::map<Address, Public> getPeersMessage() const;
 
 private:
     void populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state);

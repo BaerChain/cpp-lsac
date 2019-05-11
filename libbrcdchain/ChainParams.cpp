@@ -139,55 +139,74 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     return cp;
 }
 
-//ChainParams dev::brc::ChainParams::loadpoaValidators(
-//    std::string const& _json, h256 const& _stateRoot) const
-//{
-//    ChainParams cp(*this);
-//    try {
-//        js::mValue val;
-//        js::read_string(_json, val);
-//        js::mObject poa = val.get_obj();
-//        js::mArray poaArray = poa["validators"].get_array();
-//        js::mArray::const_iterator iter;
-//        for (auto val : poaArray)
-//        {
-//			auto address = val.get_str();
-//			cp.poaValidatorAccount.push_back(Address(address));
-//			//cwarn << "find address: " << address;
-//        }
-//        cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
-//    }catch (const std::exception &e){
-//        cerror <<  "init private-key error :"  << e.what() << std::endl;
-//    }catch(const boost::exception &e){
-//        cerror <<  "init private-key error :" << boost::diagnostic_information(e);
-//    }catch (...){
-//        cerror <<  "init private-key error :" << std::endl;
-//    }
-//
-//    return cp;
-//}
-
-void dev::brc::ChainParams::saveBlockAddress(std::string const& _json,
-    h256 const& _stateRoot, const boost::filesystem::path& _accountJsonPath)
+void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
 {
-    js::mValue val;
-    js::read_string_or_throw(_json, val);
-    js::mObject _obj = val.get_obj();
-    js::mArray private_key_array = _obj["account"].get_array();
-    //cwarn << "accout size is :" << poaArray.size();
-
-    js::mArray::const_iterator iter;
-    for (auto val : private_key_array)
-    {
-        auto _key = val.get_str();
-        auto secret = Secret(dev::crypto::from_base58(_key));
-        auto address = toAddress(toPublic(secret));
-        this->m_block_addr_keys.insert(pair<Address, Secret>(address, secret));
-
-    }
+    try 
+	{
+		js::mValue val;
+		js::read_string_or_throw(_json, val);
+		js::mObject _obj = val.get_obj();
+		if(_obj.count("private_kay"))
+		{
+			js::mArray private_key_array = _obj["private_kay"].get_array();
+			for(auto val : private_key_array)
+			{
+				auto _key = val.get_str();
+				auto secret = Secret(dev::crypto::from_base58(_key));
+				auto address = toAddress(toPublic(secret));
+				this->m_block_addr_keys.insert(pair<Address, Secret>(address, secret));
+			}
+		}
+		if(_obj.count("peer_host"))
+		{
+			for(auto const& val : _obj["peer_host"].get_array())
+			{
+				auto item = val.get_obj();
+				std::string _id = item["node_id"].get_str();
+				std::string _host = item["host"].get_str();
+				this->m_peers.push_back({ Address(), Public(_id), _host });
+			}
+		}
+	}
+    catch(Exception &ex)
+	{
+		cerror << "load accountJson error!" << ex.what();
+		cerror << "sample: \n" << R"E(
+            {
+            "private_kay":["8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve"]
+             "peer_host":[
+               {
+                "node_id":"",
+                "host":""
+               }
+            ]
+            }
+            )E";
+		throw;
+	}
+   
 }
 
+std::unordered_map<Public, std::string> dev::brc::ChainParams::getConnectPeers() const
+{
+	std::unordered_map<Public, std::string> _map;
+	for(auto const& val : m_peers)
+		_map.insert({ val.m_node_id, val.m_host });
 
+	return _map;
+}
+
+std::map<Address, Public> dev::brc::ChainParams::getPeersMessage() const
+{
+	std::map<Address, Public> _map;
+	for(auto const& val : m_peers)
+	{
+        if(val.m_addr == Address())
+            continue;
+		_map.insert({ val.m_addr, val.m_node_id });
+	}
+	return _map;
+}
 
 SealEngineFace* ChainParams::createSealEngine()
 {
