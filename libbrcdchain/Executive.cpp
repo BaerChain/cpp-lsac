@@ -275,7 +275,8 @@ void Executive::initialize(Transaction const& _transaction)
 					<< "m_t.sender:" << m_t.sender() << " * "
 					<< " to:" << m_t.receiveAddress();
 				m_excepted = TransactionException::BadRLP;
-				BOOST_THROW_EXCEPTION( BadRLP() << errinfo_comment(m_t.sender().hex()));
+				BOOST_THROW_EXCEPTION( BadRLP()
+					<< errinfo_comment(m_t.sender().hex()));
 			}
 
             for (auto val : _ops)
@@ -634,7 +635,6 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
     u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
-	testlog << " data:" << _init.toBytes();
     if (_sender != MaxAddress ||
         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);

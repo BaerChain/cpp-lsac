@@ -1422,6 +1422,14 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
     i = 0;
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
+
+        if(r[1].itemCount() > c_maxSyncTransactions)
+		{
+			BOOST_THROW_EXCEPTION(TooMuchTransaction() 
+								  << errinfo_transactionIndex(r[1].itemCount())
+								  << errinfo_block(_block.toBytes()));
+		}
+
         if(r[1].itemCount() > 300)
 		{
 			// more thread to do
