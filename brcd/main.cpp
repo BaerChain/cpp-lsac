@@ -671,18 +671,7 @@ int main(int argc, char **argv) {
         withExisting = WithExisting::Verify;
     if (vm.count("rescue"))
         withExisting = WithExisting::Rescue;
-    if (vm.count("address"))
-        try {
-            author = vm["address"].as<Address>();
-        }
-        catch (BadHexCharacter &) {
-            cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-            return -1;
-        }
-        catch (...) {
-            cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-            return -1;
-        }
+    
     if ((vm.count("import-secret"))) {
         Secret s(fromHex(vm["import-secret"].as<string>()));
         toImport.emplace_back(s);
@@ -758,6 +747,23 @@ int main(int argc, char **argv) {
 		}
 		catch(...) { }
 	}
+
+	if(vm.count("address"))
+		try
+	{
+		author = vm["address"].as<Address>();
+	}
+	catch(BadHexCharacter &)
+	{
+		cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+		return -1;
+	}
+	catch(...)
+	{
+		cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+		return -1;
+	}
+
 	if(argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account"))
 	{
 		AccountManager accountm;
