@@ -336,7 +336,6 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::brcTranscation:
                 {
 					bigint totalCost = gasCost;
-                    cwarn << " totalCost:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -477,7 +476,6 @@ bool Executive::execute()
     for (auto val : m_callParameters_v)
     {
 		u256 _gas = (u256)val.m_total_gas_cost;
-        cwarn << "Executive _gas: " << _gas;
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
 		m_needRefundGas += _gas - (u256)m_baseGasRequired * m_t.gasPrice();
