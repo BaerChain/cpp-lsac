@@ -858,10 +858,20 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
 
 void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
 {
+    std::pair< u256, u256> _pair = { _blockNum, _rewardNum};
 	if (auto a = account(_addr))
 	{
-		a->addBlockRewardRecoding(_blockNum, _rewardNum);
-	}
+		a->addBlockRewardRecoding(_pair);
+	}else{
+        createAccount(_addr, {requireAccountStartNonce(), 0});
+        auto _a = account(_addr);
+        _a->addBlockRewardRecoding(_pair);
+    }
+    
+    if(_rewardNum)
+    {
+       m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
+    }
 }
 
 void State::createContract(Address const& _address)
@@ -1066,6 +1076,10 @@ void State::rollback(size_t _savepoint) {
             case Change::FBalance:
                 account.addFBalance(0 - change.value);
                 break;
+            case Change::BlockReward:
+                account.addBlockRewardRecoding(change.blockReward);
+                break;
+            default:
                 break;
         }
         m_changeLog.pop_back();
@@ -1149,7 +1163,7 @@ u256 dev::brc::State::poll(Address const &_addr) const {
 
 void dev::brc::State::addPoll(Address const &_addr, u256 const &_value) {
     if (Account *a = account(_addr)) {
-        a->addBalance(_value);
+        a->addPoll(_value);
     } else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addPoll()"));
 
