@@ -560,7 +560,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     // Transfer brcer.
     if (!m_t.isVoteTranction())
-        m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    {
+        //m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    }
     else
     {
 		LOG(m_execLogger) << BrcYellow " start to dell vote _p.senderAddress:" << _p.senderAddress
