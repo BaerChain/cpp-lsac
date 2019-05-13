@@ -178,7 +178,7 @@ Account *State::account(Address const &_addr) {
 	for (size_t k = 1; k <= num; k++)
 	{
 		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
-		_blockReward.insert(_blockpair);
+        _blockReward.insert(_blockpair);
 	}
 
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
@@ -1130,7 +1130,6 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
         EnvInfo envInfo(_block.info(), _lastHashes, gasUsed);
 
         Executive e(*this, envInfo, _sealEngine);
-		cerror << "executeBlockTransactions  executeTransaction";
         executeTransaction(e, _block.pending()[i], OnOpFunc());
 
         gasUsed += e.gasUsed();
@@ -1306,7 +1305,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };
 
-    cerror << m_exdb.check_version(false);
 	try
 	{
 		m_exdb.insert_operation(_v, false, true);
@@ -1319,7 +1317,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	{
 		exit(1);
 	}
-	cerror << m_exdb.check_version(false);
 	m_exdb.commit(1);
 	cerror << m_exdb.check_version(false);
 }

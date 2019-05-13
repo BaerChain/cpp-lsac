@@ -128,7 +128,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3; }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0; }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -276,22 +276,8 @@ public:
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
 
 
-	void addBlockRewardRecoding(std::pair<u256, u256> _pair)
-	{
-        auto ret = m_BlockReward.find(_pair.first);
-        if(ret == m_BlockReward.end())
-        {
-            if(_pair.second)
-                m_BlockReward.insert(_pair);
-            return;
-        }
-        if(ret->second + _pair.second > 0)
-            ret->second += _pair.second;
-        else
-            m_BlockReward.erase(ret);
-        changed();
-	}
-    
+	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
+
 	void setBlockReward(std::unordered_map<u256, u256> const& _blockReward) { m_BlockReward.clear(); m_BlockReward.insert(_blockReward.begin(), _blockReward.end()); }
 	std::unordered_map<u256, u256> const& blockReward() const { return m_BlockReward; }
 

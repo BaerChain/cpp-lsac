@@ -811,10 +811,8 @@ bool Executive::finalize()
 
     if (m_t)
     {
-        cerror << "m_totalGas - m_needRefundGas : " << m_totalGas << " " << m_needRefundGas;
 		m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-		m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
-        cerror << "m_envInfo.author()" << toJS(m_envInfo.author()); 
+		//m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
 		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
