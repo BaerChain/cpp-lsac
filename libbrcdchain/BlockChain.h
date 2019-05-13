@@ -310,6 +310,8 @@ public:
     /// Change the chain start block.
     void setChainStartBlockNumber(unsigned _number);
 
+	unsigned int getMaxSealTransaction() const { return c_maxSyncTransactions; }
+
 private:
     static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
@@ -412,6 +414,8 @@ private:
     std::function<void(BlockHeader const&)> m_onBlockImport;                                        ///< Called if we have imported a new block into the db
 
     boost::filesystem::path m_dbPath;
+
+	static const unsigned c_maxSyncTransactions = 1000;
 
     mutable Logger m_logger{createLogger(VerbosityDebug, "chain")};
     mutable Logger m_loggerDetail{createLogger(VerbosityTrace, "chain")};

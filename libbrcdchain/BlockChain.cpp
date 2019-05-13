@@ -1337,8 +1337,7 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
     Block ret(*this, _db, _exdb, BaseState::Empty);
     if (!_db.exists(r)) {
         ret.noteChain(*this);
-        dev::brc::commit(m_params.genesisState,
-                         ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
+        dev::brc::commit(m_params.genesisState, ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
 		ret.mutableState().systemPendingorder(ret.info().timestamp());
 		ret.mutableState().db().commit();
 
@@ -1350,8 +1349,6 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
-
-
 
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
@@ -1422,6 +1419,14 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
     i = 0;
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
+
+        if(r[1].itemCount() > c_maxSyncTransactions)
+		{
+			BOOST_THROW_EXCEPTION(TooMuchTransaction() 
+								  << errinfo_transactionIndex(r[1].itemCount())
+								  << errinfo_block(_block.toBytes()));
+		}
+
         if(r[1].itemCount() > 300)
 		{
 			// more thread to do

@@ -671,18 +671,7 @@ int main(int argc, char **argv) {
         withExisting = WithExisting::Verify;
     if (vm.count("rescue"))
         withExisting = WithExisting::Rescue;
-    if (vm.count("address"))
-        try {
-            author = vm["address"].as<Address>();
-        }
-        catch (BadHexCharacter &) {
-            cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-            return -1;
-        }
-        catch (...) {
-            cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-            return -1;
-        }
+    
     if ((vm.count("import-secret"))) {
         Secret s(fromHex(vm["import-secret"].as<string>()));
         toImport.emplace_back(s);
@@ -720,14 +709,14 @@ int main(int argc, char **argv) {
     {
         try
         {
-            chainParams.saveBlockAddress(accountJSON, {}, accountPath);
+            chainParams.saveBlockAddress(accountJSON);
             //ctrace << "saveBlockAddress success!";
             chainAccountJsonIsSet = true;
         }
         catch (...)
         {
             cerr << "provided accountJson is not well formatted\n";
-            cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
+            //cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
             return 0;
         }
     }
@@ -758,6 +747,23 @@ int main(int argc, char **argv) {
 		}
 		catch(...) { }
 	}
+
+	if(vm.count("address"))
+		try
+	{
+		author = vm["address"].as<Address>();
+	}
+	catch(BadHexCharacter &)
+	{
+		cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+		return -1;
+	}
+	catch(...)
+	{
+		cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+		return -1;
+	}
+
 	if(argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account"))
 	{
 		AccountManager accountm;
@@ -1125,9 +1131,18 @@ int main(int argc, char **argv) {
         else
             web3.addNode(p.first, p.second.first);
 
-	if (bootstrap && privateChain.empty())
-		for (auto const &i: Host::pocHosts())
+	if(bootstrap && privateChain.empty())
+	{
+		for(auto const &i : Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
+
+		for(auto const&i : chainParams.getConnectPeers())
+		{
+			web3.requirePeer(i.first, i.second);
+			cnote << " connnect:" << i.first << " " << i.second;
+		}
+	}
+
     if (!remoteHost.empty())
         web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));
 
