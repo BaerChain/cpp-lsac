@@ -193,8 +193,6 @@ Executive::Executive(
 
 u256 Executive::gasUsed() const
 {
-	cerror << " m_s.getGas() : " << m_s.getGas() << "   m_gas : " << m_gas;
-//	return m_s.getGas() - m_gas;
 	return m_t.gas() - m_gas;
 }
 
@@ -338,7 +336,6 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::brcTranscation:
                 {
 					bigint totalCost = gasCost;
-                    cwarn << " totalCost:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -479,7 +476,6 @@ bool Executive::execute()
     for (auto val : m_callParameters_v)
     {
 		u256 _gas = (u256)val.m_total_gas_cost;
-        cwarn << "Executive _gas: " << _gas;
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
 		m_needRefundGas += _gas - (u256)m_baseGasRequired * m_t.gasPrice();
@@ -635,7 +631,6 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
     u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
-	testlog << " data:" << _init.toBytes();
     if (_sender != MaxAddress ||
         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);
