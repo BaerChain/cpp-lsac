@@ -110,7 +110,8 @@ struct Change
         SysVoteData,
         BRC,
         FBRC,               // = 12
-        FBalance
+        FBalance,
+        BlockReward
     };
 
     Kind kind;        ///< The kind of the change.
@@ -120,6 +121,7 @@ struct Change
     bytes oldCode;    ///< Code overwritten by CREATE, empty except in case of address collision.
     std::pair<Address, u256> vote;         // 投票事件
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
+    std::pair<u256, u256> blockReward;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -149,6 +151,10 @@ struct Change
     Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(Vote), address(_addr)
     {
         sysVotedate = std::make_pair(_sysVote.first, _sysVote.second);
+    }
+    Change(Address const& _addr, std::pair<u256, u256> _pair) : kind(BlockReward), address(_addr)
+    {
+        blockReward = std::make_pair(_pair.first, _pair.second);
     }
 };
 

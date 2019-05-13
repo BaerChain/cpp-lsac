@@ -276,12 +276,22 @@ public:
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
 
 
-	void addBlockRewardRecoding(u256 _blockNum, u256 _rewardNum)
+	void addBlockRewardRecoding(std::pair<u256, u256> _pair)
 	{
-		u256 _mapNum = m_BlockReward[_blockNum];
-		_mapNum += _rewardNum;
-		m_BlockReward[_blockNum] = _mapNum;
+        auto ret = m_BlockReward.find(_pair.first);
+        if(ret == m_BlockReward.end())
+        {
+            if(_pair.second)
+                m_BlockReward.insert(_pair);
+            return;
+        }
+        if(ret->second + _pair.second > 0)
+            ret->second += _pair.second;
+        else
+            m_BlockReward.erase(ret);
+        changed();
 	}
+    
 	void setBlockReward(std::unordered_map<u256, u256> const& _blockReward) { m_BlockReward.clear(); m_BlockReward.insert(_blockReward.begin(), _blockReward.end()); }
 	std::unordered_map<u256, u256> const& blockReward() const { return m_BlockReward; }
 
