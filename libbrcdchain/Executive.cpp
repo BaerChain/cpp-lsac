@@ -204,7 +204,6 @@ void Executive::accrueSubState(SubState& _parentContext)
 
 void Executive::initialize(Transaction const& _transaction)
 {
-    LOG(m_execLogger) << "debug001 init";
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
     try
@@ -400,7 +399,7 @@ void Executive::initialize(Transaction const& _transaction)
                         transationTool::pendingorder_opearaion(val);
 					bigint totalCost = gasCost;
                     if (m_s.balance(m_t.sender()) < totalCost)
-                    { 
+                    {
                         LOG(m_execLogger)
                             << "Not enough cash: Require > " << totalCost << " = ( " << m_t.gas()
                             << " ) * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
@@ -498,7 +497,6 @@ bool Executive::execute()
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
 		m_needRefundGas += _gas - (u256)m_baseGasRequired * m_t.gasPrice();
-		cwarn << "m_totalGas " << m_totalGas  << "  m_needRefundGas " << m_needRefundGas << " m_baseGasRequired:" << m_baseGasRequired ;
     }
 
     assert(m_t.gas() >= (u256)m_baseGasRequired);
@@ -581,9 +579,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     // Transfer brcer.
     if (!m_t.isVoteTranction())
     {
-//        m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        cwarn << "transfer BRC from : " << toHex(_p.senderAddress) << " to " << toHex(_p.receiveAddress) << " value " << _p.valueTransfer;
-          m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+       m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
     }
     else
     {
