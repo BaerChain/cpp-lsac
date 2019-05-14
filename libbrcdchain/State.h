@@ -391,8 +391,8 @@ public:
     {
 
 		//TO DO : Do not allow ordinary users to transfer money
-        //subBalance(_from, _value);
-        //addBalance(_to, _value);
+        subBalance(_from, _value);
+        addBalance(_to, _value);
     }
 
     /// Get the root of the storage of an account.

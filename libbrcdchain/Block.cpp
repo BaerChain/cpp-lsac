@@ -655,23 +655,23 @@ void Block::updateBlockhashContract() {
     u256 const &blockNumber = info().number();
 
     u256 const &forkBlock = m_sealEngine->chainParams().experimentalForkBlock;
-    if (blockNumber == forkBlock) {
-        m_state.createContract(c_blockhashContractAddress);
-        m_state.setCode(c_blockhashContractAddress, bytes(c_blockhashContractCode));
-        m_state.commit(State::CommitBehaviour::KeepEmptyAccounts);
-    }
+//    if (blockNumber == forkBlock) {
+//        m_state.createContract(c_blockhashContractAddress);
+//        m_state.setCode(c_blockhashContractAddress, bytes(c_blockhashContractCode));
+//        m_state.commit(State::CommitBehaviour::KeepEmptyAccounts);
+//    }
 
-    if (blockNumber >= forkBlock) {
-        DummyLastBlockHashes lastBlockHashes;  // assuming blockhash contract won't need BLOCKHASH
-        // itself
-        Executive e(*this, lastBlockHashes);
-        h256 const parentHash = m_previousBlock.hash();
-        if (!e.call(c_blockhashContractAddress, SystemAddress, 0, 0, parentHash.ref(), 1000000))
-            e.go();
-        e.finalize();
-
-        m_state.commit(State::CommitBehaviour::RemoveEmptyAccounts);
-    }
+//    if (blockNumber >= forkBlock) {
+//        DummyLastBlockHashes lastBlockHashes;  // assuming blockhash contract won't need BLOCKHASH
+//        // itself
+//        Executive e(*this, lastBlockHashes);
+//        h256 const parentHash = m_previousBlock.hash();
+//        if (!e.call(c_blockhashContractAddress, SystemAddress, 0, 0, parentHash.ref(), 1000000))
+//            e.go();
+//        e.finalize();
+//
+//        m_state.commit(State::CommitBehaviour::RemoveEmptyAccounts);
+//    }
 }
 
 void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_t _sealTime /*= 0*/) {
