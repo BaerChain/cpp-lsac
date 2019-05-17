@@ -594,9 +594,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                               << " _from:" << p.senderAddress << " _to:" << p.receiveAddress
                               << " _value:" << p.valueTransfer;
 			if (val.m_method == BuyVotes)
-				m_s.transferBallotBuy(p.senderAddress, p.receiveAddress, p.valueTransfer);
+				m_s.transferBallotBuy(p.senderAddress, p.valueTransfer);
 			else if (val.m_method == SellVotes)
-				m_s.transferBallotSell(p.senderAddress, p.receiveAddress, _p.valueTransfer);
+				m_s.transferBallotSell(p.senderAddress, p.valueTransfer);
 			else if (val.m_method == Executive::LoginCandidate)
 				m_vote.voteLoginCandidate(p.senderAddress);
 			else if (val.m_method == Executive::LogOutCandidate)

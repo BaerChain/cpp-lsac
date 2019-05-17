@@ -377,8 +377,8 @@ private:
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
 
 public:
-    void transferBallotBuy(Address const& _from, Address const& _to, u256 const& _value);
-    void transferBallotSell(Address const& _from, Address const& _to, u256 const& _value);
+    void transferBallotBuy(Address const& _from, u256 const& _value);
+    void transferBallotSell(Address const& _from, u256 const& _value);
     // void transferBallot(Address const& _from, Address const& _to, u256 const& _value) {
     // subBallot(_from, _value); addBallot(_to, _value); }
     /**

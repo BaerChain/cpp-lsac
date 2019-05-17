@@ -14,6 +14,7 @@ namespace brc
 const Address SysElectorAddress  { "0x000000000000456c6563746f7241646472657373" };
 const Address SysVarlitorAddress { "000000000067656e657369735661726c69746f72" };
 const Address SysCanlitorAddress { "0000000067656e6573697343616e646964617465" };
+const Address SystemVoteBrcAddress {"000000766f746542726353797374656d41646472"};
 
 //投票类型
 enum VoteType
