@@ -37,12 +37,12 @@ u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
 
 void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 {
-    auto ret = m_voteDate.find(_votePair.first);
-    if(ret == m_voteDate.end())
+    auto ret = m_voteData.find(_votePair.first);
+    if(ret == m_voteData.end())
     {
         if(_votePair.second)
         {
-            m_voteDate.insert(_votePair);
+            m_voteData.insert(_votePair);
             changed();
             return;
         }
@@ -50,7 +50,7 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
     if(ret->second + _votePair.second > 0)
         ret->second += _votePair.second;
     else
-        m_voteDate.erase(ret);
+        m_voteData.erase(ret);
 	changed();
 }
 
@@ -65,13 +65,13 @@ void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
 void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {
 	// 该接口 保留票数为0的数据  当是成为或者撤销竞选人是否，_tickets 为0
-	auto ret = m_voteDate.find(_otherAddr);
-	if(_isLogin && ret == m_voteDate.end())
+	auto ret = m_voteData.find(_otherAddr);
+	if(_isLogin && ret == m_voteData.end())
 	{
-		m_voteDate[_otherAddr] = _tickets;
+		m_voteData[_otherAddr] = _tickets;
 	}
-	else if(!_isLogin && ret != m_voteDate.end())
-		m_voteDate.erase(ret);
+	else if(!_isLogin && ret != m_voteData.end())
+		m_voteData.erase(ret);
 	changed();
 }
 
