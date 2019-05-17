@@ -204,7 +204,6 @@ void Executive::accrueSubState(SubState& _parentContext)
 
 void Executive::initialize(Transaction const& _transaction)
 {
-    LOG(m_execLogger) << "debug001 init";
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
     try
@@ -245,20 +244,39 @@ void Executive::initialize(Transaction const& _transaction)
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
         if (!m_t.isVoteTranction())
         {
-			bigint totalCost = (bigint)m_t.value() + gasCost;
+			bigint totalCost = gasCost;
 
-            if (m_s.balance(m_t.sender()) < totalCost)
+            if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
             {
 				LOG(m_execLogger) << "Not enough cash: Require > " << "totalCost " << " = "
 					<< totalCost << "  m_t.gas() = " << m_t.gas()
 					              << " * m_t.gasPrice()" << m_t.gasPrice() << " + "
-                                  << m_t.value() << " Got" << m_s.balance(m_t.sender())
+                                  << m_t.value() << " Got" << m_s.BRC(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
-                BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost,
-                                                             (bigint)m_s.balance(m_t.sender()))
+                BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)m_t.value(),
+                                                             (bigint)m_s.BRC(m_t.sender()))
                                                       << errinfo_comment(m_t.sender().hex()));
             }
+            CallParameters param = CallParameters(m_t.sender(),
+                                    m_t.sender(),
+                                    m_t.to(),
+                                    m_t.value(),
+                                    m_t.value(),
+                                    m_t.gas(),
+                                    bytesConstRef(),
+                                    OnOpFunc()
+            );
+
+            m_callParameters_v.push_back(
+                    TransationParameters(Method::Other,
+                    param,
+                                         h256(0),
+                                         h256(0),
+                                         ex::order_token_type::BRC,
+                                         ex::order_buy_type::all_price,
+                                         m_t.gas() * m_t.gasPrice())
+                    );
         }
         else
         {
@@ -336,7 +354,6 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::brcTranscation:
                 {
 					bigint totalCost = gasCost;
-                    cwarn << " totalCost:" << totalCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -382,7 +399,7 @@ void Executive::initialize(Transaction const& _transaction)
                         transationTool::pendingorder_opearaion(val);
 					bigint totalCost = gasCost;
                     if (m_s.balance(m_t.sender()) < totalCost)
-                    { 
+                    {
                         LOG(m_execLogger)
                             << "Not enough cash: Require > " << totalCost << " = ( " << m_t.gas()
                             << " ) * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
@@ -477,7 +494,6 @@ bool Executive::execute()
     for (auto val : m_callParameters_v)
     {
 		u256 _gas = (u256)val.m_total_gas_cost;
-        cwarn << "Executive _gas: " << _gas;
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
 		m_needRefundGas += _gas - (u256)m_baseGasRequired * m_t.gasPrice();
@@ -562,7 +578,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     // Transfer brcer.
     if (!m_t.isVoteTranction())
-        m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    {
+       m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    }
     else
     {
 		LOG(m_execLogger) << BrcYellow " start to dell vote _p.senderAddress:" << _p.senderAddress
@@ -645,7 +663,6 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
-    cwarn << "m_gas : " << m_gas;
     bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
     if (accountAlreadyExist)
     {
@@ -659,7 +676,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
 
     // Transfer brcer before deploying the code. This will also create new
     // account if it does not exist yet.
-    m_s.transferBalance(_sender, m_newAddress, _endowment);
+    m_s.transferBRC(_sender, m_newAddress, _endowment);
 
     u256 newNonce = m_s.requireAccountStartNonce();
     if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
@@ -711,7 +728,6 @@ bool Executive::go(OnOpFunc const& _onOp)
             auto vm = VMFactory::create();
             if (m_isCreation)
             {
-                cwarn << "exe gas : " << m_gas ;
                 auto out = vm->exec(m_gas, *m_ext, _onOp);
                 if (m_res)
                 {
@@ -814,7 +830,7 @@ bool Executive::finalize()
     if (m_t)
     {
 		m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-		m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
+		//m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
 		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 

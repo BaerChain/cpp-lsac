@@ -178,7 +178,7 @@ Account *State::account(Address const &_addr) {
 	for (size_t k = 1; k <= num; k++)
 	{
 		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
-		_blockReward.insert(_blockpair);
+        _blockReward.insert(_blockpair);
 	}
 
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
@@ -858,10 +858,20 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
 
 void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
 {
+    std::pair< u256, u256> _pair = { _blockNum, _rewardNum};
 	if (auto a = account(_addr))
 	{
-		a->addBlockRewardRecoding(_blockNum, _rewardNum);
-	}
+		a->addBlockRewardRecoding(_pair);
+	}else{
+        createAccount(_addr, {requireAccountStartNonce(), 0});
+        auto _a = account(_addr);
+        _a->addBlockRewardRecoding(_pair);
+    }
+    
+    if(_rewardNum)
+    {
+       m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
+    }
 }
 
 void State::createContract(Address const& _address)
@@ -1066,6 +1076,10 @@ void State::rollback(size_t _savepoint) {
             case Change::FBalance:
                 account.addFBalance(0 - change.value);
                 break;
+            case Change::BlockReward:
+                account.addBlockRewardRecoding(change.blockReward);
+                break;
+            default:
                 break;
         }
         m_changeLog.pop_back();
@@ -1116,7 +1130,6 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
         EnvInfo envInfo(_block.info(), _lastHashes, gasUsed);
 
         Executive e(*this, envInfo, _sealEngine);
-		cerror << "executeBlockTransactions  executeTransaction";
         executeTransaction(e, _block.pending()[i], OnOpFunc());
 
         gasUsed += e.gasUsed();
@@ -1149,7 +1162,7 @@ u256 dev::brc::State::poll(Address const &_addr) const {
 
 void dev::brc::State::addPoll(Address const &_addr, u256 const &_value) {
     if (Account *a = account(_addr)) {
-        a->addBalance(_value);
+        a->addPoll(_value);
     } else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addPoll()"));
 
@@ -1292,7 +1305,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };
 
-    cerror << m_exdb.check_version(false);
 	try
 	{
 		m_exdb.insert_operation(_v, false, true);
@@ -1305,7 +1317,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	{
 		exit(1);
 	}
-	cerror << m_exdb.check_version(false);
 	m_exdb.commit(1);
 	cerror << m_exdb.check_version(false);
 }
