@@ -5,6 +5,7 @@
 #include <libdevcore/OverlayDB.h>
 #include <libbrccore/ChainOperationParams.h>
 #include <libbrccore/Precompiled.h>
+#include <libdevcore/Log.h>
 
 using namespace std;
 using namespace dev;
@@ -40,8 +41,11 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
     if(ret == m_voteDate.end())
     {
         if(_votePair.second)
+        {
             m_voteDate.insert(_votePair);
-        return;
+            changed();
+            return;
+        }
     }
     if(ret->second + _votePair.second > 0)
         ret->second += _votePair.second;
@@ -50,6 +54,13 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 	changed();
 }
 
+void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
+{
+    u256 _rewardNum = m_BlockReward[_pair.first];
+    _rewardNum += _pair.second;
+    m_BlockReward[_pair.first] = _rewardNum;
+    changed();
+}
 
 void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {

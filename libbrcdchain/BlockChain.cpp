@@ -1337,8 +1337,7 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
     Block ret(*this, _db, _exdb, BaseState::Empty);
     if (!_db.exists(r)) {
         ret.noteChain(*this);
-        dev::brc::commit(m_params.genesisState,
-                         ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
+        dev::brc::commit(m_params.genesisState, ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
 		ret.mutableState().systemPendingorder(ret.info().timestamp());
 		ret.mutableState().db().commit();
 
@@ -1352,8 +1351,6 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
-
-
 
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
