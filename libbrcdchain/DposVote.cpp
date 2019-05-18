@@ -33,7 +33,11 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				_ex_info = "not tickets to sell";
 				return false;
 			}
-
+            if((tickets * BALLOTPRICE) > (size_t)m_state.BRC(SystemVoteBrcAddress))
+			{
+				_ex_info = "cant't to sell vote";
+				return false;
+			}
 			return true;
 		}
 		break;

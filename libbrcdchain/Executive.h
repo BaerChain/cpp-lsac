@@ -222,8 +222,13 @@ private:
         ex::order_token_type m_pendingOrder_Token_Type;
         ex::order_buy_type m_pendingOrder_Buy_Type;
 		bigint m_total_gas_cost;
-        TransationParameters(Method _type, CallParameters _c, u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0), ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC, ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price,bigint _total_gas_cost = 0)
+        TransationParameters(Method _type,
+                CallParameters _c,
+                u256 _pendingOrderPrice = 0,
+            h256 _pendingOrderHash = h256(0),
+            ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC,
+            ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price,
+            bigint _total_gas_cost = 0)
           : m_method(_type),
             m_callParameters(_c),
             m_PendingOrderPrice(_pendingOrderPrice),
