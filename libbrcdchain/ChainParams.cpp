@@ -146,9 +146,9 @@ void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
 		js::mValue val;
 		js::read_string_or_throw(_json, val);
 		js::mObject _obj = val.get_obj();
-		if(_obj.count("private_kay"))
+		if(_obj.count("private_key"))
 		{
-			js::mArray private_key_array = _obj["private_kay"].get_array();
+			js::mArray private_key_array = _obj["private_key"].get_array();
 			for(auto val : private_key_array)
 			{
 				auto _key = val.get_str();
@@ -173,7 +173,7 @@ void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
 		cerror << "load accountJson error!" << ex.what();
 		cerror << "sample: \n" << R"E(
             {
-            "private_kay":["8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve"]
+            "private_key":["8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve"]
              "peer_host":[
                {
                 "node_id":"",
