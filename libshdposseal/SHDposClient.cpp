@@ -179,7 +179,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 			{
 				if(m_working.isSealed())
 				{
-					LOG(m_log ed to seal sealed block...";
+					LOG(m_logger) << "Tried to seal sealed block...";
 					return;
 				}
 				// TODO is that needed? we have "Generating seal on" below
