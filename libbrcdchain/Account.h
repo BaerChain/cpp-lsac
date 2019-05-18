@@ -113,7 +113,7 @@ public:
         m_ballot = 0;
 		m_assetInjectStatus = 0;
         m_arrears = 0;
-        m_voteDate.clear();
+        m_voteData.clear();
 		m_BlockReward.clear();
         changed();
     }
