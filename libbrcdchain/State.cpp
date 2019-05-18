@@ -189,7 +189,7 @@ Account *State::account(Address const &_addr) {
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
 								 Account::Unchanged, state[10].toInt<u256>(),
-                                                    state[11].toInt<u256>()));
+                                                    state[12].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
@@ -1133,6 +1133,7 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::Arrears:
                 account.addArrears(0 - change.value);
+                break;
             default:
                 break;
         }
