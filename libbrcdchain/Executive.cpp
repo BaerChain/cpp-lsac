@@ -380,7 +380,14 @@ void Executive::initialize(Transaction const& _transaction)
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
 					bigint totalCost = gasCost;
-                    if (m_s.balance(m_t.sender()) < totalCost)
+                    if(_pendingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
+                     _pendingorder_op.m_Pendingorder_type == ex::order_type::buy &&
+                     _pendingorder_op.m_Pendingorder_Token_type == ex::order_token_type::BRC &&
+                     m_s.balance(m_t.sender()) < totalCost)
+                     {
+                         m_pendingorderStatus = true;
+                     }
+                    else if (m_s.balance(m_t.sender()) < totalCost)
                     { 
                         LOG(m_execLogger)
                             << "Not enough cash: Require > " << totalCost << " = ( " << m_t.gas()
@@ -474,7 +481,7 @@ void Executive::initialize(Transaction const& _transaction)
 bool Executive::execute()
 {
     for (auto val : m_callParameters_v)
-    {
+    { 
 		u256 _gas = (u256)val.m_total_gas_cost;
         Address _addr = val.m_callParameters.senderAddress;
 		m_totalGas += _gas;
@@ -813,10 +820,19 @@ bool Executive::finalize()
 
     if (m_t)
     {
-		m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-		//m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
-		m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
-        // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
+        if(m_pendingorderStatus == true && m_s.balance(m_t.sender()) < m_totalGas - m_needRefundGas)
+        {
+            m_s.addArrears(m_t.sender(), m_totalGas - m_needRefundGas - m_s.balance(m_t.sender()));
+            m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_s.balance(m_t.sender()));    
+            m_s.setBalance(m_t.sender(), 0);
+        }else{
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+            m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+        }
+		// m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+		// //m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
+		// m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+        // // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
         //u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
         // m_s.addBalance(m_envInfo.author(), feesEarned);

@@ -268,6 +268,7 @@ private:
 	u256 m_needRefundGas = 0;
     u256 m_value = 0;
     u256 m_ballots = 0;
+    bool m_pendingorderStatus = false;
     Method m_method = Other;
     CallParameters m_callParameters;  // transation callParameters
     SealEngineFace const& m_sealEngine;
