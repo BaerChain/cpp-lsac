@@ -398,9 +398,9 @@ void Executive::initialize(Transaction const& _transaction)
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
 					bigint totalCost = gasCost;
-                    if(_pendingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
-                     _pendingorder_op.m_Pendingorder_type == ex::order_type::buy &&
-                     _pendingorder_op.m_Pendingorder_Token_type == ex::order_token_type::BRC &&
+                    if(_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
+                            _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
+                            _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::BRC &&
                      m_s.balance(m_t.sender()) < totalCost)
                      {
                          m_pendingorderStatus = true;

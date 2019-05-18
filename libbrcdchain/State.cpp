@@ -541,7 +541,7 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
     addFBalance(_addr, 0 - _value);
 }
 
-u256 State::arrears(Address const& _id)
+u256 State::arrears(Address const& _id) const
 {
     if(auto a = account(_id))
     {
