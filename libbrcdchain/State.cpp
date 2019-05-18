@@ -1131,6 +1131,8 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
+            case Change::Arrears:
+                account.addArrears(0 - change.value);
             default:
                 break;
         }
@@ -1485,17 +1487,17 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 
 
 void dev::brc::State::transferBallotBuy(
-        Address const &_from, Address const &_to, u256 const &_value) {
+        Address const &_from, u256 const &_value) {
     subBRC(_from, _value * BALLOTPRICE);
-    addBRC(_to, _value * BALLOTPRICE);
+    addBRC(SystemVoteBrcAddress, _value * BALLOTPRICE);
     addBallot(_from, _value);
 }
 
 void dev::brc::State::transferBallotSell(
-        Address const &_from, Address const &_to, u256 const &_value) {
+        Address const &_from, u256 const &_value) {
     subBallot(_from, _value);
     addBRC(_from, _value * BALLOTPRICE);
-    subBRC(_to, BALLOTPRICE);
+    subBRC(SystemVoteBrcAddress, _value * BALLOTPRICE );
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

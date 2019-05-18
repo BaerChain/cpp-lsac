@@ -382,8 +382,8 @@ private:
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
 
 public:
-    void transferBallotBuy(Address const& _from, Address const& _to, u256 const& _value);
-    void transferBallotSell(Address const& _from, Address const& _to, u256 const& _value);
+    void transferBallotBuy(Address const& _from, u256 const& _value);
+    void transferBallotSell(Address const& _from, u256 const& _value);
     // void transferBallot(Address const& _from, Address const& _to, u256 const& _value) {
     // subBallot(_from, _value); addBallot(_to, _value); }
     /**
@@ -396,8 +396,8 @@ public:
     {
 
 		//TO DO : Do not allow ordinary users to transfer money
-        //subBalance(_from, _value);
-        //addBalance(_to, _value);
+        subBalance(_from, _value);
+        addBalance(_to, _value);
     }
 
     /// Get the root of the storage of an account.
