@@ -111,7 +111,8 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward
+        BlockReward,
+        Arrears
     };
 
     Kind kind;        ///< The kind of the change.
@@ -297,6 +298,10 @@ public:
     u256 FBalance(Address const& _id) const;
     void addFBalance(Address const& _addr, u256 const& _value);
     void subFBalance(Address const& _addr, u256 const& _value);
+
+    u256 arrears(Address const& _id) const;
+    void addArrears(Address const& _addr, u256 const& _value);
+    void subArrears(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
     void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
