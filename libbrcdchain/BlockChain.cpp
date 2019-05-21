@@ -1340,10 +1340,6 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const&_
         dev::brc::commit(m_params.genesisState, ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
 		ret.mutableState().systemPendingorder(ret.info().timestamp());
 		ret.mutableState().db().commit();
-
-
-	    std:: cout << BrcYellow << "ret.mutableState().rootHash():" << ret.mutableState().rootHash() << "\n";
-		std::cout << "                genesisiBlock:" << r << "\n";
 		// have to use this db() since it's the one that has been altered with the above commit.
         if (ret.mutableState().rootHash() != r) {
             cwarn << "Hinted genesis block's state root hash is incorrect!";
