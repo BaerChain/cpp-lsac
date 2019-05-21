@@ -88,9 +88,7 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
             syncTransactionQueue();
 
         tick();
-
         rejigSealing();
-
         callQueuedFunctions();
 
         DEV_READ_GUARDED(x_working)
@@ -174,6 +172,13 @@ void dev::bacd::SHDposClient::rejigSealing()
 		{
 			m_wouldButShouldnot = false;
 
+            //  check the parent autor is true id SHDpod
+            //  if false : will reset the block current state example : time, blocl_num ...
+			if(!checkPreviousBlock(m_working.previousBlock()))
+			{
+			    //m_working.resetCurrent();  
+                //syncTransactionQueue();
+			}
 			//LOG(m_loggerDetail) << "Rejigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
 			{
@@ -284,4 +289,20 @@ void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
     if(ret != _varlitor.end())
 	    dpos()->dellImportBadBlock(*block);
 	badBlock(*block, _ex.what());
+}
+
+bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
+{
+	Address _pAddr = _ph.author();
+	if(_pAddr == Address())
+		return true;
+	std::vector<Address> const& creaters = dpos()->getCurrCreaters();
+	auto ret = find(creaters.begin(), creaters.end(), _pAddr);
+	if(ret == creaters.end())
+		return false;
+	ret = ret + 1 == creaters.end() ? creaters.begin()+1 : ret+1;
+	if(*ret != author())
+		return false;
+   
+	return true;
 }

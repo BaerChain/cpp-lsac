@@ -56,6 +56,11 @@ private:
 	/// Called when we have attempted to import a bad block.
    /// @warning May be called from any thread.
 	void importBadBlock(Exception& _ex) const;
+
+    /// check the block is follow SHDpos  in mine creater_time
+    /// @paramer _ph : the last block in chain
+	bool checkPreviousBlock(BlockHeader const& _ph) const;
+
 private:
     ChainParams                     m_params;          //配置
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
