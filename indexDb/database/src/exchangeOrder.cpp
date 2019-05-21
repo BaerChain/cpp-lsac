@@ -293,8 +293,6 @@ namespace dev {
                     }
                     ret.push_back(o);
                 }
-
-
                 if (!reset) {
                     session.push();
                 }
