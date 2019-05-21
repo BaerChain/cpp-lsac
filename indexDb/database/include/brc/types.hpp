@@ -15,7 +15,7 @@ namespace dev {
 
             };
 
-            enum class order_token_type : uint8_t {
+            enum class order_token_type : uint8_t { 
                 BRC = 0,
                 FUEL                   // => cook
             };

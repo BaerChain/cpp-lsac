@@ -79,6 +79,5 @@ int main(){
     create_contract();
 
 
-
     return 0;
 }
