@@ -130,7 +130,10 @@ namespace dev {
                                     member<order_object, order_object::id_type, &order_object::id>
                             >,
                             ordered_unique<tag<by_trx_id>,
-                                    member<order_object, h256, &order_object::trxid>
+                                    composite_key<order_object,
+                                            member<order_object, h256, &order_object::trxid>
+                                    >,
+                                    composite_key_compare<std::greater<h256>>
                             >,
                             ordered_non_unique<tag<by_price_less>,
                                     composite_key<order_object,
