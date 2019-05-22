@@ -512,7 +512,6 @@ bool Executive::execute()
             m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
     else
     {
-        assert(m_s.getGas() >= (u256)m_baseGasRequired);
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
 
