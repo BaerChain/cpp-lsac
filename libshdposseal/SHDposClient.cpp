@@ -300,21 +300,24 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 	Address _pAddr = _ph.author();
 	if(_pAddr == Address())
 		return true;
-	std::vector<Address> const& creaters = dpos()->getCurrCreaters();
-	auto ret = find(creaters.begin(), creaters.end(), _pAddr);
-
-	//testlog << " ret1:" << *ret;
-	if(ret == creaters.end())
-		return false;
-	if(++ret == creaters.end())
-		ret = creaters.begin();
-	//testlog << " ret2:" << *ret;
 
 	int64_t curr_time = utcTimeMilliSec() / dpos()->dposConfig().blockInterval * dpos()->dposConfig().blockInterval;
-
-	//testlog << " _ph:" << _ph.timestamp() << " now:" << curr_time << " ret_time:" << _ph.timestamp() + dpos()->dposConfig().blockInterval;
-	if(*ret != author() && (_ph.timestamp() + dpos()->dposConfig().blockInterval) < curr_time )
+	if(m_working.info().timestamp() < curr_time)
 		return false;
-   
+
+	//std::vector<Address> const& creaters = dpos()->getCurrCreaters();
+	//auto ret = find(creaters.begin(), creaters.end(), _pAddr);
+	////testlog << " ret1:" << *ret;
+	//if(ret == creaters.end())
+	//	return false;
+	//if(++ret == creaters.end())
+	//	ret = creaters.begin();
+	////testlog << " ret2:" << *ret;
+
+	//int64_t curr_time = utcTimeMilliSec() / dpos()->dposConfig().blockInterval * dpos()->dposConfig().blockInterval;
+
+	////testlog << " _ph:" << _ph.timestamp() << " now:" << curr_time << " ret_time:" << _ph.timestamp() + dpos()->dposConfig().blockInterval;
+	//if(*ret != author() && (_ph.timestamp() + dpos()->dposConfig().blockInterval) < curr_time )
+	//	return false; 
 	return true;
 }
