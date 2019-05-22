@@ -40,7 +40,7 @@ namespace test_tools{
         init_key();
         //transfer address by source address.
         transfer_to_addresss();
-
+        sleep(2);
         convert_brc_to_cook();
 
 
@@ -124,7 +124,7 @@ namespace test_tools{
 
     std::string test_tools::sendRawTransation(const std::string &data) {
         std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + data +"\"],\"id\":1}";
-        cwarn << send_msg;
+//        cwarn << send_msg;
         return post_message(send_msg, _ip_port);
     }
 
@@ -157,9 +157,9 @@ namespace test_tools{
                         itr.first,
                         dev::brc::ex::order_type::buy,
                         dev::brc::ex::order_token_type::BRC,
-                        dev::brc::ex::order_buy_type ::all_price,
-                                                      transfer_value,
-                                                      0
+                        dev::brc::ex::order_buy_type::all_price,
+                                                      0,
+                                                      transfer_value
                                         );
                 ops.push_back(std::shared_ptr<pendingorder_opearaion>(op));
 
@@ -173,8 +173,8 @@ namespace test_tools{
                 ts.nonce = get_account(itr.first).nonce;
 
                 brc::Transaction sign_t(ts, itr.second);
-                auto rlp_data = dev::brc::toJson(sign_t);
-                cwarn << "send data : " << rlp_data;
+//                auto rlp_data = dev::brc::toJson(sign_t);
+//                cwarn << "send data : " << rlp_data;
                 ops.clear();
                 auto result = sendRawTransation(toHexPrefixed(sign_t.rlp()));
                 cwarn << "test transfer_to_addresss result: " << result;
