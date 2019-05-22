@@ -467,9 +467,9 @@ void Executive::initialize(Transaction const& _transaction)
                     if (!m_brctranscation.verifyCancelPendingOrder(m_s.exdb(), m_t.sender(),
 						_cancel_op.m_hash))
                     {
-                        LOG(m_execLogger)
+                        cerror
                             << "Cancelpendingorder field > "
-                            << " cancelpendingorder_hash:" << _cancel_op.m_hash;
+                            << " cancelpendingorder_hash:" <<toString(_cancel_op.m_hash);
                         m_excepted = TransactionException::VerifyVoteField;
                         BOOST_THROW_EXCEPTION(
                             VerifyVoteField()
@@ -512,7 +512,6 @@ bool Executive::execute()
             m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
     else
     {
-        assert(m_s.getGas() >= (u256)m_baseGasRequired);
         return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
 

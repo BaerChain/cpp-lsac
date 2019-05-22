@@ -1133,6 +1133,7 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::Arrears:
                 account.addArrears(0 - change.value);
+                break;
             default:
                 break;
         }
