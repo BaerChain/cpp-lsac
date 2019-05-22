@@ -37,10 +37,9 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader& _bi, BlockHeader const& 
 	SealEngineBase::populateFromParent(_bi, _parent);
     //TODO
     //get create block time by time
-	//int64_t _time1 = utcTimeMilliSec() / m_config.blockInterval * m_config.blockInterval + 100;
-	//int64_t _time2 = _parent.timestamp() + m_config.blockInterval;
-	//_bi.setTimestamp(_time1 > _time2 ? _time1 : _time2);
-	//_bi.setTimestamp(_time1);
+	int64_t _time1 = utcTimeMilliSec() / m_config.blockInterval * m_config.blockInterval;
+	int64_t _time2 = _parent.timestamp() / m_config.blockInterval * m_config.blockInterval + m_config.blockInterval;
+	_bi.setTimestamp(_time1 > _time2 ? _time1 : _time2);
 
 }
 
