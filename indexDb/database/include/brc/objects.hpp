@@ -129,7 +129,7 @@ namespace dev {
                             ordered_unique<tag<by_id>,
                                     member<order_object, order_object::id_type, &order_object::id>
                             >,
-                            ordered_unique<tag<by_trx_id>,
+                            ordered_non_unique<tag<by_trx_id>,
                                     composite_key<order_object,
                                             member<order_object, h256, &order_object::trxid>
                                     >,

@@ -467,9 +467,9 @@ void Executive::initialize(Transaction const& _transaction)
                     if (!m_brctranscation.verifyCancelPendingOrder(m_s.exdb(), m_t.sender(),
 						_cancel_op.m_hash))
                     {
-                        LOG(m_execLogger)
+                        cerror
                             << "Cancelpendingorder field > "
-                            << " cancelpendingorder_hash:" << _cancel_op.m_hash;
+                            << " cancelpendingorder_hash:" <<toString(_cancel_op.m_hash);
                         m_excepted = TransactionException::VerifyVoteField;
                         BOOST_THROW_EXCEPTION(
                             VerifyVoteField()
