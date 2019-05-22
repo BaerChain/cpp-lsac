@@ -750,7 +750,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
-	m_currentBlock.setTimestamp(utcTimeMilliSec());
+	//m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());

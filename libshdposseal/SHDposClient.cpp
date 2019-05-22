@@ -176,8 +176,12 @@ void dev::bacd::SHDposClient::rejigSealing()
             //  if false : will reset the block current state example : time, blocl_num ...
 			if(!checkPreviousBlock(m_working.previousBlock()))
 			{
-			    //m_working.resetCurrent();  
-                //syncTransactionQueue();
+				//m_working.mutableState().db().rollback();
+				m_working.mutableState().exdb().rollback();
+				m_working.resetCurrent();
+
+                syncTransactionQueue();
+				cwarn << " out of shdpos role and reset data !" ;
 			}
 			//LOG(m_loggerDetail) << "Rejigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
@@ -298,10 +302,18 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 		return true;
 	std::vector<Address> const& creaters = dpos()->getCurrCreaters();
 	auto ret = find(creaters.begin(), creaters.end(), _pAddr);
+
+	//testlog << " ret1:" << *ret;
 	if(ret == creaters.end())
 		return false;
-	ret = ret + 1 == creaters.end() ? creaters.begin()+1 : ret+1;
-	if(*ret != author())
+	if(++ret == creaters.end())
+		ret = creaters.begin();
+	//testlog << " ret2:" << *ret;
+
+	int64_t curr_time = utcTimeMilliSec() / dpos()->dposConfig().blockInterval * dpos()->dposConfig().blockInterval;
+
+	//testlog << " _ph:" << _ph.timestamp() << " now:" << curr_time << " ret_time:" << _ph.timestamp() + dpos()->dposConfig().blockInterval;
+	if(*ret != author() && (_ph.timestamp() + dpos()->dposConfig().blockInterval) < curr_time )
 		return false;
    
 	return true;
