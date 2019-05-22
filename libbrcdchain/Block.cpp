@@ -105,7 +105,7 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_transactionSet.clear();
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
-    m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
+	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
@@ -308,9 +308,10 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
     assert(_bc.currentHash() == m_currentBlock.parentHash());
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
 
+    uint32_t try_times = 0;
     for (int goodTxs = max(0, (int) transactions.size() - 1); goodTxs < (int) transactions.size();) {
         goodTxs = 0;
-        for (auto const &t : transactions)
+        for (auto const &t : transactions){
             if (!m_transactionSet.count(t.sha3())) {
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
@@ -374,6 +375,14 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                     cwarn << "unkown exception .";
                 }
             }
+        }
+        if(try_times > 3){
+            break;
+        }
+        else{
+            try_times++;
+        }
+
         if (chrono::steady_clock::now() > deadline) {
             ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
             break;
@@ -750,7 +759,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
-    m_currentBlock.setTimestamp(utcTimeMilliSec());
+	//m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());

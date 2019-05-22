@@ -76,8 +76,21 @@ void create_contract(){
 
 
 int main(){
-    create_contract();
 
+    RLPStream rlp;
+    std::vector<uint8_t >  cc;
+    cc.push_back(4);
+
+    rlp.appendVector(cc);
+
+    std::cout << toJS(rlp.out()) << std::endl;
+
+
+
+
+
+
+//    create_contract();
 
 
     return 0;

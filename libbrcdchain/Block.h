@@ -292,6 +292,8 @@ public:
 
 	size_t getSealTxNum() { return m_transactions.size(); }
 
+	BlockHeader const& previousBlock() const { return m_previousBlock; }
+
 private:
     SealEngineFace* sealEngine() const;
 

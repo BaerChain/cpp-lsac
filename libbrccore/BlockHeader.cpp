@@ -166,7 +166,7 @@ void BlockHeader::populate(RLP const &_header) {
         m_number = _header[field = 8].toPositiveInt64();
         m_gasLimit = _header[field = 9].toInt<u256>();
         m_gasUsed = _header[field = 10].toInt<u256>();
-        m_timestamp = int64_t(_header[field = 11].toInt<u256>());
+		m_timestamp = int64_t(_header[field = 11].toInt<u256>());
         m_extraData = _header[field = 12].toBytes();
         m_sign_data = _header[field = 13].toHash<h520>(RLP::VeryStrict);
         m_seal.clear();
