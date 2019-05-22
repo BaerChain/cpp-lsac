@@ -25,6 +25,8 @@ namespace test_tools{
 
         void convert_brc_to_cook();
 
+        void create_contract_and_call();
+
         account get_account(const Address &add);
 
         template <typename T>
