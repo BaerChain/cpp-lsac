@@ -189,7 +189,7 @@ Account *State::account(Address const &_addr) {
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
 								 Account::Unchanged, state[10].toInt<u256>(),
-                                                    state[11].toInt<u256>()));
+                                                    state[12].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
@@ -680,7 +680,7 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
         //subFBalance(_to, _toPendingOrderNum);
 		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subBalance(_to, _toPendingOrderNum);
+		subFBalance(_to, _toPendingOrderNum);
 		addBalance(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::BRC &&
@@ -698,7 +698,7 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
 		//subFBRC(_to, _toPendingOrderNum);
 		subBalance(_from, _toPendingOrderPrice * _toPendingOrderNum);
 		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum);
-		subBRC(_to, _toPendingOrderNum);
+		subFBRC(_to, _toPendingOrderNum);
 		addBRC(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::FUEL &&
