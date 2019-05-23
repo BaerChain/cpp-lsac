@@ -33,7 +33,7 @@ bool dev::brc::BRCTranscation::verifyTranscation(
     return false;
 }
 
-bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exchange_plugin& _exdb,
+void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exchange_plugin& _exdb,
     int64_t _nowTime, ex::order_type _type, ex::order_token_type _token_type, order_buy_type _buy_type, u256 _pendingOrderNum,
     u256 _pendingOrderPrice, h256 _pendingOrderHash)
 {
@@ -43,7 +43,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
         (_type == order_type::sell && (_pendingOrderPrice != 0 || _pendingOrderNum == 0))))
         )
     {
-        return false;
+         BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("Pending order type and parameters are incorrect")));
     }
 
     if (_type == order_type::buy && _token_type == order_token_type::BRC &&
@@ -51,7 +51,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
     {
         if (_pendingOrderNum * _pendingOrderPrice > m_state.BRC(_form))
         {
-            return false;
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy BRC only_price :Address BRC < Num * Price")));
         }
     }
     else if (_type == order_type::buy && _token_type == order_token_type::BRC &&
@@ -59,7 +59,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
     {
         if (_pendingOrderPrice > m_state.BRC(_form))
 		{
-            return false;
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy BRC all_price :Address BRC < Price")));
 		}
     }
     else if (_type == order_type::buy && _token_type == order_token_type::FUEL &&
@@ -67,7 +67,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 	{
         if (_pendingOrderNum * _pendingOrderPrice > m_state.balance(_form))
 		{
-            return false;
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie only_price :Address Cookie < Num * Price")));
 		}
 	}
     else if (_type == order_type::buy && _token_type == order_token_type::FUEL &&
@@ -75,7 +75,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 	{
         if (_pendingOrderPrice > m_state.balance(_form))
 		{
-            return false;
+         BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie all_price :Address Cookie < Price")));
 		}
     }
 	else if (_type == order_type::sell && _token_type == order_token_type::BRC &&
@@ -83,7 +83,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 	{
         if (_pendingOrderNum > m_state.BRC(_form))
 		{
-            return false;
+           BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("sell BRC all_price or only_price :Address BRC < Num")));
 		}
     }
     else if (_type == order_type::sell && _token_type == order_token_type::FUEL &&
@@ -91,7 +91,7 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 	{
         if (_pendingOrderNum > m_state.balance(_form))
 		{
-            return false;
+           BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy BRC all_price or only_price :Address Cookie < Num")));
 		}
 	}
 
@@ -112,15 +112,14 @@ bool dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 //        cwarn << "unkown exception .";
 //        return false;
 //    }
-    return true;
 }
 
 
-bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb, Address _addr, h256 _hash)
+void dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb, Address _addr, h256 _hash)
 {
 	if (_hash == h256(0))
 	{
-		return false;
+		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be 0")));
 	}
 
 	std::vector <ex::order> _resultV;
@@ -132,16 +131,14 @@ bool dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _ex
 	catch (const boost::exception& e)
 	{
 		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
-		return false;
+		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool")));
 	}
 
 	for (auto val : _resultV)
 	{
 		if (_addr != val.sender)
 		{
-			return false;
+			BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
 		}
 	}
-
-	return true;
 }
