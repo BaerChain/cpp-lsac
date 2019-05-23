@@ -179,7 +179,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 				m_working.mutableState().exdb().rollback();
 				m_working.resetCurrent();
                 syncTransactionQueue();
-				LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
+				//LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
 			}
 			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
