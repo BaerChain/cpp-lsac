@@ -1374,7 +1374,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 		exit(1);
 	}
 	m_exdb.commit(1);
-	cerror << m_exdb.check_version(false);
+	cnote << m_exdb.check_version(false);
 }
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
