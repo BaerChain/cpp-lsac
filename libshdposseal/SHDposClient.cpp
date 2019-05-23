@@ -176,12 +176,9 @@ void dev::bacd::SHDposClient::rejigSealing()
             //  if false : will reset the block current state example : time, blocl_num ...
 			if(!checkPreviousBlock(m_working.previousBlock()))
 			{
-				//m_working.mutableState().db().rollback();
 				m_working.mutableState().exdb().rollback();
 				m_working.resetCurrent();
-
                 syncTransactionQueue();
-				cwarn << " out of shdpos role and reset data !" ;
 			}
 			//LOG(m_loggerDetail) << "Rejigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)

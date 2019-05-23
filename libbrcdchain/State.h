@@ -346,26 +346,12 @@ public:
 
 	void assetInjection(Address const& _addr);
 
-    //计算每笔交易所需要扣除的手续费
-    u256 transactionForCookie(uint8_t _type);
-
-    u256 getGas() { return m_gasNum; }
-    u256 getGasPrice() {return m_gasPriceValue;}
-    u256 getModifyValue(uint8_t _type)
-	{
-		//todo  Get the modified value according to the type
-
-		return m_modifyValue;
-	}
 
 	void systemPendingorder(int64_t _time);
 
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
 private:
-    u256 m_gasNum = 31000;
-    u256 m_modifyValue = 10000;
-    u256 m_gasPriceValue = 1000000000;
     //投票数据
     //获取投出得票数
     u256 voteAll(Address const& _id) const;
