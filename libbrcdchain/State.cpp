@@ -1257,7 +1257,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-		Json::Value _rewardArray;
+		/*Json::Value _rewardArray;
 		if (a->blockReward().size() > 0)
 		{
 			for (auto it : a->blockReward())
@@ -1268,7 +1268,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 				_rewardArray.append(_vReward);
 			}
 			jv["BlockReward"] = _rewardArray;
-		}
+		}*/
     }
     return jv;
 }
