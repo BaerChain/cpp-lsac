@@ -25,6 +25,11 @@
 using namespace dev;
 using namespace dev::brc::transationTool;
 
+
+u256 transfer_value = u256(0xffffffffff);
+
+
+
 namespace test_tools{
 
 
@@ -46,7 +51,7 @@ namespace test_tools{
         transfer_to_addresss();
         sleep(2);
 
-
+        //create contract.
         convert_brc_to_cook();
 
 
@@ -80,7 +85,6 @@ namespace test_tools{
 
     void test_tools::transfer_to_addresss() {
         try {
-            u256 transfer_value = u256(0xfffffff);
             std::vector<std::shared_ptr<operation>> ops;
             for(auto itr : _address_keys){
                 auto op  = new transcation_operation(op_type::brcTranscation, _source_address, itr.first, 1, transfer_value);
@@ -98,8 +102,6 @@ namespace test_tools{
 
             brc::Transaction sign_t(ts, _secret_key);
             auto rlp_data = dev::brc::toJson(sign_t);
-//            cwarn << "send data : " << rlp_data;
-
             auto result = sendRawTransation(toHexPrefixed(sign_t.rlp()));
             cwarn << "test transfer_to_addresss result: " << result;
         }catch (const std::exception &e){
@@ -155,7 +157,7 @@ namespace test_tools{
 
             for(auto itr : _address_keys){
 
-                u256 transfer_value = u256(0xfffffff) / 2;
+                u256 transfer_value_s = transfer_value / 2;
                 std::vector<std::shared_ptr<operation>> ops;
 
 
@@ -165,7 +167,7 @@ namespace test_tools{
                         dev::brc::ex::order_token_type::BRC,
                         dev::brc::ex::order_buy_type::all_price,
                                                       0,
-                                                      transfer_value
+                                                      transfer_value_s
                                         );
                 ops.push_back(std::shared_ptr<pendingorder_opearaion>(op));
 
@@ -210,6 +212,14 @@ namespace test_tools{
         brc::Transaction sign_t(ts, _secret_key);
         auto result = sendRawTransation(toHexPrefixed(sign_t.rlp()));
         cwarn << "test create contrct tx result: " << result;
+
+    }
+
+    void test_tools::send_orders() {
+
+
+
+
 
     }
 }

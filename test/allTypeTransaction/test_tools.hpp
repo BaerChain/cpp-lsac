@@ -27,6 +27,8 @@ namespace test_tools{
 
         void create_contract_and_call();
 
+        void send_orders();
+
         account get_account(const Address &add);
 
         template <typename T>
