@@ -1377,16 +1377,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	cerror << m_exdb.check_version(false);
 }
 
-u256 dev::brc::State::transactionForCookie(uint8_t _type)
-{
-    if (_type == transationTool::vote || _type == transationTool::pendingOrder ||
-        _type == transationTool::cancelPendingOrder)
-    {
-        return (getGas() + getModifyValue(_type)) * getGasPrice();
-    }
-    return getGas() * getGasPrice();
-}
-
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {
     if (auto a = account(_id))
