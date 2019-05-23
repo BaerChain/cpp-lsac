@@ -838,6 +838,14 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Account balance is too low (balance < value + gas * gas price).";
     }
+    catch (VerifyPendingOrderFiled const& _v)
+    {
+        ret = "verifyPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_v));
+    }
+    catch (CancelPendingOrderFiled const& _c)
+    {
+        ret = "cancelPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_c));
+    }
     catch (NotEnoughBallot const&)
     {
         ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";
