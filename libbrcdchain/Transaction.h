@@ -42,6 +42,7 @@ enum class TransactionException
     NotEnoughBallot,
     VerifyVoteField,
 	VerifyPendingOrderFiled,
+    CancelPendingOrderFiled,
     BadSystemAddress,
     BadVoteParamter,
     BadBRCTransactionParamter,

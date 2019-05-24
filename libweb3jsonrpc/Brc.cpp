@@ -842,6 +842,14 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 		   ret += std::string(*_error);
     }
+    catch (VerifyPendingOrderFiled const& _v)
+    {
+        ret = "verifyPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_v));
+    }
+    catch (CancelPendingOrderFiled const& _c)
+    {
+        ret = "cancelPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_c));
+    }
     catch (NotEnoughBallot const&)
     {
         ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";

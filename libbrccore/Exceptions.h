@@ -32,6 +32,8 @@ DEV_SIMPLE_EXCEPTION(BadBRCTransactionParamter);
 DEV_SIMPLE_EXCEPTION(VerifyVoteField);
 DEV_SIMPLE_EXCEPTION(DefaultError);
 DEV_SIMPLE_EXCEPTION(VerifyPendingOrderFiled);
+DEV_SIMPLE_EXCEPTION(CancelPendingOrderFiled);
+DEV_SIMPLE_EXCEPTION(pendingorderAllPriceFiled);
 DEV_SIMPLE_EXCEPTION(GasPriceTooLow);
 DEV_SIMPLE_EXCEPTION(BlockGasLimitReached);
 DEV_SIMPLE_EXCEPTION(FeeTooSmall);
