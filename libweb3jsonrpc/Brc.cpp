@@ -822,9 +822,11 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Block gas limit reached.";
     }
-    catch (InvalidNonce const&)
+    catch (InvalidNonce const& ex)
     {
         ret = "Invalid transaction nonce.";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
     }
     catch (PendingTransactionAlreadyExists const&)
     {
@@ -834,9 +836,11 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Transaction is already in the blockchain.";
     }
-    catch (NotEnoughCash const&)
+    catch (NotEnoughCash const& ex)
     {
-        ret = "Account balance is too low (balance < value + gas * gas price).";
+        ret = "Account balance is too low (balance < value + gas * gas price)." ;
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+		   ret += std::string(*_error);
     }
     catch (VerifyPendingOrderFiled const& _v)
     {
@@ -852,7 +856,9 @@ string dev::rpc::exceptionToErrorMessage()
     }
     catch(VerifyVoteField const& ex)
 	{
-		ret = "Account vote verify is error!" + std::string(ex.what());
+		ret = "Account vote verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
 	}
 	catch (InvalidSignature const&)
 	{

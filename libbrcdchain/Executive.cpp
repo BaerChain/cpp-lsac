@@ -233,11 +233,12 @@ void Executive::initialize(Transaction const& _transaction)
         }
         if (m_t.nonce() != nonceReq)
         {
-            LOG(m_execLogger) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+            cerror << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                               << nonceReq << " Got " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
-                InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
+                InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
+		    	<< errinfo_comment(std::string("the sender Noce error")));
         }
 
         // Avoid unaffordable transactions.
@@ -248,15 +249,15 @@ void Executive::initialize(Transaction const& _transaction)
 
             if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
             {
-				LOG(m_execLogger) << "Not enough cash: Require > " << "totalCost " << " = "
+				LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
 					<< totalCost << "  m_t.gas() = " << m_t.gas()
 					              << " * m_t.gasPrice()" << m_t.gasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.BRC(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
-                BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)m_t.value(),
-                                                             (bigint)m_s.BRC(m_t.sender()))
-                                                      << errinfo_comment(m_t.sender().hex()));
+				std::string ex_info = "not enough BRC to execute tarnsaction will cost:"+ toString(totalCost);
+				BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
+                                                      << errinfo_comment(ex_info));
             }
             CallParameters param = CallParameters(m_t.sender(),
                                     m_t.sender(),
@@ -291,8 +292,8 @@ void Executive::initialize(Transaction const& _transaction)
 					<< "m_t.sender:" << m_t.sender() << " * "
 					<< " to:" << m_t.receiveAddress();
 				m_excepted = TransactionException::BadRLP;
-				BOOST_THROW_EXCEPTION( BadRLP()
-					<< errinfo_comment(m_t.sender().hex()));
+				std::string ex_info = "badRLP the data is empty...";
+				BOOST_THROW_EXCEPTION( BadRLP()<< errinfo_comment(ex_info));
 			}
 
             for (auto val : _ops)
@@ -324,24 +325,24 @@ void Executive::initialize(Transaction const& _transaction)
                             << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                             << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
                         m_excepted = TransactionException::NotEnoughCash;
+						std::string ex_info = "not enough BRC to execute tarnsaction will cost:" + toString(totalCost);
                         BOOST_THROW_EXCEPTION(
                             NotEnoughCash()
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment(m_t.sender().hex()));
+                            << errinfo_comment(ex_info));
                     }
-                    if (!m_vote.verifyVote(m_t.sender(), _vote_op.m_to,
-                            (size_t)_vote_op.m_vote_type, _ret, _vote_op.m_vote_numbers))
+                    try {
+						m_vote.verifyVote(m_t.sender(), _vote_op.m_to, (size_t)_vote_op.m_vote_type, _vote_op.m_vote_numbers);
+					}
+                    catch (Exception &ex)
                     {
-                        LOG(m_execLogger)
-                            << "verifyVote field > "
+                        cerror << "verifyVote field > "
                             << "m_t.sender:" << m_t.sender() << " * "
                             << " to:" << _vote_op.m_to << " vote_type:" << (size_t)_vote_op.m_vote_type
                             << " vote_num:" << _vote_op.m_vote_numbers;
+					    cerror << " except:" << ex.what();
                         m_excepted = TransactionException::VerifyVoteField;
-                        BOOST_THROW_EXCEPTION(
-                            VerifyVoteField()
-                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment( _ret));
+						throw ex;
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
