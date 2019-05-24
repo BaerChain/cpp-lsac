@@ -332,7 +332,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << errinfo_comment(ex_info));
                     }
                     try {
-						m_vote.verifyVote(m_t.sender(), _vote_op.m_to, (size_t)_vote_op.m_vote_type, _vote_op.m_vote_numbers))
+						m_vote.verifyVote(m_t.sender(), _vote_op.m_to, (size_t)_vote_op.m_vote_type, _vote_op.m_vote_numbers);
 					}
                     catch (Exception &ex)
                     {
