@@ -95,6 +95,23 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 		}
 	}
 
+    order_type __type;
+    if (_buy_type == order_buy_type::all_price)
+    {
+        if (_type == order_type::buy)
+        {
+            __type = order_type::sell;
+        }else{
+            __type = order_type::buy;
+        }
+        auto _find_token = _token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
+        std::vector<exchange_order> _v = get_order_by_type(__type,_find_token, 10);  
+
+        if(_v.size() == 0)
+        {
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("There is no order for the corresponding order pool!")));
+        }   
+    }
 //    try
 //    {
 //        std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
