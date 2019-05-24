@@ -1315,8 +1315,11 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	{
 		jv["addrsss"] = toJS(_addr);
 		auto ret = _data.find(_addr);
-		if(ret != _data.end())
-			jv["obtain_vote"] = toJS(ret->second);
+		auto a = account(_addr);
+		if(ret != _data.end() && a)
+		{
+			jv["obtain_vote"] = toJS(a->poll());
+		}
 		else
 			jv["ret"] = "not is the eletor";
 	}

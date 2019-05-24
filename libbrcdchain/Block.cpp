@@ -360,6 +360,12 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                         // does have the gas left. for now, just leave alone.
                     }
                 }
+                catch (pendingorderAllPriceFiled const &e){
+					cwarn << " pendingOrder field ...";
+					h256 _hash = t.sha3();
+					_tq.drop(_hash);
+					_tq.eraseDropedTx(_hash);
+				}
                 catch (Exception const &_e) {
                     // Something else went wrong - drop it.
                     cwarn << t.sha3() << " Dropping invalid transaction: "
@@ -376,13 +382,10 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                 }
             }
         }
-        if(try_times > 3){
-            break;
+       
+		if(++try_times >= 2){
+            break;     // the bad transation run_times is max and break 
         }
-        else{
-            try_times++;
-        }
-
         if (chrono::steady_clock::now() > deadline) {
             ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
             break;

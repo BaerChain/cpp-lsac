@@ -1,13 +1,14 @@
 #include "DposVote.h"
 #include <unordered_map>
 
-bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, std::string& _ex_info, size_t tickets)
+void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, size_t tickets)
 {
+	std::string _ex_info = "";
     if(_type <= ENull || _type > EUnDelegate)
     {
         //LOG(m_logger) << "the vote type is error !";
-		_ex_info = "Vote Action error";
-        return false;
+		_ex_info = "Vote Type error:" + toString(_type);
+		BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
     }
 	//std::cout << BrcYellow " verifyVote ... " << "_from:" << _from << " _to:" << _to << " _type:" << _type << " _num:" << tickets;
     VoteType dType = (VoteType)_type;
@@ -19,26 +20,23 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 		{
 			if(m_state.BRC(_to) < tickets* BALLOTPRICE)
 			{
-				_ex_info = "Not enough cash to buy tickets:"+ std::to_string(tickets);
-				return false;
-
+				_ex_info = "Not enough BRC to buy tickets:" + std::to_string(tickets);
+				BOOST_THROW_EXCEPTION( VerifyVoteField()<< errinfo_comment(_ex_info));
 			}
-			return true;
 		}
 		break;
 		case dev::brc::ESellVote:
 		{ 
 			if(tickets > (size_t)m_state.ballot(_from))
 			{
-				_ex_info = "not tickets to sell";
-				return false;
+				_ex_info = "not have enough tickets to sell... tickes:" + toString(tickets);
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
             if((tickets * BALLOTPRICE) > (size_t)m_state.BRC(SystemVoteBrcAddress))
 			{
-				_ex_info = "cant't to sell vote";
-				return false;
+				_ex_info = "system not enough BRC to author, can't sell ticks";
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-			return true;
 		}
 		break;
         case dev::brc::ELoginCandidate:
@@ -48,17 +46,14 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
             if(_from != _to)
 			{
 				_ex_info = " Accout not is Candidate";
-				return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
             std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
 			if(_vote.find(_from) != _vote.end())
 			{
 				_ex_info = " Accout early is Candidate";
-				return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            //TO DO 添加其他验证条件 
-
-            return true;
         }
         break;
         case dev::brc::ELogoutCandidate:
@@ -67,16 +62,14 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 			if(_from != _to)
 			{
 				_ex_info = " Accout not is Candidate";
-				return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
             std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
 			if(_vote.find(_from) == _vote.end())
 			{
 				_ex_info = " Accout not is Candidate";
-				return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-
-            return true;
         }
         break;
         case dev::brc::EDelegate:
@@ -84,18 +77,16 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
             //投票
             if(m_state.ballot(_from) < tickets)
             {
-                //LOG(m_logger) << " Adddress:" << _from << " not have enough tickts:" << tickets;
-                return false;
+				_ex_info = " not have enough ticket to vote...";
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
             }
             //验证 竞选人是否存在
             std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
             if(_vote.find(_to) == _vote.end())
             {
-                //LOG(m_logger) << "the Elector:" << _to << " don't have !";
 				_ex_info = "the Elector:" + toString(_to) +" not exist !";
-                return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
             }
-            return true;
         }
         break;
         case dev::brc::EUnDelegate:
@@ -106,15 +97,13 @@ bool dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
             if(ret == _vote.end() || ret->second < tickets)
             {
                 _ex_info= " Address:" + toString(_from) + " not voted:" +  toString(tickets) + " tickets to :" + toString( _to);
-                return false;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
             }
-            return true;
         }
         break;
         default:
         break;
     }
-    return false;
 }
 
 void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const
