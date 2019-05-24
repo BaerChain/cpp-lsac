@@ -384,11 +384,11 @@ void Client::syncBlockQueue()
     double elapsed = t.elapsed();
 	if(count)
 	{
-		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
-		{
+//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
+//		{
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
 				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size();
-		}
+//		}
 	}
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)

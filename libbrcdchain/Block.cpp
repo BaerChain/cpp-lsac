@@ -377,7 +377,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             }
         }
         if(try_times > 3){
-            break;
+//            break;
         }
         else{
             try_times++;
@@ -588,8 +588,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
     // Commit all cached state changes to the state trie.
-    bool removeEmptyAccounts =
-            m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
 
@@ -757,9 +756,8 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     // accordingly.
     bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
-    DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+    DEV_TIMED_ABOVE("commit", 500) m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
-	//m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());
@@ -771,7 +769,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
         ed.resize(32);
         m_currentBlock.setExtraData(ed);
     }
-    // m_currentBlock.setDposContext(m_previousBlock.dposContext());
 
     m_committedToSeal = true;
 }

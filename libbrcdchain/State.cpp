@@ -1601,10 +1601,14 @@ template<class DB>
 AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
     AddressHash ret;
     for (auto const &i : _cache)
+    {
+        cwarn << "insert address : " << toHex(i.first);
         if (i.second.isDirty()) {
+            cwarn << "insert address isAlive: " << toHex(i.first);
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
+                cwarn << "insert address isAlive 111: " << toHex(i.first);
                 RLPStream s(13);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
@@ -1627,8 +1631,9 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     CodeSizeCache::instance().store(ch, i.second.code().size());
                     _state.db()->insert(ch, &i.second.code());
                     s << ch;
-                } else
+                } else{
                     s << i.second.codeHash();
+                }
                 s << i.second.ballot();
                 s << i.second.poll();
                 {
@@ -1645,22 +1650,25 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
-				{
-					RLPStream _rlp;
-					size_t _num = i.second.blockReward().size();
-					_rlp.appendList(_num + 1);
-					_rlp << _num;
-					for (auto it : i.second.blockReward())
-					{
-						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
-					}
-					s << _rlp.out();
-				}
+                {
+                    RLPStream _rlp;
+                    size_t _num = i.second.blockReward().size();
+                    _rlp.appendList(_num + 1);
+                    _rlp << _num;
+                    for (auto it : i.second.blockReward())
+                    {
+                        _rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+                    }
+                    s << _rlp.out();
+                }
                 s << i.second.arrears();
+                cwarn << "address :" <<  dev::toHex(i.first) << " : "<< dev::sha3(s.out());
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
         }
+    }
+
     return ret;
 }
 
