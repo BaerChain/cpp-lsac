@@ -35,11 +35,11 @@ namespace dev {
             bool verifyTranscation(
                     Address const &_form, Address const &_to, size_t _type, const u256 &_transcationNum);
 
-            bool verifyPendingOrder(Address const &_form, ex::exchange_plugin &_exdb, int64_t _nowTime, ex::order_type _type,
+            void verifyPendingOrder(Address const &_form, ex::exchange_plugin &_exdb, int64_t _nowTime, ex::order_type _type,
                                     ex::order_token_type _token_type, ex::order_buy_type _buy_type, u256 _pendingOrderNum,
                                     u256 _pendingOrderPrice, h256 _pendingOrderHash = h256(0));
 
-            bool verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
+            void verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
 
         private:
             State &m_state;

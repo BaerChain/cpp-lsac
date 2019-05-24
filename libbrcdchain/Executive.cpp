@@ -418,24 +418,17 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyPendingOrder(m_t.sender(),
-							m_s.exdb(), m_envInfo.timestamp(),
-                            _pengdingorder_op.m_Pendingorder_type,
-                            _pengdingorder_op.m_Pendingorder_Token_type,
-                            _pengdingorder_op.m_Pendingorder_buy_type,
-							_pengdingorder_op.m_Pendingorder_num,
-                            _pengdingorder_op.m_Pendingorder_price,m_t.sha3() ))
-                    {
-                        LOG(m_execLogger)
-                            << "pendingorder field > "
-                            << "m_t.sender:" << m_t.sender() << " * "
-                            << " pendingorder_type:" << (uint8_t)_pengdingorder_op.m_Pendingorder_type
-                            << " pendingorder_num:" << (uint8_t)_pengdingorder_op.m_Pendingorder_num;
-                        m_excepted = TransactionException::VerifyPendingOrderFiled;
-                        BOOST_THROW_EXCEPTION(
-                            VerifyPendingOrderFiled()
-                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment(m_t.sender().hex()));
+                    try{
+                        m_brctranscation.verifyPendingOrder(m_t.sender(),
+							    m_s.exdb(), m_envInfo.timestamp(),
+                                _pengdingorder_op.m_Pendingorder_type,
+                                _pengdingorder_op.m_Pendingorder_Token_type,
+                                _pengdingorder_op.m_Pendingorder_buy_type,
+							    _pengdingorder_op.m_Pendingorder_num,
+                                _pengdingorder_op.m_Pendingorder_price,m_t.sha3());   
+                    }
+                    catch(VerifyPendingOrderFiled const& _v){
+                        BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_v)));
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
@@ -465,18 +458,14 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyCancelPendingOrder(m_s.exdb(), m_t.sender(),
-						_cancel_op.m_hash))
-                    {
-                        cerror
-                            << "Cancelpendingorder field > "
-                            << " cancelpendingorder_hash:" <<toString(_cancel_op.m_hash);
-                        m_excepted = TransactionException::VerifyVoteField;
-                        BOOST_THROW_EXCEPTION(
-                            VerifyVoteField()
-                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment(m_t.sender().hex()));
-                    }
+                   
+                   try
+                   {
+                       m_brctranscation.verifyCancelPendingOrder(m_s.exdb(), m_t.sender(),_cancel_op.m_hash);
+                   }catch(CancelPendingOrderFiled const& _c)
+                   {
+                        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
+                   }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(_cancel_op.m_cancelType + (uint8_t)PendingOrderStart),
                             {m_t.sender(), Address(0), Address(0), u256(0), u256(0), u256(0),
