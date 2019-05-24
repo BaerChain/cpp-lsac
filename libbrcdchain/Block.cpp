@@ -376,7 +376,8 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                 }
             }
         }
-        if(try_times > 3){
+       
+		if(try_times > 3){
             break;
         }
         else{
