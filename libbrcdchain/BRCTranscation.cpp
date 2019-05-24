@@ -105,7 +105,7 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
             __type = order_type::buy;
         }
         auto _find_token = _token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
-        std::vector<exchange_order> _v = get_order_by_type(__type,_find_token, 10);  
+        std::vector<exchange_order> _v = _exdb.get_order_by_type(__type,_find_token, 10);  
 
         if(_v.size() == 0)
         {
