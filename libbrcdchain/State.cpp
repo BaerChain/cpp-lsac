@@ -1358,7 +1358,8 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     };
 
 	auto a = account(dev::VoteAddress);
-	std::string _num = "29000000000000000000000000";
+	std::string _num = "2900000000000000";
+    cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::map<u256, u256> _map = { {u256(1), systenCookie} };
 	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
