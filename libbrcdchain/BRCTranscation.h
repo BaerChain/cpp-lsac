@@ -32,7 +32,7 @@ namespace dev {
             void setState(State &_s) { m_state = _s; }
 
         public:
-            bool verifyTranscation(
+            void verifyTranscation(
                     Address const &_form, Address const &_to, size_t _type, const u256 &_transcationNum);
 
             void verifyPendingOrder(Address const &_form, ex::exchange_plugin &_exdb, int64_t _nowTime, ex::order_type _type,

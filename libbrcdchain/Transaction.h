@@ -46,6 +46,7 @@ enum class TransactionException
     BadSystemAddress,
     BadVoteParamter,
     BadBRCTransactionParamter,
+	BrcTranscationField,
 	DefaultError
 };
 

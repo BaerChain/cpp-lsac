@@ -4,33 +4,33 @@
 
 using namespace dev::brc::ex;
 
-bool dev::brc::BRCTranscation::verifyTranscation(
+void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
     if (_type <= dev::brc::TranscationEnum::ETranscationNull ||
         _type >= dev::brc::TranscationEnum::ETranscationMax || ( _type == dev::brc::TranscationEnum::EBRCTranscation && _transcationNum == 0))
     {
-        return false;
+		BOOST_THROW_EXCEPTION(BrcTranscationField() 
+							  << errinfo_comment("the brc transaction's type is error:" + toString(_type)));
     }
 
     if (_type == dev::brc::TranscationEnum::EBRCTranscation)
     {
         if (_form == _to)
         {
-            return false;
+			BOOST_THROW_EXCEPTION(BrcTranscationField()
+								  << errinfo_comment(" cat't transfer brc for mine"));
         }
         if (_transcationNum > m_state.BRC(_form))
         {
-            return false;
+			BOOST_THROW_EXCEPTION(BrcTranscationField()
+								  << errinfo_comment(" not Enough brcd "));
         }
-        return true;
     }
 	else if (_type == dev::brc::TranscationEnum::EAssetInjection)
 	{
-		return true;
+		return ;
 	}
-
-    return false;
 }
 
 void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exchange_plugin& _exdb,
