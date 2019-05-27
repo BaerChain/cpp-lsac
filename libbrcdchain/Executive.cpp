@@ -295,7 +295,7 @@ void Executive::initialize(Transaction const& _transaction)
 				std::string ex_info = "badRLP the data is empty...";
 				BOOST_THROW_EXCEPTION( BadRLP()<< errinfo_comment(ex_info));
 			}
-
+            bigint totalCost = m_s.arrears(m_t.sender());
             for (auto val : _ops)
             {
 				std::string _ret = "";
@@ -310,7 +310,7 @@ void Executive::initialize(Transaction const& _transaction)
                                       << " _to:" << _vote_op.m_to
                                       << " _vote_type:" << (size_t)_vote_op.m_vote_type
                                       << " _value:" << _vote_op.m_vote_numbers << BrcReset;
-                    bigint totalCost = gasCost;
+                    totalCost += gasCost;
                     if (_vote_op.m_vote_type == 1)
                     {
                         //买票 要验证 买票前
@@ -354,7 +354,7 @@ void Executive::initialize(Transaction const& _transaction)
                 break;
                 case transationTool::brcTranscation:
                 {
-					bigint totalCost = gasCost;
+					totalCost += gasCost;
                     transationTool::transcation_operation _transcation_op =
                         transationTool::transcation_operation(val);
                     if (m_s.balance(m_t.sender()) < totalCost)
@@ -399,7 +399,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::pendingorder_opearaion _pengdingorder_op =
                         transationTool::pendingorder_opearaion(val);
-					bigint totalCost = gasCost;
+					totalCost += gasCost;
                     if(_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
                             _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
                             _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::BRC &&
@@ -446,7 +446,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
 					transationTool::cancelPendingorder_operation  _cancel_op =
                         transationTool::cancelPendingorder_operation(val);
-					bigint totalCost = gasCost;
+					totalCost += gasCost;
                     if (m_s.balance(m_t.sender()) < totalCost)
                     {
                         LOG(m_execLogger)
@@ -832,6 +832,10 @@ bool Executive::finalize()
             m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_s.balance(m_t.sender()));    
             m_s.setBalance(m_t.sender(), 0);
         }else{
+            if(m_s.arrears(m_t.sender()) > 0)
+            {
+                m_s.subArrears(m_t.sender(), m_s.arrears(m_t.sender()));
+            }
             m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
             m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         }
