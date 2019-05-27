@@ -369,22 +369,23 @@ void Executive::initialize(Transaction const& _transaction)
                             << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
                             << errinfo_comment(m_t.sender().hex()));
                     }
-                    if (!m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
-                            (size_t)_transcation_op.m_Transcation_type,
-                            _transcation_op.m_Transcation_numbers))
-                    {
-                        LOG(m_execLogger)
-                            << "transcation field > "
-                            << "m_t.sender:" << m_t.sender() << " * "
-                            << " to:" << _transcation_op.m_to
-                            << " transcation_type:" << _transcation_op.m_Transcation_type
-                            << " transcation_num:" << _transcation_op.m_Transcation_numbers;
-                        m_excepted = TransactionException::VerifyVoteField;
-                        BOOST_THROW_EXCEPTION(
-                            VerifyVoteField()
-                            << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                            << errinfo_comment(m_t.sender().hex()));
-                    }
+					try { 
+						m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
+							                               (size_t)_transcation_op.m_Transcation_type,
+														   _transcation_op.m_Transcation_numbers);
+					}
+					catch(Exception &ex)
+					{
+						LOG(m_execLogger)
+							<< "transcation field > "
+							<< "m_t.sender:" << m_t.sender() << " * "
+							<< " to:" << _transcation_op.m_to
+							<< " transcation_type:" << _transcation_op.m_Transcation_type
+							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
+						    << ex.what();
+						m_excepted = TransactionException::BrcTranscationField;
+						throw ex;
+					}
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
                              _transcation_op.m_Transcation_type + (uint8_t)TranscationStart),
