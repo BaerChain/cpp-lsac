@@ -578,7 +578,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 }
 
 ImportRoute
-BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
+BlockChain:: import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
     ImportPerformanceLogger performanceLogger;

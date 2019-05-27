@@ -1602,13 +1602,10 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
     AddressHash ret;
     for (auto const &i : _cache)
     {
-        cwarn << "insert address : " << toHex(i.first);
         if (i.second.isDirty()) {
-            cwarn << "insert address isAlive: " << toHex(i.first);
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                cwarn << "insert address isAlive 111: " << toHex(i.first);
                 RLPStream s(13);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
@@ -1662,7 +1659,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << _rlp.out();
                 }
                 s << i.second.arrears();
-                cwarn << "address :" <<  dev::toHex(i.first) << " : "<< dev::sha3(s.out());
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

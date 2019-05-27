@@ -834,9 +834,8 @@ LogBloom Block::logBloom() const {
 
 void Block::cleanup() {
     // Commit the new trie to disk.
-    //            LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() <<
-    //            " = "
-    //                          << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
+    LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() <<
+                " = " << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
 
     try {
         EnforceRefs er(db(), true);
