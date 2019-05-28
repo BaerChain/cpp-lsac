@@ -188,8 +188,7 @@ Account *State::account(Address const &_addr) {
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
-								 Account::Unchanged, state[10].toInt<u256>(),
-                                                    state[12].toInt<u256>()));
+								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
@@ -539,57 +538,6 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
 
     // Fall back to addBalance().
     addFBalance(_addr, 0 - _value);
-}
-
-u256 State::arrears(Address const& _id) const
-{
-    if(auto a = account(_id))
-    {
-        return a->arrears();
-    }else{
-        return 0;
-    }
-}
-
-void State::addArrears(Address const& _addr, u256 const& _value) 
-{
-    if(_value == 0)
-    {
-        return;
-    }
-
-    if(Account *a = account(_addr))
-    {
-        if(!a->isDirty() && a->isEmpty())
-        {
-            m_changeLog.emplace_back(Change::Touch, _addr);
-        }
-        a->addArrears(_value);
-    }
-    if(_value)
-    {
-        m_changeLog.emplace_back(Change::Arrears, _addr, _value);
-    }
-
-}
-
-void State::subArrears(Address const& _addr, u256 const& _value)
-{
-    if(_value == 0)
-    {
-        return;
-    }
-
-    Account *a = account(_addr);
-    if (!a || a->arrears() < _value) {
-        // TODO: I expect this never happens.
-        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->arrears();
-        BOOST_THROW_EXCEPTION(NotEnoughCash());
-    }
-
-
-    // Fall back to addBalance().
-    addArrears(_addr, 0 - _value);
 }
 
 
@@ -1131,9 +1079,6 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
-            case Change::Arrears:
-                account.addArrears(0 - change.value);
-                break;
             default:
                 break;
         }
@@ -1248,7 +1193,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 		jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
 		jv["nonce"] = toJS(a->nonce());
-        jv["arrears"] = toJS(a->arrears());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
@@ -1599,7 +1543,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(13);
+                RLPStream s(12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1650,7 +1594,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
-                s << i.second.arrears();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

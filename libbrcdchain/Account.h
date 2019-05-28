@@ -64,7 +64,7 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _arrears,u256 _assetInjectStatus = 0)
+        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _assetInjectStatus = 0)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
@@ -76,8 +76,7 @@ public:
         m_BRC(_BRC),
         m_FBRC(_FBRC),
         m_FBalance(_FBalance),
-		m_assetInjectStatus(_assetInjectStatus),
-        m_arrears(_arrears)
+		m_assetInjectStatus(_assetInjectStatus)
     {
         assert(_contractRoot);
     }
@@ -112,7 +111,6 @@ public:
         m_poll = 0;
         m_ballot = 0;
 		m_assetInjectStatus = 0;
-        m_arrears = 0;
         m_voteData.clear();
 		m_BlockReward.clear();
         changed();
@@ -142,7 +140,6 @@ public:
 
     u256 const& FBalance() const { return m_FBalance; }
 
-    u256 const& arrears() const {return m_arrears;}
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)
     {
@@ -171,11 +168,6 @@ public:
         changed();
 	}
 
-    void addArrears(u256 _value)
-    {
-        m_arrears += _value;
-        changed();
-    }
 
     // Acounts own ballot
     u256 const& ballot() const { return m_ballot; }
@@ -338,7 +330,6 @@ private:
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
-    u256 m_arrears = 0;
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合

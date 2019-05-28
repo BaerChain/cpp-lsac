@@ -56,7 +56,7 @@ bool Brc::brc_mining()
 
 string Brc::brc_gasPrice()
 {
-    return toJS(client()->gasBidPrice());
+    return toJS(client()->GasAveragePrice());
 }
 
 Json::Value Brc::brc_accounts()
