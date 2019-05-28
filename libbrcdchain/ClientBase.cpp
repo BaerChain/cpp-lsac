@@ -116,6 +116,11 @@ Json::Value dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block)
     return blockByNumber(_block).mutableState().accoutMessage(_a);
 }
 
+Json::Value dev::brc::ClientBase::blockRewardMessage(Address _a, uint32_t _pageNum, uint32_t _listNum, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().blockRewardMessage(_a, _pageNum, _listNum);
+}
+
 Json::Value dev::brc::ClientBase::pendingOrderPoolMessage(
     uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const
 {
