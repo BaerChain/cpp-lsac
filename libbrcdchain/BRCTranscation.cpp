@@ -35,7 +35,7 @@ void dev::brc::BRCTranscation::verifyTranscation(
 
 void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exchange_plugin& _exdb,
     int64_t _nowTime, ex::order_type _type, ex::order_token_type _token_type, order_buy_type _buy_type, u256 _pendingOrderNum,
-    u256 _pendingOrderPrice, h256 _pendingOrderHash)
+    u256 _pendingOrderPrice, u256 _transcationGas, h256 _pendingOrderHash)
 {
     if ( _type == order_type::null_type ||
         (_buy_type == order_buy_type::only_price && (_type == order_type::buy || _type == order_type::sell) &&  (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
@@ -112,23 +112,39 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
             BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("There is no order for the corresponding order pool!")));
         }   
     }
-//    try
-//    {
-//        std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
-//        order _order = {_pendingOrderHash, _form, (order_buy_type)_buy_type,
-//            (order_token_type)_token_type, (order_type)_type, _map, _nowTime};
-//        const std::vector<order> _v = {{_order}};
-//        _exdb.insert_operation(_v, true, true);
-//    }
-//    catch (const boost::exception& e)
-//    {
-//        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
-//        return false;
-//    }
-//    catch (...){
-//        cwarn << "unkown exception .";
-//        return false;
-//    }
+
+	if(_type == order_type::buy && _token_type == order_token_type::BRC && _buy_type == order_buy_type::all_price)
+	{
+		try
+		{
+			std::map<u256, u256> _map = { {_pendingOrderPrice, _pendingOrderNum} };
+			order _order = { _pendingOrderHash, _form, (order_buy_type)_buy_type,
+				(order_token_type)_token_type, (order_type)_type, _map, _nowTime };
+			const std::vector<order> _v = { {_order} };
+			std::vector<result_order> _retV = _exdb.insert_operation(_v, true, true);
+
+			u256 _cookieNum = 0;
+			for(auto it : _retV)
+			{
+				_cookieNum += it.amount;
+			}
+
+			if(_cookieNum < _transcationGas)
+			{
+				BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : The exchanged cookies are not enough to pay the commission!")));
+			}
+		}
+		catch(const boost::exception& e)
+		{
+			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice is failed!")));
+			cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
+		}
+		catch(...)
+		{
+			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice unkonwn failed!")));
+			return;
+		}
+	}
 }
 
 
