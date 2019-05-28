@@ -538,7 +538,6 @@ void Client::resetState()
 
 void Client::onChainChanged(ImportRoute const& _ir)
 {
-//  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
     for (auto const& t: _ir.goodTranactions)
@@ -740,8 +739,11 @@ void Client::tick()
         checkWatchGarbage();
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
-        if (m_report.ticks == 15)
-            LOG(m_loggerDetail) << activityReport();
+        if (m_report.ticks == 15){
+            //LOG(m_loggerDetail) <<
+            activityReport();
+        }
+
     }
 }
 
@@ -878,6 +880,7 @@ bool Client::submitSealed(bytes const& _header)
 			h->noteNewBlocksSend();
 	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
+
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }
 
@@ -951,6 +954,28 @@ h256 Client::importTransaction(Transaction const& _t)
 	if(auto h = m_host.lock())
 		h->noteNewTransactions();
     return _t.sha3();
+}
+
+h256  Client::importBlock(const dev::bytesConstRef &data) {
+
+    h256 h = BlockHeader::headerHashFromBlock(data);
+    ImportResult ret = m_bq.import(data);
+    switch (ret)
+    {
+        case ImportResult::Success:
+            break;
+        case ImportResult::ZeroSignature:
+            BOOST_THROW_EXCEPTION(ZeroSignatureTransaction());
+        case ImportResult::OverbidGasPrice:
+            BOOST_THROW_EXCEPTION(GasPriceTooLow());
+        case ImportResult::AlreadyKnown:
+            BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
+        case ImportResult::AlreadyInChain:
+            BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+        default:
+            BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
+    }
+    return h;
 }
 
 // TODO: remove try/catch, allow exceptions

@@ -241,6 +241,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 keys[keyPair.address()] = keyPair.secret();
             }
         } else {
+            std::cout << "not find key.....\n";
             exit(1);
         }
 
@@ -391,7 +392,7 @@ int main(int argc, char *argv[]) {
     }catch (const boost::exception &e){
         cwarn << boost::diagnostic_information(e);
     }catch (...){
-
+        cwarn << "unkown exception ....";
     }
 
 

@@ -203,6 +203,13 @@ public:
             jsonrpc::Procedure("brc_sendRawTransaction", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_sendRawTransactionI);
+
+        this->bindAndAddMethod(
+                jsonrpc::Procedure("brc_importBlock", jsonrpc::PARAMS_BY_POSITION,
+                                   jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
+                &dev::rpc::BrcFace::brc_importBlockI);
+
+
         this->bindAndAddMethod(jsonrpc::Procedure("brc_notePassword", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_notePasswordI);
@@ -462,6 +469,13 @@ public:
     {
         response = this->brc_sendRawTransaction(request[0u].asString());
     }
+
+
+    inline virtual void brc_importBlockI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_importBlock(request[0u].asString());
+    }
+
     inline virtual void brc_notePasswordI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_notePassword(request[0u].asString());
@@ -554,6 +568,7 @@ public:
     virtual Json::Value brc_signTransaction(const Json::Value& param1) = 0;
     virtual Json::Value brc_inspectTransaction(const std::string& param1) = 0;
     virtual std::string brc_sendRawTransaction(const std::string& param1) = 0;
+    virtual std::string brc_importBlock(const std::string& param1) = 0;
     virtual bool brc_notePassword(const std::string& param1) = 0;
     virtual Json::Value brc_syncing() = 0;
     virtual std::string brc_estimateGas(const Json::Value& param1) = 0;

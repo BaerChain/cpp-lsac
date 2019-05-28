@@ -578,7 +578,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 }
 
 ImportRoute
-BlockChain:: import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
+BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
     ImportPerformanceLogger performanceLogger;
@@ -622,6 +622,7 @@ BlockChain:: import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::ex
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
         Block s(*this, _db, _exdb);
+        cwarn << "execute block author: " << _block.info.author() << " number: " << _block.info.number();
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
             br.receipts.push_back(s.receipt(i));
@@ -729,6 +730,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
                                                              _totalDifficulty == details(last).totalDifficulty &&
                                                              _block.info.gasUsed() > info(last).gasUsed())) {
+        cwarn << "switch from " << m_lastBlockNumber << " to " << _block.info.number();
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
@@ -802,7 +804,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
                       << (details(_block.info.parentHash()).children.size() - 1)
                       << " siblings. Route: " << route;
     } else {
-        LOG(m_loggerDetail) << "   Imported but not best (oTD: " << details(last).totalDifficulty
+        LOG(m_logger) << "   Imported but not best (oTD: " << details(last).totalDifficulty
                             << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
                             << _block.info.number() << ")";
     }

@@ -220,7 +220,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 			{
 				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
 				sealEngine()->onSealGenerated([=](bytes const& _header){
-
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);

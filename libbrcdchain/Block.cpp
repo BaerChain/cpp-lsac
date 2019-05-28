@@ -517,6 +517,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     DEV_TIMED_ABOVE("uncleCheck", 500) for (auto const &i : rlp[2]) {
             try {
                 auto h = sha3(i.data());
+                cwarn << "uncleCheck ....";
                 if (excluded.count(h)) {
                     UncleInChain ex;
                     ex << errinfo_comment("Uncle in block already mentioned");

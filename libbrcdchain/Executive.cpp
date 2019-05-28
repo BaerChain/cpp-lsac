@@ -589,16 +589,16 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     else
     {
-		LOG(m_execLogger) << BrcYellow " start to dell vote _p.senderAddress:" << _p.senderAddress
-			<< "  _p.receiveAddress:" << _p.receiveAddress
-			<< "  _p.valueTransfer:" << _p.valueTransfer;
+//		LOG(m_execLogger) << BrcYellow " start to dell vote _p.senderAddress:" << _p.senderAddress
+//			<< "  _p.receiveAddress:" << _p.receiveAddress
+//			<< "  _p.valueTransfer:" << _p.valueTransfer;
                           //<< "  m_method :" << m_method;
         for (auto val : m_callParameters_v)
 		{
             CallParameters const& p = val.m_callParameters;
-            LOG(m_execLogger) << BrcYellow " dell vote : method:" << val.m_method
-                              << " _from:" << p.senderAddress << " _to:" << p.receiveAddress
-                              << " _value:" << p.valueTransfer;
+//            LOG(m_execLogger) << BrcYellow " dell vote : method:" << val.m_method
+//                              << " _from:" << p.senderAddress << " _to:" << p.receiveAddress
+//                              << " _value:" << p.valueTransfer;
 			if (val.m_method == BuyVotes)
 				m_s.transferBallotBuy(p.senderAddress, p.valueTransfer);
 			else if (val.m_method == SellVotes)

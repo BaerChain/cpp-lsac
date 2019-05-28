@@ -294,7 +294,7 @@ namespace dev {
                     ret.push_back(o);
                 }
                 if (!reset) {
-                    session.push();
+                    session.squash();
                 }
                 return ret;
             }
