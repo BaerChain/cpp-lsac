@@ -127,6 +127,7 @@ public:
     Addresses addresses(BlockNumber _block) const override;
     u256 gasLimitRemaining() const override;
     u256 gasBidPrice() const override { return DefaultGasPrice; }
+	u256 GasAveragePrice() const override { return  AverageGasPrice; }
 
     /// Get the block author
     Address author() const override;

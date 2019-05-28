@@ -267,6 +267,7 @@ public:
     virtual u256 gasLimitRemaining() const = 0;
     // Get the gas bidding price
     virtual u256 gasBidPrice() const = 0;
+	virtual u256 GasAveragePrice() const = 0;
 
     /// Get some information on the block queue.
     virtual SyncStatus syncStatus() const = 0;

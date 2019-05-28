@@ -56,7 +56,7 @@ bool Brc::brc_mining()
 
 string Brc::brc_gasPrice()
 {
-    return toJS(client()->gasBidPrice());
+    return toJS(client()->GasAveragePrice());
 }
 
 Json::Value Brc::brc_accounts()
@@ -857,6 +857,12 @@ string dev::rpc::exceptionToErrorMessage()
     catch(VerifyVoteField const& ex)
 	{
 		ret = "Account vote verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
+	catch(BrcTranscationField const& ex)
+	{
+		ret = "Account transfer BRC verify is error :";
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 			ret += std::string(*_error);
 	}
