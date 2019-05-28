@@ -82,10 +82,10 @@ enum op_type : uint8_t
 
 static std::map<op_type, u256> c_add_value = {
 	{null, 0},
-	{vote, 1000},
+	{vote, 5000},
     {brcTranscation, 0},
-    {pendingOrder, 2000},
-    {cancelPendingOrder, 1000},
+    {pendingOrder, 10000},
+    {cancelPendingOrder, 2000},
     {deployContract, 0},
     {executeContract, 0}
 };

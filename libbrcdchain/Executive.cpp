@@ -303,8 +303,8 @@ void Executive::initialize(Transaction const& _transaction)
             {
 				std::string _ret = "";
                 transationTool::op_type _type = transationTool::operation::get_type(val);
-				totalCost += transationTool::c_add_value[_type];
-				m_addCostValue += transationTool::c_add_value[_type];
+				totalCost += transationTool::c_add_value[_type]* m_t.gasPrice();
+				m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
                 switch (_type)
                 {
                 case transationTool::vote:
@@ -484,7 +484,8 @@ void Executive::initialize(Transaction const& _transaction)
             }
         }
         //m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
-			if(totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue)
+		//testlog << " totalCost:" << totalCost << " m_t.gasPrice()* m_baseGasRequired:" << m_t.gasPrice()* m_baseGasRequired << " m_addCostValue:" << m_addCostValue ;
+			if(totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue )
 			{
 				m_excepted = TransactionException::NotEnoughCash;
 				std::string ex_info = "not enough cookie to execute tarnsaction will cost:" + toString(totalCost);
@@ -497,7 +498,7 @@ void Executive::initialize(Transaction const& _transaction)
 
 bool Executive::execute()
 {
-	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue;
+	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue ;
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_t.isCreation())
         return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
