@@ -46,6 +46,7 @@ enum class TransactionException
     BadSystemAddress,
     BadVoteParamter,
     BadBRCTransactionParamter,
+	BrcTranscationField,
 	DefaultError
 };
 
@@ -78,6 +79,17 @@ enum op_type : uint8_t
 	deployContract =5,
     executeContract =6
 };
+
+static std::map<op_type, u256> c_add_value = {
+	{null, 0},
+	{vote, 1000},
+    {brcTranscation, 0},
+    {pendingOrder, 2000},
+    {cancelPendingOrder, 1000},
+    {deployContract, 0},
+    {executeContract, 0}
+};
+
 struct operation
 {
     virtual ~operation() {}

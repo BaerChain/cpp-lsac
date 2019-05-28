@@ -20,6 +20,7 @@ enum class TransactionPriority
 };
 
 static const u256 DefaultGasPrice = 20 * shannon;
+static const u256 AverageGasPrice = 12 * wei;
 
 class GasPricer
 {
