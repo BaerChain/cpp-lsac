@@ -875,6 +875,12 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 			ret += std::string(*_error);
 	}
+    catch(InvalidGasPrice const& ex)
+	{
+		ret = "Accoun's transaction is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
 	catch(BrcTranscationField const& ex)
 	{
 		ret = "Account transfer BRC verify is error :";
