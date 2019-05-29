@@ -1218,66 +1218,54 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 
 Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum)
 {
-    // Json::Value jv;
-    // if(auto a = account(_addr))
-    // {
-    //     Json::Value _rewardArray;
-    //     if(a->blockReward().size() > 0)
-    //     {
-    //         for( auto it : a->blockReward())
-    //         {
-    //             Json::Value _vReward;
-    //             _vReward["blockNum"] = toJS(it.first);
-    //             _vReward["rewardNum"] = toJS(it.second);
-    //             _rewardArray.append(_vReward);
-    //         }
-    //         jv["BlockReward"] = _rewardArray;
-    //     }
-    // }
-    // return jv;
-
-    Json::Value jv;
-    if(auto a = account(_addr))
-    {
-        if(a->blockReward().size() > 0)
+    try{
+        Json::Value jv;
+        if(auto a = account(_addr))
         {
-            std::vector<std::pair<u256, u256>> _Vector = a->blockReward();
-            uint32_t _retList = 0;
-            if(_pageNum * _listNum > _Vector.size())
+            if(a->blockReward().size() > 0)
             {
-                _retList = _Vector.size();
-            }else{
-                _retList = _pageNum * _listNum;
-            }
-            if(_pageNum == 0 || _listNum == 0)
-            {
-                return jv;
-            }
-            if((_pageNum - 1) * _listNum > _Vector.size())
-            {
-                return jv;
-            }
+                std::vector<std::pair<u256, u256>> _Vector = a->blockReward();
+                uint32_t _retList = 0;
+                if(_pageNum * _listNum > _Vector.size())
+                {
+                    _retList = _Vector.size();
+                }else{
+                    _retList = _pageNum * _listNum;
+                }
+                if(_pageNum == 0 || _listNum == 0)
+                {
+                    return jv;
+                }
+                if((_pageNum - 1) * _listNum > _Vector.size())
+                {
+                    return jv;
+                }
 
-            std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum-1)* _listNum));
+                std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum-1)* _listNum));
             
-            if(_pageNum == 1)
-            {
-                std::copy(_Vector.begin(), _Vector.begin()+_retList, res.begin());
-            }else{
-                std::copy(_Vector.begin() + (_pageNum-1)*_listNum, _Vector.begin()+_retList, res.begin());
+                if(_pageNum == 1)
+                {
+                    std::copy(_Vector.begin(), _Vector.begin()+_retList, res.begin());
+                }else{
+                    std::copy(_Vector.begin() + (_pageNum-1)*_listNum, _Vector.begin()+_retList, res.begin());
+                }
+                Json::Value _rewardArray; 
+                for(auto it : res)
+                {
+                    Json::Value _vReward;
+                    _vReward["blockNum"] = toJS(it.first);
+                    _vReward["rewardNum"] = toJS(it.second);
+                    _rewardArray.append(_vReward);
+                }
+                jv["BlockReward"] = _rewardArray;
             }
-            Json::Value _rewardArray; 
-            for(auto it : res)
-            {
-                Json::Value _vReward;
-                _vReward["blockNum"] = toJS(it.first);
-                _vReward["rewardNum"] = toJS(it.second);
-                _rewardArray.append(_vReward);
-            }
-            jv["BlockReward"] = _rewardArray;
         }
+        return jv;
+    }catch(...)
+    {
+        throw;
     }
-    return jv;
+    
 }
 
 Json::Value dev::brc::State::votedMessage(Address const& _addr) const
