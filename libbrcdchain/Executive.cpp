@@ -310,7 +310,7 @@ void Executive::initialize(Transaction const& _transaction)
                 case transationTool::vote:
                 {
                     transationTool::vote_operation _vote_op = transationTool::vote_operation(val);
-                    size_t _tickets = 0;
+                    u256 _tickets = 0;
                     LOG(m_execLogger) << BrcYellow " init transation _from:" << _vote_op.m_from
                                       << " _to:" << _vote_op.m_to
                                       << " _vote_type:" << (size_t)_vote_op.m_vote_type
@@ -321,7 +321,7 @@ void Executive::initialize(Transaction const& _transaction)
                         //买票 要验证 买票前
                         _tickets = _vote_op.m_vote_numbers;
                     }
-					bigint _brc = (bigint)_tickets * u256(BALLOTPRICE);
+					u256 _brc = _tickets * u256(BALLOTPRICE);
                     if (m_s.balance(m_t.sender()) < (totalCost) || m_s.BRC(m_t.sender()) < _brc)
                     {
                         LOG(m_execLogger)

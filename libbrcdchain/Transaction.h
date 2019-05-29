@@ -114,11 +114,11 @@ struct vote_operation : public operation
 {
     Address m_from;
     Address m_to;
-    size_t m_vote_numbers = 0;
+    u256 m_vote_numbers = 0;
     uint8_t m_type = null;
     uint8_t m_vote_type = 0;
     vote_operation(
-        op_type type, const Address& from, const Address& to, uint8_t vote_type, size_t vote_num)
+        op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
       : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
     {}
     /// unserialize from data
