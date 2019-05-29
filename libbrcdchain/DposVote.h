@@ -58,7 +58,7 @@ public:
 public:
 	// 投票等操作 在State 中已实现
     // 验证投票合法
-    void verifyVote(Address const& _from, Address const& _to, size_t _type, size_t tickets = 0);
+    void verifyVote(Address const& _from, Address const& _to, size_t _type, u256 tickets = 0);
 	std::unordered_map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
 	std::unordered_map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
 	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	

@@ -1,7 +1,7 @@
 #include "DposVote.h"
 #include <unordered_map>
 
-void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, size_t tickets)
+void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, u256 tickets)
 {
 	std::string _ex_info = "";
     if(_type <= ENull || _type > EUnDelegate)
@@ -20,19 +20,19 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 		{
 			if(m_state.BRC(_to) < tickets* BALLOTPRICE)
 			{
-				_ex_info = "Not enough BRC to buy tickets:" + std::to_string(tickets);
+				_ex_info = "Not enough BRC to buy tickets:" + toString(tickets);
 				BOOST_THROW_EXCEPTION( VerifyVoteField()<< errinfo_comment(_ex_info));
 			}
 		}
 		break;
 		case dev::brc::ESellVote:
 		{ 
-			if(tickets > (size_t)m_state.ballot(_from))
+			if(tickets > m_state.ballot(_from))
 			{
 				_ex_info = "not have enough tickets to sell... tickes:" + toString(tickets);
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            if((tickets * BALLOTPRICE) > (size_t)m_state.BRC(SystemVoteBrcAddress))
+            if((tickets * BALLOTPRICE) > m_state.BRC(SystemVoteBrcAddress))
 			{
 				_ex_info = "system not enough BRC to author, can't sell ticks";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
