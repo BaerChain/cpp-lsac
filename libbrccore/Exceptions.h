@@ -60,6 +60,7 @@ DEV_SIMPLE_EXCEPTION(InvalidReceiptsStateRoot);
 DEV_SIMPLE_EXCEPTION(InvalidTimestamp);
 DEV_SIMPLE_EXCEPTION(InvalidLogBloom);
 DEV_SIMPLE_EXCEPTION(InvalidNonce);
+DEV_SIMPLE_EXCEPTION(InvalidGasPrice);
 DEV_SIMPLE_EXCEPTION(InvalidBlockHeaderItemCount);
 DEV_SIMPLE_EXCEPTION(InvalidBlockNonce);
 DEV_SIMPLE_EXCEPTION(InvalidParentHash);

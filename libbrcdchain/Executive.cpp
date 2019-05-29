@@ -241,6 +241,13 @@ void Executive::initialize(Transaction const& _transaction)
                 InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
 		    	<< errinfo_comment(std::string("the sender Noce error")));
         }
+        //check gasPrice the must bigger c_min_price
+		if(m_t.gasPrice() < c_min_price){
+			cerror << "Sender: " << m_t.sender().hex() << " Invalid gasPrice: Require >"
+				<< c_min_price << " Got " << m_t.gasPrice();
+			m_excepted = TransactionException::InvalidGasPrice;
+			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
+		}
 
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
