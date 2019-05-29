@@ -346,7 +346,7 @@ void Executive::initialize(Transaction const& _transaction)
                             << " vote_num:" << _vote_op.m_vote_numbers;
 					    cerror << " except:" << ex.what();
                         m_excepted = TransactionException::VerifyVoteField;
-						throw ex;
+						BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
                     }
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
@@ -387,7 +387,7 @@ void Executive::initialize(Transaction const& _transaction)
 							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
 						    << ex.what();
 						m_excepted = TransactionException::BrcTranscationField;
-						throw ex;
+						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
                     m_callParameters_v.push_back(
                         {(Executive::Method)(
