@@ -123,6 +123,21 @@ Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumb
     }
 }
 
+Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageNum, string const& _listNum, string const& _blockNumber)
+{
+    try{
+        if(jsToInt(_listNum) > 50)
+        {
+            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
+        }
+        return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string Brc::brc_getBallot(string const& _address, string const& _blockNumber)
 {
     try
