@@ -174,11 +174,11 @@ Account *State::account(Address const &_addr) {
 	const bytes _bBlockReward = state[11].toBytes();
 	RLP _rlpBlockReward(_bBlockReward);
 	num = _rlpBlockReward[0].toInt<size_t>();
-	std::unordered_map<u256, u256> _blockReward;
+	std::vector<std::pair<u256, u256>> _blockReward;
 	for (size_t k = 1; k <= num; k++)
 	{
 		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
-        _blockReward.insert(_blockpair);
+        _blockReward.push_back(_blockpair);
 	}
 
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
@@ -1180,7 +1180,6 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     addPoll(_addr, 0 - _value);
 }
 
-
 Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     Json::Value jv;
     if (auto a = account(_addr)) {
@@ -1213,6 +1212,70 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 			}
 			jv["BlockReward"] = _rewardArray;
 		}*/
+    }
+    return jv;
+}
+
+Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum)
+{
+    // Json::Value jv;
+    // if(auto a = account(_addr))
+    // {
+    //     Json::Value _rewardArray;
+    //     if(a->blockReward().size() > 0)
+    //     {
+    //         for( auto it : a->blockReward())
+    //         {
+    //             Json::Value _vReward;
+    //             _vReward["blockNum"] = toJS(it.first);
+    //             _vReward["rewardNum"] = toJS(it.second);
+    //             _rewardArray.append(_vReward);
+    //         }
+    //         jv["BlockReward"] = _rewardArray;
+    //     }
+    // }
+    // return jv;
+
+    Json::Value jv;
+    if(auto a = account(_addr))
+    {
+        if(a->blockReward().size() > 0)
+        {
+            std::vector<std::pair<u256, u256>> _Vector = a->blockReward();
+            uint32_t _retList = 0;
+            if(_pageNum * _listNum > _Vector.size())
+            {
+                _retList = _Vector.size();
+            }else{
+                _retList = _pageNum * _listNum;
+            }
+            if(_pageNum == 0 || _listNum == 0)
+            {
+                return jv;
+            }
+            if((_pageNum - 1) * _listNum > _Vector.size())
+            {
+                return jv;
+            }
+
+            std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum-1)* _listNum));
+            
+            if(_pageNum == 1)
+            {
+                std::copy(_Vector.begin(), _Vector.begin()+_retList, res.begin());
+            }else{
+                std::copy(_Vector.begin() + (_pageNum-1)*_listNum, _Vector.begin()+_retList, res.begin());
+            }
+            Json::Value _rewardArray; 
+            for(auto it : res)
+            {
+                Json::Value _vReward;
+                _vReward["blockNum"] = toJS(it.first);
+                _vReward["rewardNum"] = toJS(it.second);
+                _rewardArray.append(_vReward);
+            }
+            jv["BlockReward"] = _rewardArray;
+        }
     }
     return jv;
 }

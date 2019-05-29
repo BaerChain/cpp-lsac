@@ -281,9 +281,8 @@ public:
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
-	void setBlockReward(std::unordered_map<u256, u256> const& _blockReward) { m_BlockReward.clear(); m_BlockReward.insert(_blockReward.begin(), _blockReward.end()); }
-	std::unordered_map<u256, u256> const& blockReward() const { return m_BlockReward; }
-
+	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
+	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 private:
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -336,8 +335,9 @@ private:
     */
     std::unordered_map<Address, u256> m_voteData;
 
-	std::unordered_map<u256, u256> m_BlockReward;
+	//std::unordered_map<u256, u256> m_BlockReward;
 
+    std::vector<std::pair<u256, u256>> m_BlockReward;
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;
 
