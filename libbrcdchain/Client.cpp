@@ -957,8 +957,10 @@ h256 Client::importTransaction(Transaction const& _t)
 }
 
 h256  Client::importBlock(const dev::bytesConstRef &data) {
-
+    auto header = BlockHeader(data);
     h256 h = BlockHeader::headerHashFromBlock(data);
+    cwarn << "hash : " << toHex(header.hash());
+    cwarn << "state root : " << toHex(header.stateRoot());
     ImportResult ret = m_bq.import(data);
     switch (ret)
     {

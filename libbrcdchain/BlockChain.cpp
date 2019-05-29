@@ -4,6 +4,7 @@
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 #include "State.h"
+#include "SecureTrieDB.h"
 #include "ThreadPackTransactions.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
@@ -616,6 +617,26 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     performanceLogger.onStageFinished("preliminaryChecks");
 
+//#if 1
+    try{
+        State st(Invalid256, _db, _exdb);
+        GenericTrieDB<OverlayDB> trieDB;
+        trieDB.open(&st.db(), h256("bf48464e3c06183c2ff947d12d9c1bf05fb9d6ffc08903fba98f9ec0d6814d22"));
+        std::ostringstream os;
+
+        auto ret = trieDB.leftOvers(&os);
+        std::cout << "------" << os.str();
+
+//        for(auto itr : trieDB){
+//            cwarn << "trie key : " << toHex(itr.first) << " value: " << toHex(itr.second);
+//        }
+
+    }catch (...){
+        cwarn << "un kown exception ...";
+    }
+//#endif
+
+
     BlockReceipts br;
     u256 td;
     try {
@@ -623,6 +644,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         // Get total difficulty increase and update state, checking it.
         Block s(*this, _db, _exdb);
         cwarn << "execute block author: " << _block.info.author() << " number: " << _block.info.number();
+
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
             br.receipts.push_back(s.receipt(i));
@@ -852,6 +874,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
 
     if (m_lastBlockHash != newLastBlockHash)
         DEV_WRITE_GUARDED(x_lastBlockHash) {
+            cwarn << "write best block into  extras db.";
             m_lastBlockHash = newLastBlockHash;
             m_lastBlockNumber = newLastBlockNumber;
             try {
@@ -885,8 +908,10 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     if (!route.empty())
         noteCanonChanged();
 
-    if (isImportedAndBest && m_onBlockImport)
+    if (isImportedAndBest && m_onBlockImport){
+        cwarn << "notificate call back.";
         m_onBlockImport(_block.info);
+    }
 
     h256s fresh;
     h256s dead;

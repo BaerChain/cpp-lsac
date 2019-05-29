@@ -109,9 +109,6 @@ void Block::resetCurrent(int64_t _timestamp) {
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
-    // TODO: check.
-
-//    m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
 
@@ -221,10 +218,13 @@ bool Block::sync(BlockChain const &_bc, h256 const &_block, BlockHeader const &_
         m_previousBlock = m_currentBlock;
         resetCurrent();
         ret = true;
+        cwarn << "bi == m_currentBlock ";
     } else if (bi == m_previousBlock) {
         // No change since last sync.
         // Carry on as we were.
+        cwarn << "bi == m_previousBlock ";
     } else {
+        cwarn << "bi != m_previousBlock  && bi != m_currentBlock";
         // New blocks available, or we've switched to a different branch. All change.
         // Find most recent state dump and replay what's left.
         // (Most recent state dump might end up being genesis.)
