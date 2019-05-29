@@ -10,13 +10,14 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 		_ex_info = "Vote Type error:" + toString(_type);
 		BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
     }
+
+    VoteType dType = (VoteType)_type;
 	if(dType == EBuyVote || dType == ESellVote || dType == EDelegate || dType == EUnDelegate){
 		if(tickets <= 0){
 			_ex_info = "tickets must bigger 0! ticket:" + toString(tickets);
 			BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 		}
 	}
-    VoteType dType = (VoteType)_type;
     switch(dType)
     {
         case dev::brc::ENull:
