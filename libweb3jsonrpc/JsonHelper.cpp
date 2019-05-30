@@ -344,37 +344,7 @@ namespace dev {
 
                 if (!_json["data"].empty())                            // brcdChain.js has preconstructed the data array
                 {
-                    if (_json["to"].asString() == "0x00000000000000000000000000000000766f7465") {
-                        std::cout << "1111111111111111111111111111111";
-                        int size = _json["data"].size();
-                        std::cout << "data size:" << size << std::endl;
-                        std::vector<bytes> _op_datas;
-                        for (int i = 0; i < size; i++) {
-                            Json::Value _itemData = _json["data"][i];
-                            std::cout << "1222222222222222222222222222" << std::endl;
-                            transationTool::op_type _type = (transationTool::op_type) _itemData["method_type"].asInt();
-                            Address _from = Address(_itemData["from"].asString());
-                            Address _to = Address(_itemData["to"].asString());
-                            std::cout << "3333333333333333333333333333333" << std::endl;
-                            switch (_type) {
-                                case transationTool::vote: {
-                                    uint8_t _vote_type = (uint8_t) _itemData["type"].asInt();
-                                    size_t _vote_num = (size_t) _itemData["tickets"].asInt();
-                                    transationTool::vote_operation vote_op{_type, _from, _to, _vote_type, _vote_num};
-                                    _op_datas.push_back(vote_op.serialize());
-                                    std::cout << "444444444444444444444444444444444" << std::endl;
-                                }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        RLPStream _s;
-                        _s.appendVector<bytes>(_op_datas);
-                        ret.data = _s.out();
-                    } else {
-                        ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
-                    }
+                    ret.data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
                 }
 
                 if (!_json["code"].empty())

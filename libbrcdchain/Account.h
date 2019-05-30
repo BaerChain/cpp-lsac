@@ -64,7 +64,7 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _arrears,u256 _assetInjectStatus = 0)
+        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _assetInjectStatus = 0)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
@@ -76,8 +76,7 @@ public:
         m_BRC(_BRC),
         m_FBRC(_FBRC),
         m_FBalance(_FBalance),
-		m_assetInjectStatus(_assetInjectStatus),
-        m_arrears(_arrears)
+		m_assetInjectStatus(_assetInjectStatus)
     {
         assert(_contractRoot);
     }
@@ -112,7 +111,6 @@ public:
         m_poll = 0;
         m_ballot = 0;
 		m_assetInjectStatus = 0;
-        m_arrears = 0;
         m_voteData.clear();
 		m_BlockReward.clear();
         changed();
@@ -142,7 +140,6 @@ public:
 
     u256 const& FBalance() const { return m_FBalance; }
 
-    u256 const& arrears() const {return m_arrears;}
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)
     {
@@ -171,11 +168,6 @@ public:
         changed();
 	}
 
-    void addArrears(u256 _value)
-    {
-        m_arrears += _value;
-        changed();
-    }
 
     // Acounts own ballot
     u256 const& ballot() const { return m_ballot; }
@@ -281,7 +273,7 @@ public:
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
     u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
     void addVote(std::pair<Address, u256> _votePair);
-    std::unordered_map<Address, u256> const& voteData() const { return m_voteData; }
+    std::map<Address, u256> const& voteData() const { return m_voteData; }
     void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
     // 系统管理竞选人/验证人
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
@@ -289,9 +281,8 @@ public:
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
-	void setBlockReward(std::unordered_map<u256, u256> const& _blockReward) { m_BlockReward.clear(); m_BlockReward.insert(_blockReward.begin(), _blockReward.end()); }
-	std::unordered_map<u256, u256> const& blockReward() const { return m_BlockReward; }
-
+	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
+	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 private:
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -338,15 +329,15 @@ private:
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
-    u256 m_arrears = 0;
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
     */
-    std::unordered_map<Address, u256> m_voteData;
+    std::map<Address, u256> m_voteData;
 
-	std::unordered_map<u256, u256> m_BlockReward;
+	//std::unordered_map<u256, u256> m_BlockReward;
 
+    std::vector<std::pair<u256, u256>> m_BlockReward;
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;
 
