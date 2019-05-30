@@ -46,6 +46,11 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
          BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("Pending order type and parameters are incorrect")));
     }
 
+	if( (_token_type != ex::order_token_type::BRC || _token_type != ex::order_token_type::FUEL) && (_buy_type != ex::order_buy_type::all_price || _buy_type != ex::order_buy_type::only_price))
+	{
+		BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("Pending order type and parameters are incorrect")));
+	} 
+
     if (_type == order_type::buy && _token_type == order_token_type::BRC &&
         _buy_type == order_buy_type::only_price)
     {
