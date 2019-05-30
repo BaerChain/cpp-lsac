@@ -123,7 +123,7 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
 {
 	//Block _block = blockByNumber(LatestBlock);
-	std::unordered_map<Address, u256> creaters;
+	std::map<Address, u256> creaters;
 	if(_type == CreaterType::Canlitor)
 		creaters = preSeal().mutableVote().CanlitorAddress();
 	else if(_type == CreaterType::Varlitor)

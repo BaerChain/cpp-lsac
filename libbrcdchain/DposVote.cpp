@@ -54,7 +54,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				_ex_info = " Accout not is Candidate";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
+            std::map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
 			if(_vote.find(_from) != _vote.end())
 			{
 				_ex_info = " Accout early is Candidate";
@@ -70,7 +70,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				_ex_info = " Accout not is Candidate";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
+            std::map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
 			if(_vote.find(_from) == _vote.end())
 			{
 				_ex_info = " Accout not is Candidate";
@@ -87,7 +87,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
             }
             //验证 竞选人是否存在
-            std::unordered_map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
+            std::map<Address, u256> _vote = m_state.voteDate(SysElectorAddress);
             if(_vote.find(_to) == _vote.end())
             {
 				_ex_info = "the Elector:" + toString(_to) +" not exist !";
@@ -98,7 +98,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
         case dev::brc::EUnDelegate:
         {
             //撤销投票
-            std::unordered_map<Address, u256> _vote = m_state.voteDate(_from);
+            std::map<Address, u256> _vote = m_state.voteDate(_from);
             auto ret = _vote.find(_to);
             if(ret == _vote.end() || ret->second < tickets)
             {
@@ -114,7 +114,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 
 void dev::brc::DposVote::getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const
 {
-    std::unordered_map<Address, u256> _eletors_temp = getElectors();
+    std::map<Address, u256> _eletors_temp = getElectors();
     for (auto it : _ignore)
     {
         auto ret = _eletors_temp.find(it);
