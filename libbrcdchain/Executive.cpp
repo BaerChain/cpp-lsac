@@ -312,6 +312,14 @@ void Executive::initialize(Transaction const& _transaction)
                 transationTool::op_type _type = transationTool::operation::get_type(val);
 				totalCost += transationTool::c_add_value[_type]* m_t.gasPrice();
 				m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
+
+                if(_type == transationTool::vote)
+				{
+                    // now is closed and will open in future
+					cwarn << " this function is closed type:" << _type;
+					std::string ex_info = "This function is suspended type:" + toString(_type);
+					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
+				}
                 switch (_type)
                 {
                 case transationTool::vote:

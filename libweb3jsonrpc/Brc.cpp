@@ -843,6 +843,11 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 			ret += std::string(*_error);
     }
+	catch(InvalidFunction const& ex){
+		ret = "Invalid function .";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
     catch (PendingTransactionAlreadyExists const&)
     {
         ret = "Same transaction already exists in the pending transaction queue.";
