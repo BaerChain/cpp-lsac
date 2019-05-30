@@ -273,7 +273,7 @@ public:
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
     u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
     void addVote(std::pair<Address, u256> _votePair);
-    std::unordered_map<Address, u256> const& voteData() const { return m_voteData; }
+    std::map<Address, u256> const& voteData() const { return m_voteData; }
     void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
     // 系统管理竞选人/验证人
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
@@ -333,7 +333,7 @@ private:
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
     */
-    std::unordered_map<Address, u256> m_voteData;
+    std::map<Address, u256> m_voteData;
 
 	//std::unordered_map<u256, u256> m_BlockReward;
 
