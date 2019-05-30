@@ -26,6 +26,7 @@ DEV_SIMPLE_EXCEPTION(OutOfGasIntrinsic);
 DEV_SIMPLE_EXCEPTION(NotEnoughAvailableSpace);
 DEV_SIMPLE_EXCEPTION(NotEnoughCash);
 DEV_SIMPLE_EXCEPTION(NotEnoughBallot);
+DEV_SIMPLE_EXCEPTION(InvalidFunction);
 DEV_SIMPLE_EXCEPTION(BadSystemAddress);
 DEV_SIMPLE_EXCEPTION(BadVoteParamter);
 DEV_SIMPLE_EXCEPTION(BadBRCTransactionParamter);
