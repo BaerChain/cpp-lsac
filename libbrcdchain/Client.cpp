@@ -378,16 +378,17 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
-    
+
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
 
     double elapsed = t.elapsed();
 	if(count)
 	{
-		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
+//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size();
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+				<< "  " << m_StateExDB.check_version(false);
 		}
 	}
 
