@@ -692,7 +692,7 @@ void Client::doWork(bool _doWait)
     bool t = true;
 
 
-	cerror << "   Client::doWork :   " << m_needStateReset;
+	cwarn << "   Client::doWork :   " << m_needStateReset;
 
 
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
@@ -703,7 +703,7 @@ void Client::doWork(bool _doWait)
 
     if (m_needStateReset)
     {
-		cerror << " :SHDposClient::doWork   resetState";
+		cwarn << " :SHDposClient::doWork   resetState";
         resetState();
         m_needStateReset = false;
     }

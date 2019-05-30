@@ -61,6 +61,7 @@ public:
     using Interface::codeHashAt;
     using Interface::storageAt;
     using Interface::accountMessage;
+    using Interface::blockRewardMessage;
 	using Interface::pendingOrderPoolMessage;
 	using Interface::pendingOrderPoolForAddrMessage;
 	using Interface::successPendingOrderMessage;
@@ -75,6 +76,7 @@ public:
     std::map<h256, std::pair<u256, u256>> storageAt(Address _a, BlockNumber _block) const override;
 
 	Json::Value accountMessage(Address _a, BlockNumber _block) const override;
+    Json::Value blockRewardMessage(Address _a, uint32_t _pageNum, uint32_t _listNum, BlockNumber _block) const override;
     Json::Value pendingOrderPoolMessage(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
     Json::Value pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize, BlockNumber _block) const override;
 	Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const override;
@@ -127,6 +129,7 @@ public:
     Addresses addresses(BlockNumber _block) const override;
     u256 gasLimitRemaining() const override;
     u256 gasBidPrice() const override { return DefaultGasPrice; }
+	u256 GasAveragePrice() const override { return  AverageGasPrice; }
 
     /// Get the block author
     Address author() const override;

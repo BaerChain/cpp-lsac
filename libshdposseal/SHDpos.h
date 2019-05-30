@@ -33,6 +33,7 @@ namespace dev
             unsigned            sealFields() const override { return 2; }
             strings             sealers() const override { return { "cpu" }; };
             void                generateSeal(BlockHeader const& _bi) override;
+			void                populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const override;
             void                initConfigAndGenesis(ChainParams const& m_params);
             void                setDposClient(SHDposClient const* _c) { m_dpos_cleint = _c; }
             SHDposConfigParams const& dposConfig() { return m_config; }
@@ -40,9 +41,12 @@ namespace dev
             bool                isBolckSeal(uint64_t _now);
             bool                checkDeadline(uint64_t _now);           //验证出块时间周期
 			void                tryElect(uint64_t _now);   //判断是否完成了本轮出块，选出新一轮验证人
+			inline std::vector<Address> const& getCurrCreaters() const { return m_curr_varlitors; }
+
 
 			inline void         initNet(std::weak_ptr<SHDposHostcapality> _host) { m_host = _host; }
             inline void         startGeneration() { setName("SHDpos"); startWorking(); }   //loop 开启 
+
 		public:
 			void                onDposMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
 			void                requestStatus(NodeID const & _nodeID, u256 const & _peerCapabilityVersion);

@@ -78,6 +78,9 @@ public:
     /// @param _t Transaction hash
     void dropGood(Transaction const& _t);
 
+    /// delete the droped transation logs 
+	void eraseDropedTx(h256 const& _txHash);
+
     struct Status
     {
         size_t current;

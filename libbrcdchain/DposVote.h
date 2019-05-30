@@ -58,9 +58,9 @@ public:
 public:
 	// 投票等操作 在State 中已实现
     // 验证投票合法
-    bool verifyVote(Address const& _from, Address const& _to, size_t _type, std::string& _ex_info, size_t tickets = 0);
-	std::unordered_map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
-	std::unordered_map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
+    void verifyVote(Address const& _from, Address const& _to, size_t _type, u256 tickets = 0);
+	std::map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
+	std::map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
 	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.addVote(_id, _recivedAddr, _value);} 
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);} 
@@ -71,9 +71,9 @@ public:
 
 
 public:
-    std::unordered_map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}  
+    std::map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}
     //获取竞选人排名
-	inline std::unordered_map<Address, u256>  getElectors() const { return m_state.voteDate(SysElectorAddress); }
+	inline std::map<Address, u256>  getElectors() const { return m_state.voteDate(SysElectorAddress); }
     
 private: 
     State&      m_state;

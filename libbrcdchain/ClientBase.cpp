@@ -21,7 +21,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             upperBound = c_maxGasEstimate;
         int64_t lowerBound = Transaction::baseGasRequired(!_dest, &_data, BRCSchedule());
         Block bk = blockByNumber(_blockNumber);
-        u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
+        u256 gasPrice = _gasPrice == Invalid256 ? GasAveragePrice() : _gasPrice;
         ExecutionResult er;
         ExecutionResult lastGood;
         bool good = false;
@@ -114,6 +114,11 @@ map<h256, pair<u256, u256>> ClientBase::storageAt(Address _a, BlockNumber _block
 Json::Value dev::brc::ClientBase::accountMessage(Address _a, BlockNumber _block) const
 {
     return blockByNumber(_block).mutableState().accoutMessage(_a);
+}
+
+Json::Value dev::brc::ClientBase::blockRewardMessage(Address _a, uint32_t _pageNum, uint32_t _listNum, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().blockRewardMessage(_a, _pageNum, _listNum);
 }
 
 Json::Value dev::brc::ClientBase::pendingOrderPoolMessage(

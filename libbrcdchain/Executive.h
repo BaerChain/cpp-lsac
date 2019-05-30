@@ -191,6 +191,7 @@ public:
     void revert();
 
 private:
+	const u256 c_min_price = 5;
     enum Method
     {
         Other,
@@ -270,6 +271,7 @@ private:
 
     u256 m_gasCost;
 	u256 m_totalGas = 0;
+	u256 m_addCostValue = 0;
 	u256 m_needRefundGas = 0;
     u256 m_value = 0;
     u256 m_ballots = 0;
