@@ -191,6 +191,7 @@ public:
     void revert();
 
 private:
+	const u256 c_min_price = 5;
     enum Method
     {
         Other,
