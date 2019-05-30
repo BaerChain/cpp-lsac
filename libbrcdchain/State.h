@@ -359,7 +359,7 @@ private:
     //撤销投票
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     //获取指定地址的voteDate
-    std::unordered_map<Address, u256> voteDate(Address const& _id) const;
+    std::map<Address, u256> voteDate(Address const& _id) const;
     //竞选人，验证人管理
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

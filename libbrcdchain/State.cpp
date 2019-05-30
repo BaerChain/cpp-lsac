@@ -1273,7 +1273,7 @@ Json::Value dev::brc::State::votedMessage(Address const& _addr) const
 	Json::Value jv;
 	if(auto a = account(_addr))
 	{
-		std::unordered_map<Address, u256> const& _data = a->voteData();
+		std::map<Address, u256> const& _data = a->voteData();
 		Json::Value _arry;
 		int _num = 0;
 		for(auto val : a->voteData())
@@ -1294,7 +1294,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 {
 	Json::Value jv;
 	Json::Value _arry;
-	std::unordered_map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
+	std::map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
 	if(_addr == ZeroAddress)
 	{
 		for(auto val : _data)
@@ -1442,11 +1442,11 @@ void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u
 }
 
 
-std::unordered_map<dev::Address, dev::u256> dev::brc::State::voteDate(Address const &_id) const {
+std::map<dev::Address, dev::u256> dev::brc::State::voteDate(Address const &_id) const {
     if (auto a = account(_id))
         return a->voteData();
     else {
-        return std::unordered_map<Address, u256>();
+        return std::map<Address, u256>();
     }
 }
 
