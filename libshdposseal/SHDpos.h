@@ -46,6 +46,8 @@ namespace dev
 
 			inline void         initNet(std::weak_ptr<SHDposHostcapality> _host) { m_host = _host; }
             inline void         startGeneration() { setName("SHDpos"); startWorking(); }   //loop 开启 
+            
+			inline int64_t      get_next_time() const{ return m_next_block_time; }
 
 		public:
 			void                onDposMsg(NodeID _nodeid, unsigned _id, RLP const& _r);
@@ -102,7 +104,7 @@ namespace dev
 			std::vector<Address>            m_curr_varlitors;                   //本轮验证人集合
 			std::vector<Address>            m_curr_candidate;								//本轮候选人集合
             SHDposClient const*             m_dpos_cleint;
-            int64_t                         m_next_block_time;                  // 上次进入出块周期时间
+            int64_t                         m_next_block_time;                  // next 进入出块周期时间
 			int64_t                         m_last_block_time;
             SHDposConfigParams              m_config;                           // dpos 相关配置
 
