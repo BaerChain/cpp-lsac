@@ -334,6 +334,6 @@ private:
     BlockNumber m_blockNumber;
 };
 
-#define BALLOTPRICE 5
+#define BALLOTPRICE 500000000
 }  // namespace brc
 }  // namespace dev
