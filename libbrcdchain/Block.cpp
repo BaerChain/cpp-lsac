@@ -315,11 +315,9 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             if (!m_transactionSet.count(t.sha3())) {
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
-                        cwarn << "begin execute...";
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
-                        cwarn << "end execute...";
                     } else if (t.gasPrice() < _gp.ask(*this) * 9 / 10) {
                         LOG(m_logger)
                             << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
