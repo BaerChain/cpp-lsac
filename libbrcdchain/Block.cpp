@@ -111,7 +111,7 @@ void Block::resetCurrent(int64_t _timestamp) {
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
     // TODO: check.
 
-//    m_state.exdb().rollback();
+    m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
 
@@ -315,7 +315,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             if (!m_transactionSet.count(t.sha3())) {
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
-
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
@@ -424,6 +423,7 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 #endif
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
+//    m_state.exdb().rollback();
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
