@@ -306,11 +306,9 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = 0; 
 			//totalCost += m_baseGasRequired * m_t.gasPrice();
 			totalCost += m_t.gas()* m_t.gasPrice();
-<<<<<<< HEAD
-			u256 total_brc = 0;
-=======
-            std::set<op_type> _setType;
->>>>>>> b430e78887927d73533268b2c7b473995af0967a
+
+            std::set<transationTool::op_type> _setType;
+			_setType.clear();
             for (auto val : _ops)
             {
 				std::string _ret = "";
@@ -328,7 +326,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Temporary pending orders or withdrawals are not supported at this time.")));
                 }
-                
+
                 if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
