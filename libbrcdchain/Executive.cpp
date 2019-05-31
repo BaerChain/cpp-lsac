@@ -239,7 +239,7 @@ void Executive::initialize(Transaction const& _transaction)
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
                 InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
-		    	<< errinfo_comment(std::string("the sender Noce error")));
+		    	<< errinfo_comment(std::string("the sender Nonce error")));
         }
         //check gasPrice the must bigger c_min_price
 		if(m_t.gasPrice() < c_min_price){
@@ -306,6 +306,7 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = 0; 
 			//totalCost += m_baseGasRequired * m_t.gasPrice();
 			totalCost += m_t.gas()* m_t.gasPrice();
+			u256 total_brc = 0;
             for (auto val : _ops)
             {
 				std::string _ret = "";
@@ -388,9 +389,10 @@ void Executive::initialize(Transaction const& _transaction)
 							<< errinfo_comment(m_t.sender().hex()));
 					}
 					try { 
+						total_brc += _transcation_op.m_Transcation_numbers;
 						m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
 							                               (size_t)_transcation_op.m_Transcation_type,
-														   _transcation_op.m_Transcation_numbers);
+														   total_brc);
 					}
 					catch(Exception &ex)
 					{
