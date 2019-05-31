@@ -19,7 +19,7 @@ void dev::brc::BRCTranscation::verifyTranscation(
         if (_form == _to)
         {
 			BOOST_THROW_EXCEPTION(BrcTranscationField()
-								  << errinfo_comment(" cat't transfer brc for mine"));
+								  << errinfo_comment(" cant't transfer brc to me"));
         }
         if (_transcationNum > m_state.BRC(_form))
         {
