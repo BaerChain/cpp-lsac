@@ -306,6 +306,7 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = 0; 
 			//totalCost += m_baseGasRequired * m_t.gasPrice();
 			totalCost += m_t.gas()* m_t.gasPrice();
+            std::set<op_type> _setType;
             for (auto val : _ops)
             {
 				std::string _ret = "";
@@ -313,6 +314,17 @@ void Executive::initialize(Transaction const& _transaction)
 				totalCost += transationTool::c_add_value[_type]* m_t.gasPrice();
 				m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
 
+                _setType.insert(_type);
+                if(_setType.size() > 1)
+                {
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Mixed types cannot exist in bulk transactions")));
+                }
+
+                if(_ops.size() > 1 && (_type == transationTool::pendingOrder || _type == transationTool::cancelPendingOrder))
+                {
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Temporary pending orders or withdrawals are not supported at this time.")));
+                }
+                
                 if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
