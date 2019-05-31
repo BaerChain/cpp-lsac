@@ -292,6 +292,10 @@ void Executive::initialize(Transaction const& _transaction)
             m_callParameters_v.clear();
             RLP _r(m_t.data());
             std::vector<bytes> _ops = _r.toVector<bytes>();
+            if(_ops.size() > 1)
+            {
+                BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Bulk transactions are not supported at this time")));
+            }
 			if(_ops.empty())
 			{
 
@@ -306,26 +310,12 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = 0; 
 			//totalCost += m_baseGasRequired * m_t.gasPrice();
 			totalCost += m_t.gas()* m_t.gasPrice();
-			u256 total_brc = 0;
-            std::set<transationTool::op_type> _setType;
-			_setType.clear();
             for (auto val : _ops)
             {
 				std::string _ret = "";
                 transationTool::op_type _type = transationTool::operation::get_type(val);
 				totalCost += transationTool::c_add_value[_type]* m_t.gasPrice();
 				m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
-
-                _setType.insert(_type);
-                if(_setType.size() > 1)
-                {
-                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Mixed types cannot exist in bulk transactions")));
-                }
-
-                if(_ops.size() > 1 && (_type == transationTool::pendingOrder || _type == transationTool::cancelPendingOrder))
-                {
-                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("Temporary pending orders or withdrawals are not supported at this time.")));
-                }
 
                 if(_type == transationTool::vote)
 				{
@@ -402,10 +392,9 @@ void Executive::initialize(Transaction const& _transaction)
 							<< errinfo_comment(m_t.sender().hex()));
 					}
 					try { 
-						total_brc += _transcation_op.m_Transcation_numbers;
 						m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
 							                               (size_t)_transcation_op.m_Transcation_type,
-														   total_brc);
+														   _transcation_op.m_Transcation_numbers);
 					}
 					catch(Exception &ex)
 					{
