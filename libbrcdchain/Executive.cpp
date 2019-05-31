@@ -306,7 +306,7 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = 0; 
 			//totalCost += m_baseGasRequired * m_t.gasPrice();
 			totalCost += m_t.gas()* m_t.gasPrice();
-
+			u256 total_brc = 0;
             std::set<transationTool::op_type> _setType;
 			_setType.clear();
             for (auto val : _ops)
