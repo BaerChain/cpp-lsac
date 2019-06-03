@@ -1075,7 +1075,7 @@ int main(int argc, char **argv) {
                     new rpc::Debug(*web3.brcdChain()),
                     nullptr
             );
-            auto httpConnector = new SafeHttpServer("0.0.0.0", (int)http_port, "", "", 4);
+            auto httpConnector = new SafeHttpServer(listenIP, (int)http_port, "", "", 4);
             httpConnector->setAllowedOrigin("");
             jsonrpcHttpServer->addConnector(httpConnector);
             jsonrpcHttpServer->StartListening();
