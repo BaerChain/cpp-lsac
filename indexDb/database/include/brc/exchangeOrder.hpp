@@ -80,7 +80,7 @@ namespace dev {
 
                 inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-                    std::string ret = "  current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+                    std::string ret = " version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
                     if(p){
                         cwarn << ret;
                     }
@@ -221,6 +221,8 @@ namespace dev {
                     return db->get<dynamic_object>();
                 }
 
+                ///
+                /// \param up  if true ++ , false --.
                 void update_dynamic_orders(bool up){
                     db->modify(get_dynamic_object(), [&](dynamic_object &obj){
                         if(up){

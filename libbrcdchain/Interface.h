@@ -122,6 +122,7 @@ public:
         return storageAt(_a, m_default);
     }
     Json::Value accountMessage(Address _a) const { return accountMessage(_a, m_default); }
+    Json::Value blockRewardMessage(Address _a, uint32_t _pageNum, uint32_t _listNum) const { return blockRewardMessage(_a, _pageNum, _listNum, m_default); }
 	Json::Value pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_token_type, u256 _getSize) const
     {
@@ -147,6 +148,7 @@ public:
         Address _a, BlockNumber _block) const = 0;
 
     virtual Json::Value accountMessage(Address _a, BlockNumber _block) const = 0;
+    virtual Json::Value blockRewardMessage(Address _a, uint32_t _pageNum, uint32_t _listNum, BlockNumber _block) const = 0;
  	virtual Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const = 0;
     virtual Json::Value pendingOrderPoolMessage(
         uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
@@ -270,6 +272,7 @@ public:
     virtual u256 gasLimitRemaining() const = 0;
     // Get the gas bidding price
     virtual u256 gasBidPrice() const = 0;
+	virtual u256 GasAveragePrice() const = 0;
 
     /// Get some information on the block queue.
     virtual SyncStatus syncStatus() const = 0;

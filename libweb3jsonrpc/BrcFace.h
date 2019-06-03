@@ -52,6 +52,12 @@ public:
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBalanceI);
         this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getBlockReward", jsonrpc::PARAMS_BY_POSITION, 
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2", 
+                jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, "param4", 
+                jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getBlockRewardI);
+        this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getBallot", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBallotI);
@@ -282,6 +288,11 @@ public:
     inline virtual void brc_getBalanceI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getBalance(request[0u].asString(), request[1u].asString());
+    }
+    inline virtual void brc_getBlockRewardI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getBlockReward(request[0u].asString(), request[1u].asString(), 
+            request[2u].asString(), request[3u].asString());
     }
     inline virtual void brc_getBallotI(const Json::Value& request, Json::Value& response)
     {
@@ -519,6 +530,7 @@ public:
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
 	virtual Json::Value brc_getSuccessPendingOrder(const std::string& param1, const std::string& param2) = 0;
 	virtual Json::Value brc_getBalance(const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getBlockReward(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;

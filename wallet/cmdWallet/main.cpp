@@ -179,7 +179,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                              Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
-                                                             op_obj["m_vote_numbers"].get_int()
+															 u256(fromBigEndian<u256>(fromHex(op_obj["m_vote_numbers"].get_str())))
                                                              );
                             tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
                             break;

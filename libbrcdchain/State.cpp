@@ -174,11 +174,11 @@ Account *State::account(Address const &_addr) {
 	const bytes _bBlockReward = state[11].toBytes();
 	RLP _rlpBlockReward(_bBlockReward);
 	num = _rlpBlockReward[0].toInt<size_t>();
-	std::unordered_map<u256, u256> _blockReward;
+	std::vector<std::pair<u256, u256>> _blockReward;
 	for (size_t k = 1; k <= num; k++)
 	{
 		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
-        _blockReward.insert(_blockpair);
+        _blockReward.push_back(_blockpair);
 	}
 
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
@@ -188,8 +188,7 @@ Account *State::account(Address const &_addr) {
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
-								 Account::Unchanged, state[10].toInt<u256>(),
-                                                    state[12].toInt<u256>()));
+								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
@@ -541,57 +540,6 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
     addFBalance(_addr, 0 - _value);
 }
 
-u256 State::arrears(Address const& _id) const
-{
-    if(auto a = account(_id))
-    {
-        return a->arrears();
-    }else{
-        return 0;
-    }
-}
-
-void State::addArrears(Address const& _addr, u256 const& _value) 
-{
-    if(_value == 0)
-    {
-        return;
-    }
-
-    if(Account *a = account(_addr))
-    {
-        if(!a->isDirty() && a->isEmpty())
-        {
-            m_changeLog.emplace_back(Change::Touch, _addr);
-        }
-        a->addArrears(_value);
-    }
-    if(_value)
-    {
-        m_changeLog.emplace_back(Change::Arrears, _addr, _value);
-    }
-
-}
-
-void State::subArrears(Address const& _addr, u256 const& _value)
-{
-    if(_value == 0)
-    {
-        return;
-    }
-
-    Account *a = account(_addr);
-    if (!a || a->arrears() < _value) {
-        // TODO: I expect this never happens.
-        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->arrears();
-        BOOST_THROW_EXCEPTION(NotEnoughCash());
-    }
-
-
-    // Fall back to addBalance().
-    addArrears(_addr, 0 - _value);
-}
-
 
 //交易挂单接口
 void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
@@ -621,7 +569,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
     catch (const boost::exception &e) {
         cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
-        BOOST_THROW_EXCEPTION(NotEnoughCash());
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
     }
 
     u256 CombinationNum = 0;
@@ -1131,9 +1079,6 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
-            case Change::Arrears:
-                account.addArrears(0 - change.value);
-                break;
             default:
                 break;
         }
@@ -1235,7 +1180,6 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     addPoll(_addr, 0 - _value);
 }
 
-
 Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     Json::Value jv;
     if (auto a = account(_addr)) {
@@ -1248,7 +1192,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 		jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
 		jv["nonce"] = toJS(a->nonce());
-        jv["arrears"] = toJS(a->arrears());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
@@ -1257,7 +1200,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-		Json::Value _rewardArray;
+		/*Json::Value _rewardArray;
 		if (a->blockReward().size() > 0)
 		{
 			for (auto it : a->blockReward())
@@ -1268,9 +1211,61 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 				_rewardArray.append(_vReward);
 			}
 			jv["BlockReward"] = _rewardArray;
-		}
+		}*/
     }
     return jv;
+}
+
+Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum)
+{
+    try{
+        Json::Value jv;
+        if(auto a = account(_addr))
+        {
+            if(a->blockReward().size() > 0)
+            {
+                std::vector<std::pair<u256, u256>> _Vector = a->blockReward();
+                uint32_t _retList = 0;
+                if(_pageNum * _listNum > _Vector.size())
+                {
+                    _retList = _Vector.size();
+                }else{
+                    _retList = _pageNum * _listNum;
+                }
+                if(_pageNum == 0 || _listNum == 0)
+                {
+                    return jv;
+                }
+                if((_pageNum - 1) * _listNum > _Vector.size())
+                {
+                    return jv;
+                }
+
+                std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum-1)* _listNum));
+            
+                if(_pageNum == 1)
+                {
+                    std::copy(_Vector.begin(), _Vector.begin()+_retList, res.begin());
+                }else{
+                    std::copy(_Vector.begin() + (_pageNum-1)*_listNum, _Vector.begin()+_retList, res.begin());
+                }
+                Json::Value _rewardArray; 
+                for(auto it : res)
+                {
+                    Json::Value _vReward;
+                    _vReward["blockNum"] = toJS(it.first);
+                    _vReward["rewardNum"] = toJS(it.second);
+                    _rewardArray.append(_vReward);
+                }
+                jv["BlockReward"] = _rewardArray;
+            }
+        }
+        return jv;
+    }catch(...)
+    {
+        throw;
+    }
+    
 }
 
 Json::Value dev::brc::State::votedMessage(Address const& _addr) const
@@ -1278,7 +1273,7 @@ Json::Value dev::brc::State::votedMessage(Address const& _addr) const
 	Json::Value jv;
 	if(auto a = account(_addr))
 	{
-		std::unordered_map<Address, u256> const& _data = a->voteData();
+		std::map<Address, u256> const& _data = a->voteData();
 		Json::Value _arry;
 		int _num = 0;
 		for(auto val : a->voteData())
@@ -1299,7 +1294,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 {
 	Json::Value jv;
 	Json::Value _arry;
-	std::unordered_map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
+	std::map<dev::Address, dev::u256>const& _data = voteDate(SysElectorAddress);
 	if(_addr == ZeroAddress)
 	{
 		for(auto val : _data)
@@ -1315,8 +1310,11 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	{
 		jv["addrsss"] = toJS(_addr);
 		auto ret = _data.find(_addr);
-		if(ret != _data.end())
-			jv["obtain_vote"] = toJS(ret->second);
+		auto a = account(_addr);
+		if(ret != _data.end() && a)
+		{
+			jv["obtain_vote"] = toJS(a->poll());
+		}
 		else
 			jv["ret"] = "not is the eletor";
 	}
@@ -1355,7 +1353,8 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     };
 
 	auto a = account(dev::VoteAddress);
-	std::string _num = "29000000000000000000000000";
+	std::string _num = "2900000000000000";
+    cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::map<u256, u256> _map = { {u256(1), systenCookie} };
 	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
@@ -1374,17 +1373,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 		exit(1);
 	}
 	m_exdb.commit(1);
-	cerror << m_exdb.check_version(false);
-}
-
-u256 dev::brc::State::transactionForCookie(uint8_t _type)
-{
-    if (_type == transationTool::vote || _type == transationTool::pendingOrder ||
-        _type == transationTool::cancelPendingOrder)
-    {
-        return (getGas() + getModifyValue(_type)) * getGasPrice();
-    }
-    return getGas() * getGasPrice();
+	cnote << m_exdb.check_version(false);
 }
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
@@ -1453,11 +1442,11 @@ void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u
 }
 
 
-std::unordered_map<dev::Address, dev::u256> dev::brc::State::voteDate(Address const &_id) const {
+std::map<dev::Address, dev::u256> dev::brc::State::voteDate(Address const &_id) const {
     if (auto a = account(_id))
         return a->voteData();
     else {
-        return std::unordered_map<Address, u256>();
+        return std::map<Address, u256>();
     }
 }
 
@@ -1601,12 +1590,11 @@ template<class DB>
 AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
     AddressHash ret;
     for (auto const &i : _cache)
-    {
         if (i.second.isDirty()) {
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(13);
+                RLPStream s(12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1628,9 +1616,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     CodeSizeCache::instance().store(ch, i.second.code().size());
                     _state.db()->insert(ch, &i.second.code());
                     s << ch;
-                } else{
+                } else
                     s << i.second.codeHash();
-                }
                 s << i.second.ballot();
                 s << i.second.poll();
                 {
@@ -1647,24 +1634,21 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
-                {
-                    RLPStream _rlp;
-                    size_t _num = i.second.blockReward().size();
-                    _rlp.appendList(_num + 1);
-                    _rlp << _num;
-                    for (auto it : i.second.blockReward())
-                    {
-                        _rlp.append<u256, u256>(std::make_pair(it.first, it.second));
-                    }
-                    s << _rlp.out();
-                }
-                s << i.second.arrears();
+				{
+					RLPStream _rlp;
+					size_t _num = i.second.blockReward().size();
+					_rlp.appendList(_num + 1);
+					_rlp << _num;
+					for (auto it : i.second.blockReward())
+					{
+						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+					}
+					s << _rlp.out();
+				}
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
         }
-    }
-
     return ret;
 }
 

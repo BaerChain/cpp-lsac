@@ -291,6 +291,10 @@ namespace dev {
                         db->remove(*rm);
                         begin++;
                     }
+                    update_dynamic_orders(false);
+
+
+
                     ret.push_back(o);
                 }
                 if (!reset) {

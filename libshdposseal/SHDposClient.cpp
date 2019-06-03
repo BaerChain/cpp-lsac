@@ -123,7 +123,7 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
 {
 	//Block _block = blockByNumber(LatestBlock);
-	std::unordered_map<Address, u256> creaters;
+	std::map<Address, u256> creaters;
 	if(_type == CreaterType::Canlitor)
 		creaters = preSeal().mutableVote().CanlitorAddress();
 	else if(_type == CreaterType::Varlitor)
@@ -176,14 +176,19 @@ void dev::bacd::SHDposClient::rejigSealing()
             //  if false : will reset the block current state example : time, blocl_num ...
 			if(!checkPreviousBlock(m_working.previousBlock()))
 			{
-				//m_working.mutableState().db().rollback();
 				m_working.mutableState().exdb().rollback();
 				m_working.resetCurrent();
-
                 syncTransactionQueue();
-				cwarn << " out of shdpos role and reset data !" ;
+				LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
 			}
-			//LOG(m_loggerDetail) << "Rejigging seal engine...";
+
+			int64_t seal_time = m_params.blockInterval ? m_params.blockInterval * 3 / 5 : 400;
+			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
+				cwarn << " not have enough time to seal Block and out...";
+				return;
+			}
+
+			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
 			{
 				if(m_working.isSealed())

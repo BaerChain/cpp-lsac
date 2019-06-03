@@ -109,6 +109,9 @@ void Block::resetCurrent(int64_t _timestamp) {
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
+    // TODO: check.
+
+    m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
 
@@ -218,13 +221,10 @@ bool Block::sync(BlockChain const &_bc, h256 const &_block, BlockHeader const &_
         m_previousBlock = m_currentBlock;
         resetCurrent();
         ret = true;
-        cwarn << "bi == m_currentBlock ";
     } else if (bi == m_previousBlock) {
         // No change since last sync.
         // Carry on as we were.
-        cwarn << "bi == m_previousBlock ";
     } else {
-        cwarn << "bi != m_previousBlock  && bi != m_currentBlock";
         // New blocks available, or we've switched to a different branch. All change.
         // Find most recent state dump and replay what's left.
         // (Most recent state dump might end up being genesis.)
@@ -315,7 +315,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             if (!m_transactionSet.count(t.sha3())) {
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
-
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
@@ -360,6 +359,12 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                         // does have the gas left. for now, just leave alone.
                     }
                 }
+                catch (pendingorderAllPriceFiled const &e){
+					cwarn << " pendingOrder field ...";
+					h256 _hash = t.sha3();
+					_tq.drop(_hash);
+					_tq.eraseDropedTx(_hash);
+				}
                 catch (Exception const &_e) {
                     // Something else went wrong - drop it.
                     cwarn << t.sha3() << " Dropping invalid transaction: "
@@ -376,13 +381,10 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
                 }
             }
         }
-        if(try_times > 3){
-//            break;
+       
+		if(++try_times >= 2){
+            break;     // the bad transation run_times is max and break 
         }
-        else{
-            try_times++;
-        }
-
         if (chrono::steady_clock::now() > deadline) {
             ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
             break;
@@ -421,6 +423,7 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 #endif
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
+//    m_state.exdb().rollback();
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
@@ -517,7 +520,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     DEV_TIMED_ABOVE("uncleCheck", 500) for (auto const &i : rlp[2]) {
             try {
                 auto h = sha3(i.data());
-                cwarn << "uncleCheck ....";
                 if (excluded.count(h)) {
                     UncleInChain ex;
                     ex << errinfo_comment("Uncle in block already mentioned");
@@ -589,7 +591,8 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
     // Commit all cached state changes to the state trie.
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
+    bool removeEmptyAccounts =
+            m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
     DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
 
@@ -757,8 +760,9 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     // accordingly.
     bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
-    DEV_TIMED_ABOVE("commit", 500) m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+    DEV_TIMED_ABOVE("commit", 500)m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                                  State::CommitBehaviour::KeepEmptyAccounts);
+	//m_currentBlock.setTimestamp(utcTimeMilliSec());
     m_currentBlock.setLogBloom(logBloom());
     m_currentBlock.setGasUsed(gasUsed());
     m_currentBlock.setRoots(hash256(transactionsMap), hash256(receiptsMap), sha3(m_currentUncles), m_state.rootHash());
@@ -770,6 +774,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
         ed.resize(32);
         m_currentBlock.setExtraData(ed);
     }
+    // m_currentBlock.setDposContext(m_previousBlock.dposContext());
 
     m_committedToSeal = true;
 }
@@ -835,8 +840,9 @@ LogBloom Block::logBloom() const {
 
 void Block::cleanup() {
     // Commit the new trie to disk.
-    LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() <<
-                " = " << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
+    //            LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() <<
+    //            " = "
+    //                          << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
 
     try {
         EnforceRefs er(db(), true);

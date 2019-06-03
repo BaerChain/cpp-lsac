@@ -56,7 +56,7 @@ bool Brc::brc_mining()
 
 string Brc::brc_gasPrice()
 {
-    return toJS(client()->gasBidPrice());
+    return toJS(client()->GasAveragePrice());
 }
 
 Json::Value Brc::brc_accounts()
@@ -118,6 +118,21 @@ Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumb
         return client()->accountMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
     }
     catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageNum, string const& _listNum, string const& _blockNumber)
+{
+    try{
+        if(jsToInt(_listNum) > 50)
+        {
+            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
+        }
+        return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
@@ -832,10 +847,17 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Block gas limit reached.";
     }
-    catch (InvalidNonce const&)
+    catch (InvalidNonce const& ex)
     {
         ret = "Invalid transaction nonce.";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
     }
+	catch(InvalidFunction const& ex){
+		ret = "Invalid function .";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
     catch (PendingTransactionAlreadyExists const&)
     {
         ret = "Same transaction already exists in the pending transaction queue.";
@@ -844,9 +866,19 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "Transaction is already in the blockchain.";
     }
-    catch (NotEnoughCash const&)
+    catch (NotEnoughCash const& ex)
     {
-        ret = "Account balance is too low (balance < value + gas * gas price).";
+        ret = "Account balance is too low (balance < value + gas * gas price)." ;
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+		   ret += std::string(*_error);
+    }
+    catch (VerifyPendingOrderFiled const& _v)
+    {
+        ret = "verifyPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_v));
+    }
+    catch (CancelPendingOrderFiled const& _c)
+    {
+        ret = "cancelPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_c));
     }
     catch (NotEnoughBallot const&)
     {
@@ -854,7 +886,21 @@ string dev::rpc::exceptionToErrorMessage()
     }
     catch(VerifyVoteField const& ex)
 	{
-		ret = "Account vote verify is error!" + std::string(ex.what());
+		ret = "Account vote verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
+    catch(InvalidGasPrice const& ex)
+	{
+		ret = "Accoun's transaction is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
+	}
+	catch(BrcTranscationField const& ex)
+	{
+		ret = "Account transfer BRC verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
 	}
 	catch (InvalidSignature const&)
 	{

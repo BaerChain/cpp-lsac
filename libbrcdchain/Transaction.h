@@ -28,6 +28,7 @@ enum class TransactionException
     OutOfGasIntrinsic,  ///< Too little gas to pay for the base transaction cost.
     InvalidSignature,
     InvalidNonce,
+	InvalidGasPrice,
     NotEnoughCash,
     OutOfGasBase,  ///< Too little gas to pay for the base transaction cost.
     BlockGasLimitReached,
@@ -42,9 +43,11 @@ enum class TransactionException
     NotEnoughBallot,
     VerifyVoteField,
 	VerifyPendingOrderFiled,
+    CancelPendingOrderFiled,
     BadSystemAddress,
     BadVoteParamter,
     BadBRCTransactionParamter,
+	BrcTranscationField,
 	DefaultError
 };
 
@@ -77,6 +80,17 @@ enum op_type : uint8_t
 	deployContract =5,
     executeContract =6
 };
+
+static std::map<op_type, u256> c_add_value = {
+	{null, 0},
+	{vote, 5000},
+    {brcTranscation, 0},
+    {pendingOrder, 10000},
+    {cancelPendingOrder, 2000},
+    {deployContract, 0},
+    {executeContract, 0}
+};
+
 struct operation
 {
     virtual ~operation() {}
@@ -101,11 +115,11 @@ struct vote_operation : public operation
 {
     Address m_from;
     Address m_to;
-    size_t m_vote_numbers = 0;
+    u256 m_vote_numbers = 0;
     uint8_t m_type = null;
     uint8_t m_vote_type = 0;
     vote_operation(
-        op_type type, const Address& from, const Address& to, uint8_t vote_type, size_t vote_num)
+        op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
       : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
     {}
     /// unserialize from data
@@ -320,6 +334,6 @@ private:
     BlockNumber m_blockNumber;
 };
 
-#define BALLOTPRICE 5
+#define BALLOTPRICE 500000000
 }  // namespace brc
 }  // namespace dev

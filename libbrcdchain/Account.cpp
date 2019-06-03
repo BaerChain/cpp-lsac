@@ -56,9 +56,20 @@ void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 
 void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
 {
-    u256 _rewardNum = m_BlockReward[_pair.first];
-    _rewardNum += _pair.second;
-    m_BlockReward[_pair.first] = _rewardNum;
+    if(m_BlockReward.size() == 0)
+    {
+        m_BlockReward.push_back(_pair);
+    }else{
+        auto _rewardPair = m_BlockReward.back();
+        if(_rewardPair.first == _pair.first)
+        {
+            _rewardPair.second += _pair.second;
+            m_BlockReward.pop_back();
+            m_BlockReward.push_back(_rewardPair);
+        }else{
+            m_BlockReward.push_back(_pair);
+        }
+    }
     changed();
 }
 

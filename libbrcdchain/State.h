@@ -111,8 +111,7 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward,
-        Arrears
+        BlockReward
     };
 
     Kind kind;        ///< The kind of the change.
@@ -299,9 +298,6 @@ public:
     void addFBalance(Address const& _addr, u256 const& _value);
     void subFBalance(Address const& _addr, u256 const& _value);
 
-    u256 arrears(Address const& _id) const;
-    void addArrears(Address const& _addr, u256 const& _value);
-    void subArrears(Address const& _addr, u256 const& _value);
 
     //交易挂单接口
     void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
@@ -340,32 +336,19 @@ public:
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
+    Json::Value blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum);
 	//get vote/eletor message
 	Json::Value votedMessage(Address const& _addr) const;
 	Json::Value electorMessage(Address _addr) const;
 
 	void assetInjection(Address const& _addr);
 
-    //计算每笔交易所需要扣除的手续费
-    u256 transactionForCookie(uint8_t _type);
-
-    u256 getGas() { return m_gasNum; }
-    u256 getGasPrice() {return m_gasPriceValue;}
-    u256 getModifyValue(uint8_t _type)
-	{
-		//todo  Get the modified value according to the type
-
-		return m_modifyValue;
-	}
 
 	void systemPendingorder(int64_t _time);
 
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
 private:
-    u256 m_gasNum = 31000;
-    u256 m_modifyValue = 10000;
-    u256 m_gasPriceValue = 1000000000;
     //投票数据
     //获取投出得票数
     u256 voteAll(Address const& _id) const;
@@ -376,7 +359,7 @@ private:
     //撤销投票
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     //获取指定地址的voteDate
-    std::unordered_map<Address, u256> voteDate(Address const& _id) const;
+    std::map<Address, u256> voteDate(Address const& _id) const;
     //竞选人，验证人管理
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
