@@ -141,7 +141,7 @@ namespace dev {
                         }
 
                         if (!reset) {
-                            session.squash();
+                            session.push();
                         }
 //                    } catch (const dev::Exception &e) {
 //                        session.undo();
@@ -215,7 +215,7 @@ namespace dev {
 
             bool exchange_plugin::rollback() {
                 check_db();
-                db->undo();
+                db->undo_all();
                 return true;
             }
 
@@ -298,7 +298,7 @@ namespace dev {
                     ret.push_back(o);
                 }
                 if (!reset) {
-                    session.squash();
+                    session.push();
                 }
                 return ret;
             }

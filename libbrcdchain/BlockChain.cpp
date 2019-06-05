@@ -617,24 +617,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     performanceLogger.onStageFinished("preliminaryChecks");
 
-//#if 1
-    try{
-        State st(Invalid256, _db, _exdb);
-        GenericTrieDB<OverlayDB> trieDB;
-        trieDB.open(&st.db(), h256("bf48464e3c06183c2ff947d12d9c1bf05fb9d6ffc08903fba98f9ec0d6814d22"));
-        std::ostringstream os;
 
-        auto ret = trieDB.leftOvers(&os);
-        std::cout << "------" << os.str();
-
-//        for(auto itr : trieDB){
-//            cwarn << "trie key : " << toHex(itr.first) << " value: " << toHex(itr.second);
-//        }
-
-    }catch (...){
-        cwarn << "un kown exception ...";
-    }
-//#endif
 
 
     BlockReceipts br;
@@ -643,7 +626,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
         Block s(*this, _db, _exdb);
-        cwarn << "execute block author: " << _block.info.author() << " number: " << _block.info.number();
+        cwarn << "execute block author: " << _block.info.author() << " number: " << _block.info.number() ;
 
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -651,7 +634,37 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         s.cleanup();
         td = pd.totalDifficulty + tdIncrease;
         performanceLogger.onStageFinished("enactment");
-		
+
+
+        try{
+            State st(Invalid256, _db, _exdb);
+            GenericTrieDB<OverlayDB> trieDB(&st.db(), s.rootHash());
+            std::ostringstream os;
+
+            trieDB.debugStructure(os);
+            std::cout << "------" << os.str();
+
+            for(auto itr : trieDB){
+                cwarn << "trie key : " << toHex(itr.first) << " value: " << toHex(itr.second);
+            }
+
+            for(auto itr : _db.keys()){
+                cwarn << "db hash :: " << toHex(itr);
+            }
+
+        }
+
+        catch (const boost::exception &e){
+            cwarn << "scan trie exception : " << boost::diagnostic_information(e);
+        }
+        catch (const dev::Exception &e){
+            cwarn << "exception " << e.what() ;
+        }
+        catch (...){
+            cwarn << "unkown exception ...";
+        }
+
+
 #if BRC_PARANOIA
         checkConsistency();
 #endif // BRC_PARANOIA
@@ -667,6 +680,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         addBlockInfo(ex, _block.info, _block.block.toBytes());
         throw;
     }
+
+
+
+
+
     // All ok - insert into DB
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
@@ -909,7 +927,6 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         noteCanonChanged();
 
     if (isImportedAndBest && m_onBlockImport){
-        cwarn << "notificate call back.";
         m_onBlockImport(_block.info);
     }
 

@@ -261,7 +261,6 @@ h256 ChainParams::calculateStateRoot(bool _force) const
     state.init();
     if (!stateRoot || _force)
     {
-
         // TODO: use hash256
         //stateRoot = hash256(toBytesMap(gs));
         dev::brc::commit(genesisState, state);

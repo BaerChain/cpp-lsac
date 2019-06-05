@@ -351,6 +351,7 @@ int main(int argc, char *argv[]) {
                 ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
                 ("create,c", "create simple \"data.json\" to file on current path.")
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
+                ("sha3", bpo::value<std::string>(), "caculate string sha3.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -386,6 +387,11 @@ int main(int argc, char *argv[]) {
         }
         if (args_map.count("generate-key")) {
             generate_key(args_map["generate-key"].as<std::string>());
+        }
+
+        if(args_map.count("sha3")){
+            auto ret = sha3(args_map["sha3"].as<std::string>());
+            cwarn << ret;
         }
     }catch (const std::exception &e){
         cwarn << e.what();

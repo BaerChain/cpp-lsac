@@ -385,10 +385,11 @@ void Client::syncBlockQueue()
 	if(count)
 	{
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
-//		{
+		{
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size();
-//		}
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+				<< "  " << m_StateExDB.check_version(false);
+		}
 	}
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
@@ -691,7 +692,7 @@ void Client::doWork(bool _doWait)
     bool t = true;
 
 
-	cerror << "   Client::doWork :   " << m_needStateReset;
+	cwarn << "   Client::doWork :   " << m_needStateReset;
 
 
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
@@ -702,7 +703,7 @@ void Client::doWork(bool _doWait)
 
     if (m_needStateReset)
     {
-		cerror << " :SHDposClient::doWork   resetState";
+		cwarn << " :SHDposClient::doWork   resetState";
         resetState();
         m_needStateReset = false;
     }
