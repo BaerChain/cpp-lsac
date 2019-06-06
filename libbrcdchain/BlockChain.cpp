@@ -610,10 +610,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         exit(-1);
     }
 
-    if(_block.info.number() < info().number() - m_params.config_blocks){
-        cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash() << " , will be remove.";
-        BOOST_THROW_EXCEPTION(BlockIsTooOld());
-    }
+
 
     checkBlockTimestamp(_block.info);
     // Verify parent-critical parts
@@ -622,14 +619,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     performanceLogger.onStageFinished("preliminaryChecks");
 
+    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
 
-    if(_block.info.number() < info().number()){
-
-
-
+    if(!can_exe){
         return ImportRoute();
     }
-
 
     BlockReceipts br;
     u256 td;
@@ -696,6 +690,28 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
 }
+
+
+bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_block, const dev::OverlayDB &_db,
+                                            dev::brc::ex::exchange_plugin &_exdb) {
+    //block is too old.
+    if(_block.info.number() < info().number() - m_params.config_blocks){
+        cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash() << " , will be remove.";
+        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+    }
+
+    if(_block.info.parentHash() == info().hash()){
+        return true;
+    }
+    else
+    {
+
+    }
+
+    return false;
+}
+
+
 
 ImportRoute
 BlockChain::insertWithoutParent(bytes const &_block, bytesConstRef _receipts, u256 const &_totalDifficulty) {

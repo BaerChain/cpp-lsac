@@ -313,6 +313,17 @@ public:
 	unsigned int getMaxSealTransaction() const { return c_maxSyncTransactions; }
 
 private:
+
+    /// @brief  insert new block, then update cache . consider this block can be executed  or switch main chain on config blocks.
+    /// \param _block   push block
+    /// \param _db      overlaydb
+    /// \param _exdb    exdb
+    /// \return         if true , this block can execute.
+    bool update_cache_fork_database(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb);
+
+
+
+
     static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
     /// Initialise everything and ready for openning the database.
