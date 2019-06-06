@@ -610,6 +610,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         exit(-1);
     }
 
+    if(_block.info.number() < info().number() - m_params.config_blocks){
+        cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash() << " , will be remove.";
+        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+    }
+
     checkBlockTimestamp(_block.info);
     // Verify parent-critical parts
     verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
@@ -618,6 +623,12 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     performanceLogger.onStageFinished("preliminaryChecks");
 
 
+    if(_block.info.number() < info().number()){
+
+
+
+        return ImportRoute();
+    }
 
 
     BlockReceipts br;
@@ -652,15 +663,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
                 cwarn << "db hash :: " << toHex(itr);
             }
 
-        }
-
-        catch (const boost::exception &e){
+        }catch (const boost::exception &e){
             cwarn << "scan trie exception : " << boost::diagnostic_information(e);
-        }
-        catch (const dev::Exception &e){
+        }catch (const dev::Exception &e){
             cwarn << "exception " << e.what() ;
-        }
-        catch (...){
+        }catch (...){
             cwarn << "unkown exception ...";
         }
 
