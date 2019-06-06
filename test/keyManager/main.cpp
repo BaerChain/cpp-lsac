@@ -57,18 +57,44 @@ int main(int argc, char *argv[])
     std::string _blockHash = "0x48f683f4b75fca76a9c6a31c2a04fc3e1801d2078bd87e0f4234aacb620a8244";
     std::string _version = "9d4ba962fb6addf7e02a15a57208138d0ac99ff5";
     std::string _serverDelay = "40";
-    std::string _blockDelay = "40";
-    std::string _nodeConnectNum = "0x32";
-    std::string _minimumDelay = "40";
-    std::string _MaxDelay = "200";
     std::string _packagedTransactions = "0x100";
     std::string _tradingpoolsNum = "0x100";
 
+    std::vector<std::string> _blockDelay = { "40", "200", "50"};
+    std::vector<std::string> _nodeinformation = { "0x32", "40", "200"};
+
 
     RLPStream _rlp;
-    _rlp.appendList(11);
-    _rlp << _nodeid << _blockNum << _blockHash << _version << _serverDelay << _blockDelay << _nodeConnectNum << _minimumDelay << _MaxDelay << 
-        _packagedTransactions << _tradingpoolsNum;
+    _rlp.appendList(9);
+    _rlp << _nodeid << _blockNum << _blockHash << _version << _serverDelay; 
+
+    {
+        RLPStream _blockrlp;
+        size_t _blockDelayNum = _blockDelay.size();
+        _blockrlp.appendList(_blockDelayNum +1);
+        _blockrlp << _blockDelayNum;
+        for(auto it : _blockDelay)
+        {
+            _blockrlp << it;
+        }
+
+        _rlp << _blockrlp.out();
+    }
+
+    {
+        RLPStream _noderlp;
+        size_t _nodeNum = _nodeinformation.size();
+        _noderlp.appendList(_nodeNum+1);
+        _noderlp << _nodeNum;
+        for(auto it : _nodeinformation)
+        {
+            _noderlp << it;
+        }
+
+        _rlp << _noderlp.out();
+    }
+
+    _rlp << _packagedTransactions << _tradingpoolsNum;
     
     std::cout << "_rlp:" << _rlp.out() << std::endl;
 
