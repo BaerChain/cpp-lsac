@@ -640,7 +640,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         td = pd.totalDifficulty + tdIncrease;
         performanceLogger.onStageFinished("enactment");
 
-
+#if 0
         try{
             State st(Invalid256, _db, _exdb);
             GenericTrieDB<OverlayDB> trieDB(&st.db(), s.rootHash());
@@ -664,7 +664,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         }catch (...){
             cwarn << "unkown exception ...";
         }
-
+#endif
 
 #if BRC_PARANOIA
         checkConsistency();
@@ -682,10 +682,6 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         throw;
     }
 
-
-
-
-
     // All ok - insert into DB
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
@@ -695,17 +691,103 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_block, const dev::OverlayDB &_db,
                                             dev::brc::ex::exchange_plugin &_exdb) {
     //block is too old.
-    if(_block.info.number() < info().number() - m_params.config_blocks){
+    if(_block.info.number() < info().number() - m_params.config_blocks && info().number() > m_params.config_blocks){
         cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash() << " , will be remove.";
         BOOST_THROW_EXCEPTION(BlockIsTooOld());
     }
 
+    if(info().number() == 0){
+        m_cached_blocks.push_back({_block});
+        return true;
+    }
+
+    auto print_route = [](const std::vector<std::list<VerifiedBlockRef>> &data){
+        for(auto itr : data){
+            std::ostringstream os;
+            for(auto detail : itr){
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: " <<  detail.info.parentHash() << " |";
+            }
+            cwarn << os.str();
+        }
+    };
+
+
+
+
+//    print_route(m_cached_blocks);
+    bool find = false;
+    for(auto &itr : m_cached_blocks){
+        for(auto &detail : itr){
+            if(_block.info.parentHash() == detail.info.hash()){
+                find = true;
+                //in this branch, this block is end. only insert.
+                if(detail.info.hash() == itr.back().info.hash()){
+                    itr.push_back(_block);
+                }
+                else{
+                    ///copy
+                    m_cached_blocks.push_back({});
+                    for(auto cp : itr){
+                        cwarn << "copy blocks.. hash: " << cp.info.hash() << " number: " << cp.info.number();
+                        m_cached_blocks.back().push_back(cp);
+                        if(cp.info.hash() == detail.info.hash()){
+                            break;
+                        }
+                    }
+                    m_cached_blocks.back().push_back(_block);
+                    cwarn << "insert block: " << _block.info.hash() << " number: " << _block.info.number();
+                }
+
+                break;
+            }
+        }
+        if(find){
+            break;
+        }
+    }
+
+
+
+    if(!find){
+        cwarn << "cant find parent hash.";
+        return false;
+    }else{
+        m_blocks[_block.info.hash()] =  BlockHeader::extractHeader(_block.block).data().toBytes();
+    }
+
+
+    //this block is true, dont switch chain.
     if(_block.info.parentHash() == info().hash()){
+        cwarn << "will execute this block.";
         return true;
     }
     else
     {
+        ///dont switch chain, only insert this block to m_cached_blocks
+        if(_block.info.number() <= info().number()){
+            cwarn << "only insert , cant switch chain.";
+            return  false;
+        }
+        else if(_block.info.number() == info().number() + 1){
+        /// this condition , chain must switch.
+        /*  first, we will remove last chain  from same block's hash.
+         *  second, delete executive blocks state and rollback exdb state until same block's hash. then execute new blocks.
+         *  final, execute newest block for switch new state.
+         * */
+        cwarn << "will switch chain, delete state.";
 
+
+
+
+
+
+
+        return true;
+        } else{
+            //TODO
+            cerror << "unkown block ,  this block number too height..";
+
+        }
     }
 
     return false;

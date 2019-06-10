@@ -77,17 +77,23 @@ void create_contract(){
 
 int main(){
 
-    RLPStream rlp;
-    std::vector<uint8_t >  cc;
-    cc.push_back(4);
+//    RLPStream rlp;
+//    std::vector<uint8_t >  cc;
+//    cc.push_back(4);
+//
+//    rlp.appendVector(cc);
+//
+//    std::cout << toJS(rlp.out()) << std::endl;
+//
 
-    rlp.appendVector(cc);
+    std::list<int> vv;
+    vv.push_back(1);
+    vv.push_back(2);
+    vv.push_back(3);
 
-    std::cout << toJS(rlp.out()) << std::endl;
-
-
-
-
+    for(auto &itr : vv){
+        std::cout << itr << std::endl;
+    }
 
 
 //    create_contract();

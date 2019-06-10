@@ -390,6 +390,9 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+    mutable SharedMutex x_cached_blocks;
+    mutable std::vector<std::list<VerifiedBlockRef>>    m_cached_blocks;        //recored 12 blocks.
+
 
     using CacheID = std::pair<h256, unsigned>;
     mutable Mutex x_cacheUsage;
@@ -425,6 +428,12 @@ private:
     std::function<void(BlockHeader const&)> m_onBlockImport;                                        ///< Called if we have imported a new block into the db
 
     boost::filesystem::path m_dbPath;
+
+
+
+
+
+
 
 	static const unsigned c_maxSyncTransactions = 1000;
 
