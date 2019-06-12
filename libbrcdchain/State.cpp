@@ -1216,6 +1216,8 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     return jv;
 }
 
+
+// Return to the block reward record in the form of paging
 Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum)
 {
     try{
