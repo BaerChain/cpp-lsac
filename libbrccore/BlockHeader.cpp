@@ -191,7 +191,7 @@ void BlockHeader::populateFromParent(BlockHeader const &_parent) {
 }
 
 void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRef _block) const {
-    //区块头部检查,在dpos中保留
+    //Block header check, reserved in dpos
     if (m_number > ~(unsigned) 0)
         BOOST_THROW_EXCEPTION(InvalidNumber());
 
