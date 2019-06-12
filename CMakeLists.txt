@@ -8,9 +8,6 @@ include(CheckSymbolExists)
 set(CMAKE_CXX_STANDARD 14)
 #add_definitions(-fvisibility=hidden)
 
-
-
-
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
 #    SET(BUILD_SHARED_LIBRARIES OFF)
@@ -20,7 +17,6 @@ endif()
 ##add cmake file directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 message(STATUS "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME} ${APPLE}")
-
 
 find_package(Boost 1.65.1 REQUIRED COMPONENTS
         thread
