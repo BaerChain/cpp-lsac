@@ -607,30 +607,47 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
 
     std::vector<std::list<VerifiedBlockRef>> copy_data;
-    for(auto itr : m_cached_blocks){
+    for(auto &itr : m_cached_blocks){
         if(itr.size() > m_params.config_blocks){
+            cwarn << "pop ";
             itr.pop_front();
         }
 
         auto detail = itr.front();
-        if(info().number() - detail.info.number() <= m_params.config_blocks ){
-            if(m_blocksDB->exists(toSlice(detail.info.hash()))){
+        if(m_blocksDB->exists(toSlice(detail.info.hash()))){
+            while(itr.size() > 0
+            && info().number() > m_params.config_blocks
+            && info().number() - itr.front().info.number() > m_params.config_blocks ){
+                cwarn << "pop " << detail.info.number() ;
+                itr.pop_front();
+            }
+            if(itr.size() > 0){
                 copy_data.push_back(itr);
             }
-            else{
-                cwarn << "remove " << detail.info.number() << "  h: " << detail.info.hash();
-            }
+
         }
         else{
             cwarn << "remove " << detail.info.number() << "  h: " << detail.info.hash();
-//            for(auto value : itr){
-//                cwarn << "remove bytes : " << value.info.number() << " hash: " << value.info.hash();
-//                m_cached_bytes.erase(value.info.hash());
-//            }
         }
     }
     m_cached_blocks.clear();
     m_cached_blocks = copy_data;
+
+    auto print_route = [](const std::vector<std::list<VerifiedBlockRef>> &data) {
+        for (auto itr : data) {
+            std::ostringstream os;
+            os << "size : " << itr.size() << "  ";
+            for (auto detail : itr) {
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: "
+                   << detail.info.parentHash() << " |";
+            }
+            cwarn << os.str();
+        }
+    };
+    cwarn << "config ...............";
+    print_route(m_cached_blocks);
+    cwarn << " map size " << m_cached_bytes.size() ;
+
     return  ret;
 }
 
@@ -720,8 +737,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             cwarn << os.str();
         }
     };
-
-
+//    cwarn << "insert -----------------";
+//    print_route(m_cached_blocks);
     bool find = false;
     for (auto &itr : m_cached_blocks) {
         for (auto &detail : itr) {
@@ -752,7 +769,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             break;
         }
     }
-    print_route(m_cached_blocks);
+//    print_route(m_cached_blocks);
     if (!find) {
         cwarn << "cant find parent hash.";
         return false;
@@ -764,7 +781,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     } else {
         ///dont switch chain, only insert this block to m_cached_blocks
         if (_block.info.number() <= info().number()) {
-            cwarn << "only insert , cant switch chain.";
+            cwarn << "only insert , can't switch chain.";
             return false;
         } else if (_block.info.number() == info().number() + 1) {
             /// this condition , chain must switch.
@@ -832,9 +849,10 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             source_block_list.pop_front();
             dest_block_list.pop_front();
 
+            cwarn << "-------------------------------11";
             print_route({source_block_list});
             print_route({dest_block_list});
-
+            cwarn << "-------------------------------11";
             //find state_root , and then remove them.
             remove_blocks_from_database(source_block_list, _db, _exdb);
             rollback_from_database(source_block_list.back(), common_block, source_block_list, _db, _exdb);
