@@ -95,7 +95,7 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now)
         return false;
 
     //得到每次出块的整数时间刻度，比较上次，现在和下次
-    //系统时间算出的下一个出块时间点
+    //get next Block time from systime
     uint64_t next_slot =
         (_now / m_config.blockInterval) * m_config.blockInterval + m_config.blockInterval;
     //当前块算出的上一个出块时间点

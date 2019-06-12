@@ -197,7 +197,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 					return;
 				}
 				// TODO is that needed? we have "Generating seal on" below
-//			    LOG(m_logger) << "Starting to seal block #" << m_working.info().number() <<" time:"<< utcTimeMilliSec();
 				m_working.commitToSeal(bc(), m_extraData);
 				//try into next new epoch and check some about varlitor for SH-DPOS
 				dpos()->tryElect(utcTimeMilliSec());
