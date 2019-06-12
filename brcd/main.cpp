@@ -227,10 +227,12 @@ int main(int argc, char **argv) {
     strings passwordsToNote;
     Secrets toImport;
 	MinerCLI miner(MinerCLI::OperationMode::None);
-
-    bool listenSet = false;
+    
     bool chainConfigIsSet = false;
     bool chainAccountJsonIsSet = false;
+    bool listenSet = false;
+
+
     fs::path configPath;
     string configJSON;
 
