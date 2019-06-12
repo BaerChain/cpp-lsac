@@ -1372,7 +1372,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	{
 		exit(1);
 	}
-	m_exdb.commit(1);
+	m_exdb.commit(1, h256(), h256());
 	cnote << m_exdb.check_version(false);
 }
 
