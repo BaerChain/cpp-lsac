@@ -615,14 +615,14 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 				m_s.transferBallotBuy(p.senderAddress, p.valueTransfer);
 			else if (val.m_method == SellVotes)
 				m_s.transferBallotSell(p.senderAddress, p.valueTransfer);
-			else if (val.m_method == Executive::LoginCandidate)
-				m_vote.voteLoginCandidate(p.senderAddress);
-			else if (val.m_method == Executive::LogOutCandidate)
-				m_vote.voteLogoutCandidate(p.senderAddress);
 			else if (val.m_method == Vote)
 				m_vote.addVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
 			else if (val.m_method == CancelVote)
 				m_vote.subVote(p.senderAddress, p.receiveAddress, p.valueTransfer);
+			else if(val.m_method == Executive::LoginCandidate)
+				m_vote.voteLoginCandidate(p.senderAddress);
+			else if(val.m_method == Executive::LogOutCandidate)
+				m_vote.voteLogoutCandidate(p.senderAddress);
 			else if (val.m_method == BRCTransaction)
 				m_s.transferBRC(p.senderAddress, p.receiveAddress, p.valueTransfer);
 			else if (val.m_method == BuyPendingOrder || val.m_method == SellPendingOrder)

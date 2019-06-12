@@ -39,7 +39,7 @@ namespace dev
             SHDposConfigParams const& dposConfig() { return m_config; }
 
             bool                isBolckSeal(uint64_t _now);
-            bool                checkDeadline(uint64_t _now);           //验证出块时间周期
+            bool                checkDeadline(uint64_t _now);           //check the create block time_cycle
 			void                tryElect(uint64_t _now);   //判断是否完成了本轮出块，选出新一轮验证人
 			inline std::vector<Address> const& getCurrCreaters() const { return m_curr_varlitors; }
 
