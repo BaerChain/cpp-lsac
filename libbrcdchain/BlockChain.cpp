@@ -583,9 +583,6 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 ImportRoute
 BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
-
-
-
     // Check block doesn't already exist first!
     if (_mustBeNew)
         checkBlockIsNew(_block);
@@ -603,8 +600,38 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     if (!can_exe) {
         return ImportRoute();
     }
+    auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
-    return execute_block(_block, _db, _exdb, _mustBeNew);
+    cwarn << "import height : " << info().number() << " hash: " << info().hash() << " state root: " << info().stateRoot();
+
+
+
+    std::vector<std::list<VerifiedBlockRef>> copy_data;
+    for(auto itr : m_cached_blocks){
+        if(itr.size() > m_params.config_blocks){
+            itr.pop_front();
+        }
+
+        auto detail = itr.front();
+        if(info().number() - detail.info.number() <= m_params.config_blocks ){
+            if(m_blocksDB->exists(toSlice(detail.info.hash()))){
+                copy_data.push_back(itr);
+            }
+            else{
+                cwarn << "remove " << detail.info.number() << "  h: " << detail.info.hash();
+            }
+        }
+        else{
+            cwarn << "remove " << detail.info.number() << "  h: " << detail.info.hash();
+//            for(auto value : itr){
+//                cwarn << "remove bytes : " << value.info.number() << " hash: " << value.info.hash();
+//                m_cached_bytes.erase(value.info.hash());
+//            }
+        }
+    }
+    m_cached_blocks.clear();
+    m_cached_blocks = copy_data;
+    return  ret;
 }
 
 
@@ -640,41 +667,12 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
         // Check transactions are valid and that they result in a state equivalent to our state_root.
         // Get total difficulty increase and update state, checking it.
         Block s(*this, _db, _exdb);
-        cwarn << "execute block author: " << _block.info.author() << " number: " << _block.info.number();
-
         auto tdIncrease = s.enactOn(_block, *this);
         for (unsigned i = 0; i < s.pending().size(); ++i)
             br.receipts.push_back(s.receipt(i));
         s.cleanup();
         td = pd.totalDifficulty + tdIncrease;
         performanceLogger.onStageFinished("enactment");
-
-#if 0
-        try {
-            State st(Invalid256, _db, _exdb);
-            GenericTrieDB<OverlayDB> trieDB(&st.db(), s.rootHash());
-            std::ostringstream os;
-
-            trieDB.debugStructure(os);
-            std::cout << "------" << os.str();
-
-            for (auto itr : trieDB) {
-                cwarn << "trie key : " << toHex(itr.first) << " value: " << toHex(itr.second);
-            }
-
-            for (auto itr : _db.keys()) {
-                cwarn << "db hash :: " << toHex(itr);
-            }
-
-        } catch (const boost::exception &e) {
-            cwarn << "scan trie exception : " << boost::diagnostic_information(e);
-        } catch (const dev::Exception &e) {
-            cwarn << "exception " << e.what();
-        } catch (...) {
-            cwarn << "unkown exception ...";
-        }
-#endif
-
 #if BRC_PARANOIA
         checkConsistency();
 #endif // BRC_PARANOIA
@@ -754,7 +752,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             break;
         }
     }
-
+    print_route(m_cached_blocks);
     if (!find) {
         cwarn << "cant find parent hash.";
         return false;
@@ -901,9 +899,6 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
 
 bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, const dev::brc::VerifiedBlockRef &to, const std::list<dev::brc::VerifiedBlockRef> &blocks,
                                         const dev::OverlayDB &_db, dev::brc::ex::exchange_plugin &_exdb) {
-//    if(from.info.stateRoot() == to.info.stateRoot()){
-//        return true;
-//    }
     dev::OverlayDB overdb(_db);
     cwarn << "rollback block from : " << from.info.number() << "(" << from.info.hash() << ")  to : " << to.info.number() << "(" << to.info.hash() << ")";
     if(overdb.exists(from.info.stateRoot())){
@@ -914,8 +909,6 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
     while(from_block.info.stateRoot() != to.info.stateRoot()){
         if(overdb.exists(from_block.info.stateRoot())){
             overdb.kill(from_block.info.stateRoot());
-
-
         }
         else{
             cwarn << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";

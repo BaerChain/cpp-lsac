@@ -232,7 +232,7 @@ namespace dev {
                 while(maxCount-- > 0){
                     const auto &obj = db->get<dynamic_object>();
                     db->undo();
-                    cwarn << "undo  " << check_version(false);
+//                    cwarn << "undo  " << check_version(false);
                     if(obj.block_hash == block_hash && obj.root_hash == root_hash){
                         return true;
                     }
@@ -264,6 +264,11 @@ namespace dev {
 //                db->commit(version);
 //                db->flush();
 //                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                return true;
+            }
+
+            bool exchange_plugin::commit_disk(int64_t version) {
+                db->commit(version);
                 return true;
             }
 

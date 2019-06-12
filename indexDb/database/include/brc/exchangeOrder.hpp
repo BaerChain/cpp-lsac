@@ -80,6 +80,8 @@ namespace dev {
                 /// \return  true
                 bool commit(int64_t version, const h256 &block_hash, const h256& root_hash);
 
+
+                bool commit_disk(int64_t version);
                 ///
                 /// \param os vector transactions id
                 /// \param reset   if true, this operation rollback
