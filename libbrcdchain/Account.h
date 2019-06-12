@@ -162,6 +162,7 @@ public:
         changed();
 	}
 
+    // add FCookie
     void addFBalance(u256 _value)
 	{
 		m_FBalance += _value;
@@ -326,6 +327,8 @@ private:
 
     // Account's FBRC
     u256 m_FBRC = 0;
+
+    // Account's FCookie
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
