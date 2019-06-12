@@ -26,15 +26,6 @@ namespace bpo = boost::program_options;
 namespace bfs1 = boost::filesystem;
 using namespace dev::brc;
 
-// bool creation = false;
-//	Address from;
-//	Address to;
-//	u256 value;
-//	bytes data;
-//	u256 nonce = Invalid256;
-//	u256 gas = Invalid256;
-//	u256 gasPrice = Invalid256;
-
 
 #define DATA_KEY_FROM "from"
 #define DATA_KEY_TO "to"
