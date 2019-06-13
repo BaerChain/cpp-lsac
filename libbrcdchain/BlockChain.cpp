@@ -150,6 +150,29 @@ BlockChain::~BlockChain() {
     close();
 }
 
+void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::ex::exchange_plugin &_stateExDB) {
+    cwarn << "try to close block chain, will remove cached blocks";
+    OverlayDB db(_stateDB);
+    size_t position = 0;
+    if(m_cached_blocks.size() > 1){
+        for(auto i = 0; i < m_cached_blocks.size(); i++){
+            if(m_cached_blocks[i].size() > m_cached_blocks[position].size() ){
+                position = i;
+            }
+        }
+    }
+
+    cwarn << "max_chain position " << position;
+    if(m_cached_blocks.size() > 0){
+        remove_blocks_from_database(m_cached_blocks[position], _stateDB, _stateExDB);
+        auto last_config_hash = numberHash(info().number() - m_params.config_blocks - 1);
+        m_extrasDB->insert(db::Slice("best"), db::Slice((char const *) &last_config_hash, 32));
+    }
+    else{
+        cwarn << "waring m_cached_blocks cant remove ...， close database exception.";
+    }
+}
+
 BlockHeader const &BlockChain::genesis() const {
     UpgradableGuard l(x_genesis);
     if (!m_genesis) {
@@ -287,10 +310,6 @@ void BlockChain::close() {
     m_cacheUsage.clear();
     m_inUse.clear();
     m_lastBlockHashes->clear();
-
-    ///
-    cwarn << "try to close block chain, will remove cached blocks";
-    
 
 }
 
@@ -678,8 +697,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     cwarn << "config ...............";
     print_route(m_cached_blocks);
     cwarn << " map size " << m_cached_bytes.size() ;
+    if(info().number() > m_params.config_blocks){
 
-    _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
+        _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
+    }
+
 
 
 
@@ -961,10 +983,11 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
     VerifiedBlockRef from_block = from;
     while(from_block.info.stateRoot() != to.info.stateRoot()){
         if(overdb.exists(from_block.info.stateRoot())){
+            cwarn << "will remove state root " << from_block.info.stateRoot();
             overdb.kill(from_block.info.stateRoot());
         }
         else{
-            cwarn << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";
+            cerror << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";
             return false;
         }
         for(const auto &itr : blocks){

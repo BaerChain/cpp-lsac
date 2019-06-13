@@ -42,8 +42,11 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
 
 dev::bacd::SHDposClient::~SHDposClient() 
 {
+	cwarn << "will close SHDposClient";
+	bc().clean_cached_blocks(m_stateDB, m_StateExDB);
     // to wake up the thread from Client::doWork()
     m_signalled.notify_all();
+
     terminate();
 }
 

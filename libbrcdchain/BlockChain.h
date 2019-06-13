@@ -105,6 +105,11 @@ public:
     BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
     ~BlockChain();
 
+    /// @brief clean up unconfig blocks.
+    /// \param _stateDB
+    /// \param _stateExDB
+    void clean_cached_blocks(OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB);
+
     /// Reopen everything.
     void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { reopen(m_params, _we, _pc); }
     void reopen(ChainParams const& _p, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
@@ -418,6 +423,9 @@ private:
     mutable SharedMutex x_cached_blocks;
     mutable std::vector<std::list<VerifiedBlockRef>>    m_cached_blocks;        //recored 12 blocks.
     mutable std::map<h256, bytes>                       m_cached_bytes;
+
+    h256 m_config_blocks_hash;
+    bytes m_config_blocks_bytes;
 
 
     using CacheID = std::pair<h256, unsigned>;
