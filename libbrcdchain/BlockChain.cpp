@@ -608,17 +608,18 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     std::vector<std::list<VerifiedBlockRef>> copy_data;
     for(auto &itr : m_cached_blocks){
-        if(itr.size() > m_params.config_blocks){
-            cwarn << "pop ";
-            itr.pop_front();
-        }
+//        if(itr.size() > m_params.config_blocks){
+//            cwarn << "pop ";
+//            itr.pop_front();
+//        }
 
         auto detail = itr.front();
         if(m_blocksDB->exists(toSlice(detail.info.hash()))){
             while(itr.size() > 0
+            && itr.size() < m_params.config_blocks
             && info().number() > m_params.config_blocks
-            && info().number() - itr.front().info.number() > m_params.config_blocks ){
-                cwarn << "pop " << detail.info.number() ;
+            && info().number() - detail.info.number() > m_params.config_blocks ){
+                cwarn << "pop " << itr.front().info.number();
                 itr.pop_front();
             }
             if(itr.size() > 0){
