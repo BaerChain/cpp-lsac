@@ -75,13 +75,23 @@ namespace dev {
                 void new_session(int64_t version, const h256 &block_hash, const h256& root_hash);
 
 
-                ///  commit this state by block number.
+                ///  commit this state by block number. this function dont commit to disk. if close appliction, uncommit session will remove .
                 /// \param version  block number
                 /// \return  true
                 bool commit(int64_t version, const h256 &block_hash, const h256& root_hash);
 
+                /// commit to session to disk.
+                /// \param version
+                /// \return
+                bool commit_disk(int64_t version, bool first_commit = false);
 
-                bool commit_disk(int64_t version);
+
+                /// deprecate all session.
+                /// \return
+                bool remove_all_session();
+
+
+
                 ///
                 /// \param os vector transactions id
                 /// \param reset   if true, this operation rollback

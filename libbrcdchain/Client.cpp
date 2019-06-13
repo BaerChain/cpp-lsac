@@ -93,6 +93,9 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     m_preSeal = bc().genesisBlock(m_stateDB, m_StateExDB);
     m_postSeal = m_preSeal;
 
+
+
+
     m_bq.setChain(bc());
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
@@ -378,7 +381,11 @@ void Client::syncBlockQueue()
     ImportRoute ir;
     unsigned count;
     Timer t;
-    
+
+    LOG(m_logger)  << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+                  << "  " << m_StateExDB.check_version(false);
+
+
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
 
     double elapsed = t.elapsed();

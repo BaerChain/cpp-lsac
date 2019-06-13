@@ -164,9 +164,13 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
 
     cwarn << "max_chain position " << position;
     if(m_cached_blocks.size() > 0){
+        cwarn << "rollback number: " << info().number();
         remove_blocks_from_database(m_cached_blocks[position], _stateDB, _stateExDB);
-        auto last_config_hash = numberHash(info().number() - m_params.config_blocks - 1);
-        m_extrasDB->insert(db::Slice("best"), db::Slice((char const *) &last_config_hash, 32));
+        auto last_config_hash = numberHash(info().number() - m_params.config_blocks);
+        if(info().number() > m_params.config_blocks){
+            m_extrasDB->insert(db::Slice("best"), db::Slice((char const *) &last_config_hash, 32));
+        }
+        _stateExDB.remove_all_session();
     }
     else{
         cwarn << "waring m_cached_blocks cant remove ...， close database exception.";
@@ -698,14 +702,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     print_route(m_cached_blocks);
     cwarn << " map size " << m_cached_bytes.size() ;
     if(info().number() > m_params.config_blocks){
-
         _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
     }
-
-
-
-
-
     return  ret;
 }
 

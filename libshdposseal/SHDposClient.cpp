@@ -37,7 +37,11 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     asDposClient(*this);
     m_params = _params;
     init(_host, _networkID);
-    LOG(m_logger)<< "init the dposClient ...";
+    LOG(m_logger)<< "init the dposClient check state : number: " << bc().info().number() << " hash: " << bc().info().hash() << "  exchange : " << m_StateExDB.check_version(
+				false);
+
+
+
 }
 
 dev::bacd::SHDposClient::~SHDposClient() 

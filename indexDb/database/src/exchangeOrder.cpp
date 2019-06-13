@@ -267,8 +267,19 @@ namespace dev {
                 return true;
             }
 
-            bool exchange_plugin::commit_disk(int64_t version) {
+            bool exchange_plugin::commit_disk(int64_t version, bool first_commit) {
+                if(first_commit){
+                    const auto &obj = db->get<dynamic_object>();
+                    db->modify(obj, [&](dynamic_object &obj) {
+                        obj.version = version;
+                    });
+                }
                 db->commit(version);
+                return true;
+            }
+
+            bool exchange_plugin::remove_all_session() {
+                db->undo_all();
                 return true;
             }
 
