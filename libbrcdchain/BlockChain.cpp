@@ -287,6 +287,11 @@ void BlockChain::close() {
     m_cacheUsage.clear();
     m_inUse.clear();
     m_lastBlockHashes->clear();
+
+    ///
+    cwarn << "try to close block chain, will remove cached blocks";
+    
+
 }
 
 void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, unsigned)> const &_progress) {
@@ -608,31 +613,56 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     std::vector<std::list<VerifiedBlockRef>> copy_data;
     for(auto &itr : m_cached_blocks){
-//        if(itr.size() > m_params.config_blocks){
-//            cwarn << "pop ";
-//            itr.pop_front();
-//        }
+        ///every list, max size  <= m_params.config_blocks
+        if(itr.size() > m_params.config_blocks){
+            cwarn << "pop ";
+            itr.pop_front();
+        }
 
-        auto detail = itr.front();
-        if(m_blocksDB->exists(toSlice(detail.info.hash()))){
+        //this chain must in main chain,
+        if(m_blocksDB->exists(toSlice(itr.front().info.hash()))){
+            ///pop config_blocks.
             while(itr.size() > 0
-            && itr.size() < m_params.config_blocks
             && info().number() > m_params.config_blocks
-            && info().number() - detail.info.number() > m_params.config_blocks ){
+            && info().number() - itr.front().info.number() >= m_params.config_blocks ){
                 cwarn << "pop " << itr.front().info.number();
                 itr.pop_front();
             }
-            if(itr.size() > 0){
+            ///again check this chain in main chain.
+            if(itr.size() > 0 && m_blocksDB->exists(toSlice(itr.front().info.hash()))){
                 copy_data.push_back(itr);
             }
-
+            else{
+                cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
+            }
         }
         else{
-            cwarn << "remove " << detail.info.number() << "  h: " << detail.info.hash();
+            cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
         }
     }
     m_cached_blocks.clear();
     m_cached_blocks = copy_data;
+
+
+    //remove unused hash and bytes.
+    std::vector<h256> remove_hash;
+    for(auto &itr : m_cached_bytes){
+        bool find = false;
+        for(auto &list : m_cached_blocks){
+            for(auto &b : list){
+                if(itr.first == b.info.hash()){
+                    find = true;
+                }
+            }
+        }
+        if(!find){
+            remove_hash.push_back(itr.first);
+        }
+    }
+
+    for(auto &itr : remove_hash){
+        m_cached_bytes.erase(itr);
+    }
 
     auto print_route = [](const std::vector<std::list<VerifiedBlockRef>> &data) {
         for (auto itr : data) {
@@ -648,6 +678,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     cwarn << "config ...............";
     print_route(m_cached_blocks);
     cwarn << " map size " << m_cached_bytes.size() ;
+
+    _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
+
+
+
 
     return  ret;
 }
@@ -723,7 +758,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         BOOST_THROW_EXCEPTION(BlockIsTooOld());
     }
 
-    if (info().number() == 0) {
+    if (info().number() == 0 || m_cached_blocks.size() == 0) {
         m_cached_blocks.push_back({_block});
         return true;
     }
@@ -777,7 +812,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     }
     //this block is true, dont switch chain.
     if (_block.info.parentHash() == info().hash()) {
-        cwarn << "will execute this block.";
         return true;
     } else {
         ///dont switch chain, only insert this block to m_cached_blocks
@@ -1148,7 +1182,6 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
 
     if (m_lastBlockHash != newLastBlockHash)
         DEV_WRITE_GUARDED(x_lastBlockHash) {
-            cwarn << "write best block into  extras db.";
             m_lastBlockHash = newLastBlockHash;
             m_lastBlockNumber = newLastBlockNumber;
             try {

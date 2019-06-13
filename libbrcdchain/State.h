@@ -276,7 +276,7 @@ public:
     /// Will instantiate the address if it has never been used.
     void setBalance(Address const& _addr, u256 const& _value);
 
-    // BRC相关接口
+    //
     u256 BRC(Address const& _id) const;
     void addBRC(Address const& _addr, u256 const& _value);
     void subBRC(Address const& _addr, u256 const& _value);
@@ -288,18 +288,18 @@ public:
         addBRC(_ToAddr, _value);
     }
 
-    // FBRC相关接口
+    //
     u256 FBRC(Address const& _id) const;
     void addFBRC(Address const& _addr, u256 const& _value);
     void subFBRC(Address const& _addr, u256 const& _value);
 
-    // FBalance相关接口
+    //
     u256 FBalance(Address const& _id) const;
     void addFBalance(Address const& _addr, u256 const& _value);
     void subFBalance(Address const& _addr, u256 const& _value);
 
 
-    //交易挂单接口
+    //
     void pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);

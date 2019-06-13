@@ -40,7 +40,7 @@ struct DposVarlitorVote
 };
 inline bool dposVarlitorComp(DposVarlitorVote const& _d1, DposVarlitorVote const& _d2)
 {
-    // 1、比较的票数 2、比较出块数量
+    //
     if(_d1.m_vote_num > _d2.m_vote_num)
         return true;
     else if(_d1.m_vote_num < _d2.m_vote_num)
@@ -56,8 +56,6 @@ public:
     ~DposVote(){}
     void setState(State& _s) { m_state = _s; }
 public:
-	// 投票等操作 在State 中已实现
-    // 验证投票合法
     void verifyVote(Address const& _from, Address const& _to, size_t _type, u256 tickets = 0);
 	std::map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
 	std::map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
@@ -72,7 +70,6 @@ public:
 
 public:
     std::map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}
-    //获取竞选人排名
 	inline std::map<Address, u256>  getElectors() const { return m_state.voteDate(SysElectorAddress); }
     
 private: 
