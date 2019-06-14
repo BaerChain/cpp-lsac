@@ -364,6 +364,7 @@ string Brc::brc_sendRawTransaction(std::string const& _rlp)
 }
 
 std::string Brc::brc_importBlock(const std::string &_rlp) {
+#ifndef NDEBUG
     try {
         auto by = jsToBytes(_rlp, OnFailed::Throw);
         return toJS(client()->importBlock(&by));
@@ -371,6 +372,9 @@ std::string Brc::brc_importBlock(const std::string &_rlp) {
         testlog << " error:" << e.what();
         throw JsonRpcException(exceptionToErrorMessage());
     }
+#else
+    return "this method only use debug.";
+#endif
 }
 
 string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)

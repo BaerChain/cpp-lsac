@@ -382,16 +382,12 @@ void Client::syncBlockQueue()
     unsigned count;
     Timer t;
 
-    LOG(m_logger)  << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
-                  << "  " << m_StateExDB.check_version(false);
-
-
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
 
     double elapsed = t.elapsed();
 	if(count)
 	{
-//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
+		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
 				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()

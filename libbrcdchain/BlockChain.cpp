@@ -638,15 +638,10 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     }
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
-    cwarn << "import height : " << info().number() << " hash: " << info().hash() << " state root: " << info().stateRoot();
-
-
-
     std::vector<std::list<VerifiedBlockRef>> copy_data;
     for(auto &itr : m_cached_blocks){
         ///every list, max size  <= m_params.config_blocks
         if(itr.size() > m_params.config_blocks){
-            cwarn << "pop ";
             itr.pop_front();
         }
 
@@ -656,7 +651,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             while(itr.size() > 0
             && info().number() > m_params.config_blocks
             && info().number() - itr.front().info.number() >= m_params.config_blocks ){
-                cwarn << "pop " << itr.front().info.number();
+//                cwarn << "pop " << itr.front().info.number();
                 itr.pop_front();
             }
             ///again check this chain in main chain.
@@ -706,9 +701,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             cwarn << os.str();
         }
     };
-    cwarn << "config ...............";
-    print_route(m_cached_blocks);
-    cwarn << " map size " << m_cached_bytes.size() ;
+    if(m_cached_blocks.size() > 2){
+        cwarn << "config ...............";
+        print_route(m_cached_blocks);
+        cwarn << " map size " << m_cached_bytes.size() ;
+    }
     if(info().number() > m_params.config_blocks){
         _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
     }

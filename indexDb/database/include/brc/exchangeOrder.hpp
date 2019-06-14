@@ -101,12 +101,21 @@ namespace dev {
 
                 inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
+#ifndef NDEBUG
                     std::string ret = " version : " + std::to_string(obj.version)
                                     + " block hash: " + toHex(obj.block_hash)
                                     + " state root: " + toHex(obj.root_hash)
                                     + " orders: " + std::to_string(obj.orders)
                                     + " ret_orders:" + std::to_string(obj.result_orders)
                              ;
+#else
+                    std::string ret = " version : " + std::to_string(obj.version)
+                                    + " block hash: " + toHexPrefixed(obj.block_hash)
+                                    + " state root: " + toHexPrefixed(obj.root_hash)
+                                    + " orders: " + std::to_string(obj.orders)
+                                    + " ret_orders:" + std::to_string(obj.result_orders)
+                             ;
+#endif
                     if(p){
                         cwarn << ret;
                     }
