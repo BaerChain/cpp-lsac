@@ -276,26 +276,24 @@ namespace dev {
                     auto begin = index_trx.lower_bound(t);
                     auto end = index_trx.upper_bound(t);
                     if (begin == end) {
-                        BOOST_THROW_EXCEPTION(find_order_trxid_error());
+                        BOOST_THROW_EXCEPTION(find_order_trxid_error()<< errinfo_comment(toString(t)));
                     }
-                    order o;
-                    o.trxid = begin->trxid;
-                    o.sender = begin->sender;
-                    o.buy_type = order_buy_type::only_price;
-                    o.token_type = begin->token_type;
-                    o.type = begin->type;
-                    o.time = begin->create_time;
                     while (begin != end) {
+						order o;
+						o.trxid = begin->trxid;
+						o.sender = begin->sender;
+						o.buy_type = order_buy_type::only_price;
+						o.token_type = begin->token_type;
+						o.type = begin->type;
+						o.time = begin->create_time;
                         o.price_token[begin->price] = begin->token_amount;
+						ret.push_back(o);
+
                         const auto rm = db->find(begin->id);
-                        db->remove(*rm);
-                        begin++;
+						begin++;
+						db->remove(*rm);
                     }
                     update_dynamic_orders(false);
-
-
-
-                    ret.push_back(o);
                 }
                 if (!reset) {
                     session.push();

@@ -113,22 +113,21 @@ struct operation
 };
 struct vote_operation : public operation
 {
-    Address m_from;
     Address m_to;
     u256 m_vote_numbers = 0;
     uint8_t m_type = null;
     uint8_t m_vote_type = 0;
     vote_operation(
-        op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
-      : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
+        op_type type, const Address& to, uint8_t vote_type, u256 vote_num)
+      : m_type(type), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
     {}
     /// unserialize from data
     /// \param Data
-    OPERATION_UNSERIALIZE(vote_operation, (m_type)(m_from)(m_to)(m_vote_type)(m_vote_numbers))
+    OPERATION_UNSERIALIZE(vote_operation, (m_type)(m_to)(m_vote_type)(m_vote_numbers))
 
     /// bytes serialize this struct
     /// \return  bytes
-    OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_vote_type)(m_vote_numbers))
+    OPERATION_SERIALIZE((m_type)(m_to)(m_vote_type)(m_vote_numbers))
 
     virtual ~vote_operation() {}
 };
@@ -136,14 +135,12 @@ struct vote_operation : public operation
 struct transcation_operation : public operation
 {
     uint8_t m_type = null;
-    Address m_from;
     Address m_to;
     uint8_t m_Transcation_type = 0;
     u256 m_Transcation_numbers = 0;
-    transcation_operation(op_type type, const Address& from, const Address& to,
+    transcation_operation(op_type type, const Address& to,
         uint8_t transcation_type, u256 transcation_num)
       : m_type(type),
-        m_from(from),
         m_to(to),
         m_Transcation_type(transcation_type),
         m_Transcation_numbers(transcation_num)
@@ -151,17 +148,16 @@ struct transcation_operation : public operation
     /// unserialize from data
     /// \param Data
     OPERATION_UNSERIALIZE(
-        transcation_operation, (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+        transcation_operation, (m_type)(m_to)(m_Transcation_type)(m_Transcation_numbers))
 
     /// bytes serialize this struct
     /// \return  bytes
-    OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+    OPERATION_SERIALIZE((m_type)(m_to)(m_Transcation_type)(m_Transcation_numbers))
 };
 
 struct pendingorder_opearaion : public operation
 {
     uint8_t m_type = null;
-    Address m_from;
     u256 m_Pendingorder_num = 0;
     u256 m_Pendingorder_price = 0;
     ex::order_type m_Pendingorder_type = ex::order_type::null_type;
@@ -169,10 +165,9 @@ struct pendingorder_opearaion : public operation
     ex::order_buy_type m_Pendingorder_buy_type = ex::order_buy_type::all_price;
     pendingorder_opearaion(){}
     pendingorder_opearaion(
-        op_type type, const Address& from, ex::order_type pendingorder_type, ex::order_token_type _pendingorder_token_type,
+        op_type type, ex::order_type pendingorder_type, ex::order_token_type _pendingorder_token_type,
         ex::order_buy_type _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price)
       : m_type(type),
-        m_from(from),
         m_Pendingorder_type(pendingorder_type),
         m_Pendingorder_Token_type(_pendingorder_token_type),
         m_Pendingorder_buy_type(_pendingorder_buy_type),
@@ -184,20 +179,18 @@ struct pendingorder_opearaion : public operation
 	pendingorder_opearaion(const bytes& Data){
         RLP rlp(Data);
         m_type = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
-        m_from = rlp[1].convert<Address>(RLP::LaissezFaire);
-        m_Pendingorder_type = (ex::order_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
-        m_Pendingorder_Token_type = (ex::order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
-        m_Pendingorder_buy_type = (ex::order_buy_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
-        m_Pendingorder_num = rlp[5].convert<u256>(RLP::LaissezFaire);
-        m_Pendingorder_price = rlp[6].convert<u256>(RLP::LaissezFaire);
+        m_Pendingorder_type = (ex::order_type)rlp[1].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_Token_type = (ex::order_token_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_buy_type = (ex::order_buy_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_num = rlp[4].convert<u256>(RLP::LaissezFaire);
+        m_Pendingorder_price = rlp[5].convert<u256>(RLP::LaissezFaire);
     }
 
 
 //	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
     virtual bytes serialize()  const{
-        RLPStream stream(7);
+        RLPStream stream(6);
         stream.append((uint8_t)m_type);
-        stream.append(m_from);
         stream.append((uint8_t)m_Pendingorder_type);
         stream.append((uint8_t)m_Pendingorder_Token_type);
         stream.append((uint8_t)m_Pendingorder_buy_type);

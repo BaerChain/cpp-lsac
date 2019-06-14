@@ -65,6 +65,7 @@ namespace dev {
                 h256                to_trxid;           //which trxid
                 u256                amount;
                 u256                price;
+				u256                old_price;
             };
 
 

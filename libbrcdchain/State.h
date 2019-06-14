@@ -72,6 +72,7 @@ DEV_SIMPLE_EXCEPTION(NotEnoughPoll);
 DEV_SIMPLE_EXCEPTION(InvalidAddressAddVote);
 DEV_SIMPLE_EXCEPTION(NotEnoughVoteLog);
 DEV_SIMPLE_EXCEPTION(InvalidSysAddress);
+DEV_SIMPLE_EXCEPTION(InvalidDynamic);
 
 class SealEngineFace;
 class Executive;
@@ -287,6 +288,17 @@ public:
         subBRC(_FromAddr, _value);
         addBRC(_ToAddr, _value);
     }
+	void execute_transfer_BRCs(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops)
+	{
+	    for(auto const& val : _ops){
+			std::shared_ptr<transationTool::transcation_operation> _p = std::dynamic_pointer_cast<transationTool::transcation_operation>(val);
+			if(!_p){
+				cerror << "execute_t transafer_brc dynamic type field!";
+				BOOST_THROW_EXCEPTION(InvalidDynamic());
+			}
+			transferBRC(_addr, _p->m_to, _p->m_Transcation_numbers);
+		}
+	}
 
     // FBRC相关接口
     u256 FBRC(Address const& _id) const;
@@ -304,7 +316,10 @@ public:
         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);
 
+	void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+
     void cancelPendingOrder(h256 _pendingOrderHash);
+	void cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
 
 	void freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
@@ -334,6 +349,8 @@ public:
     void addPoll(Address const& _addr, u256 const& _value);
     void subPoll(Address const& _adddr, u256 const& _value);
 
+	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops);
+
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
     Json::Value blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum);
@@ -341,11 +358,10 @@ public:
 	Json::Value votedMessage(Address const& _addr) const;
 	Json::Value electorMessage(Address _addr) const;
 
+
 	void assetInjection(Address const& _addr);
 
-
 	void systemPendingorder(int64_t _time);
-
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
 private:

@@ -240,6 +240,23 @@ private:
         {}
     };
 
+    struct batch_transaction_params
+	{
+		transationTool::op_type _type;
+		std::vector<std::shared_ptr<transationTool::operation> > _operation;
+		/*std::vector<transationTool::vote_operation> _vote_operation;
+		std::vector<transationTool::transcation_operation> _brc_operation;
+		std::vector<transationTool::pendingorder_opearaion> _pen_operation;
+		std::vector<transationTool::cancelPendingorder_operation> _can_operation;*/
+        void clear(){
+			_type = transationTool::null;
+			_operation.clear();
+		}
+        int size() const{
+			return _operation.size();
+		}
+	};
+
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress);
@@ -281,6 +298,7 @@ private:
     SealEngineFace const& m_sealEngine;
 
     std::vector<TransationParameters> m_callParameters_v;  //  batchTransation callParameters
+	batch_transaction_params m_batch_params;        //batchTransation callParameters 
 
     bool m_isCreation = false;
     Address m_newAddress;

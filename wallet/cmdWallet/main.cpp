@@ -149,7 +149,6 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                     switch (type) {
                         case vote: {
                             auto new_op = new vote_operation((op_type) type,
-                                                             Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
 															 u256(fromBigEndian<u256>(fromHex(op_obj["m_vote_numbers"].get_str())))
@@ -159,7 +158,6 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case brcTranscation: {
                             auto transcation_op = new transcation_operation((op_type) type,
-                                                                            Address(op_obj["m_from"].get_str()),
                                                                             Address(op_obj["m_to"].get_str()),
                                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
                                                                             u256(fromBigEndian<u256>(fromHex(op_obj["m_transcation_numbers"].get_str())))
@@ -169,7 +167,6 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case pendingOrder: {
                             auto pendingorder_op = new pendingorder_opearaion( (op_type)type,
-                                                                              Address(op_obj["m_from"].get_str()),
                                                                               (ex::order_type) op_obj["m_type"].get_int(),
                                                                               (ex::order_token_type) op_obj["m_token_type"].get_int(),
                                                                               (ex::order_buy_type) op_obj["m_buy_type"].get_int(),

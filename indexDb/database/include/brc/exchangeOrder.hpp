@@ -167,6 +167,7 @@ namespace dev {
                             ret.set_data(od, begin, spend, begin->price);
                             spend = 0;
                         }
+						ret.old_price = price;
 
                         db->create<order_result_object>([&](order_result_object &obj) {
                             obj.set_data(ret);
