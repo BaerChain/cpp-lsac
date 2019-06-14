@@ -372,15 +372,15 @@ unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
 
+
+
 void Client::syncBlockQueue()
 {
-
     ImportRoute ir;
     unsigned count;
     Timer t;
 
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
-
     double elapsed = t.elapsed();
 	if(count)
 	{
