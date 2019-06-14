@@ -61,7 +61,6 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
     h256 h = _transaction.sha3(WithSignature);
-
     ImportResult ret;
     {
         UpgradableGuard l(m_lock);
@@ -384,12 +383,4 @@ void TransactionQueue::verifierBody()
             cwarn << "Bad transaction:" << boost::current_exception_diagnostic_information();
         }
     }
-}
-
-void dev::brc::TransactionQueue::eraseDropedTx(h256 const& _txHash)
-{
-	auto ret = m_dropped.find(_txHash);
-	if(ret == m_dropped.end())
-		return;
-	m_dropped.erase(ret);
 }

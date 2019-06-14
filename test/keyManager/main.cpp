@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
         _rlp << _noderlp.out();
     }
-
+ 
     _rlp << _packagedTransactions << _tradingpoolsNum;
     
     std::cout << "_rlp:" << _rlp.out() << std::endl;

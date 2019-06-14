@@ -236,6 +236,7 @@ int main(int argc, char **argv) {
 
 	fs::path accountPath;
     string accountJSON;
+    string nodemonitorIP;
 
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
@@ -247,6 +248,8 @@ int main(int argc, char **argv) {
                     "Configure specialised blockchain using given JSON information\n");
     addClientOption("accountJson", po::value<string>()->value_name("<file>"),
         "AccountJson specialised blockchain using given JSON information\n");
+    addClientOption("nodemonitor,n",po::value<string>(),
+        "Set the data processing server ip to open the node push \n");
     addClientOption("mode,o", po::value<string>()->value_name("<full/peer>"),
                     "Start a full node or a peer node (default: full)\n");
     addClientOption("ipc", "Enable IPC server (default: on)");
@@ -572,6 +575,11 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
+    if (vm.count("nodemonitor"))
+    {
+        nodemonitorIP = vm["nodemonitor"].as<string>();
+        std::cout << "ip = " << nodemonitorIP << std::endl;
+    }
     if (vm.count("listen-ip")) {
         listenIP = vm["listen-ip"].as<string>();
         listenSet = true;
@@ -719,6 +727,11 @@ int main(int argc, char **argv) {
             //cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
             return 0;
         }
+    }
+
+    if (!nodemonitorIP.empty())
+    {
+        chainParams.savenodemonitorIP(nodemonitorIP);
     }
 
     setupLogging(loggingOptions);
@@ -1075,7 +1088,8 @@ int main(int argc, char **argv) {
                     new rpc::Debug(*web3.brcdChain()),
                     nullptr
             );
-            auto httpConnector = new SafeHttpServer(listenIP, (int)http_port, "", "", 4);
+            auto httpConnector = new SafeHttpServer("0.0.0.0", (int)http_port, "", "", 4);
+            std::cout << listenIP << http_port << std::endl;
             httpConnector->setAllowedOrigin("");
             jsonrpcHttpServer->addConnector(httpConnector);
             jsonrpcHttpServer->StartListening();
