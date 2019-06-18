@@ -101,6 +101,6 @@ DEV_SIMPLE_EXCEPTION(UnknownAccount);
 
 DEV_SIMPLE_EXCEPTION(PeerDisconnected);
 
-DEV_SIMPLE_EXCEPTION(BadDynamicCast)
+DEV_SIMPLE_EXCEPTION(BadDynamicCast);
 }
 }
