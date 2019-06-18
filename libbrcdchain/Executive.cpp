@@ -209,8 +209,7 @@ void Executive::initialize(Transaction const& _transaction)
 	m_addCostValue = 0;
 	try
     {
-        m_sealEngine.verifyTransaction(
-            ImportRequirements::Everything, m_t, m_envInfo.header(), m_envInfo.gasUsed());
+        m_sealEngine.verifyTransaction( ImportRequirements::Everything, m_t, m_envInfo.header(), m_envInfo.gasUsed());
     }
     catch (Exception const& ex)
     {
@@ -285,8 +284,10 @@ void Executive::initialize(Transaction const& _transaction)
             for (auto val : _ops)
             {
                 transationTool::op_type _type = transationTool::operation::get_type(val);
-				totalCost += transationTool::c_add_value[_type]* m_t.gasPrice();
-				m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
+				if(m_batch_params.size() == 0){
+					totalCost += transationTool::c_add_value[_type] * m_t.gasPrice();
+					m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
+				}
 				bool is_verfy_cost = true;
 
 				if(m_batch_params._type != _type && m_batch_params.size() > 0){
@@ -334,6 +335,8 @@ void Executive::initialize(Transaction const& _transaction)
                 break;
                 case transationTool::pendingOrder:
                 {
+					if(m_batch_params.size() > 0)
+						BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment("This peding_order is not batch !"));
                     transationTool::pendingorder_opearaion _pengdingorder_op = transationTool::pendingorder_opearaion(val);
                     if(_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
                             _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
@@ -342,8 +345,6 @@ void Executive::initialize(Transaction const& _transaction)
                      {
                          m_pendingorderStatus = true;
 						 is_verfy_cost = false;
-                         if(m_batch_params.size() >0)
-							 BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment("This type peding is batch only !"));
                      }
 					m_batch_params._operation.push_back(std::make_shared<transationTool::pendingorder_opearaion>(_pengdingorder_op));
                 }
@@ -379,6 +380,7 @@ void Executive::initialize(Transaction const& _transaction)
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;
+			testlog << BrcYellow "m_baseGasRequired"<< m_baseGasRequired << " totalCost:" << totalCost << BrcReset ;
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)

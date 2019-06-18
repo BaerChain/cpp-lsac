@@ -652,6 +652,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 	testlog << " total_free_brc:" << total_free_brc << " total_free_balance:" << total_free_balance;
 	try{
 		_result_v = m_exdb.insert_operation(_v, false, true);
+		testlog << BrcYellow " resultZSie:" << _result_v.size();
 	}
 	catch(const boost::exception &e){
 		cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -660,14 +661,18 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
 		result_order _result_order = _result_v[i];
-		pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
-							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
-	
-		testlog << "result..." 
+		testlog << "result..."
 			<< " sender:" << _result_order.sender << " acceptor:" << _result_order.acceptor << " type:" << (int)_result_order.type << " token_type"
 			<< (int)_result_order.token_type << " buy_type" << (int)_result_order.buy_type
 			<< " send_trxid:" << _result_order.send_trxid << " to_trxid" << _result_order.to_trxid << " amount:" << _result_order.amount << " price" << _result_order.price
-			<<" oldprice:"<< _result_order.old_price << " old_num"<< _result_order.old_num; 
+			<< " oldprice:" << _result_order.old_price;
+	}
+
+	for(uint32_t i = 0; i < _result_v.size(); ++i){
+		result_order _result_order = _result_v[i];
+
+		pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
+							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
 		if(_result_order.buy_type == order_buy_type::only_price){
 			if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)

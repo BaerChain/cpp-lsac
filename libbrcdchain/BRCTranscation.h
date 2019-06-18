@@ -9,7 +9,6 @@ namespace dev {
         enum TranscationEnum {
             ETranscationNull = 0,
             EBRCTranscation,
-            EAssetInjection,
             ETranscationMax
         };
 

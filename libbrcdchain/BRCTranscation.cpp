@@ -21,17 +21,13 @@ void dev::brc::BRCTranscation::verifyTranscation(
 			BOOST_THROW_EXCEPTION(BrcTranscationField()
 								  << errinfo_comment(" cant't transfer brc to me"));
         }
-		testlog << "_transcationNum:" << _transcationNum << " _form:" << m_state.BRC(_form) << " from:" << _form << " to:" << toString(_to);
+		testlog << "_transcationNum:" << _transcationNum << " _form:" << m_state.BRC(_form) << " from:" << _form << " to:" <<toString(_to);
         if (_transcationNum > m_state.BRC(_form))
         {
 			BOOST_THROW_EXCEPTION(BrcTranscationField()
 								  << errinfo_comment(" not Enough brcd "));
         }
     }
-	else if (_type == dev::brc::TranscationEnum::EAssetInjection)
-	{
-		return ;
-	}
 }
 
 void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exchange_plugin& _exdb,
