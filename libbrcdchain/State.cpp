@@ -635,8 +635,8 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _map, _nowTime };
 		_v.push_back(_order);
 
-		testlog << BrcYellow <<" id:"<< _order.trxid<<  " order_buy_type:" << (int)_order.buy_type << " order_type:" << (int)_order.type
-			<< " order_token_type:" << (int)_order.token_type << " num:" << pen->m_Pendingorder_num << " price:" << pen->m_Pendingorder_price << BrcReset;
+		/*testlog << BrcYellow <<" id:"<< _order.trxid<<  " order_buy_type:" << (int)_order.buy_type << " order_type:" << (int)_order.type
+			<< " order_token_type:" << (int)_order.token_type << " num:" << pen->m_Pendingorder_num << " price:" << pen->m_Pendingorder_price << BrcReset;*/
 
 		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
 			if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::BRC)
@@ -649,10 +649,9 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 				total_free_balance += pen->m_Pendingorder_num;
 		}
 	}
-	testlog << " total_free_brc:" << total_free_brc << " total_free_balance:" << total_free_balance;
+	//testlog << " total_free_brc:" << total_free_brc << " total_free_balance:" << total_free_balance;
 	try{
 		_result_v = m_exdb.insert_operation(_v, false, true);
-		testlog << BrcYellow " resultZSie:" << _result_v.size();
 	}
 	catch(const boost::exception &e){
 		cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -661,11 +660,11 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
 		result_order _result_order = _result_v[i];
-		testlog << "result..."
+		/*testlog << "result..."
 			<< " sender:" << _result_order.sender << " acceptor:" << _result_order.acceptor << " type:" << (int)_result_order.type << " token_type"
 			<< (int)_result_order.token_type << " buy_type" << (int)_result_order.buy_type
 			<< " send_trxid:" << _result_order.send_trxid << " to_trxid" << _result_order.to_trxid << " amount:" << _result_order.amount << " price" << _result_order.price
-			<< " oldprice:" << _result_order.old_price;
+			<< " oldprice:" << _result_order.old_price;*/
 	}
 
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
@@ -685,7 +684,6 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 				total_free_balance -= _result_order.amount;
 		}
 	}
-	testlog << " total_free_brc:" << total_free_brc << " total_free_balance:" << total_free_balance;
 	if(total_free_balance < 0 || total_free_brc < 0){
 		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
 		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());

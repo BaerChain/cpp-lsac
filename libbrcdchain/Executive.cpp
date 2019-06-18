@@ -380,7 +380,7 @@ void Executive::initialize(Transaction const& _transaction)
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;
-			testlog << BrcYellow "m_baseGasRequired"<< m_baseGasRequired << " totalCost:" << totalCost << BrcReset ;
+			//testlog << BrcYellow "m_baseGasRequired"<< m_baseGasRequired << " totalCost:" << totalCost << BrcReset ;
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)

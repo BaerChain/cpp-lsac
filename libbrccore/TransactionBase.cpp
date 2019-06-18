@@ -58,7 +58,6 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         int const v = rlp[6].toInt<int>();
         h256 const r = rlp[7].toInt<u256>();
         h256 const s = rlp[8].toInt<u256>();
-		testlog << BrcYellow " chaiID:" << m_chainId << BrcReset;
         if (isZeroSignature(r, s))
         {
             m_chainId = v;
@@ -80,7 +79,6 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
             }
 
         }
-		testlog << " chaiID:" << m_chainId ;
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
 

@@ -21,7 +21,6 @@ void dev::brc::BRCTranscation::verifyTranscation(
 			BOOST_THROW_EXCEPTION(BrcTranscationField()
 								  << errinfo_comment(" cant't transfer brc to me"));
         }
-		testlog << "_transcationNum:" << _transcationNum << " _form:" << m_state.BRC(_form) << " from:" << _form << " to:" <<toString(_to);
         if (_transcationNum > m_state.BRC(_form))
         {
 			BOOST_THROW_EXCEPTION(BrcTranscationField()
@@ -177,14 +176,12 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		   (_buy_type == order_buy_type::all_price && ((_type == order_type::buy && (_pendingOrderNum != 0 || _pendingOrderPrice == 0)) ||
 		   (_type == order_type::sell && (_pendingOrderPrice != 0 || _pendingOrderNum == 0))))
 		   ){
-			testlog << " error 1";
 			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("Pending order type and parameters are incorrect")));
 		}
 
 		if((_type != ex::order_type::sell && _type != ex::order_type::buy) ||
 			(_token_type != ex::order_token_type::BRC && _token_type != ex::order_token_type::FUEL) ||
 		   (_buy_type != ex::order_buy_type::all_price && _buy_type != ex::order_buy_type::only_price)){
-			testlog << " error 2";
 			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("Pending order type and parameters are incorrect")));
 		}
 
@@ -264,7 +261,7 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 				_cookieNum += it.amount;
 			}
 		}
-		testlog << "_cookieNum:" << _cookieNum << "_transcationGas:" << _transcationGas;
+		//testlog << "_cookieNum:" << _cookieNum << "_transcationGas:" << _transcationGas;
 		if( (_cookieNum + m_state.balance(_form)) < _transcationGas){
 			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : The exchanged cookies are not enough to pay the commission!")));
 		}
