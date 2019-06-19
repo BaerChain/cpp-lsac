@@ -398,8 +398,9 @@ void Client::syncBlockQueue()
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
-	t.restart();
+
     onChainChanged(ir);
+	std::vector<Transaction> _v = m_tq.topTransactions(0, dev::h256Hash());
 }
 
 void Client::syncTransactionQueue()
@@ -477,7 +478,6 @@ void Client::resyncStateFromChain()
     DEV_READ_GUARDED(x_working)
         if (bc().currentHash() == m_working.info().parentHash())
             return;
-
     restartMining();
 }
 
@@ -506,6 +506,8 @@ void Client::restartMining()
         if (!m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash())
             for (auto const& t : m_postSeal.pending())
             {
+                if(m_postSeal.transaction_is_sealed(t.sha3()))
+                    continue;
                 LOG(m_loggerDetail) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import(t, IfDropped::Retry);
@@ -520,6 +522,7 @@ void Client::restartMining()
     // Quick hack for now - the TQ at this point already has the prior pending transactions in it;
     // we should resync with it manually until we are stricter about what constitutes "knowing".
     onTransactionQueueReady();
+	std::vector<Transaction> _v = m_tq.topTransactions(0, dev::h256Hash());
 }
 
 void Client::resetState()
@@ -546,11 +549,14 @@ void Client::onChainChanged(ImportRoute const& _ir)
     {
         LOG(m_loggerDetail) << "Safely dropping transaction " << t.sha3();
         m_tq.dropGood(t);
+		m_postSeal.add_sealed_transaction(t.sha3());
     }
     onNewBlocks(_ir.liveBlocks, changeds);
-    if (!isMajorSyncing())
-        resyncStateFromChain();
+	if(!isMajorSyncing()){
+		resyncStateFromChain();
+	}
     noteChanged(changeds);
+	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const

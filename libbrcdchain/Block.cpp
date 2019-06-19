@@ -77,6 +77,7 @@ Block::Block(Block const &_s)
           m_author(_s.m_author),
           m_sealEngine(_s.m_sealEngine) {
     m_committedToSeal = false;
+	m_sealed_transactions = _s.m_sealed_transactions;
 }
 
 Block &Block::operator=(Block const &_s) {
@@ -96,6 +97,7 @@ Block &Block::operator=(Block const &_s) {
     m_precommit = m_state;
     m_committedToSeal = false;
     m_vote.setState(m_state);
+	m_sealed_transactions = _s.m_sealed_transactions;
     return *this;
 }
 
@@ -106,7 +108,6 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
 	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
-    // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
     // TODO: check.
@@ -117,6 +118,7 @@ void Block::resetCurrent(int64_t _timestamp) {
 
     m_committedToSeal = false;
     m_vote.setState(m_state);
+	m_sealed_transactions.clear();
 
 //    performIrregularModifications();
     updateBlockhashContract();
