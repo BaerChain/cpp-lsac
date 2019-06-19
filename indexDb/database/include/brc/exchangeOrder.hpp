@@ -65,11 +65,32 @@ namespace dev {
                 /// \return
                 bool rollback();
 
+                bool rollback_until(const h256 &block_hash, const h256 &root_hash);
 
-                ///  commit this state by block number.
+
+                /// @brief same as commit()
+                /// \param version
+                /// \param block_hash
+                /// \param root_hash
+                void new_session(int64_t version, const h256 &block_hash, const h256& root_hash);
+
+
+                ///  commit this state by block number. this function dont commit to disk. if close appliction, uncommit session will remove .
                 /// \param version  block number
                 /// \return  true
-                bool commit(int64_t version);
+                bool commit(int64_t version, const h256 &block_hash, const h256& root_hash);
+
+                /// commit to session to disk.
+                /// \param version
+                /// \return
+                bool commit_disk(int64_t version, bool first_commit = false);
+
+
+                /// deprecate all session.
+                /// \return
+                bool remove_all_session();
+
+
 
                 ///
                 /// \param os vector transactions id
@@ -80,7 +101,21 @@ namespace dev {
 
                 inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-                    std::string ret = " version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+#ifndef NDEBUG
+                    std::string ret = " version : " + std::to_string(obj.version)
+                                    + " block hash: " + toHex(obj.block_hash)
+                                    + " state root: " + toHex(obj.root_hash)
+                                    + " orders: " + std::to_string(obj.orders)
+                                    + " ret_orders:" + std::to_string(obj.result_orders)
+                             ;
+#else
+                    std::string ret = " version : " + std::to_string(obj.version)
+                                    + " block hash: " + toHexPrefixed(obj.block_hash)
+                                    + " state root: " + toHexPrefixed(obj.root_hash)
+                                    + " orders: " + std::to_string(obj.orders)
+                                    + " ret_orders:" + std::to_string(obj.result_orders)
+                             ;
+#endif
                     if(p){
                         cwarn << ret;
                     }

@@ -141,7 +141,7 @@ namespace dev {
                         }
 
                         if (!reset) {
-                            session.push();
+                            session.squash();
                         }
 //                    } catch (const dev::Exception &e) {
 //                        session.undo();
@@ -215,19 +215,71 @@ namespace dev {
 
             bool exchange_plugin::rollback() {
                 check_db();
-                db->undo_all();
+                db->undo();
+
+                auto session = db->start_undo_session(true);
+                const auto &obj1 = db->get<dynamic_object>();
+                db->modify(obj1, [&](dynamic_object &obj) {
+                });
+                session.push();
+
+
                 return true;
             }
 
-            bool exchange_plugin::commit(int64_t version) {
+            bool exchange_plugin::rollback_until(const h256 &block_hash, const h256 &root_hash){
+                uint32_t maxCount = 12;
+                while(maxCount-- > 0){
+                    const auto &obj = db->get<dynamic_object>();
+                    db->undo();
+//                    cwarn << "undo  " << check_version(false);
+                    if(obj.block_hash == block_hash && obj.root_hash == root_hash){
+                        return true;
+                    }
+                }
+                return true;
+            }
+
+            void exchange_plugin::new_session(int64_t version, const dev::h256 &block_hash,
+                                              const dev::h256 &root_hash) {
+
+            }
+
+            bool exchange_plugin::commit(int64_t version, const h256 &block_hash, const h256& root_hash) {
+
                 check_db();
                 const auto &obj = db->get<dynamic_object>();
                 db->modify(obj, [&](dynamic_object &obj) {
                     obj.version = version;
+                    obj.block_hash = block_hash;
+                    obj.root_hash = root_hash;
                 });
-                db->commit(version);
-                db->flush();
+
+                auto session = db->start_undo_session(true);
+                const auto &obj1 = db->get<dynamic_object>();
+                db->modify(obj1, [&](dynamic_object &obj) {
+                    obj.version = version + 1;
+                });
+                session.push();
+//                db->commit(version);
+//                db->flush();
 //                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                return true;
+            }
+
+            bool exchange_plugin::commit_disk(int64_t version, bool first_commit) {
+                if(first_commit){
+                    const auto &obj = db->get<dynamic_object>();
+                    db->modify(obj, [&](dynamic_object &obj) {
+                        obj.version = version;
+                    });
+                }
+                db->commit(version);
+                return true;
+            }
+
+            bool exchange_plugin::remove_all_session() {
+                db->undo_all();
                 return true;
             }
 
@@ -296,7 +348,7 @@ namespace dev {
                     update_dynamic_orders(false);
                 }
                 if (!reset) {
-                    session.push();
+                    session.squash();
                 }
                 return ret;
             }

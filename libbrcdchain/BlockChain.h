@@ -105,6 +105,11 @@ public:
     BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
     ~BlockChain();
 
+    /// @brief clean up unconfig blocks.
+    /// \param _stateDB
+    /// \param _stateExDB
+    void clean_cached_blocks(OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB);
+
     /// Reopen everything.
     void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { reopen(m_params, _we, _pc); }
     void reopen(ChainParams const& _p, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
@@ -125,6 +130,15 @@ public:
     /// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
     ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ex::exchange_plugin& _stateExDB, bool _mustBeNew = true);
     ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin& _stateExDB,bool _mustBeNew = true);
+
+    /// @brief execute block
+    /// \param _block
+    /// \param _db
+    /// \param _stateExDB
+    /// \param _mustBeNew
+    /// \return
+    ImportRoute execute_block(VerifiedBlockRef const& _block, OverlayDB const& _db, ex::exchange_plugin& _stateExDB,bool _mustBeNew = true);
+
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the
@@ -313,6 +327,33 @@ public:
 	unsigned int getMaxSealTransaction() const { return c_maxSyncTransactions; }
 
 private:
+
+
+    /// @brief  insert new block, then update cache . consider this block can be executed  or switch main chain on config blocks.
+    /// \param _block   push block
+    /// \param _db      overlaydb
+    /// \param _exdb    exdb
+    /// \return         if true , this block can execute.
+    bool update_cache_fork_database(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb);
+
+	/// @brief remove   blocks from m_blocksDB and m_extrasDB.
+	/// \param blocks   need delete blocks information.
+	/// \param _db
+	/// \param _exdb
+	/// \return success remove. complete return blocks.size().
+	uint32_t remove_blocks_from_database(const std::list<VerifiedBlockRef> &blocks, OverlayDB const &_db, ex::exchange_plugin &_exdb);
+
+    /// @brief rollback state
+    /// \param from     current state
+    /// \param to       rollback state point
+    /// \param _db      OverlayDb
+    /// \param _exdb    exchange database
+    /// \return         true
+	bool rollback_from_database(const VerifiedBlockRef &from, const VerifiedBlockRef &to, const std::list<dev::brc::VerifiedBlockRef> &blocks, OverlayDB const &_db, ex::exchange_plugin &_exdb);
+
+
+
+
     static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
     /// Initialise everything and ready for openning the database.
@@ -379,6 +420,13 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+    mutable SharedMutex x_cached_blocks;
+    mutable std::vector<std::list<VerifiedBlockRef>>    m_cached_blocks;        //recored 12 blocks.
+    mutable std::map<h256, bytes>                       m_cached_bytes;
+
+    h256 m_config_blocks_hash;
+    bytes m_config_blocks_bytes;
+
 
     using CacheID = std::pair<h256, unsigned>;
     mutable Mutex x_cacheUsage;
@@ -414,6 +462,12 @@ private:
     std::function<void(BlockHeader const&)> m_onBlockImport;                                        ///< Called if we have imported a new block into the db
 
     boost::filesystem::path m_dbPath;
+
+
+
+
+
+
 
 	static const unsigned c_maxSyncTransactions = 1000;
 

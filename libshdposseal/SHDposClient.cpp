@@ -37,13 +37,20 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     asDposClient(*this);
     m_params = _params;
     init(_host, _networkID);
-    LOG(m_logger)<< "init the dposClient ...";
+    LOG(m_logger)<< "init the dposClient check state : number: " << bc().info().number() << " hash: " << bc().info().hash() << "  exchange : " << m_StateExDB.check_version(
+				false);
+
+
+
 }
 
 dev::bacd::SHDposClient::~SHDposClient() 
 {
+	cwarn << "will close SHDposClient";
+	bc().clean_cached_blocks(m_stateDB, m_StateExDB);
     // to wake up the thread from Client::doWork()
     m_signalled.notify_all();
+
     terminate();
 }
 
@@ -225,7 +232,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 			{
 				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
 				sealEngine()->onSealGenerated([=](bytes const& _header){
-
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);

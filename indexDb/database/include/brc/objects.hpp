@@ -130,7 +130,7 @@ namespace dev {
                             ordered_unique<tag<by_id>,
                                     member<order_object, order_object::id_type, &order_object::id>
                             >,
-                            ordered_non_unique<tag<by_trx_id>,
+                            ordered_unique<tag<by_trx_id>,
                                     composite_key<order_object,
                                             member<order_object, h256, &order_object::trxid>
                                     >,
@@ -236,6 +236,8 @@ namespace dev {
                 int64_t version;
                 uint64_t  orders;           //all orders numbers.
                 uint64_t  result_orders;       // all exchange order .
+                h256        block_hash;
+                h256        root_hash;
             };
 
 
