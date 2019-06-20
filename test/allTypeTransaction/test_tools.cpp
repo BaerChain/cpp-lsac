@@ -48,7 +48,7 @@ namespace test_tools{
 //        create_contract_and_call();
 //        sleep(2);
         //transfer address by source address.
-        for(int i = 0; i < 5; i++){
+        for(int i = 0; i < 10; i++){
             transfer_to_addresss();
             sleep(3);
         }
@@ -56,9 +56,9 @@ namespace test_tools{
 
 
         //create contract.
-        for(int i = 0; i < 10; i++){
+        for(int i = 0; i < 20; i++){
             convert_brc_to_cook();
-            sleep(2);
+            sleep(1);
         }
 
 
@@ -81,7 +81,7 @@ namespace test_tools{
 //            auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
 //            _address_keys[keyPair.address()] = keyPair.secret();
 //        }
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 500; i++){
             auto key_pair = KeyPair::create();
             _address_keys[key_pair.address()] = key_pair.secret();
         }

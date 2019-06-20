@@ -36,7 +36,6 @@ namespace dev {
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
                 return db->with_write_lock([&]() {
-
                     check_db();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
@@ -204,19 +203,22 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
-                check_db();
+                db->with_write_lock([&]() {
+                    check_db();
 
 
 
-                db->undo();
+                    db->undo();
 
-                auto session = db->start_undo_session(true);
-                const auto &obj1 = db->get<dynamic_object>();
-                auto version = obj1.version;
-                db->modify(obj1, [version](dynamic_object &obj) {
-                    obj.version = version + 1;
+                    auto session = db->start_undo_session(true);
+                    const auto &obj1 = db->get<dynamic_object>();
+                    auto version = obj1.version;
+                    db->modify(obj1, [version](dynamic_object &obj) {
+                        obj.version = version + 1;
+                    });
+                    session.push();
                 });
-                session.push();
+
 
 
 //                db->with_write_lock([&]() {
@@ -237,56 +239,60 @@ namespace dev {
             }
 
             bool exchange_plugin::rollback_until(const h256 &block_hash, const h256 &root_hash){
-                uint32_t maxCount = 12;
-                while(maxCount-- > 0){
-                    const auto &obj = db->get<dynamic_object>();
-                    db->undo();
+                return db->with_write_lock([&]() {
+                    uint32_t maxCount = 12;
+                    while(maxCount-- > 0){
+                        const auto &obj = db->get<dynamic_object>();
+                        db->undo();
 //                    cwarn << "undo  " << check_version(false);
-                    if(obj.block_hash == block_hash && obj.root_hash == root_hash){
-                        return true;
+                        if(obj.block_hash == block_hash && obj.root_hash == root_hash){
+                            return true;
+                        }
                     }
-                }
-                return true;
+                });;
             }
 
             void exchange_plugin::new_session(int64_t version, const dev::h256 &block_hash,
                                               const dev::h256 &root_hash) {
                 if(!_new_session){
 
-                    auto session = db->start_undo_session(true);
-                    const auto &obj = db->get<dynamic_object>();
-                    db->modify(obj, [&](dynamic_object &obj) {
-                        obj.version = version;
-                        obj.block_hash = block_hash;
-                        obj.root_hash = root_hash;
-                    });
-                    session.push();
+                    db->with_write_lock([&]() {
+                        auto session = db->start_undo_session(true);
+                        const auto &obj = db->get<dynamic_object>();
+                        db->modify(obj, [&](dynamic_object &obj) {
+                            obj.version = version;
+                            obj.block_hash = block_hash;
+                            obj.root_hash = root_hash;
+                        });
+                        session.push();
 
-                    _new_session = true;
+                        _new_session = true;
+                    });
+
+
+
                 }
             }
 
             bool exchange_plugin::commit(int64_t version, const h256 &block_hash, const h256& root_hash) {
                 check_db();
 
-                const auto &obj = db->get<dynamic_object>();
-                db->modify(obj, [&](dynamic_object &obj) {
-                    obj.version = version;
-                    obj.block_hash = block_hash;
-                    obj.root_hash = root_hash;
+                db->with_write_lock([&]() {
+                    const auto &obj = db->get<dynamic_object>();
+                    db->modify(obj, [&](dynamic_object &obj) {
+                        obj.version = version;
+                        obj.block_hash = block_hash;
+                        obj.root_hash = root_hash;
+                    });
+
+                    auto session = db->start_undo_session(true);
+                    const auto &obj1 = db->get<dynamic_object>();
+                    db->modify(obj1, [&](dynamic_object &obj) {
+                        obj.version = version + 1;
+                    });
+                    session.push();
                 });
 
-                auto session = db->start_undo_session(true);
-                const auto &obj1 = db->get<dynamic_object>();
-                db->modify(obj1, [&](dynamic_object &obj) {
-                    obj.version = version + 1;
-                });
-                session.push();
-
-
-
-//                _new_session = false;
-//                new_session(version + 1, block_hash, root_hash);
                 return true;
             }
 
@@ -299,9 +305,6 @@ namespace dev {
                 }
                 db->commit(version);
                 db->flush();
-//                _new_session = false;
-//                new_session(version + 1, h256(), h256());
-
                 return true;
             }
 
