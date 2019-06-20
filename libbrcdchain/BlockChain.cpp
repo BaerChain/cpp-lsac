@@ -667,11 +667,13 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         }
     }
     m_cached_blocks.clear();
+    DEV_WRITE_GUARDED(x_cached_blocks)
     m_cached_blocks = copy_data;
 
 
     //remove unused hash and bytes.
     std::vector<h256> remove_hash;
+    DEV_WRITE_GUARDED(x_cached_blocks)
     for(auto &itr : m_cached_bytes){
         bool find = false;
         for(auto &list : m_cached_blocks){
@@ -784,6 +786,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     }
 
     if (info().number() == 0 || m_cached_blocks.size() == 0) {
+        DEV_WRITE_GUARDED(x_cached_blocks)
         m_cached_blocks.push_back({_block});
         return true;
     }
@@ -801,6 +804,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 //    cwarn << "insert -----------------";
 //    print_route(m_cached_blocks);
     bool find = false;
+    DEV_WRITE_GUARDED(x_cached_blocks)
     for (auto &itr : m_cached_blocks) {
         for (auto &detail : itr) {
             if (_block.info.parentHash() == detail.info.hash()) {
@@ -1632,6 +1636,7 @@ bool BlockChain::isKnown(h256 const &_hash, bool _isCurrent) const {
         return true;
 
     //
+
     for (const auto &itr : m_cached_blocks) {
         for (const auto &detail : itr) {
             if (detail.info.hash() == _hash) {

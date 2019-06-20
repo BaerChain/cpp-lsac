@@ -425,7 +425,7 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 #endif
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
-//    m_state.exdb().rollback();
+    m_state.exdb().rollback();
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
@@ -816,7 +816,7 @@ bool Block::sealBlock(bytesConstRef _header) {
     // TODO: move into SealEngine
 
     m_state = m_precommit;
-    m_state.exdb().rollback();
+//    m_state.exdb().rollback();
     // m_currentBytes is now non-empty; we're in a sealed state so no more transactions can be
     // added.
 

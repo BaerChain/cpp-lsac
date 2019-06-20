@@ -387,7 +387,7 @@ void Client::syncBlockQueue()
     double elapsed = t.elapsed();
 	if(count)
 	{
-		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
+//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
 				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
@@ -699,16 +699,9 @@ void Client::noteChanged(h256Hash const& _filters)
 void Client::doWork(bool _doWait)
 {
     bool t = true;
-
-
 	cwarn << "   Client::doWork :   " << m_needStateReset;
-
-
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
         syncBlockQueue();
-
-
-
 
     if (m_needStateReset)
     {

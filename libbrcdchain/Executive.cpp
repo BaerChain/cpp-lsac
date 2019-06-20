@@ -437,8 +437,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         // FIXME: changelog contains unrevertable balance change that paid
         //        for the transaction.
         // Increment associated nonce for sender.
-        if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
+        if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  {// EIP86{
             m_s.incNonce(_p.senderAddress);
+        }
+
     }
 
     m_savepoint = m_s.savepoint();

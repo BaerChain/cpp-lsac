@@ -26,7 +26,7 @@ using namespace dev;
 using namespace dev::brc::transationTool;
 
 
-u256 transfer_value = u256(0xffffffffff);
+u256 transfer_value = u256(0xffffffff);
 
 
 
@@ -45,34 +45,45 @@ namespace test_tools{
         init_key();
 
         //create contract.
-        create_contract_and_call();
-        sleep(2);
+//        create_contract_and_call();
+//        sleep(2);
         //transfer address by source address.
-        transfer_to_addresss();
-        sleep(2);
+        for(int i = 0; i < 5; i++){
+            transfer_to_addresss();
+            sleep(3);
+        }
+
+
 
         //create contract.
-        convert_brc_to_cook();
+        for(int i = 0; i < 10; i++){
+            convert_brc_to_cook();
+            sleep(2);
+        }
 
 
 
     }
 
     void test_tools::init_key() {
-        std::vector<std::string>   base58_key = {
-                "4tAUjwA4guRhYArjiJ9JVf7QTmNLjinc3UfChccJF6tC",
-                "GkX7iw1z7D6S66FH1PekmqjHEVg5zYAXyxycCpnT58Sd",
-                "J3PJ6kDuwU6k3ScaELmnZKyc1Njjz8auYbngohx5turb",
-                "8gVai1wyj9XTrNjXUmafbb1iGCQ68YEydgZaPyK45TDE",
-                "HPhkJBdy6TDScmtjTczctwSkMMF4VFQyYjhGiA8tMXke",
-                "86w6mfpZWh7qVP6LgQXtp2GGyjUWvn6FWjH3JPTNCx1V",
-                "EiMRoHzUxMC3SdoDwXnAsVmFsaPKboYRCdJ6H691yPhs",
-                "CidvVc6tDfxmDM9VeF9z5cpztMvcrK4UDQfFn8jb2AhQ"
-        };
-
-        for(auto key : base58_key){
-            auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-            _address_keys[keyPair.address()] = keyPair.secret();
+//        std::vector<std::string>   base58_key = {
+//                "4tAUjwA4guRhYArjiJ9JVf7QTmNLjinc3UfChccJF6tC",
+//                "GkX7iw1z7D6S66FH1PekmqjHEVg5zYAXyxycCpnT58Sd",
+//                "J3PJ6kDuwU6k3ScaELmnZKyc1Njjz8auYbngohx5turb",
+//                "8gVai1wyj9XTrNjXUmafbb1iGCQ68YEydgZaPyK45TDE",
+//                "HPhkJBdy6TDScmtjTczctwSkMMF4VFQyYjhGiA8tMXke",
+//                "86w6mfpZWh7qVP6LgQXtp2GGyjUWvn6FWjH3JPTNCx1V",
+//                "EiMRoHzUxMC3SdoDwXnAsVmFsaPKboYRCdJ6H691yPhs",
+//                "CidvVc6tDfxmDM9VeF9z5cpztMvcrK4UDQfFn8jb2AhQ"
+//        };
+//
+//        for(auto key : base58_key){
+//            auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+//            _address_keys[keyPair.address()] = keyPair.secret();
+//        }
+        for(int i = 0; i < 100; i++){
+            auto key_pair = KeyPair::create();
+            _address_keys[key_pair.address()] = key_pair.secret();
         }
 
         {
@@ -87,17 +98,18 @@ namespace test_tools{
         try {
             std::vector<std::shared_ptr<operation>> ops;
             for(auto itr : _address_keys){
-                auto op  = new transcation_operation(op_type::brcTranscation, _source_address, itr.first, 1, transfer_value);
+                auto op  = new transcation_operation(op_type::brcTranscation, itr.first, 1, transfer_value);
                 ops.push_back(std::shared_ptr<transcation_operation>(op));
             }
 
             brc::TransactionSkeleton ts;
             ts.data = packed_operation_data(ops);
             ts.from = _source_address;
+            cwarn << "from " << _source_address;
             ts.to = Address("0x00000000000000000000000000000000766f7465");
             ts.value = 0;
-            ts.gas = string_to_u256("0xfffffffffffff");
-            ts.gasPrice = 0x1388;
+            ts.gas = string_to_u256("0xffffff");
+            ts.gasPrice = 0x5;
             ts.nonce = get_account(_source_address).nonce;
 
             brc::Transaction sign_t(ts, _secret_key);
@@ -157,12 +169,11 @@ namespace test_tools{
 
             for(auto itr : _address_keys){
 
-                u256 transfer_value_s = transfer_value / 2;
+                u256 transfer_value_s = transfer_value / 100;
                 std::vector<std::shared_ptr<operation>> ops;
 
 
                 auto op  = new pendingorder_opearaion(op_type::pendingOrder,
-                        itr.first,
                         dev::brc::ex::order_type::buy,
                         dev::brc::ex::order_token_type::BRC,
                         dev::brc::ex::order_buy_type::all_price,
@@ -176,8 +187,8 @@ namespace test_tools{
                 ts.from = itr.first;
                 ts.to = Address("0x00000000000000000000000000000000766f7465");
                 ts.value = 0;
-                ts.gas = string_to_u256("0xfffff");
-                ts.gasPrice = 0x1388;
+                ts.gas = string_to_u256("0xffffff");
+                ts.gasPrice = 0x5;
                 ts.nonce = get_account(itr.first).nonce;
 
                 brc::Transaction sign_t(ts, itr.second);

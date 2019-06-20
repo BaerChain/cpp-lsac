@@ -190,10 +190,10 @@ void dev::bacd::SHDposClient::rejigSealing()
 			}
 
 			int64_t seal_time = m_params.blockInterval ? m_params.blockInterval * 3 / 5 : 400;
-			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
-				cwarn << " not have enough time to seal Block and out...";
-				return;
-			}
+//			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
+//				cwarn << " not have enough time to seal Block and out...";
+//				return;
+//			}
 
 			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)

@@ -176,67 +176,7 @@ namespace dev {
                 /// \param throw_exception  if true, will throw exception while error.
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
-                              std::vector<result_order> &result, bool throw_exception) {
-                    if (begin == end) {
-                        db->create<order_object>([&](order_object &obj) {
-                            obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
-                        });
-
-                        update_dynamic_orders(true);
-                        return;
-                    }
-                    auto spend = amount;
-
-                    bool rm = false;
-                    while (spend > 0 && begin != end) {
-                        result_order ret;
-                        if (begin->token_amount <= spend) {
-                            spend -= begin->token_amount;
-                            ret.set_data(od, begin, begin->token_amount, begin->price);
-                            rm = true;
-
-                        } else {
-                            db->modify(*begin, [&](order_object &obj) {
-                                obj.token_amount -= spend;
-                            });
-                            ret.set_data(od, begin, spend, begin->price);
-                            spend = 0;
-                        }
-						ret.old_price = price;
-
-                        db->create<order_result_object>([&](order_result_object &obj) {
-                            obj.set_data(ret);
-                        });
-                        update_dynamic_result_orders();
-
-                        result.push_back(ret);
-                        if (rm) {
-                            const auto rm_obj = db->find(begin->id);
-                            if (rm_obj != nullptr) {
-                                begin++;
-                                db->remove(*rm_obj);
-                                update_dynamic_orders(false);
-                            } else {
-                                if (throw_exception) {
-                                    BOOST_THROW_EXCEPTION(remove_object_error());
-                                }
-                            }
-                            rm = false;
-                        } else {
-                            begin++;
-                        }
-
-                    }
-                    //surplus token ,  record to db
-                    if (spend > 0) {
-                        db->create<order_object>([&](order_object &obj) {
-                            obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
-                        });
-                        update_dynamic_orders(true);
-                    }
-
-
-                }
+                              std::vector<result_order> &result, bool throw_exception);
 
 
 
@@ -250,41 +190,19 @@ namespace dev {
 #endif
                 }
 
-
-
-
-                const dynamic_object &get_dynamic_object() const {
-                    return db->get<dynamic_object>();
-                }
+                const dynamic_object &get_dynamic_object() const ;
 
                 ///
                 /// \param up  if true ++ , false --.
-                void update_dynamic_orders(bool up){
-                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
-                        if(up){
-                            obj.orders++;
-                        }else{
-                            obj.orders--;
-                        }
-                    });
-                }
+                void update_dynamic_orders(bool up);
 
-                void update_dynamic_result_orders(){
-                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
-                        obj.result_orders++;
-                    });
-                }
+                void update_dynamic_result_orders();
+
 
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
-
-
-
-
-
-
-
+                bool                _new_session = false;
             };
 
 
