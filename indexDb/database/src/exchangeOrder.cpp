@@ -218,28 +218,11 @@ namespace dev {
                     });
                     session.push();
                 });
-
-
-
-//                db->with_write_lock([&]() {
-//                    db->undo();
-//                });
-//
-//                if(!_new_session){
-//                    const auto &t = get_dynamic_object();
-//                    auto session = db->start_undo_session(true);
-//                    const auto &obj1 = db->get<dynamic_object>();
-//                    db->modify(obj1, [&](dynamic_object &obj) {
-//                        obj.version = t.version + 1;
-//                    });
-//                    session.push();
-//                    new_session(t.version + 1, h256(), h256());
-//                }
                 return true;
             }
 
             bool exchange_plugin::rollback_until(const h256 &block_hash, const h256 &root_hash){
-                return db->with_write_lock([&]() {
+                return db->with_write_lock([&]() ->bool{
                     uint32_t maxCount = 12;
                     while(maxCount-- > 0){
                         const auto &obj = db->get<dynamic_object>();
