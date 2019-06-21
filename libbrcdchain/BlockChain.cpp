@@ -1000,7 +1000,8 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
     }
 
     VerifiedBlockRef from_block = from;
-    while(from_block.info.stateRoot() != to.info.stateRoot()){
+    int max_count = m_params.config_blocks;
+    while(from_block.info.stateRoot() != to.info.stateRoot()  && --max_count > 0){
         if(overdb.exists(from_block.info.stateRoot())){
             cwarn << "will remove state root " << from_block.info.stateRoot();
             overdb.kill(from_block.info.stateRoot());
@@ -1015,6 +1016,9 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
                 break;
             }
         }
+    }
+    if(max_count <= 0){
+        cerror << "delete state error. maybe rebuild.";
     }
     _exdb.rollback_until(to.info.hash(), to.info.stateRoot());
     return true;
