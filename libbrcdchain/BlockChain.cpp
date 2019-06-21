@@ -1648,13 +1648,9 @@ bool BlockChain::isKnown(h256 const &_hash, bool _isCurrent) const {
         return true;
 
     //
-    DEV_READ_GUARDED(x_cached_blocks)
-    for (const auto &itr : m_cached_blocks) {
-        for (const auto &detail : itr) {
-            if (detail.info.hash() == _hash) {
-                return true;
-            }
-        }
+    DEV_READ_GUARDED(x_cached_bytes)
+    if(m_cached_bytes.count(_hash)){
+        return true;
     }
 
 
