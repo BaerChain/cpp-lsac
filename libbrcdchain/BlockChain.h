@@ -422,6 +422,7 @@ private:
     mutable BlocksBloomsHash m_blocksBlooms;
     mutable SharedMutex x_cached_blocks;
     mutable std::vector<std::list<VerifiedBlockRef>>    m_cached_blocks;        //recored 12 blocks.
+    mutable SharedMutex x_cached_bytes;
     mutable std::map<h256, bytes>                       m_cached_bytes;
 
     h256 m_config_blocks_hash;

@@ -154,6 +154,8 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
     cwarn << "try to close block chain, will remove cached blocks";
     OverlayDB db(_stateDB);
     size_t position = 0;
+
+
     if(m_cached_blocks.size() > 1){
         for(auto i = 0; i < m_cached_blocks.size(); i++){
             if(m_cached_blocks[i].size() > m_cached_blocks[position].size() ){
@@ -668,19 +670,19 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
         }
     }
-    DEV_WRITE_GUARDED(x_cached_blocks){
-        m_cached_blocks.clear();
-        DEV_WRITE_GUARDED(x_cached_blocks)
-        m_cached_blocks = copy_data;
-    }
+
+
+    m_cached_blocks.clear();
+    m_cached_blocks = copy_data;
 
 
 
     //remove unused hash and bytes.
     std::vector<h256> remove_hash;
-    DEV_READ_GUARDED(x_cached_blocks)
     for(auto &itr : m_cached_bytes){
         bool find = false;
+
+
         for(auto &list : m_cached_blocks){
             for(auto &b : list){
                 if(itr.first == b.info.hash()){
@@ -693,7 +695,6 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         }
     }
 
-    DEV_WRITE_GUARDED(x_cached_blocks)
     for(auto &itr : remove_hash){
         m_cached_bytes.erase(itr);
     }
@@ -710,11 +711,9 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         }
     };
 
-    DEV_READ_GUARDED(x_cached_blocks)
     if(m_cached_blocks.size() > 2){
         cwarn << "config ...............";
         print_route(m_cached_blocks);
-        cwarn << " map size " << m_cached_bytes.size() ;
     }
     if(info().number() > m_params.config_blocks){
         _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
@@ -812,37 +811,39 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 //    cwarn << "insert -----------------";
 //    print_route(m_cached_blocks);
     bool find = false;
-    DEV_WRITE_GUARDED(x_cached_blocks)
-    for (auto &itr : m_cached_blocks) {
-        for (auto &detail : itr) {
-            if (_block.info.parentHash() == detail.info.hash()) {
-                find = true;
-                //in this branch, this block is end. only insert.
-                if (detail.info.hash() == itr.back().info.hash()) {
-                    itr.push_back(_block);
-                } else {
-                    ///copy
-                    std::list<VerifiedBlockRef> copy_data;
-                    for (auto cp = itr.begin(); cp != itr.end(); cp++) {
-                        copy_data.push_back(*cp);
-                        m_cached_bytes[cp->info.hash()] = cp->block.toBytes();
-                        if (cp->info.hash() == detail.info.hash()) {
-                            break;
+    {
+        for (auto &itr : m_cached_blocks) {
+            for (auto &detail : itr) {
+
+                if (_block.info.parentHash() == detail.info.hash()) {
+                    find = true;
+                    //in this branch, this block is end. only insert.
+                    if (detail.info.hash() == itr.back().info.hash()) {
+                        itr.push_back(_block);
+                    } else {
+                        ///copy
+                        std::list<VerifiedBlockRef> copy_data;
+                        for (auto cp = itr.begin(); cp != itr.end(); cp++) {
+                            copy_data.push_back(*cp);
+                            m_cached_bytes[cp->info.hash()] = cp->block.toBytes();
+                            if (cp->info.hash() == detail.info.hash()) {
+                                break;
+                            }
                         }
+                        copy_data.push_back(_block);
+                        m_cached_blocks.push_back(copy_data);
+                        cwarn << "insert block: " << _block.info.hash() << " number: " << _block.info.number();
                     }
-                    copy_data.push_back(_block);
-                    m_cached_blocks.push_back(copy_data);
-                    cwarn << "insert block: " << _block.info.hash() << " number: " << _block.info.number();
+                    m_cached_bytes[_block.info.hash()] = _block.block.toBytes();
+                    break;
                 }
-                m_cached_bytes[_block.info.hash()] = _block.block.toBytes();
+            }
+            if (find) {
                 break;
             }
         }
-        if (find) {
-            break;
-        }
     }
-//    print_route(m_cached_blocks);
+
     if (!find) {
         cwarn << "cant find parent hash.";
         return false;
@@ -868,7 +869,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             std::list<VerifiedBlockRef> source_block_list;      // source blocks, will switch insert_hash(_block).
             std::list<VerifiedBlockRef> dest_block_list;        //  switch from source_block_list to  dest_block_list.
 
-            DEV_READ_GUARDED(x_cached_blocks)
+
             for (const auto &itr : m_cached_blocks) {
                 for (const auto &detail : itr) {
                     if (current_hash == detail.info.hash() && source_block_list.size() == 0) {
@@ -939,7 +940,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 for(auto itr : dest_block_list){
                     execute_size--;
                     try {
-                        DEV_READ_GUARDED(x_cached_blocks){
+                        {
                             if(!m_cached_bytes.count(itr.info.hash())){
                                 cwarn << "cant find block " << itr.info.hash() << " number: " << itr.info.number();
                                 exit(2);
