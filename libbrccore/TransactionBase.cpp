@@ -79,7 +79,6 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
             }
 
         }
-
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
 

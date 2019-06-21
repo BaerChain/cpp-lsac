@@ -77,6 +77,7 @@ Block::Block(Block const &_s)
           m_author(_s.m_author),
           m_sealEngine(_s.m_sealEngine) {
     m_committedToSeal = false;
+	m_sealed_transactions = _s.m_sealed_transactions;
 }
 
 Block &Block::operator=(Block const &_s) {
@@ -96,6 +97,7 @@ Block &Block::operator=(Block const &_s) {
     m_precommit = m_state;
     m_committedToSeal = false;
     m_vote.setState(m_state);
+	m_sealed_transactions = _s.m_sealed_transactions;
     return *this;
 }
 
@@ -106,17 +108,17 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
 	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
-    // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
     // TODO: check.
 
-//    m_state.exdb().rollback();
+    m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
     m_precommit = m_state;
 
     m_committedToSeal = false;
     m_vote.setState(m_state);
+	m_sealed_transactions.clear();
 
 //    performIrregularModifications();
     updateBlockhashContract();
@@ -315,7 +317,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             if (!m_transactionSet.count(t.sha3())) {
                 try {
                     if (t.gasPrice() >= _gp.ask(*this)) {
-
                         execute(_bc.lastBlockHashes(), t);
                         ret.first.push_back(m_receipts.back());
                         ++goodTxs;
@@ -424,6 +425,7 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 #endif
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
+    m_state.exdb().rollback();
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
@@ -814,7 +816,7 @@ bool Block::sealBlock(bytesConstRef _header) {
     // TODO: move into SealEngine
 
     m_state = m_precommit;
-    m_state.exdb().rollback();
+//    m_state.exdb().rollback();
     // m_currentBytes is now non-empty; we're in a sealed state so no more transactions can be
     // added.
 
@@ -854,7 +856,7 @@ void Block::cleanup() {
     }
 
     m_state.db().commit();  // TODO: State API for this?
-    m_state.exdb().commit(info().number() + 1);
+    m_state.exdb().commit(info().number() + 1, m_currentBlock.hash(), m_currentBlock.stateRoot());
 
     LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
                   << " = " << toHex(asBytes(db().lookup(rootHash())));

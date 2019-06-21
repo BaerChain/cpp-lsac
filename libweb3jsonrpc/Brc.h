@@ -100,6 +100,7 @@ public:
 	virtual Json::Value brc_signTransaction(Json::Value const& _transaction) override;
 	virtual Json::Value brc_inspectTransaction(std::string const& _rlp) override;
 	virtual std::string brc_sendRawTransaction(std::string const& _rlp) override;
+	virtual std::string brc_importBlock(const std::string &_rlp) override;
 	virtual bool brc_notePassword(std::string const&) override { return false; }
 	virtual Json::Value brc_syncing() override;
 	virtual std::string brc_chainId() override;

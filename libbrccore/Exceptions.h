@@ -74,6 +74,7 @@ DEV_SIMPLE_EXCEPTION(PendingTransactionAlreadyExists);
 DEV_SIMPLE_EXCEPTION(TransactionAlreadyInChain);
 DEV_SIMPLE_EXCEPTION(BlockNotFound);
 DEV_SIMPLE_EXCEPTION(UnknownParent);
+DEV_SIMPLE_EXCEPTION(BlockIsTooOld);
 DEV_SIMPLE_EXCEPTION(AddressAlreadyUsed);
 DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(TooMuchTransaction);
@@ -100,5 +101,7 @@ DEV_SIMPLE_EXCEPTION(TransactionRefused);
 DEV_SIMPLE_EXCEPTION(UnknownAccount);
 
 DEV_SIMPLE_EXCEPTION(PeerDisconnected);
+
+DEV_SIMPLE_EXCEPTION(BadDynamicCast);
 }
 }

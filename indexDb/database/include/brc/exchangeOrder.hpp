@@ -65,11 +65,32 @@ namespace dev {
                 /// \return
                 bool rollback();
 
+                bool rollback_until(const h256 &block_hash, const h256 &root_hash);
 
-                ///  commit this state by block number.
+
+                /// @brief same as commit()
+                /// \param version
+                /// \param block_hash
+                /// \param root_hash
+                void new_session(int64_t version, const h256 &block_hash, const h256& root_hash);
+
+
+                ///  commit this state by block number. this function dont commit to disk. if close appliction, uncommit session will remove .
                 /// \param version  block number
                 /// \return  true
-                bool commit(int64_t version);
+                bool commit(int64_t version, const h256 &block_hash, const h256& root_hash);
+
+                /// commit to session to disk.
+                /// \param version
+                /// \return
+                bool commit_disk(int64_t version, bool first_commit = false);
+
+
+                /// deprecate all session.
+                /// \return
+                bool remove_all_session();
+
+
 
                 ///
                 /// \param os vector transactions id
@@ -80,7 +101,21 @@ namespace dev {
 
                 inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-                    std::string ret = "  current  exchange database version : " + std::to_string(obj.version) + " orders: " + std::to_string(obj.orders) + " ret_orders:" + std::to_string(obj.result_orders);
+#ifndef NDEBUG
+                    std::string ret = " version : " + std::to_string(obj.version)
+                                    + " block hash: " + toHex(obj.block_hash)
+                                    + " state root: " + toHex(obj.root_hash)
+                                    + " orders: " + std::to_string(obj.orders)
+                                    + " ret_orders:" + std::to_string(obj.result_orders)
+                             ;
+#else
+                    std::string ret = " version : " + std::to_string(obj.version)
+                                    + " block hash: " + toHexPrefixed(obj.block_hash)
+                                    + " state root: " + toHexPrefixed(obj.root_hash)
+                                    + " orders: " + std::to_string(obj.orders)
+                                    + " ret_orders:" + std::to_string(obj.result_orders)
+                             ;
+#endif
                     if(p){
                         cwarn << ret;
                     }
@@ -141,66 +176,7 @@ namespace dev {
                 /// \param throw_exception  if true, will throw exception while error.
                 template<typename BEGIN, typename END>
                 void process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
-                              std::vector<result_order> &result, bool throw_exception) {
-                    if (begin == end) {
-                        db->create<order_object>([&](order_object &obj) {
-                            obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
-                        });
-
-                        update_dynamic_orders(true);
-                        return;
-                    }
-                    auto spend = amount;
-
-                    bool rm = false;
-                    while (spend > 0 && begin != end) {
-                        result_order ret;
-                        if (begin->token_amount <= spend) {
-                            spend -= begin->token_amount;
-                            ret.set_data(od, begin, begin->token_amount, begin->price);
-                            rm = true;
-
-                        } else {
-                            db->modify(*begin, [&](order_object &obj) {
-                                obj.token_amount -= spend;
-                            });
-                            ret.set_data(od, begin, spend, begin->price);
-                            spend = 0;
-                        }
-
-                        db->create<order_result_object>([&](order_result_object &obj) {
-                            obj.set_data(ret);
-                        });
-                        update_dynamic_result_orders();
-
-                        result.push_back(ret);
-                        if (rm) {
-                            const auto rm_obj = db->find(begin->id);
-                            if (rm_obj != nullptr) {
-                                begin++;
-                                db->remove(*rm_obj);
-                                update_dynamic_orders(false);
-                            } else {
-                                if (throw_exception) {
-                                    BOOST_THROW_EXCEPTION(remove_object_error());
-                                }
-                            }
-                            rm = false;
-                        } else {
-                            begin++;
-                        }
-
-                    }
-                    //surplus token ,  record to db
-                    if (spend > 0) {
-                        db->create<order_object>([&](order_object &obj) {
-                            obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
-                        });
-                        update_dynamic_orders(true);
-                    }
-
-
-                }
+                              std::vector<result_order> &result, bool throw_exception);
 
 
 
@@ -214,39 +190,19 @@ namespace dev {
 #endif
                 }
 
+                const dynamic_object &get_dynamic_object() const ;
 
+                ///
+                /// \param up  if true ++ , false --.
+                void update_dynamic_orders(bool up);
 
+                void update_dynamic_result_orders();
 
-                const dynamic_object &get_dynamic_object() const {
-                    return db->get<dynamic_object>();
-                }
-
-                void update_dynamic_orders(bool up){
-                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
-                        if(up){
-                            obj.orders++;
-                        }else{
-                            obj.orders--;
-                        }
-                    });
-                }
-
-                void update_dynamic_result_orders(){
-                    db->modify(get_dynamic_object(), [&](dynamic_object &obj){
-                        obj.result_orders++;
-                    });
-                }
 
             //--------------------- members ---------------------
                 /// database
                 std::shared_ptr<database> db;
-
-
-
-
-
-
-
+                bool                _new_session = false;
             };
 
 

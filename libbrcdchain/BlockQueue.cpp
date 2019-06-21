@@ -147,6 +147,7 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 
 ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 {
+//    cwarn << _block;
     // Check if we already know this block.
     h256 h = BlockHeader::headerHashFromBlock(_block);
 

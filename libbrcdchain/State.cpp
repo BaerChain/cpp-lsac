@@ -616,6 +616,88 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 	}
 }
 
+void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+	std::vector<order> _v ;
+	std::vector<result_order> _result_v;
+
+	bigint total_free_brc = 0;
+	bigint total_free_balance = 0;
+
+	for(auto const& val : _ops){
+		std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(val);
+		if(!pen){
+			cerror << "pendingOrders  dynamic type field!";
+			BOOST_THROW_EXCEPTION(InvalidDynamic());
+		}
+
+		std::map<u256, u256> _map = { {pen->m_Pendingorder_price, pen->m_Pendingorder_num} };
+		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
+						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _map, _nowTime };
+		_v.push_back(_order);
+
+		/*testlog << BrcYellow <<" id:"<< _order.trxid<<  " order_buy_type:" << (int)_order.buy_type << " order_type:" << (int)_order.type
+			<< " order_token_type:" << (int)_order.token_type << " num:" << pen->m_Pendingorder_num << " price:" << pen->m_Pendingorder_price << BrcReset;*/
+
+		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
+			if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::BRC)
+				total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
+			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::BRC)
+				total_free_brc += pen->m_Pendingorder_num;
+			else if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+				total_free_balance += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
+			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+				total_free_balance += pen->m_Pendingorder_num;
+		}
+	}
+	//testlog << " total_free_brc:" << total_free_brc << " total_free_balance:" << total_free_balance;
+	try{
+		_result_v = m_exdb.insert_operation(_v, false, true);
+	}
+	catch(const boost::exception &e){
+		cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
+		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+	}
+
+	for(uint32_t i = 0; i < _result_v.size(); ++i){
+		result_order _result_order = _result_v[i];
+		/*testlog << "result..."
+			<< " sender:" << _result_order.sender << " acceptor:" << _result_order.acceptor << " type:" << (int)_result_order.type << " token_type"
+			<< (int)_result_order.token_type << " buy_type" << (int)_result_order.buy_type
+			<< " send_trxid:" << _result_order.send_trxid << " to_trxid" << _result_order.to_trxid << " amount:" << _result_order.amount << " price" << _result_order.price
+			<< " oldprice:" << _result_order.old_price;*/
+	}
+
+	for(uint32_t i = 0; i < _result_v.size(); ++i){
+		result_order _result_order = _result_v[i];
+
+		pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
+							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
+
+		if(_result_order.buy_type == order_buy_type::only_price){
+			if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
+				total_free_brc -= _result_order.amount* _result_order.old_price;
+			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
+				total_free_brc -= _result_order.amount;
+			else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+				total_free_balance -= _result_order.amount * _result_order.old_price;
+			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
+				total_free_balance -= _result_order.amount;
+		}
+	}
+	if(total_free_balance < 0 || total_free_brc < 0){
+		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
+		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+	}
+	if(total_free_balance > 0){
+		subBalance(_addr, (u256)total_free_balance);
+		addFBalance(_addr, (u256)total_free_balance);
+	}
+	if(total_free_brc){
+		subBRC(_addr, (u256)total_free_brc);
+		addFBRC(_addr, (u256)total_free_brc);
+	}
+}
+
 void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
                                  u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
                                  ex::order_buy_type _pendingOrderBuyTypes) {
@@ -841,19 +923,68 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 
     for (auto val : _resultV) {
-        if ((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::BRC) {
-            for (auto _mapval : val.price_token) {
-                subFBRC(val.sender, _mapval.second);
-                addBRC(val.sender, _mapval.second);
-            }
-        } else if ((val.type == order_type::buy || val.type == order_type::sell) &&
-                   val.token_type == order_token_type::FUEL) {
+		if(val.type == order_type::sell && val.token_type == order_token_type::BRC){
+			for(auto _mapval : val.price_token){
+				subFBRC(val.sender, _mapval.second);
+				addBRC(val.sender, _mapval.second);
+			}
+		}
+		else if(val.type == order_type::buy && val.token_type == order_token_type::BRC){
+			for(auto _mapval : val.price_token){
+				subFBRC(val.sender, _mapval.second * _mapval.first);
+				addBRC(val.sender, _mapval.second * _mapval.first);
+			}
+		}
+		else if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+			for(auto _mapval : val.price_token){
+				subFBalance(val.sender, _mapval.second * _mapval.first);
+				addBalance(val.sender, _mapval.second * _mapval.first);
+			}
+        } else if ( val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
             for (auto _mapval : val.price_token) {
                 subFBalance(val.sender, _mapval.second);
                 addBalance(val.sender, _mapval.second);
             }
         }
     }
+}
+
+void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+	ctrace << "cancle pendingorder";
+	std::vector<ex::order> _resultV;
+	std::vector<h256> _hashV;
+	for(auto const& val : _ops){
+		std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen =std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
+		if(!can_pen){ 
+			cerror << "cancelPendingOrders  dynamic type field!";
+			BOOST_THROW_EXCEPTION(InvalidDynamic());
+		}
+		_hashV.push_back({ can_pen->m_hash });
+	}
+
+	try{ 
+		_resultV = m_exdb.cancel_order_by_trxid(_hashV, false);
+	}
+	catch(Exception &e){
+		cwarn << "cancelPendingorder Error :" << e.what();
+		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
+	}
+
+	for(auto val : _resultV){
+		if((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::BRC){
+			for(auto _mapval : val.price_token){
+				subFBRC(val.sender, _mapval.second);
+				addBRC(val.sender, _mapval.second);
+			}
+		}
+		else if((val.type == order_type::buy || val.type == order_type::sell) &&
+				val.token_type == order_token_type::FUEL){
+			for(auto _mapval : val.price_token){
+				subFBalance(val.sender, _mapval.second);
+				addBalance(val.sender, _mapval.second);
+			}
+		}
+	}
 }
 
 void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
@@ -1153,6 +1284,7 @@ bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc co
     }
 }
 
+
 u256 dev::brc::State::poll(Address const &_addr) const {
     if (auto a = account(_addr))
         return a->poll();
@@ -1178,6 +1310,30 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     if (!a || a->poll() < _value)
         BOOST_THROW_EXCEPTION(NotEnoughPoll());
     addPoll(_addr, 0 - _value);
+}
+
+void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops){
+	
+	for(auto const& val : _ops){
+		std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(val);
+		if(!_p){
+			cerror << "execute vote dynamic type field!";
+			BOOST_THROW_EXCEPTION(InvalidDynamic());
+		}
+		VoteType _type = (VoteType)_p->m_vote_type;
+		if(_type == VoteType::EBuyVote)
+			transferBallotBuy(_addr, _p->m_vote_numbers);
+		else if(_type == VoteType::ESellVote)
+			transferBallotSell(_addr, _p->m_vote_numbers);
+		else if(_type == VoteType::ELoginCandidate)
+			addSysVoteDate(SysElectorAddress, _addr);
+		else if(_type == VoteType::ELoginCandidate)
+			subSysVoteDate(SysElectorAddress, _addr);
+		else if(_type == VoteType::EDelegate)
+			addVote(_addr, _p->m_to, _p->m_vote_numbers);
+		else if(_type == EUnDelegate)
+			subVote(_addr, _p->m_to, _p->m_vote_numbers);
+	}
 }
 
 Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
@@ -1372,7 +1528,9 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	{
 		exit(1);
 	}
-	m_exdb.commit(1);
+//	m_exdb.commit(1, h256(), h256());
+    m_exdb.rollback();
+    m_exdb.commit_disk(1, true);
 	cnote << m_exdb.check_version(false);
 }
 

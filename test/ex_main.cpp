@@ -76,21 +76,24 @@ void create_contract(){
 
 
 int main(){
+    std::vector<std::string> keys = {
+            "6vsDoEvshzWJUhY5Aa8xd9WtHwNs9tjmeFq8NnJBST6t",
+            "497qUmDi8MLLbgLCfgxhf5grgh8bSp6RZ7RHBz3CJd6A",
+            "6FgY3kkrcbZhduNczsbqJnVfoaZq9in8RuNs7QRfEkMn",
+            "GhSnQcHoh8d4KtopzyhLVK1of3gwfEidbQNN4nxasSbK",
+            "Etn6QqUmCnivb3GgGUwVbxKh1B3pL6NbMNMhnKDsp43K",
+            "7hZrLjhJ7QDfgu3z8ttaP5T7Qt14K66y17aXcctoFQRx",
+            "2t1edVbiyNUjDw1fGBMyjpbKoBS9UWMq4Kn2eDNuVLPh",
+            "EPePzRCtkg4XCip7ByE4i5tWcGJKnytYUCLepTi2ez6w",
+            "4tAUjwA4guRhYArjiJ9JVf7QTmNLjinc3UfChccJF6tC",
+            "GkX7iw1z7D6S66FH1PekmqjHEVg5zYAXyxycCpnT58Sd"
+    };
 
-    RLPStream rlp;
-    std::vector<uint8_t >  cc;
-    cc.push_back(4);
+    for(auto &itr : keys){
+        auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(itr)));
+        cwarn << toHex(keyPair.address())  << "  key :"<< dev::crypto::from_base58(itr);
+    }
 
-    rlp.appendVector(cc);
-
-    std::cout << toJS(rlp.out()) << std::endl;
-
-
-
-
-
-
-//    create_contract();
 
 
     return 0;

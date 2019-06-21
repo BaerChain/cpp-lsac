@@ -67,6 +67,9 @@ public:
     /// Imports the given transaction into the transaction queue
     virtual h256 importTransaction(Transaction const& _t) = 0;
 
+
+    virtual h256 importBlock(const bytesConstRef &data) = 0;
+
     /// Blocks until all pending transactions have been processed.
     virtual void flushTransactions() = 0;
 
