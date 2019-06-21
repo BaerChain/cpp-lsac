@@ -639,6 +639,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
     std::vector<std::list<VerifiedBlockRef>> copy_data;
+
+    DEV_READ_GUARDED(x_cached_blocks)
     for(auto &itr : m_cached_blocks){
         ///every list, max size  <= m_params.config_blocks
         if(itr.size() > m_params.config_blocks){
@@ -666,14 +668,17 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
         }
     }
-    m_cached_blocks.clear();
-    DEV_WRITE_GUARDED(x_cached_blocks)
-    m_cached_blocks = copy_data;
+    DEV_WRITE_GUARDED(x_cached_blocks){
+        m_cached_blocks.clear();
+        DEV_WRITE_GUARDED(x_cached_blocks)
+        m_cached_blocks = copy_data;
+    }
+
 
 
     //remove unused hash and bytes.
     std::vector<h256> remove_hash;
-    DEV_WRITE_GUARDED(x_cached_blocks)
+    DEV_READ_GUARDED(x_cached_blocks)
     for(auto &itr : m_cached_bytes){
         bool find = false;
         for(auto &list : m_cached_blocks){
@@ -688,6 +693,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         }
     }
 
+    DEV_WRITE_GUARDED(x_cached_blocks)
     for(auto &itr : remove_hash){
         m_cached_bytes.erase(itr);
     }
@@ -703,6 +709,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             cwarn << os.str();
         }
     };
+
+    DEV_READ_GUARDED(x_cached_blocks)
     if(m_cached_blocks.size() > 2){
         cwarn << "config ...............";
         print_route(m_cached_blocks);
@@ -860,6 +868,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             std::list<VerifiedBlockRef> source_block_list;      // source blocks, will switch insert_hash(_block).
             std::list<VerifiedBlockRef> dest_block_list;        //  switch from source_block_list to  dest_block_list.
 
+            DEV_READ_GUARDED(x_cached_blocks)
             for (const auto &itr : m_cached_blocks) {
                 for (const auto &detail : itr) {
                     if (current_hash == detail.info.hash() && source_block_list.size() == 0) {
@@ -930,12 +939,14 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 for(auto itr : dest_block_list){
                     execute_size--;
                     try {
-                        if(!m_cached_bytes.count(itr.info.hash())){
-                            cwarn << "cant find block " << itr.info.hash() << " number: " << itr.info.number();
-                            exit(2);
+                        DEV_READ_GUARDED(x_cached_blocks){
+                            if(!m_cached_bytes.count(itr.info.hash())){
+                                cwarn << "cant find block " << itr.info.hash() << " number: " << itr.info.number();
+                                exit(2);
+                            }
+                            itr.block = bytesConstRef(&m_cached_bytes[itr.info.hash()]);
+                            execute_block(itr, _db, _exdb);
                         }
-                        itr.block = bytesConstRef(&m_cached_bytes[itr.info.hash()]);
-                        execute_block(itr, _db, _exdb);
                     }catch (...){
                         cerror << "fork exception :  rollback database error.";
                     }
