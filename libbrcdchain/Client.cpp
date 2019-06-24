@@ -403,7 +403,6 @@ void Client::syncBlockQueue()
         return;
 
     onChainChanged(ir);
-	std::vector<Transaction> _v = m_tq.topTransactions(0, dev::h256Hash());
 }
 
 void Client::syncTransactionQueue()
@@ -950,6 +949,8 @@ h256 Client::importTransaction(Transaction const& _t)
             BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
         case ImportResult::AlreadyInChain:
             BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+		case ImportResult::NonceRepeat:
+		    BOOST_THROW_EXCEPTION(InvalidNonce());
         default:
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }

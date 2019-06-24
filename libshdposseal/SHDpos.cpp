@@ -1,6 +1,7 @@
 #include "SHDpos.h"
 #include <libbrccore/TransactionBase.h>
 #include <libdevcore/Address.h>
+#include <libdevcore/Exceptions.h>
 #include <cstdlib>
 
 dev::bacd::SHDpos::SHDpos()
@@ -21,6 +22,15 @@ void dev::bacd::SHDpos::generateSeal(BlockHeader const& _bi)
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
     header.setSeal(MixHashField, h256{0});
+	/*auto author = header.author();
+	if(!m_dpos_cleint->verifyVarlitorPrivatrKey(author)){
+		cerror << "not find author : " << author << "private key , please set private key.";
+		return;
+	}
+	else{
+		testlog << " generateSeal..." << header.hash((IncludeSeal)(WithoutSign | WithoutSeal));
+		header.sign_block(m_dpos_cleint->getVarlitorSecret(author));
+	}*/
     RLPStream ret;
     header.streamRLP(ret);
     if (m_onSealGenerated)
@@ -41,6 +51,18 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader& _bi, BlockHeader const& 
 	int64_t _time2 = _parent.timestamp() / m_config.blockInterval * m_config.blockInterval + m_config.blockInterval;
 	_bi.setTimestamp(_time1 > _time2 ? _time1 : _time2);
 
+}
+
+
+void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent /*= BlockHeader()*/, bytesConstRef _block /*= bytesConstRef()*/) const {
+    // will verify sign and creater
+	SealEngineBase::verify(_s, _bi, _parent, _block);
+    std::vector<Address> _v;
+
+    m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, _v);
+	auto ret = find(_v.begin(), _v.end(), _bi.author());
+    if(ret == _v.end())
+		BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
 }
 
 void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)
