@@ -222,7 +222,7 @@ namespace dev {
             }
 
             bool exchange_plugin::rollback_until(const h256 &block_hash, const h256 &root_hash){
-                auto ret =  db->with_write_lock([&]() ->bool{
+                return  db->with_write_lock([&]() ->bool{
                     uint32_t maxCount = 12;
                     while(maxCount-- > 0){
                         const auto &obj = db->get<dynamic_object>();
@@ -232,8 +232,9 @@ namespace dev {
                             return true;
                         }
                     }
+                    return false;
                 });
-                return ret;
+
             }
 
             void exchange_plugin::new_session(int64_t version, const dev::h256 &block_hash,

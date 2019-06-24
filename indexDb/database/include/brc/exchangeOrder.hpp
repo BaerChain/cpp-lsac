@@ -110,8 +110,8 @@ namespace dev {
                              ;
 #else
                     std::string ret = " version : " + std::to_string(obj.version)
-                                    + " block hash: " + toHexPrefixed(obj.block_hash)
-                                    + " state root: " + toHexPrefixed(obj.root_hash)
+                                    + " block hash: " + (obj.block_hash.abridged())
+                                    + " state root: " + (obj.root_hash.abridged())
                                     + " orders: " + std::to_string(obj.orders)
                                     + " ret_orders:" + std::to_string(obj.result_orders)
                              ;
