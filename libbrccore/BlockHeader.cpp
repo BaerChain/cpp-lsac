@@ -192,7 +192,7 @@ void BlockHeader::populateFromParent(BlockHeader const &_parent) {
 
 void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRef _block) const {
     // verfy sign
-    if(verfy_sign())
+    if(!verfy_sign())
 		BOOST_THROW_EXCEPTION(InvalidBlockSignature());
 	
 	//区块头部检查,在dpos中保留
@@ -263,7 +263,6 @@ void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRe
 bool BlockHeader::sign_block(const Secret &sec) {
     RLPStream stream;
     auto current_block_hash = hash((IncludeSeal)(WithoutSign | WithoutSeal));
-	testlog <<"sign........."<< toString(current_block_hash);
     stream.append(current_block_hash);
 
     auto _hash = sha3(stream.out());
@@ -280,9 +279,8 @@ bool dev::brc::BlockHeader::verfy_sign() const{
 	if(number() <= 0)   // Genesis
 		return true;
 	RLPStream stream;
-	stream << hash((IncludeSeal)(WithoutSign | WithoutSeal));
+	stream.append(hash((IncludeSeal)(WithoutSign | WithoutSeal)));
 	auto _hash = sha3(stream.out());
-	testlog <<"verfy........."<< toString(_hash);
 	Address _createrAddr = author();
 	auto p = recover(sign_data(), _hash);
 	if(!p)

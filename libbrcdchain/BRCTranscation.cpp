@@ -168,9 +168,6 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		u256 _pendingOrderNum = pen->m_Pendingorder_num;
 		u256 _pendingOrderPrice = pen->m_Pendingorder_price; 
 
-		/*testlog << "order->" << " order_type:" << (int)_type << " order_buy_type:" << (int)_buy_type
-			<< " order_token_type:" << (int)_token_type << " num:" << _pendingOrderNum << " price:" << _pendingOrderPrice;*/
-
 		if(_type == order_type::null_type ||
 			(_buy_type == order_buy_type::only_price && (_type == order_type::buy || _type == order_type::sell) && (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
 		   (_buy_type == order_buy_type::all_price && ((_type == order_type::buy && (_pendingOrderNum != 0 || _pendingOrderPrice == 0)) ||
@@ -261,7 +258,6 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 				_cookieNum += it.amount;
 			}
 		}
-		//testlog << "_cookieNum:" << _cookieNum << "_transcationGas:" << _transcationGas;
 		if( (_cookieNum + m_state.balance(_form)) < _transcationGas){
 			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : The exchanged cookies are not enough to pay the commission!")));
 		}

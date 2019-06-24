@@ -22,15 +22,6 @@ void dev::bacd::SHDpos::generateSeal(BlockHeader const& _bi)
     BlockHeader header(_bi);
     header.setSeal(NonceField, h64{0});
     header.setSeal(MixHashField, h256{0});
-	/*auto author = header.author();
-	if(!m_dpos_cleint->verifyVarlitorPrivatrKey(author)){
-		cerror << "not find author : " << author << "private key , please set private key.";
-		return;
-	}
-	else{
-		testlog << " generateSeal..." << header.hash((IncludeSeal)(WithoutSign | WithoutSeal));
-		header.sign_block(m_dpos_cleint->getVarlitorSecret(author));
-	}*/
     RLPStream ret;
     header.streamRLP(ret);
     if (m_onSealGenerated)

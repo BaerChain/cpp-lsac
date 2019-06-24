@@ -394,7 +394,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 			_num = goodTxs;
 			if(chrono::steady_clock::now() > deadline){
 				ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
-				testlog << "use_time:" << msTimeout << " and out...";
 				is_break = true;
 				break;
 			}
@@ -403,7 +402,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
             break;     // the bad transation run_times is max and break 
         }
     }
-	testlog << BrcYellow " sync transaction use:" << utcTimeMilliSec() - _time <<" trasaction_size:"<< _num << BrcReset << " use_time:" << m_total_seal_time;
     if(_num > 0){
 		m_total_seal_time += utcTimeMilliSec() - _time;
 	}

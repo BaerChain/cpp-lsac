@@ -734,7 +734,6 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     BlockHeader info(_r[0][0].data(), HeaderData);
     auto h = info.hash();
     auto& peer = m_host.peer(_peerID);
-	//testlog << BrcYellow " new block: autor:" << info.author() << " number:" << info.number();
 	if(peer.isBlockKnown(h))
 		return;
     peer.markBlockAsKnown(h);

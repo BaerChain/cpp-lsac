@@ -271,7 +271,6 @@ void dev::bacd::SHDposClient::syncTransactionQueue(){
 		int _exc_time = (m_params.blockInterval ? m_params.blockInterval * 2 / 5 : 400) - m_working.exc_transaction_time();
 		if(_exc_time <= 20)
 			return;
-		//testlog << "_exc_time:" << _exc_time;
 		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp, _exc_time);
 
 	}
