@@ -10,6 +10,50 @@
 
 using namespace dev;
 using namespace brc;
+using namespace std;
+
+
+vector<string> split(const string &s, const string &seperator){
+    vector<string> result;
+    typedef string::size_type string_size;
+    string_size i = 0;
+
+    while(i != s.size()){
+        int flag = 0;
+        while(i != s.size() && flag == 0){
+            flag = 1;
+            for(string_size x = 0; x < seperator.size(); ++x)
+            {
+                if(s[i] == seperator[x]){
+                    ++i;
+                    flag = 0;
+                    break;
+                    }
+            }
+        }
+
+
+        flag = 0;
+        string_size j = i;
+        while(j != s.size() && flag == 0){
+            for(string_size x = 0; x < seperator.size(); ++x)
+                if(s[j] == seperator[x]){
+                    flag = 1;
+                    break;
+                    }
+            if(flag == 0)
+                ++j;
+        }
+        if(i != j){
+            result.push_back(s.substr(i, j-i));
+            i = j;
+        }
+    }
+    return result;
+}
+
+
+
 
 KeyPair networkAlias(bytes _b)
 {
@@ -23,12 +67,44 @@ KeyPair networkAlias(bytes _b)
 
 NodeMonitor::NodeMonitor(bytes _networkrlp, std::string _ip):
     m_networkrlp(_networkrlp),
-    m_ip(_ip),
-    m_httpClient(jsonrpc::HttpClient(_ip))
+    m_ip(_ip)
 {
-    cnote << "iop:" << m_ip;
+    cnote << "ip:" << m_ip;
+    m_ipStats = checkIP();
     getClientVersion();
     getKeypair();
+    if(m_ipStats)
+    {
+        std::thread t(&NodeMonitor::run, this);
+        t.detach();
+    }
+}
+
+bool NodeMonitor::checkIP()
+{
+    vector<string> _v = split(m_ip, ".:");
+    if(_v.size() == 5)
+    {
+        jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(m_ip);
+        try
+        {
+            std::string _post = "hello";
+            std::string _ret;
+           _httpClient.SendRPCMessage(_post, _ret);
+           if(_ret.empty())
+           {
+                cerror << "The specified node server address is not a valid address";
+               return false;
+           }
+        }
+        catch(...)
+        {
+            cerror << "The specified node server address is not a valid address";
+            return false;
+        }
+        return true;
+    }
+    return false;
 }
 
 void NodeMonitor::getKeypair()
@@ -49,7 +125,7 @@ void NodeMonitor::getClientVersion()
 void NodeMonitor::setData(monitorData _data)
 {
     m_mutex.lock();
-    if(m_ip.empty())
+    if(m_ipStats == false)
     {
         m_mutex.unlock();
         return;
@@ -71,11 +147,11 @@ Signature NodeMonitor::signatureData() const
     return _sign;
 }
 
-void NodeMonitor::sendNodeStats(Signature _sign)
+std::string NodeMonitor::getNodeStatsStr(Signature _sign)
 {
     if(m_data.size() == 0)
     {
-        return;
+        return std::string();
     }
     monitorData _data = m_data.back();
     Json::Value _jv;
@@ -88,41 +164,40 @@ void NodeMonitor::sendNodeStats(Signature _sign)
     _jv["pendingpoolsnum"] = toJS(_data.pendingpoolsnum);
     _jv["signatureData"] = toJS(_sign);
 
-    std::string _ret;
     std::string _value = _jv.toStyledString();
-    try
-    {
-        cnote << "_value:" << _value;
-        m_httpClient.SendRPCMessage(_value, _ret);
-    }
-    catch(const std::exception& e)
-    {
-        m_ip.clear();
-        return;
-    }
-    
-
-    
-    cnote << "_ret:" << _ret;
-
+    return _value;
 }
 
 void NodeMonitor::run()
 {
+    jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(m_ip);
     while(1)
     {
         m_mutex.lock();
         if(m_data.size() > 0)
         {
             Signature _sign = signatureData();
-            sendNodeStats(_sign);
-            cnote << "signdata:" << _sign << "  threadid:" << std::this_thread::get_id();
+            std::string _str = getNodeStatsStr(_sign);
+            if(!_str.empty())
+            {
+                try
+                {
+                    std::string _ret;
+                    _httpClient.SendRPCMessage(_str, _ret);
+                    cnote << "http ret:" << _ret;
+                }
+                catch(...)
+                {
+                    cerror << "nodeStats sendRPCMessage Error";
+                }
+            }
             //TO DO:signature data
             m_data.clear();
         }
 
         if(m_threadExit)
         {
+            cerror << "thread return";
             m_mutex.unlock();
             break;
         }

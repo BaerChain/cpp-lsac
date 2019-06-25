@@ -53,7 +53,6 @@ protected:
     void rejigSealing();
 private:
     void init(p2p::Host & _host, int _netWorkId);
-    void initNodeMonitor(bytes _networkrlp, std::string _ip);
     bool isBlockSeal(uint64_t _now);
 	/// Called when we have attempted to import a bad block.
    /// @warning May be called from any thread.
