@@ -140,22 +140,26 @@ void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Addr
 }
 
 
-Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr) const
+Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr)  const
 {
 	//Block _block = blockByNumber(LatestBlock);
 	//return _block.mutableVote().getVarlitorSecret(_addr);
     auto iter = m_params.m_block_addr_keys.find(_addr);
     if (iter != m_params.m_block_addr_keys.end())
     {
-        cwarn << "[*1*]: find bad block addr: " << _addr << ": secret: " << iter->second;
+        //cwarn << "[*1*]: find bad block addr: " << _addr << ": secret: " << iter->second;
         return iter->second;
     }
 	return Secret();
 }
 
-bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey()
+bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey() const
 {
 	return m_params.m_block_addr_keys.find(author()) != m_params.m_block_addr_keys.end();
+}
+
+bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey(Address const& _addr) const{
+	return m_params.m_block_addr_keys.find(_addr) != m_params.m_block_addr_keys.end();
 }
 
 void dev::bacd::SHDposClient::rejigSealing()
@@ -183,17 +187,17 @@ void dev::bacd::SHDposClient::rejigSealing()
             //  if false : will reset the block current state example : time, blocl_num ...
 			if(!checkPreviousBlock(m_working.previousBlock()))
 			{
-				m_working.mutableState().exdb().rollback();
+				//m_working.mutableState().exdb().rollback();
 				m_working.resetCurrent();
                 syncTransactionQueue();
 				LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
 			}
 
-			int64_t seal_time = m_params.blockInterval ? m_params.blockInterval * 3 / 5 : 400;
-//			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
-//				cwarn << " not have enough time to seal Block and out...";
-//				return;
-//			}
+			/*int64_t seal_time = m_params.blockInterval ? m_params.blockInterval * 2 / 5 : 400;
+			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
+				cwarn << " not have enough time to seal Block and out...";
+				return;
+			}*/
 
 			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
@@ -214,15 +218,14 @@ void dev::bacd::SHDposClient::rejigSealing()
 				DEV_WRITE_GUARDED(x_postSeal)
 					m_postSeal = m_working;
 				m_sealingInfo = m_working.info();
+				testlog << " rejigSealing..." << m_sealingInfo.hash((IncludeSeal)(WithoutSign | WithoutSeal));
 				auto author = m_working.author();
 
-				if(!m_params.m_block_addr_keys.count(author))
-				{
+				if(!m_params.m_block_addr_keys.count(author)){
 					cerror << "not find author : " << author << "private key , please set private key.";
 					return;
 				}
-				else
-				{
+				else{
 					m_sealingInfo.sign_block(m_params.m_block_addr_keys.at(author));
 				}
 
@@ -253,6 +256,44 @@ void dev::bacd::SHDposClient::rejigSealing()
 
     return;
 
+}
+
+void dev::bacd::SHDposClient::syncTransactionQueue(){
+	resyncStateFromChain();
+
+	h256Hash changeds;
+	TransactionReceipts newPendingReceipts;
+	DEV_WRITE_GUARDED(x_working){
+		if(m_working.isSealed()){
+			ctrace << "Skipping txq sync for a sealed block.";
+			return;
+		}
+		int _exc_time = (m_params.blockInterval ? m_params.blockInterval * 2 / 5 : 400) - m_working.exc_transaction_time();
+		if(_exc_time <= 20)
+			return;
+		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp, _exc_time);
+
+	}
+
+	if(newPendingReceipts.empty()){
+		auto s = m_tq.status();
+		ctrace << "No transactions to process. " << m_working.pending().size() << " pending, " << s.current << " queued, " << s.future << " future, " << s.unverified << " unverified";
+		return;
+	}
+
+	DEV_READ_GUARDED(x_working)
+		DEV_WRITE_GUARDED(x_postSeal)
+		m_postSeal = m_working;
+
+	DEV_READ_GUARDED(x_postSeal)
+		for(size_t i = 0; i < newPendingReceipts.size(); i++)
+			appendFromNewPending(newPendingReceipts[i], changeds, m_postSeal.pending()[i].sha3());
+
+	// Tell farm about new transaction (i.e. restart mining).
+	onPostStateChanged();
+
+	// Tell watches about the new transactions.
+	noteChanged(changeds);
 }
 
 void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)

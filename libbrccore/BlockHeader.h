@@ -241,6 +241,10 @@ using Checks = FlagSet<Check>;*/
             /// \return true if success.
             bool sign_block(const Secret &sec);
 
+            /// verfy sigin_data
+            /// \return true if success
+			bool verfy_sign() const;
+
             SignatureStruct sign_data() const;
 
         private:

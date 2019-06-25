@@ -1791,9 +1791,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
                                                                        << errinfo_uncleNumber(uh.number()));
                     parent = BlockHeader(parentHeader, HeaderData, uh.parentHash());
                 }
-                sealEngine()->verify(
-                        (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal,
-                        uh, parent);
+                sealEngine()->verify((_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal, uh, parent);
             }
             catch (Exception &ex) {
                 ex << errinfo_phase(1);
