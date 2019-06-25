@@ -393,7 +393,7 @@ void Client::syncBlockQueue()
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 
-			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
 				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " size: " << last_tx.size()
 				<< "  " << m_StateExDB.check_version(false);
 		}
