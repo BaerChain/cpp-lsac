@@ -6,12 +6,13 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/CommonJS.h>
 #include <json/json.h>
-
+#include <jsonrpccpp/common/exception.h>
+#include <jsonrpccpp/common/errors.h>
 
 using namespace dev;
 using namespace brc;
 using namespace std;
-
+using namespace jsonrpc;
 
 vector<string> split(const string &s, const string &seperator){
     vector<string> result;
@@ -70,14 +71,14 @@ NodeMonitor::NodeMonitor(bytes _networkrlp, std::string _ip):
     m_ip(_ip)
 {
     cnote << "ip:" << m_ip;
-    m_ipStats = checkIP();
+    //m_ipStats = checkIP();
     getClientVersion();
     getKeypair();
-    if(m_ipStats)
-    {
+    // if(m_ipStats)
+    // {
         std::thread t(&NodeMonitor::run, this);
         t.detach();
-    }
+    // }
 }
 
 bool NodeMonitor::checkIP()
@@ -125,11 +126,11 @@ void NodeMonitor::getClientVersion()
 void NodeMonitor::setData(monitorData _data)
 {
     m_mutex.lock();
-    if(m_ipStats == false)
-    {
-        m_mutex.unlock();
-        return;
-    }
+    // if(m_ipStats == false)
+    // {
+    //     m_mutex.unlock();
+    //     return;
+    // }
     m_data.push_back(_data);
     m_mutex.unlock();
 }
@@ -171,6 +172,8 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
 void NodeMonitor::run()
 {
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(m_ip);
+    int errorNum = 0;
+    int inputNum = 0;
     while(1)
     {
         m_mutex.lock();
@@ -185,10 +188,23 @@ void NodeMonitor::run()
                     std::string _ret;
                     _httpClient.SendRPCMessage(_str, _ret);
                     cnote << "http ret:" << _ret;
+                    errorNum = 0;
+                    inputNum = 0;
                 }
-                catch(...)
+                catch(JsonRpcException &e)
                 {
-                    cerror << "nodeStats sendRPCMessage Error";
+                    errorNum++;
+                    if(errorNum > 10)
+                    {
+                        inputNum++;
+                        if(inputNum == 10)
+                        {
+                            cerror << e.GetMessage();
+                            inputNum = 0;
+                        }
+                    }else{
+                        cerror << e.GetMessage();
+                    }
                 }
             }
             //TO DO:signature data
