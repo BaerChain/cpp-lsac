@@ -41,7 +41,6 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     asDposClient(*this);
     m_params = _params;
     init(_host, _networkID);
-	initNodeMonitor(_host.Networkrlp(), _params.getnodemonitorIp());
     LOG(m_logger)<< "init the dposClient ...";
 }
 
@@ -125,7 +124,6 @@ void dev::bacd::SHDposClient::sendDataToNodeMonitor()
 	cnote << "sendDataToNodeMonitor threadid: " << std::this_thread::get_id();
 	m_nodemonitor.setData(_data);
 }
-
 
 void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector) const
 {
@@ -281,15 +279,6 @@ void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
 	m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
-}
-
-void dev::bacd::SHDposClient::initNodeMonitor(bytes _networkrlp, std::string _ip)
-{
-	if(!_ip.empty())
-	{
-		std::thread t(&NodeMonitor::run, &m_nodemonitor);
-		t.detach();
-	}
 }
 
 bool dev::bacd::SHDposClient::isBlockSeal(uint64_t _now)

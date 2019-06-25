@@ -27,15 +27,17 @@ public:
     ~NodeMonitor(){}
     void run();
     
+    bool checkIP();
     void getKeypair();
     void getClientVersion();
     void setData(monitorData _data);
     void exitThread(bool _flags) {m_mutex.lock(); m_threadExit = true; m_mutex.unlock();}
     Signature signatureData() const;
-    void sendNodeStats(Signature _sign);
+    std::string getNodeStatsStr(Signature _sign);
 private:
     bool m_threadExit = false;
-    jsonrpc::HttpClient m_httpClient;
+    bool m_ipStats = false;
+    //jsonrpc::HttpClient m_httpClient;
     std::string m_ip;
     bytes m_networkrlp;
     std::string m_clientVersion;
