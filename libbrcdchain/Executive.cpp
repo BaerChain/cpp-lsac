@@ -355,6 +355,27 @@ void Executive::initialize(Transaction const& _transaction)
 					m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
                 }
                 break;
+                case transationTool::changeMiner:
+                {
+                    transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(val);
+					try {
+						
+					}
+					catch(Exception &ex)
+					{
+						LOG(m_execLogger)
+							<< "transcation field > "
+							<< "m_t.sender:" << m_t.sender() << " * "
+							<< " to:" << _transcation_op.m_to
+							<< " transcation_type:" << _transcation_op.m_Transcation_type
+							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
+						    << ex.what();
+						m_excepted = TransactionException::BrcTranscationField;
+						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+					}
+					m_batch_params._operation.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
+                }
+                break;
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
