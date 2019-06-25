@@ -387,10 +387,14 @@ void Client::syncBlockQueue()
     double elapsed = t.elapsed();
 	if(count)
 	{
+	    auto last_hash = bc().currentHash();
+        auto last = bc().info(last_hash);
+        auto last_tx = bc().transactions(last_hash);
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
+
 			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " size: " << last_tx.size()
 				<< "  " << m_StateExDB.check_version(false);
 		}
 	}
