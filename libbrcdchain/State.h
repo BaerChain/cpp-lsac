@@ -124,7 +124,7 @@ struct Change
     std::pair<Address, u256> vote;         // event for vote to other
     std::pair<Address, bool> sysVotedate;  // event for elector
     std::pair<u256, u256> blockReward;
-	std::pair<Public, AccountControl> contorl_acconut;  // event for account_control
+	std::pair<Public, AccountControl> control_acconut;  // event for account_control
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -161,7 +161,7 @@ struct Change
     }
     Change(Address const& _addr,Public const& _pk, size_t weight, uint64_t _au): kind(ControlAccount), address(_addr)
 	{
-		contorl_acconut = std::make_pair(_pk, AccountControl(weight, _au));
+		control_acconut = std::make_pair(_pk, AccountControl(weight, _au));
 	}
 };
 
@@ -372,7 +372,7 @@ public:
 
     /// account_control interface
 	std::pair<size_t, uint64_t> account_control(Address const& _addr, Public const& _pk) const;
-	void set_account_control(Address const& _addr, Public const& _pk, size_t weight, long authority);
+	void set_account_control(Address const& _addr, Public const& _pk, size_t weight, uint64_t authority);
 
 
 

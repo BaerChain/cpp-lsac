@@ -1549,7 +1549,7 @@ std::pair<size_t, uint64_t> dev::brc::State::account_control(Address const& _add
 }
 
 
-void dev::brc::State::set_account_control(Address const& _addr, Public const& _pk, size_t weight, long authority){
+void dev::brc::State::set_account_control(Address const& _addr, Public const& _pk, size_t weight, uint64_t authority){
 	Account *a = account(_addr);
     if(!a){
 		createAccount(_addr, { requireAccountStartNonce(), 0 });

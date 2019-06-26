@@ -331,7 +331,7 @@ public:
 
 
     /// account control interface
-	void set_control_account(Public const& _pk, size_t weight, long authority){ m_account_control[_pk] = AccountControl(weight, authority); changed(); }
+	void set_control_account(Public const& _pk, size_t weight, uint64_t authority){ m_account_control[_pk] = AccountControl(weight, authority); changed(); }
 	std::pair<size_t, uint64_t> accountControl(Public const& _pk) const;
 	std::map<Public, AccountControl> controlAccounts() const{ return m_account_control; }
 	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
