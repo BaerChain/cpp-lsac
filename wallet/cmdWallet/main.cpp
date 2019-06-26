@@ -176,6 +176,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                     switch (type) {
                         case vote: {
                             auto new_op = new vote_operation((op_type) type,
+                                                             Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
 															 u256(op_obj["m_vote_numbers"].get_str())
@@ -185,6 +186,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case brcTranscation: {
                             auto transcation_op = new transcation_operation((op_type) type,
+																			Address(op_obj["m_from"].get_str()),
                                                                             Address(op_obj["m_to"].get_str()),
                                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
                                                                             u256(op_obj["m_transcation_numbers"].get_str())
@@ -194,6 +196,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case pendingOrder: {
                             auto pendingorder_op = new pendingorder_opearaion( (op_type)type,
+																			  Address(op_obj["m_from"].get_str()),
                                                                               (ex::order_type) op_obj["m_type"].get_int(),
                                                                               (ex::order_token_type) op_obj["m_token_type"].get_int(),
                                                                               (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
@@ -219,6 +222,15 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 							tx.isContract = trx_source::Contract::execute;
                             break;
 						}     
+						case controlAccount:{
+							auto new_op = new control_acconut_operation((op_type)type,
+															 Public(op_obj["m_control_addr"].get_str()),
+															 (size_t)op_obj["m_weight"].get_int(),
+															 uint64_t(op_obj["m_authority"].get_uint64())
+							);
+							tx.ops.push_back(std::shared_ptr<control_acconut_operation>(new_op));
+                            break;
+						}
 					}
                 }
                 trx_datas.push_back(tx);
@@ -331,8 +343,10 @@ void write_simple_to_file(const bfs1::path &path) {
 void generate_key(const std::string &seed){
     auto key_pair = KeyPair::create();
     auto sec = key_pair.secret();
-    std::cout << "private key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
-    std::cout << "address : " << key_pair.address() << std::endl;
+	std::cout << "private key : " <<sec << std::endl;
+    std::cout << "private key base58: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
+    std::cout << "address    : " << key_pair.address() << std::endl;
+	std::cout << "Pubilc     : " << key_pair.pub() << std::endl;
 
 }
 
