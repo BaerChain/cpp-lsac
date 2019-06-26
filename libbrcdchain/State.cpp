@@ -181,6 +181,17 @@ Account *State::account(Address const &_addr) {
         _blockReward.push_back(_blockpair);
 	}
 
+	const bytes _control_account = state[12].toBytes();
+	RLP _rlp_control_account(_control_account);
+	num = _rlp_control_account[0].toInt<size_t>();
+	std::map<Address, AccountControl> _control_accounts;
+	for(size_t k = 1; k <= num; k++){
+		std::pair<Address, bytes> _pair = _rlpBlockReward[k].toPair<Address, bytes>();
+		AccountControl _data_control;
+		_data_control.populate(RLP(_pair.second));
+		_control_accounts[_pair.first] = _data_control;
+	}
+
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
                                                    state[2].toHash<h256>(), state[3].toHash<h256>(),
@@ -191,6 +202,7 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
+	i.first->second.set_control_accounts(_control_accounts);
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -1201,6 +1213,9 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
+			case Change::ControlAccount:
+			    account.set_control_account(change.contorl_acconut.first, change.contorl_acconut.second.m_weight, change.contorl_acconut.second.m_authority);
+			break;
             default:
                 break;
         }
@@ -1525,6 +1540,29 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	cnote << m_exdb.check_version(false);
 }
 
+
+std::pair<size_t, long> dev::brc::State::account_control(Address const& _aadr, Address const& _control_addr) const{
+	if(auto a = account(_aadr))
+		return a->accountControl(_control_addr);
+	else
+		return std::make_pair(0, 0);
+}
+
+
+void dev::brc::State::set_account_control(Address const& _addr, Address const& _control_accout, size_t weight, long authority){
+	Account *a = account(_addr);
+    if(!a){
+		createAccount(_addr, { requireAccountStartNonce(), 0 });
+		a = account(_addr);
+        if(!a)
+			BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_addr)));
+	}
+	std::pair<size_t, long> _pair = a->accountControl(_control_accout);
+	a->set_control_account(_control_accout, weight, authority);
+	m_changeLog.emplace_back(_addr, _control_accout, _pair.first, _pair.second);
+}
+
+
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {
     if (auto a = account(_id))
@@ -1783,6 +1821,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
+                // blockReward
 				{
 					RLPStream _rlp;
 					size_t _num = i.second.blockReward().size();
@@ -1791,6 +1830,17 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					for (auto it : i.second.blockReward())
 					{
 						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+					}
+					s << _rlp.out();
+				}
+                // control_account
+				{ 
+					RLPStream _rlp;
+					size_t _num = i.second.controlAccounts().size();
+					_rlp.appendList(_num + 1);
+					_rlp << _num;
+					for(auto it : i.second.controlAccounts()){
+						_rlp.append<Address, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}
 					s << _rlp.out();
 				}

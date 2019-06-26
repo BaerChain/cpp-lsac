@@ -4,7 +4,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieCommon.h>
 #include <libbrccore/Common.h>
-
+#include <libbrccore/Exceptions.h>
 #include <boost/filesystem/path.hpp>
 
 namespace dev
@@ -32,6 +32,30 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
+struct AccountControl
+{
+	size_t m_weight =0;   	    /// weight:unsigned int[1,100]
+	long   m_authority =0;  	/// authority long
+	AccountControl(size_t weight, long authority): m_weight(weight), m_authority(authority){ }
+    AccountControl(){}
+    bytes streamRLP() const{
+		RLPStream _s;
+		_s << m_weight << m_authority;
+		return _s.out();
+	}
+    void populate(RLP const& _r){
+		int index = 0;
+		try{
+			m_weight = _r[index=0].toInt<size_t>();
+			m_authority = _r[index=1].toInt<long>();
+		}
+		catch(Exception& ex){
+			//cerror << "";
+			BOOST_THROW_EXCEPTION(InvalidAccountControl() << errinfo_field(index));
+		}
+	}
+};
+
 class Account
 {
 public:
@@ -113,6 +137,7 @@ public:
 		m_assetInjectStatus = 0;
         m_voteData.clear();
 		m_BlockReward.clear();
+		m_account_control.clear();
         changed();
     }
 
@@ -128,7 +153,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0;  }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0 && m_account_control.empty();  }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -283,6 +308,14 @@ public:
 
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
+
+
+    /// account control interface
+	void set_control_account(Address const& _addr, size_t weight, long authority){ m_account_control[_addr] = AccountControl(weight, authority); changed(); }
+	std::pair<size_t, long> accountControl(Address const& _adrr) const;
+	std::map<Address, AccountControl> controlAccounts() const{ return m_account_control; }
+	void set_control_accounts(std::map<Address, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
+
 private:
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -350,6 +383,11 @@ private:
 
     /// Value for m_codeHash when this account is having its code determined.
     static const h256 c_contractConceptionCodeHash;
+
+    /// Account control data 
+    /// weight:unsigned int[1,100]   
+    /// authority long
+	std::map<Address, AccountControl> m_account_control;
 };
 
 class AccountMask

@@ -74,6 +74,7 @@ DEV_SIMPLE_EXCEPTION(InvalidTransactionReceiptFormat);
 DEV_SIMPLE_EXCEPTION(TransactionReceiptVersionError);
 DEV_SIMPLE_EXCEPTION(PendingTransactionAlreadyExists);
 DEV_SIMPLE_EXCEPTION(TransactionAlreadyInChain);
+DEV_SIMPLE_EXCEPTION(InvalidAccountControl);
 DEV_SIMPLE_EXCEPTION(BlockNotFound);
 DEV_SIMPLE_EXCEPTION(UnknownParent);
 DEV_SIMPLE_EXCEPTION(BlockIsTooOld);

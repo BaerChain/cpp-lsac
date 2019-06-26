@@ -78,7 +78,8 @@ namespace dev
                 pendingOrder = 3,
                 cancelPendingOrder = 4,
                 deployContract =5,
-                executeContract =6
+                executeContract =6,
+                controlAccount =7,
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -88,7 +89,9 @@ namespace dev
                     {pendingOrder, 10000},
                     {cancelPendingOrder, 2000},
                     {deployContract, 0},
-                    {executeContract, 0}
+                    {executeContract, 0},
+					{controlAccount, 0}
+
             };
 
             struct operation
@@ -231,6 +234,25 @@ namespace dev
                 OPERATION_UNSERIALIZE(contract_operation, (m_date))
                 OPERATION_SERIALIZE((m_date))
             };
+
+			struct control_acconut_operation :public operation
+			{
+				uint8_t m_type;
+				Address m_conotrol_addr;         // change pubilc_key 
+				size_t m_weight;        // weight
+				long m_authority;       // authority
+
+				control_acconut_operation(op_type type, const Address& conotrol_addr, size_t weight, long authority)
+					: m_type(type), m_conotrol_addr(conotrol_addr), m_weight(weight), m_authority(authority){
+				}
+				/// unserialize from data
+				/// \param Data
+				OPERATION_UNSERIALIZE(control_acconut_operation, (m_type)(m_conotrol_addr)(m_weight)(m_authority))
+				/// bytes serialize this struct
+				/// \return  bytes
+			    OPERATION_SERIALIZE((m_type)(m_conotrol_addr)(m_weight)(m_authority))
+				virtual ~control_acconut_operation(){ }
+			};
 
         }  // namespace transationTool
 

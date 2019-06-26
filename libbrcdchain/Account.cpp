@@ -73,6 +73,14 @@ void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
     changed();
 }
 
+
+std::pair<size_t, long> dev::brc::Account::accountControl(Address const& _adrr) const{
+	auto ret = m_account_control.find(_adrr);
+	if(ret == m_account_control.end())
+		return std::make_pair(0, 0);
+	return std::make_pair(ret->second.m_weight, ret->second.m_authority);
+}
+
 void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
 {
 	// 该接口 保留票数为0的数据  当是成为或者撤销竞选人是否，_tickets 为0

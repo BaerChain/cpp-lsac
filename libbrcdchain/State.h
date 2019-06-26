@@ -112,7 +112,8 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward
+        BlockReward,
+        ControlAccount
     };
 
     Kind kind;        ///< The kind of the change.
@@ -120,9 +121,10 @@ struct Change
     u256 value;       ///< Change value, e.g. balance, storage and nonce.
     u256 key;         ///< Storage key. Last because used only in one case.
     bytes oldCode;    ///< Code overwritten by CREATE, empty except in case of address collision.
-    std::pair<Address, u256> vote;         // 投票事件
-    std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
+    std::pair<Address, u256> vote;         // event for vote to other
+    std::pair<Address, bool> sysVotedate;  // event for elector
     std::pair<u256, u256> blockReward;
+	std::pair<Address, AccountControl> contorl_acconut;  // event for account_control
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -157,6 +159,10 @@ struct Change
     {
         blockReward = std::make_pair(_pair.first, _pair.second);
     }
+    Change(Address const& _addr, Address const& _constrol_account, size_t weight, long _au): kind(ControlAccount), address(_addr)
+	{
+		contorl_acconut = std::make_pair(_constrol_account, AccountControl(weight, _au));
+	}
 };
 
 using ChangeLog = std::vector<Change>;
@@ -363,6 +369,12 @@ public:
 
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
+
+    /// account_control interface
+	std::pair<size_t, long> account_control(Address const& _aadr, Address const& _control_addr) const;
+	void set_account_control(Address const& _addr, Address const& _control_accout, size_t weight, long authority);
+
+
 
 private:
     //投票数据
