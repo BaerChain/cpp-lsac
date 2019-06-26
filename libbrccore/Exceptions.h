@@ -32,6 +32,7 @@ DEV_SIMPLE_EXCEPTION(BadVoteParamter);
 DEV_SIMPLE_EXCEPTION(BadBRCTransactionParamter);
 DEV_SIMPLE_EXCEPTION(VerifyVoteField);
 DEV_SIMPLE_EXCEPTION(BrcTranscationField);
+DEV_SIMPLE_EXCEPTION(ChangeMinerFailed);
 DEV_SIMPLE_EXCEPTION(DefaultError);
 DEV_SIMPLE_EXCEPTION(VerifyPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(CancelPendingOrderFiled);
