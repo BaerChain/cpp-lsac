@@ -2,12 +2,14 @@
 #include "libdevcore/RLP.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/Common.h>
 #include <thread>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/CommonJS.h>
 #include <json/json.h>
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/common/errors.h>
+#include <time.h>
 
 using namespace dev;
 using namespace brc;
@@ -142,8 +144,8 @@ Signature NodeMonitor::signatureData() const
         return Signature();
     }
     monitorData _data = m_data.back();
-    RLPStream _rlp(7);
-    _rlp << m_public << _data.blocknum << _data.blockhash << m_clientVersion << _data.nodenum << _data.packagetranscations << _data.pendingpoolsnum;
+    RLPStream _rlp(8);
+    _rlp << m_public << _data.blocknum << _data.blockhash << _data.time <<m_clientVersion << _data.nodenum << _data.packagetranscations << _data.pendingpoolsnum;
     Signature _sign = sign(m_secret, sha3(_rlp.out()));
     return _sign;
 }
@@ -155,10 +157,12 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
         return std::string();
     }
     monitorData _data = m_data.back();
+    clock_t time;
     Json::Value _jv;
     _jv["nodeID"] = toJS(m_public);
     _jv["blockNum"] = _data.blocknum;
     _jv["blockHash"] = toJS(_data.blockhash);
+    _jv["serverDelay"] = toJS(_data.time);
     _jv["clientVersion"] = m_clientVersion;
     _jv["nodeNum"] = toJS(_data.nodenum);
     _jv["packageTranscations"] = toJS(_data.packagetranscations);

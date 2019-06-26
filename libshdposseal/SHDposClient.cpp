@@ -120,7 +120,7 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
 
 void dev::bacd::SHDposClient::sendDataToNodeMonitor()
 {
-	monitorData _data = { bc().number(), bc().info().hash(), bc().transactions().size(), pending().size(), m_p2pHost.peerCount()};
+	monitorData _data = { bc().number(), bc().info().hash(), bc().transactions().size(), pending().size(), m_p2pHost.peerCount(), utcTimeMilliSec()};
 	cnote << "sendDataToNodeMonitor threadid: " << std::this_thread::get_id();
 	m_nodemonitor.setData(_data);
 }

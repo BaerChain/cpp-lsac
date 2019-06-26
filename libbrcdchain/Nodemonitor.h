@@ -17,6 +17,7 @@ struct monitorData
     size_t packagetranscations;
     size_t pendingpoolsnum;
     size_t nodenum;
+    int64_t time;
 };
 
 
