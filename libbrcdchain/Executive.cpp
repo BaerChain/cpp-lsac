@@ -357,23 +357,57 @@ void Executive::initialize(Transaction const& _transaction)
                 break;
                 case transationTool::changeMiner:
                 {
-                    transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(val);
+                    transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(val);
 					try {
-						
+						// check 'from' and 'm_before' 
+                        if(m_t.sender() != _changeMiner_op.m_before){
+                            std::cout << "debug001 before:" << _changeMiner_op.m_before << "\n";
+                        }
+                        if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature)){
+                            std::cout << "debug001 signature:" <<  _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature) << "\n";
+                        }
+                        
+                        /*RLPStream s(3);
+                        s.append(_changeMiner_op.m_before);
+                        s.append(_changeMiner_op.m_after);
+                        s.append(_changeMiner_op.m_blockNumber);
+                        auto _hash = sha3(s.out());
+
+                        std::string _key = "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve";
+                        auto keyPair = KeyPair(Secret(dev::crypto::from_base58(_key)));
+                        Signature _sign = dev::sign(keyPair.secret(), _hash);
+
+                        std::cout << "debug001 sign:" <<_sign << std::endl;
+                        //auto p = recover(_changeMiner_op.m_signature, _hash);
+                        
+                        //auto getAddr = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));*/
+                        
+                        auto addrMap = m_vote.VarlitorsAddress();
+                        int count = 0;
+                        for(auto data : _changeMiner_op.m_agreeMsgs){
+                            auto addr = _changeMiner_op.get_sign_data_address(data);
+                            if(addrMap.count(addr)){
+                                count++;
+                            }
+                        }
+                        if(count < 14){
+                            std::cout << "debug001 count:" << count << "\n";
+                        }
+                        
+                        // check sign
+                        // check other node sign and num >= 14
 					}
 					catch(Exception &ex)
 					{
 						LOG(m_execLogger)
 							<< "transcation field > "
 							<< "m_t.sender:" << m_t.sender() << " * "
-							<< " to:" << _transcation_op.m_to
-							<< " transcation_type:" << _transcation_op.m_Transcation_type
-							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
+							<< " transcation_type:" << _changeMiner_op.m_type
 						    << ex.what();
 						m_excepted = TransactionException::BrcTranscationField;
 						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
-					m_batch_params._operation.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
+					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
                 }
                 break;
                 default:

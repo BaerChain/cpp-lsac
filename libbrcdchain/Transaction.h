@@ -181,6 +181,15 @@ namespace dev
                         changeMiner_operation, (m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
 
                 OPERATION_SERIALIZE((m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
+                Address get_sign_data_address(Signature _signData){
+                    RLPStream s(3);
+                    s.append(m_before);
+                    s.append(m_after);
+                    s.append(m_blockNumber);
+                    auto _hash = sha3(s.out());
+                    auto p = recover(_signData, _hash);
+                    return right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+                }
             };
 
             struct pendingorder_opearaion : public operation
