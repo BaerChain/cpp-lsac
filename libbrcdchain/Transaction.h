@@ -8,6 +8,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <boost/preprocessor/seq.hpp>
+#include <libdevcrypto/Common.h>
 
 //#include "brc/types.hpp"
 #include <brc/types.hpp>
@@ -238,11 +239,11 @@ namespace dev
 			struct control_acconut_operation :public operation
 			{
 				uint8_t m_type;
-				Address m_conotrol_addr;         // change pubilc_key 
+				Public m_conotrol_addr;         // change pubilc_key 
 				size_t m_weight;        // weight
 				long m_authority;       // authority
 
-				control_acconut_operation(op_type type, const Address& conotrol_addr, size_t weight, long authority)
+				control_acconut_operation(op_type type, const Public& conotrol_addr, size_t weight, long authority)
 					: m_type(type), m_conotrol_addr(conotrol_addr), m_weight(weight), m_authority(authority){
 				}
 				/// unserialize from data

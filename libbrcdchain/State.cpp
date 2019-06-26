@@ -184,9 +184,9 @@ Account *State::account(Address const &_addr) {
 	const bytes _control_account = state[12].toBytes();
 	RLP _rlp_control_account(_control_account);
 	num = _rlp_control_account[0].toInt<size_t>();
-	std::map<Address, AccountControl> _control_accounts;
+	std::map<Public, AccountControl> _control_accounts;
 	for(size_t k = 1; k <= num; k++){
-		std::pair<Address, bytes> _pair = _rlpBlockReward[k].toPair<Address, bytes>();
+		std::pair<Public, bytes> _pair = _rlpBlockReward[k].toPair<Public, bytes>();
 		AccountControl _data_control;
 		_data_control.populate(RLP(_pair.second));
 		_control_accounts[_pair.first] = _data_control;
@@ -1541,15 +1541,15 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 }
 
 
-std::pair<size_t, long> dev::brc::State::account_control(Address const& _aadr, Address const& _control_addr) const{
-	if(auto a = account(_aadr))
-		return a->accountControl(_control_addr);
+std::pair<size_t, long> dev::brc::State::account_control(Address const& _addr, Public const& _pk) const{
+	if(auto a = account(_addr))
+		return a->accountControl(_pk);
 	else
 		return std::make_pair(0, 0);
 }
 
 
-void dev::brc::State::set_account_control(Address const& _addr, Address const& _control_accout, size_t weight, long authority){
+void dev::brc::State::set_account_control(Address const& _addr, Public const& _pk, size_t weight, long authority){
 	Account *a = account(_addr);
     if(!a){
 		createAccount(_addr, { requireAccountStartNonce(), 0 });
@@ -1557,9 +1557,9 @@ void dev::brc::State::set_account_control(Address const& _addr, Address const& _
         if(!a)
 			BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_addr)));
 	}
-	std::pair<size_t, long> _pair = a->accountControl(_control_accout);
-	a->set_control_account(_control_accout, weight, authority);
-	m_changeLog.emplace_back(_addr, _control_accout, _pair.first, _pair.second);
+	std::pair<size_t, long> _pair = a->accountControl(_pk);
+	a->set_control_account(_pk, weight, authority);
+	m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
 }
 
 
@@ -1840,7 +1840,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					_rlp.appendList(_num + 1);
 					_rlp << _num;
 					for(auto it : i.second.controlAccounts()){
-						_rlp.append<Address, bytes>(std::make_pair(it.first, it.second.streamRLP()));
+						_rlp.append<Public, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}
 					s << _rlp.out();
 				}

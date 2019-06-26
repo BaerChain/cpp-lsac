@@ -5,6 +5,7 @@
 #include <libdevcore/TrieCommon.h>
 #include <libbrccore/Common.h>
 #include <libbrccore/Exceptions.h>
+#include <libdevcrypto/Common.h>
 #include <boost/filesystem/path.hpp>
 
 namespace dev
@@ -32,6 +33,25 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
+
+enum Authority_type : uint8_t
+{
+	Transfer_brc =1,
+    Buy_brc =2,
+    Buy_cookie =3,
+    Sell_brc =4,
+    Sell_cookie =5,
+    Can_pending =6,
+    Buy_tickets =7,
+    Sell_tickets =8,
+    Vote =9,
+    Can_vote =10,
+    Login_candidata =11,
+    Logout_candidate =12,
+	Deploy_contract =13,
+	Execute_contract =14
+};
+
 struct AccountControl
 {
 	size_t m_weight =0;   	    /// weight:unsigned int[1,100]
@@ -311,10 +331,10 @@ public:
 
 
     /// account control interface
-	void set_control_account(Address const& _addr, size_t weight, long authority){ m_account_control[_addr] = AccountControl(weight, authority); changed(); }
-	std::pair<size_t, long> accountControl(Address const& _adrr) const;
-	std::map<Address, AccountControl> controlAccounts() const{ return m_account_control; }
-	void set_control_accounts(std::map<Address, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
+	void set_control_account(Public const& _pk, size_t weight, long authority){ m_account_control[_pk] = AccountControl(weight, authority); changed(); }
+	std::pair<size_t, long> accountControl(Public const& _pk) const;
+	std::map<Public, AccountControl> controlAccounts() const{ return m_account_control; }
+	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
 
 private:
     /// Note that we've altered the account.
@@ -387,7 +407,7 @@ private:
     /// Account control data 
     /// weight:unsigned int[1,100]   
     /// authority long
-	std::map<Address, AccountControl> m_account_control;
+	std::map<Public, AccountControl> m_account_control;
 };
 
 class AccountMask
