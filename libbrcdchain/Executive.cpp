@@ -355,6 +355,11 @@ void Executive::initialize(Transaction const& _transaction)
 					m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
                 }
                 break;
+				case  transationTool::controlAccount: { 
+					transationTool::control_acconut_operation _op = transationTool::control_acconut_operation(val);
+					m_batch_params._operation.push_back(std::make_shared<transationTool::control_acconut_operation>(_op));
+				}
+                break;
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
@@ -389,6 +394,11 @@ void Executive::initialize(Transaction const& _transaction)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
+				else if(m_batch_params._type == transationTool::op_type::controlAccount){
+					testlog << " verfy controlAccount ... ";
+					m_s.verfy_account_control(m_t.sender(), m_batch_params._operation);
+				}
+
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";
@@ -401,6 +411,9 @@ void Executive::initialize(Transaction const& _transaction)
 			}
 			catch(CancelPendingOrderFiled const& _c){
 				BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
+			}
+			catch(VerifyAccountControlFiled const& _c){
+				BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
 			}
 		}
 	}
@@ -508,6 +521,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 	    }
 		else if(_type == transationTool::op_type::cancelPendingOrder){
 		    m_s.cancelPendingOrders(m_batch_params._operation);
+		}
+		else if(_type == transationTool::op_type::controlAccount){
+			m_s.execute_account_control(m_t.sender(), m_batch_params._operation);
 		}
 		m_batch_params.clear();
 		return true;

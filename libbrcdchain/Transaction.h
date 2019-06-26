@@ -117,13 +117,13 @@ namespace dev
             };
             struct vote_operation : public operation
             {
+				uint8_t m_type = null;
                 Address m_from;
                 Address m_to;
-                size_t m_vote_numbers = 0;
-                uint8_t m_type = null;
                 uint8_t m_vote_type = 0;
+				u256 m_vote_numbers = 0;
                 vote_operation(
-                        op_type type, const Address& from, const Address& to, uint8_t vote_type, size_t vote_num)
+                        op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
                         : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num){
                 }
                 /// unserialize from data
@@ -239,19 +239,19 @@ namespace dev
 			struct control_acconut_operation :public operation
 			{
 				uint8_t m_type;
-				Public m_conotrol_addr;         // change pubilc_key 
+				Public m_control_addr;         // change pubilc_key 
 				size_t m_weight;        // weight
 				uint64_t m_authority;       // authority
 
-				control_acconut_operation(op_type type, const Public& conotrol_addr, size_t weight, uint64_t authority)
-					: m_type(type), m_conotrol_addr(conotrol_addr), m_weight(weight), m_authority(authority){
+				control_acconut_operation(op_type type, const Public& control_addr, size_t weight, uint64_t authority)
+					: m_type(type), m_control_addr(control_addr), m_weight(weight), m_authority(authority){
 				}
 				/// unserialize from data
 				/// \param Data
-				OPERATION_UNSERIALIZE(control_acconut_operation, (m_type)(m_conotrol_addr)(m_weight)(m_authority))
+				OPERATION_UNSERIALIZE(control_acconut_operation, (m_type)(m_control_addr)(m_weight)(m_authority))
 				/// bytes serialize this struct
 				/// \return  bytes
-			    OPERATION_SERIALIZE((m_type)(m_conotrol_addr)(m_weight)(m_authority))
+			    OPERATION_SERIALIZE((m_type)(m_control_addr)(m_weight)(m_authority))
 				virtual ~control_acconut_operation(){ }
 			};
 

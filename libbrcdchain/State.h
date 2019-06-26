@@ -373,8 +373,8 @@ public:
     /// account_control interface
 	std::pair<size_t, uint64_t> account_control(Address const& _addr, Public const& _pk) const;
 	void set_account_control(Address const& _addr, Public const& _pk, size_t weight, uint64_t authority);
-
-
+	void verfy_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+	void execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
 private:
     //投票数据

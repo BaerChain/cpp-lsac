@@ -60,14 +60,14 @@ struct AccountControl
     AccountControl(){}
     bytes streamRLP() const{
 		RLPStream _s;
-		_s << m_weight << m_authority;
+		_s << m_weight << (u256)m_authority;
 		return _s.out();
 	}
     void populate(RLP const& _r){
 		int index = 0;
 		try{
 			m_weight = _r[index=0].toInt<size_t>();
-			m_authority = _r[index=1].toInt<uint64_t>();
+			m_authority =(uint64_t) _r[index=1].toInt<u256>();
 		}
 		catch(Exception& ex){
 			//cerror << "";

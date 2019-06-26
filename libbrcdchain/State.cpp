@@ -184,9 +184,10 @@ Account *State::account(Address const &_addr) {
 	const bytes _control_account = state[12].toBytes();
 	RLP _rlp_control_account(_control_account);
 	num = _rlp_control_account[0].toInt<size_t>();
+	testlog << " num :" << num;
 	std::map<Public, AccountControl> _control_accounts;
 	for(size_t k = 1; k <= num; k++){
-		std::pair<Public, bytes> _pair = _rlpBlockReward[k].toPair<Public, bytes>();
+		std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
 		AccountControl _data_control;
 		_data_control.populate(RLP(_pair.second));
 		_control_accounts[_pair.first] = _data_control;
@@ -1214,7 +1215,7 @@ void State::rollback(size_t _savepoint) {
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
 			case Change::ControlAccount:
-			    account.set_control_account(change.contorl_acconut.first, change.contorl_acconut.second.m_weight, change.contorl_acconut.second.m_authority);
+			    account.set_control_account(change.control_acconut.first, change.control_acconut.second.m_weight, change.control_acconut.second.m_authority);
 			break;
             default:
                 break;
@@ -1362,6 +1363,16 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
+
+		Json::Value _array_control;
+        for( auto val: a->controlAccounts()){
+			Json::Value _v;
+			_v["Public"] = toJS(val.first);
+			_v["weight"] = toJS(val.second.m_weight);
+			_v["authority"] = toJS(val.second.m_authority);
+			_array_control.append(_v);
+		}
+		jv["account_control"] = _array_control;
 		/*Json::Value _rewardArray;
 		if (a->blockReward().size() > 0)
 		{
@@ -1514,7 +1525,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
         return (u256)ret;
     };
 
-	auto a = account(dev::VoteAddress);
+	//auto a = account(dev::VoteAddress);
 	std::string _num = "2900000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
@@ -1562,6 +1573,33 @@ void dev::brc::State::set_account_control(Address const& _addr, Public const& _p
 	m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
 }
 
+void dev::brc::State::verfy_account_control(Address const & _from, std::vector<std::shared_ptr<transationTool::operation>> const & _ops){
+	for(auto const& val : _ops){
+		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
+		if(!pen){
+			cerror << "pendingOrders  dynamic type field!";
+			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("account_control type is error!")));
+		}
+        // verfy weight
+        if(pen->m_weight < 1 || pen->m_weight > 100){
+			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string(" account's weight out of range: [1,100]")));
+		}
+		testlog << " verfy pen->m_weight:" << pen->m_weight << " pen->m_authority:" << pen->m_authority << "" << pen->m_control_addr;
+	}
+}
+
+
+void dev::brc::State::execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+	testlog << "execute_account_control ... ";
+	for(auto const& val : _ops){
+		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
+		if(!pen){
+			cerror << "pendingOrders  dynamic type field!";
+			BOOST_THROW_EXCEPTION(InvalidDynamic());
+		}
+		set_account_control(_from, pen->m_control_addr, pen->m_weight, pen->m_authority);
+	}
+}
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {
@@ -1781,7 +1819,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(12);
+                RLPStream s(13);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1839,6 +1877,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					size_t _num = i.second.controlAccounts().size();
 					_rlp.appendList(_num + 1);
 					_rlp << _num;
+					testlog << " _num" << _num;
 					for(auto it : i.second.controlAccounts()){
 						_rlp.append<Public, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}

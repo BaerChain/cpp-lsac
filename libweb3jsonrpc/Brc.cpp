@@ -921,6 +921,12 @@ string dev::rpc::exceptionToErrorMessage()
 	{
 		ret = "Transaction rejected by user.";
 	}
+    catch (VerifyAccountControlFiled const& e)
+	{
+		ret = "Account_control verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(e))
+			ret += std::string(*_error);
+	}
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";
