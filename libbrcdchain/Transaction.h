@@ -241,9 +241,9 @@ namespace dev
 				uint8_t m_type;
 				Public m_conotrol_addr;         // change pubilc_key 
 				size_t m_weight;        // weight
-				long m_authority;       // authority
+				uint64_t m_authority;       // authority
 
-				control_acconut_operation(op_type type, const Public& conotrol_addr, size_t weight, long authority)
+				control_acconut_operation(op_type type, const Public& conotrol_addr, size_t weight, uint64_t authority)
 					: m_type(type), m_conotrol_addr(conotrol_addr), m_weight(weight), m_authority(authority){
 				}
 				/// unserialize from data

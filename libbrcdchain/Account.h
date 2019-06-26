@@ -34,29 +34,29 @@ namespace brc
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
 
-enum Authority_type : uint8_t
+enum Authority_type : uint64_t
 {
-	Transfer_brc =1,
-    Buy_brc =2,
-    Buy_cookie =3,
-    Sell_brc =4,
-    Sell_cookie =5,
-    Can_pending =6,
-    Buy_tickets =7,
-    Sell_tickets =8,
-    Vote =9,
-    Can_vote =10,
-    Login_candidata =11,
-    Logout_candidate =12,
-	Deploy_contract =13,
-	Execute_contract =14
+	Transfer_brc = 1 ,
+    Buy_brc = 1 << 1,
+    Buy_cookie = 1 << 2,
+    Sell_brc = 1 << 3,
+    Sell_cookie = 1 << 4,
+    Can_pending = 1 << 5,
+    Buy_tickets = 1 << 6,
+    Sell_tickets = 1 << 7,
+    Vote = 1 << 8,
+    Cancel_vote = 1 << 9,
+    Login_candidata = 1 << 10,
+    Logout_candidate = 1 << 11,
+	Deploy_contract = 1 << 12,
+	Execute_contract = 1 << 13
 };
 
 struct AccountControl
 {
 	size_t m_weight =0;   	    /// weight:unsigned int[1,100]
-	long   m_authority =0;  	/// authority long
-	AccountControl(size_t weight, long authority): m_weight(weight), m_authority(authority){ }
+	uint64_t   m_authority =0;  	/// authority long
+	AccountControl(size_t weight, uint64_t authority): m_weight(weight), m_authority(authority){ }
     AccountControl(){}
     bytes streamRLP() const{
 		RLPStream _s;
@@ -67,7 +67,7 @@ struct AccountControl
 		int index = 0;
 		try{
 			m_weight = _r[index=0].toInt<size_t>();
-			m_authority = _r[index=1].toInt<long>();
+			m_authority = _r[index=1].toInt<uint64_t>();
 		}
 		catch(Exception& ex){
 			//cerror << "";
@@ -332,7 +332,7 @@ public:
 
     /// account control interface
 	void set_control_account(Public const& _pk, size_t weight, long authority){ m_account_control[_pk] = AccountControl(weight, authority); changed(); }
-	std::pair<size_t, long> accountControl(Public const& _pk) const;
+	std::pair<size_t, uint64_t> accountControl(Public const& _pk) const;
 	std::map<Public, AccountControl> controlAccounts() const{ return m_account_control; }
 	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
 

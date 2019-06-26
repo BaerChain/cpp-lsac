@@ -159,7 +159,7 @@ struct Change
     {
         blockReward = std::make_pair(_pair.first, _pair.second);
     }
-    Change(Address const& _addr,Public const& _pk, size_t weight, long _au): kind(ControlAccount), address(_addr)
+    Change(Address const& _addr,Public const& _pk, size_t weight, uint64_t _au): kind(ControlAccount), address(_addr)
 	{
 		contorl_acconut = std::make_pair(_pk, AccountControl(weight, _au));
 	}
@@ -371,7 +371,7 @@ public:
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
     /// account_control interface
-	std::pair<size_t, long> account_control(Address const& _addr, Public const& _pk) const;
+	std::pair<size_t, uint64_t> account_control(Address const& _addr, Public const& _pk) const;
 	void set_account_control(Address const& _addr, Public const& _pk, size_t weight, long authority);
 
 

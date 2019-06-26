@@ -1541,7 +1541,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 }
 
 
-std::pair<size_t, long> dev::brc::State::account_control(Address const& _addr, Public const& _pk) const{
+std::pair<size_t, uint64_t> dev::brc::State::account_control(Address const& _addr, Public const& _pk) const{
 	if(auto a = account(_addr))
 		return a->accountControl(_pk);
 	else
@@ -1557,7 +1557,7 @@ void dev::brc::State::set_account_control(Address const& _addr, Public const& _p
         if(!a)
 			BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_addr)));
 	}
-	std::pair<size_t, long> _pair = a->accountControl(_pk);
+	std::pair<size_t, uint64_t> _pair = a->accountControl(_pk);
 	a->set_control_account(_pk, weight, authority);
 	m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
 }

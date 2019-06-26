@@ -74,7 +74,7 @@ void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
 }
 
 
-std::pair<size_t, long> dev::brc::Account::accountControl(Public const& _pk) const{
+std::pair<size_t, uint64_t> dev::brc::Account::accountControl(Public const& _pk) const{
 	auto ret = m_account_control.find(_pk);
 	if(ret == m_account_control.end())
 		return std::make_pair(0, 0);
