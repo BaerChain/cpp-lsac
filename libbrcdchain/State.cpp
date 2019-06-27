@@ -22,7 +22,7 @@ namespace fs = boost::filesystem;
 
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
-#define PUBNUM 3
+#define PUBLICNUM 3
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -1582,15 +1582,11 @@ void dev::brc::State::set_account_control(Address const& _addr, Public const& _p
 }
 
 void dev::brc::State::verfy_account_control(Address const & _from, std::vector<std::shared_ptr<transationTool::operation>> const & _ops){
-
-    std::map<Public, AccountControl> pub_control;
-
     Account *a = account(_from);
     if(!a) {
         BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_from)));
     }
-    pub_control = a->controlAccounts();
-    uint64_t pub_control_num = pub_control.size();
+    size_t pub_control_num = a->controlAccounts().size();
 
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
@@ -1614,7 +1610,7 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
         if(_pair.first == pen->m_weight && _pair.second == pen->m_authority)
             BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight and m_authority is the same!")));    
 	}
-    if(pub_control_num > PUBNUM)
+    if(pub_control_num > PUBLICNUM)
          BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("pub_key is more than three!")));
 } 
 

@@ -318,14 +318,14 @@ public:
     u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
     void addVote(std::pair<Address, u256> _votePair);
     std::map<Address, u256> const& voteData() const { return m_voteData; }
-    void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
+	void setVoteDate(std::unordered_map<Address, u256> const& _vote){ m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); changed(); }
     // 系统管理竞选人/验证人
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
 
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
-	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
+	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward){ m_BlockReward.clear(); m_BlockReward = _blockReward; changed(); }
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 
 
@@ -333,13 +333,14 @@ public:
 	void set_control_account(Public const& _pk, size_t weight, uint64_t authority){ m_account_control[_pk] = AccountControl(weight, authority); changed(); }
 	std::pair<size_t, uint64_t> accountControl(Public const& _pk) const;
 	std::map<Public, AccountControl> controlAccounts() const{ return m_account_control; }
-	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
+	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); changed(); }
     void cancel_control_account(Public const& _pk) 
     {
         auto ret = m_account_control.find(_pk);
         if(ret != m_account_control.end()) 
         {
              m_account_control.erase(ret);
+			 changed();
         }      
     }
 
