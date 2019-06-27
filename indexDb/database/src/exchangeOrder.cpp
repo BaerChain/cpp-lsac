@@ -15,7 +15,8 @@ namespace dev {
         namespace ex {
 
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
-                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)) {
+                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)),
+                      _new_session(false){
 
                 db->add_index<order_object_index>();
                 db->add_index<order_result_object_index>();
@@ -35,7 +36,6 @@ namespace dev {
             std::vector<result_order>
             exchange_plugin::insert_operation(const std::vector<order> &orders, bool reset, bool throw_exception) {
                 return db->with_write_lock([&]() {
-
                     check_db();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
@@ -141,19 +141,8 @@ namespace dev {
                         }
 
                         if (!reset) {
-                            session.push();
+                            session.squash();
                         }
-//                    } catch (const dev::Exception &e) {
-//                        session.undo();
-//                        BOOST_THROW_EXCEPTION(e);
-//                    } catch (const std::exception &e) {
-//                        session.undo();
-//                        BOOST_THROW_EXCEPTION(e);
-//                    }catch (...){
-//                        session.undo();
-//                        BOOST_THROW_EXCEPTION(createOrderError());
-//                    }
-
                     return result;
                 });
             }
@@ -214,20 +203,98 @@ namespace dev {
 
 
             bool exchange_plugin::rollback() {
-                check_db();
-                db->undo_all();
+                db->with_write_lock([&]() {
+                    check_db();
+
+
+
+                    db->undo();
+
+                    auto session = db->start_undo_session(true);
+                    const auto &obj1 = db->get<dynamic_object>();
+                    auto version = obj1.version;
+                    db->modify(obj1, [version](dynamic_object &obj) {
+                        obj.version = version + 1;
+                    });
+                    session.push();
+                });
                 return true;
             }
 
-            bool exchange_plugin::commit(int64_t version) {
-                check_db();
-                const auto &obj = db->get<dynamic_object>();
-                db->modify(obj, [&](dynamic_object &obj) {
-                    obj.version = version;
+            bool exchange_plugin::rollback_until(const h256 &block_hash, const h256 &root_hash){
+                return  db->with_write_lock([&]() ->bool{
+                    uint32_t maxCount = 12;
+                    while(maxCount-- > 0){
+                        const auto &obj = db->get<dynamic_object>();
+                        db->undo();
+//                    cwarn << "undo  " << check_version(false);
+                        if(obj.block_hash == block_hash && obj.root_hash == root_hash){
+                            return true;
+                        }
+                    }
+                    return false;
                 });
+
+            }
+
+            void exchange_plugin::new_session(int64_t version, const dev::h256 &block_hash,
+                                              const dev::h256 &root_hash) {
+                if(!_new_session){
+
+                    db->with_write_lock([&]() {
+                        auto session = db->start_undo_session(true);
+                        const auto &obj = db->get<dynamic_object>();
+                        db->modify(obj, [&](dynamic_object &obj) {
+                            obj.version = version;
+                            obj.block_hash = block_hash;
+                            obj.root_hash = root_hash;
+                        });
+                        session.push();
+
+                        _new_session = true;
+                    });
+
+
+
+                }
+            }
+
+            bool exchange_plugin::commit(int64_t version, const h256 &block_hash, const h256& root_hash) {
+                check_db();
+
+                db->with_write_lock([&]() {
+                    const auto &obj = db->get<dynamic_object>();
+                    db->modify(obj, [&](dynamic_object &obj) {
+                        obj.version = version;
+                        obj.block_hash = block_hash;
+                        obj.root_hash = root_hash;
+                    });
+
+                    auto session = db->start_undo_session(true);
+                    const auto &obj1 = db->get<dynamic_object>();
+                    db->modify(obj1, [&](dynamic_object &obj) {
+                        obj.version = version + 1;
+                    });
+                    session.push();
+                });
+
+                return true;
+            }
+
+            bool exchange_plugin::commit_disk(int64_t version, bool first_commit) {
+                if(first_commit){
+                    const auto &obj = db->get<dynamic_object>();
+                    db->modify(obj, [&](dynamic_object &obj) {
+                        obj.version = version;
+                    });
+                }
                 db->commit(version);
                 db->flush();
-//                cwarn << "commit rollback version  exchange database version : " << obj.version << " orders: " << obj.orders << " ret_orders:" << obj.result_orders;
+                return true;
+            }
+
+            bool exchange_plugin::remove_all_session() {
+                db->undo_all();
                 return true;
             }
 
@@ -276,32 +343,116 @@ namespace dev {
                     auto begin = index_trx.lower_bound(t);
                     auto end = index_trx.upper_bound(t);
                     if (begin == end) {
-                        BOOST_THROW_EXCEPTION(find_order_trxid_error());
+                        BOOST_THROW_EXCEPTION(find_order_trxid_error()<< errinfo_comment(toString(t)));
                     }
-                    order o;
-                    o.trxid = begin->trxid;
-                    o.sender = begin->sender;
-                    o.buy_type = order_buy_type::only_price;
-                    o.token_type = begin->token_type;
-                    o.type = begin->type;
-                    o.time = begin->create_time;
                     while (begin != end) {
+						order o;
+						o.trxid = begin->trxid;
+						o.sender = begin->sender;
+						o.buy_type = order_buy_type::only_price;
+						o.token_type = begin->token_type;
+						o.type = begin->type;
+						o.time = begin->create_time;
                         o.price_token[begin->price] = begin->token_amount;
+						ret.push_back(o);
+
                         const auto rm = db->find(begin->id);
-                        db->remove(*rm);
-                        begin++;
+						begin++;
+						db->remove(*rm);
                     }
                     update_dynamic_orders(false);
-
-
-
-                    ret.push_back(o);
                 }
                 if (!reset) {
-                    session.push();
+                    session.squash();
                 }
                 return ret;
             }
+
+            const dynamic_object& exchange_plugin::get_dynamic_object() const{
+                return db->get<dynamic_object>();
+            }
+
+            void exchange_plugin::update_dynamic_orders(bool up){
+                db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                    if(up){
+                        obj.orders++;
+                    }else{
+                        obj.orders--;
+                    }
+                });
+            }
+
+            void exchange_plugin::update_dynamic_result_orders(){
+                db->modify(get_dynamic_object(), [&](dynamic_object &obj){
+                    obj.result_orders++;
+                });
+            }
+
+            template<typename BEGIN, typename END>
+            void exchange_plugin::process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price, const u256 &amount,
+                                    std::vector<result_order> &result, bool throw_exception) {
+                if (begin == end) {
+                    db->create<order_object>([&](order_object &obj) {
+                        obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
+                    });
+
+                    update_dynamic_orders(true);
+                    return;
+                }
+                auto spend = amount;
+
+                bool rm = false;
+                while (spend > 0 && begin != end) {
+                    result_order ret;
+                    if (begin->token_amount <= spend) {
+                        spend -= begin->token_amount;
+                        ret.set_data(od, begin, begin->token_amount, begin->price);
+                        rm = true;
+
+                    } else {
+                        db->modify(*begin, [&](order_object &obj) {
+                            obj.token_amount -= spend;
+                        });
+                        ret.set_data(od, begin, spend, begin->price);
+                        spend = 0;
+                    }
+                    ret.old_price = price;
+
+                    db->create<order_result_object>([&](order_result_object &obj) {
+                        obj.set_data(ret);
+                    });
+                    update_dynamic_result_orders();
+
+                    result.push_back(ret);
+                    if (rm) {
+                        const auto rm_obj = db->find(begin->id);
+                        if (rm_obj != nullptr) {
+                            begin++;
+                            db->remove(*rm_obj);
+                            update_dynamic_orders(false);
+                        } else {
+                            if (throw_exception) {
+                                BOOST_THROW_EXCEPTION(remove_object_error());
+                            }
+                        }
+                        rm = false;
+                    } else {
+                        begin++;
+                    }
+
+                }
+                //surplus token ,  record to db
+                if (spend > 0) {
+                    db->create<order_object>([&](order_object &obj) {
+                        obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
+                    });
+                    update_dynamic_orders(true);
+                }
+            }
+
+
+
+
 
         }
     }

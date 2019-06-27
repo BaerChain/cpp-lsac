@@ -21,3 +21,6 @@ target_include_directories(exchange_test
 add_subdirectory(transaction)
 add_subdirectory(version)
 add_subdirectory(maxtxs)
+add_subdirectory(allTypeTransaction)
+add_subdirectory(test_state)
+add_subdirectory(test_exchange)

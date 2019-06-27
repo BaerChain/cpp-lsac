@@ -46,10 +46,12 @@ public:
 	void getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const;
 	Secret getVarlitorSecret(Address const& _addr) const;
 
-    bool verifyVarlitorPrivatrKey();
+	bool verifyVarlitorPrivatrKey() const;
+	bool verifyVarlitorPrivatrKey(Address const& _addr) const;
 
 protected:
     void rejigSealing();
+	void syncTransactionQueue();
 private:
     void init(p2p::Host & _host, int _netWorkId);
     bool isBlockSeal(uint64_t _now);

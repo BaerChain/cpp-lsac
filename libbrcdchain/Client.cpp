@@ -93,6 +93,9 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     m_preSeal = bc().genesisBlock(m_stateDB, m_StateExDB);
     m_postSeal = m_preSeal;
 
+
+
+
     m_bq.setChain(bc());
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
@@ -384,10 +387,16 @@ void Client::syncBlockQueue()
     double elapsed = t.elapsed();
 	if(count)
 	{
+	    auto last_hash = bc().currentHash();
+        auto last = bc().info(last_hash);
+        auto last_tx = bc().transactions(last_hash);
+
+        auto late = utcTimeMilliSec() - last.timestamp();
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
-			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+
+			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << last_tx.size()
 				<< "  " << m_StateExDB.check_version(false);
 		}
 	}
@@ -398,7 +407,7 @@ void Client::syncBlockQueue()
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
-	t.restart();
+
     onChainChanged(ir);
 }
 
@@ -477,7 +486,6 @@ void Client::resyncStateFromChain()
     DEV_READ_GUARDED(x_working)
         if (bc().currentHash() == m_working.info().parentHash())
             return;
-
     restartMining();
 }
 
@@ -506,6 +514,8 @@ void Client::restartMining()
         if (!m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash())
             for (auto const& t : m_postSeal.pending())
             {
+                if(m_postSeal.transaction_is_sealed(t.sha3()))
+                    continue;
                 LOG(m_loggerDetail) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import(t, IfDropped::Retry);
@@ -520,6 +530,7 @@ void Client::restartMining()
     // Quick hack for now - the TQ at this point already has the prior pending transactions in it;
     // we should resync with it manually until we are stricter about what constitutes "knowing".
     onTransactionQueueReady();
+	std::vector<Transaction> _v = m_tq.topTransactions(0, dev::h256Hash());
 }
 
 void Client::resetState()
@@ -539,18 +550,20 @@ void Client::resetState()
 
 void Client::onChainChanged(ImportRoute const& _ir)
 {
-//  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
     for (auto const& t: _ir.goodTranactions)
     {
         LOG(m_loggerDetail) << "Safely dropping transaction " << t.sha3();
         m_tq.dropGood(t);
+		m_postSeal.add_sealed_transaction(t.sha3());
     }
     onNewBlocks(_ir.liveBlocks, changeds);
-    if (!isMajorSyncing())
-        resyncStateFromChain();
+	if(!isMajorSyncing()){
+		resyncStateFromChain();
+	}
     noteChanged(changeds);
+	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const
@@ -691,16 +704,9 @@ void Client::noteChanged(h256Hash const& _filters)
 void Client::doWork(bool _doWait)
 {
     bool t = true;
-
-
 	cwarn << "   Client::doWork :   " << m_needStateReset;
-
-
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
         syncBlockQueue();
-
-
-
 
     if (m_needStateReset)
     {
@@ -741,8 +747,11 @@ void Client::tick()
         checkWatchGarbage();
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
-        if (m_report.ticks == 15)
-            LOG(m_loggerDetail) << activityReport();
+        if (m_report.ticks == 15){
+            //LOG(m_loggerDetail) <<
+            activityReport();
+        }
+
     }
 }
 
@@ -879,6 +888,7 @@ bool Client::submitSealed(bytes const& _header)
 			h->noteNewBlocksSend();
 	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
+
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }
 
@@ -945,6 +955,8 @@ h256 Client::importTransaction(Transaction const& _t)
             BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
         case ImportResult::AlreadyInChain:
             BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+		case ImportResult::NonceRepeat:
+		    BOOST_THROW_EXCEPTION(InvalidNonce());
         default:
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
@@ -952,6 +964,31 @@ h256 Client::importTransaction(Transaction const& _t)
 	if(auto h = m_host.lock())
 		h->noteNewTransactions();
     return _t.sha3();
+}
+
+h256  Client::importBlock(const dev::bytesConstRef &data) {
+    auto header = BlockHeader(data);
+    h256 h = BlockHeader::headerHashFromBlock(data);
+    cwarn << "hash : " << toHex(header.hash()) << " parent hash: " << toHex(header.parentHash());
+    cwarn << "state root : " << toHex(header.stateRoot());
+
+    ImportResult ret = m_bq.import(data);
+    switch (ret)
+    {
+        case ImportResult::Success:
+            break;
+        case ImportResult::ZeroSignature:
+            BOOST_THROW_EXCEPTION(ZeroSignatureTransaction());
+        case ImportResult::OverbidGasPrice:
+            BOOST_THROW_EXCEPTION(GasPriceTooLow());
+        case ImportResult::AlreadyKnown:
+            BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
+        case ImportResult::AlreadyInChain:
+            BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+        default:
+            BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
+    }
+    return h;
 }
 
 // TODO: remove try/catch, allow exceptions

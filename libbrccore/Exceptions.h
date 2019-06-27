@@ -52,6 +52,7 @@ DEV_SIMPLE_EXCEPTION(UncleTooOld);
 DEV_SIMPLE_EXCEPTION(UncleIsBrother);
 DEV_SIMPLE_EXCEPTION(UncleInChain);
 DEV_SIMPLE_EXCEPTION(UncleParentNotInChain);
+DEV_SIMPLE_EXCEPTION(InvalidAutor);
 DEV_SIMPLE_EXCEPTION(InvalidStateRoot);
 DEV_SIMPLE_EXCEPTION(InvalidGasUsed);
 DEV_SIMPLE_EXCEPTION(InvalidTransactionsRoot);
@@ -67,6 +68,7 @@ DEV_SIMPLE_EXCEPTION(InvalidBlockNonce);
 DEV_SIMPLE_EXCEPTION(InvalidParentHash);
 DEV_SIMPLE_EXCEPTION(InvalidUncleParentHash);
 DEV_SIMPLE_EXCEPTION(InvalidNumber);
+DEV_SIMPLE_EXCEPTION(InvalidBlockSignature);
 DEV_SIMPLE_EXCEPTION(InvalidZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(InvalidTransactionReceiptFormat);
 DEV_SIMPLE_EXCEPTION(TransactionReceiptVersionError);
@@ -74,6 +76,7 @@ DEV_SIMPLE_EXCEPTION(PendingTransactionAlreadyExists);
 DEV_SIMPLE_EXCEPTION(TransactionAlreadyInChain);
 DEV_SIMPLE_EXCEPTION(BlockNotFound);
 DEV_SIMPLE_EXCEPTION(UnknownParent);
+DEV_SIMPLE_EXCEPTION(BlockIsTooOld);
 DEV_SIMPLE_EXCEPTION(AddressAlreadyUsed);
 DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(TooMuchTransaction);
@@ -100,5 +103,7 @@ DEV_SIMPLE_EXCEPTION(TransactionRefused);
 DEV_SIMPLE_EXCEPTION(UnknownAccount);
 
 DEV_SIMPLE_EXCEPTION(PeerDisconnected);
+
+DEV_SIMPLE_EXCEPTION(BadDynamicCast);
 }
 }

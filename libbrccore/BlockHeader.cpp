@@ -192,6 +192,9 @@ void BlockHeader::populateFromParent(BlockHeader const &_parent) {
 
 void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRef _block) const {
     //Block header check, reserved in dpos
+    // verfy sign
+    if(!verfy_sign())
+		BOOST_THROW_EXCEPTION(InvalidBlockSignature());
     if (m_number > ~(unsigned) 0)
         BOOST_THROW_EXCEPTION(InvalidNumber());
 
@@ -259,16 +262,29 @@ void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRe
 bool BlockHeader::sign_block(const Secret &sec) {
     RLPStream stream;
     auto current_block_hash = hash((IncludeSeal)(WithoutSign | WithoutSeal));
-
     stream.append(current_block_hash);
 
-    auto hash = sha3(stream.out());
-    m_sign_data = SignatureStruct(sign(sec, hash));
+    auto _hash = sha3(stream.out());
+    m_sign_data = SignatureStruct(sign(sec, _hash));
     return true;
 }
 
 SignatureStruct BlockHeader::sign_data() const {
     return m_sign_data;
+}
+
+bool dev::brc::BlockHeader::verfy_sign() const{
+    
+	if(number() <= 0)   // Genesis
+		return true;
+	RLPStream stream;
+	stream.append(hash((IncludeSeal)(WithoutSign | WithoutSeal)));
+	auto _hash = sha3(stream.out());
+	Address _createrAddr = author();
+	auto p = recover(sign_data(), _hash);
+	if(!p)
+		return false;
+	return  _createrAddr == right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
 }
 
 
