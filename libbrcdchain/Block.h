@@ -312,6 +312,8 @@ private:
     /// Finalise the block, applying the earned rewards.
     void applyRewards(std::vector<BlockHeader> const& _uncleBlockHeaders, u256 const& _blockReward);
 
+    //update  miner
+    void update_miner(unsigned block_height);
     /// @returns gas used by transactions thus far executed.
     u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().cumulativeGasUsed() : 0; }
 

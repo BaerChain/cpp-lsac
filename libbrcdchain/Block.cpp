@@ -605,6 +605,12 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     assert(_bc.sealEngine());
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
+    update_miner(m_currentBlock.number());
+
+
+
+
+
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
@@ -631,15 +637,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
         BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(
                 bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
     }
-    cwarn << "debug001 current blockNumber:" << m_currentBlock.number();
-    Account *a = m_state.getSysAccount();
-    for(auto it : a->voteData()){
-        cwarn << "debug001 before address:" << it.first;
-    }
-    std::vector<std::string>& tmp = a->changeList();
-    if (tmp.size() > 0){
-        a->changeMiner(m_currentBlock.number());
-    }
+
     /*if (tmp.size() > 0){
         cwarn << "debug001 ---------------------------in if----------------------";
         cwarn << "debug001 size:" << tmp.size();
@@ -696,6 +694,19 @@ void Block::applyRewards(vector<BlockHeader> const &_uncleBlockHeaders, u256 con
         r += _blockReward / 32;
     }
     m_state.addBalance(m_currentBlock.author(), r);*/
+}
+
+void Block::update_miner(unsigned block_height)
+{
+    cwarn << "debug001 current blockNumber:" << m_currentBlock.number();
+    Account *a = m_state.getSysAccount();
+    for(auto it : a->voteData()){
+        cwarn << "debug001 before address:" << it.first;
+    }
+    std::vector<std::string>& tmp = a->changeList();
+    if (tmp.size() > 0){
+        a->changeMiner(m_currentBlock.number());
+    }
 }
 
 void Block::performIrregularModifications() {
@@ -802,6 +813,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     assert(_bc.sealEngine());
     applyRewards(uncleBlockHeaders, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
+    update_miner(m_currentBlock.number());
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =
