@@ -390,11 +390,13 @@ void Client::syncBlockQueue()
 	    auto last_hash = bc().currentHash();
         auto last = bc().info(last_hash);
         auto last_tx = bc().transactions(last_hash);
+
+        auto late = utcTimeMilliSec() - last.timestamp();
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 
 			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " size: " << last_tx.size()
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << last_tx.size()
 				<< "  " << m_StateExDB.check_version(false);
 		}
 	}
