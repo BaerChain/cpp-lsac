@@ -181,6 +181,12 @@ Account *State::account(Address const &_addr) {
         _blockReward.push_back(_blockpair);
 	}
 
+    cwarn << "debug001 rlp size:" << state.itemCount();
+    std::vector<std::string> tmp;
+    if(13 == state.itemCount()){
+        tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+    }
+
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
                                                    state[2].toHash<h256>(), state[3].toHash<h256>(),
@@ -191,6 +197,7 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
+    i.first->second.initChangeList(tmp);
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -614,6 +621,17 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 			addFBalance(_addr, _pendingOrderNum - CombinationNum);
 		}
 	}
+}
+
+void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+    cwarn << "debug001 in changeMiner";
+	std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_ops[0]);
+    Account *a = account(SysVarlitorAddress);
+    if (a->willChangeList().size() > 0)
+    cwarn << "debug001 account before:" << a->willChangeList()[0];
+    a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+        
+	
 }
 
 void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
@@ -1743,7 +1761,11 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(12);
+                int rlpCount = 12;
+                if (i.second.willChangeList().size() > 0) {
+                    rlpCount = 13;
+                }
+                RLPStream s(rlpCount);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1794,6 +1816,10 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
+                if(i.second.willChangeList().size() > 0){
+                    s << i.second.willChangeList();
+                    cwarn << "debug001 str:" << (i.second.willChangeList())[0];
+                }
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

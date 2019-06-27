@@ -86,6 +86,14 @@ void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, 
 	changed();
 }
 
+bool dev::brc::Account::insertMiner(Address before, Address after, unsigned blockNumber)
+{
+    cwarn << "debug001 in insertMiner";
+    std::string tmp = before.hex() + ":" + after.hex() + ":" + to_string(blockNumber);
+    m_willChangeList.push_back(tmp);
+    changed();
+    return true;
+}
 
 namespace js = json_spirit;
 

@@ -363,6 +363,7 @@ void Executive::initialize(Transaction const& _transaction)
                         if(m_t.sender() != _changeMiner_op.m_before){
                             std::cout << "debug001 before:" << _changeMiner_op.m_before << "\n";
                         }
+                        // check sign
                         if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature)){
                             std::cout << "debug001 signature:" <<  _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature) << "\n";
                         }
@@ -378,10 +379,11 @@ void Executive::initialize(Transaction const& _transaction)
                         Signature _sign = dev::sign(keyPair.secret(), _hash);
 
                         std::cout << "debug001 sign:" <<_sign << std::endl;
-                        //auto p = recover(_changeMiner_op.m_signature, _hash);
+                        auto p = recover(_changeMiner_op.m_signature, _hash);
                         
-                        //auto getAddr = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));*/
+                        auto getAddr = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));*/
                         
+                        // check other node sign and num >= 14
                         auto addrMap = m_vote.VarlitorsAddress();
                         int count = 0;
                         for(auto data : _changeMiner_op.m_agreeMsgs){
@@ -394,8 +396,6 @@ void Executive::initialize(Transaction const& _transaction)
                             std::cout << "debug001 count:" << count << "\n";
                         }
                         
-                        // check sign
-                        // check other node sign and num >= 14
 					}
 					catch(Exception &ex)
 					{
@@ -486,6 +486,7 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
+    cwarn << "debug001 in call";
     // If external transaction.
     if (m_t)
     {
@@ -563,6 +564,9 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 	    }
 		else if(_type == transationTool::op_type::cancelPendingOrder){
 		    m_s.cancelPendingOrders(m_batch_params._operation);
+		}
+        else if(_type == transationTool::op_type::changeMiner){
+		    m_s.changeMiner(m_batch_params._operation);
 		}
 		m_batch_params.clear();
 		return true;
