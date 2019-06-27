@@ -48,6 +48,7 @@ namespace dev
             BadVoteParamter,
             BadBRCTransactionParamter,
             BrcTranscationField,
+            ChangeMinerFailed,
             DefaultError
         };
 
@@ -89,7 +90,8 @@ namespace dev
                     {pendingOrder, 10000},
                     {cancelPendingOrder, 2000},
                     {deployContract, 0},
-                    {executeContract, 0}
+                    {executeContract, 0},
+                    {changeMiner, 0}
             };
 
             struct operation

@@ -300,7 +300,12 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}
+				}else if(_type == transcationTool::changeMiner && _ops.size() > 1)
+                {
+                    BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Replace witness operations cannot be batch operated"));
+                }
+
+
 
 				m_batch_params._type = _type;
                 switch (_type)
@@ -361,11 +366,13 @@ void Executive::initialize(Transaction const& _transaction)
 					try {
 						// check 'from' and 'm_before' 
                         if(m_t.sender() != _changeMiner_op.m_before){
-                            std::cout << "debug001 before:" << _changeMiner_op.m_before << "\n";
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
+                            // std::cout << "debug001 before:" << _changeMiner_op.m_before << "\n";
                         }
                         // check sign
                         if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature)){
-                            std::cout << "debug001 signature:" <<  _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature) << "\n";
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
+                            // std::cout << "debug001 signature:" <<  _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature) << "\n";
                         }
                         
                         /*RLPStream s(3);
@@ -393,19 +400,20 @@ void Executive::initialize(Transaction const& _transaction)
                             }
                         }
                         if(count < 14){
-                            std::cout << "debug001 count:" << count << "\n";
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
+                            // std::cout << "debug001 count:" << count << "\n";
                         }
                         
 					}
 					catch(Exception &ex)
 					{
 						LOG(m_execLogger)
-							<< "transcation field > "
+							<< "ChangeMiner field > "
 							<< "m_t.sender:" << m_t.sender() << " * "
-							<< " transcation_type:" << _changeMiner_op.m_type
+							<< " changeMiner_type:" << _changeMiner_op.m_type
 						    << ex.what();
-						m_excepted = TransactionException::BrcTranscationField;
-						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+						m_excepted = TransactionException::ChangeMinerFailed;
+						BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
                 }

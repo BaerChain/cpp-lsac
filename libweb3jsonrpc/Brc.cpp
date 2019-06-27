@@ -904,6 +904,14 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 			ret += std::string(*_error);
 	}
+    catch(ChangeMinerFailed const& ex)
+    {
+        ret = "ChangeMiner is error";
+        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+        {
+            ret += std::string(*_error);
+        }
+    }
 	catch (InvalidSignature const&)
 	{
 		ret = "Invalid transaction signature.";
