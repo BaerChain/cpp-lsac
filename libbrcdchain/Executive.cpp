@@ -300,7 +300,7 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}else if(_type == transcationTool::changeMiner && _ops.size() > 1)
+				}else if(_type == transationTool::changeMiner && _ops.size() > 1)
                 {
                     BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Replace witness operations cannot be batch operated"));
                 }
