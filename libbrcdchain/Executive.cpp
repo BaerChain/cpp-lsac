@@ -395,7 +395,6 @@ void Executive::initialize(Transaction const& _transaction)
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::controlAccount){
-					testlog << " verfy controlAccount ... ";
 					m_s.verfy_account_control(m_t.sender(), m_batch_params._operation);
 				}
 

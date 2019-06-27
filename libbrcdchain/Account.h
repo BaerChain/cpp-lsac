@@ -59,7 +59,7 @@ struct AccountControl
 	AccountControl(size_t weight, uint64_t authority): m_weight(weight), m_authority(authority){ }
     AccountControl(){}
     bytes streamRLP() const{
-		RLPStream _s;
+		RLPStream _s(2);
 		_s << m_weight << (u256)m_authority;
 		return _s.out();
 	}
@@ -69,8 +69,7 @@ struct AccountControl
 			m_weight = _r[index=0].toInt<size_t>();
 			m_authority =(uint64_t) _r[index=1].toInt<u256>();
 		}
-		catch(Exception& ex){
-			//cerror << "";
+		catch(...){
 			BOOST_THROW_EXCEPTION(InvalidAccountControl() << errinfo_field(index));
 		}
 	}

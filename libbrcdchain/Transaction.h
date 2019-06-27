@@ -238,7 +238,7 @@ namespace dev
 
 			struct control_acconut_operation :public operation
 			{
-				uint8_t m_type;
+				op_type m_type;
 				Public m_control_addr;         // change pubilc_key 
 				size_t m_weight;        // weight
 				uint64_t m_authority;       // authority
@@ -248,10 +248,27 @@ namespace dev
 				}
 				/// unserialize from data
 				/// \param Data
-				OPERATION_UNSERIALIZE(control_acconut_operation, (m_type)(m_control_addr)(m_weight)(m_authority))
+				//OPERATION_UNSERIALIZE(control_acconut_operation, (m_type)(m_control_addr)(m_weight)(m_authority))
+				control_acconut_operation(const bytes& Data){
+					RLP rlp(Data);
+					m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
+					m_control_addr = rlp[1].convert<Public>(RLP::LaissezFaire);
+					m_weight = rlp[2].convert<size_t>(RLP::LaissezFaire);
+					m_authority = (uint64_t)rlp[3].convert<u256>(RLP::LaissezFaire);
+					
+				}
 				/// bytes serialize this struct
 				/// \return  bytes
-			    OPERATION_SERIALIZE((m_type)(m_control_addr)(m_weight)(m_authority))
+			    //OPERATION_SERIALIZE((m_type)(m_control_addr)(m_weight)(m_authority))
+				virtual bytes serialize()  const{
+					RLPStream stream(4);
+					stream << (uint8_t)m_type << m_control_addr << m_weight << (u256)m_authority;
+					/*stream.append((uint8_t)m_type);
+					stream.append(m_control_addr);
+					stream.append(m_weight);
+					stream.append((u256)m_authority);*/
+					return stream.out();
+				}
 				virtual ~control_acconut_operation(){ }
 			};
 

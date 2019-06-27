@@ -184,7 +184,6 @@ Account *State::account(Address const &_addr) {
 	const bytes _control_account = state[12].toBytes();
 	RLP _rlp_control_account(_control_account);
 	num = _rlp_control_account[0].toInt<size_t>();
-	testlog << " num :" << num;
 	std::map<Public, AccountControl> _control_accounts;
 	for(size_t k = 1; k <= num; k++){
 		std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
@@ -1570,7 +1569,8 @@ void dev::brc::State::set_account_control(Address const& _addr, Public const& _p
 	}
 	std::pair<size_t, uint64_t> _pair = a->accountControl(_pk);
 	a->set_control_account(_pk, weight, authority);
-	m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
+    if(_pair.first != 0 || _pair.second !=0 )
+	    m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
 }
 
 void dev::brc::State::verfy_account_control(Address const & _from, std::vector<std::shared_ptr<transationTool::operation>> const & _ops){
@@ -1584,13 +1584,11 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
         if(pen->m_weight < 1 || pen->m_weight > 100){
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string(" account's weight out of range: [1,100]")));
 		}
-		testlog << " verfy pen->m_weight:" << pen->m_weight << " pen->m_authority:" << pen->m_authority << "" << pen->m_control_addr;
 	}
 }
 
 
 void dev::brc::State::execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	testlog << "execute_account_control ... ";
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
 		if(!pen){
@@ -1877,7 +1875,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					size_t _num = i.second.controlAccounts().size();
 					_rlp.appendList(_num + 1);
 					_rlp << _num;
-					testlog << " _num" << _num;
 					for(auto it : i.second.controlAccounts()){
 						_rlp.append<Public, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}
