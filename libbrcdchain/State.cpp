@@ -22,6 +22,7 @@ namespace fs = boost::filesystem;
 
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
+#define PUBNUM 3
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -184,6 +185,7 @@ Account *State::account(Address const &_addr) {
 	const bytes _control_account = state[12].toBytes();
 	RLP _rlp_control_account(_control_account);
 	num = _rlp_control_account[0].toInt<size_t>();
+	testlog << " num :" << num;
 	std::map<Public, AccountControl> _control_accounts;
 	for(size_t k = 1; k <= num; k++){
 		std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
@@ -1568,12 +1570,28 @@ void dev::brc::State::set_account_control(Address const& _addr, Public const& _p
 			BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_addr)));
 	}
 	std::pair<size_t, uint64_t> _pair = a->accountControl(_pk);
-	a->set_control_account(_pk, weight, authority);
-    if(_pair.first != 0 || _pair.second !=0 )
+
+    if(weight == 0 && authority == 0) {
+         a->cancel_control_account(_pk);
+    }
+    else {
+        a->set_control_account(_pk, weight, authority);
 	    m_changeLog.emplace_back(_addr, _pk, _pair.first, _pair.second);
+    }      
+
 }
 
 void dev::brc::State::verfy_account_control(Address const & _from, std::vector<std::shared_ptr<transationTool::operation>> const & _ops){
+
+    std::map<Public, AccountControl> pub_control;
+
+    Account *a = account(_from);
+    if(!a) {
+        BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_wrongAddress(toString(_from)));
+    }
+    pub_control = a->controlAccounts();
+    uint64_t pub_control_num = pub_control.size();
+
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
 		if(!pen){
@@ -1581,21 +1599,35 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("account_control type is error!")));
 		}
         // verfy weight
-        if(pen->m_weight < 1 || pen->m_weight > 100){
+        if(pen->m_weight == 0 && pen->m_authority != 0)
+            BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight is zero and have m_authority")));
+        if(pen->m_weight < 0 || pen->m_weight > 100){
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string(" account's weight out of range: [1,100]")));
 		}
+		testlog << " verfy pen->m_weight:" << pen->m_weight << " pen->m_authority:" << pen->m_authority << "" << pen->m_control_addr;
+
+        std::pair<size_t, uint64_t> _pair = a->accountControl(pen->m_control_addr);
+        if(_pair.first == 0 && _pair.second == 0)
+            pub_control_num += 1;
+        if(pen->m_weight == 0 && pen->m_authority == 0)
+            pub_control_num -= 1;
+        if(_pair.first == pen->m_weight && _pair.second == pen->m_authority)
+            BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight and m_authority is the same!")));    
 	}
-}
+    if(pub_control_num > PUBNUM)
+         BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("pub_key is more than three!")));
+} 
 
 
 void dev::brc::State::execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+	testlog << "execute_account_control ... ";
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
 		if(!pen){
 			cerror << "pendingOrders  dynamic type field!";
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
-		}
-		set_account_control(_from, pen->m_control_addr, pen->m_weight, pen->m_authority);
+		} 
+	    set_account_control(_from, pen->m_control_addr, pen->m_weight, pen->m_authority);
 	}
 }
 
@@ -1875,6 +1907,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					size_t _num = i.second.controlAccounts().size();
 					_rlp.appendList(_num + 1);
 					_rlp << _num;
+					testlog << " _num" << _num;
 					for(auto it : i.second.controlAccounts()){
 						_rlp.append<Public, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}
