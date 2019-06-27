@@ -334,6 +334,14 @@ public:
 	std::pair<size_t, uint64_t> accountControl(Public const& _pk) const;
 	std::map<Public, AccountControl> controlAccounts() const{ return m_account_control; }
 	void set_control_accounts(std::map<Public, AccountControl> const& _val){ m_account_control.clear(); m_account_control.insert(_val.begin(), _val.end()); }
+    void cancel_control_account(Public const& _pk) 
+    {
+        auto ret = m_account_control.find(_pk);
+        if(ret != m_account_control.end()) 
+        {
+             m_account_control.erase(ret);
+        }      
+    }
 
 private:
     /// Note that we've altered the account.
