@@ -330,6 +330,8 @@ public:
         ex::order_buy_type _pendingOrderBuyTypes);
 
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    Account* getSysAccount();
+    
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
 	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);

@@ -141,6 +141,7 @@ public:
 
     u256 const& FBalance() const { return m_FBalance; }
     std::vector<std::string> willChangeList() const { return m_willChangeList; }
+    std::vector<std::string>& changeList() { return m_willChangeList; }
 
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)
@@ -272,6 +273,8 @@ public:
     bytes const& code() const { return m_codeCache; }
 
     bool insertMiner(Address before, Address after, unsigned blockNumber);
+    bool changeMiner(unsigned blockNumber);
+    bool changeMiner(Address before, Address after);
 
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
@@ -289,10 +292,10 @@ public:
 
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
-private:
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
-
+private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
 

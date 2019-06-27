@@ -366,30 +366,13 @@ void Executive::initialize(Transaction const& _transaction)
 					try {
 						// check 'from' and 'm_before' 
                         if(m_t.sender() != _changeMiner_op.m_before){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
-                            // std::cout << "debug001 before:" << _changeMiner_op.m_before << "\n";
+                            //BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
                         }
                         // check sign
                         if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature)){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
-                            // std::cout << "debug001 signature:" <<  _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature) << "\n";
+                            //BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
                         }
-                        
-                        /*RLPStream s(3);
-                        s.append(_changeMiner_op.m_before);
-                        s.append(_changeMiner_op.m_after);
-                        s.append(_changeMiner_op.m_blockNumber);
-                        auto _hash = sha3(s.out());
-
-                        std::string _key = "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve";
-                        auto keyPair = KeyPair(Secret(dev::crypto::from_base58(_key)));
-                        Signature _sign = dev::sign(keyPair.secret(), _hash);
-
-                        std::cout << "debug001 sign:" <<_sign << std::endl;
-                        auto p = recover(_changeMiner_op.m_signature, _hash);
-                        
-                        auto getAddr = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));*/
-                        
+                                                
                         // check other node sign and num >= 14
                         auto addrMap = m_vote.VarlitorsAddress();
                         int count = 0;
@@ -400,8 +383,7 @@ void Executive::initialize(Transaction const& _transaction)
                             }
                         }
                         if(count < 14){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
-                            // std::cout << "debug001 count:" << count << "\n";
+                            //BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
                         }
                         
 					}
@@ -494,7 +476,6 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
-    cwarn << "debug001 in call";
     // If external transaction.
     if (m_t)
     {

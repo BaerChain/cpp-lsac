@@ -88,10 +88,52 @@ void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, 
 
 bool dev::brc::Account::insertMiner(Address before, Address after, unsigned blockNumber)
 {
-    cwarn << "debug001 in insertMiner";
     std::string tmp = before.hex() + ":" + after.hex() + ":" + to_string(blockNumber);
     m_willChangeList.push_back(tmp);
     changed();
+    return true;
+}
+
+bool dev::brc::Account::changeMiner(Address before, Address after)
+{
+    std::map<Address, u256>::iterator del = m_voteData.find(before);
+    if (del != m_voteData.end()){
+        u256 tmp = m_voteData[before];
+        m_voteData.erase(del);
+        m_voteData[after] = tmp;
+        changed();
+        return true;
+    }
+    return false;
+}
+
+bool dev::brc::Account::changeMiner(unsigned blockNumber)
+{
+    if (m_willChangeList.size() > 0){
+        cwarn << "debug001 ---------------------------in if----------------------";
+        cwarn << "debug001 size:" << m_willChangeList.size();
+        for(auto it = m_willChangeList.begin(); it != m_willChangeList.end();){
+            char before[128] = "";
+            char after[128] = "";
+            unsigned number = 0;
+            sscanf((*it).c_str(), "%[^:]:%[^:]:%u", before, after, &number);
+            Address _before(before);
+            Address _after(after);
+            if(blockNumber >= number){
+                cwarn << "debug001 number is:" << number;
+                changeMiner(_before, _after);
+                it = m_willChangeList.erase(it);
+            }else{
+                it++;
+            }
+        }
+        cwarn << "debug001 after size:" << m_willChangeList.size();
+        for(auto it : m_voteData){
+            cwarn << "debug001 address:" << it.first;
+        }
+        changed();
+    }
+    
     return true;
 }
 

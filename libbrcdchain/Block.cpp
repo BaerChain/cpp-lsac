@@ -631,7 +631,38 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
         BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(
                 bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
     }
-
+    cwarn << "debug001 current blockNumber:" << m_currentBlock.number();
+    Account *a = m_state.getSysAccount();
+    for(auto it : a->voteData()){
+        cwarn << "debug001 before address:" << it.first;
+    }
+    std::vector<std::string>& tmp = a->changeList();
+    if (tmp.size() > 0){
+        a->changeMiner(m_currentBlock.number());
+    }
+    /*if (tmp.size() > 0){
+        cwarn << "debug001 ---------------------------in if----------------------";
+        cwarn << "debug001 size:" << tmp.size();
+        for(auto it = tmp.begin(); it != tmp.end();){
+            char before[128] = "";
+            char after[128] = "";
+            unsigned number = 0;
+            sscanf((*it).c_str(), "%[^:]:%[^:]:%u", before, after, &number);
+            Address _before(before);
+            Address _after(after);
+            if(m_currentBlock.number() >= number){
+                cwarn << "debug001 number is:" << number;
+                a->changeMiner(_before, _after);
+                it = tmp.erase(it);
+                a->changed();
+            }else{
+                it++;
+            }
+        }
+        for(auto it : a->voteData()){
+            cwarn << "debug001 address:" << it.first;
+        }
+    }*/
     return tdIncrease;
 }
 

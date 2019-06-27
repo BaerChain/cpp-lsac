@@ -181,7 +181,6 @@ Account *State::account(Address const &_addr) {
         _blockReward.push_back(_blockpair);
 	}
 
-    cwarn << "debug001 rlp size:" << state.itemCount();
     std::vector<std::string> tmp;
     if(13 == state.itemCount()){
         tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
@@ -624,14 +623,15 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 }
 
 void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-    cwarn << "debug001 in changeMiner";
 	std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_ops[0]);
     Account *a = account(SysVarlitorAddress);
-    if (a->willChangeList().size() > 0)
-    cwarn << "debug001 account before:" << a->willChangeList()[0];
     a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
         
 	
+}
+
+Account* dev::brc::State::getSysAccount(){
+    return account(SysVarlitorAddress);
 }
 
 void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
@@ -1762,7 +1762,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
                 int rlpCount = 12;
-                if (i.second.willChangeList().size() > 0) {
+                if (i.first.hex() == SysVarlitorAddress.hex()) {
                     rlpCount = 13;
                 }
                 RLPStream s(rlpCount);
@@ -1816,9 +1816,9 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
-                if(i.second.willChangeList().size() > 0){
+                cwarn << "------------------------address:" << i.first.hex() << " " << SysVarlitorAddress; //i.first.hex() == SysVarlitorAddress
+                if(i.first.hex() == SysVarlitorAddress.hex()){
                     s << i.second.willChangeList();
-                    cwarn << "debug001 str:" << (i.second.willChangeList())[0];
                 }
                 _state.insert(i.first, &s.out());
             }
