@@ -50,10 +50,13 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
 	SealEngineBase::verify(_s, _bi, _parent, _block);
     std::vector<Address> _v;
 
-    m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, _v);
-	auto ret = find(_v.begin(), _v.end(), _bi.author());
-    if(ret == _v.end())
-		BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
+    if(m_dpos_cleint){
+        m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, _v);
+        auto ret = find(_v.begin(), _v.end(), _bi.author());
+        if(ret == _v.end())
+            BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
+    }
+
 }
 
 void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)

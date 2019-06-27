@@ -392,7 +392,6 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
-            cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
         }
         catch (...) {

@@ -217,7 +217,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 				DEV_WRITE_GUARDED(x_postSeal)
 					m_postSeal = m_working;
 				m_sealingInfo = m_working.info();
-				testlog << " rejigSealing..." << m_sealingInfo.hash((IncludeSeal)(WithoutSign | WithoutSeal));
 				auto author = m_working.author();
 
 				if(!m_params.m_block_addr_keys.count(author)){
