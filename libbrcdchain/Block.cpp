@@ -605,11 +605,7 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     assert(_bc.sealEngine());
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
-    update_miner(m_currentBlock.number());
-
-
-
-
+    update_miner();
 
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
@@ -638,29 +634,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
                 bigint(m_currentBlock.gasUsed()), bigint(gasUsed())));
     }
 
-    /*if (tmp.size() > 0){
-        cwarn << "debug001 ---------------------------in if----------------------";
-        cwarn << "debug001 size:" << tmp.size();
-        for(auto it = tmp.begin(); it != tmp.end();){
-            char before[128] = "";
-            char after[128] = "";
-            unsigned number = 0;
-            sscanf((*it).c_str(), "%[^:]:%[^:]:%u", before, after, &number);
-            Address _before(before);
-            Address _after(after);
-            if(m_currentBlock.number() >= number){
-                cwarn << "debug001 number is:" << number;
-                a->changeMiner(_before, _after);
-                it = tmp.erase(it);
-                a->changed();
-            }else{
-                it++;
-            }
-        }
-        for(auto it : a->voteData()){
-            cwarn << "debug001 address:" << it.first;
-        }
-    }*/
     return tdIncrease;
 }
 
@@ -696,15 +669,12 @@ void Block::applyRewards(vector<BlockHeader> const &_uncleBlockHeaders, u256 con
     m_state.addBalance(m_currentBlock.author(), r);*/
 }
 
-void Block::update_miner(unsigned block_height)
+void Block::update_miner()
 {
-    cwarn << "debug001 current blockNumber:" << m_currentBlock.number();
     Account *a = m_state.getSysAccount();
-    for(auto it : a->voteData()){
-        cwarn << "debug001 before address:" << it.first;
-    }
     std::vector<std::string>& tmp = a->changeList();
     if (tmp.size() > 0){
+        cwarn << "current will change list size:" << tmp.size();
         a->changeMiner(m_currentBlock.number());
     }
 }
@@ -813,7 +783,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     assert(_bc.sealEngine());
     applyRewards(uncleBlockHeaders, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
-    update_miner(m_currentBlock.number());
+    update_miner();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =

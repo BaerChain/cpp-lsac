@@ -274,7 +274,7 @@ public:
 
     bool insertMiner(Address before, Address after, unsigned blockNumber);
     bool changeMiner(unsigned blockNumber);
-    bool changeMiner(Address before, Address after);
+    bool changeVoteData(Address before, Address after);
 
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }

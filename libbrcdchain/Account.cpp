@@ -94,7 +94,7 @@ bool dev::brc::Account::insertMiner(Address before, Address after, unsigned bloc
     return true;
 }
 
-bool dev::brc::Account::changeMiner(Address before, Address after)
+bool dev::brc::Account::changeVoteData(Address before, Address after)
 {
     std::map<Address, u256>::iterator del = m_voteData.find(before);
     if (del != m_voteData.end()){
@@ -110,8 +110,6 @@ bool dev::brc::Account::changeMiner(Address before, Address after)
 bool dev::brc::Account::changeMiner(unsigned blockNumber)
 {
     if (m_willChangeList.size() > 0){
-        cwarn << "debug001 ---------------------------in if----------------------";
-        cwarn << "debug001 size:" << m_willChangeList.size();
         for(auto it = m_willChangeList.begin(); it != m_willChangeList.end();){
             char before[128] = "";
             char after[128] = "";
@@ -120,16 +118,11 @@ bool dev::brc::Account::changeMiner(unsigned blockNumber)
             Address _before(before);
             Address _after(after);
             if(blockNumber >= number){
-                cwarn << "debug001 number is:" << number;
-                changeMiner(_before, _after);
+                changeVoteData(_before, _after);
                 it = m_willChangeList.erase(it);
             }else{
                 it++;
             }
-        }
-        cwarn << "debug001 after size:" << m_willChangeList.size();
-        for(auto it : m_voteData){
-            cwarn << "debug001 address:" << it.first;
         }
         changed();
     }

@@ -1816,7 +1816,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
-                cwarn << "------------------------address:" << i.first.hex() << " " << SysVarlitorAddress; //i.first.hex() == SysVarlitorAddress
+
                 if(i.first.hex() == SysVarlitorAddress.hex()){
                     s << i.second.willChangeList();
                 }
