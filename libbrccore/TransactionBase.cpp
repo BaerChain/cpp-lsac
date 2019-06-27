@@ -28,8 +28,34 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
     }
 }
 
+dev::brc::TransactionBase::TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret> _secrets)
+    : m_type(_ts.creation ? ContractCreation : MessageCall),
+	m_nonce(_ts.nonce),
+	m_value(_ts.value),
+	m_receiveAddress(_ts.to),
+	m_gasPrice(_ts.gasPrice),
+	m_gas(_ts.gas),
+	m_data(_ts.data),
+	m_sender(_ts.from)
+{	
+	if(m_receiveAddress == VoteAddress)
+		m_type = VoteMassage;
 
-TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
+	for(auto &_s : _secrets){
+		if(_s.second){
+			if(_s.first != KeyPair(_s.second).pub()){
+				cerror << " private_key is error!";
+				continue;
+			}
+			SignatureStruct _sign = get_sign(_s.second);
+			if(_sign.isValid())
+				m_sign_vrs[_s.first]= _sign;
+		}
+	}
+
+}
+
+TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction /*_checkSig*/)
 {
     RLP const rlp(_rlpData);
     try
@@ -37,7 +63,6 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         if (!rlp.isList())
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment("transaction RLP must be a list"));
-
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
         m_gas = rlp[2].toInt<u256>();
@@ -53,36 +78,40 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         if (!rlp[5].isData())
             BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
                                   << errinfo_comment("transaction data RLP must be an array"));
-
         m_data = rlp[5].toBytes();
-        int const v = rlp[6].toInt<int>();
-        h256 const r = rlp[7].toInt<u256>();
-        h256 const s = rlp[8].toInt<u256>();
-        if (isZeroSignature(r, s))
-        {
-            m_chainId = v;
-            m_vrs = SignatureStruct{r, s, 0};
-        }
-        else
-        {
-            if (v > 36)
-                m_chainId = (v - 35) / 2;
-            else if (v == 27 || v == 28)
-                m_chainId = -4;
-            else
-                BOOST_THROW_EXCEPTION(InvalidSignature());
-            m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
+		m_sender = rlp[6].convert<Address>(RLP::LaissezFaire);
+
+		bytes _bs = rlp[7].toBytes();
+		populate_signs(_bs);
+
+		/*int const v = rlp[6].toInt<int>();
+		h256 const r = rlp[7].toInt<u256>();
+		h256 const s = rlp[8].toInt<u256>();
+		if (isZeroSignature(r, s))
+		{
+			m_chainId = v;
+			m_vrs = SignatureStruct{r, s, 0};
+		}
+		else
+		{
+			if (v > 36)
+				m_chainId = (v - 35) / 2;
+			else if (v == 27 || v == 28)
+				m_chainId = -4;
+			else
+				BOOST_THROW_EXCEPTION(InvalidSignature());
+			m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
 
 
-            if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid()){
-                BOOST_THROW_EXCEPTION(InvalidSignature());
-            }
+			if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid()){
+				BOOST_THROW_EXCEPTION(InvalidSignature());
+			}
 
-        }
-        if (_checkSig == CheckTransaction::Everything)
-            m_sender = sender();
+		}
+		if (_checkSig == CheckTransaction::Everything)
+			m_sender = sender();*/
 
-        if (rlp.itemCount() > 9 /*10*/)
+        if (rlp.itemCount() > 7 /*10*/)
             BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
                                   << errinfo_comment("too many fields in the transaction RLP"));
     }
@@ -92,6 +121,27 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
             "invalid transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
         cwarn << _e.what();
         throw;
+    }
+}
+
+void dev::brc::TransactionBase::populate_signs(bytes const& _data){
+	RLP _r(_data);
+	std::vector<bytes> _bs = _r[0].toVector<bytes>();
+    for (auto const& _b : _bs){
+		RLP rlp(_b);
+		Public _pk = rlp[0].convert<Public>(RLP::LaissezFaire);
+		int const v = rlp[1].toInt<int>();
+		h256 const r = rlp[2].toInt<u256>();
+		h256 const s = rlp[3].toInt<u256>();
+		if(v > 36)
+			m_chainId = (v - 35) / 2;
+		else if(v == 27 || v == 28)
+			m_chainId = -4;
+		else
+			BOOST_THROW_EXCEPTION(InvalidSignature());
+	    //m_vrs = SignatureStruct { r, s, static_cast<byte>(v - (m_chainId * 2 + 35)) };
+		testlog << BrcYellow << " populate:" << _pk << " | " << v << " | " << r << " | " << s << " chain_id:"<< m_chainId<< BrcReset;
+		m_sign_vrs[_pk] = SignatureStruct( r, s, static_cast<byte>(v - (m_chainId * 2 + 35)) );
     }
 }
 
@@ -145,6 +195,12 @@ void TransactionBase::sign(Secret const& _priv)
         m_vrs = sigStruct;
 }
 
+SignatureStruct dev::brc::TransactionBase::get_sign(Secret const & _priv){
+	auto sig = dev::sign(_priv, sha3(WithoutSignature));
+	SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
+	return sigStruct;
+}
+
 bool dev::brc::TransactionBase::isVoteTranction() const
 {
     if (m_receiveAddress != VoteAddress)
@@ -158,16 +214,23 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
     if (m_type == NullTransaction)
         return;
 
-    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
+	//_s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
+	_s.appendList((_sig || _forEip155hash ? 1 : 0) + 7);
     _s << m_nonce << m_gasPrice << m_gas;
     if (m_type == MessageCall || m_type == VoteMassage)
         _s << m_receiveAddress;
     else
         _s << "";
-    _s << m_value << m_data;
+    _s << m_value << m_data << m_sender;
 
-    if (_sig)
+	if(_sig)
+		_s << streamRLPSign(false);
+	else if(_forEip155hash)
+		_s << streamRLPSign(true);
+
+   /* if (_sig)
     {
+       
         if (!m_vrs)
             BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
 
@@ -181,12 +244,39 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
         _s << (u256)m_vrs->r << (u256)m_vrs->s;
     }
     else if (_forEip155hash)
-        _s << m_chainId << 0 << 0;
+        _s << m_chainId << 0 << 0;*/
 
-    /*if (m_type == VoteMassage)
-    {
-        _s << m_type;
-    }*/
+}
+
+dev::bytes dev::brc::TransactionBase::streamRLPSign(bool _forEip155hash) const{
+	RLPStream _s;
+	std::vector<bytes> _vbs;
+    for(auto const& _vrs: m_sign_vrs){
+		RLPStream _b(4);
+		if(!_forEip155hash){
+			if(!_vrs.second)
+				BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
+
+			/*if(hasZeroSignature())
+				_b << m_chainId;
+			else{
+				int const vOffset = m_chainId * 2 + 35 + _vrs->v;
+				_b << (vOffset);
+			}*/
+			_b << _vrs.first;
+			int const vOffset = m_chainId * 2 + 35 + _vrs.second->v;
+			_b << (vOffset);
+			_b << (u256)_vrs.second->r << (u256)_vrs.second->s;
+		}
+		else
+			_b << m_chainId << 0 << 0;
+		RLP _r(_b.out());
+		testlog << BrcYellow " sign:" <<_r[0].convert<Public>(RLP::LaissezFaire)<< " | "<<  
+			                        _r[1].toInt<int>() << " | " << _r[2].toInt<u256>() << " | " << _r[3].toInt<u256>() << BrcReset;
+		_vbs.push_back(_b.out());
+	}
+	_s.appendVector<bytes>(_vbs);
+	return _s.out();
 }
 
 static const u256 c_secp256k1n(

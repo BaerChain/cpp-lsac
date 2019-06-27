@@ -40,6 +40,9 @@ public:
     TransactionBase(TransactionSkeleton const& _ts, Secret const& _s = Secret());
     //TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
+    /// many Secret to sign
+	TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret> _secrets);
+
     /// Constructs a signed message-call transaction.
     TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
 
@@ -148,6 +151,14 @@ public:
 
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(bool _contractCreation, bytesConstRef _data, BRCSchedule const& _es);
+   
+	/// interface for sign many
+public:
+	SignatureStruct get_sign(Secret const& _priv);
+	bool has_zero_signatures() const{ return !m_sign_vrs.empty(); }
+private:
+	bytes streamRLPSign(bool _forEip155hash) const;
+	void  populate_signs(bytes const& _data);
 
 protected:
     /// Type of transaction.
@@ -165,6 +176,7 @@ protected:
     void clearSignature() { m_vrs = SignatureStruct(); }
 public:
     Type type() const { return m_type; }
+
 protected:
     Type m_type = NullTransaction;        ///< Is this a contract-creation transaction or a message-call transaction?
     u256 m_nonce;                        ///< The transaction-count of the sender.
@@ -178,6 +190,9 @@ protected:
 
     mutable h256 m_hashWith;            ///< Cached hash of transaction with signature.
     mutable Address m_sender;            ///< Cached sender, determined from signature.
+
+	//std::vector<boost::optional<SignatureStruct>> m_sign_vrs;
+	std::map<Public, boost::optional<SignatureStruct>> m_sign_vrs;
 };
 
 /// Nice name for vector of Transaction.
