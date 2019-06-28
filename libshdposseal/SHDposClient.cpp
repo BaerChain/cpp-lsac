@@ -174,8 +174,10 @@ void dev::bacd::SHDposClient::rejigSealing()
         return;
     }
 
-	if (!verifyVarlitorPrivatrKey())
-        return;
+	if (!verifyVarlitorPrivatrKey()){
+		cwarn << "not find private key..";
+		return;
+	}
 
 	if((wouldSeal() || remoteActive()) && !isMajorSyncing())
 	{
