@@ -10,7 +10,7 @@
 #include <libbrccore/CommonJS.h>
 #include <libbvm/LegacyVM.h>
 #include <libbvm/VMFactory.h>
-
+#include <libdevcrypto/Common.h>
 #include <json/json.h>
 #include <boost/timer.hpp>
 
@@ -222,7 +222,24 @@ void Executive::initialize(Transaction const& _transaction)
 	}
     {
         //verify public_key weight
+        // the total weight must bigger 100
 		testlog << "start verfy weight...";
+		auto signs= m_t.sign_structs();
+		if(signs.empty()){
+			BOOST_THROW_EXCEPTION(ZeroSignatureTransaction() << errinfo_comment(std::string("the transaction  ZeroSignature")));
+		}
+		auto account_control = m_s.account_controls(m_t.sender());
+		size_t weight = 0;
+        for(auto const& pb: signs){
+			if(account_control.count(pb.first)){
+				weight += account_control[pb.first].m_weight;
+			}else if(m_t.sender() == dev::toAddress(pb.first)){
+				weight += MAXWEIGHT;
+			}
+		}
+		if(weight < MAXWEIGHT)
+			BOOST_THROW_EXCEPTION(NotEnoughWeightTransaction() << errinfo_comment(std::string("the transaction not enough weight:" + std::to_string(weight))));
+		testlog << " weight:" << weight;
         // Avoid invalid transactions.
         u256 nonceReq;
         try

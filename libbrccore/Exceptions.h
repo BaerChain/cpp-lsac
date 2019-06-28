@@ -82,6 +82,8 @@ DEV_SIMPLE_EXCEPTION(BlockIsTooOld);
 DEV_SIMPLE_EXCEPTION(AddressAlreadyUsed);
 DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(TooMuchTransaction);
+DEV_SIMPLE_EXCEPTION(NotEnoughWeightTransaction);
+DEV_SIMPLE_EXCEPTION(NotEnoughAuthorityTransaction);
 DEV_SIMPLE_EXCEPTION(UnknownTransactionValidationError);
 DEV_SIMPLE_EXCEPTION(UnknownError);
 

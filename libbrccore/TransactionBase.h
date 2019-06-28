@@ -160,7 +160,7 @@ public:
 	Address unsign_sender() const { return m_sender; }
     
 	///@return signs
-	std::map<Public, boost::optional<SignatureStruct>> sign_structs() const { return m_sign_vrs; }
+	std::map<Public, boost::optional<SignatureStruct>>const& sign_structs() const { return m_sign_vrs; }
 private:
 	bytes streamRLPSign(bool _forEip155hash) const;
 	void  populate_signs(bytes const& _data);

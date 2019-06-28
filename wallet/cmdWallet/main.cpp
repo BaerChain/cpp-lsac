@@ -366,6 +366,12 @@ void generate_key(const std::string &seed){
 	std::cout << "Pubilc     : " << key_pair.pub() << std::endl;
 
 }
+void get_public_by_58key(const std::string & _key){
+	auto _keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(_key)));
+	std::cout << "public    :" << _keyPair.pub() << std::endl;
+	std::cout << "address   : " << _keyPair.address() << std::endl;
+
+}
 
 
 int main(int argc, char *argv[]) {
@@ -379,7 +385,8 @@ int main(int argc, char *argv[]) {
                 ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
                 ("create,c", "create simple \"data.json\" to file on current path.")
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
-                ("sha3", bpo::value<std::string>(), "caculate string sha3.")
+			    ("sha3", bpo::value<std::string>(), "caculate string sha3.")
+			    ("pub-by-key,p", bpo::value<std::string>(), "get public_key buy private_key.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -416,6 +423,9 @@ int main(int argc, char *argv[]) {
         if (args_map.count("generate-key")) {
             generate_key(args_map["generate-key"].as<std::string>());
         }
+        if(args_map.count("pub-by-key")){
+			get_public_by_58key(args_map["pub-by-key"].as<std::string>());
+		}
 
         if(args_map.count("sha3")){
             auto ret = sha3(args_map["sha3"].as<std::string>());

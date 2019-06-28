@@ -927,6 +927,16 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(e))
 			ret += std::string(*_error);
 	}
+	catch(NotEnoughWeightTransaction const& e){
+		ret = "transaction verify verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(e))
+			ret += std::string(*_error);
+	}
+	catch(NotEnoughAuthorityTransaction const& e){
+		ret = "transaction Authority verify is error :";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(e))
+			ret += std::string(*_error);
+	}
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";

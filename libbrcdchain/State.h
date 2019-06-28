@@ -52,6 +52,13 @@ class State;
 class TransactionQueue;
 struct VerifiedBlockRef;
 
+#define BRCNUM 1000
+#define COOKIENUM 100000000000
+#define PUBLICNUM 3
+#define MAXWEIGHT 100
+#define MINWEIGHT 1
+#define ZEROWEIGHT 0
+
 enum class BaseState
 {
     PreExisting,

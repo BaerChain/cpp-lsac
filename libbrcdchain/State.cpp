@@ -20,10 +20,6 @@ using namespace dev::brc::ex;
 
 namespace fs = boost::filesystem;
 
-#define BRCNUM 1000
-#define COOKIENUM 100000000000
-#define PUBLICNUM 3
-
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
@@ -1601,17 +1597,17 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("account_control type is error!")));
 		}
         // verfy weight
-        if(pen->m_weight == 0 && pen->m_authority != 0)
+        if(pen->m_weight == ZEROWEIGHT && pen->m_authority != 0)
             BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight is zero and have m_authority")));
-        if(pen->m_weight < 0 || pen->m_weight > 100){
+        if(pen->m_weight < MINWEIGHT || pen->m_weight > MAXWEIGHT){
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string(" account's weight out of range: [1,100]")));
 		}
 		testlog << " verfy pen->m_weight:" << pen->m_weight << " pen->m_authority:" << pen->m_authority << "" << pen->m_control_addr;
 
         std::pair<size_t, uint64_t> _pair = a->accountControl(pen->m_control_addr);
-        if(_pair.first == 0 && _pair.second == 0)
+        if(_pair.first == ZEROWEIGHT && _pair.second == ZEROWEIGHT)
             pub_control_num += 1;
-        if(pen->m_weight == 0 && pen->m_authority == 0)
+        if(pen->m_weight == ZEROWEIGHT && pen->m_authority == 0)
             pub_control_num -= 1;
         if(_pair.first == pen->m_weight && _pair.second == pen->m_authority)
             BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight and m_authority is the same!")));    
