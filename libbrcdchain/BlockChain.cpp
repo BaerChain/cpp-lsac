@@ -703,8 +703,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             std::ostringstream os;
             os << "size : " << itr.size() << "  ";
             for (auto detail : itr) {
-                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: "
-                   << detail.info.parentHash() << " |";
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash().abridged() << " p: "
+                   << detail.info.parentHash().abridged() << " |";
             }
             cwarn << os.str();
         }
