@@ -369,30 +369,32 @@ void Executive::initialize(Transaction const& _transaction)
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
                         }
                         // check sign
-                        if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature)){
+                        if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature, false)){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
                         }
 
                         auto addrMap = m_vote.VarlitorsAddress();
+                        auto currentCheckerCount = addrMap.size() - addrMap.size() / 3;
 
                         // check Permission
                         if (0 == addrMap.count(m_t.sender())){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Permission denied"));
                         }
                                                 
-                        // check other node sign and num >= 14
-                        
-                        int count = 0;
+                        // check other node sign and num >= 2/3(include own)
+                        int count = 1;
                         for(auto data : _changeMiner_op.m_agreeMsgs){
-                            auto addr = _changeMiner_op.get_sign_data_address(data);
+                            auto addr = _changeMiner_op.get_sign_data_address(data, true);
+                            if(addr == m_t.sender()){
+                                continue;
+                            }
                             if(addrMap.count(addr)){
                                 count++;
                             }
                         }
-                        if(count < 14){
+                        if(count < currentCheckerCount){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
                         }
-                        
 					}
 					catch(Exception &ex)
 					{

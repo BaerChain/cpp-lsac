@@ -673,8 +673,9 @@ void Block::update_miner()
 {
     Account *a = m_state.getSysAccount();
     std::vector<std::string>& tmp = a->changeList();
+    auto blockNumber = m_currentBlock.number();
     if (tmp.size() > 0){
-        cwarn << "current will change list size:" << tmp.size();
+        cwarn << "change miner block number is " << blockNumber << ",current will change list size:" << tmp.size();
         a->changeMiner(m_currentBlock.number());
     }
 }

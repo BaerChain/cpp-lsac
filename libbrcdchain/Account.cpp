@@ -115,6 +115,7 @@ bool dev::brc::Account::changeMiner(unsigned blockNumber)
             char after[128] = "";
             unsigned number = 0;
             sscanf((*it).c_str(), "%[^:]:%[^:]:%u", before, after, &number);
+            cwarn << "change miner from " << before << " to " << after;
             Address _before(before);
             Address _after(after);
             if(blockNumber >= number){
