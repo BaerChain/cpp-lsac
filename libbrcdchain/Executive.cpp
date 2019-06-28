@@ -375,7 +375,6 @@ void Executive::initialize(Transaction const& _transaction)
 
                         auto addrMap = m_vote.VarlitorsAddress();
                         auto currentCheckerCount = addrMap.size() - addrMap.size() / 3;
-cwarn<<"debug001 currentCount:" << currentCheckerCount;
 
                         // check Permission
                         if (0 == addrMap.count(m_t.sender())){
@@ -393,7 +392,6 @@ cwarn<<"debug001 currentCount:" << currentCheckerCount;
                                 count++;
                             }
                         }
-cwarn<<"debug001 calc count:" << count;
                         if(count < currentCheckerCount){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
                         }
