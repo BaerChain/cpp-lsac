@@ -242,22 +242,36 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
         //获取私钥
 
-        std::map<Address, Secret> keys;
+		std::set<Public> _pb;
+        if(obj.count("Public")){
+		    for(auto const& _p: obj["Public"].get_array()){
+				_pb.insert(Public(_p.get_str()));
+			}
+		}
+
+        std::map<Public, Secret> keys;
         if (obj.count("keys")) {
             for (auto &obj : obj["keys"].get_array()) {
                 auto key = obj.get_str();
                 auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                keys[keyPair.address()] = keyPair.secret();
+                keys[keyPair.pub()] = keyPair.secret();
             }
         } else {
             std::cout << "not find key.....\n";
             exit(1);
         }
 
+		std::map<Public, Secret> _pb_keys;
+        for (auto p: _pb)
+        {
+			if(keys.count(p))
+				_pb_keys[p] = keys[p];
+        }
+
         //数据签名
         std::vector<brc::Transaction> sign_trxs;
         for (auto &t : trx_datas) {
-            if (keys.count(t.from)) {
+            if (!_pb_keys.empty()) {
 				brc::TransactionSkeleton ts;
                 if(t.isContract == trx_source::Contract::null)
 				{
@@ -281,15 +295,18 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 ts.gas = t.gas;
                 ts.gasPrice = t.gasPrice;
 
-                brc::Transaction sign_t(ts, keys[t.from]);
+				//brc::Transaction sign_t(ts, keys[t.from]);
+				brc::Transaction sign_t(ts, _pb_keys);
 
 //                auto sssss = dev::brc::toJson(sign_t);
 //                cerror << "test: " << sssss << std::endl;
+				std::cout << toHexPrefixed(sign_t.rlp()) << std::endl;
                 if (_is_send) {
                     sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
                 }
             } else {
-                std::cout << "please input address: " << t.from << " private key.";
+				//std::cout << "please input address: " << t.from << " private key.";
+				std::cout << "the key_map is empty! please input public and key: " ;
                 exit(1);
             }
         }
@@ -343,7 +360,7 @@ void write_simple_to_file(const bfs1::path &path) {
 void generate_key(const std::string &seed){
     auto key_pair = KeyPair::create();
     auto sec = key_pair.secret();
-	std::cout << "private key : " <<sec << std::endl;
+	//std::cout << "private key : " <<sec << std::endl;
     std::cout << "private key base58: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
     std::cout << "address    : " << key_pair.address() << std::endl;
 	std::cout << "Pubilc     : " << key_pair.pub() << std::endl;
@@ -408,7 +425,8 @@ int main(int argc, char *argv[]) {
         cwarn << e.what();
     }catch (const boost::exception &e){
         cwarn << boost::diagnostic_information(e);
-    }catch (...){
+	}
+	catch (...){
         cwarn << "unkown exception ....";
     }
 

@@ -28,7 +28,7 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
     }
 }
 
-dev::brc::TransactionBase::TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret> _secrets)
+dev::brc::TransactionBase::TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret>const& _secrets)
     : m_type(_ts.creation ? ContractCreation : MessageCall),
 	m_nonce(_ts.nonce),
 	m_value(_ts.value),
@@ -55,7 +55,7 @@ dev::brc::TransactionBase::TransactionBase(TransactionSkeleton const& _ts, std::
 
 }
 
-TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction /*_checkSig*/)
+TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
     RLP const rlp(_rlpData);
     try
@@ -84,6 +84,10 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction /*_che
 		bytes _bs = rlp[7].toBytes();
 		populate_signs(_bs);
 
+		if(_checkSig >= CheckTransaction::Cheap){
+			verify_signs();
+		}
+
 		/*int const v = rlp[6].toInt<int>();
 		h256 const r = rlp[7].toInt<u256>();
 		h256 const s = rlp[8].toInt<u256>();
@@ -111,7 +115,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction /*_che
 		if (_checkSig == CheckTransaction::Everything)
 			m_sender = sender();*/
 
-        if (rlp.itemCount() > 7 /*10*/)
+        if (rlp.itemCount() > 8 /*10*/)
             BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
                                   << errinfo_comment("too many fields in the transaction RLP"));
     }
@@ -126,7 +130,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction /*_che
 
 void dev::brc::TransactionBase::populate_signs(bytes const& _data){
 	RLP _r(_data);
-	std::vector<bytes> _bs = _r[0].toVector<bytes>();
+	std::vector<bytes> _bs = _r.toVector<bytes>();
     for (auto const& _b : _bs){
 		RLP rlp(_b);
 		Public _pk = rlp[0].convert<Public>(RLP::LaissezFaire);
@@ -145,6 +149,29 @@ void dev::brc::TransactionBase::populate_signs(bytes const& _data){
     }
 }
 
+
+void dev::brc::TransactionBase::verify_signs(){
+	if(m_sign_vrs.empty()){
+		cerror << "not have sign_data!";
+		BOOST_THROW_EXCEPTION(InvalidSignature());
+	}
+	for(auto & _it : m_sign_vrs){
+		if(!_it.second)
+			BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
+		auto h_sha3 = sha3(WithoutSignature);
+		auto p = recover(*(_it.second), h_sha3);
+		if(!p){
+			testlog << " verfy sign error!";
+			BOOST_THROW_EXCEPTION(InvalidSignature());
+		}
+		if(_it.first != p){
+			testlog << " public key not match";
+			BOOST_THROW_EXCEPTION(InvalidSignature());
+		}
+		testlog <<BrcYellow " verfy sign success..." <<BrcReset;
+	}
+}
+
 Address const& TransactionBase::safeSender() const noexcept
 {
     try
@@ -159,23 +186,23 @@ Address const& TransactionBase::safeSender() const noexcept
 
 Address const& TransactionBase::sender() const
 {
-    if (!m_sender)
-    {
+	/*if (!m_sender)
+	{
 
-        if (hasZeroSignature())
-            m_sender = MaxAddress;
-        else
-        {
-            if (!m_vrs)
-                BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
-            auto h_sha3 = sha3(WithoutSignature);
-            auto p = recover(*m_vrs, h_sha3 );
-            if (!p)
-                BOOST_THROW_EXCEPTION(InvalidSignature());
+		if (hasZeroSignature())
+			m_sender = MaxAddress;
+		else
+		{
+			if (!m_vrs)
+				BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
+			auto h_sha3 = sha3(WithoutSignature);
+			auto p = recover(*m_vrs, h_sha3 );
+			if (!p)
+				BOOST_THROW_EXCEPTION(InvalidSignature());
 
-            m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
-        }
-    }
+			m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+		}
+	}*/
     return m_sender;
 }
 

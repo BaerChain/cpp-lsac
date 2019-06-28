@@ -314,8 +314,10 @@ namespace dev
                     : TransactionBase(_ts, _s)
             {}
 
-            /// 创建dpos相关的交易
-            // Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
+            /// many sign 
+			Transaction(TransactionSkeleton const& _ts, std::map<Public, Secret>const& _secrets)
+				: TransactionBase(_ts, _secrets){
+			}
 
             /// Constructs a signed message-call transaction.
             Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,

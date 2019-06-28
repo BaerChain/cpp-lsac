@@ -41,7 +41,7 @@ public:
     //TransactionBase(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
     /// many Secret to sign
-	TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret> _secrets);
+	TransactionBase(TransactionSkeleton const& _ts, std::map<Public, Secret>const& _secrets);
 
     /// Constructs a signed message-call transaction.
     TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
@@ -155,10 +155,18 @@ public:
 	/// interface for sign many
 public:
 	SignatureStruct get_sign(Secret const& _priv);
-	bool has_zero_signatures() const{ return !m_sign_vrs.empty(); }
+	bool has_zero_signatures() const{ return m_sign_vrs.empty(); }
+    ///@return transaction sender
+	Address unsign_sender() const { return m_sender; }
+    
+	///@return signs
+	std::map<Public, boost::optional<SignatureStruct>> sign_structs() const { return m_sign_vrs; }
 private:
 	bytes streamRLPSign(bool _forEip155hash) const;
 	void  populate_signs(bytes const& _data);
+
+    /// verify signs if have some error throw Exception 
+	void verify_signs();
 
 protected:
     /// Type of transaction.

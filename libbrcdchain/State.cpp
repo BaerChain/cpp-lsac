@@ -185,7 +185,6 @@ Account *State::account(Address const &_addr) {
 	const bytes _control_account = state[12].toBytes();
 	RLP _rlp_control_account(_control_account);
 	num = _rlp_control_account[0].toInt<size_t>();
-	testlog << " num :" << num;
 	std::map<Public, AccountControl> _control_accounts;
 	for(size_t k = 1; k <= num; k++){
 		std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
@@ -1561,6 +1560,13 @@ std::pair<size_t, uint64_t> dev::brc::State::account_control(Address const& _add
 }
 
 
+std::map<dev::Public, dev::brc::AccountControl> dev::brc::State::account_controls(Address const& _addr) const{
+	if(auto a = account(_addr))
+		return a->controlAccounts();
+	else
+		return std::map<dev::Public, dev::brc::AccountControl>();
+}
+
 void dev::brc::State::set_account_control(Address const& _addr, Public const& _pk, size_t weight, uint64_t authority){
 	Account *a = account(_addr);
     if(!a){
@@ -1616,7 +1622,6 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
 
 
 void dev::brc::State::execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	testlog << "execute_account_control ... ";
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::control_acconut_operation> pen = std::dynamic_pointer_cast<transationTool::control_acconut_operation>(val);
 		if(!pen){
@@ -1903,7 +1908,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					size_t _num = i.second.controlAccounts().size();
 					_rlp.appendList(_num + 1);
 					_rlp << _num;
-					testlog << " _num" << _num;
 					for(auto it : i.second.controlAccounts()){
 						_rlp.append<Public, bytes>(std::make_pair(it.first, it.second.streamRLP()));
 					}

@@ -217,8 +217,12 @@ void Executive::initialize(Transaction const& _transaction)
         throw;
     }
 
-    if (!m_t.hasZeroSignature())
+    if (m_t.has_zero_signatures()){
+		cerror << " the transaction has zero_signatures...";
+	}
     {
+        //verify public_key weight
+		testlog << "start verfy weight...";
         // Avoid invalid transactions.
         u256 nonceReq;
         try
