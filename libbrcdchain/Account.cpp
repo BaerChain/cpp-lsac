@@ -115,11 +115,11 @@ bool dev::brc::Account::changeMiner(unsigned blockNumber)
             char after[128] = "";
             unsigned number = 0;
             sscanf((*it).c_str(), "%[^:]:%[^:]:%u", before, after, &number);
-            cwarn << "change miner from " << before << " to " << after;
             Address _before(before);
             Address _after(after);
             if(blockNumber >= number){
                 changeVoteData(_before, _after);
+                cwarn << "blockNumber is " << blockNumber << ",change miner from " << before << " to " << after;
                 it = m_willChangeList.erase(it);
             }else{
                 it++;

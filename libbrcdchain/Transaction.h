@@ -184,7 +184,11 @@ namespace dev
 
                 OPERATION_SERIALIZE((m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
                 Address get_sign_data_address(Signature _signData, bool isOtherSigned){
-                    RLPStream s(3);
+                    int count = 3;
+                    if (isOtherSigned){
+                        count = 4;
+                    }
+                    RLPStream s(count);
                     s.append(m_before);
                     s.append(m_after);
                     s.append(m_blockNumber);
