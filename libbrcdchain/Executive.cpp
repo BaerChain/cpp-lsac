@@ -383,6 +383,8 @@ void Executive::initialize(Transaction const& _transaction)
                                                 
                         // check other node sign and num >= 2/3(include own)
                         int count = 1;
+                        sort(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end());
+                        _changeMiner_op.m_agreeMsgs.erase(unique(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end()), _changeMiner_op.m_agreeMsgs.end());
                         for(auto data : _changeMiner_op.m_agreeMsgs){
                             auto addr = _changeMiner_op.get_sign_data_address(data, true);
                             if(addr == m_t.sender()){
