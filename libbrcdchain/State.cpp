@@ -1578,17 +1578,20 @@ void dev::brc::State::addVote(Address const &_id, Address const &_recivedAddr, u
 
 void dev::brc::State::initBallot(Address const &_id, Address const &_recivedAddr, u256 _value) {
     Account *a = account(_id);
-    Account *rec_a = account(_recivedAddr);
-    if (a && rec_a) {
-        rec_a->addPoll(_value);
-        a->addVote(std::make_pair(_recivedAddr, _value));
-    } else {
-        createAccount(_recivedAddr, {_value});
+    if (!a){
         createAccount(_id, {0});
         a = account(_id);
-        a->addVote(std::make_pair(_recivedAddr, _value));
     }
-        
+    Account *rec_a = account(_recivedAddr);
+    if (!rec_a){
+        createAccount(_recivedAddr, {0});
+        rec_a = account(_recivedAddr);
+    }
+
+    rec_a->addPoll(_value);
+    a->addVote(std::make_pair(_recivedAddr, _value));
+    cwarn << "initballot " << rec_a->ballot() << " value:" << _value.str();
+    
     if (_value) {
         m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, _value));
         m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);

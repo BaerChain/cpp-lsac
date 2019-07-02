@@ -1727,10 +1727,10 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
     Block ret(*this, _db, _exdb, BaseState::Empty);
     if (!_db.exists(r)) {
         ret.noteChain(*this);
+        ret.mutableState().initVoteData(m_params.m_vote_datas);
         dev::brc::commit(m_params.genesisState,
                          ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
         ret.mutableState().systemPendingorder(ret.info().timestamp());
-        ret.mutableState().initVoteData(m_params.m_vote_datas);
         ret.mutableState().db().commit();
         initVoteData();
         // have to use this db() since it's the one that has been altered with the above commit.
