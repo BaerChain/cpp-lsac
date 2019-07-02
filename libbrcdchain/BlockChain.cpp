@@ -392,6 +392,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
+            cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
         }
         catch (...) {
@@ -1729,7 +1730,9 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
         dev::brc::commit(m_params.genesisState,
                          ret.mutableState().m_state);        // bit horrible. maybe consider a better way of constructing it?
         ret.mutableState().systemPendingorder(ret.info().timestamp());
+        ret.mutableState().initVoteData(m_params.m_vote_datas);
         ret.mutableState().db().commit();
+        initVoteData();
         // have to use this db() since it's the one that has been altered with the above commit.
         if (ret.mutableState().rootHash() != r) {
             cwarn << "Hinted genesis block's state root hash is incorrect!";
@@ -1743,7 +1746,10 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
     ret.resetCurrent();
     return ret;
 }
+void BlockChain::initVoteData() const {
+    cwarn << "________________________________initVoteData____________________________________";
 
+}
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
     VerifiedBlockRef res;

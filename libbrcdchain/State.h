@@ -5,6 +5,7 @@
 #include "SecureTrieDB.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
+#include "ChainParams.h"
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
@@ -363,6 +364,7 @@ public:
 
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
+    void initVoteData(const std::vector<voteData>& data);
 
 private:
     //投票数据
@@ -372,6 +374,7 @@ private:
     u256 voteAdress(Address const& _id, Address const& _recivedAddr) const;
     //投票
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value);
+    void initBallot(Address const& _id, Address const& _recivedAddr, u256 _value);
     //撤销投票
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     //获取指定地址的voteDate

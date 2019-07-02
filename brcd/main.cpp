@@ -227,17 +227,18 @@ int main(int argc, char **argv) {
     strings passwordsToNote;
     Secrets toImport;
 	MinerCLI miner(MinerCLI::OperationMode::None);
-    
+
+    bool listenSet = false;
     bool chainConfigIsSet = false;
     bool chainAccountJsonIsSet = false;
-    bool listenSet = false;
-
-
+    bool voteDataJsonIsSet = false;
     fs::path configPath;
     string configJSON;
 
 	fs::path accountPath;
     string accountJSON;
+    fs::path voteDataPath;
+    string voteDataJSON;
 
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
@@ -249,6 +250,8 @@ int main(int argc, char **argv) {
                     "Configure specialised blockchain using given JSON information\n");
     addClientOption("accountJson", po::value<string>()->value_name("<file>"),
         "AccountJson specialised blockchain using given JSON information\n");
+    addClientOption("voteData", po::value<string>()->value_name("<file>"),
+                    "Initial voting data\n");
     addClientOption("mode,o", po::value<string>()->value_name("<full/peer>"),
                     "Start a full node or a peer node (default: full)\n");
     addClientOption("ipc", "Enable IPC server (default: on)");
@@ -537,6 +540,26 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
+    if (vm.count("voteData"))
+    {
+        try
+        {
+            voteDataPath = vm["voteData"].as<string>();
+            voteDataJSON = contentsString(voteDataPath.string());
+            cwarn << "main voteDataJSON:" << voteDataJSON;
+            if (voteDataJSON.empty())
+            {
+                cerr << "voteData file not found or empty (" << voteDataPath.string() << ")\n";
+                //return -1;
+            }
+        }
+        catch (...)
+        {
+            cerr << "Bad --voteData option: " << vm["voteData"].as<string>() << "\n";
+            return -1;
+        }
+    }
+
     if (vm.count("extra-data")) {
         try {
             extraData = fromHex(vm["extra-data"].as<string>());
@@ -550,11 +573,13 @@ int main(int argc, char **argv) {
         chainParams = ChainParams(genesisInfo(brc::Network::MainNetwork), genesisStateRoot(brc::Network::MainNetwork));
         chainConfigIsSet = true;
         chainAccountJsonIsSet = true;
+        voteDataJsonIsSet = true;
     }
     if (vm.count("ropsten")) {
         chainParams = ChainParams(genesisInfo(brc::Network::Ropsten), genesisStateRoot(brc::Network::Ropsten));
         chainConfigIsSet = true;
         chainAccountJsonIsSet = true;
+        voteDataJsonIsSet = true;
     }
     if (vm.count("ask")) {
         try {
@@ -717,6 +742,21 @@ int main(int argc, char **argv) {
             chainParams.saveBlockAddress(accountJSON);
             //ctrace << "saveBlockAddress success!";
             chainAccountJsonIsSet = true;
+        }
+        catch (...)
+        {
+            cerr << "provided accountJson is not well formatted\n";
+            //cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
+            return 0;
+        }
+    }
+    if (!voteDataJSON.empty())
+    {
+        try
+        {
+            chainParams.saveVoteData(voteDataJSON);
+            //ctrace << "saveBlockAddress success!";
+            voteDataJsonIsSet = true;
         }
         catch (...)
         {

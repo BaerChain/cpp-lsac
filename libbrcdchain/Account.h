@@ -53,6 +53,10 @@ public:
       : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
     {}
 
+    Account(u256 _ballot, Changedness _c = Changed)
+      : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(0), m_ballot(_ballot)
+    {}
+
 	Account(u256 _nonce, u256 _balance, u256 _BRC, u256 _fbalance = 0, Changedness _c = Changed)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
