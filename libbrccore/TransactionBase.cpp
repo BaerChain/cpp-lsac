@@ -251,6 +251,7 @@ void TransactionBase::streamRLP(RLPStream& _s, IncludeSignature _sig, bool _forE
 
 	if(_sig)
 		_s << streamRLPSign(false);
+
 	else if(_forEip155hash)
 		_s << streamRLPSign(true);
 

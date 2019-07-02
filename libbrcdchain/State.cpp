@@ -178,17 +178,6 @@ Account *State::account(Address const &_addr) {
         _blockReward.push_back(_blockpair);
 	}
 
-	const bytes _control_account = state[12].toBytes();
-	RLP _rlp_control_account(_control_account);
-	num = _rlp_control_account[0].toInt<size_t>();
-	std::map<Public, AccountControl> _control_accounts;
-	for(size_t k = 1; k <= num; k++){
-		std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
-		AccountControl _data_control;
-		_data_control.populate(RLP(_pair.second));
-		_control_accounts[_pair.first] = _data_control;
-	}
-
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
                                                    state[2].toHash<h256>(), state[3].toHash<h256>(),
@@ -199,7 +188,20 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
-	i.first->second.set_control_accounts(_control_accounts);
+
+	if(state.itemCount() > 12){
+		const bytes _control_account = state[12].toBytes();
+		RLP _rlp_control_account(_control_account);
+		num = _rlp_control_account[0].toInt<size_t>();
+		std::map<Public, AccountControl> _control_accounts;
+		for(size_t k = 1; k <= num; k++){
+			std::pair<Public, bytes> _pair = _rlp_control_account[k].toPair<Public, bytes>();
+			AccountControl _data_control;
+			_data_control.populate(RLP(_pair.second));
+			_control_accounts[_pair.first] = _data_control;
+		}
+		i.first->second.set_control_accounts(_control_accounts);
+	}
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
