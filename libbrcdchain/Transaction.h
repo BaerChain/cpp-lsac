@@ -349,7 +349,7 @@ namespace dev
             /// Constructs a transaction from the given RLP.
             explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig)
                     : Transaction(&_rlp, _checkSig)
-            {}
+                {}
         };
 
 /// Nice name for vector of Transaction.

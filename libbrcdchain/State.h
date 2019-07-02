@@ -55,9 +55,6 @@ struct VerifiedBlockRef;
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
 #define PUBLICNUM 3
-#define MAXWEIGHT 100
-#define MINWEIGHT 1
-#define ZEROWEIGHT 0
 
 enum class BaseState
 {
@@ -383,6 +380,7 @@ public:
 	void set_account_control(Address const& _addr, Public const& _pk, size_t weight, uint64_t authority);
 	void verfy_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 	void execute_account_control(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+	void verfy_account_control_authority(Address const& _from, Authority_type _type);
 
 private:
     //投票数据

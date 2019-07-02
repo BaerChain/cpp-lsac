@@ -36,6 +36,7 @@ DEV_SIMPLE_EXCEPTION(DefaultError);
 DEV_SIMPLE_EXCEPTION(VerifyPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(CancelPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(pendingorderAllPriceFiled);
+DEV_SIMPLE_EXCEPTION(PermissionFiled);
 DEV_SIMPLE_EXCEPTION(VerifyAccountControlFiled);
 DEV_SIMPLE_EXCEPTION(GasPriceTooLow);
 DEV_SIMPLE_EXCEPTION(BlockGasLimitReached);
@@ -83,7 +84,6 @@ DEV_SIMPLE_EXCEPTION(AddressAlreadyUsed);
 DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(TooMuchTransaction);
 DEV_SIMPLE_EXCEPTION(NotEnoughWeightTransaction);
-DEV_SIMPLE_EXCEPTION(NotEnoughAuthorityTransaction);
 DEV_SIMPLE_EXCEPTION(UnknownTransactionValidationError);
 DEV_SIMPLE_EXCEPTION(UnknownError);
 

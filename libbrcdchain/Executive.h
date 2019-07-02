@@ -6,6 +6,7 @@
 #include <libdevcore/Log.h>
 #include <libbrccore/Common.h>
 #include <libbvm/VMFace.h>
+#include "Account.h"
 
 #include <json/json.h>
 #include <functional>
@@ -191,63 +192,15 @@ public:
     void revert();
 
 private:
-	const u256 c_min_price = 5;
-    enum Method
-    {
-        Other,
-        VoteStart,
-        BuyVotes,
-		SellVotes, 
-		LoginCandidate,
-		LogOutCandidate,
-        Vote,
-        CancelVote,
-		VoteEnd,
-		TranscationStart,
-        BRCTransaction,
-		AssetInjection,
-        TranscationEnd,
-        PendingOrderStart,
-        SellPendingOrder,
-		BuyPendingOrder,
-        CancelPendingOrder,
-		PendingOrderEnd
-    };
+	void verfy_authority(uint64_t _authority);
 
-    struct TransationParameters
-    {
-        Method m_method = Other;
-        CallParameters m_callParameters;
-        u256 m_PendingOrderPrice = 0;
-        h256 m_pendingOrderHash = h256(0);
-        ex::order_token_type m_pendingOrder_Token_Type;
-        ex::order_buy_type m_pendingOrder_Buy_Type;
-		bigint m_total_gas_cost;
-        TransationParameters(Method _type,
-                CallParameters _c,
-                u256 _pendingOrderPrice = 0,
-            h256 _pendingOrderHash = h256(0),
-            ex::order_token_type _pendingOrder_Token_Type = ex::order_token_type::BRC,
-            ex::order_buy_type _pendingOrder_Buy_Type = ex::order_buy_type::all_price,
-            bigint _total_gas_cost = 0)
-          : m_method(_type),
-            m_callParameters(_c),
-            m_PendingOrderPrice(_pendingOrderPrice),
-            m_pendingOrderHash(_pendingOrderHash),
-			m_pendingOrder_Token_Type(_pendingOrder_Token_Type),
-			m_pendingOrder_Buy_Type(_pendingOrder_Buy_Type),
-            m_total_gas_cost(_total_gas_cost)
-        {}
-    };
+private:
+	const u256 c_min_price = 5;
 
     struct batch_transaction_params
 	{
 		transationTool::op_type _type;
 		std::vector<std::shared_ptr<transationTool::operation> > _operation;
-		/*std::vector<transationTool::vote_operation> _vote_operation;
-		std::vector<transationTool::transcation_operation> _brc_operation;
-		std::vector<transationTool::pendingorder_opearaion> _pen_operation;
-		std::vector<transationTool::cancelPendingorder_operation> _can_operation;*/
         void clear(){
 			_type = transationTool::null;
 			_operation.clear();
@@ -293,16 +246,18 @@ private:
     u256 m_value = 0;
     u256 m_ballots = 0;
     bool m_pendingorderStatus = false;
-    Method m_method = Other;
     CallParameters m_callParameters;  // transation callParameters
     SealEngineFace const& m_sealEngine;
 
-    std::vector<TransationParameters> m_callParameters_v;  //  batchTransation callParameters
 	batch_transaction_params m_batch_params;        //batchTransation callParameters 
 
     bool m_isCreation = false;
     Address m_newAddress;
     size_t m_savepoint = 0;
+
+	AuthorityWeight m_authority_weight;
+	bool m_is_super_address = false;
+	uint64_t m_authority = 0;
 
     Logger m_execLogger{createLogger(VerbosityDebug, "exec")};
     Logger m_detailsLogger{createLogger(VerbosityTrace, "exec")};

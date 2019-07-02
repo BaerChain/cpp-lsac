@@ -143,8 +143,7 @@ void dev::brc::TransactionBase::populate_signs(bytes const& _data){
 			m_chainId = -4;
 		else
 			BOOST_THROW_EXCEPTION(InvalidSignature());
-	    //m_vrs = SignatureStruct { r, s, static_cast<byte>(v - (m_chainId * 2 + 35)) };
-		testlog << BrcYellow << " populate:" << _pk << " | " << v << " | " << r << " | " << s << " chain_id:"<< m_chainId<< BrcReset;
+		//testlog << BrcYellow << " populate:" << _pk << " | " << v << " | " << r << " | " << s << " chain_id:"<< m_chainId<< BrcReset;
 		m_sign_vrs[_pk] = SignatureStruct( r, s, static_cast<byte>(v - (m_chainId * 2 + 35)) );
     }
 }
@@ -161,14 +160,14 @@ void dev::brc::TransactionBase::verify_signs(){
 		auto h_sha3 = sha3(WithoutSignature);
 		auto p = recover(*(_it.second), h_sha3);
 		if(!p){
-			testlog << " verfy sign error!";
+			cerror << " verfy sign error!";
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 		}
 		if(_it.first != p){
-			testlog << " public key not match";
+			cerror << " public key not match";
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 		}
-		testlog <<BrcYellow " verfy sign success..." <<BrcReset;
+		//testlog <<BrcYellow " verfy sign success..." <<BrcReset;
 	}
 }
 
@@ -298,8 +297,7 @@ dev::bytes dev::brc::TransactionBase::streamRLPSign(bool _forEip155hash) const{
 		else
 			_b << m_chainId << 0 << 0;
 		RLP _r(_b.out());
-		testlog << BrcYellow " sign:" <<_r[0].convert<Public>(RLP::LaissezFaire)<< " | "<<  
-			                        _r[1].toInt<int>() << " | " << _r[2].toInt<u256>() << " | " << _r[3].toInt<u256>() << BrcReset;
+		//testlog << BrcYellow " sign:" <<_r[0].convert<Public>(RLP::LaissezFaire)<< " | "<<  _r[1].toInt<int>() << " | " << _r[2].toInt<u256>() << " | " << _r[3].toInt<u256>() << BrcReset;
 		_vbs.push_back(_b.out());
 	}
 	_s.appendVector<bytes>(_vbs);

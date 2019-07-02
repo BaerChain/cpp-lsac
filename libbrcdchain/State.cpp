@@ -1596,7 +1596,10 @@ void dev::brc::State::verfy_account_control(Address const & _from, std::vector<s
 			cerror << "pendingOrders  dynamic type field!";
 			BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("account_control type is error!")));
 		}
-        // verfy weight
+        // verify super_address
+        if(_from == dev::toAddress(Public(pen->m_control_addr)))
+		   BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("the public_key is the super_address:"+toString(_from) + " can't do the weight and authority")));
+        // verify weight
         if(pen->m_weight == ZEROWEIGHT && pen->m_authority != 0)
             BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(std::string("m_weight is zero and have m_authority")));
         if(pen->m_weight < MINWEIGHT || pen->m_weight > MAXWEIGHT){
@@ -1627,6 +1630,7 @@ void dev::brc::State::execute_account_control(Address const& _from, std::vector<
 	    set_account_control(_from, pen->m_control_addr, pen->m_weight, pen->m_authority);
 	}
 }
+
 
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {

@@ -221,25 +221,37 @@ void Executive::initialize(Transaction const& _transaction)
 		cerror << " the transaction has zero_signatures...";
 	}
     {
-        //verify public_key weight
+        // verify public_key weight  and count authority_weight
         // the total weight must bigger 100
-		testlog << "start verfy weight...";
+        // only if the all Public_key has authority total weight bigger 100 
 		auto signs= m_t.sign_structs();
 		if(signs.empty()){
 			BOOST_THROW_EXCEPTION(ZeroSignatureTransaction() << errinfo_comment(std::string("the transaction  ZeroSignature")));
 		}
 		auto account_control = m_s.account_controls(m_t.sender());
 		size_t weight = 0;
+		m_authority_weight.clear();
+		m_authority = 0;
         for(auto const& pb: signs){
-			if(account_control.count(pb.first)){
-				weight += account_control[pb.first].m_weight;
-			}else if(m_t.sender() == dev::toAddress(pb.first)){
+			if(m_t.sender() == dev::toAddress(pb.first)){
 				weight += MAXWEIGHT;
+				m_authority = Authority_type::Super_authority;
+                break;
+			}
+			if(account_control.count(pb.first)){
+				//testlog << "pb:" << pb.first << " au:" << account_control[pb.first].m_authority << " weight:" << account_control[pb.first].m_weight;
+
+				weight += account_control[pb.first].m_weight;
+				m_authority_weight.set_value(std::make_pair(account_control[pb.first].m_authority, account_control[pb.first].m_weight));
 			}
 		}
 		if(weight < MAXWEIGHT)
 			BOOST_THROW_EXCEPTION(NotEnoughWeightTransaction() << errinfo_comment(std::string("the transaction not enough weight:" + std::to_string(weight))));
-		testlog << " weight:" << weight;
+		//testlog << " weight:" << weight << "authority:"<< m_authority;
+        if(!m_authority)
+			m_authority = m_authority_weight.get_authority();
+		//testlog << "authority:" << m_authority;
+
         // Avoid invalid transactions.
         u256 nonceReq;
         try
@@ -274,6 +286,17 @@ void Executive::initialize(Transaction const& _transaction)
 		u256 total_brc = 0;
         if (!m_t.isVoteTranction())
         {
+            // verify authority
+            if(m_t.isCreation()){
+				verfy_authority(Authority_type::Deploy_contract);
+			}
+			else if(m_sealEngine.isPrecompiled(m_t.sender(), m_envInfo.number()) || m_s.addressHasCode(m_t.sender())){
+				verfy_authority(Authority_type::Execute_contract);
+			}
+			else{
+				verfy_authority(Authority_type::Transfer_brc);
+			}
+
 			bigint totalCost = gasCost;
             if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
             {
@@ -336,6 +359,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(val);
 					try {
+						verfy_authority(Authority_type::Transfer_brc);
 						total_brc = _transcation_op.m_Transcation_numbers;
 						m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to, (size_t)_transcation_op.m_Transcation_type,total_brc);
 					}
@@ -406,24 +430,28 @@ void Executive::initialize(Transaction const& _transaction)
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;
-			//
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)
-					m_vote.verifyVote(m_t.sender(), m_batch_params._operation);
+					m_vote.verifyVote(m_t.sender(), m_batch_params._operation, m_authority);
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
-					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
+				{
+					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(),
+														 m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation, m_authority);
+				}
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
+				{
+					verfy_authority(Authority_type::Cancel_pending);
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
-				else if(m_batch_params._type == transationTool::op_type::controlAccount){
+				}
+				else if(m_batch_params._type == transationTool::op_type::controlAccount)
+				{  
+					verfy_authority(Authority_type::Super_authority);
 					m_s.verfy_account_control(m_t.sender(), m_batch_params._operation);
 				}
 
 			}
 			catch(VerifyVoteField &ex){
-				cerror << "verifyVote field ! ";
-				cerror << " except:" << ex.what();
-				m_excepted = TransactionException::VerifyVoteField;
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 			}
 			catch(VerifyPendingOrderFiled const& _v){
@@ -434,6 +462,12 @@ void Executive::initialize(Transaction const& _transaction)
 			}
 			catch(VerifyAccountControlFiled const& _c){
 				BOOST_THROW_EXCEPTION(VerifyAccountControlFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
+			}
+			catch(PermissionFiled const& _c){
+				BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
+			}
+            catch(...){
+				BOOST_THROW_EXCEPTION(UnknownTransactionValidationError() << errinfo_comment("transaction error!"));
 			}
 		}
 	}
@@ -793,6 +827,12 @@ void Executive::revert()
     // Set result address to the null one.
     m_newAddress = {};
     m_s.rollback(m_savepoint);
+}
+
+
+void dev::brc::Executive::verfy_authority(uint64_t _authority){
+	if(!(m_authority & _authority))
+		BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :"+ std::to_string(_authority)+ " authority:" + std::to_string(m_authority)));
 }
 
 void dev::brc::Executive::setCallParameters(Address const& _senderAddress,

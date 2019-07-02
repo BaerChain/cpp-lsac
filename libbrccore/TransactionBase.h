@@ -88,11 +88,8 @@ public:
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
 
-    // 是否是投票消息
+    // is user-defined message 
     bool isVoteTranction() const; //{ return m_type == VoteMassage; }
-
-	//是否是BRC转账消息
-    bool isBRCTransaction() const;
 
     /// Serialises this transaction to an RLPStream.
     /// @throws TransactionIsUnsigned if including signature was requested but it was not initialized

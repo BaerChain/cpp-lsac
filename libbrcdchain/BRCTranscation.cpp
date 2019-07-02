@@ -1,6 +1,5 @@
 #include "BRCTranscation.h"
 #include <brc/exchangeOrder.hpp>
-#include <brc/types.hpp>
 
 using namespace dev::brc::ex;
 
@@ -151,7 +150,7 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 
 
 void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _total_cost, ex::exchange_plugin& _exdb,
-												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, uint64_t _authority){
 
 	u256 total_brc = 0;
 	u256 total_cost = _total_cost;
@@ -167,6 +166,10 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		order_buy_type _buy_type = pen->m_Pendingorder_buy_type;
 		u256 _pendingOrderNum = pen->m_Pendingorder_num;
 		u256 _pendingOrderPrice = pen->m_Pendingorder_price; 
+
+		// verify authority
+		if(!(_authority & get_authority_type(__type,_token_type)))
+			BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :" + std::to_string(get_authority_type(__type, _token_type)) + " authority:" + std::to_string(_authority)));
 
 		if(_type == order_type::null_type ||
 			(_buy_type == order_buy_type::only_price && (_type == order_type::buy || _type == order_type::sell) && (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
@@ -325,4 +328,16 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 			BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
 		}
 	}
+}
+
+dev::brc::Authority_type dev::brc::BRCTranscation::get_authority_type(ex::order_type _type, ex::order_token_type _token_type) const{
+	if(_type == order_type::buy  &&_token_type == order_token_type::BRC)
+		return Authority_type::Buy_cookie;
+	else if(_type == order_type::buy && _token_type == order_token_type::FUEL)
+		return Authority_type::Buy_brc;
+	else if(_type == order_type::sell && _token_type == order_token_type::FUEL)
+		return Authority_type::Sell_brc;
+	else if(_type == order_type::sell && _token_type == order_token_type::BRC)
+		return Authority_type::Sell_cookie;
+	return Authority_type::None;
 }

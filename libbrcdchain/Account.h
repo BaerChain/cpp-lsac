@@ -34,22 +34,72 @@ namespace brc
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
 
+#define MAXWEIGHT 100
+#define MINWEIGHT 1
+#define ZEROWEIGHT 0
+
 enum Authority_type : uint64_t
 {
-	Transfer_brc = 1 ,
-    Buy_brc = 1 << 1,
-    Buy_cookie = 1 << 2,
-    Sell_brc = 1 << 3,
-    Sell_cookie = 1 << 4,
-    Can_pending = 1 << 5,
-    Buy_tickets = 1 << 6,
-    Sell_tickets = 1 << 7,
-    Vote = 1 << 8,
-    Cancel_vote = 1 << 9,
-    Login_candidata = 1 << 10,
-    Logout_candidate = 1 << 11,
+	Transfer_brc = 1,
+	Buy_brc = 1 << 1,
+	Buy_cookie = 1 << 2,
+	Sell_brc = 1 << 3,
+	Sell_cookie = 1 << 4,
+	Cancel_pending = 1 << 5,
+	Buy_tickets = 1 << 6,
+	Sell_tickets = 1 << 7,
+	Vote = 1 << 8,
+	Cancel_vote = 1 << 9,
+	Login_candidata = 1 << 10,
+	Logout_candidate = 1 << 11,
 	Deploy_contract = 1 << 12,
-	Execute_contract = 1 << 13
+	Execute_contract = 1 << 13,
+    Control_public = 1 << 14,
+
+	Super_authority = Transfer_brc | Buy_brc | Buy_cookie | Sell_brc | Sell_cookie | Cancel_pending | Buy_tickets | 
+	                        Vote | Cancel_vote | Login_candidata |Logout_candidate | Deploy_contract | Execute_contract | Control_public,
+                
+    None = 0
+};
+
+struct  AuthorityWeight
+{
+	std::map<Authority_type, size_t> m_au_weight;
+    AuthorityWeight(){
+		m_au_weight[Transfer_brc] = 0;
+		m_au_weight[Buy_brc] = 0;
+		m_au_weight[Buy_cookie] = 0;
+		m_au_weight[Sell_brc] = 0;
+		m_au_weight[Sell_cookie] = 0;
+		m_au_weight[Cancel_pending] = 0;
+		m_au_weight[Sell_tickets] = 0;
+		m_au_weight[Vote] = 0;
+		m_au_weight[Cancel_vote] = 0;
+		m_au_weight[Login_candidata] = 0;
+		m_au_weight[Logout_candidate] = 0;
+		m_au_weight[Deploy_contract] = 0;
+		m_au_weight[Execute_contract] = 0;
+	}
+
+    void set_value(std::pair<uint64_t, size_t> _au_weight){
+	   for(auto &val : m_au_weight){
+		   if(val.first & _au_weight.first)
+			   val.second += _au_weight.second;
+	   } 
+	}
+    uint64_t get_authority() const{
+		uint64_t authority = 0;
+        for (auto const& val: m_au_weight){
+			if(val.second >= MAXWEIGHT)
+				authority |= val.first;
+        }
+		return authority;
+	}
+    void clear(){
+		for(auto &val : m_au_weight){
+			val.second = 0;
+		}
+	}
 };
 
 struct AccountControl

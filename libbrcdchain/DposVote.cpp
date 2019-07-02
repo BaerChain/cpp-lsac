@@ -113,13 +113,14 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 }
 
 
-void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, uint64_t _authority /*= 0*/){
 	std::shared_ptr<transationTool::vote_operation> p_op = nullptr; 
 	bigint total_brc = m_state.BRC(_from);
 	bigint total_tickets = m_state.ballot(_from);
 	u256 sell_tickes = 0;
 	std::map<Address, u256> m_tickets;
 	bool is_login_order = false;
+
     for(auto const& val : _ops){
 		p_op = std::dynamic_pointer_cast<transationTool::vote_operation> (val);
 		if(!p_op)
@@ -130,6 +131,11 @@ void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::share
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("tickets must bigger 0! ticket:"));
 			}
 		}
+
+        // verify authority
+		if(!(_authority & get_authority_type(dType)))
+			BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :" + std::to_string(get_authority_type(dType)) + " authority:"  + std::to_string(_authority)));
+
 		switch(dType){
 		case dev::brc::ENull:
 		break;
@@ -308,4 +314,21 @@ void dev::brc::DposVote::voteLoginCandidate(Address const& _addr)
 void dev::brc::DposVote::voteLogoutCandidate(Address const& _addr)
 {
 	m_state.subSysVoteDate(SysElectorAddress, _addr);
+}
+
+dev::brc::Authority_type dev::brc::DposVote::get_authority_type(VoteType _type) const{
+	if(EBuyVote == _type)
+		return Authority_type::Buy_tickets;
+	else if(ESellVote == _type)
+		return Authority_type::Sell_tickets;
+	else if(ELoginCandidate == _type)
+		return Authority_type::Login_candidata;
+	else if(ELogoutCandidate == _type)
+		return Authority_type::Logout_candidate;
+	else if(EDelegate == _type)
+		return Authority_type::Vote;
+	else if(EUnDelegate == _type)
+		return Authority_type::Cancel_vote;
+	return Authority_type::None;
+
 }
