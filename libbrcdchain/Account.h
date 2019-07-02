@@ -132,7 +132,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0;  }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0;  }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }

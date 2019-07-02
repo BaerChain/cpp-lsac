@@ -1587,7 +1587,7 @@ void dev::brc::State::initBallot(Address const &_id, Address const &_recivedAddr
         createAccount(_recivedAddr, {0});
         rec_a = account(_recivedAddr);
     }
-
+    rec_a->addBallot(_value);
     rec_a->addPoll(_value);
     a->addVote(std::make_pair(_recivedAddr, _value));
     cwarn << "initballot " << rec_a->ballot() << " value:" << _value.str();
