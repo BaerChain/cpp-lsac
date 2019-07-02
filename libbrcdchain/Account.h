@@ -56,6 +56,8 @@ enum Authority_type : uint64_t
 	Execute_contract = 1 << 13,
     Control_public = 1 << 14,
 
+	Normal_max_authority = Transfer_brc | Buy_brc | Buy_cookie | Sell_brc | Sell_cookie | Cancel_pending | Buy_tickets |
+	                        Vote | Cancel_vote | Login_candidata | Logout_candidate | Execute_contract,
 	Super_authority = Transfer_brc | Buy_brc | Buy_cookie | Sell_brc | Sell_cookie | Cancel_pending | Buy_tickets | 
 	                        Vote | Cancel_vote | Login_candidata |Logout_candidate | Deploy_contract | Execute_contract | Control_public,
                 

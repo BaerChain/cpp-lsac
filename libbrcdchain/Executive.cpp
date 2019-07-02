@@ -831,7 +831,7 @@ void Executive::revert()
 
 
 void dev::brc::Executive::verfy_authority(uint64_t _authority){
-	if(!(m_authority & _authority))
+	if((m_authority & _authority) != _authority )
 		BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :"+ std::to_string(_authority)+ " authority:" + std::to_string(m_authority)));
 }
 

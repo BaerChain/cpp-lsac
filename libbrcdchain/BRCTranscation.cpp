@@ -168,8 +168,9 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		u256 _pendingOrderPrice = pen->m_Pendingorder_price; 
 
 		// verify authority
-		if(!(_authority & get_authority_type(__type,_token_type)))
-			BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :" + std::to_string(get_authority_type(__type, _token_type)) + " authority:" + std::to_string(_authority)));
+		Authority_type a_type = get_authority_type(__type, _token_type);
+		if((_authority & a_type) != a_type)
+			BOOST_THROW_EXCEPTION(PermissionFiled() << errinfo_comment(" Insufficient permissions for this operation :" + std::to_string(a_type) + " authority:" + std::to_string(_authority)));
 
 		if(_type == order_type::null_type ||
 			(_buy_type == order_buy_type::only_price && (_type == order_type::buy || _type == order_type::sell) && (_pendingOrderNum == 0 || _pendingOrderPrice == 0)) ||
