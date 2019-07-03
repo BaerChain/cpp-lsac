@@ -61,7 +61,7 @@ public:
     explicit TransactionBase(bytesConstRef _rlp, CheckTransaction _checkSig);
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig, _time) {}
+    explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig) {}
 
     /// Checks equality of transactions.
     bool operator==(TransactionBase const& _c) const { return m_type == _c.m_type && (m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress) && m_value == _c.m_value && m_data == _c.m_data; }

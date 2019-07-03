@@ -55,7 +55,7 @@ dev::brc::TransactionBase::TransactionBase(TransactionSkeleton const& _ts, std::
 
 }
 
-TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig,)
+TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
     RLP const rlp(_rlpData);
     try
