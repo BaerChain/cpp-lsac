@@ -11,6 +11,7 @@
 #include <boost/filesystem/path.hpp>
 #include "libbrcdchain/Interface.h"
 #include "Common.h"
+#include "libbrcdchain/Nodemonitor.h"
 
 namespace dev
 {
@@ -60,13 +61,15 @@ private:
     /// check the block is follow SHDpos  in mine creater_time
     /// @paramer _ph : the last block in chain
 	bool checkPreviousBlock(BlockHeader const& _ph) const;
-
+    void sendDataToNodeMonitor();
 private:
     ChainParams                     m_params;          //配置
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
 
 	int64_t                         m_startSeal_time =0;
-
+    
+    p2p::Host                       &m_p2pHost;
+    NodeMonitor                     m_nodemonitor;
 };
 
 SHDposClient& asDposClient(Interface& _c);

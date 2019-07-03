@@ -23,6 +23,7 @@ target_link_libraries(brcdchain
             jsoncpp_lib_static
             ${SNAPPY_LIBRARIES}
             ${Boost_LIBRARIES}
+            ${JSON_RPC_CPP_CLIENT_LIBRARY}
             dl
 			brc_db
         )

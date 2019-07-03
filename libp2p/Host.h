@@ -233,6 +233,7 @@ public:
 
     std::shared_ptr<CapabilityHostFace> capabilityHost() const { return m_capabilityHost; }
 
+    bytes Networkrlp() const { return m_restoreNetwork;}
 protected:
     void onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e);
 

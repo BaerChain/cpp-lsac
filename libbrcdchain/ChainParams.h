@@ -64,6 +64,7 @@ struct ChainParams: public ChainOperationParams
 	std::unordered_map <Public, std::string> m_mpeers;
 
 	std::vector<ConnectPeers> m_peers;
+    std::string m_nodemonitorIP;
 
     h256 calculateStateRoot(bool _force = false) const;
 
@@ -75,8 +76,11 @@ struct ChainParams: public ChainOperationParams
         const boost::filesystem::path& _configPath = {}) const;
 
     void saveBlockAddress(std::string const& _json);
-
-	std::unordered_map <Public, std::string> getConnectPeers() const;
+    
+    void savenodemonitorIP(std::string const& _IP) {m_nodemonitorIP = _IP;}
+    std::string getnodemonitorIp() const { return m_nodemonitorIP;};
+	
+    std::unordered_map <Public, std::string> getConnectPeers() const;
 	std::map<Address, Public> getPeersMessage() const;
 
 private:
