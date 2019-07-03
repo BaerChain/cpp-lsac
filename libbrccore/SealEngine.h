@@ -61,10 +61,6 @@ public:
 	}
 	virtual bigint costOfPrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).cost(_in); }
 	virtual std::pair<bool, bytes> executePrecompiled(Address const& _a, bytesConstRef _in, u256 const&) const { return m_params.precompiled.at(_a).execute(_in); }
-    
-    /// init shdpos data interface
-	virtual void resetSHDposCreater(std::vector<Address>const& /*_var*/, std::vector<Address> const& /*_can*/ ) { }
-    
 
 protected:
 	virtual bool onOptionChanging(std::string const&, bytes const&) { return true; }
@@ -87,7 +83,6 @@ public:
     void onSealGenerated(std::function<void(bytes const&)> const& _f) override { m_onSealGenerated = _f; }
 	BRCSchedule const& brcSchedule(u256 const& _blockNumber) const override;
 	u256 blockReward(u256 const& _blockNumber) const override;
-
 protected:
 	std::function<void(bytes const& s)> m_onSealGenerated;
 };

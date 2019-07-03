@@ -189,7 +189,7 @@ Account *State::account(Address const &_addr) {
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
-	if(state.itemCount() > 12){
+	if(state.itemCount() >= 13){
 		const bytes _control_account = state[12].toBytes();
 		RLP _rlp_control_account(_control_account);
 		num = _rlp_control_account[0].toInt<size_t>();

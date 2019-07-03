@@ -1828,7 +1828,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
                 task_t.go_task(v_trxb, ret_t, [&_ir](bytes const &b) {
                     return Transaction(b,
 						(_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything
-									   : CheckTransaction::None);
+									   : CheckTransaction::None, h.timestamp());
                 });
             }
             catch (Exception &ex) {
@@ -1848,7 +1848,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
                 bytesConstRef d = tr.data();
                 try {
                     Transaction t(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything
-								  : CheckTransaction::None);
+								  : CheckTransaction::None, h.timestamp());
                     m_sealEngine->verifyTransaction(_ir, t, h,
 													0); // the gasUsed vs blockGasLimit is checked later in enact function
                     res.transactions.push_back(t);

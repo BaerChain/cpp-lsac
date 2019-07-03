@@ -217,41 +217,45 @@ void Executive::initialize(Transaction const& _transaction)
         throw;
     }
 
-    if (m_t.has_zero_signatures()){
+    if (m_t.has_zero_signatures() && m_t.hasZeroSignature()){
 		cerror << " the transaction has zero_signatures...";
+		//testlog << m_t.has_zero_signatures() << " " << m_t.hasZeroSignature();
+		BOOST_THROW_EXCEPTION(ZeroSignatureTransaction() << errinfo_comment(std::string("the transaction  ZeroSignature")));
 	}
     {
-        // verify public_key weight  and count authority_weight
-        // the total weight must bigger 100
-        // only if the all Public_key has authority total weight bigger 100 
-		auto signs= m_t.sign_structs();
-		if(signs.empty()){
-			BOOST_THROW_EXCEPTION(ZeroSignatureTransaction() << errinfo_comment(std::string("the transaction  ZeroSignature")));
-		}
-		auto account_control = m_s.account_controls(m_t.sender());
-		size_t weight = 0;
-		m_authority_weight.clear();
-		m_authority = 0;
-        for(auto const& pb: signs){
-			if(m_t.sender() == dev::toAddress(pb.first)){
-				weight += MAXWEIGHT;
-				m_authority = Authority_type::Super_authority;
-                break;
-			}
-			if(account_control.count(pb.first)){
-				//testlog << "pb:" << pb.first << " au:" << account_control[pb.first].m_authority << " weight:" << account_control[pb.first].m_weight;
+        if(!m_t.has_zero_signatures()){
+			// verify public_key weight  and count authority_weight
+		    // the total weight must bigger 100
+		    // only if the all Public_key has authority total weight bigger 100 
+			auto signs = m_t.sign_structs();
+			auto account_control = m_s.account_controls(m_t.sender());
+			size_t weight = 0;
+			m_authority_weight.clear();
+			m_authority = 0;
+			for(auto const& pb : signs){
+				if(m_t.sender() == dev::toAddress(pb.first)){
+					weight += MAXWEIGHT;
+					m_authority = Authority_type::Super_authority;
+					break;
+				}
+				if(account_control.count(pb.first)){
+					//testlog << "pb:" << pb.first << " au:" << account_control[pb.first].m_authority << " weight:" << account_control[pb.first].m_weight;
 
-				weight += account_control[pb.first].m_weight;
-				m_authority_weight.set_value(std::make_pair(account_control[pb.first].m_authority, account_control[pb.first].m_weight));
+					weight += account_control[pb.first].m_weight;
+					m_authority_weight.set_value(std::make_pair(account_control[pb.first].m_authority, account_control[pb.first].m_weight));
+				}
 			}
+			if(weight < MAXWEIGHT)
+				BOOST_THROW_EXCEPTION(NotEnoughWeightTransaction() << errinfo_comment(std::string("the transaction not enough weight:" + std::to_string(weight))));
+			//testlog << " weight:" << weight << "authority:"<< m_authority;
+			if(!m_authority)
+				m_authority = m_authority_weight.get_authority();
+			//testlog << "authority:" << m_authority;
 		}
-		if(weight < MAXWEIGHT)
-			BOOST_THROW_EXCEPTION(NotEnoughWeightTransaction() << errinfo_comment(std::string("the transaction not enough weight:" + std::to_string(weight))));
-		//testlog << " weight:" << weight << "authority:"<< m_authority;
-        if(!m_authority)
-			m_authority = m_authority_weight.get_authority();
-		//testlog << "authority:" << m_authority;
-
+		else {
+			m_authority = Super_authority;
+		}
+        
         // Avoid invalid transactions.
         u256 nonceReq;
         try
@@ -300,7 +304,7 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = gasCost;
             if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
             {
-				LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
+				cerror << "Not enough brc: Require > " << "totalCost " << " = "
 					              << totalCost << "  m_t.gas() = " << m_t.gas()
 					              << " * m_t.gasPrice()" << m_t.gasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.BRC(m_t.sender())
@@ -414,7 +418,7 @@ void Executive::initialize(Transaction const& _transaction)
                 }
 
 				if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost){
-					LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+					cerror << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
 						<< " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
 						<< m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
 					m_excepted = TransactionException::NotEnoughCash;

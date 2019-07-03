@@ -8,6 +8,8 @@
 #include <json/json.h>
 #include <boost/optional.hpp>
 
+#define  FORKSIGNSTIME 1561910400000
+
 namespace dev
 {
 namespace brc
@@ -59,16 +61,17 @@ public:
     explicit TransactionBase(bytesConstRef _rlp, CheckTransaction _checkSig);
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig) {}
+    explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig, _time) {}
 
     /// Checks equality of transactions.
     bool operator==(TransactionBase const& _c) const { return m_type == _c.m_type && (m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress) && m_value == _c.m_value && m_data == _c.m_data; }
     /// Checks inequality of transactions.
     bool operator!=(TransactionBase const& _c) const { return !operator==(_c); }
-
-    /// @returns sender of the transaction from the signature (and hash).
-    /// @throws TransactionIsUnsigned if signature was not initialized
+	
+	/// @returns sender of the transaction from the signature (and hash).
+	/// @throws TransactionIsUnsigned if signature was not initialized
     Address const& sender() const;
+
     /// Like sender() but will never throw. @returns a null Address if the signature is invalid.
     Address const& safeSender() const noexcept;
     /// Force the sender to a particular value. This will result in an invalid transaction RLP.
@@ -117,7 +120,7 @@ public:
     Address to() const { return m_receiveAddress; }
 
     /// Synonym for safeSender().
-    Address from() const { return safeSender(); }
+    Address from() const { return sender(); }
 
     /// @returns the data associated with this (message-call) transaction. Synonym for initCode().
     bytes const& data() const { return m_data; }
@@ -159,11 +162,11 @@ public:
 	///@return signs
 	std::map<Public, boost::optional<SignatureStruct>>const& sign_structs() const { return m_sign_vrs; }
 private:
-	bytes streamRLPSign(bool _forEip155hash) const;
+	bytes streamRLPSign() const;
 	void  populate_signs(bytes const& _data);
 
     /// verify signs if have some error throw Exception 
-	void verify_signs();
+	void verify_signs(bool _is_ckeck_pb = false);
 
 protected:
     /// Type of transaction.
@@ -213,7 +216,7 @@ inline std::ostream& operator<<(std::ostream& _out, TransactionBase const& _t)
         _out << "[CREATE]";
 
     _out << "/" << _t.data().size() << "$" << _t.value() << "+" << _t.gas() << "@" << _t.gasPrice();
-    _out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
+    _out << "<-" << _t.sender().abridged() << " #" << _t.nonce() << "}";
     return _out;
 }
 
