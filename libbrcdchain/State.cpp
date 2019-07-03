@@ -1527,14 +1527,6 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	cnote << m_exdb.check_version(false);
 }
 
-void dev::brc::State::initVoteData(const std::vector<voteData>& data){
-    cwarn << "in state size is:" << data.size();
-    for(auto val : data){
-        cwarn << "from" << val._from;
-        initBallot(val._from, val._to, val._value);
-    }
-}
-
 dev::u256 dev::brc::State::voteAll(Address const& _id) const
 {
     if (auto a = account(_id))

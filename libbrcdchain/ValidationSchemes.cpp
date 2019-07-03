@@ -20,6 +20,7 @@ namespace dev {
             string const c_author = "author";
             string const c_coinbase = "coinbase";
 			string const c_currency = "currency";
+            string const c_vote = "vote";
             string const c_nonce = "nonce";
             string const c_gasLimit = "gasLimit";
             string const c_timestamp = "timestamp";
@@ -123,9 +124,31 @@ namespace dev {
 					else if(_obj.count(c_genesisVarlitor))
 						requireJsonFields(_obj, "validateAccountObj",
 										  {{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}}});
+                    else if(_obj.count(c_vote))
+						requireJsonFields(_obj, "validateAccountObj",
+										  {{c_vote, {{js::obj_type}, JsonFieldPresence::Required}}});
 					else
 						requireJsonFields(_obj, "validateAccountObj",
 										{{c_currency, {{js::obj_type}, JsonFieldPresence::Required}}});
+				} else if (_obj.size() == 2) {
+                    // A genesis account with only balance set
+                    if (_obj.count(c_balance))
+                        requireJsonFields(_obj, "validateAccountObj",
+                                          {{c_balance, {{js::str_type}, JsonFieldPresence::Required}}});
+                    else if(_obj.count(c_wei))
+                        requireJsonFields(_obj, "validateAccountObj",
+                                          {{c_wei, {{js::str_type}, JsonFieldPresence::Required}}});
+					else if(_obj.count(c_genesisVarlitor))
+						requireJsonFields(_obj, "validateAccountObj",
+										  {{c_genesisVarlitor, {{js::array_type}, JsonFieldPresence::Required}}});
+                    else if(_obj.count(c_vote))
+						requireJsonFields(_obj, "validateAccountObj",
+										  {{c_vote, {{js::obj_type}, JsonFieldPresence::Required}},
+                                           {c_currency, {{js::obj_type}, JsonFieldPresence::Required}}});
+					else if(_obj.count(c_currency))
+						requireJsonFields(_obj, "validateAccountObj",
+										  {{c_vote, {{js::obj_type}, JsonFieldPresence::Required}},
+                                           {c_currency, {{js::obj_type}, JsonFieldPresence::Required}}});
 				}
 				else
 				{

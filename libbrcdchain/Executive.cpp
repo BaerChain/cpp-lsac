@@ -294,13 +294,13 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << "There cannot be multiple types of transactions in bulk transactions";
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
 				}
-                if(_type == transationTool::vote)
+                /*if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}
+				}*/
 
 				m_batch_params._type = _type;
                 switch (_type)

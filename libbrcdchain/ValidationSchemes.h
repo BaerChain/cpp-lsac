@@ -19,6 +19,7 @@ extern std::string const c_finney;
 extern std::string const c_author;
 extern std::string const c_coinbase;
 extern std::string const c_currency;
+extern std::string const c_vote;
 extern std::string const c_nonce;
 extern std::string const c_gasLimit;
 extern std::string const c_timestamp;

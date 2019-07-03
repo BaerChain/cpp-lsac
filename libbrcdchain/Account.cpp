@@ -162,6 +162,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         bool shouldNotExists = accountMaskJson.count(c_shouldnotexist);
 		bool haveGenesisCreator = accountMaskJson.count(c_genesisVarlitor);
 		bool haveCurrency = accountMaskJson.count(c_currency);
+        bool haveVote = accountMaskJson.count(c_vote);
 
         if (haveStorage || haveCode || haveNonce || haveBalance)
         {
@@ -265,6 +266,25 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 				fcookie = u256Safe(_v["fcookie"].get_str());
 			}
 			ret[a] = Account(0, cookie, BRC, fcookie);
+		}
+        if (haveVote)
+		{
+			js::mObject _v = accountMaskJson.at(c_vote).get_obj();
+			for (auto voteData : _v){
+                Address to(voteData.first);
+                u256 ballots(voteData.second.get_str());
+                auto it = ret.find(to);
+                if (it != ret.end()){
+                    it->second.addBallot(ballots);
+                } else {
+                    ret[to] = Account(ballots);
+                }
+                it = ret.find(a);
+                if (it == ret.end()) {
+                    ret[a] = Account(0);
+                }
+                ret[a].addVote(std::make_pair(to, ballots));
+			}
 		}
     }
 

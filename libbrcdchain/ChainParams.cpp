@@ -187,50 +187,6 @@ void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
    
 }
 
-void dev::brc::ChainParams::saveVoteData(std::string const& _json)
-{
-    cwarn << "saveVoteData";
-    try 
-	{
-		js::mValue val;
-		js::read_string_or_throw(_json, val);
-		js::mObject _obj = val.get_obj();
-		if(_obj.count("voteData"))
-		{
-            cwarn << "voteData";
-			js::mArray vote_data_array = _obj["voteData"].get_array();
-            cwarn << "vote_data_array size:" << vote_data_array.size();
-			for(auto val : vote_data_array)
-			{
-				auto vote_obj = val.get_obj();
-                if(vote_obj.count("from") && vote_obj.count("to") && vote_obj.count("value")){
-                    Address vote_from(vote_obj["from"].get_str());
-                    Address vote_to(vote_obj["to"].get_str());
-                    u256 vote_value(vote_obj["value"].get_str());
-                    voteData tmp(vote_from, vote_to, vote_value);
-                    m_vote_datas.push_back(tmp);
-                }else{
-                    cwarn << "init vote data waring:Incomplete data ";
-                }
-			}
-		}
-	}
-    catch(Exception &ex)
-	{
-		cerror << "load voteData error!" << ex.what();
-		cerror << "sample: \n" << R"E(
-            {
-            "voteData":[
-                {"from":"", "to":"", "value":"", "extraData":""},
-                {"from":"", "to":"", "value":"", "extraData":""}
-            ]
-            }
-            )E";
-		throw;
-	}
-   
-}
-
 std::unordered_map<Public, std::string> dev::brc::ChainParams::getConnectPeers() const
 {
 	std::unordered_map<Public, std::string> _map;

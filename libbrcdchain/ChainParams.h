@@ -23,16 +23,6 @@ struct ConnectPeers
 	std::string m_host;
 };
 
-struct voteData
-{
-    Address _from;
-    Address _to;
-    u256 _value;
-    std::string _extraData;
-    voteData(Address& from, Address& to, u256& value, std::string extraData = "") :
-    _from(from), _to(to), _value(value), _extraData(extraData){}
-};
-
 struct ChainParams: public ChainOperationParams
 {
     ChainParams();
@@ -75,9 +65,6 @@ struct ChainParams: public ChainOperationParams
     std::map<Address, Secret>       m_miner_priv_keys;      ///key: address, value : private key , packed block and sign
     std::map<Address, Secret>       m_block_addr_keys;
 
-    // vote data
-    std::vector<voteData> m_vote_datas;
-
 	std::unordered_map <Public, std::string> m_mpeers;
 
 	std::vector<ConnectPeers> m_peers;
@@ -92,7 +79,6 @@ struct ChainParams: public ChainOperationParams
         const boost::filesystem::path& _configPath = {}) const;
 
     void saveBlockAddress(std::string const& _json);
-    void saveVoteData(std::string const& _json);
 
 	std::unordered_map <Public, std::string> getConnectPeers() const;
 	std::map<Address, Public> getPeersMessage() const;
