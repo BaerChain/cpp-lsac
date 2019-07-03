@@ -67,7 +67,7 @@ private:
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
 
 	int64_t                         m_startSeal_time =0;
-    
+
     p2p::Host                       &m_p2pHost;
     NodeMonitor                     m_nodemonitor;
 };

@@ -23,7 +23,8 @@ namespace p2p
 class Peer;
 class ReputationManager;
 
-class SessionFace
+class
+SessionFace
 {
 public:
     virtual ~SessionFace() {}

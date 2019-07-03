@@ -385,12 +385,10 @@ void TransactionQueue::verifierBody()
     }
 }
 
-
-
 void dev::brc::TransactionQueue::eraseDropedTx(h256 const& _txHash)
 {
-    auto ret = m_dropped.find(_txHash);
-    if(ret == m_dropped.end())
-        return;
-    m_dropped.erase(ret);
+	auto ret = m_dropped.find(_txHash);
+	if(ret == m_dropped.end())
+		return;
+	m_dropped.erase(ret);
 }

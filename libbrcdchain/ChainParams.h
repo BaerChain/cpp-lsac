@@ -76,10 +76,10 @@ struct ChainParams: public ChainOperationParams
         const boost::filesystem::path& _configPath = {}) const;
 
     void saveBlockAddress(std::string const& _json);
-    
+
     void savenodemonitorIP(std::string const& _IP) {m_nodemonitorIP = _IP;}
     std::string getnodemonitorIp() const { return m_nodemonitorIP;};
-	
+
     std::unordered_map <Public, std::string> getConnectPeers() const;
 	std::map<Address, Public> getPeersMessage() const;
 

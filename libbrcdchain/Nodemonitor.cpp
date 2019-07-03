@@ -139,11 +139,17 @@ void NodeMonitor::setData(monitorData _data)
 
 Signature NodeMonitor::signatureData() const
 {
-    if(m_data.size() == 0)
-    {
+    if(m_data.size() == 0) {
         return Signature();
     }
     monitorData _data = m_data.back();
+    cnote << "nodeNum:" <<_data._peerInfos.size();
+
+    for(auto i : _data._peerInfos)
+    {
+        cnote << "ping :" << chrono::duration_cast<chrono::milliseconds>(i.lastPing).count() / 2;
+    }
+
     RLPStream _rlp(8);
     _rlp << m_public << _data.blocknum << _data.blockhash << _data.time <<m_clientVersion << _data.nodenum << _data.packagetranscations << _data.pendingpoolsnum;
     Signature _sign = sign(m_secret, sha3(_rlp.out()));
@@ -159,8 +165,9 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
     monitorData _data = m_data.back();
     clock_t time;
     Json::Value _jv;
-    _jv["nodeID"] = toJS(m_public);
+    _jv["nodeID"] = m_public.hex();
     _jv["blockNum"] = _data.blocknum;
+    _jv["blockAuthor"] = toJS(_data.blockAuthor);
     _jv["blockHash"] = toJS(_data.blockhash);
     _jv["serverDelay"] = toJS(_data.time);
     _jv["clientVersion"] = m_clientVersion;
@@ -171,6 +178,20 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
 
     std::string _value = _jv.toStyledString();
     return _value;
+}
+
+void NodeMonitor::analysisRet(std::string _ret)
+{
+    Json::Reader _reader;
+    Json::Value _value;
+    if(_reader.parse(_ret, _value))
+    {
+        int _code = _value["code"].asInt();
+        if(_code == 500)
+        {
+            cerror << "sendNodeStats error :The push health state node does not belong to a valid push node";
+        }
+    }
 }
 
 void NodeMonitor::run()
@@ -192,6 +213,7 @@ void NodeMonitor::run()
                     std::string _ret;
                     _httpClient.SendRPCMessage(_str, _ret);
                     cnote << "http ret:" << _ret;
+                    analysisRet(_ret);
                     errorNum = 0;
                     inputNum = 0;
                 }

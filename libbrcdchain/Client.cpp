@@ -382,15 +382,30 @@ void Client::syncBlockQueue()
 
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
     double elapsed = t.elapsed();
-	if(count)
-	{
+//	if(count)
+//	{
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
-		{
-			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
-				<< "  " << m_StateExDB.check_version(false);
-		}
-	}
+//		{
+//			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+//				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
+//				<< "  " << m_StateExDB.check_version(false);
+//		}
+//	}
+    if(count)
+    {
+        auto last_hash = bc().currentHash();
+        auto last = bc().info(last_hash);
+        auto last_tx = bc().transactions(last_hash);
+
+        auto late = utcTimeMilliSec() - last.timestamp();
+//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
+        {
+
+            cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+                  << (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << last_tx.size()
+                  << "  " << m_StateExDB.check_version(false);
+        }
+    }
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);

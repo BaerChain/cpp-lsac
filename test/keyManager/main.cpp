@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     // RLPStream _rlp;
     // _rlp.appendList(9);
-    // _rlp << _nodeid << _blockNum << _blockHash << _version << _serverDelay; 
+    // _rlp << _nodeid << _blockNum << _blockHash << _version << _serverDelay;
 
     // {
     //     RLPStream _blockrlp;
@@ -93,10 +93,10 @@ int main(int argc, char *argv[])
 
     //     _rlp << _noderlp.out();
     // }
- 
+
     // _rlp << _packagedTransactions << _tradingpoolsNum;
     
-    
+
     // std::cout << "_rlp:" << _rlp.out() << std::endl;
 
     // Signature _signature = dev::sign(_key.secret(), sha3(_rlp.out()));
@@ -110,20 +110,32 @@ int main(int argc, char *argv[])
     //     std::cout << "verify error" << std::endl;
     // }
 
-    std::string _from = "0xe523e7c59a0725afd08bc9751c89eed6f8e16dec";
-    std::string _to = "0x042610e447c94ff0824b7aa89fab123930edc805";
-    std::string _key = "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve";
+//    std::string _from = "0xe523e7c59a0725afd08bc9751c89eed6f8e16dec";
+//    std::string _to = "0x042610e447c94ff0824b7aa89fab123930edc805";
+//    std::string _key = "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve";
 
-    unsigned _blockNum = 20;
+    //std::string _key = "4DS7PYhDYQWToua45gFnHG2GXCSVuVwSMx2ZyUeFxhqb";
 
-    RLPStream _rlp(3);
-    _rlp << Address(_from) << Address(_to) << _blockNum;
+    //auto _keypair = dev::crypto::from_base58(_key);
 
-     //Secret _ret(_key);
-    auto keyPair = KeyPair(Secret(dev::crypto::from_base58(_key)));
+    //std::cout << _keypair << std::endl;
 
-    Signature _sign = dev::sign(keyPair.secret(), sha3(_rlp.out()));
 
-    std::cout << "sign:" <<_sign << std::endl;
+
+//    unsigned _blockNum = 20;
+//
+//    RLPStream _rlp(3);
+//    _rlp << Address(_from) << Address(_to) << _blockNum;
+//
+//    // Secret _ret(_key);
+//    auto keyPair = KeyPair(Secret(dev::crypto::from_base58(_key)));
+//
+//    Signature _sign = dev::sign(keyPair.secret(), sha3(_rlp.out()));
+//
+//    std::cout << "sign:" <<_sign << std::endl;
+
+    auto _key = KeyPair::create();
+    std::cout << _key.address() << std::endl;
+    std::cout << "private key: " << dev::crypto::to_base58((char*)_key.secret().data(), 32) << std::endl;
 
 }

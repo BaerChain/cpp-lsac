@@ -2,6 +2,7 @@
 
 #include <libdevcrypto/Common.h>
 #include <libdevcore/FixedHash.h>
+#include <libp2p/Common.h>
 #include <brcd/buildinfo.h>
 #include <iostream>
 #include <mutex>
@@ -13,11 +14,13 @@ namespace brc{
 struct monitorData
 {
     unsigned blocknum;
+    Address blockAuthor;
     h256 blockhash;
     size_t packagetranscations;
     size_t pendingpoolsnum;
     size_t nodenum;
     int64_t time;
+    dev::p2p::PeerSessionInfos _peerInfos;
 };
 
 
@@ -35,6 +38,10 @@ public:
     void exitThread(bool _flags) {m_mutex.lock(); m_threadExit = true; m_mutex.unlock();}
     Signature signatureData() const;
     std::string getNodeStatsStr(Signature _sign);
+
+private:
+    void analysisRet(std::string _ret);
+
 private:
     bool m_threadExit = false;
     bool m_ipStats = false;
