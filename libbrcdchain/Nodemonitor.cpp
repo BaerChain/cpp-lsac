@@ -76,11 +76,11 @@ NodeMonitor::NodeMonitor(bytes _networkrlp, std::string _ip):
     //m_ipStats = checkIP();
     getClientVersion();
     getKeypair();
-    // if(m_ipStats)
-    // {
+    if(!_ip.empty())
+    {
         std::thread t(&NodeMonitor::run, this);
         t.detach();
-    // }
+    }
 }
 
 bool NodeMonitor::checkIP()
