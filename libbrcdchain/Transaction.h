@@ -55,7 +55,7 @@ namespace dev
         {
 #define SERIALIZE_MACRO(r, data, elem) data.append(elem);
 #define OPERATION_SERIALIZE(MEMBERS)                             \
-    virtual bytes serialize()  const                                  \
+    virtual bytes serialize()  const                             \
     {                                                            \
         RLPStream stream(BOOST_PP_SEQ_SIZE(MEMBERS));            \
         BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS); \
