@@ -98,7 +98,7 @@ namespace test_tools{
         try {
             std::vector<std::shared_ptr<operation>> ops;
             for(auto itr : _address_keys){
-                auto op  = new transcation_operation(op_type::brcTranscation, itr.first, 1, transfer_value);
+                auto op  = new transcation_operation(op_type::brcTranscation, _source_address, itr.first, 1, transfer_value);
                 ops.push_back(std::shared_ptr<transcation_operation>(op));
             }
 
@@ -174,6 +174,7 @@ namespace test_tools{
 
 
                 auto op  = new pendingorder_opearaion(op_type::pendingOrder,
+                                                      itr.first,
                         dev::brc::ex::order_type::buy,
                         dev::brc::ex::order_token_type::BRC,
                         dev::brc::ex::order_buy_type::all_price,

@@ -451,7 +451,97 @@ namespace dev {
             }
 
 
+            std::vector<result_order> exchange_plugin::get_result_orders_by_address(const dev::Address &addr,
+                                                                                    int64_t min_time, int64_t max_time,
+                                                                                    uint32_t max_size) const {
+                if(max_size > 50 || min_time >= max_time ){
+                    BOOST_THROW_EXCEPTION(get_result_order_error());
+                }
 
+                return db->with_read_lock([&](){
+                    std::vector<result_order> ret;
+                    std::vector<result_order> ret_sender;
+                    std::vector<result_order> ret_acceptor;
+
+                    const auto &sender_index = db->get_index<order_result_object_index>().indices().get<by_sender>();
+                    auto sender_lower_itr = sender_index.lower_bound(boost::tuple<Address, Time_ms>(addr, max_time));
+                    auto sender_up_itr = sender_index.upper_bound(boost::tuple<Address, Time_ms>(addr, min_time));
+
+                    uint32_t size = max_size;
+                    while(sender_lower_itr != sender_up_itr && size-- > 0){
+                        result_order eo;
+
+                        eo.sender = sender_lower_itr->sender;
+                        eo.acceptor = sender_lower_itr->acceptor;
+                        eo.type = sender_lower_itr->type;
+                        eo.token_type = sender_lower_itr->token_type;
+                        eo.buy_type = sender_lower_itr->buy_type;
+                        eo.create_time = sender_lower_itr->create_time;
+                        eo.send_trxid = sender_lower_itr->send_trxid;
+                        eo.to_trxid = sender_lower_itr->to_trxid;
+                        eo.amount = sender_lower_itr->amount;
+                        eo.price = sender_lower_itr->price;
+
+                        ret_sender.push_back(eo);
+                        sender_lower_itr++;
+                    }
+
+
+                    const auto &acceptor_index = db->get_index<order_result_object_index>().indices().get<by_acceptor>();
+                    auto acceptor_lower_itr = acceptor_index.lower_bound(boost::tuple<Address, Time_ms>(addr, max_time));
+                    auto acceptor_up_itr = acceptor_index.upper_bound(boost::tuple<Address, Time_ms>(addr, min_time));
+
+                    size = max_size;
+                    while(acceptor_lower_itr != acceptor_up_itr && size-- > 0){
+                        result_order eo;
+
+                        eo.sender = acceptor_lower_itr->sender;
+                        eo.acceptor = acceptor_lower_itr->acceptor;
+                        eo.type = acceptor_lower_itr->type;
+                        eo.token_type = acceptor_lower_itr->token_type;
+                        eo.buy_type = acceptor_lower_itr->buy_type;
+                        eo.create_time = acceptor_lower_itr->create_time;
+                        eo.send_trxid = acceptor_lower_itr->send_trxid;
+                        eo.to_trxid = acceptor_lower_itr->to_trxid;
+                        eo.amount = acceptor_lower_itr->amount;
+                        eo.price = acceptor_lower_itr->price;
+                        ret_acceptor.push_back(eo);
+
+                        acceptor_lower_itr++;
+                    }
+
+                    //sort
+                    {
+                        size = 0;
+                        auto sender_itr = ret_sender.begin();
+                        auto acceptor_itr = ret_acceptor.begin();
+                        for(;
+                        size < max_size && (sender_itr != ret_sender.end() || acceptor_itr != ret_acceptor.end());
+                        size++)
+                        {
+                            if(sender_itr != ret_sender.end() && acceptor_itr != ret_acceptor.end()){
+                                if(sender_itr->create_time > acceptor_itr->create_time){
+                                    ret.push_back(*sender_itr);
+                                    sender_itr++;
+                                }
+                                else{
+                                    ret.push_back(*acceptor_itr);
+                                    acceptor_itr++;
+                                }
+                            }
+                            else if(sender_itr != ret_sender.end()){
+                                ret.push_back(*sender_itr);
+                                sender_itr++;
+                            }
+                            else{
+                                ret.push_back(*acceptor_itr);
+                                acceptor_itr++;
+                            }
+                        }
+                    }
+                    return ret;
+                });
+            }
 
 
         }
