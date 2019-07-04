@@ -1318,7 +1318,7 @@ void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::share
 			transferBallotSell(_addr, _p->m_vote_numbers);
 		else if(_type == VoteType::ELoginCandidate)
 			addSysVoteDate(SysElectorAddress, _addr);
-		else if(_type == VoteType::ELoginCandidate)
+		else if(_type == VoteType::ELogoutCandidate)
 			subSysVoteDate(SysElectorAddress, _addr);
 		else if(_type == VoteType::EDelegate)
 			addVote(_addr, _p->m_to, _p->m_vote_numbers);
@@ -1450,7 +1450,8 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 		{
 			Json::Value _v;
 			_v["address"] = toJS(val.first);
-			_v["vote_num"] = toJS(val.second);
+            auto a = account(val.first);
+			_v["vote_num"] = toJS(a->poll());
 			_arry.append(_v);
 		}
 		jv["electors"] = _arry;
