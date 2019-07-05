@@ -5,86 +5,73 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/base58.h>
 #include <libdevcore/SHA3.h>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <libdevcore/Log.h>
+#include <json_spirit/JsonSpiritHeaders.h>
+#include <json_spirit/json_spirit.h>
 
 
 using namespace dev;
 using namespace std;
 
-
-vector<tuple<string, string, unsigned>> _needSignData = {
-        {"0xe523e7c59a0725afd08bc9751c89eed6f8e16dec", "0x042610e447c94ff0824b7aa89fab123930edc805", 1},
-        {"0xe523e7c59a0725afd08bc9751c89eed6f8e16dec", "0x042610e447c94ff0824b7aa89fab123930edc805", 100}
-};
-
-
-
-
-map<string, string> _otherAccount = {
-        {"0x82564e0146bc6b0ba98835aee58e54d484e8c81d", "3ExgDCQFhexa8AftFP35LaMEqvUTcpQeB4nW4TCBSe5e"},
-        {"0xef2347f270008473897df5059b914fd078ef3fac", "BaHzrQMcH1ARz3zx8s1d7D9BmFxFGwtepXgMyjEWateU"}
-};
-
-pair<string, string> _signAccount = {"0xe523e7c59a0725afd08bc9751c89eed6f8e16dec", "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve"};
-
-
-
+namespace bpo = boost::program_options;
+namespace bfs = boost::filesystem;
+namespace js = json_spirit;
 
 int main(int argc, char *argv[])
 {
-    for(auto i : _needSignData)
-    {
-         RLPStream _rlp(3);
-         _rlp << Address(std::get<0>(i)) << Address(std::get<1>(i)) << std::get<2>(i);
-         auto _keypair = KeyPair(Secret(dev::crypto::from_base58(_signAccount.second)));
-         Signature  _sign = sign(_keypair.secret(), sha3(_rlp.out()));
-         cout << " _signAccount data: " << _sign << endl;
+    try{
+        bpo::options_description description("command line ");
+        description.add_options()
+                ("help,h", "show help message.")
+                ("from,f", bpo::value<std::string>(), "Address to be modified")
+                ("to,t", bpo::value<std::string>(), "Modified address")
+                ("blockNumber,n", bpo::value<unsigned>(), "Modify the certifier's block height")
+                ("privateKey,k", bpo::value<std::string>(), "from address private key")
+                ("consoleLog,l", bpo::value<bool>(),"Whether to write to the update_miner.json file in the current path")
+                ("sourceData,d", bpo::value<std::string>(),"Data that needs to be signed by the current node")
+                ("txJson,t", bpo::value<bfs::path>(), "Initiate a json file path to modify the verifier transaction")
+                ;
+        bpo::variables_map args_map;
+        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, description);
+        bpo::store(parsed, args_map);
+        bool isWriteToFile = false;
 
+        if (args_map.count("help")) {
+            std::cout << description << std::endl;
+            return 0;
+        }
 
-         for(auto j : _otherAccount)
-         {
-                RLPStream _otherAccountrlp(4);
-                _otherAccountrlp << Address(std::get<0>(i)) << Address(std::get<1>(i)) << std::get<2>(i) << _sign;
-                auto _otherAccountKey = KeyPair(Secret(dev::crypto::from_base58(j.second)));
-                Signature  _otherAccountSign = sign(_otherAccountKey.secret(), sha3(_otherAccountrlp.out()));
-                cout << "_otherAccountSign :" << _otherAccountSign << endl;
-         }
+        // Generate signature data with the private key of "from"
+        if (args_map.count("from") && args_map.count("to") && args_map.count("blockNumber") && args_map.count("privateKey")){
+            Address from(args_map["from"].as<std::string>());
+            Address to(args_map["to"].as<std::string>());
+            unsigned blockNumber = args_map["blockNumber"].as<unsigned>();
+            auto privateKey(args_map["privateKey"].as<std::string>());
+
+            RLPStream _rlp(3);
+            _rlp << from << to << blockNumber;
+            auto _keypair = KeyPair(Secret(dev::crypto::from_base58(privateKey)));
+            Signature  _sign = sign(_keypair.secret(), sha3(_rlp.out()));
+
+            js::mObject obj;
+            obj["from"] = from.hex();
+            //std::string res(js::write(obj));
+            
+            //std::cout << res;
+            std::cout << from << " " << to << " " << blockNumber << std::endl;
+        }
+
+        // Sign the data signed by other nodes with your own private key
+
+        // Send change miner transaction after getting the required signature data
+    }catch (const std::exception &e){
+        cwarn << e.what();
+    }catch (const boost::exception &e){
+        cwarn << boost::diagnostic_information(e);
+    }catch (...){
+        cwarn << "unkown exception ....";
     }
+    return  0;
 }
-
-
-
-
-//int main(int argc, char *argv[])
-//{
-//    KeyPair _key = KeyPair::create();
-//    std::cout << "address: " << toHex(_key.address()) << std::endl;
-//    std::cout << "public: " << _key.pub() << std::endl;
-//    std::cout << "private_key: " << dev::crypto::to_base58((char*)_key.secret().data(),32) << std::endl;
-//
-//
-//    std::string _from = toHex(_key.address());
-//    std::string _to = "0xe523e7c59a0725afd08bc9751c89eed6f8e16dec";
-//    unsigned _blockNum = 20;
-//
-//    RLPStream _rlp(3);
-//    _rlp << Address(_from) << Address(_to) << _blockNum;
-//    Signature _sign = sign(_key.secret(), sha3(_rlp.out()));
-//
-//    std::cout << "sign: " << _sign << std::endl;
-//
-//    if(verify(_key.pub(), _sign, sha3(_rlp.out())))
-//    {
-//        std::cout << "_sign success!" << std::endl;
-//    }else{
-//        std::cout << " _sign error!" << std::endl;
-//        return 0;
-//    }
-//
-//    std::cout << " recover:" << recover(_sign, sha3(_rlp.out())) << std::endl;
-//
-//    auto _r = recover(_sign, sha3(_rlp.out()));
-//
-//    std::cout << " right Address:" << right160(dev::sha3(bytesConstRef(_r.data(),sizeof(_r)))) << std::endl;
-//
-//}
-
