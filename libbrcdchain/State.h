@@ -484,6 +484,9 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
+	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
+	uint64_t timestamp() const{ return m_timestamp; }
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
@@ -524,6 +527,9 @@ private:
 
     u256 m_accountStartNonce;
 
+    /// the time for current_block time
+	uint64_t m_timestamp = 0;
+
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
 
@@ -536,7 +542,7 @@ State& createIntermediateState(
     State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
 
 template <class DB>
-AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state);
+AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state, uint64_t _time = FORKSIGNSTIME);
 
 }  // namespace brc
 }  // namespace dev

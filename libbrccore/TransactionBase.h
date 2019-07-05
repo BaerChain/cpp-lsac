@@ -8,6 +8,8 @@
 #include <json/json.h>
 #include <boost/optional.hpp>
 
+#define  FORKSIGNSTIME 1562256000000
+
 namespace dev
 {
 namespace brc

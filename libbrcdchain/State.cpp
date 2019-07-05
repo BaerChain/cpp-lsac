@@ -102,7 +102,7 @@ void State::populateFrom(AccountMap const &_map) {
     if (it != m_cache.end())
         a = it->second;
 	cerror << "State::populateFrom ";
-    brc::commit(_map, m_state);
+    brc::commit(_map, m_state, timestamp());
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
 
@@ -181,11 +181,6 @@ Account *State::account(Address const &_addr) {
         _blockReward.push_back(_blockpair);
 	}
 
-    std::vector<std::string> tmp;
-    if(13 == state.itemCount()){
-        tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
-    }
-
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
                                                    state[2].toHash<h256>(), state[3].toHash<h256>(),
@@ -196,7 +191,12 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
-    i.first->second.initChangeList(tmp);
+
+	if(timestamp() > FORKSIGNSTIME && state.itemCount() >= 13){
+		std::vector<std::string> tmp;
+		tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+		i.first->second.initChangeList(tmp);
+	}
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -224,7 +224,7 @@ void State::clearCacheIfTooLarge() const {
 void State::commit(CommitBehaviour _commitBehaviour) {
     if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
-    m_touched += dev::brc::commit(m_cache, m_state);
+    m_touched += dev::brc::commit(m_cache, m_state, timestamp());
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -1754,18 +1754,15 @@ State &dev::brc::createIntermediateState(
 }
 
 template<class DB>
-AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
+AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, uint64_t _time /*= FORKSIGNSTIME*/) {
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                int rlpCount = 12;
-                if (i.first.hex() == SysVarlitorAddress.hex()) {
-                    rlpCount = 13;
-                }
-                RLPStream s(rlpCount);
+				RLPStream s;
+				s.appendList(_time > FORKSIGNSTIME ? 13 : 12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1816,10 +1813,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
-
-                if(i.first.hex() == SysVarlitorAddress.hex()){
+                if(_time > FORKSIGNSTIME)
                     s << i.second.willChangeList();
-                }
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
@@ -1829,7 +1824,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 
 
 template AddressHash dev::brc::commit<OverlayDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state);
+        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, uint64_t _time = FORKSIGNSTIME);
 
 template AddressHash dev::brc::commit<StateCacheDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state);
+        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state, uint64_t _time = FORKSIGNSTIME);
