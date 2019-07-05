@@ -12,6 +12,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <libdevcore/CommonJS.h>
 
 namespace fs = boost::filesystem;
 namespace bop = boost::program_options;
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
     // bop::options_description _description("command line ");
     // _description.add_options()
     //     ("data,d", bop::value<std::string>(), "data path");
-    
+
     // bop::variables_map args_map;
     // bop::parsed_options parsed = bop::parse_command_line(argc, argv, _description);
     // bop::store(parsed, args_map);
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
     // }
 
     // _rlp << _packagedTransactions << _tradingpoolsNum;
-    
+
 
     // std::cout << "_rlp:" << _rlp.out() << std::endl;
 
@@ -114,11 +115,11 @@ int main(int argc, char *argv[])
 //    std::string _to = "0x042610e447c94ff0824b7aa89fab123930edc805";
 //    std::string _key = "8RioSGhgNUKFZopC2rR3HRDD78Sc48gci4pkVhsduZve";
 
-    //std::string _key = "4DS7PYhDYQWToua45gFnHG2GXCSVuVwSMx2ZyUeFxhqb";
-
-    //auto _keypair = dev::crypto::from_base58(_key);
-
-    //std::cout << _keypair << std::endl;
+//    std::string _key = "EgBYKnfwb4vzH5kwvdMqBCqUv7f16hz9f2eBXLCTCfRk";
+//
+//    auto _keypair = dev::crypto::from_base58(_key);
+//
+//    std::cout << _keypair << std::endl;
 
 
 
@@ -134,8 +135,52 @@ int main(int argc, char *argv[])
 //
 //    std::cout << "sign:" <<_sign << std::endl;
 
-    auto _key = KeyPair::create();
-    std::cout << _key.address() << std::endl;
-    std::cout << "private key: " << dev::crypto::to_base58((char*)_key.secret().data(), 32) << std::endl;
+//    auto _key = KeyPair::create();
+//    std::cout << _key.address() << std::endl;
+//    std::cout << "private key: " << dev::crypto::to_base58((char*)_key.secret().data(), 32) << std::endl;
 
+    std::string _key = "EgBYKnfwb4vzH5kwvdMqBCqUv7f16hz9f2eBXLCTCfRk";
+
+    auto key = KeyPair(Secret(dev::crypto::from_base58(_key)));
+    cnote << dev::crypto::from_base58(_key);
+    cnote << key.pub();
+
+    std::string _blockNum = "14";
+    std::string blockHash = "0x0f4dcf08824f3ecb991704a07f63c7df0d9ca8c2e8e75fbd1de3fe2d08ae3f8e";
+    std::string blockAuthor = "0xe523e7c59a0725afd08bc9751c89eed6f8e16dec";
+    std::string nodeID = "b7a109792da7d053009fe5bdc7defba2a1d1b0e3170c077de8a16d3a77628b6a2addc5a00afc56f32512dbd21f98ee9c970cd344c24c00564579b52a456d0347";
+    std::string time = "0x16bbb15f5c2";
+    std::string clientVersion = "1c412a133f2be54dfed8e41ad79c2ef09e82d6cf";
+    std::string nodeNum = "0x0";
+    std::string nodeMaxDelay = "0x0";
+    std::string nodeMinimumDelay  = "0x0";
+    std::string packageTranscations = "0x0";
+    std::string pendingpoolsnum = "0x0";
+
+
+    RLPStream rlp(11);
+    rlp << nodeID << _blockNum << blockAuthor<< blockHash << time << clientVersion << nodeNum << nodeMaxDelay << nodeMinimumDelay << packageTranscations << pendingpoolsnum;
+    cnote << rlp.out();
+
+    cnote  << toJS(sha3(rlp.out()));
+
+    Signature  _sign = sign(key.secret(), sha3(rlp.out()));
+
+    cnote << toJS(_sign);
 }
+
+
+//{
+//"blockAuthor": "0xe523e7c59a0725afd08bc9751c89eed6f8e16dec",
+//"blockHash": "0x0f4dcf08824f3ecb991704a07f63c7df0d9ca8c2e8e75fbd1de3fe2d08ae3f8e",
+//"blockNum": 14,
+//"clientVersion": "1c412a133f2be54dfed8e41ad79c2ef09e82d6cf",
+//"nodeID": "b7a109792da7d053009fe5bdc7defba2a1d1b0e3170c077de8a16d3a77628b6a2addc5a00afc56f32512dbd21f98ee9c970cd344c24c00564579b52a456d0347",
+//"nodeMaxDelay": "0x0",
+//"nodeMinimumDelay": "0x0",
+//"nodeNum": "0x0",
+//"packageTranscations": "0x0",
+//"pendingpoolsnum": "0x0",
+//"serverDelay": "0x16bbb15f5c2",
+//"signatureData": "0x99ad654e7bdf77fefc16aa609252840f77111b2637e93ae604abd21ce9262ac6413e1b8ca289b791ab4d478bd78ef0861142e541a882bff4345e349cce6c106101"
+//}

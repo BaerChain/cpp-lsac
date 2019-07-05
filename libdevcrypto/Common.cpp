@@ -11,6 +11,8 @@
 #include <libscrypt.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/CommonJS.h>
 #include "AES.h"
 #include "CryptoPP.h"
 #include "Exceptions.h"

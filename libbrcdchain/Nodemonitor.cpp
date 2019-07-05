@@ -3,6 +3,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/Common.h>
+#include <libdevcrypto/base58.h>
 #include <thread>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/CommonJS.h>
@@ -137,22 +138,39 @@ void NodeMonitor::setData(monitorData _data)
     m_mutex.unlock();
 }
 
-Signature NodeMonitor::signatureData() const
+Signature NodeMonitor::signatureData()
 {
     if(m_data.size() == 0) {
         return Signature();
     }
     monitorData _data = m_data.back();
-    cnote << "nodeNum:" <<_data._peerInfos.size();
-
+//    cnote << "nodeNum:" <<_data._peerInfos.size();
+    m_maxDelay = 0;
+    m_minimumDelay = 0;
     for(auto i : _data._peerInfos)
     {
-        cnote << "ping :" << chrono::duration_cast<chrono::milliseconds>(i.lastPing).count() / 2;
+        uint32_t _delay = chrono::duration_cast<chrono::milliseconds>(i.lastPing).count() / 2;
+
+        if(_delay < m_minimumDelay)
+        {
+            m_minimumDelay = _delay;
+        }
+
+        if(_delay > m_maxDelay)
+        {
+            m_maxDelay = _delay;
+        }
+
+//        cnote << "ping :" << chrono::duration_cast<chrono::milliseconds>(i.lastPing).count() / 2;
     }
 
-    RLPStream _rlp(8);
-    _rlp << m_public << _data.blocknum << _data.blockhash << _data.time <<m_clientVersion << _data.nodenum << _data.packagetranscations << _data.pendingpoolsnum;
+    RLPStream _rlp(13);
+    _rlp << m_public.hex() << std::to_string(_data.blocknum) << _data.blockAuthor.hex() <<_data.blockhash.hex() <<  toJS(_data.blockgasused) << toJS(0) << toJS(_data.time) <<
+    m_clientVersion << toJS(_data.nodenum) << toJS(m_maxDelay) << toJS(m_minimumDelay) << toJS(_data.packagetranscations) << toJS(_data.pendingpoolsnum);
     Signature _sign = sign(m_secret, sha3(_rlp.out()));
+
+/*    cnote << "hash " << toJS(sha3(_rlp.out()));
+    cnote << "private key:" << dev::crypto::to_base58((char*)m_secret.data(), 32);*/
     return _sign;
 }
 
@@ -166,12 +184,16 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
     clock_t time;
     Json::Value _jv;
     _jv["nodeID"] = m_public.hex();
-    _jv["blockNum"] = _data.blocknum;
-    _jv["blockAuthor"] = toJS(_data.blockAuthor);
-    _jv["blockHash"] = toJS(_data.blockhash);
+    _jv["blockNum"] = std::to_string(_data.blocknum);
+    _jv["blockAuthor"] = _data.blockAuthor.hex();
+    _jv["blockHash"] = _data.blockhash.hex();
+    _jv["blockgasUsed"] = toJS(_data.blockgasused);
     _jv["serverDelay"] = toJS(_data.time);
+    _jv["blockDelay"] = toJS(0);
     _jv["clientVersion"] = m_clientVersion;
     _jv["nodeNum"] = toJS(_data.nodenum);
+    _jv["nodeMaxDelay"] = toJS(m_maxDelay);
+    _jv["nodeMinimumDelay"] = toJS(m_minimumDelay);
     _jv["packageTranscations"] = toJS(_data.packagetranscations);
     _jv["pendingpoolsnum"] = toJS(_data.pendingpoolsnum);
     _jv["signatureData"] = toJS(_sign);

@@ -16,6 +16,7 @@ struct monitorData
     unsigned blocknum;
     Address blockAuthor;
     h256 blockhash;
+    u256 blockgasused;
     size_t packagetranscations;
     size_t pendingpoolsnum;
     size_t nodenum;
@@ -36,7 +37,7 @@ public:
     void getClientVersion();
     void setData(monitorData _data);
     void exitThread(bool _flags) {m_mutex.lock(); m_threadExit = true; m_mutex.unlock();}
-    Signature signatureData() const;
+    Signature signatureData();
     std::string getNodeStatsStr(Signature _sign);
 
 private:
@@ -47,6 +48,8 @@ private:
     bool m_ipStats = false;
     //jsonrpc::HttpClient m_httpClient;
     std::string m_ip;
+    uint32_t m_maxDelay;
+    uint32_t m_minimumDelay;
     bytes m_networkrlp;
     std::string m_clientVersion;
     std::vector<monitorData> m_data;
