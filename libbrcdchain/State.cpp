@@ -858,6 +858,34 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
     return _JsArray;
 }
 
+Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTime, int64_t _maxTime,
+                                                 uint32_t _maxSize)
+{
+    std::vector<result_order> _retV = m_exdb.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
+    Json::Value  _JsArray;
+
+    for(auto val : _retV)
+    {
+        Json::Value _value;
+        _value["Address"] = toJS(val.sender);
+        _value["Acceptor"] = toJS(val.acceptor);
+        _value["Hash"] = toJS(val.send_trxid);
+        _value["AcceptorHash"] = toJS(val.to_trxid);
+        _value["price"] = std::string(val.price);
+        _value["amount"] = std::string(val.amount);
+        _value["create_time"] = toJS(val.create_time);
+        std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
+                                                                                      val.buy_type);
+        _value["order_type"] = get<0>(_resultTuple);
+        _value["order_token_type"] = get<1>(_resultTuple);
+        _value["order_buy_type"] = get<2>(_resultTuple);
+        _JsArray.append(_value);
+    }
+
+    return _JsArray;
+
+}
+
 std::tuple<std::string, std::string, std::string>
 State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
     std::string _type, _token_type, _buy_type;
