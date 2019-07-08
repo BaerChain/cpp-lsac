@@ -102,7 +102,7 @@ void State::populateFrom(AccountMap const &_map) {
     if (it != m_cache.end())
         a = it->second;
 	cerror << "State::populateFrom ";
-    brc::commit(_map, m_state);
+    brc::commit(_map, m_state, timestamp());
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
 
@@ -192,6 +192,10 @@ Account *State::account(Address const &_addr) {
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
+    std::vector<std::string> tmp;
+    tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+    i.first->second.initChangeList(tmp);
+
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -218,7 +222,7 @@ void State::clearCacheIfTooLarge() const {
 void State::commit(CommitBehaviour _commitBehaviour) {
     if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
-    m_touched += dev::brc::commit(m_cache, m_state);
+    m_touched += dev::brc::commit(m_cache, m_state, timestamp());
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -616,6 +620,18 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 	}
 }
 
+void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+	std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_ops[0]);
+    Account *a = account(SysVarlitorAddress);
+    a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+        
+	
+}
+
+Account* dev::brc::State::getSysAccount(){
+    return account(SysVarlitorAddress);
+}
+
 void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
 	std::vector<order> _v ;
 	std::vector<result_order> _result_v;
@@ -856,6 +872,34 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
     }
 
     return _JsArray;
+}
+
+Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTime, int64_t _maxTime,
+                                                 uint32_t _maxSize)
+{
+    std::vector<result_order> _retV = m_exdb.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
+    Json::Value  _JsArray;
+
+    for(auto val : _retV)
+    {
+        Json::Value _value;
+        _value["Address"] = toJS(val.sender);
+        _value["Acceptor"] = toJS(val.acceptor);
+        _value["Hash"] = toJS(val.send_trxid);
+        _value["AcceptorHash"] = toJS(val.to_trxid);
+        _value["price"] = std::string(val.price);
+        _value["amount"] = std::string(val.amount);
+        _value["create_time"] = toJS(val.create_time);
+        std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
+                                                                                      val.buy_type);
+        _value["order_type"] = get<0>(_resultTuple);
+        _value["order_token_type"] = get<1>(_resultTuple);
+        _value["order_buy_type"] = get<2>(_resultTuple);
+        _JsArray.append(_value);
+    }
+
+    return _JsArray;
+
 }
 
 std::tuple<std::string, std::string, std::string>
@@ -1762,14 +1806,15 @@ State &dev::brc::createIntermediateState(
 }
 
 template<class DB>
-AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
+AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, uint64_t _time /*= FORKSIGNSTIME*/) {
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-                RLPStream s(12);
+				RLPStream s;
+				s.appendList(_time > FORKSIGNSTIME ? 13 : 12);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1820,6 +1865,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
+
+                s << i.second.willChangeList();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
@@ -1829,7 +1876,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 
 
 template AddressHash dev::brc::commit<OverlayDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state);
+        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, uint64_t _time = FORKSIGNSTIME);
 
 template AddressHash dev::brc::commit<StateCacheDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state);
+        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state, uint64_t _time = FORKSIGNSTIME);

@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
             db.insert_operation({os}, false, true);
         }
         std::cout << " time: " << t.elapsed() << "  size: " << test.size() << std::endl;
-        db.commit(1);
+        db.commit(1, dev::h256(), dev::h256());
 
     } catch (const dev::Exception &e) {
         std::cout << e.what() << std::endl;

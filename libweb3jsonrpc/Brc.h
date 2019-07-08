@@ -56,7 +56,8 @@ public:
 	virtual Json::Value brc_getSuccessPendingOrder(std::string const& _getSize, std::string const& _blockNum) override;
     virtual Json::Value brc_getPendingOrderPoolForAddr(std::string const& _address, std::string const& _getSize, std::string const& _blockNum) override;
     virtual Json::Value brc_getPendingOrderPool(std::string const& _order_type, std::string const& _order_token_type, std::string const& _getSize,std::string const& _blockNumber) override;
-	virtual Json::Value brc_getBalance(std::string const& _address, std::string const& _blockNumber) override;
+	virtual Json::Value brc_getSuccessPendingOrderForAddr(std::string const& _address, std::string const& _minTime, std::string const& _maxTime, std::string const& _maxSize, std::string const& _blockNum) override;
+    virtual Json::Value brc_getBalance(std::string const& _address, std::string const& _blockNumber) override;
 	virtual Json::Value brc_getBlockReward(std::string const& _address, std::string const& _pageNum, std::string const& _listNum, std::string const& _blockNumber) override;
     virtual std::string brc_getBallot(std::string const& _address, std::string const& _blockNumber) override;
 	virtual std::string brc_getStorageAt(std::string const& _address, std::string const& _position, std::string const& _blockNumber) override;

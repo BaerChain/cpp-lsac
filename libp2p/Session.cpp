@@ -161,7 +161,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
         DEV_GUARDED(x_info)
         {
             m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-            cnetdetails << "Latency: "
+            cwarn << "Latency: "
                         << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count()
                         << " ms";
         }

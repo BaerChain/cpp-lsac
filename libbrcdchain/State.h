@@ -330,11 +330,16 @@ public:
         u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyTypes);
 
+    void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    Account* getSysAccount();
+    
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
 	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
 
 	Json::Value successPendingOrderMsg(uint32_t _getSize);
+
+	Json::Value successPendingOrderForAddrMsg(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize);
 
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
@@ -483,6 +488,9 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
+	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
+	uint64_t timestamp() const{ return m_timestamp; }
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
@@ -523,6 +531,9 @@ private:
 
     u256 m_accountStartNonce;
 
+    /// the time for current_block time
+	uint64_t m_timestamp = 0;
+
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
 
@@ -535,7 +546,7 @@ State& createIntermediateState(
     State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
 
 template <class DB>
-AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state);
+AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state, uint64_t _time = FORKSIGNSTIME);
 
 }  // namespace brc
 }  // namespace dev
