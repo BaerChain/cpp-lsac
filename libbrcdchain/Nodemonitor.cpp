@@ -165,7 +165,7 @@ Signature NodeMonitor::signatureData()
     }
 
     RLPStream _rlp(13);
-    _rlp << m_public.hex() << std::to_string(_data.blocknum) << _data.blockAuthor.hex() <<_data.blockhash.hex() <<  toJS(_data.blockgasused) << toJS(0) << toJS(_data.time) <<
+    _rlp << m_public.hex() << std::to_string(_data.blocknum) << _data.blockAuthor.hex() <<_data.blockhash.hex() <<  toJS(_data.blockgasused) << toJS(_data.blockDelay) << toJS(_data.time) <<
     m_clientVersion << toJS(_data.nodenum) << toJS(m_maxDelay) << toJS(m_minimumDelay) << toJS(_data.packagetranscations) << toJS(_data.pendingpoolsnum);
     Signature _sign = sign(m_secret, sha3(_rlp.out()));
 
@@ -189,7 +189,7 @@ std::string NodeMonitor::getNodeStatsStr(Signature _sign)
     _jv["blockHash"] = _data.blockhash.hex();
     _jv["blockgasUsed"] = toJS(_data.blockgasused);
     _jv["serverDelay"] = toJS(_data.time);
-    _jv["blockDelay"] = toJS(0);
+    _jv["blockDelay"] = toJS(_data.blockDelay);
     _jv["clientVersion"] = m_clientVersion;
     _jv["nodeNum"] = toJS(_data.nodenum);
     _jv["nodeMaxDelay"] = toJS(m_maxDelay);

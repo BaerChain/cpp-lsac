@@ -17,6 +17,7 @@ struct monitorData
     Address blockAuthor;
     h256 blockhash;
     u256 blockgasused;
+    int64_t blockDelay;
     size_t packagetranscations;
     size_t pendingpoolsnum;
     size_t nodenum;
