@@ -78,7 +78,8 @@ namespace dev
                 pendingOrder = 3,
                 cancelPendingOrder = 4,
                 deployContract =5,
-                executeContract =6
+                executeContract =6,
+                receivingincome=7
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -88,7 +89,8 @@ namespace dev
                     {pendingOrder, 10000},
                     {cancelPendingOrder, 2000},
                     {deployContract, 0},
-                    {executeContract, 0}
+                    {executeContract, 0},
+                    {receivingincome, 0}
             };
 
             struct operation
@@ -230,6 +232,21 @@ namespace dev
                 contract_operation(op_type _type, bytes _d):m_type(_type) { m_date = _d; }
                 OPERATION_UNSERIALIZE(contract_operation, (m_date))
                 OPERATION_SERIALIZE((m_date))
+            };
+
+            struct receivingincome_operation : public operation
+            {
+                op_type m_type;
+                uint32_t m_dividendCycle;
+                Address m_from;
+                receivingincome_operation(){}
+                receivingincome_operation(op_type _type, uint32_t  _dividendCycle, Address _from) : m_type(_type), m_dividendCycle(_dividendCycle), m_from(_from)
+                {}
+
+                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_dividendCycle)(m_from))
+
+                OPERATION_SERIALIZE((m_type)(m_dividendCycle)(m_from))
+
             };
 
         }  // namespace transationTool

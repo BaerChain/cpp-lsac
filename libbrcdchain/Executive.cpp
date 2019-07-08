@@ -20,6 +20,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
+
+#define VOTETIME 60*1000
+#define VOTEBLOCKNUM 100
+
 namespace
 {
 std::string dumpStackAndMemory(LegacyVM const& _vm)
@@ -355,6 +359,13 @@ void Executive::initialize(Transaction const& _transaction)
 					m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
                 }
                 break;
+				case transationTool::receivingincome:
+                {
+                    transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
+                    
+
+                }
+
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
