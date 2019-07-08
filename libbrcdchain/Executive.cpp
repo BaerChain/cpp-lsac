@@ -298,13 +298,13 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << "There cannot be multiple types of transactions in bulk transactions";
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
 				}
-                /*if(_type == transationTool::vote)
+                if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}*/
+				}
 
 				m_batch_params._type = _type;
                 switch (_type)
@@ -359,11 +359,62 @@ void Executive::initialize(Transaction const& _transaction)
 					m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
                 }
                 break;
+                case transationTool::changeMiner:
+                {
+                    transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(val);
+					try {
+						// check 'from' and 'm_before'
+                        if(m_t.sender() != _changeMiner_op.m_before){
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
+                        }
+                        // check sign
+                        if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature, false)){
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
+                        }
+
+                        auto addrMap = m_vote.VarlitorsAddress();
+                        auto currentCheckerCount = addrMap.size() - addrMap.size() / 3;
+
+                        // check Permission
+                        if (0 == addrMap.count(m_t.sender())){
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Permission denied"));
+                        }
+
+                        // check other node sign and num >= 2/3(include own)
+                        int count = 1;
+                        sort(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end());
+                        _changeMiner_op.m_agreeMsgs.erase(unique(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end()), _changeMiner_op.m_agreeMsgs.end());
+                        for(auto data : _changeMiner_op.m_agreeMsgs){
+                            auto addr = _changeMiner_op.get_sign_data_address(data, true);
+                            if(addr == m_t.sender()){
+                                continue;
+                            }
+                            if(addrMap.count(addr)){
+                                count++;
+                            }
+                        }
+                        if(count < currentCheckerCount){
+                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
+                        }
+					}
+					catch(Exception &ex)
+					{
+						LOG(m_execLogger)
+							<< "ChangeMiner field > "
+							<< "m_t.sender:" << m_t.sender() << " * "
+							<< " changeMiner_type:" << _changeMiner_op.m_type
+						    << ex.what();
+						m_excepted = TransactionException::ChangeMinerFailed;
+						BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+					}
+					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
+                }
+                    break;
 				case transationTool::receivingincome:
                 {
                     transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
-                    
 
+                    break;
                 }
 
                 default:
@@ -504,7 +555,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     else
     {
-
 		if(m_batch_params.size() < 1)
 			return false;
 		transationTool::op_type  _type = m_batch_params._type;

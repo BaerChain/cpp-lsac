@@ -48,6 +48,7 @@ namespace dev
             BadVoteParamter,
             BadBRCTransactionParamter,
             BrcTranscationField,
+            ChangeMinerFailed,
             DefaultError
         };
 
@@ -77,9 +78,10 @@ namespace dev
                 brcTranscation = 2,
                 pendingOrder = 3,
                 cancelPendingOrder = 4,
-                deployContract =5,
-                executeContract =6,
-                receivingincome=7
+                deployContract = 5,
+                executeContract = 6,
+                changeMiner = 7,
+                receivingincome = 8
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -90,6 +92,7 @@ namespace dev
                     {cancelPendingOrder, 2000},
                     {deployContract, 0},
                     {executeContract, 0},
+                    {changeMiner, 0},
                     {receivingincome, 0}
             };
 
@@ -158,6 +161,45 @@ namespace dev
                 /// bytes serialize this struct
                 /// \return  bytes
                 OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+            };
+
+            struct changeMiner_operation : public operation
+            {
+                uint8_t m_type = null;
+                Address m_before;
+                Address m_after;
+                unsigned m_blockNumber;
+                Signature m_signature;
+                std::vector<Signature> m_agreeMsgs;
+                changeMiner_operation(op_type type, const Address& before, const Address& after,
+                                      unsigned blockNumber, Signature& signature, std::vector<Signature>& agreeMsgs)
+                        : m_type(type),
+                          m_before(before),
+                          m_after(after),
+                          m_blockNumber(blockNumber),
+                          m_signature(signature),
+                          m_agreeMsgs(agreeMsgs){
+                }
+                OPERATION_UNSERIALIZE(
+                        changeMiner_operation, (m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
+
+                OPERATION_SERIALIZE((m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
+                Address get_sign_data_address(Signature _signData, bool isOtherSigned){
+                    int count = 3;
+                    if (isOtherSigned){
+                        count = 4;
+                    }
+                    RLPStream s(count);
+                    s.append(m_before);
+                    s.append(m_after);
+                    s.append(m_blockNumber);
+                    if (isOtherSigned){
+                        s.append(m_signature);
+                    }
+                    auto _hash = sha3(s.out());
+                    auto p = recover(_signData, _hash);
+                    return right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+                }
             };
 
             struct pendingorder_opearaion : public operation
