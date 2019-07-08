@@ -93,6 +93,12 @@ namespace dev
                     {receivingincome, 0}
             };
 
+            enum dividendcycle : uint8_t
+            {
+                blocknum = 0,
+                timestamp = 1
+            };
+
             struct operation
             {
                 virtual ~operation() {}

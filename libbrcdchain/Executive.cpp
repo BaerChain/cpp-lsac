@@ -362,8 +362,7 @@ void Executive::initialize(Transaction const& _transaction)
 				case transationTool::receivingincome:
                 {
                     transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
-                    
-
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
                 }
 
                 default:
@@ -400,6 +399,8 @@ void Executive::initialize(Transaction const& _transaction)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
+				else if(m_batch_params._type == transationTool::op_type::receivingincome)
+                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo);
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";
@@ -413,6 +414,10 @@ void Executive::initialize(Transaction const& _transaction)
 			catch(CancelPendingOrderFiled const& _c){
 				BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
 			}
+			catch(receivingincomeFiled const& _r)
+            {
+			    BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_r)));
+            }
 		}
 	}
 }

@@ -326,3 +326,14 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 		}
 	}
 }
+
+void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _form, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo)
+{
+    if(_type == dev::brc::transationTool::dividendcycle::blocknum)
+    {
+
+    }else if(_type == dev::brc::transationTool::dividendcycle::timestamp)
+    {
+
+    }
+}
