@@ -139,6 +139,14 @@ Json::Value dev::brc::ClientBase::successPendingOrderMessage(uint32_t _getSize, 
 	return blockByNumber(_block).mutableState().successPendingOrderMsg(_getSize);
 }
 
+Json::Value dev::brc::ClientBase::successPendingOrderForAddrMessage(dev::Address _a, int64_t _minTime, int64_t _maxTime,
+                                                                    uint32_t _maxSize,
+                                                                    dev::brc::BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().successPendingOrderForAddrMsg(_a, _minTime, _maxTime, _maxSize);
+}
+
+
 Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _block) const
 {
 	return blockByNumber(_block).mutableState().electorMessage(_a);

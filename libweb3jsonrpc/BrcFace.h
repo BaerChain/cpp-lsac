@@ -48,6 +48,12 @@ public:
                 jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getPendingOrderPoolForAddrI);
         this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getSuccessPendingOrderForAddr", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, "param4",
+                jsonrpc::JSON_STRING, "param5", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getSuccessPendingOrderForAddrI);
+        this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getBalance", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBalanceI);
@@ -285,6 +291,11 @@ public:
 	{
 		response = this->brc_getSuccessPendingOrder(request[0u].asString(), request[1u].asString());
 	}
+	inline virtual void brc_getSuccessPendingOrderForAddrI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getSuccessPendingOrderForAddr(request[0u].asString(), request[1u].asString(), request[2u].asString(),
+                request[3u].asString(), request[4].asString());
+    }
     inline virtual void brc_getBalanceI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getBalance(request[0u].asString(), request[1u].asString());
@@ -529,6 +540,7 @@ public:
     virtual Json::Value brc_getPendingOrderPoolForAddr(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
 	virtual Json::Value brc_getSuccessPendingOrder(const std::string& param1, const std::string& param2) = 0;
+	virtual Json::Value brc_getSuccessPendingOrderForAddr(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4, const std::string& param5) = 0;
 	virtual Json::Value brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getBlockReward(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;

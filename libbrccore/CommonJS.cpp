@@ -1,5 +1,6 @@
 #include "CommonJS.h"
-
+#include <sstream>
+#include <string>
 namespace dev
 {
 std::string prettyU256(u256 _n, bool _abridged)
@@ -68,6 +69,14 @@ uint8_t jsToOrderEnum(std::string const& _js)
     {
         return (unsigned)jsToInt(_js);
     }
+}
+
+int64_t jsToint64(std::string const& _js)
+{
+    std::istringstream str(_js);
+    int64_t num;
+    str >> num;
+    return num;
 }
 
 }  // namespace brc

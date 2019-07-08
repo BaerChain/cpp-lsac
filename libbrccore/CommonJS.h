@@ -33,5 +33,6 @@ namespace brc
 /// Convert to a block number, a bit like jsToInt, except that it correctly recognises "pending" and "latest".
 BlockNumber jsToBlockNumber(std::string const& _js);
 uint8_t jsToOrderEnum(std::string const& _js);
+int64_t jsToint64(std::string const& _js);
 }
 }

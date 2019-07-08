@@ -339,6 +339,8 @@ public:
 
 	Json::Value successPendingOrderMsg(uint32_t _getSize);
 
+	Json::Value successPendingOrderForAddrMsg(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize);
+
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
 
