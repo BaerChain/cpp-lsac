@@ -75,10 +75,10 @@ public:
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
 
-    /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
-    /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
+    /// @throws InvalidSValue if the chain id is neither nor equal to @a chainId
+    /// Note that  is the chain ID of the pre-155 rules, which should also be considered valid
     /// after EIP155
-    void checkChainId(int chainId = -4) const;
+    void checkChainId(int chainId =1) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction; }
@@ -135,7 +135,7 @@ public:
     bool hasZeroSignature() const { return m_vrs && isZeroSignature(m_vrs->r, m_vrs->s); }
 
     /// @returns true if the transaction uses EIP155 replay protection
-    bool isReplayProtected() const { return m_chainId != -4; }
+    bool isReplayProtected() const { return m_chainId != 1; }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -174,7 +174,7 @@ protected:
     u256 m_gas;                            ///< The total gas to convert, paid for from sender's account. Any unused gas gets refunded once the contract is ended.
     bytes m_data;                        ///< The data associated with the transaction, or the initialiser if it's a creation transaction.
     boost::optional<SignatureStruct> m_vrs;    ///< The signature of the transaction. Encodes the sender.
-    int m_chainId = -4;                    
+    int m_chainId = 1;                    
 
     mutable h256 m_hashWith;            ///< Cached hash of transaction with signature.
     mutable Address m_sender;            ///< Cached sender, determined from signature.

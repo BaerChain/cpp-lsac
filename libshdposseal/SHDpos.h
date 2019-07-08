@@ -35,7 +35,7 @@ namespace dev
             void                generateSeal(BlockHeader const& _bi) override;
 			void                populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const override;
 			virtual  void       verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent = BlockHeader(), bytesConstRef _block = bytesConstRef()) const override;
-            void                initConfigAndGenesis(ChainParams const& m_params);
+			void                initConfigAndGenesis(ChainParams const& m_params);
             void                setDposClient(SHDposClient const* _c) { m_dpos_cleint = _c; }
             SHDposConfigParams const& dposConfig() { return m_config; }
 

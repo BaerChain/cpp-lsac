@@ -187,6 +187,7 @@ struct TransactionSkeleton
 	u256 nonce = Invalid256;
 	u256 gas = Invalid256;
 	u256 gasPrice = Invalid256;
+	u256 chainId = 1;
 
 	std::string userReadable(bool _toProxy, std::function<std::pair<bool, std::string>(TransactionSkeleton const&)> const& _getNatSpec, std::function<std::string(Address const&)> const& _formatAddress) const;
 };

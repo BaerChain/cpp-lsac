@@ -34,6 +34,7 @@ using namespace dev::brc;
 #define DATA_KEY_VALUE "value"
 #define DATA_KEY_GAS "gas"
 #define DATA_KEY_Price "gasPrice"
+#define DATA_KEY_ChainId "chainId"
 
 
 namespace js = json_spirit;
@@ -44,13 +45,14 @@ static size_t nonce = 0;
 
 bool validate_obj(const json_spirit::mObject &obj) {
     requireJsonFields(obj, "data",
-                      {{DATA_KEY_FROM,  {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_TO,    {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_VALUE, {{js::str_type}, JsonFieldPresence::Optional}},
-                       {DATA_KEY_DATA,  {{js::obj_type}, JsonFieldPresence::Optional}},
-                       {DATA_KEY_NONCE, {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_GAS,   {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_Price, {{js::str_type}, JsonFieldPresence::Required}}}
+                      {{DATA_KEY_FROM,      {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_TO,        {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_VALUE,     {{js::str_type}, JsonFieldPresence::Optional}},
+                       {DATA_KEY_DATA,      {{js::obj_type}, JsonFieldPresence::Optional}},
+					   {DATA_KEY_ChainId,   {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_NONCE,     {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_GAS,       {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_Price,     {{js::str_type}, JsonFieldPresence::Required}}}
 
     );
     return true;
@@ -75,6 +77,7 @@ struct trx_source {
     u256 nonce = Invalid256;
     u256 gas = Invalid256;
     u256 gasPrice = Invalid256;
+	u256 chainId = -4;
     std::vector<std::shared_ptr<operation>> ops;
 	Contract isContract = Contract::null;
 };
@@ -160,13 +163,15 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
                 tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
-                tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
+				tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
+				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
                     auto type = op_obj["type"].get_int();
                     switch (type) {
                         case vote: {
-                            auto new_op = new vote_operation((op_type) type,
+							auto new_op = new vote_operation((op_type)type,
+															 Address(""),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
 															 u256(op_obj["m_vote_numbers"].get_str())
@@ -176,6 +181,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case brcTranscation: {
                             auto transcation_op = new transcation_operation((op_type) type,
+																			Address(""),
                                                                             Address(op_obj["m_to"].get_str()),
                                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
                                                                             u256(op_obj["m_transcation_numbers"].get_str())
@@ -185,6 +191,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                         }
                         case pendingOrder: {
                             auto pendingorder_op = new pendingorder_opearaion( (op_type)type,
+                                                                              Address(),
                                                                               (ex::order_type) op_obj["m_type"].get_int(),
                                                                               (ex::order_token_type) op_obj["m_token_type"].get_int(),
                                                                               (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
@@ -259,6 +266,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
                 ts.gas = t.gas;
                 ts.gasPrice = t.gasPrice;
+				ts.chainId = t.chainId;
 
                 brc::Transaction sign_t(ts, keys[t.from]);
 
@@ -383,9 +391,11 @@ int main(int argc, char *argv[]) {
         }
     }catch (const std::exception &e){
         cwarn << e.what();
-    }catch (const boost::exception &e){
-        cwarn << boost::diagnostic_information(e);
-    }catch (...){
+	}
+	catch(const boost::exception &e){
+		cwarn << boost::diagnostic_information(e);
+	}
+    catch (...){
         cwarn << "unkown exception ....";
     }
 

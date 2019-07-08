@@ -73,7 +73,7 @@ using Checks = FlagSet<Check>;*/
             friend class BlockChain;
 
         public:
-            static const unsigned BasicFields = 13;
+            static const unsigned BasicFields = 14;
 
             BlockHeader();
 
@@ -95,19 +95,21 @@ using Checks = FlagSet<Check>;*/
             explicit operator bool() const { return m_timestamp != Invalid256; }
 
             bool operator==(BlockHeader const &_cmp) const {
-                return m_parentHash == _cmp.parentHash() &&
-                       m_sha3Uncles == _cmp.sha3Uncles() &&
-                       m_author == _cmp.author() &&
-                       m_stateRoot == _cmp.stateRoot() &&
-                       m_transactionsRoot == _cmp.transactionsRoot() &&
-                       m_receiptsRoot == _cmp.receiptsRoot() &&
-                       m_logBloom == _cmp.logBloom() &&
-                       m_difficulty == _cmp.difficulty() &&
-                       m_number == _cmp.number() &&
-                       m_gasLimit == _cmp.gasLimit() &&
-                       m_gasUsed == _cmp.gasUsed() &&
-                       m_timestamp == _cmp.timestamp() &&
-                       m_extraData == _cmp.extraData();
+				return m_parentHash == _cmp.parentHash() &&
+					m_sha3Uncles == _cmp.sha3Uncles() &&
+					m_author == _cmp.author() &&
+					m_stateRoot == _cmp.stateRoot() &&
+					m_transactionsRoot == _cmp.transactionsRoot() &&
+					m_receiptsRoot == _cmp.receiptsRoot() &&
+					m_logBloom == _cmp.logBloom() &&
+					m_difficulty == _cmp.difficulty() &&
+					m_number == _cmp.number() &&
+					m_gasLimit == _cmp.gasLimit() &&
+					m_gasUsed == _cmp.gasUsed() &&
+					m_timestamp == _cmp.timestamp() &&
+					m_extraData == _cmp.extraData() &&
+					m_chain_id == _cmp.m_chain_id;
+					;
             }
 
             bool operator!=(BlockHeader const &_cmp) const { return !operator==(_cmp); }
@@ -189,6 +191,11 @@ using Checks = FlagSet<Check>;*/
                 noteDirty();
             }
 
+            void setChainId(u256 const &_v){
+				m_chain_id = _v;
+				noteDirty();
+			}
+
             template<class T>
             void setSeal(unsigned _offset, T const &_value) {
                 Guard l(m_sealLock);
@@ -227,6 +234,8 @@ using Checks = FlagSet<Check>;*/
             LogBloom const &logBloom() const { return m_logBloom; }
 
             u256 const &difficulty() const { return m_difficulty; }
+
+			u256 const chain_id() const{ return m_chain_id; }
 
             template<class T>
             T seal(unsigned _offset = 0) const {
@@ -281,6 +290,7 @@ using Checks = FlagSet<Check>;*/
 
             Address m_author;
             u256 m_difficulty;
+			u256 m_chain_id = 0;
 
             std::vector<bytes> m_seal;        ///< Additional (RLP-encoded) header fields.
             mutable Mutex m_sealLock;
@@ -300,7 +310,7 @@ using Checks = FlagSet<Check>;*/
                  << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
                  _bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.difficulty() << " " << _bi.number() << " "
                  << _bi.gasLimit() << " " <<
-                 _bi.gasUsed() << " " << _bi.timestamp();
+                 _bi.gasUsed() << " " << _bi.timestamp() << " " << _bi.chain_id();
             return _out;
         }
 

@@ -18,6 +18,7 @@ TransactionBase::TransactionBase(TransactionSkeleton const& _ts, Secret const& _
     m_gasPrice(_ts.gasPrice),
     m_gas(_ts.gas),
     m_data(_ts.data),
+    m_chainId(_ts.chainId),
     m_sender(_ts.from)
 {
     if (_s)
@@ -67,8 +68,8 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         {
             if (v > 36)
                 m_chainId = (v - 35) / 2;
-            else if (v == 27 || v == 28)
-                m_chainId = -4;
+			/*else if (v == 27 || v == 28)
+				m_chainId = -4;*/
             else
                 BOOST_THROW_EXCEPTION(InvalidSignature());
             m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
@@ -203,8 +204,11 @@ void TransactionBase::checkLowS() const
 
 void TransactionBase::checkChainId(int chainId) const
 {
-    if (m_chainId != chainId && m_chainId != -4)
-        BOOST_THROW_EXCEPTION(InvalidSignature());
+	if(m_chainId != chainId){
+		std::string ret = " error chainid!  expected:" + std::to_string(chainId) + "  got:" + std::to_string(m_chainId);
+		testlog << ret;
+		BOOST_THROW_EXCEPTION(InvalidSignature() << errinfo_comment(ret));
+	}
 }
 
 int64_t TransactionBase::baseGasRequired(
