@@ -9,17 +9,18 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
 #include <Json/Value.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 
+#include <libbrcdchain/Transaction.h>
 using namespace dev;
 using namespace std;
 
 namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
-
+namespace js = json_spirit;
 
 
 bool self_sign(const std::string &_from, const std::string &_to, uint32_t blockNumber, const std::string &privateKey, bool tofile){
-
     Address from(_from);
     Address to(_to);
 
@@ -31,6 +32,7 @@ bool self_sign(const std::string &_from, const std::string &_to, uint32_t blockN
     Json::Value vv;
     vv["from"] = toHex(from);
     vv["to"] = toHex(to);
+    vv["blockNumber"] = blockNumber;
     vv["self-sign"] = toHex(_sign);
     if(!tofile){
         cwarn << "result : \n" << vv.toStyledString();
@@ -42,18 +44,45 @@ bool self_sign(const std::string &_from, const std::string &_to, uint32_t blockN
     return true;
 }
 
+
+
+
 bool miner_sign(const std::string &source_data, const std::string &privateKey, bool tofile){
 
     js::mValue val;
-    js::read_string_or_throw(contentsString(path.string()), val);
+    js::read_string(source_data, val);
     js::mObject obj = val.get_obj();
 
+    Address from = Address(obj["from"].get_str());
+    Address to = Address(obj["to"].get_str());
+    uint32_t blockNumber = obj["blockNumber"].get_int();
+    Signature sign(fromHex(obj["self-sign"].get_str()));
 
-    
-    auto _keypair = KeyPair(Secret(dev::crypto::from_base58(privateKey)));
-    Signature  _sign = sign(_keypair.secret(), sha3(_rlp.out()));
+
+    //verity sign
+    RLPStream s(3);
+    s << from << to << blockNumber;
+    auto _hash = sha3(s.out());
+    auto p = recover(sign, _hash);
+    auto recover_address = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+    if(from != recover_address){
+        cwarn << "check from sign error.";
+        return false;
+    }
 
 
+
+
+
+//
+//    auto _keypair = KeyPair(Secret(dev::crypto::from_base58(privateKey)));
+//    Signature  _sign = sign(_keypair.secret(), sha3(_rlp.out()));
+//
+//    RLPStream _rlp(4);
+//    _rlp << from << to << blockNumber;
+
+
+    return true;
 }
 
 
