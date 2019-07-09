@@ -112,6 +112,7 @@ public:
         m_ballot = 0;
 		m_assetInjectStatus = 0;
         m_voteData.clear();
+        m_willChangeList.clear();
 		m_BlockReward.clear();
         changed();
     }
@@ -139,6 +140,8 @@ public:
     u256 const& FBRC() const { return m_FBRC; }
 
     u256 const& FBalance() const { return m_FBalance; }
+    std::vector<std::string> willChangeList() const { return m_willChangeList; }
+    std::vector<std::string>& changeList() { return m_willChangeList; }
 
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)
@@ -270,6 +273,10 @@ public:
     /// @returns the account's code.
     bytes const& code() const { return m_codeCache; }
 
+    bool insertMiner(Address before, Address after, unsigned blockNumber);
+    bool changeMiner(unsigned blockNumber);
+    bool changeVoteData(Address before, Address after);
+
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
     u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
@@ -282,12 +289,14 @@ public:
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
+    void initChangeList(std::vector<std::string> _changeList) {m_willChangeList = _changeList; }
+
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
-private:
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
-
+private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
 
@@ -335,6 +344,7 @@ private:
        当该Account 为系统预制地址表表示为 竞选人集合
     */
     std::map<Address, u256> m_voteData;
+    std::vector<std::string> m_willChangeList;
 
 	//std::unordered_map<u256, u256> m_BlockReward;
 
