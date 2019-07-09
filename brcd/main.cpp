@@ -227,12 +227,10 @@ int main(int argc, char **argv) {
     strings passwordsToNote;
     Secrets toImport;
 	MinerCLI miner(MinerCLI::OperationMode::None);
-    
+
+    bool listenSet = false;
     bool chainConfigIsSet = false;
     bool chainAccountJsonIsSet = false;
-    bool listenSet = false;
-
-
     fs::path configPath;
     string configJSON;
 
@@ -1110,8 +1108,8 @@ int main(int argc, char **argv) {
     if (ipc) {
         using FullServer = ModularServer<
                 rpc::BrcFace,
-                rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
-                rpc::AdminBrcFace, rpc::AdminNetFace,
+                rpc::NetFace, rpc::Web3Face, /*rpc::PersonalFace,*/
+                /*rpc::AdminBrcFace, rpc::AdminNetFace,*/
                 rpc::DebugFace, rpc::TestFace
         >;
 
@@ -1125,9 +1123,9 @@ int main(int argc, char **argv) {
 
         jsonrpcIpcServer.reset(new FullServer(
                 brcFace, new rpc::Net(web3),
-                new rpc::Web3(web3.clientVersion()), new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
-                new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
-                new rpc::AdminNet(web3, *sessionManager.get()),
+                new rpc::Web3(web3.clientVersion()), /*new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),*/
+                //new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
+               // new rpc::AdminNet(web3, *sessionManager.get()),
                 new rpc::Debug(*web3.brcdChain()),
                 testBrc
         ));
