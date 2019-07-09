@@ -334,6 +334,7 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
+    cwarn << "type:" <<_type;
     if(_type == dev::brc::transationTool::dividendcycle::blocknum)
     {
         if(_envinfo.number() < VOTEBLOCKNUM)

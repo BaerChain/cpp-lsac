@@ -415,9 +415,8 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     cwarn << "debug001 transationTool::receivingincome";
                     transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
-
                     // Get the current stage
-                    cwarn << "debug001 block number:" << m_envInfo.number() << ", block timestamp:" << m_envInfo.timestamp();
+                    cwarn << "debug001 block number:" << toJS(m_envInfo.number()) << ", block timestamp:" << m_envInfo.timestamp();
                     m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
 
                 }

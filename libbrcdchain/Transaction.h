@@ -284,7 +284,7 @@ namespace dev
 
             struct receivingincome_operation : public operation
             {
-                op_type m_type;
+                uint8_t m_type;
                 uint32_t m_dividendCycle;
                 Address m_from;
                 receivingincome_operation(){}
