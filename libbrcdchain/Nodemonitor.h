@@ -38,8 +38,8 @@ public:
     void getClientVersion();
     void setData(monitorData _data);
     void exitThread(bool _flags) {m_mutex.lock(); m_threadExit = true; m_mutex.unlock();}
-    Signature signatureData();
-    std::string getNodeStatsStr(Signature _sign);
+    Signature signatureData(monitorData const& _data);
+    std::string getNodeStatsStr(monitorData const& _data, Signature _sign);
 
 private:
     void analysisRet(std::string _ret);
