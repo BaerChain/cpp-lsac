@@ -219,6 +219,7 @@ void NodeMonitor::analysisRet(std::string _ret)
 void NodeMonitor::run()
 {
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(m_ip);
+    _httpClient.SetTimeout(50);
     int errorNum = 0;
     int inputNum = 0;
     while(1)
