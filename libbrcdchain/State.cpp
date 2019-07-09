@@ -191,11 +191,11 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
-
-    std::vector<std::string> tmp;
-    tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
-    i.first->second.initChangeList(tmp);
-
+	if(timestamp() > FORKSIGNSTIME && state.itemCount() >= 13){
+        std::vector<std::string> tmp;
+        tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+        i.first->second.initChangeList(tmp);
+    }
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -1865,8 +1865,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 					}
 					s << _rlp.out();
 				}
-
-                s << i.second.willChangeList();
+                if(_time > FORKSIGNSTIME)
+                    s << i.second.willChangeList();
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

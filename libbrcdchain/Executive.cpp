@@ -248,7 +248,7 @@ void Executive::initialize(Transaction const& _transaction)
 			m_excepted = TransactionException::InvalidGasPrice;
 			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
 		}
-
+        cwarn << "debug001 check";
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;
@@ -295,13 +295,17 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << "There cannot be multiple types of transactions in bulk transactions";
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
 				}
-                if(_type == transationTool::vote)
+                /*if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}
+				}*/
+                if(_type == transationTool::changeMiner && _ops.size() > 1)
+                {
+                    BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Replace witness operations cannot be batch operated"));
+                }
 
 				m_batch_params._type = _type;
                 switch (_type)
@@ -406,10 +410,14 @@ void Executive::initialize(Transaction const& _transaction)
 					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
                 }
-                    break;
+                break;
 				case transationTool::receivingincome:
                 {
+                    cwarn << "debug001 transationTool::receivingincome";
                     transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
+
+                    // Get the current stage
+                    cwarn << "debug001 block number:" << m_envInfo.number() << ", block timestamp:" << m_envInfo.timestamp();
                     m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
 
                 }
