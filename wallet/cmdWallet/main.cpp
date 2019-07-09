@@ -164,7 +164,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
 				tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
-				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));
+				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));   // must same with genesis chainId
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
                     auto type = op_obj["type"].get_int();

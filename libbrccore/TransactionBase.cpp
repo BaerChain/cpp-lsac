@@ -68,8 +68,9 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         {
             if (v > 36)
                 m_chainId = (v - 35) / 2;
-			/*else if (v == 27 || v == 28)
-				m_chainId = -4;*/
+			else if(v == 35){
+				m_chainId = 0;
+			}
             else
                 BOOST_THROW_EXCEPTION(InvalidSignature());
             m_vrs = SignatureStruct{r, s, static_cast<byte>(v - (m_chainId * 2 + 35))};
