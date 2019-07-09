@@ -33,6 +33,10 @@ bool self_sign(const std::string &_from, const std::string &_to, uint32_t blockN
     auto _keypair = KeyPair(Secret(dev::crypto::from_base58(privateKey)));
     Signature _sign = sign(_keypair.secret(), sha3(_rlp.out()));
 
+    if(from != _keypair.address()){
+        cwarn << "from != private-key address..";
+        return false;
+    }
     Json::Value vv;
     vv["from"] = toHex(from);
     vv["to"] = toHex(to);
@@ -142,6 +146,7 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
     }
     else{
         cerror << "not find key nonce : " << content;
+        return false;
     }
 
     if(obj.count("gas")){
@@ -149,6 +154,7 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
     }
     else{
         cerror << "not find key gas : " << content;
+        return false;
     }
 
     if(obj.count("gasPrice")){
@@ -156,6 +162,7 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
     }
     else{
         cerror << "not find key gasPrice : " << content;
+        return false;
     }
 
     RLPStream rlp;
@@ -191,11 +198,11 @@ int main(int argc, char *argv[]) {
                 ("to,t", bpo::value<std::string>(), "Modified address")
                 ("blockNumber,n", bpo::value<uint32_t>(), "Modify the certifier's block height")
                 ("privateKey,k", bpo::value<std::string>(), "from address private key")
-                ("write-file", bpo::value<std::string>(), "if set write-file, result will update file.")
-                ("sourceData,d", bpo::value<std::string>(), "Data that needs to be signed by the current node")
+                ("write-file", bpo::value<std::string>()->default_value(""), "if set write-file, result will update file.")
+//                ("sourceData,d", bpo::value<std::string>(), "Data that needs to be signed by the current node")
                 ("txJson,t", bpo::value<std::string>(), "Initiate a json file path to modify the verifier transaction")
                 ("sign-tx", bpo::value<std::string>(), "package miners sign to transaction data.")
-                ("server-ip", bpo::value<std::string>(), "node server ip, example: 127.0.0.1:8081, if set this value,  transaction will send to node.")
+//                ("server-ip", bpo::value<std::string>(), "node server ip, example: 127.0.0.1:8081, if set this value,  transaction will send to node.")
                 ;
         bpo::variables_map args_map;
         bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, description);
