@@ -116,7 +116,7 @@ namespace dev
                 Address m_from;
                 Address m_to;
                 u256 m_vote_numbers = 0;
-                uint8_t m_type = null;
+                op_type m_type = null;
                 uint8_t m_vote_type = 0;
                 vote_operation(
                         op_type type, const Address& from, const Address& to, uint8_t vote_type, u256  vote_num)

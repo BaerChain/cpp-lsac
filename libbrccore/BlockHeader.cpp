@@ -34,6 +34,7 @@ BlockHeader::BlockHeader(BlockHeader const &_other)
           m_timestamp(_other.timestamp()),
           m_author(_other.author()),
           m_difficulty(_other.difficulty()),
+          m_chain_id(_other.chain_id()),
           m_seal(_other.seal()),
           m_hash(_other.hashRawRead()),
           m_hashWithout(_other.hashWithoutRawRead()),
@@ -57,6 +58,7 @@ BlockHeader &BlockHeader::operator=(BlockHeader const &_other) {
     m_timestamp = _other.timestamp();
     m_author = _other.author();
     m_difficulty = _other.difficulty();
+	m_chain_id = _other.chain_id();
     std::vector<bytes> seal = _other.seal();
     {
         Guard l(m_sealLock);
@@ -87,6 +89,7 @@ void BlockHeader::clear() {
     m_gasLimit = 0;
     m_gasUsed = 0;
     m_timestamp = -1;
+	m_chain_id = 0;
     m_extraData.clear();
     m_seal.clear();
     noteDirty();
@@ -108,7 +111,7 @@ void BlockHeader::streamRLPFields(RLPStream &_s, IncludeSeal _i /* = WithoutSign
 
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
        << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
-       << u256(m_timestamp) << m_extraData;
+       << u256(m_timestamp) << m_chain_id << m_extraData;
     if ((_i & WithoutSign) != WithoutSign) {
         _s << (h520) (m_sign_data);
     }
@@ -167,8 +170,9 @@ void BlockHeader::populate(RLP const &_header) {
         m_gasLimit = _header[field = 9].toInt<u256>();
         m_gasUsed = _header[field = 10].toInt<u256>();
 		m_timestamp = int64_t(_header[field = 11].toInt<u256>());
-        m_extraData = _header[field = 12].toBytes();
-        m_sign_data = _header[field = 13].toHash<h520>(RLP::VeryStrict);
+		m_chain_id = _header[field = 12].toInt<u256>();
+		m_extraData = _header[field = 13].toBytes();
+        m_sign_data = _header[field = 14].toHash<h520>(RLP::VeryStrict);
         m_seal.clear();
         for (unsigned i = 14; i < _header.itemCount(); ++i)
             m_seal.push_back(_header[i].data().toBytes());
@@ -188,6 +192,7 @@ void BlockHeader::populateFromParent(BlockHeader const &_parent) {
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
+	m_chain_id = _parent.m_chain_id;
 }
 
 void BlockHeader::verify(Strictness _s, BlockHeader const &_parent, bytesConstRef _block) const {

@@ -291,6 +291,7 @@ bytes ChainParams::genesisBlock() const
             << gasLimit
             << gasUsed			// gasUsed
             << timestamp
+            << (u256)chainID
             << extraData
             << h520(m_sign_data);
 

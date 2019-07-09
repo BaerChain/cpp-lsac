@@ -214,7 +214,11 @@ void Executive::initialize(Transaction const& _transaction)
     catch (Exception const& ex)
     {
         m_excepted = toTransactionException(ex);
-        throw;
+		std::string ex_str ="";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ex_str = std::string(*_error);
+        if(m_excepted == TransactionException::InvalidSignature)
+		    BOOST_THROW_EXCEPTION(InvalidSignature() << errinfo_comment(ex_str));
     }
 
     if (!m_t.hasZeroSignature())
