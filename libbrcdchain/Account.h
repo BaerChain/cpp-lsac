@@ -162,6 +162,7 @@ public:
         changed();
 	}
 
+    // add FCookie
     void addFBalance(u256 _value)
 	{
 		m_FBalance += _value;

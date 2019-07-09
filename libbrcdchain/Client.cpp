@@ -372,40 +372,31 @@ unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
 
-
-
 void Client::syncBlockQueue()
 {
+
     ImportRoute ir;
     unsigned count;
     Timer t;
 
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
+
     double elapsed = t.elapsed();
-//	if(count)
-//	{
-//		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
-//		{
-//			LOG(m_logger) << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-//				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << bc().info().author() << " size: " << bc().transactions().size()
-//				<< "  " << m_StateExDB.check_version(false);
-//		}
-//	}
-    if(count)
-    {
-        auto last_hash = bc().currentHash();
+	if(count)
+	{
+	    auto last_hash = bc().currentHash();
         auto last = bc().info(last_hash);
         auto last_tx = bc().transactions(last_hash);
 
         auto late = utcTimeMilliSec() - last.timestamp();
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
-        {
+		{
 
-            cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-                  << (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << last_tx.size()
-                  << "  " << m_StateExDB.check_version(false);
-        }
-    }
+			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << last_tx.size()
+				<< "  " << m_StateExDB.check_version(false);
+		}
+	}
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
@@ -413,7 +404,7 @@ void Client::syncBlockQueue()
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
-	t.restart();
+
     onChainChanged(ir);
 }
 
@@ -521,6 +512,8 @@ void Client::restartMining()
         if (!m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash())
             for (auto const& t : m_postSeal.pending())
             {
+                if(m_postSeal.transaction_is_sealed(t.sha3()))
+                    continue;
                 LOG(m_loggerDetail) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import(t, IfDropped::Retry);
@@ -535,6 +528,7 @@ void Client::restartMining()
     // Quick hack for now - the TQ at this point already has the prior pending transactions in it;
     // we should resync with it manually until we are stricter about what constitutes "knowing".
     onTransactionQueueReady();
+	std::vector<Transaction> _v = m_tq.topTransactions(0, dev::h256Hash());
 }
 
 void Client::resetState()
@@ -554,18 +548,20 @@ void Client::resetState()
 
 void Client::onChainChanged(ImportRoute const& _ir)
 {
-//  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
     for (auto const& t: _ir.goodTranactions)
     {
         LOG(m_loggerDetail) << "Safely dropping transaction " << t.sha3();
         m_tq.dropGood(t);
+		m_postSeal.add_sealed_transaction(t.sha3());
     }
     onNewBlocks(_ir.liveBlocks, changeds);
-    if (!isMajorSyncing())
-        resyncStateFromChain();
+	if(!isMajorSyncing()){
+		resyncStateFromChain();
+	}
     noteChanged(changeds);
+	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const
@@ -756,8 +752,11 @@ void Client::tick()
         checkWatchGarbage();
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
-        if (m_report.ticks == 15)
-            LOG(m_loggerDetail) << activityReport();
+        if (m_report.ticks == 15){
+            //LOG(m_loggerDetail) <<
+            activityReport();
+        }
+
     }
 }
 
@@ -960,6 +959,8 @@ h256 Client::importTransaction(Transaction const& _t)
             BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
         case ImportResult::AlreadyInChain:
             BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+		case ImportResult::NonceRepeat:
+		    BOOST_THROW_EXCEPTION(InvalidNonce());
         default:
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
@@ -967,6 +968,31 @@ h256 Client::importTransaction(Transaction const& _t)
 	if(auto h = m_host.lock())
 		h->noteNewTransactions();
     return _t.sha3();
+}
+
+h256  Client::importBlock(const dev::bytesConstRef &data) {
+    auto header = BlockHeader(data);
+    h256 h = BlockHeader::headerHashFromBlock(data);
+    cwarn << "hash : " << toHex(header.hash()) << " parent hash: " << toHex(header.parentHash());
+    cwarn << "state root : " << toHex(header.stateRoot());
+
+    ImportResult ret = m_bq.import(data);
+    switch (ret)
+    {
+        case ImportResult::Success:
+            break;
+        case ImportResult::ZeroSignature:
+            BOOST_THROW_EXCEPTION(ZeroSignatureTransaction());
+        case ImportResult::OverbidGasPrice:
+            BOOST_THROW_EXCEPTION(GasPriceTooLow());
+        case ImportResult::AlreadyKnown:
+            BOOST_THROW_EXCEPTION(PendingTransactionAlreadyExists());
+        case ImportResult::AlreadyInChain:
+            BOOST_THROW_EXCEPTION(TransactionAlreadyInChain());
+        default:
+            BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
+    }
+    return h;
 }
 
 // TODO: remove try/catch, allow exceptions

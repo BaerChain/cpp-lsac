@@ -77,6 +77,8 @@ Block::Block(Block const &_s)
           m_author(_s.m_author),
           m_sealEngine(_s.m_sealEngine) {
     m_committedToSeal = false;
+	m_sealed_transactions = _s.m_sealed_transactions;
+	m_total_seal_time = _s.m_total_seal_time;
 }
 
 Block &Block::operator=(Block const &_s) {
@@ -96,6 +98,8 @@ Block &Block::operator=(Block const &_s) {
     m_precommit = m_state;
     m_committedToSeal = false;
     m_vote.setState(m_state);
+	m_sealed_transactions = _s.m_sealed_transactions;
+	m_total_seal_time = _s.m_total_seal_time;
     return *this;
 }
 
@@ -285,19 +289,20 @@ bool Block::sync(BlockChain const &_bc, h256 const &_block, BlockHeader const &_
 }
 
 pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQueue &_tq,
-                                            GasPricer const &_gp, unsigned msTimeout) {
+											GasPricer const &_gp, unsigned msTimeout){
+	int64_t _time = utcTimeMilliSec();
+	pair<TransactionReceipts, bool> ret;
+	if(msTimeout <= 0)
+		return ret;
+	if(isSealed())
+		BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
 
-    if (isSealed())
-        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+	noteChain(_bc);
 
-    noteChain(_bc);
-
-    // TRANSACTIONS
-    pair<TransactionReceipts, bool> ret;
+	// TRANSACTIONS
 	unsigned int max_num = _bc.getMaxSealTransaction();
 	size_t  transactionNum = m_transactions.size() < max_num ? max_num - m_transactions.size() : 0;
-    if(!transactionNum)
-	{
+	if(!transactionNum){
 		ret.second = true;
 		return ret;
 	}
@@ -305,91 +310,100 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 	ret.second = (transactions.size() == max_num);  // say there's more to the caller
 	// if we hit the limit
 
-    assert(_bc.currentHash() == m_currentBlock.parentHash());
-    auto deadline = chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
+	assert(_bc.currentHash() == m_currentBlock.parentHash());
+	auto deadline = chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
+	uint32_t try_times = 0;
+	bool is_break = false;
+	int _num = 0;
+	for(int goodTxs = max(0, (int)transactions.size() - 1); goodTxs < (int)transactions.size();){
+		goodTxs = 0;
+		for(auto const &t : transactions){
+			if(!m_transactionSet.count(t.sha3())){
+				try{
+					if(t.gasPrice() >= _gp.ask(*this)){
+						execute(_bc.lastBlockHashes(), t);
+						ret.first.push_back(m_receipts.back());
+						++goodTxs;
+					}
+					else if(t.gasPrice() < _gp.ask(*this) * 9 / 10){
+						LOG(m_logger)
+							<< t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
+						_tq.drop(t.sha3());
+					}
+				}
+				catch(InvalidNonce const &in){
+					bigint const &req = *boost::get_error_info<errinfo_required>(in);
+					bigint const &got = *boost::get_error_info<errinfo_got>(in);
 
-    uint32_t try_times = 0;
-    for (int goodTxs = max(0, (int) transactions.size() - 1); goodTxs < (int) transactions.size();) {
-        goodTxs = 0;
-        for (auto const &t : transactions){
-            if (!m_transactionSet.count(t.sha3())) {
-                try {
-                    if (t.gasPrice() >= _gp.ask(*this)) {
-                        execute(_bc.lastBlockHashes(), t);
-                        ret.first.push_back(m_receipts.back());
-                        ++goodTxs;
-                    } else if (t.gasPrice() < _gp.ask(*this) * 9 / 10) {
-                        LOG(m_logger)
-                            << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
-                        _tq.drop(t.sha3());
-                    }
-                }
-                catch (InvalidNonce const &in) {
-                    bigint const &req = *boost::get_error_info<errinfo_required>(in);
-                    bigint const &got = *boost::get_error_info<errinfo_got>(in);
-
-                    if (req > got) {
-                        // too old
-                        LOG(m_logger) << t.sha3() << " Dropping old transaction (nonce too low)";
-                        _tq.drop(t.sha3());
-                    } else if (got > req + _tq.waiting(t.sender())) {
-                        // too new
-                        LOG(m_logger)
-                            << t.sha3() << " Dropping new transaction (too many nonces ahead)";
-                        _tq.drop(t.sha3());
-                    } else
-                        _tq.setFuture(t.sha3());
-                }
-                catch (BlockGasLimitReached const &e) {
-                    bigint const &got = *boost::get_error_info<errinfo_got>(e);
-                    if (got > m_currentBlock.gasLimit()) {
-                        LOG(m_logger)
-                            << t.sha3()
-                            << " Dropping over-gassy transaction (gas > block's gas limit)";
-                        LOG(m_logger)
-                            << "got: " << got << " required: " << m_currentBlock.gasLimit();
-                        _tq.drop(t.sha3());
-                    } else {
-                        LOG(m_logger) << t.sha3()
-                                      << " Temporarily no gas left in current block (txs gas > "
-                                         "block's gas limit)";
-                        //_tq.drop(t.sha3());
-                        // Temporarily no gas left in current block.
-                        // OPTIMISE: could note this and then we don't evaluate until a block that
-                        // does have the gas left. for now, just leave alone.
-                    }
-                }
-                catch (pendingorderAllPriceFiled const &e){
+					if(req > got){
+						// too old
+						LOG(m_logger) << t.sha3() << " Dropping old transaction (nonce too low)";
+						_tq.drop(t.sha3());
+					}
+					else if(got > req + _tq.waiting(t.sender())){
+						// too new
+						LOG(m_logger)
+							<< t.sha3() << " Dropping new transaction (too many nonces ahead)";
+						_tq.drop(t.sha3());
+					}
+					else
+						_tq.setFuture(t.sha3());
+				}
+				catch(BlockGasLimitReached const &e){
+					bigint const &got = *boost::get_error_info<errinfo_got>(e);
+					if(got > m_currentBlock.gasLimit()){
+						LOG(m_logger)
+							<< t.sha3()
+							<< " Dropping over-gassy transaction (gas > block's gas limit)";
+						LOG(m_logger)
+							<< "got: " << got << " required: " << m_currentBlock.gasLimit();
+						_tq.drop(t.sha3());
+					}
+					else{
+						LOG(m_logger) << t.sha3()
+							<< " Temporarily no gas left in current block (txs gas > "
+							"block's gas limit)";
+						//_tq.drop(t.sha3());
+						// Temporarily no gas left in current block.
+						// OPTIMISE: could note this and then we don't evaluate until a block that
+						// does have the gas left. for now, just leave alone.
+					}
+				}
+				catch(pendingorderAllPriceFiled const &e){
 					cwarn << " pendingOrder field ...";
 					h256 _hash = t.sha3();
 					_tq.drop(_hash);
 					_tq.eraseDropedTx(_hash);
 				}
-                catch (Exception const &_e) {
-                    // Something else went wrong - drop it.
-                    cwarn << t.sha3() << " Dropping invalid transaction: "
-                          << diagnostic_information(_e);
-                    _tq.drop(t.sha3());
-                }
-                catch (std::exception const &e) {
-                    // Something else went wrong - drop it.
-                    _tq.drop(t.sha3());
-                    cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
-                }
-                catch (...) {
-                    cwarn << "unkown exception .";
-                }
-            }
-        }
-       
-		if(++try_times >= 2){
-            break;     // the bad transation run_times is max and break 
-        }
-        if (chrono::steady_clock::now() > deadline) {
-            ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
-            break;
+				catch(Exception const &_e){
+					// Something else went wrong - drop it.
+					cwarn << t.sha3() << " Dropping invalid transaction: "
+						<< diagnostic_information(_e);
+					_tq.drop(t.sha3());
+				}
+				catch(std::exception const &e){
+					// Something else went wrong - drop it.
+					_tq.drop(t.sha3());
+					cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
+				}
+				catch(...){
+					cwarn << "unkown exception .";
+				}
+			}
+			_num = goodTxs;
+			if(chrono::steady_clock::now() > deadline){
+				ret.second = true;  // say there's more to the caller if we ended up crossing the deadline.
+				is_break = true;
+				break;
+			}
+		}
+		if(++try_times >= 2 || is_break){
+            break;     // the bad transation run_times is max and break
         }
     }
+    if(_num > 0){
+		m_total_seal_time += utcTimeMilliSec() - _time;
+	}
     return ret;
 }
 
@@ -423,7 +437,7 @@ u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 #endif
     sync(_bc, _block.info.parentHash(), BlockHeader());
     resetCurrent();
-//    m_state.exdb().rollback();
+    m_state.exdb().rollback();
 #if BRC_TIMED_ENACTMENTS
     syncReset = t.elapsed();
     t.restart();
@@ -814,7 +828,7 @@ bool Block::sealBlock(bytesConstRef _header) {
     // TODO: move into SealEngine
 
     m_state = m_precommit;
-    m_state.exdb().rollback();
+//    m_state.exdb().rollback();
     // m_currentBytes is now non-empty; we're in a sealed state so no more transactions can be
     // added.
 
@@ -854,7 +868,7 @@ void Block::cleanup() {
     }
 
     m_state.db().commit();  // TODO: State API for this?
-    m_state.exdb().commit(info().number() + 1);
+    m_state.exdb().commit(info().number() + 1, m_currentBlock.hash(), m_currentBlock.stateRoot());
 
     LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
                   << " = " << toHex(asBytes(db().lookup(rootHash())));

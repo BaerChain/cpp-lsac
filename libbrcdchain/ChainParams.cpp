@@ -139,6 +139,7 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     return cp;
 }
 
+// Resolve the private key and node ID
 void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
 {
     try 
@@ -196,17 +197,6 @@ std::unordered_map<Public, std::string> dev::brc::ChainParams::getConnectPeers()
 	return _map;
 }
 
-std::map<Address, Public> dev::brc::ChainParams::getPeersMessage() const
-{
-	std::map<Address, Public> _map;
-	for(auto const& val : m_peers)
-	{
-        if(val.m_addr == Address())
-            continue;
-		_map.insert({ val.m_addr, val.m_node_id });
-	}
-	return _map;
-}
 
 SealEngineFace* ChainParams::createSealEngine()
 {
@@ -222,6 +212,19 @@ SealEngineFace* ChainParams::createSealEngine()
     }
     return ret;
 }
+
+std::map<Address, Public> dev::brc::ChainParams::getPeersMessage() const
+{
+	std::map<Address, Public> _map;
+	for(auto const& val : m_peers)
+	{
+        if(val.m_addr == Address())
+            continue;
+		_map.insert({ val.m_addr, val.m_node_id });
+	}
+	return _map;
+}
+
 
 void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state)
 {

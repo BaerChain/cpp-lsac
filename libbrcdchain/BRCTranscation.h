@@ -9,7 +9,6 @@ namespace dev {
         enum TranscationEnum {
             ETranscationNull = 0,
             EBRCTranscation,
-            EAssetInjection,
             ETranscationMax
         };
 
@@ -38,8 +37,12 @@ namespace dev {
             void verifyPendingOrder(Address const &_form, ex::exchange_plugin &_exdb, int64_t _nowTime, ex::order_type _type,
                                     ex::order_token_type _token_type, ex::order_buy_type _buy_type, u256 _pendingOrderNum,
                                     u256 _pendingOrderPrice, u256 _transcationGas = u256(0) ,h256 _pendingOrderHash = h256(0));
+			void verifyPendingOrders(Address const& _addr, u256 _total_cost, ex::exchange_plugin& _exdb,
+									 int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, 
+									 std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
-            void verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
+			void verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
+			void verifyCancelPendingOrders(ex::exchange_plugin &_exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
         private:
             State &m_state;

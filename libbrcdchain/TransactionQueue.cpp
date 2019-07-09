@@ -108,14 +108,16 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
             auto t = cs->second.find(_transaction.nonce());
             if (t != cs->second.end())
             {
-                if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
-                    return ImportResult::OverbidGasPrice;
-                else
-                {
-                    h256 dropped = (*t->second).transaction.sha3();
-                    remove_WITH_LOCK(dropped);
-                    m_onReplaced(dropped);
-                }
+				cwarn << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
+				return ImportResult::NonceRepeat;
+				/*if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
+					return ImportResult::OverbidGasPrice;
+				else
+				{
+					h256 dropped = (*t->second).transaction.sha3();
+					remove_WITH_LOCK(dropped);
+					m_onReplaced(dropped);
+				}*/
             }
         }
         auto fs = m_future.find(_transaction.from());

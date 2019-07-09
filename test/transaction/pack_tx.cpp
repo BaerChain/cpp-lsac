@@ -180,6 +180,38 @@ private:
 
 BOOST_AUTO_TEST_SUITE(test_pack_tx)
 
+    BOOST_AUTO_TEST_CASE(pack_test_2) {
+        std::map<Address, Secret> address_secret;
+        auto cancel_op = cancelPendingorder_operation(4, 3,
+                                                      h256("0xf42bfa5c6d13de747541078dcad69d331066c176685f579e730c961e1dd25ff0"));
+        bytes data = cancel_op.serialize();
+        auto key_pair = KeyPair::create();
+        auto sec = key_pair.secret();
+        address_secret[key_pair.address()] = key_pair.secret();
+
+
+        brc::TransactionSkeleton ts;
+        ts.creation = false;
+        ts.from = key_pair.address();
+        ts.to = key_pair.address();
+        ts.value = u256(0xfffff);
+        ts.data = data;
+        ts.nonce = u256(0);
+        ts.gas = u256(2);
+        ts.gasPrice = u256(1);
+
+        brc::Transaction sign_t(ts, key_pair.secret());
+
+        auto tx_rlp = sign_t.rlp();
+        Timer t;
+        for (int i = 0; i < 1; i++) {
+            dev::brc::Transaction(tx_rlp, dev::brc::CheckTransaction::Everything);
+        }
+
+        std::cout << "all : " << t.elapsed() << std::endl;
+
+    }
+
     BOOST_AUTO_TEST_CASE(pack_test_1) {
 
         std::map<Address, Secret> address_secret;
@@ -258,36 +290,5 @@ BOOST_AUTO_TEST_SUITE(test_pack_tx)
 
     }
 
-    BOOST_AUTO_TEST_CASE(pack_test_2) {
-        std::map<Address, Secret> address_secret;
-        auto cancel_op = cancelPendingorder_operation(4, 3,
-                                                      h256("0xf42bfa5c6d13de747541078dcad69d331066c176685f579e730c961e1dd25ff0"));
-        bytes data = cancel_op.serialize();
-        auto key_pair = KeyPair::create();
-        auto sec = key_pair.secret();
-        address_secret[key_pair.address()] = key_pair.secret();
-
-
-        brc::TransactionSkeleton ts;
-        ts.creation = false;
-        ts.from = key_pair.address();
-        ts.to = key_pair.address();
-        ts.value = u256(0xfffff);
-        ts.data = data;
-        ts.nonce = u256(0);
-        ts.gas = u256(2);
-        ts.gasPrice = u256(1);
-
-        brc::Transaction sign_t(ts, key_pair.secret());
-
-        auto tx_rlp = sign_t.rlp();
-        Timer t;
-        for (int i = 0; i < 1; i++) {
-            dev::brc::Transaction(tx_rlp, dev::brc::CheckTransaction::Everything);
-        }
-
-        std::cout << "all : " << t.elapsed() << std::endl;
-
-    }
 
 BOOST_AUTO_TEST_SUITE_END()

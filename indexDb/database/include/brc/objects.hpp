@@ -65,6 +65,7 @@ namespace dev {
                 h256                to_trxid;           //which trxid
                 u256                amount;
                 u256                price;
+				u256                old_price;
             };
 
 
@@ -235,6 +236,8 @@ namespace dev {
                 int64_t version;
                 uint64_t  orders;           //all orders numbers.
                 uint64_t  result_orders;       // all exchange order .
+                h256        block_hash;
+                h256        root_hash;
             };
 
 

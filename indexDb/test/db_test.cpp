@@ -435,7 +435,7 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
                 db.insert_operation({os}, false, true);
             }
             std::cout << " time: " << t.elapsed() << "  size: " << test.size() << std::endl;
-            db.commit(1);
+            db.commit(1, h256(), h256());
 
         } catch (const dev::Exception &e) {
             std::cout << e.what() << std::endl;

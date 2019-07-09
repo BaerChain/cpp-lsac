@@ -54,6 +54,9 @@ struct ChainParams: public ChainOperationParams
     unsigned sealFields = 0;
     bytes sealRLP;
 
+    uint32_t	config_blocks = 12;			//configure block number
+
+
     //Poa 
     std::vector<Address> poaValidatorAccount;
 	std::vector<Address> poaBlockAccount;

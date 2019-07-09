@@ -294,6 +294,11 @@ public:
 
 	BlockHeader const& previousBlock() const { return m_previousBlock; }
 
+	void add_sealed_transaction(h256 _hash){ m_sealed_transactions.emplace(_hash); }
+	bool transaction_is_sealed(h256 const& _hash){ return m_sealed_transactions.count(_hash); }
+
+	unsigned int exc_transaction_time(){ return m_total_seal_time; }
+
 private:
     SealEngineFace* sealEngine() const;
 
@@ -336,6 +341,9 @@ private:
     Address m_author;  ///< Our address (i.e. the address to which fees go).
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
+
+	h256Hash m_sealed_transactions;
+	unsigned int m_total_seal_time = 0;
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};

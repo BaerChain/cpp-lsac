@@ -26,15 +26,6 @@ namespace bpo = boost::program_options;
 namespace bfs1 = boost::filesystem;
 using namespace dev::brc;
 
-// bool creation = false;
-//	Address from;
-//	Address to;
-//	u256 value;
-//	bytes data;
-//	u256 nonce = Invalid256;
-//	u256 gas = Invalid256;
-//	u256 gasPrice = Invalid256;
-
 
 #define DATA_KEY_FROM "from"
 #define DATA_KEY_TO "to"
@@ -106,22 +97,49 @@ bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op) {
     return rlp.out();
 }
 
+
+Json::Value string_to_json(const std::string &source) {
+    auto readerBuilder = Json::CharReaderBuilder();
+    auto sreader = readerBuilder.newCharReader();
+    Json::Value root;
+    std::string errotStr;
+    if (!sreader->parse(source.c_str(), source.c_str() + source.size(), &root, &errotStr)) {
+        std::cout << "TODO throw exception.\n";
+    }
+    return root;
+}
+
+
+
+
+u256 get_address_nonce(const Address &add, const std::string &ip){
+    try {
+        std::string _result;
+        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"-1\"],\"id\":1}";
+        jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(ip);
+        _httpClient.SendRPCMessage(send_msg, _result);
+        auto value = string_to_json(_result)["result"];
+        return u256(fromBigEndian<u256>(fromHex(value["nonce"].asString())));
+    }catch (...){
+
+    }
+
+
+    return 0;
+}
+
 void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) {
     std::string _result;
 
     std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_sendRawTransaction\",\"params\":[\"" + _rlpStr +"\"],\"id\":1}";
 
-    cerror << "send message " << send_msg << std::endl;
+//    cerror << "send message " << send_msg << std::endl;
 
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(_ip_port);
     _httpClient.SendRPCMessage(send_msg, _result);
 
-    std::cout << _result << std::endl;
-    /*std::string cmd =
-        "curl -d "
-        "'{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"brc_sendRawTransaction\",\"params\":[\"" +
-        _rlpStr + "\"]}' " + _ip_port;
-    system(cmd.c_str());*/
+    cwarn << _result;
+
 }
 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
@@ -177,7 +195,6 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                                                u256(fromBigEndian<u256>(fromHex(op_obj["m_price"].get_str())))
                                                                               );
                             tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
-                            cwarn << "price : " << pendingorder_op->m_Pendingorder_price << " amount : " << pendingorder_op->m_Pendingorder_num;
                             break;
                         }
 						case cancelPendingOrder: {
@@ -215,6 +232,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 keys[keyPair.address()] = keyPair.secret();
             }
         } else {
+            std::cout << "not find key.....\n";
             exit(1);
         }
 
@@ -240,16 +258,15 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 ts.from = t.from;
                 ts.to = t.to;
                 ts.value = t.value;
-                ts.nonce = t.nonce;
-                if (nonce != 0)
-                    ts.nonce = nonce;
+                ts.nonce = get_address_nonce(t.from, _ip);
+
                 ts.gas = t.gas;
                 ts.gasPrice = t.gasPrice;
 
                 brc::Transaction sign_t(ts, keys[t.from]);
 
-                auto sssss = dev::brc::toJson(sign_t);
-                cerror << "test: " << sssss << std::endl;
+//                auto sssss = dev::brc::toJson(sign_t);
+//                cerror << "test: " << sssss << std::endl;
                 if (_is_send) {
                     sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
                 }
@@ -325,6 +342,7 @@ int main(int argc, char *argv[]) {
                 ("nonce,n", bpo::value<int>(), "set the transation nonce ....")
                 ("create,c", "create simple \"data.json\" to file on current path.")
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
+                ("sha3", bpo::value<std::string>(), "caculate string sha3.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -361,12 +379,17 @@ int main(int argc, char *argv[]) {
         if (args_map.count("generate-key")) {
             generate_key(args_map["generate-key"].as<std::string>());
         }
+
+        if(args_map.count("sha3")){
+            auto ret = sha3(args_map["sha3"].as<std::string>());
+            cwarn << ret;
+        }
     }catch (const std::exception &e){
         cwarn << e.what();
     }catch (const boost::exception &e){
         cwarn << boost::diagnostic_information(e);
     }catch (...){
-
+        cwarn << "unkown exception ....";
     }
 
 

@@ -1,6 +1,7 @@
 #include "SHDpos.h"
 #include <libbrccore/TransactionBase.h>
 #include <libdevcore/Address.h>
+#include <libdevcore/Exceptions.h>
 #include <cstdlib>
 
 dev::bacd::SHDpos::SHDpos()
@@ -40,6 +41,21 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader& _bi, BlockHeader const& 
 	int64_t _time1 = utcTimeMilliSec() / m_config.blockInterval * m_config.blockInterval;
 	int64_t _time2 = _parent.timestamp() / m_config.blockInterval * m_config.blockInterval + m_config.blockInterval;
 	_bi.setTimestamp(_time1 > _time2 ? _time1 : _time2);
+
+}
+
+
+void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent /*= BlockHeader()*/, bytesConstRef _block /*= bytesConstRef()*/) const {
+    // will verify sign and creater
+	SealEngineBase::verify(_s, _bi, _parent, _block);
+    std::vector<Address> _v;
+
+    if(m_dpos_cleint){
+        m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, _v);
+        auto ret = find(_v.begin(), _v.end(), _bi.author());
+        if(ret == _v.end())
+            BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
+    }
 
 }
 
@@ -95,7 +111,7 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now)
         return false;
 
     //得到每次出块的整数时间刻度，比较上次，现在和下次
-    //系统时间算出的下一个出块时间点
+    //get next Block time from systime
     uint64_t next_slot =
         (_now / m_config.blockInterval) * m_config.blockInterval + m_config.blockInterval;
     //当前块算出的上一个出块时间点

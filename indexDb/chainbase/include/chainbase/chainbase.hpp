@@ -314,8 +314,10 @@ namespace chainbase {
           *  made between the last revision and the current revision.
           */
          void undo() {
-            if( !enabled() ) return;
+            if( !enabled() ) {
 
+                return;
+            }
             const auto& head = _stack.back();
 
             for( auto& item : head.old_values ) {

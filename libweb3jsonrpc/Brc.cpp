@@ -358,9 +358,22 @@ string Brc::brc_sendRawTransaction(std::string const& _rlp)
     }
     catch (Exception const& ex)
     {
-		testlog << " error:" << ex.what();
         throw JsonRpcException(exceptionToErrorMessage());
     }
+}
+
+std::string Brc::brc_importBlock(const std::string &_rlp) {
+#ifndef NDEBUG
+    try {
+        auto by = jsToBytes(_rlp, OnFailed::Throw);
+        return toJS(client()->importBlock(&by));
+    }catch (const Exception &e){
+        testlog << " error:" << e.what();
+        throw JsonRpcException(exceptionToErrorMessage());
+    }
+#else
+    return "this method only use debug.";
+#endif
 }
 
 string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
@@ -371,7 +384,6 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
             jsToBlockNumber(_blockNumber), FudgeFactor::Lenient);
-		testlog << BrcYellow << er.output << BrcReset;
         return toJS(er.output);
     }
     catch (...)

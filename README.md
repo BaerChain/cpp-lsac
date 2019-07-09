@@ -81,7 +81,6 @@ Rc.exe is the [Microsoft Resource Compiler](https://docs.microsoft.com/en-us/win
 If you hit this error, adding the directory to your path (and launching a new command prompt) should fix the issue.
 
 
-
 ## Usage
 *Note: The following is the output of ```brcd.exe -h [--help]```*
 
