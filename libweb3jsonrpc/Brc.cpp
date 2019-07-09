@@ -903,6 +903,10 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "cancelPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_c));
     }
+    catch (receivingincomeFiled const& _r)
+    {
+        ret = "receivingincome failed :" + std::string(*boost::get_error_info<errinfo_comment >(_r));
+    }
     catch (NotEnoughBallot const&)
     {
         ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";

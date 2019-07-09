@@ -21,9 +21,6 @@ using namespace dev;
 using namespace dev::brc;
 
 
-#define VOTETIME 60*1000
-#define VOTEBLOCKNUM 100
-
 namespace
 {
 std::string dumpStackAndMemory(LegacyVM const& _vm)
@@ -452,7 +449,7 @@ void Executive::initialize(Transaction const& _transaction)
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo);
+                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";

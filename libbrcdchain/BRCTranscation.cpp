@@ -1,8 +1,13 @@
 #include "BRCTranscation.h"
+#include "DposVote.h"
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 
 using namespace dev::brc::ex;
+
+#define VOTETIME 60*1000
+#define VOTEBLOCKNUM 100
+
 
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
@@ -327,13 +332,35 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 	}
 }
 
-void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _form, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo)
+void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
     if(_type == dev::brc::transationTool::dividendcycle::blocknum)
     {
+        if(_envinfo.number() < VOTEBLOCKNUM)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+        }
 
     }else if(_type == dev::brc::transationTool::dividendcycle::timestamp)
     {
+        if(_envinfo.timestamp() < VOTETIME)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+        }
+    }
 
+    std::map <dev::Address, dev::u256> _map = _vote.VarlitorsAddress();
+    uint32_t  _count = 0;
+    for (auto i : m_state.voteDate(_from))
+    {
+        if(_map.count(i.first))
+        {
+            _count++;
+        }
+    }
+
+    if(_count == 0)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account did not participate in the voting and no dividend income")));
     }
 }
