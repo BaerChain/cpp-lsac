@@ -68,7 +68,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
         {
             if (v > 36)
                 m_chainId = (v - 35) / 2;
-			else if(v == 35){
+			else if(v == 35 || v == 36){
 				m_chainId = 0;
 			}
             else

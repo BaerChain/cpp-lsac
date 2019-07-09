@@ -10,7 +10,7 @@
 #include <libdevcore/Log.h>
 #include <Json/Value.h>
 #include <json_spirit/JsonSpiritHeaders.h>
-
+#include <libweb3jsonrpc/JsonHelper.h>
 #include <libbrcdchain/Transaction.h>
 #include <libdevcore/CommonIO.h>
 
@@ -116,6 +116,8 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
     js::read_string(content, val);
     js::mObject obj = val.get_obj();
 
+    auto _keypair = KeyPair(Secret(dev::crypto::from_base58(private_key)));
+
 
     Address from = Address(obj["from"].get_str());
     Address to = Address(obj["to"].get_str());
@@ -131,7 +133,50 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
 
     dbt::changeMiner_operation op(dbt::op_type::changeMiner, from, to, blockNumber, source_sign, m_agreeMsgs);
 
+    u256 nonce;
+    u256 gas;
+    u256 gasPrice;
 
+    if(obj.count("nonce")){
+        nonce = u256(obj["nonce"].get_str());
+    }
+    else{
+        cerror << "not find key nonce : " << content;
+    }
+
+    if(obj.count("gas")){
+        gas = u256(obj["gas"].get_str());
+    }
+    else{
+        cerror << "not find key gas : " << content;
+    }
+
+    if(obj.count("gasPrice")){
+        gasPrice = u256(obj["gasPrice"].get_str());
+    }
+    else{
+        cerror << "not find key gasPrice : " << content;
+    }
+
+    RLPStream rlp;
+    std::vector<bytes> _v;
+    _v.push_back(op.serialize());
+    rlp.appendVector<bytes>(_v);
+
+    brc::TransactionSkeleton ts;
+    ts.from = from;
+    ts.to = VoteAddress;
+    ts.nonce = nonce;
+    ts.gas = gas;
+    ts.gasPrice = gasPrice;
+    ts.data = rlp.out();
+    ts.chainId = 0;
+
+    brc::Transaction sign_t(ts, _keypair.secret());
+
+    cwarn << "result: \n" << dev::brc::toJson(sign_t);
+
+    cwarn << "rlp data : " << toHexPrefixed(sign_t.rlp());
 
     return true;
 }
@@ -155,7 +200,7 @@ int main(int argc, char *argv[]) {
         bpo::variables_map args_map;
         bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, description);
         bpo::store(parsed, args_map);
-        auto console = args_map["write-file"].as<std::string>();
+
         if (args_map.count("help")) {
             std::cout << description << std::endl;
             return 0;
@@ -164,6 +209,7 @@ int main(int argc, char *argv[]) {
         // Generate signature data with the private key of "from"
         if (args_map.count("from") && args_map.count("to") && args_map.count("blockNumber") &&
             args_map.count("privateKey")) {
+            auto console = args_map["write-file"].as<std::string>();
             auto ret = self_sign(args_map["from"].as<std::string>(),
                                  args_map["to"].as<std::string>(),
                                  args_map["blockNumber"].as<uint32_t>(),
@@ -172,11 +218,13 @@ int main(int argc, char *argv[]) {
 
             return 0;
         } else if (args_map.count("sourceData") && args_map.count("privateKey")) {
+            auto console = args_map["write-file"].as<std::string>();
             std::string source_data = args_map["sourceData"].as<std::string>();
             std::string private_key = args_map["privateKey"].as<std::string>();
             miner_sign(source_data, private_key, console);
             return 0;
         } else if (args_map.count("txJson") && args_map.count("privateKey")) {
+            auto console = args_map["write-file"].as<std::string>();
             std::string private_key = args_map["privateKey"].as<std::string>();
             std::string json_file_path = args_map["txJson"].as<std::string>();
             std::string content_str;

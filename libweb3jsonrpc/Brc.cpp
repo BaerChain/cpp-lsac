@@ -923,6 +923,9 @@ string dev::rpc::exceptionToErrorMessage()
 	{
 		ret = "Transaction rejected by user.";
 	}
+	catch (ChangeMinerFailed const &e){
+        ret = "Replace witness operations cannot be batch operated.";
+	}
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";
