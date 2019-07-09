@@ -2,6 +2,7 @@
 
 #include "State.h"
 #include <libdevcore/Common.h>
+#include "Transaction.h"
 
 
 namespace dev {
@@ -43,6 +44,7 @@ namespace dev {
 
 			void verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
 			void verifyCancelPendingOrders(ex::exchange_plugin &_exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+			void verifyreceivingincome(Address _form, transationTool::dividendcycle _type, EnvInfo const& _envinfo);
 
         private:
             State &m_state;
