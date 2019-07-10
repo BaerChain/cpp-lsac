@@ -150,6 +150,7 @@ void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Addr
 		creaters = preSeal().mutableVote().CanlitorAddress();
 	else if(_type == CreaterType::Varlitor)
 		creaters = preSeal().mutableVote().VarlitorsAddress();
+
 	for(auto const& val : creaters)
 		_creaters.push_back(val.first);
 }
@@ -257,7 +258,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 					}
 					else
 						LOG(m_logger) << "Submitting block failed...";
-											  });
+				});
 				ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
 				sealEngine()->generateSeal(m_sealingInfo);
 			}

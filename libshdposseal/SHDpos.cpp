@@ -47,6 +47,9 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader& _bi, BlockHeader const& 
 
 void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent /*= BlockHeader()*/, bytesConstRef _block /*= bytesConstRef()*/) const {
     // will verify sign and creater
+
+    auto start = utcTimeMilliSec();
+    CLATE_LOG << "SHDpos time begin " << start;
 	SealEngineBase::verify(_s, _bi, _parent, _block);
     std::vector<Address> _v;
 
@@ -56,7 +59,7 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
         if(ret == _v.end())
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
     }
-
+    CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
 }
 
 void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)

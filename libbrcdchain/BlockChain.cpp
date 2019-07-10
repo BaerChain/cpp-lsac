@@ -1748,6 +1748,8 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
                                          ImportRequirements::value _ir) const {
     VerifiedBlockRef res;
     BlockHeader h;
+    Timer cost_timer;
+    CLATE_LOG << "verifyBlock time1 " << cost_timer.elapsed() * 1000 << " ms";
     try {
         h = BlockHeader(_block);
         if (!!(_ir & ImportRequirements::PostGenesis) && (!h.parentHash() || h.number() == 0))
@@ -1775,6 +1777,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
         throw;
     }
 
+    CLATE_LOG << "verifyBlock time2 " << cost_timer.elapsed() * 1000 << " ms";
     RLP r(_block);
     unsigned i = 0;
     if (_ir & (ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
@@ -1803,6 +1806,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
+    CLATE_LOG << "verifyBlock time3 " << cost_timer.elapsed() * 1000 << " ms";
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
 
@@ -1831,6 +1835,12 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 			    task_t.go_task(v_trxb, ret_t, [&_ir](bytes const& b){
 				    return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
 			    });
+
+			    for(auto &itr : ret_t){
+                    m_sealEngine->verifyTransaction(_ir, itr, h, 0);
+			    }
+
+
 			}
             catch(Exception& ex)
 			{
@@ -1872,6 +1882,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 		}
 		
 	}
+    CLATE_LOG << "verifyBlock time4 " << cost_timer.elapsed() * 1000 << " ms";
     res.block = bytesConstRef(_block);
     return res;
 }

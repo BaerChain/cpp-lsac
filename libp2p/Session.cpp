@@ -248,8 +248,10 @@ void Session::write()
             DEV_GUARDED(x_framing)
             {
                 m_writeQueue.pop_front();
-                if (m_writeQueue.empty())
+                if (m_writeQueue.empty()){
+                    CLATE_LOG << "time write : " <<  utcTimeMilliSec();
                     return;
+                }
             }
             write();
         });
