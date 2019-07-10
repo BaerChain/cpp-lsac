@@ -1043,7 +1043,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
         _timer.restart();
 		m_latestBlockSent = _hash;
 		m_bq.insertSendedHash(_hash);
-		CLATE_LOG << "send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
+		CLATE_LOG << "time:" << utcTimeMilliSec() << " send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
     }
 	m_bq.clearVerifiedBlocks();
 }

@@ -889,7 +889,7 @@ bool Client::submitSealed(bytes const& _header)
 		//m_bq.clearVerifiedBlocks();
 		//m_working.info().hash();
         BlockHeader _h = BlockHeader(newBlock);
-		CLATE_LOG << "insertSendBlock " << (utcTimeMilliSec() - _h.timestamp()) << " height: " << _h.number();
+		CLATE_LOG << "time:" << utcTimeMilliSec() << "insertSendBlock " << (utcTimeMilliSec() - _h.timestamp()) << " height: " << _h.number();
 		m_bq.insertSendBlock({ _diff, newBlock });
 		if(auto h = this->m_host.lock())
 			h->noteNewBlocksSend();

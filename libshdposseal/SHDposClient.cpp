@@ -227,7 +227,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 				// TODO is that needed? we have "Generating seal on" below
 				m_working.commitToSeal(bc(), m_extraData);
 				//try into next new epoch and check some about varlitor for SH-DPOS
-				dpos()->tryElect(utcTimeMilliSec());
+//				dpos()->tryElect(utcTimeMilliSec());
 			}
 			DEV_READ_GUARDED(x_working)
 			{
@@ -250,6 +250,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 			{
 				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
 				sealEngine()->onSealGenerated([=](bytes const& _header){
+					CLATE_LOG << "current time : " << utcTimeMilliSec() << " late " << (utcTimeMilliSec() - m_sealingInfo.timestamp()) << " height " << m_sealingInfo.number();
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);
