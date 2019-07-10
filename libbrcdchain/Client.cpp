@@ -888,6 +888,8 @@ bool Client::submitSealed(bytes const& _header)
 		u256 _diff = m_bc.details().totalDifficulty + 20;
 		//m_bq.clearVerifiedBlocks();
 		//m_working.info().hash();
+        BlockHeader _h = BlockHeader(newBlock);
+		CLATE_LOG << "insertSendBlock " << (utcTimeMilliSec() - _h.timestamp()) << " height: " << _h.number();
 		m_bq.insertSendBlock({ _diff, newBlock });
 		if(auto h = this->m_host.lock())
 			h->noteNewBlocksSend();

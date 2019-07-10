@@ -229,7 +229,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         else
         {
             // If valid, append to blocks.
-            LOG(m_loggerDetail) << "OK - ready for chain insertion.";
+            CLATE_LOG << "OK - ready for chain insertion. " << (utcTimeMilliSec() - bi.timestamp()) << "ms" << " height: " << bi.number();
+
             DEV_GUARDED(m_verification)
                 m_unverified.enqueue(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
             m_moreToVerify.notify_one();

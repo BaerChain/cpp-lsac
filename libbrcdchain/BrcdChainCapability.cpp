@@ -992,6 +992,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 	
     for (auto b: _blocks)
     {
+        Timer _timer;
 		BlockHeader _h = BlockHeader(b.m_block);
 		h256 _hash = _h.hash();
         if(m_bq.inSended(_hash))
@@ -999,9 +1000,16 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 		auto s = randomSelection(100, [&](BrcdChainPeer const& _peer){
 			return !_peer.isBlockKnown(_hash);
 								 });
+		for(auto itr :  get<0>(s)){
+            CLATE_LOG << "send chose " << itr ;
+		}
+		for(auto itr : get<1>(s)){
+            CLATE_LOG << "send allow " << itr ;
+		}
+
 		for(NodeID const& peerID : get<0>(s))
 		{
-			Timer _timer;
+
 			RLPStream ts;
 			m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
 				.appendRaw(b.m_block, 1)
@@ -1014,6 +1022,8 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				itPeer->second.markBlockAsKnown(_hash);
 			}
 		}
+        CLATE_LOG << "send chose time" << _timer.elapsed()* 1000 << " ms";
+		_timer.restart();
 
 		for(NodeID const& peerID : get<1>(s))
 		{
@@ -1029,8 +1039,11 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				m_host->sealAndSend(peerID, ts);
 			}
 		}
+        CLATE_LOG << "send allow time" << _timer.elapsed() * 1000 << " ms";
+        _timer.restart();
 		m_latestBlockSent = _hash;
 		m_bq.insertSendedHash(_hash);
+		CLATE_LOG << "send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
     }
 	m_bq.clearVerifiedBlocks();
 }

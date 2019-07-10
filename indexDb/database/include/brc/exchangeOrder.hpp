@@ -101,7 +101,8 @@ namespace dev {
 
                 inline std::string check_version(bool p) const{
                     const auto &obj = get_dynamic_object();
-#ifndef NDEBUG
+//#ifndef NDEBUG
+#if 0
                     std::string ret = " version : " + std::to_string(obj.version)
                                     + " block hash: " + toHex(obj.block_hash)
                                     + " state root: " + toHex(obj.root_hash)

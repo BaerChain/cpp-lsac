@@ -436,6 +436,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
+                CLATE_LOG << "import block laste1 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
                 //DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
@@ -449,6 +450,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions),
                           std::back_inserter(goodTransactions));
                 ++count;
+                CLATE_LOG << "import block laste2 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
             }
             catch (dev::brc::AlreadyHaveBlock const &) {
                 cwarn << "ODD: Import queue contains already imported block";
@@ -476,7 +478,11 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                     m_onBad(ex);
                 // NOTE: don't reimport since the queue should guarantee everything in the right order.
                 // Can't continue - chain  bad.
+                cwarn << "bad block: " << ex.what();
                 badBlocks.push_back(block.verified.info.hash());
+            }
+            catch (...){
+                cerror << "unkown exception..";
             }
         } while (false);
     }
@@ -799,8 +805,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         for (auto itr : data) {
             std::ostringstream os;
             for (auto detail : itr) {
-                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: "
-                   << detail.info.parentHash() << " |";
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash().abridged() << " p: "
+                   << detail.info.parentHash().abridged() << " |";
             }
             cwarn << os.str();
         }
