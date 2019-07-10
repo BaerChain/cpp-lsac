@@ -1040,6 +1040,27 @@ void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNu
     }
 }
 
+void State::receivingIncome(const dev::Address &_addr)
+{
+    std::map<Address, u256> _voteMap = voteDate(_addr);
+    std::map<Address, u256> _sysVarlitorMap = voteDate(SysVarlitorAddress);
+    std::vector<Address> _revenueVector;
+    for (auto _val : _voteMap)
+    {
+        if(_sysVarlitorMap.count(_val.first))
+        {
+            _revenueVector.push_back(_val.first);
+        }
+    }
+
+    for (auto addr : _revenueVector)
+    {
+        u256 _pollNum = poll(addr);
+        u256 _voteNum = voteAdress(_addr, addr);
+
+    }
+}
+
 void State::createContract(Address const& _address)
 {
     createAccount(_address, {requireAccountStartNonce(), 0});

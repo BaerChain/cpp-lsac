@@ -298,6 +298,17 @@ public:
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 
+
+	void setCookieSummary(std::unordered_map<int32_t, std::unordered_map<Address, u256>> _map)
+	{
+        m_cookieSummary.clear();
+        m_cookieSummary.insert(_map.begin(), _map.end());
+	}
+
+	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
+
+    u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
 private:
@@ -345,6 +356,7 @@ private:
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
+
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
@@ -353,6 +365,9 @@ private:
     std::vector<std::string> m_willChangeList;
 
 	//std::unordered_map<u256, u256> m_BlockReward;
+
+	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;
+
 
     std::vector<std::pair<u256, u256>> m_BlockReward;
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.

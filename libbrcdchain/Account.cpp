@@ -131,6 +131,31 @@ bool dev::brc::Account::changeMiner(unsigned blockNumber)
     return true;
 }
 
+std::unordered_map<Address, u256> dev::brc::Account::findSnapshotSummary(uint32_t _snapshotNum)
+{
+    if(m_cookieSummary.count(_snapshotNum))
+    {
+        std::unordered_map<uint32_t, std::unordered_map<Address, u256>>::const_iterator _it = m_cookieSummary.find(_snapshotNum);
+        return _it->second;
+    }else{
+        return  std::unordered_map<Address, u256>();
+    }
+}
+
+u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::Address _addr)
+{
+    std::unordered_map<Address, u256> _map = findSnapshotSummary(_snapshotNum);
+    if(_map.count(_addr))
+    {
+        std::unordered_map<Address, u256>::const_iterator _addrIt = _map.find(_addr);
+        return _addrIt->second;
+    }
+    else{
+        return u256(0);
+    }
+}
+
+
 namespace js = json_spirit;
 
 namespace

@@ -369,6 +369,7 @@ public:
 
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
+	void receivingIncome(Address const & _addr);
 
 private:
     //投票数据
