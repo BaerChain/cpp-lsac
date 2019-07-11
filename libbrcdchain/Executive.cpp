@@ -260,7 +260,7 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = gasCost;
             if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
             {
-				LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
+                LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
 					              << totalCost << "  m_t.gas() = " << m_t.gas()
 					              << " * m_t.gasPrice()" << m_t.gasPrice() << " + "
                                   << m_t.value() << " Got" << m_s.BRC(m_t.sender())

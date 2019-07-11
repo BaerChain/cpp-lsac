@@ -217,6 +217,7 @@ void NodeMonitor::run()
         if(m_data.size() ==  0)
         {
             m_mutex.unlock();
+            usleep(50);
             continue;
         }
         monitorData _data = m_data.back();
@@ -265,6 +266,7 @@ void NodeMonitor::run()
             break;
         }
         m_mutex.unlock();
+        usleep(100);
     }
     return;
 }
