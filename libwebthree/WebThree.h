@@ -166,6 +166,9 @@ public:
     /// Is network working? there may not be any peers yet.
     bool isNetworkStarted() const override { return m_net.isStarted(); }
 
+    /// replace the old node-key
+	static void replace_node(bytes &_b, Secret const& _key);
+
 private:
     std::string m_clientVersion;                    ///< Our end-application client's name/version.
 
