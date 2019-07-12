@@ -351,7 +351,7 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
 //    }
 
     std::pair <uint32_t, Votingstage> _pair = _vote.returnVotingstage(_envinfo);
-    if(_pair.second == Votingstage::VOTE || _pair.second == Votingstage::CALUCLATEDINCOME)
+    if(_pair.second == Votingstage::VOTE)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }

@@ -3,7 +3,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcrypto/Common.h>
 #include <libbvm/ExtVMFace.h>
-
+#include <libbrccore/config.h>
 
 #define VOTINGDIVIDENDCYCLE 1562898600000
 //#define VOTINGTIME 2 * 60 * 1000
@@ -37,12 +37,6 @@ enum VoteType
 };
 
 
-enum class Votingstage : uint8_t
-{
-    VOTE = 0,
-    CALUCLATEDINCOME = 1,
-    RECEIVINGINCOME = 2
-};
 
 struct DposVarlitorVote
 {

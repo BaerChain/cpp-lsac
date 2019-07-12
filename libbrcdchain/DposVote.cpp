@@ -320,17 +320,5 @@ void dev::brc::DposVote::voteLogoutCandidate(Address const& _addr)
 
 std::pair<uint32_t, dev::brc::Votingstage > dev::brc::DposVote::returnVotingstage(const dev::brc::EnvInfo &_envinfo) const
 {
-    if(_envinfo.timestamp() < CALCULATEDINCOMETIME)
-    {
-        std::pair<uint32_t, Votingstage> _pair = { 1, Votingstage::VOTE};
-        return _pair;
-    }else if(_envinfo.timestamp() < RECEIVINGINCOMETIME)
-    {
-        std::pair<uint32_t, Votingstage> _pair = { 1, Votingstage::RECEIVINGINCOME};
-        return _pair;
-    }else if(_envinfo.timestamp() < SECONDVOTINGDIVIDENDCYCLE)
-    {
-        std::pair<uint32_t, Votingstage> _pair = {1, Votingstage::CALUCLATEDINCOME};
-        return _pair;
-    }
+    return config::getVotingCycle(_envinfo.number());
 }
