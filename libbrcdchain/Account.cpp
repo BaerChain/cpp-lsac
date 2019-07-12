@@ -141,6 +141,7 @@ std::unordered_map<Address, u256> dev::brc::Account::findSnapshotSummary(uint32_
 //        return  std::unordered_map<Address, u256>();
 //    }
     return std::unordered_map<Address, u256>();
+
 }
 
 u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::Address _addr)
