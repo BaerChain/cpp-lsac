@@ -32,6 +32,26 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
+
+struct VoteSnapshot{
+    std::map< uint32_t, std::map<Address, u256>> m_voteDataHistory;
+    std::map< uint32_t, u256> m_pollNumHistory;
+    std::map< uint32_t, u256> m_blockSummaryHistory;
+    std::map< uint32_t, u256> m_CookieIncomeHistory;
+    uint32_t numberofrounds = 0;
+
+    VoteSnapshot(){}
+    void  streamRLP(RLPStream& _s) const{
+
+    }
+    void populate(bytes const& _b){
+
+    }
+    void clear(){
+
+    }
+
+};
 class Account
 {
 public:
@@ -382,11 +402,9 @@ private:
     std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
 
-    std::map< uint32_t, std::map<Address, u256>> m_voteDataHistory;
-    std::map< uint32_t, u256> m_pollNumHistory;
-    std::map< uint32_t, u256> m_blockSummaryHistory;
-    std::map< uint32_t, u256> m_CookieIncomeHistory;
-    uint32_t numberofrounds = 0;
+    // The snapshot about voteData
+    VoteSnapshot    m_vote_sapshot;
+
     //std::unordered_map<u256, u256> m_BlockReward;
 
 //	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;
