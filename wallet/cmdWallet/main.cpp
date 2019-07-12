@@ -346,8 +346,9 @@ void write_simple_to_file(const bfs1::path &path) {
 void generate_key(const std::string &seed){
     auto key_pair = KeyPair::create();
     auto sec = key_pair.secret();
-    std::cout << "private key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
-    std::cout << "address : " << key_pair.address() << std::endl;
+    std::cout << "private-key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
+    std::cout << "address    : " << key_pair.address() << std::endl;
+    std::cout << "public-key : " << toString(key_pair.pub())<<std::endl;
 
 }
 
