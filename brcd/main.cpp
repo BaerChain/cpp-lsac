@@ -840,7 +840,6 @@ int main(int argc, char **argv) {
 
     auto nodesState = contents(getDataDir() / fs::path("network.rlp"));
     auto caps = set<string>{"brc"};
-	std::cout << " new data00:    " << toString(nodesState) << std::endl;
     if(vm.count("node-key")){
 		//Secret _k = Secret(vm["node-key"].as<string>());
 		auto node_key = dev::Secret(dev::crypto::from_base58(vm["node-key"].as<string>()));
