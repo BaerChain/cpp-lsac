@@ -319,6 +319,8 @@ int main(int argc, char **argv) {
                         "Connect to the given remote port (default: 30303)");
     addNetworkingOption("network-id", po::value<unsigned>()->value_name("<n>"),
                         "Only connect to other hosts with this network id");
+	addNetworkingOption("node-key", po::value<string>()->value_name("<node_key>"),
+						"Set own node-key and node_id to connect other (default: none and random create new)");
 #if BRC_MINIUPNPC
     addNetworkingOption(
         "upnp", po::value<string>()->value_name("<on/off>"), "Use UPnP for NAT (default: on)");
@@ -838,6 +840,12 @@ int main(int argc, char **argv) {
 
     auto nodesState = contents(getDataDir() / fs::path("network.rlp"));
     auto caps = set<string>{"brc"};
+	std::cout << " new data00:    " << toString(nodesState) << std::endl;
+    if(vm.count("node-key")){
+		//Secret _k = Secret(vm["node-key"].as<string>());
+		auto node_key = dev::Secret(dev::crypto::from_base58(vm["node-key"].as<string>()));
+		WebThreeDirect::replace_node(nodesState, node_key);
+	}
 
     if (testingMode)
         chainParams.allowFutureBlocks = true;

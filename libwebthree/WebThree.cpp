@@ -113,3 +113,30 @@ void WebThreeDirect::addPeer(NodeSpec const &_s, PeerType _t) {
     m_net.addPeer(_s, _t);
 }
 
+void dev::WebThreeDirect::replace_node(bytes &_b, Secret const& _key){
+	if(!_key)
+		return;
+	RLP r(_b);
+	if(r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3 && _key != Secret()){
+		std::cout << " old key:" << toString(Secret(r[1].toBytes())) << std::endl;
+		if(_key == Secret(r[1].toBytes()))
+			return;
+		RLPStream rlp(3);
+		rlp << dev::p2p::c_protocolVersion << _key.ref();
+		RLPStream network;
+		int count = r[2].itemCount();
+        for (auto i : r[2]){
+			network.appendRaw(i.data(), i.itemCount());
+        }
+		if(count){
+			rlp.appendList(count);
+			rlp.appendRaw(network.out(), count);
+		}
+		//std::cout << " old data:    " << toString(_b) <<std::endl;
+		//std::cout << " old data rlp:" << toString(rlp.out()) << std::endl;
+		rlp.swapOut(_b);
+		std::cout << " new data:    " << toString(_b) << std::endl;
+		std::cout << " new data rlp:" << toString(rlp.out()) << std::endl;
+	}
+}
+

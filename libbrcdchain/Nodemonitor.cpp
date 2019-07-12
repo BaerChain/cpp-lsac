@@ -138,12 +138,9 @@ void NodeMonitor::setData(monitorData _data)
     m_mutex.unlock();
 }
 
-Signature NodeMonitor::signatureData()
+Signature NodeMonitor::signatureData(monitorData const& _data)
 {
-    if(m_data.size() == 0) {
-        return Signature();
-    }
-    monitorData _data = m_data.back();
+//    monitorData _data = m_data.back();
 //    cnote << "nodeNum:" <<_data._peerInfos.size();
     m_maxDelay = 0;
     m_minimumDelay = 0;
@@ -160,7 +157,6 @@ Signature NodeMonitor::signatureData()
         {
             m_maxDelay = _delay;
         }
-
 //        cnote << "ping :" << chrono::duration_cast<chrono::milliseconds>(i.lastPing).count() / 2;
     }
 
@@ -169,18 +165,11 @@ Signature NodeMonitor::signatureData()
     m_clientVersion << toJS(_data.nodenum) << toJS(m_maxDelay) << toJS(m_minimumDelay) << toJS(_data.packagetranscations) << toJS(_data.pendingpoolsnum);
     Signature _sign = sign(m_secret, sha3(_rlp.out()));
 
-/*    cnote << "hash " << toJS(sha3(_rlp.out()));
-    cnote << "private key:" << dev::crypto::to_base58((char*)m_secret.data(), 32);*/
     return _sign;
 }
 
-std::string NodeMonitor::getNodeStatsStr(Signature _sign)
+std::string NodeMonitor::getNodeStatsStr(monitorData const& _data, Signature _sign)
 {
-    if(m_data.size() == 0)
-    {
-        return std::string();
-    }
-    monitorData _data = m_data.back();
     clock_t time;
     Json::Value _jv;
     _jv["nodeID"] = m_public.hex();
@@ -219,15 +208,25 @@ void NodeMonitor::analysisRet(std::string _ret)
 void NodeMonitor::run()
 {
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(m_ip);
+    //_httpClient.SetTimeout();
     int errorNum = 0;
     int inputNum = 0;
     while(1)
     {
         m_mutex.lock();
-        if(m_data.size() > 0)
+        if(m_data.size() ==  0)
         {
-            Signature _sign = signatureData();
-            std::string _str = getNodeStatsStr(_sign);
+            m_mutex.unlock();
+            continue;
+        }
+        monitorData _data = m_data.back();
+        m_data.clear();
+        m_mutex.unlock();
+
+//        if(m_data.size() > 0)
+//        {
+            Signature _sign = signatureData(_data);
+            std::string _str = getNodeStatsStr(_data, _sign);
             if(!_str.empty())
             {
                 try
@@ -256,8 +255,8 @@ void NodeMonitor::run()
                 }
             }
             //TO DO:signature data
-            m_data.clear();
-        }
+//            m_data.clear();
+//        }
 
         if(m_threadExit)
         {
