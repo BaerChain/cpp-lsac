@@ -127,11 +127,12 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
 
 void dev::bacd::SHDposClient::sendDataToNodeMonitor()
 {
-
-	monitorData _data = { bc().number(), bc().info().author() ,bc().info().hash(), bc().info().gasUsed(), utcTimeMilliSec() - bc().info().timestamp(),
-                       bc().transactions().size(), pending().size(), m_p2pHost.peerCount(), utcTimeMilliSec(), m_p2pHost.peerSessionInfo()};
-	//cnote << "sendDataToNodeMonitor threadid: " << std::this_thread::get_id();
-	m_nodemonitor.setData(_data);
+	if(utcTimeMilliSec() - 30 * 1000 < bc().info().timestamp() ){
+		monitorData _data = { bc().number(), bc().info().author() ,bc().info().hash(), bc().info().gasUsed(), utcTimeMilliSec() - bc().info().timestamp(),
+							  bc().transactions().size(), pending().size(), m_p2pHost.peerCount(), utcTimeMilliSec(), m_p2pHost.peerSessionInfo()};
+		//cnote << "sendDataToNodeMonitor threadid: " << std::this_thread::get_id();
+		m_nodemonitor.setData(_data);
+	}
 }
 
 void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector) const
