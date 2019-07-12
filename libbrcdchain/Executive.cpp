@@ -581,7 +581,12 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else if(_type == transationTool::op_type::cancelPendingOrder){
 		    m_s.cancelPendingOrders(m_batch_params._operation);
 		}
-		else if(_type == transationTool::op_type::receivingincome)
+        else if(_type == transationTool::op_type::changeMiner){
+		    m_s.changeMiner(m_batch_params._operation);
+		}
+		else if(_type == transationTool::op_type::receivingincome){
+
+		}
 
 		m_batch_params.clear();
 		return true;
