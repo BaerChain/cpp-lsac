@@ -450,7 +450,7 @@ void Executive::initialize(Transaction const& _transaction)
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)
-					m_vote.verifyVote(m_t.sender(), m_batch_params._operation);
+					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)

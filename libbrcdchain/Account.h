@@ -344,6 +344,11 @@ public:
 
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
+
+    //interface about sanpshot
+    void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
+    VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

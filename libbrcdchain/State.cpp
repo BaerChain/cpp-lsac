@@ -191,11 +191,14 @@ Account *State::account(Address const &_addr) {
 								 Account::Unchanged, state[10].toInt<u256>()));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
-	if(timestamp() > FORKSIGNSTIME && state.itemCount() >= 13){
-        std::vector<std::string> tmp;
-        tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
-        i.first->second.initChangeList(tmp);
-    }
+
+	std::vector<std::string> tmp;
+	tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+	i.first->second.initChangeList(tmp);
+
+    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.init_vote_snapshot(vote_sna_b);
+
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -1572,6 +1575,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 			jv["ret"] = "not is the eletor";
 	}
 	return jv;
+
 }
 
 void dev::brc::State::assetInjection(Address const& _addr)
@@ -1873,7 +1877,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(_time > FORKSIGNSTIME ? 13 : 12);
+				s.appendList(14);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1913,19 +1917,26 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
-				{
-					RLPStream _rlp;
-					size_t _num = i.second.blockReward().size();
-					_rlp.appendList(_num + 1);
-					_rlp << _num;
-					for (auto it : i.second.blockReward())
-					{
-						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
-					}
-					s << _rlp.out();
-				}
-                if(_time > FORKSIGNSTIME)
-                    s << i.second.willChangeList();
+                {
+                    RLPStream _rlp;
+                    size_t _num = i.second.blockReward().size();
+                    _rlp.appendList(_num + 1);
+                    _rlp << _num;
+                    for (auto it : i.second.blockReward())
+                    {
+                    	_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+                    }
+                    s << _rlp.out();
+                }
+
+                s << i.second.willChangeList();
+
+                {
+                    RLPStream _s;
+                    i.second.vote_snashot().streamRLP(_s);
+                    s << _s.out();
+                }
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
