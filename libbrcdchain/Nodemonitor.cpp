@@ -234,7 +234,6 @@ void NodeMonitor::run()
                 {
                     std::string _ret;
                     _httpClient.SendRPCMessage(_str, _ret);
-                    cnote << "http ret:" << _ret;
                     analysisRet(_ret);
                     errorNum = 0;
                     inputNum = 0;
