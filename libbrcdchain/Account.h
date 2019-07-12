@@ -301,13 +301,26 @@ public:
 
 	void setCookieSummary(std::unordered_map<int32_t, std::unordered_map<Address, u256>> _map)
 	{
-        m_cookieSummary.clear();
-        m_cookieSummary.insert(_map.begin(), _map.end());
+        //m_cookieSummary.clear();
+        //m_cookieSummary.insert(_map.begin(), _map.end());
 	}
 
 	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
+
+
+    void addCooikeIncome(u256 _value)
+    {
+        m_CooikeIncomeNum += _value;
+        changed();
+    }
+
+    void addDividendsCooike(u256 _value)
+    {
+        m_dividendsCooike += _value;
+        changed();
+    }
 
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -357,6 +370,11 @@ private:
 
 	u256 m_assetInjectStatus = 0;
 
+	// Summary of the proceeds from the block address itself
+	u256 m_CooikeIncomeNum = 0;
+
+	//Summary of handling fees for participating in dividends
+	u256 m_dividendsCooike = 0;
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
@@ -364,10 +382,15 @@ private:
     std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
 
-	//std::unordered_map<u256, u256> m_BlockReward;
+    std::map< uint32_t, std::map<Address, u256>> m_voteDataHistory;
+    std::map< uint32_t, u256> m_pollNumHistory;
+    std::map< uint32_t, u256> m_blockSummaryHistory;
+    std::map< uint32_t, u256> m_CookieIncomeHistory;
+    uint32_t numberofrounds = 0;
+    //std::unordered_map<u256, u256> m_BlockReward;
 
-	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;
-
+//	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;
+//    std::map <uint32_t, bool> m_receiveStats;
 
     std::vector<std::pair<u256, u256>> m_BlockReward;
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.

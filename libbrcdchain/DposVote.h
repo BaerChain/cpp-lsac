@@ -2,6 +2,14 @@
 #include "State.h"
 #include <libdevcore/Common.h>
 #include <libdevcrypto/Common.h>
+#include <libbvm/ExtVMFace.h>
+
+
+#define VOTINGDIVIDENDCYCLE 1562898600000
+//#define VOTINGTIME 2 * 60 * 1000
+#define CALCULATEDINCOMETIME 1562898900000
+#define RECEIVINGINCOMETIME 1562899200000
+#define SECONDVOTINGDIVIDENDCYCLE 1562899500000
 
 namespace dev
 {
@@ -26,6 +34,14 @@ enum VoteType
     ELogoutCandidate,
     EDelegate,
     EUnDelegate
+};
+
+
+enum class Votingstage : uint8_t
+{
+    VOTE = 0,
+    CALUCLATEDINCOME = 1,
+    RECEIVINGINCOME = 2
 };
 
 struct DposVarlitorVote
@@ -57,12 +73,15 @@ public:
     void setState(State& _s) { m_state = _s; }
 public:
     void verifyVote(Address const& _from, Address const& _to, size_t _type, u256 tickets = 0);
-	void verifyVote(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+	void verifyVote(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 	std::map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
 	std::map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
+    std::pair <uint32_t, Votingstage> returnVotingstage(EnvInfo const& _envinfo) const;
+//	std::map<Address, u256>  incomeSummary(uint32_t _snapshotNum) const { return m_state.incomeSummary(SysVarlitorAddress,_snapshotNum);}
 	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.addVote(_id, _recivedAddr, _value);} 
-    void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);} 
+//    void addincomeSummary(uint32_t _snapshotNum, Address const& _addr) { m_state};
+    void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);}
     void voteLoginCandidate(Address const& _addr);    
     void voteLogoutCandidate(Address const& _addr); 
 
@@ -72,7 +91,7 @@ public:
 public:
     std::map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}
 	inline std::map<Address, u256>  getElectors() const { return m_state.voteDate(SysElectorAddress); }
-    
+
 private: 
     State&      m_state;
     Logger      m_logger { createLogger(VerbosityDebug, "dposVote") };

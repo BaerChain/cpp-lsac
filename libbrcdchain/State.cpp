@@ -1039,12 +1039,45 @@ void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNu
        m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
     }
 }
+//
+//void State::receivingIncome(const dev::Address &_addr)
+//{
+//    std::map<Address, u256> _voteMap = voteDate(_addr);
+//    std::map<Address, u256> _sysVarlitorMap = voteDate(SysVarlitorAddress);
+//    std::vector<Address> _revenueVector;
+//    for (auto _val : _voteMap)
+//    {
+//        if(_sysVarlitorMap.count(_val.first))
+//        {
+//            _revenueVector.push_back(_val.first);
+//        }
+//    }
+//
+//    for (auto addr : _revenueVector)
+//    {
+//        u256 _pollNum = poll(addr);
+//        u256 _voteNum = voteAdress(_addr, addr);
+//    }
+//}
 
-void State::receivingIncome(const dev::Address &_addr)
+
+std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr, uint32_t _snapshotNum)
+{
+    if(auto a = account(_addr))
+    {
+        return a->findSnapshotSummary(_snapshotNum);
+    }else{
+        return std::unordered_map<Address, u256>();
+    }
+}
+
+void State::receivingIncome(const dev::Address &_addr, uint32_t _snapshotNum)
 {
     std::map<Address, u256> _voteMap = voteDate(_addr);
     std::map<Address, u256> _sysVarlitorMap = voteDate(SysVarlitorAddress);
     std::vector<Address> _revenueVector;
+    u256 _income = u256(0);
+
     for (auto _val : _voteMap)
     {
         if(_sysVarlitorMap.count(_val.first))
@@ -1058,7 +1091,12 @@ void State::receivingIncome(const dev::Address &_addr)
         u256 _pollNum = poll(addr);
         u256 _voteNum = voteAdress(_addr, addr);
 
+        u256 _incomeCookie = u256(1000000000000) / 2;
+
+        _income += _incomeCookie * _voteNum / _pollNum;
     }
+
+    addBalance(_addr, _income);
 }
 
 void State::createContract(Address const& _address)

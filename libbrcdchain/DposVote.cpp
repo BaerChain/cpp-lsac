@@ -1,6 +1,9 @@
 #include "DposVote.h"
 #include <unordered_map>
 
+using namespace dev::brc;
+
+
 void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, u256 tickets)
 {
 	std::string _ex_info = "";
@@ -113,8 +116,13 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 }
 
 
-void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::shared_ptr<transationTool::vote_operation> p_op = nullptr; 
+void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+    std::pair <uint32_t, Votingstage> _pair = returnVotingstage(_envinfo);
+    if(_pair.second != Votingstage::VOTE)
+    {
+        BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("The time point that is not currently in the voting phase"));
+    }
+    std::shared_ptr<transationTool::vote_operation> p_op = nullptr;
 	bigint total_brc = m_state.BRC(_from);
 	bigint total_tickets = m_state.ballot(_from);
 	u256 sell_tickes = 0;
@@ -308,4 +316,21 @@ void dev::brc::DposVote::voteLoginCandidate(Address const& _addr)
 void dev::brc::DposVote::voteLogoutCandidate(Address const& _addr)
 {
 	m_state.subSysVoteDate(SysElectorAddress, _addr);
+}
+
+std::pair<uint32_t, dev::brc::Votingstage > dev::brc::DposVote::returnVotingstage(const dev::brc::EnvInfo &_envinfo) const
+{
+    if(_envinfo.timestamp() < CALCULATEDINCOMETIME)
+    {
+        std::pair<uint32_t, Votingstage> _pair = { 1, Votingstage::VOTE};
+        return _pair;
+    }else if(_envinfo.timestamp() < RECEIVINGINCOMETIME)
+    {
+        std::pair<uint32_t, Votingstage> _pair = { 1, Votingstage::RECEIVINGINCOME};
+        return _pair;
+    }else if(_envinfo.timestamp() < SECONDVOTINGDIVIDENDCYCLE)
+    {
+        std::pair<uint32_t, Votingstage> _pair = {1, Votingstage::CALUCLATEDINCOME};
+        return _pair;
+    }
 }

@@ -334,20 +334,26 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
-    cwarn << "type:" <<_type;
-    if(_type == dev::brc::transationTool::dividendcycle::blocknum)
-    {
-        if(_envinfo.number() < VOTEBLOCKNUM)
-        {
-            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-        }
+//    cwarn << "type:" <<_type;
+//    if(_type == dev::brc::transationTool::dividendcycle::blocknum)
+//    {
+//        if(_envinfo.number() < VOTEBLOCKNUM)
+//        {
+//            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+//        }
+//
+//    }else if(_type == dev::brc::transationTool::dividendcycle::timestamp)
+//    {
+//        if(_envinfo.timestamp() < VOTETIME)
+//        {
+//            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+//        }
+//    }
 
-    }else if(_type == dev::brc::transationTool::dividendcycle::timestamp)
+    std::pair <uint32_t, Votingstage> _pair = _vote.returnVotingstage(_envinfo);
+    if(_pair.second == Votingstage::VOTE || _pair.second == Votingstage::CALUCLATEDINCOME)
     {
-        if(_envinfo.timestamp() < VOTETIME)
-        {
-            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-        }
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }
 
     std::map <dev::Address, dev::u256> _map = _vote.VarlitorsAddress();

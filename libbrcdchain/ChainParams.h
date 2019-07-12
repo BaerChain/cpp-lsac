@@ -82,6 +82,7 @@ struct ChainParams: public ChainOperationParams
 
 	std::unordered_map <Public, std::string> getConnectPeers() const;
 	std::map<Address, Public> getPeersMessage() const;
+	u256 getTimestamp() {return timestamp;}
 
 private:
     void populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state);

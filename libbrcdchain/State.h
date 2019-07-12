@@ -369,6 +369,11 @@ public:
 
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
+
+
+	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
+
+	void receivingIncome(Address const & _addr, uint32_t _snapshotNum);
 	void receivingIncome(Address const & _addr);
 
 private:
