@@ -118,7 +118,6 @@ void dev::WebThreeDirect::replace_node(bytes &_b, Secret const& _key){
 		return;
 	RLP r(_b);
 	if(r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3 && _key != Secret()){
-		std::cout << " old key:" << toString(Secret(r[1].toBytes())) << std::endl;
 		if(_key == Secret(r[1].toBytes()))
 			return;
 		RLPStream rlp(3);
@@ -135,8 +134,6 @@ void dev::WebThreeDirect::replace_node(bytes &_b, Secret const& _key){
 		//std::cout << " old data:    " << toString(_b) <<std::endl;
 		//std::cout << " old data rlp:" << toString(rlp.out()) << std::endl;
 		rlp.swapOut(_b);
-		std::cout << " new data:    " << toString(_b) << std::endl;
-		std::cout << " new data rlp:" << toString(rlp.out()) << std::endl;
 	}
 }
 
