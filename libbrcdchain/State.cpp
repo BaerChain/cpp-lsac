@@ -1042,26 +1042,7 @@ void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNu
        m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
     }
 }
-//
-//void State::receivingIncome(const dev::Address &_addr)
-//{
-//    std::map<Address, u256> _voteMap = voteDate(_addr);
-//    std::map<Address, u256> _sysVarlitorMap = voteDate(SysVarlitorAddress);
-//    std::vector<Address> _revenueVector;
-//    for (auto _val : _voteMap)
-//    {
-//        if(_sysVarlitorMap.count(_val.first))
-//        {
-//            _revenueVector.push_back(_val.first);
-//        }
-//    }
-//
-//    for (auto addr : _revenueVector)
-//    {
-//        u256 _pollNum = poll(addr);
-//        u256 _voteNum = voteAdress(_addr, addr);
-//    }
-//}
+
 
 
 void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
@@ -1115,7 +1096,7 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
     }
 }
 
-void State::receivingIncome(const dev::Address &_addr, uint32_t _snapshotNum)
+void State::receivingIncome(const dev::Address &_addr)
 {
     u256 _income = 0;
     auto a = account(_addr);
@@ -1123,10 +1104,20 @@ void State::receivingIncome(const dev::Address &_addr, uint32_t _snapshotNum)
 
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
     std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
-    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end())
+    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);
+
+    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment("There is currently no income to receive"));
     }
+
+    for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
+    {
+        u256 _ownedPoll = _pollDataIt->second;
+        std::map<u256, u256>::const_iterator _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first);
+        _income += _ownedHandingfee->second / 2 + (_ownedHandingfee->second / 2) % _ownedPoll;
+    }
+
     for(_voteDataIt; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         //std::map<Address, u256> _voteMap = _voteDataIt->second;
@@ -1151,35 +1142,12 @@ void State::receivingIncome(const dev::Address &_addr, uint32_t _snapshotNum)
                     _handingfee = _handingfeeMap->second;
                 }
 
-                _income += _handingfee * _voteNum / _pollNum;
+                _income += (_handingfee / 2) * _voteNum / _pollNum ;
             }
         }
     }
-
-//    std::map<Address, u256> _voteMap = voteDate(_addr);
-//    std::map<Address, u256> _sysVarlitorMap = voteDate(SysVarlitorAddress);
-//    std::vector<Address> _revenueVector;
-//    u256 _income = u256(0);
-//
-//    for (auto _val : _voteMap)
-//    {
-//        if(_sysVarlitorMap.count(_val.first))
-//        {
-//            _revenueVector.push_back(_val.first);
-//        }
-//    }
-//
-//    for (auto addr : _revenueVector)
-//    {
-//        u256 _pollNum = poll(addr);
-//        u256 _voteNum = voteAdress(_addr, addr);
-//
-//        u256 _incomeCookie = u256(1000000000000) / 2;
-//
-//        _income += _incomeCookie * _voteNum / _pollNum;
-//    }
-//
-//    addBalance(_addr, _income);
+    addBalance(_addr, _income);
+    a->set_numberofrounds(_voteDataIt->first);
 }
 
 void State::createContract(Address const& _address)

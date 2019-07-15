@@ -374,7 +374,6 @@ public:
 
 	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
 
-	void receivingIncome(Address const & _addr, uint32_t _snapshotNum);
 	void receivingIncome(Address const & _addr);
 
 
