@@ -157,6 +157,17 @@ u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::A
     }
 }
 
+void Account::add_new_snapshot(u256 rounds) {
+
+}
+
+std::vector<u256> Account::get_no_record_snapshot() {
+    return  std::vector<u256>();
+}
+
+void Account::get_awards() {
+
+}
 
 namespace js = json_spirit;
 
