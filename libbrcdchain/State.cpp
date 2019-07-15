@@ -1082,7 +1082,7 @@ void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     Account *a = account(_addr);
     u256 original = a ? a->CookieIncome() : 0;
 
-    // Fall back to addBalance().
+    // Fall back to addCooikeIncomeNum().
     addCooikeIncomeNum(_addr, _value - original);
 }
 
@@ -1148,6 +1148,21 @@ void State::receivingIncome(const dev::Address &_addr)
     }
     addBalance(_addr, _income);
     a->set_numberofrounds(_voteDataIt->first);
+}
+
+void State::setNumofrounds(const dev::Address &_addr, const dev::u256 &_value)
+{
+    u256 _oldValue = 0;
+    if(auto a = account(_addr))
+    {
+        _oldValue = a->vote_snashot().numberofrounds;
+        a->set_numberofrounds(_value);
+    }
+
+    if(_value)
+    {
+        m_changeLog.emplace_back(Change::Numofrounds, _addr , _oldValue);
+    }
 }
 
 void State::createContract(Address const& _address)
@@ -1354,6 +1369,9 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
+                break;
+            case Change::Numofrounds:
+                account.set_numberofrounds(change.value);
                 break;
             case Change::NewVoteSnapshot:
                 account.set_vote_snapshot(change.vote_snapshot);
