@@ -2,7 +2,7 @@
 #include "DposVote.h"
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
-
+#include <libbrccore/config.h>
 using namespace dev::brc::ex;
 
 #define VOTETIME 60*1000
@@ -334,40 +334,21 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
-//    cwarn << "type:" <<_type;
-//    if(_type == dev::brc::transationTool::dividendcycle::blocknum)
-//    {
-//        if(_envinfo.number() < VOTEBLOCKNUM)
-//        {
-//            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-//        }
-//
-//    }else if(_type == dev::brc::transationTool::dividendcycle::timestamp)
-//    {
-//        if(_envinfo.timestamp() < VOTETIME)
-//        {
-//            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-//        }
-//    }
-
-    std::pair <uint32_t, Votingstage> _pair = _vote.returnVotingstage(_envinfo);
+    std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
     if(_pair.second == Votingstage::VOTE)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }
 
-    std::map <dev::Address, dev::u256> _map = _vote.VarlitorsAddress();
-    uint32_t  _count = 0;
-    for (auto i : m_state.voteDate(_from))
-    {
-        if(_map.count(i.first))
-        {
-            _count++;
-        }
-    }
+    auto a = m_state.account(_from);
+    VoteSnapshot _voteSnapshot = a->vote_snashot();
 
-    if(_count == 0)
+    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+    std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
+    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);
+
+    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
     {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account did not participate in the voting and no dividend income")));
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
 }
