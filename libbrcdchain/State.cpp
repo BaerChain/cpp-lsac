@@ -1150,16 +1150,18 @@ void State::receivingIncome(const dev::Address &_addr)
     a->set_numberofrounds(_voteDataIt->first);
 }
 
-void State::addNumofrounds(const dev::Address &_addr, const dev::u256 &_value)
+void State::setNumofrounds(const dev::Address &_addr, const dev::u256 &_value)
 {
+    u256 _oldValue = 0;
     if(auto a = account(_addr))
     {
+        _oldValue = a->vote_snashot().numberofrounds;
         a->set_numberofrounds(_value);
     }
 
     if(_value)
     {
-        m_changeLog.emplace_back(Change::Numofrounds, _addr , _value);
+        m_changeLog.emplace_back(Change::Numofrounds, _addr , _oldValue);
     }
 }
 
@@ -1367,6 +1369,12 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
+                break;
+            case Change::Numofrounds:
+                account.set_numberofrounds(change.value);
+                break;
+            case Change::NewVoteSnapshot:
+                account.set_vote_snapshot(change.vote_snapshot);
                 break;
             default:
                 break;
@@ -1820,7 +1828,20 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 }
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
-
+    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
+    auto  a = account(_addr);
+    if(!a){
+        createAccount(_addr, {0});
+        a = account(_addr);
+        if (!a)
+            BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
+    }
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    if (!ret_pair.first)
+        return;
+    VoteSnapshot _vote_sna = a->vote_snashot();
+    a->try_new_snapshot(ret_pair.second);
+    m_changeLog.emplace_back(_addr, _vote_sna);
 }
 
 
