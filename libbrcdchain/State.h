@@ -113,7 +113,8 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward
+        BlockReward,
+        CookieIncome
     };
 
     Kind kind;        ///< The kind of the change.
@@ -373,8 +374,12 @@ public:
 
 	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
 
-	void receivingIncome(Address const & _addr, uint32_t _snapshotNum);
 	void receivingIncome(Address const & _addr);
+
+
+	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);
+	void subCookieIncomeNum(Address const& _addr, u256 const& _value);
+	void setCookieIncomeNum(Address const& _addr, u256 const& _value);
 
     //interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);

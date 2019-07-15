@@ -40,7 +40,6 @@ struct VoteSnapshot{
     std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
     u256 numberofrounds = 0;                                    // the rounds of got awards
     u256 m_latest_round = 0;
-
     VoteSnapshot(){}
 
     VoteSnapshot&operator = (VoteSnapshot const& s_v){
@@ -397,7 +396,7 @@ public:
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
 
-
+    u256 CookieIncome(){return m_CooikeIncomeNum;}
     void addCooikeIncome(u256 _value)
     {
         m_CooikeIncomeNum += _value;
@@ -466,7 +465,6 @@ private:
 
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
-
 
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
