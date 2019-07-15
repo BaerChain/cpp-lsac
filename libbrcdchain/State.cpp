@@ -1838,6 +1838,10 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
 }
 
+void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
+
+}
+
 
 void dev::brc::State::transferBallotBuy(
         Address const &_from, u256 const &_value) {
@@ -2023,7 +2027,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
         }
     return ret;
 }
-
 
 template AddressHash dev::brc::commit<OverlayDB>(
         AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, uint64_t _time = FORKSIGNSTIME);

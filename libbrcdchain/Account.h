@@ -4,6 +4,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieCommon.h>
 #include <libbrccore/Common.h>
+#include "libbrccore/config.h"
 
 #include <boost/filesystem/path.hpp>
 
@@ -41,13 +42,67 @@ struct VoteSnapshot{
     u256 m_latest_round = 0;
     VoteSnapshot(){}
     void  streamRLP(RLPStream& _s) const{
+        _s.appendList(5);
+
+        RLPStream vote_s(m_voteDataHistory.size());
+        for(auto vote : m_voteDataHistory){
+            RLPStream data_s(vote.second.size());
+            for(auto const& v: vote.second){
+                data_s.append<Address, u256>(std::make_pair(v.first, v.second));
+            }
+            vote_s.append<u256, bytes>(std::make_pair(vote.first, data_s.out()));
+        }
+        _s << vote_s.out();
+
+        RLPStream poll_s;
+        poll_s.appendList(m_pollNumHistory.size());
+        for(auto const& poll : m_pollNumHistory){
+            poll_s.append<u256, u256>(std::make_pair(poll.first, poll.second));
+        }
+        _s << poll_s.out();
+
+        RLPStream block_s(m_blockSummaryHistory.size());
+        for(auto const& b: m_blockSummaryHistory){
+            block_s.append<u256, u256>(std::make_pair(b.first, b.second));
+        }
+        _s << block_s.out();
+        _s << numberofrounds << m_latest_round;
 
     }
     void populate(bytes const& _b){
+        RLP rlp(_b);
+        bytes b_vote = rlp[0].toBytes();
+        for(auto const& val: RLP(b_vote)){
+            std::pair<u256 , bytes > _pair = val.toPair<u256, bytes>();
+            std::map<Address, u256> vote_data;
+            for(auto const& v: RLP(_pair.second)){
+                std::pair<Address , u256> v_pair = v.toPair<Address, u256>();
+                vote_data[v_pair.first] = v_pair.second;
+            }
+            m_voteDataHistory[_pair.first] = vote_data;
+        }
 
+        bytes  poll_b= rlp[1].toBytes();
+        for(auto const& val : RLP(poll_b)){
+            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
+            m_pollNumHistory[_pair.first] = _pair.second;
+        }
+
+        bytes block_b = rlp[2].toBytes();
+        for(auto const& val: RLP(block_b)){
+            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
+            m_blockSummaryHistory[_pair.first] = _pair.second;
+        }
+
+        numberofrounds = rlp[3].toInt<u256>();
+        m_latest_round = rlp[4].toInt<u256>();
     }
     void clear(){
-
+        m_voteDataHistory.clear();
+        m_pollNumHistory.clear();
+        m_blockSummaryHistory.clear();
+        numberofrounds = 0;
+        m_latest_round = 0;
     }
 
 };
@@ -342,8 +397,13 @@ public:
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
     void add_new_snapshot(u256 rounds);
-    std::vector<u256> get_no_record_snapshot();
+    //std::vector<u256> get_no_record_snapshot();
+    void try_new_snapshot(uint32_t _rounds, Votingstage _state);
     void get_awards();
+    void set_numberofrounds(u256 _val){
+        m_vote_sapshot.numberofrounds = _val;
+        changed();
+    }
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
