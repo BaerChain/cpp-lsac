@@ -376,6 +376,9 @@ public:
 	void receivingIncome(Address const & _addr, uint32_t _snapshotNum);
 	void receivingIncome(Address const & _addr);
 
+    //interface about vote snapshot
+    void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
+
 private:
     //投票数据
     //获取投出得票数

@@ -161,11 +161,11 @@ void Account::add_new_snapshot(u256 rounds) {
 
 }
 
-std::vector<u256> Account::get_no_record_snapshot() {
-    return  std::vector<u256>();
+void Account::get_awards() {
+
 }
 
-void Account::get_awards() {
+void Account::try_new_snapshot(uint32_t _rounds, dev::brc::Votingstage _state) {
 
 }
 
