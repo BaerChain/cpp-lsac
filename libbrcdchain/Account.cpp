@@ -157,23 +157,30 @@ u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::A
     }
 }
 
-void Account::get_awards() {
-
-}
-
-void Account::try_new_snapshot(uint32_t _rounds) {
+void Account::try_new_snapshot(u256 _rounds) {
     for (u256 j = m_vote_sapshot.m_latest_round+1; j <= _rounds ; ++j) {
-
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+            std::map<Address, u256> _temp ;
+            _temp.insert(m_voteData.begin(), m_voteData.end());
+            m_vote_sapshot.m_voteDataHistory[j] = _temp;
+        }
+        if (!m_vote_sapshot.m_pollNumHistory.count(j)){
+            m_vote_sapshot.m_pollNumHistory[j] = poll();
+        }
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+            m_vote_sapshot.m_blockSummaryHistory[j] = CookieIncome();
+        }
     }
+    m_vote_sapshot.m_latest_round = _rounds;
 }
 
 std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage _state) {
     u256 last_round = _rounds;
     if(_rounds >0 && _state == Votingstage::VOTE)
-        _rounds --;
+        last_round --;
     if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
-        return std::make_pair<bool, u256>(false, 0);
-    return  std::make_pair<bool, u256>(true, last_round);
+        return std::make_pair(false, 0);
+    return  std::make_pair(true, last_round);
 }
 
 namespace js = json_spirit;

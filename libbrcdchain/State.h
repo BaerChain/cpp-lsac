@@ -114,7 +114,8 @@ struct Change
         FBRC,               // = 12
         FBalance,
         BlockReward,
-        CookieIncome
+        CookieIncome,
+        NewVoteSnapshot,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -125,6 +126,7 @@ struct Change
     std::pair<Address, u256> vote;         // 投票事件
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
     std::pair<u256, u256> blockReward;
+    VoteSnapshot vote_snapshot;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -158,6 +160,10 @@ struct Change
     Change(Address const& _addr, std::pair<u256, u256> _pair) : kind(BlockReward), address(_addr)
     {
         blockReward = std::make_pair(_pair.first, _pair.second);
+    }
+    Change(Address const& _addr, VoteSnapshot const& _vote) : kind(NewVoteSnapshot), address(_addr)
+    {
+        vote_snapshot = _vote;
     }
 };
 
