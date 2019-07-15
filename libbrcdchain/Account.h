@@ -37,7 +37,6 @@ struct VoteSnapshot{
     std::map< uint32_t, std::map<Address, u256>> m_voteDataHistory;
     std::map< uint32_t, u256> m_pollNumHistory;
     std::map< uint32_t, u256> m_blockSummaryHistory;
-    std::map< uint32_t, u256> m_CookieIncomeHistory;
     uint32_t numberofrounds = 0;
 
     VoteSnapshot(){}
@@ -398,8 +397,6 @@ private:
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
 
-	//Summary of handling fees for participating in dividends
-	u256 m_dividendsCooike = 0;
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
