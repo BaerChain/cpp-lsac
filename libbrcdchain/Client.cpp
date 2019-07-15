@@ -566,7 +566,8 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 bool Client::remoteActive() const
 {
-    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
+//    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
+    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(1 * bc().chainParams().config_blocks);
 }
 
 void Client::onPostStateChanged()

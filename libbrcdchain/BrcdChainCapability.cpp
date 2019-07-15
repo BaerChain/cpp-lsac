@@ -1001,10 +1001,10 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 			return !_peer.isBlockKnown(_hash);
 								 });
 		for(auto itr :  get<0>(s)){
-            CLATE_LOG << "send chose " << itr ;
+            cwarn << "send chose " << itr ;
 		}
 		for(auto itr : get<1>(s)){
-            CLATE_LOG << "send allow " << itr ;
+            cwarn << "send allow " << itr ;
 		}
 
 		for(NodeID const& peerID : get<0>(s))
@@ -1022,7 +1022,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				itPeer->second.markBlockAsKnown(_hash);
 			}
 		}
-        CLATE_LOG << "send chose time" << _timer.elapsed()* 1000 << " ms";
+        cwarn << "send chose time" << _timer.elapsed()* 1000 << " ms";
 		_timer.restart();
 
 		for(NodeID const& peerID : get<1>(s))
@@ -1039,11 +1039,11 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				m_host->sealAndSend(peerID, ts);
 			}
 		}
-        CLATE_LOG << "send allow time" << _timer.elapsed() * 1000 << " ms";
+        cwarn << "send allow time" << _timer.elapsed() * 1000 << " ms";
         _timer.restart();
 		m_latestBlockSent = _hash;
 		m_bq.insertSendedHash(_hash);
-		CLATE_LOG << "time:" << utcTimeMilliSec() << " send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
+        cwarn << "time:" << utcTimeMilliSec() << " send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
     }
 	m_bq.clearVerifiedBlocks();
 }
