@@ -1759,6 +1759,7 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 }
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
+    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
 
 }
 

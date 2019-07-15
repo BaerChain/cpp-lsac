@@ -42,6 +42,19 @@ struct VoteSnapshot{
     u256 m_latest_round = 0;
 
     VoteSnapshot(){}
+
+    VoteSnapshot&operator = (VoteSnapshot const& s_v){
+        clear();
+        for(auto const& val : s_v.m_voteDataHistory){
+            std::map<Address, u256> _temp = val.second;
+            m_voteDataHistory[val.first] = _temp;
+        }
+        m_pollNumHistory.insert(s_v.m_pollNumHistory.begin(),s_v.m_pollNumHistory.end());
+        m_blockSummaryHistory.insert(s_v.m_blockSummaryHistory.begin(),s_v.m_blockSummaryHistory.end());
+        numberofrounds = s_v.numberofrounds;
+        m_latest_round = s_v.m_latest_round;
+    }
+
     void  streamRLP(RLPStream& _s) const{
         _s.appendList(5);
 
@@ -397,9 +410,8 @@ public:
     //interface about sanpshot
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
-    void add_new_snapshot(u256 rounds);
-    //std::vector<u256> get_no_record_snapshot();
-    void try_new_snapshot(uint32_t _rounds, Votingstage _state);
+    std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
+    void try_new_snapshot(uint32_t _rounds);
     void get_awards();
     void set_numberofrounds(u256 _val){
         m_vote_sapshot.numberofrounds = _val;
