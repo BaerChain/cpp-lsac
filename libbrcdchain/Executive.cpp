@@ -586,7 +586,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		    m_s.changeMiner(m_batch_params._operation);
 		}
 		else if(_type == transationTool::op_type::receivingincome){
-
+            m_s.receivingIncome(m_t.sender(), m_envInfo.number());
 		}
 
 		m_batch_params.clear();
@@ -801,6 +801,8 @@ bool Executive::finalize()
     {
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+        m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+        m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
 		// m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
 		// //m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
 		// m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
