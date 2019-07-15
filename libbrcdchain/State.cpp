@@ -1358,6 +1358,9 @@ void State::rollback(size_t _savepoint) {
             case Change::NewVoteSnapshot:
                 account.set_vote_snapshot(change.vote_snapshot);
                 break;
+            case Change::CooikeIncomeNum:
+                account.addCooikeIncome(0 -change.value);
+                break;
             default:
                 break;
         }
@@ -1824,6 +1827,9 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
     m_changeLog.emplace_back(_addr, _vote_sna);
+    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
+    setCookieIncomeNum(_addr, 0);
+
 }
 
 

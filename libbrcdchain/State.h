@@ -116,6 +116,7 @@ struct Change
         BlockReward,
         CookieIncome,
         NewVoteSnapshot,
+        CooikeIncomeNum,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -127,6 +128,7 @@ struct Change
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
     std::pair<u256, u256> blockReward;
     VoteSnapshot vote_snapshot;
+    u256 cooikeIncomeNum = 0;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -165,6 +167,7 @@ struct Change
     {
         vote_snapshot = _vote;
     }
+
 };
 
 using ChangeLog = std::vector<Change>;
