@@ -1096,8 +1096,9 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
     }
 }
 
-void State::receivingIncome(const dev::Address &_addr)
+void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 {
+    try_new_vote_snapshot(_addr, _blockNum);
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
