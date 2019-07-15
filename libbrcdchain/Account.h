@@ -34,11 +34,11 @@ namespace brc
  */
 
 struct VoteSnapshot{
-    std::map< uint32_t, std::map<Address, u256>> m_voteDataHistory;
-    std::map< uint32_t, u256> m_pollNumHistory;
-    std::map< uint32_t, u256> m_blockSummaryHistory;
-    uint32_t numberofrounds = 0;
-
+    std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
+    std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
+    std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
+    u256 numberofrounds = 0;                                    // the rounds of got awards
+    u256 m_latest_round = 0;
     VoteSnapshot(){}
     void  streamRLP(RLPStream& _s) const{
 
@@ -328,16 +328,10 @@ public:
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
 
-
+    u256 CookieIncome(){return m_CooikeIncomeNum;}
     void addCooikeIncome(u256 _value)
     {
         m_CooikeIncomeNum += _value;
-        changed();
-    }
-
-    void addDividendsCooike(u256 _value)
-    {
-        m_dividendsCooike += _value;
         changed();
     }
 
@@ -347,6 +341,9 @@ public:
     //interface about sanpshot
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+    void add_new_snapshot(u256 rounds);
+    std::vector<u256> get_no_record_snapshot();
+    void get_awards();
 
 private:
     /// Is this account existant? If not, it represents a deleted account.

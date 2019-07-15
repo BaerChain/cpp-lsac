@@ -113,7 +113,8 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward
+        BlockReward,
+        CookieIncome
     };
 
     Kind kind;        ///< The kind of the change.
@@ -375,6 +376,10 @@ public:
 
 	void receivingIncome(Address const & _addr, uint32_t _snapshotNum);
 	void receivingIncome(Address const & _addr);
+
+	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);
+	void subCookieIncomeNum(Address const& _addr, u256 const& _value);
+	void setCookieIncomeNum(Address const& _addr, u256 const& _value);
 
 private:
     //投票数据
