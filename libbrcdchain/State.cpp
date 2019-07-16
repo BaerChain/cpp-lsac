@@ -1056,7 +1056,7 @@ void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
 
     if(_value)
     {
-        m_changeLog.emplace_back(Change::CookieIncome, _addr, _value);
+        m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
     }
 
 }

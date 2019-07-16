@@ -285,15 +285,14 @@ namespace dev
             struct receivingincome_operation : public operation
             {
                 uint8_t m_type;
-                uint32_t m_dividendCycle;
                 Address m_from;
                 receivingincome_operation(){}
-                receivingincome_operation(op_type _type, uint32_t  _dividendCycle, Address _from) : m_type(_type), m_dividendCycle(_dividendCycle), m_from(_from)
+                receivingincome_operation(op_type _type, Address _from) : m_type(_type), m_from(_from)
                 {}
 
-                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_dividendCycle)(m_from))
+                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_from))
 
-                OPERATION_SERIALIZE((m_type)(m_dividendCycle)(m_from))
+                OPERATION_SERIALIZE((m_type)(m_from))
 
             };
 
