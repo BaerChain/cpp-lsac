@@ -159,15 +159,17 @@ u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::A
 
 void Account::try_new_snapshot(u256 _rounds) {
     for (u256 j = m_vote_sapshot.m_latest_round+1; j <= _rounds ; ++j) {
-        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && !m_voteData.empty()){
             std::map<Address, u256> _temp ;
             _temp.insert(m_voteData.begin(), m_voteData.end());
             m_vote_sapshot.m_voteDataHistory[j] = _temp;
+            //testlog << "voteData:" << j << "  ,"<<CookieIncome();
         }
-        if (!m_vote_sapshot.m_pollNumHistory.count(j)){
+        if (!m_vote_sapshot.m_pollNumHistory.count(j) && !m_voteData.empty()){
             m_vote_sapshot.m_pollNumHistory[j] = poll();
         }
-        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && !m_voteData.empty()){
+            testlog << "m_blockSummaryHistory:" << j << "  ,"<<CookieIncome();
             m_vote_sapshot.m_blockSummaryHistory[j] = CookieIncome();
         }
     }

@@ -1816,6 +1816,7 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
     std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
+    testlog << " getVotingCycle:"<< _pair.first << " , " <<(int)_pair.second;
     if (_pair.second == Votingstage::ERRORSTAGE)
         return;
     auto  a = account(_addr);
@@ -1826,10 +1827,13 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
             BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    testlog << " no_record:"<< ret_pair.first << " , " <<ret_pair.second;
+    testlog << a->vote_snashot();
     if (!ret_pair.first)
         return;
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
+
     m_changeLog.emplace_back(_addr, _vote_sna);
     m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
     setCookieIncomeNum(_addr, 0);

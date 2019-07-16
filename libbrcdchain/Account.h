@@ -119,6 +119,36 @@ struct VoteSnapshot{
     }
 
 };
+
+inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
+    out << "data_history:{";
+    for(auto const& val : t.m_voteDataHistory){
+        out<< "rounds:("<< val.first << ":";
+        for(auto const& v : val.second){
+            out<<"["<< v.first << ","<< v.second<<"]";
+        }
+        out<< ")";
+    }
+    out<< "}"<<std::endl;
+
+    out << "poll:{";
+    for(auto const& val: t.m_pollNumHistory){
+        out<<"["<<val.first <<","<< val.second<<"]";
+    }
+    out << "}"<<std::endl;
+
+    out << "blockSummaryHistory:{";
+    for(auto const& val : t.m_blockSummaryHistory){
+        out<<"["<<val.first <<","<< val.second<<"]";
+    }
+    out << "}"<<std::endl;
+
+    out << "rounds:"<< t.numberofrounds<<std::endl;
+    out << "atest_round:"<< t.m_latest_round<<std::endl;
+
+    return out;
+}
+
 class Account
 {
 public:
