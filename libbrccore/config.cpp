@@ -16,7 +16,7 @@ std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
             return std::pair<uint32_t, Votingstage>(1, Votingstage::RECEIVINGINCOME);
         }
     }else if(_blockNum >= 100 && _blockNum < 10000){
-        if(_blockNum >= 100 && _blockNum < 1000)
+        if(_blockNum >= 100 && _blockNum < 200)
         {
             return std::pair<uint32_t, Votingstage>(2, Votingstage::VOTE);
         }else{
