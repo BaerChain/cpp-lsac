@@ -11,7 +11,8 @@ namespace dev
         enum class Votingstage : uint8_t
         {
             VOTE = 0,
-            RECEIVINGINCOME = 1
+            RECEIVINGINCOME = 1,
+            ERRORSTAGE = 2
         };
 
 

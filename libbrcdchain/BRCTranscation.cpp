@@ -335,6 +335,11 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
     std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
+    if(_pair.second == Votingstage::ERRORSTAGE)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+    }
+
     if(_pair.second == Votingstage::VOTE)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));

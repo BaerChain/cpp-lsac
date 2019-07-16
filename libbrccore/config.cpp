@@ -23,6 +23,8 @@ std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
             return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
         }
     }else{
-        BOOST_THROW_EXCEPTION(getVotingCycleFailed() << errinfo_comment(std::string("getVotingCycle error : Current time point is not in the voting period")));
+        //return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
+        //BOOST_THROW_EXCEPTION(getVotingCycleFailed() << errinfo_comment(std::string("getVotingCycle error : Current time point is not in the voting period")));
+        return std::pair<uint32_t, Votingstage>(-1, Votingstage::ERRORSTAGE);
     }
 }
