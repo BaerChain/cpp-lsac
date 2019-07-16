@@ -603,13 +603,13 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
     // Send any new blocks.
     auto detailsFrom = m_chain.details(m_latestBlockSent);
     auto detailsTo = m_chain.details(_currentHash);
-    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
+//    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
     {
         if (diff(detailsFrom.number, detailsTo.number) < 20)
         {
             // don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
             LOG(m_logger) << "Sending a new block (current is " << _currentHash << ", was "
-                          << m_latestBlockSent << ")";
+                           << m_latestBlockSent << ")"  << " height " << detailsTo.number;
 			if(m_bq.inSended(_currentHash))
 				return;
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
@@ -617,13 +617,13 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
             auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
-            for (NodeID const& peerID : get<0>(s))
+            for (NodeID const& peerID : get<0>(s)){
                 for (auto const& b: blocks)
                 {
                     RLPStream ts;
                     m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
-                        .appendRaw(m_chain.block(b), 1)
-                        .append(m_chain.details(b).totalDifficulty);        
+                            .appendRaw(m_chain.block(b), 1)
+                            .append(m_chain.details(b).totalDifficulty);
 
                     auto itPeer = m_peers.find(peerID);
                     if (itPeer != m_peers.end())
@@ -632,6 +632,9 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                         //itPeer->second.clearKnownBlocks();
                     }
                 }
+                cwarn  << "send1 chosed id " << peerID << " blocks " << blocks.size()  << " height " << detailsTo.number;
+            }
+
             for (NodeID const& peerID : get<1>(s))
             {
                 RLPStream ts;
@@ -649,6 +652,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     m_host->sealAndSend(peerID, ts);
                     //itPeer->second.clearKnownBlocks();
                 }
+                cwarn  << "send2 allow id " << peerID  << " blocks " << blocks.size() << " height " << detailsTo.number;
             }
         }
         m_latestBlockSent = _currentHash;
