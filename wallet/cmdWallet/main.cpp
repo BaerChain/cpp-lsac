@@ -241,8 +241,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 						}
                         case receivingincome:{
 							auto receivingincome_op = new receivingincome_operation( (op_type)type,
-							        (uint32_t)op_obj["m_dividendCycle"].get_uint64(),
-                                                                              Address(op_obj["m_from"].get_str())
+							            Address(op_obj["m_from"].get_str())
                                                                               );
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
