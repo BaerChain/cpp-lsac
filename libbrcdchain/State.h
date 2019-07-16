@@ -392,8 +392,9 @@ public:
 
 	void setNumofrounds(Address const& _addr, u256 const& _value);
 
-    //interface about vote snapshot
+    /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
+
 
 private:
     //投票数据

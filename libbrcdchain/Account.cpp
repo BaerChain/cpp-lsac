@@ -165,15 +165,23 @@ void Account::try_new_snapshot(u256 _rounds) {
             m_vote_sapshot.m_voteDataHistory[j] = _temp;
             //testlog << "voteData:" << j << "  ,"<<CookieIncome();
         }
-        if (!m_vote_sapshot.m_pollNumHistory.count(j) && !m_voteData.empty()){
+        if (!m_vote_sapshot.m_pollNumHistory.count(j) && poll()!=0){
             m_vote_sapshot.m_pollNumHistory[j] = poll();
         }
-        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && !m_voteData.empty()){
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && CookieIncome()!=0){
             testlog << "m_blockSummaryHistory:" << j << "  ,"<<CookieIncome();
             m_vote_sapshot.m_blockSummaryHistory[j] = CookieIncome();
         }
     }
     m_vote_sapshot.m_latest_round = _rounds;
+}
+
+VoteSnapshot Account::try_new_temp_snapshot(u256 _rounds){
+    VoteSnapshot vote_snap = m_vote_sapshot;
+    try_new_snapshot(_rounds);
+    VoteSnapshot vote1 = m_vote_sapshot;
+    m_vote_sapshot = vote_snap;
+    return vote1;
 }
 
 std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage _state) {

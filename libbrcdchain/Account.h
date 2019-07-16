@@ -446,6 +446,10 @@ public:
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
     std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
     void try_new_snapshot(u256 _rounds);
+
+    ///@retrue VoteSnapshot_data temp for verify
+    VoteSnapshot try_new_temp_snapshot(u256 _rounds);
+
     void set_numberofrounds(u256 _val){
         m_vote_sapshot.numberofrounds = _val;
         changed();

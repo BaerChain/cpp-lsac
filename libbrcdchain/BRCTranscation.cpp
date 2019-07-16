@@ -344,10 +344,13 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }
-
     auto a = m_state.account(_from);
-    VoteSnapshot _voteSnapshot = a->vote_snashot();
-
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    VoteSnapshot _voteSnapshot;
+    if(ret_pair.first)
+        _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
+    else
+        _voteSnapshot = a->vote_snashot();
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
     std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
     std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);

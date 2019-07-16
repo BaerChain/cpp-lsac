@@ -248,7 +248,6 @@ void Executive::initialize(Transaction const& _transaction)
 			m_excepted = TransactionException::InvalidGasPrice;
 			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
 		}
-        cwarn << "debug001 check";
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;

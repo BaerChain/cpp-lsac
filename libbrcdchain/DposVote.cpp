@@ -41,7 +41,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				_ex_info = "not have enough tickets to sell... tickes:" + toString(tickets);
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            if((tickets * BALLOTPRICE) > m_state.BRC(SystemVoteBrcAddress))
+            if((tickets * BALLOTPRICE) > m_state.BRC(dev::systemAddress))
 			{
 				_ex_info = "system not enough BRC to author, can't sell ticks";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
@@ -155,7 +155,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 			if(total_tickets < 0)
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("not have enough tickets to sell... tickes:"));
 			sell_tickes += p_op->m_vote_numbers;
-			if((sell_tickes * BALLOTPRICE) > m_state.BRC(SystemVoteBrcAddress))
+			if((sell_tickes * BALLOTPRICE) > m_state.BRC(dev::systemAddress))
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("system not enough BRC to author, can't sell ticks"));
 		}
 		break;

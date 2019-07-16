@@ -1118,10 +1118,14 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
     for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
     {
         u256 _ownedPoll = _pollDataIt->second;
+        if(!_ownedPoll)
+            continue;
         std::map<u256, u256>::const_iterator _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first);
-        _income += _ownedHandingfee->second / 2 + (_ownedHandingfee->second / 2) % _ownedPoll;
+        //testlog << _ownedHandingfee->second / 2 + (_ownedHandingfee->second / 2) % _ownedPoll;
+        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _ownedPoll) * _ownedPoll;
     }
 
+    u256 rounds = 0;
     for(_voteDataIt; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         //std::map<Address, u256> _voteMap = _voteDataIt->second;
@@ -1129,29 +1133,32 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
         {
             Address _polladdr = it.first;
             u256 _voteNum = it.second;
+            try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
             Account *pollAccount = account(_polladdr);
             if(pollAccount)
             {
                 VoteSnapshot _pollAccountvoteSnapshot = pollAccount->vote_snashot();
-                std::map<u256, u256>::iterator _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
-                std::map<u256, u256>::iterator _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first);
+                auto _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
+                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first);
+                if(_pollMap == _pollAccountvoteSnapshot.m_pollNumHistory.end() || _handingfeeMap == _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
+                    continue;
                 u256 _pollNum = 0;
                 u256 _handingfee = 0;
-                if(_pollMap != _pollAccountvoteSnapshot.m_pollNumHistory.end())
-                {
-                    _pollNum = _pollMap->second;
-                }
-                if(_handingfeeMap != _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
-                {
-                    _handingfee = _handingfeeMap->second;
-                }
-
-                _income += (_handingfee / 2) * _voteNum / _pollNum ;
+                _pollNum = _pollMap->second;
+                if (!_pollNum)
+                    continue;
+                _handingfee = _handingfeeMap->second;
+                testlog << "  (_handingfee / 2) * _voteNum / _pollNum : " << (_handingfee / 2) * _voteNum / _pollNum;
+                testlog << " (_handingfee / 2 / _pollNum) * _voteNum : "<<(_handingfee / 2 / _pollNum) * _voteNum;
+                _income += (_handingfee / 2 / _pollNum) * _voteNum ;
             }
         }
+        rounds = _voteDataIt->first;
     }
-    addBalance(_addr, _income);
-    a->set_numberofrounds(_voteDataIt->first);
+    if(_income)
+        addBalance(_addr, _income);
+    if (rounds)
+        a->set_numberofrounds(rounds);
 }
 
 void State::createContract(Address const& _address)
@@ -1821,7 +1828,7 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
     testlog << " getVotingCycle:"<< _pair.first << " , " <<(int)_pair.second;
     if (_pair.second == Votingstage::ERRORSTAGE)
-        return;
+        return ;
     auto  a = account(_addr);
     if(!a){
         createAccount(_addr, {0});
@@ -1833,21 +1840,20 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     testlog << " no_record:"<< ret_pair.first << " , " <<ret_pair.second;
     testlog << a->vote_snashot();
     if (!ret_pair.first)
-        return;
+        return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
-
+    testlog<< a->vote_snashot();
     m_changeLog.emplace_back(_addr, _vote_sna);
     m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
     setCookieIncomeNum(_addr, 0);
 
 }
 
-
 void dev::brc::State::transferBallotBuy(
         Address const &_from, u256 const &_value) {
     subBRC(_from, _value * BALLOTPRICE);
-    addBRC(SystemVoteBrcAddress, _value * BALLOTPRICE);
+    addBRC(dev::systemAddress, _value * BALLOTPRICE);
     addBallot(_from, _value);
 }
 
@@ -1855,7 +1861,7 @@ void dev::brc::State::transferBallotSell(
         Address const &_from, u256 const &_value) {
     subBallot(_from, _value);
     addBRC(_from, _value * BALLOTPRICE);
-    subBRC(SystemVoteBrcAddress, _value * BALLOTPRICE );
+    subBRC(dev::systemAddress, _value * BALLOTPRICE );
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
