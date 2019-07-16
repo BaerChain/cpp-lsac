@@ -1082,7 +1082,7 @@ void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     Account *a = account(_addr);
     u256 original = a ? a->CookieIncome() : 0;
 
-    // Fall back to addCooikeIncomeNum().
+    // Fall back to addBalance().
     addCooikeIncomeNum(_addr, _value - original);
 }
 
@@ -1149,21 +1149,6 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
     }
     addBalance(_addr, _income);
     a->set_numberofrounds(_voteDataIt->first);
-}
-
-void State::setNumofrounds(const dev::Address &_addr, const dev::u256 &_value)
-{
-    u256 _oldValue = 0;
-    if(auto a = account(_addr))
-    {
-        _oldValue = a->vote_snashot().numberofrounds;
-        a->set_numberofrounds(_value);
-    }
-
-    if(_value)
-    {
-        m_changeLog.emplace_back(Change::Numofrounds, _addr , _oldValue);
-    }
 }
 
 void State::createContract(Address const& _address)
@@ -1371,9 +1356,6 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
-            case Change::Numofrounds:
-                account.set_numberofrounds(change.value);
-                break;
             case Change::NewVoteSnapshot:
                 account.set_vote_snapshot(change.vote_snapshot);
                 break;
@@ -1483,7 +1465,7 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
 }
 
 void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops){
-	
+
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(val);
 		if(!_p){
