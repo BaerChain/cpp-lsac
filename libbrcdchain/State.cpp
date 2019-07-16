@@ -1500,6 +1500,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 		jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
 		jv["nonce"] = toJS(a->nonce());
+		jv["cookieinsummury"] = toJS(a->CookieIncome());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
