@@ -250,7 +250,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0 && voteAll() == 0;  }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0 && voteAll() == 0;  }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -426,7 +426,12 @@ public:
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
 
-    u256 CookieIncome(){return m_CooikeIncomeNum;}
+    u256 const& CookieIncome() const {return m_CooikeIncomeNum;}
+    void setCookieIncome(u256 const& _value)
+    {
+        m_CooikeIncomeNum = _value;
+        changed();
+    }
     void addCooikeIncome(u256 _value)
     {
         m_CooikeIncomeNum += _value;

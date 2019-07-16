@@ -196,7 +196,10 @@ Account *State::account(Address const &_addr) {
 	tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
 	i.first->second.initChangeList(tmp);
 
-    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
+	u256 _cookieNum  = state[13].toInt<u256>();
+	i.first->second.setCookieIncome(_cookieNum);
+
+    const bytes  vote_sna_b = state[14].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
 
     m_unchangedCacheEntries.push_back(_addr);
@@ -1670,7 +1673,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::map<u256, u256> _map = { {u256(1), systenCookie} };
-	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };
 
 	try
@@ -1959,7 +1962,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(14);
+				s.appendList(15);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2012,7 +2015,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 }
 
                 s << i.second.willChangeList();
-
+                s << i.second.CookieIncome();
                 {
                     RLPStream _s;
                     i.second.vote_snashot().streamRLP(_s);
