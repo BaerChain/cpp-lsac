@@ -361,7 +361,14 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 			{
 				fcookie = u256Safe(_v["fcookie"].get_str());
 			}
-			ret[a] = Account(0, cookie, BRC, fcookie);
+            auto it = ret.find(a);
+            if (it == ret.end()) {
+                ret[a] = Account(0, cookie, BRC, fcookie);
+            } else {
+                ret[a].addBalance(cookie);
+                ret[a].addBRC(BRC);
+                ret[a].addFBRC(fcookie);
+            }
 		}
         if (haveVote)
 		{
@@ -370,10 +377,13 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 Address to(voteData.first);
                 u256 ballots(voteData.second.get_str());
                 auto it = ret.find(to);
+                
                 if (it != ret.end()){
-                    it->second.addBallot(ballots);
+                    //it->second.addBallot(ballots);
+                    it->second.addPoll(ballots);
                 } else {
-                    ret[to] = Account(ballots);
+                    ret[to] = Account(0);
+                    ret[to].addPoll(ballots);
                 }
                 it = ret.find(a);
                 if (it == ret.end()) {
