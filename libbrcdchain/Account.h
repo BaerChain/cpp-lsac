@@ -396,7 +396,12 @@ public:
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
 
-    u256 CookieIncome(){return m_CooikeIncomeNum;}
+    u256 const& CookieIncome() const {return m_CooikeIncomeNum;}
+    void setCookieIncome(u256 const& _value)
+    {
+        m_CooikeIncomeNum = _value;
+        changed();
+    }
     void addCooikeIncome(u256 _value)
     {
         m_CooikeIncomeNum += _value;
