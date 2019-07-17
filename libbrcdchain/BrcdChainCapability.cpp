@@ -610,15 +610,15 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
         if (diff(detailsFrom.number, detailsTo.number) < 20)
         {
             // don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
-            LOG(m_logger) << "Sending a new block (current is " << _currentHash << ", was "
+            cwarn << "Sending a new block (current is " << _currentHash << ", was "
                            << m_latestBlockSent << ")"  << " height " << detailsTo.number;
-			if(m_bq.inSended(_currentHash))
-				return;
+
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
             auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
+            bool isSend = false;
             for (NodeID const& peerID : get<0>(s)){
                 for (auto const& b: blocks)
                 {
@@ -631,6 +631,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
+                        isSend = true;
                     }
                 }
             }
@@ -650,7 +651,12 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 if (itPeer != m_peers.end())
                 {
                     m_host->sealAndSend(peerID, ts);
+                    isSend = true;
                 }
+            }
+            if(!isSend){
+                cwarn << "send new block error. (current is " << _currentHash << ", was "
+                      << m_latestBlockSent << ")"  << " height " << detailsTo.number;
             }
         }
         m_latestBlockSent = _currentHash;
