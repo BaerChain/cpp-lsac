@@ -117,11 +117,6 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 
 
 void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-    std::pair <uint32_t, Votingstage> _pair = returnVotingstage(_envinfo);
-    if(_pair.second != Votingstage::VOTE)
-    {
-        BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("The time point that is not currently in the voting phase"));
-    }
     std::shared_ptr<transationTool::vote_operation> p_op = nullptr;
 	bigint total_brc = m_state.BRC(_from);
 	bigint total_tickets = m_state.ballot(_from);
@@ -138,6 +133,14 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("tickets must bigger 0! ticket:"));
 			}
 		}
+
+        std::pair <uint32_t, Votingstage> _pair = returnVotingstage(_envinfo);
+        if(_pair.second != Votingstage::VOTE)
+        {
+            if (dType == dev::brc::EDelegate || dev::brc::EUnDelegate)
+                BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("The time point that is not currently in the voting phase"));
+        }
+
 		switch(dType){
 		case dev::brc::ENull:
 		break;
