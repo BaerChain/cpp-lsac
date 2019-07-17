@@ -1478,7 +1478,7 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     addPoll(_addr, 0 - _value);
 }
 
-void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops){
+void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops, int64_t block_num){
 
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(val);
@@ -1487,18 +1487,32 @@ void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::share
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 		VoteType _type = (VoteType)_p->m_vote_type;
-		if(_type == VoteType::EBuyVote)
-			transferBallotBuy(_addr, _p->m_vote_numbers);
-		else if(_type == VoteType::ESellVote)
-			transferBallotSell(_addr, _p->m_vote_numbers);
-		else if(_type == VoteType::ELoginCandidate)
-			addSysVoteDate(SysElectorAddress, _addr);
-		else if(_type == VoteType::ELogoutCandidate)
-			subSysVoteDate(SysElectorAddress, _addr);
-		else if(_type == VoteType::EDelegate)
-			addVote(_addr, _p->m_to, _p->m_vote_numbers);
-		else if(_type == EUnDelegate)
-			subVote(_addr, _p->m_to, _p->m_vote_numbers);
+		if(_type == VoteType::EBuyVote) {
+		    try_new_vote_snapshot(_addr, block_num);
+            transferBallotBuy(_addr, _p->m_vote_numbers);
+        }
+		else if(_type == VoteType::ESellVote) {
+            try_new_vote_snapshot(_addr, block_num);
+            transferBallotSell(_addr, _p->m_vote_numbers);
+        }
+		else if(_type == VoteType::ELoginCandidate) {
+            try_new_vote_snapshot(_addr, block_num);
+            addSysVoteDate(SysElectorAddress, _addr);
+        }
+		else if(_type == VoteType::ELogoutCandidate) {
+            try_new_vote_snapshot(_addr, block_num);
+            subSysVoteDate(SysElectorAddress, _addr);
+        }
+		else if(_type == VoteType::EDelegate) {
+            try_new_vote_snapshot(_addr, block_num);
+            try_new_vote_snapshot(_p->m_to, block_num);
+            addVote(_addr, _p->m_to, _p->m_vote_numbers);
+        }
+		else if(_type == EUnDelegate) {
+            try_new_vote_snapshot(_addr, block_num);
+            try_new_vote_snapshot(_p->m_to, block_num);
+            subVote(_addr, _p->m_to, _p->m_vote_numbers);
+        }
 	}
 }
 

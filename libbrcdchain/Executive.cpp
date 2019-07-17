@@ -570,8 +570,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		transationTool::op_type  _type = m_batch_params._type;
 
 		if(_type == transationTool::op_type::vote){
-		    m_s.try_new_vote_snapshot(m_t.sender(), m_envInfo.number());
-			m_s.execute_vote(m_t.sender(), m_batch_params._operation);
+		    //m_s.try_new_vote_snapshot(m_t.sender(), m_envInfo.number());
+			m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo.number());
 		}
 		else if(_type == transationTool::op_type::brcTranscation){
 			m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);

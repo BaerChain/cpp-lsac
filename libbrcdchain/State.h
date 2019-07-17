@@ -365,7 +365,7 @@ public:
     void addPoll(Address const& _addr, u256 const& _value);
     void subPoll(Address const& _adddr, u256 const& _value);
 
-	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops);
+	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, int64_t block_num);
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
