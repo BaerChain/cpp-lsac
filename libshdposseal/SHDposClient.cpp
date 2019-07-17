@@ -247,12 +247,13 @@ void dev::bacd::SHDposClient::rejigSealing()
 				}
 
 			}
+            cwarn << "current time sign: " << utcTimeMilliSec() << " late " << (utcTimeMilliSec() - m_sealingInfo.timestamp()) << " height " << m_sealingInfo.number();
 			//出块
 			if(wouldSeal())
 			{
 				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
 				sealEngine()->onSealGenerated([=](bytes const& _header){
-					CLATE_LOG << "current time : " << utcTimeMilliSec() << " late " << (utcTimeMilliSec() - m_sealingInfo.timestamp()) << " height " << m_sealingInfo.number();
+					cwarn << "current time : " << utcTimeMilliSec() << " late " << (utcTimeMilliSec() - m_sealingInfo.timestamp()) << " height " << m_sealingInfo.number();
 					if(this->submitSealed(_header))
 					{
 						m_onBlockSealed(_header);

@@ -210,8 +210,10 @@ void Session::send(bytes&& _msg)
     if (!checkPacket(msg))
         cnetlog << "INVALID PACKET CONSTRUCTED!";
 
-    if (!m_socket->ref().is_open())
+    if (!m_socket->ref().is_open()){
+        CLATE_LOG << "socker is not open. " << m_peer->id;
         return;
+    }
 
     bool doWrite = false;
     DEV_GUARDED(x_framing)

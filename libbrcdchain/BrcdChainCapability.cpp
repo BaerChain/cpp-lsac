@@ -404,7 +404,7 @@ bool BrcdChainCapability::ensureInitialised()
     {
         // First time - just initialise.
         m_latestBlockSent = m_chain.currentHash();
-        LOG(m_logger) << "Initialising: latest=" << m_latestBlockSent;
+        LOG(m_logger) << "Initialising: latest= " << m_latestBlockSent;
 
         m_transactionsSent = m_tq.knownTransactions();
         return true;
@@ -632,7 +632,6 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                         //itPeer->second.clearKnownBlocks();
                     }
                 }
-                cwarn  << "send1 chosed id " << peerID << " blocks " << blocks.size()  << " height " << detailsTo.number;
             }
 
             for (NodeID const& peerID : get<1>(s))
@@ -652,7 +651,6 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     m_host->sealAndSend(peerID, ts);
                     //itPeer->second.clearKnownBlocks();
                 }
-                cwarn  << "send2 allow id " << peerID  << " blocks " << blocks.size() << " height " << detailsTo.number;
             }
         }
         m_latestBlockSent = _currentHash;

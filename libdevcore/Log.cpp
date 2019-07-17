@@ -46,11 +46,11 @@ ThreadLocalLogName g_logThreadName("main");
 
 auto const g_timestampFormatter =
     (boost::log::expressions::stream
-        << BrcViolet << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
+        << BrcViolet << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S-%f")
         << BrcReset " ");
 auto const g_timestampFormatter_file =
     (boost::log::expressions::stream
-        << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S")
+        << boost::log::expressions::format_date_time(timestamp, "%m-%d %H:%M:%S-%f")
         << " ");
 
 std::string verbosityToString(int _verbosity)

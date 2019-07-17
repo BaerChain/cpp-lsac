@@ -8,7 +8,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
-#include <Json/Value.h>
+#include <json/value.h>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libbrcdchain/Transaction.h>
