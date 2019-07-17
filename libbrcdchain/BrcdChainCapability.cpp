@@ -461,9 +461,11 @@ void BrcdChainCapability::doBackgroundWork()
         {
             time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 
-            if (now - peer.second.lastAsk() > 10 && peer.second.isConversing())
+            if (now - peer.second.lastAsk() > 10 && peer.second.isConversing()){
                 // timeout
+                cwarn << "disconnect node : " << peer.first;
                 m_host->disconnect(peer.first, p2p::PingTimeout);
+            }
         }
     }
 
@@ -629,7 +631,6 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
-                        //itPeer->second.clearKnownBlocks();
                     }
                 }
             }
@@ -649,7 +650,6 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 if (itPeer != m_peers.end())
                 {
                     m_host->sealAndSend(peerID, ts);
-                    //itPeer->second.clearKnownBlocks();
                 }
             }
         }
