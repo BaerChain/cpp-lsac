@@ -158,19 +158,21 @@ u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::A
 }
 
 void Account::try_new_snapshot(u256 _rounds) {
+    u256 summary_cooike =CookieIncome();
     for (u256 j = m_vote_sapshot.m_latest_round+1; j <= _rounds ; ++j) {
-        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && !m_voteData.empty()){
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
             std::map<Address, u256> _temp ;
             _temp.insert(m_voteData.begin(), m_voteData.end());
             m_vote_sapshot.m_voteDataHistory[j] = _temp;
             //testlog << "voteData:" << j << "  ,"<<CookieIncome();
         }
-        if (!m_vote_sapshot.m_pollNumHistory.count(j) && poll()!=0){
+        if (!m_vote_sapshot.m_pollNumHistory.count(j)){
             m_vote_sapshot.m_pollNumHistory[j] = poll();
         }
-        if (!m_vote_sapshot.m_blockSummaryHistory.count(j) && CookieIncome()!=0){
-            testlog << "m_blockSummaryHistory:" << j << "  ,"<<CookieIncome();
-            m_vote_sapshot.m_blockSummaryHistory[j] = CookieIncome();
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+            testlog << "m_blockSummaryHistory:" << j << "  ,"<<summary_cooike;
+            m_vote_sapshot.m_blockSummaryHistory[j] = summary_cooike;
+            summary_cooike = 0;
         }
     }
     m_vote_sapshot.m_latest_round = _rounds;
@@ -345,11 +347,14 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if ( haveGenesisCreator)
         {
 			ret[a] = Account(0, 0);
+			if (!ret.count(ElectorAddress))
+                ret[ElectorAddress] = Account(0,0);
 			js::mArray creater = accountMaskJson.at(c_genesisVarlitor).get_array();
 			for(auto const& val : creater)
 			{
 			    Address _addr= Address(val.get_str());
-				ret[a].manageSysVote(_addr, true, 0);
+                ret[a].manageSysVote(_addr, true, 0);
+                ret[ElectorAddress].manageSysVote(_addr, true, 0);
 			}
         }
 

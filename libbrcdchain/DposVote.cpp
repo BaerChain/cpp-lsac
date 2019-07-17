@@ -218,7 +218,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 			else
 			{
 				m_tickets[p_op->m_to] += p_op->m_vote_numbers;
-				if(m_tickets[p_op->m_to] > ret->second){
+				if(m_tickets[p_op->m_to] > ret->second || m_tickets[p_op->m_to] > m_state.poll(p_op->m_to)){
 					std::string _ex_info = " Address:" + toString(_from) + " not voted:" + toString(p_op->m_vote_numbers) + " tickets to :" + toString(p_op->m_to);
 					BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 				}

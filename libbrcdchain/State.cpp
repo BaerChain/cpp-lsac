@@ -1101,14 +1101,19 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
 
 void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 {
+    testlog<< "fsd111111111111";
     try_new_vote_snapshot(_addr, _blockNum);
+    testlog<< "fsd22222222";
+
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
-
+    testlog <<"reciver:"<<_voteSnapshot;
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
+    u256 last_num = _voteSnapshot.m_latest_round;
+    testlog <<"_numberofrounds:"<<_numberofrounds;
     std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
-    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);
+    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);      //first->rounds second->polls
 
     if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
     {
@@ -1117,12 +1122,10 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 
     for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
     {
-        u256 _ownedPoll = _pollDataIt->second;
-        if(!_ownedPoll)
+        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first);       // first->rounds second->summaryCooike
+        if (_pollDataIt->second <= 0 || _ownedHandingfee == _voteSnapshot.m_blockSummaryHistory.end())
             continue;
-        std::map<u256, u256>::const_iterator _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first);
-        //testlog << _ownedHandingfee->second / 2 + (_ownedHandingfee->second / 2) % _ownedPoll;
-        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _ownedPoll) * _ownedPoll;
+        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
     }
 
     u256 rounds = 0;
@@ -1133,6 +1136,7 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
         {
             Address _polladdr = it.first;
             u256 _voteNum = it.second;
+            testlog<< "_polladdr:" << _polladdr << "_votenum:"<< _voteNum;
             try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
             Account *pollAccount = account(_polladdr);
             if(pollAccount)
@@ -1772,20 +1776,24 @@ void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u
     Account *a = account(_id);
     if (a && rec_a) {
         // 验证投票将记录
-        if (a->vote(_recivedAddr) < _value)
+        if (a->vote(_recivedAddr) < _value) {
+            cerror << "not has enough tickets...";
             BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
+        }
         a->addVote(std::make_pair(_recivedAddr, 0 - _value));
         a->addBallot(_value);
         if (rec_a->poll() < _value)
             _value = rec_a->poll();
         rec_a->addPoll(0 - _value);
-    } else
+    } else {
+        cerror << "address error!";
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
+    }
 
     if (_value) {
         m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, 0 - _value));
         m_changeLog.emplace_back(Change::Ballot, _id, _value);
-        m_changeLog.emplace_back(Change::Poll, _id, 0 - _value);
+        m_changeLog.emplace_back(Change::Poll, _recivedAddr, 0 - _value);
     }
 }
 
@@ -1838,12 +1846,12 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     testlog << " no_record:"<< ret_pair.first << " , " <<ret_pair.second;
-    testlog << a->vote_snashot();
+    testlog <<"start:"<< a->vote_snashot();
     if (!ret_pair.first)
         return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
-    testlog<< a->vote_snashot();
+    testlog<<"ret:"<< a->vote_snashot();
     m_changeLog.emplace_back(_addr, _vote_sna);
     m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
     setCookieIncomeNum(_addr, 0);

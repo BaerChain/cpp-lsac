@@ -301,10 +301,11 @@ void Executive::initialize(Transaction const& _transaction)
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
 				}*/
-                if(_type == transationTool::changeMiner && _ops.size() > 1)
+                if( _type != transationTool::brcTranscation && _ops.size() > 1)
                 {
-                    BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Replace witness operations cannot be batch operated"));
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Replace witness operations cannot be batch operated"));
                 }
+
 
 				m_batch_params._type = _type;
                 switch (_type)

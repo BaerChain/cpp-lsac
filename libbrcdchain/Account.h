@@ -121,7 +121,8 @@ struct VoteSnapshot{
 };
 
 inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
-    out << "data_history:{";
+    out <<std::endl;
+    out<< "data_history:{";
     for(auto const& val : t.m_voteDataHistory){
         out<< "rounds:("<< val.first << ":";
         for(auto const& v : val.second){
