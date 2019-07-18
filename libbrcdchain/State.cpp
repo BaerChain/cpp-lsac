@@ -1107,6 +1107,10 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
+<<<<<<< HEAD
+=======
+    u256 last_num = _voteSnapshot.m_latest_round;
+>>>>>>> 1443e43baabaefdfd4282891e06360b4de3db141
 
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
