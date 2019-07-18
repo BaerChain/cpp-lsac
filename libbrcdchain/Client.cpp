@@ -402,8 +402,10 @@ void Client::syncBlockQueue()
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
-    if (ir.liveBlocks.empty())
+    if (ir.liveBlocks.empty()){
+        cwarn << "client liveBlocks.size == 0 ";
         return;
+    }
 
     onChainChanged(ir);
 }

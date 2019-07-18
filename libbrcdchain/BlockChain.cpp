@@ -1108,6 +1108,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
                                                              _totalDifficulty == details(last).totalDifficulty &&
                                                              _block.info.gasUsed() > info(last).gasUsed())) {
+//    {
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
@@ -1181,7 +1182,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
                       << (details(_block.info.parentHash()).children.size() - 1)
                       << " siblings. Route: " << route;
     } else {
-        LOG(m_loggerDetail) << "   Imported but not best (oTD: " << details(last).totalDifficulty
+       cwarn << "   Imported but not best (oTD: " << details(last).totalDifficulty
                             << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
                             << _block.info.number() << ")";
     }
