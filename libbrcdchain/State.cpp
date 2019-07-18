@@ -1112,6 +1112,10 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
     u256 last_num = _voteSnapshot.m_latest_round;
     testlog <<"_numberofrounds:"<<_numberofrounds;
+
+    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
+
     std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
     std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);      //first->rounds second->polls
 
@@ -1128,7 +1132,6 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
         _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
     }
 
-    u256 rounds = 0;
     for(_voteDataIt; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         //std::map<Address, u256> _voteMap = _voteDataIt->second;
@@ -1155,13 +1158,13 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
                 testlog << "  (_handingfee / 2) * _voteNum / _pollNum : " << (_handingfee / 2) * _voteNum / _pollNum;
                 testlog << " (_handingfee / 2 / _pollNum) * _voteNum : "<<(_handingfee / 2 / _pollNum) * _voteNum;
                 _income += (_handingfee / 2 / _pollNum) * _voteNum ;
+                //rounds = _voteDataIt->first;
             }
         }
-        rounds = _voteDataIt->first;
     }
     if(_income)
         addBalance(_addr, _income);
-    if (rounds)
+    if (rounds != _numberofrounds)
         a->set_numberofrounds(rounds);
 }
 

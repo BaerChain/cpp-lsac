@@ -351,12 +351,12 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
+    testlog << "verify:"<< _voteSnapshot;
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
-    std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
-    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);
 
-    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
+    if (_numberofrounds >= (_voteSnapshot.m_latest_round -1))
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
+
 }
