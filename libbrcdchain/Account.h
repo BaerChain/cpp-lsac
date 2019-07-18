@@ -39,7 +39,7 @@ struct VoteSnapshot{
     std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
     std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
     u256 numberofrounds = 0;                                    // the rounds of got awards
-    u256 m_latest_round = 0;
+    u256 m_latest_round = 0;                                    // the last snapshot rounds of record
     VoteSnapshot(){}
 
     VoteSnapshot&operator = (VoteSnapshot const& s_v){
@@ -445,9 +445,11 @@ public:
     //interface about sanpshot
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+    ///@return <true, rounds> if the snapshot need rocord new snapshot
+    /// rounds: the last rounds need to snapshot
     std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
+    /// update snapshot
     void try_new_snapshot(u256 _rounds);
-
     ///@retrue VoteSnapshot_data temp for verify
     VoteSnapshot try_new_temp_snapshot(u256 _rounds);
 
