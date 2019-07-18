@@ -394,6 +394,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         }
         catch (...) {
             // Failed to import - stop here.
+            cerror <<  "rebuild blocks error.";
             break;
         }
 

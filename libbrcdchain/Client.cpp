@@ -473,8 +473,11 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
     for (auto const& h: _blocks)
         LOG(m_loggerDetail) << "Live block: " << h;
 
-    if (auto h = m_host.lock())
+    if (auto h = m_host.lock()){
+        cwarn << "note new blocks.";
         h->noteNewBlocks();
+    }
+
 
     for (auto const& h: _blocks)
         appendFromBlock(h, BlockPolarity::Live, io_changed);
@@ -563,7 +566,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		resyncStateFromChain();
 	}
     noteChanged(changeds);
-	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
+//	m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const
