@@ -1122,7 +1122,7 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 
     for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
     {
-        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first);       // first->rounds second->summaryCooike
+        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1);       // first->rounds second->summaryCooike
         if (_pollDataIt->second <= 0 || _ownedHandingfee == _voteSnapshot.m_blockSummaryHistory.end())
             continue;
         _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
@@ -1143,7 +1143,7 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
             {
                 VoteSnapshot _pollAccountvoteSnapshot = pollAccount->vote_snashot();
                 auto _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
-                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first);
+                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1);
                 if(_pollMap == _pollAccountvoteSnapshot.m_pollNumHistory.end() || _handingfeeMap == _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
                     continue;
                 u256 _pollNum = 0;
