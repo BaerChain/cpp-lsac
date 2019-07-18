@@ -170,7 +170,6 @@ void Account::try_new_snapshot(u256 _rounds) {
             m_vote_sapshot.m_pollNumHistory[j] = poll();
         }
         if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
-            testlog << "m_blockSummaryHistory:" << j << "  ,"<<summary_cooike;
             m_vote_sapshot.m_blockSummaryHistory[j] = summary_cooike;
             summary_cooike = 0;
         }

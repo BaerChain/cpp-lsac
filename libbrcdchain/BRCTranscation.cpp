@@ -351,7 +351,6 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
-    testlog << "verify:"<< _voteSnapshot;
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
 
     if (_numberofrounds >= (_voteSnapshot.m_latest_round -1))

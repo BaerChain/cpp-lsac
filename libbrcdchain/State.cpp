@@ -1101,17 +1101,13 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
 
 void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 {
-    testlog<< "fsd111111111111";
     try_new_vote_snapshot(_addr, _blockNum);
-    testlog<< "fsd22222222";
 
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
-    testlog <<"reciver:"<<_voteSnapshot;
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
     u256 last_num = _voteSnapshot.m_latest_round;
-    testlog <<"_numberofrounds:"<<_numberofrounds;
 
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
@@ -1134,12 +1130,10 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
 
     for(_voteDataIt; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
-        //std::map<Address, u256> _voteMap = _voteDataIt->second;
         for(auto const &it : _voteDataIt->second)
         {
             Address _polladdr = it.first;
             u256 _voteNum = it.second;
-            testlog<< "_polladdr:" << _polladdr << "_votenum:"<< _voteNum;
             try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
             Account *pollAccount = account(_polladdr);
             if(pollAccount)
@@ -1155,8 +1149,6 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
                 if (!_pollNum)
                     continue;
                 _handingfee = _handingfeeMap->second;
-                testlog << "  (_handingfee / 2) * _voteNum / _pollNum : " << (_handingfee / 2) * _voteNum / _pollNum;
-                testlog << " (_handingfee / 2 / _pollNum) * _voteNum : "<<(_handingfee / 2 / _pollNum) * _voteNum;
                 _income += (_handingfee / 2 / _pollNum) * _voteNum ;
                 //rounds = _voteDataIt->first;
             }
@@ -1851,7 +1843,6 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
     std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
-    testlog << " getVotingCycle:"<< _pair.first << " , " <<(int)_pair.second;
     if (_pair.second == Votingstage::ERRORSTAGE)
         return ;
     auto  a = account(_addr);
@@ -1862,13 +1853,10 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
             BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
-    testlog << " no_record:"<< ret_pair.first << " , " <<ret_pair.second;
-    testlog <<"start:"<< a->vote_snashot();
     if (!ret_pair.first)
         return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
-    testlog<<"ret:"<< a->vote_snashot();
     m_changeLog.emplace_back(_addr, _vote_sna);
     m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
     setCookieIncomeNum(_addr, 0);
