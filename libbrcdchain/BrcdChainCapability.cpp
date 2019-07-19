@@ -639,6 +639,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
+                        itPeer->second.clearKnownBlocks();
                         isSend = true;
                     }
                 }
