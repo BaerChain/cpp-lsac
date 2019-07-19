@@ -793,7 +793,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     if (_block.info.number() < info().number() - m_params.config_blocks && info().number() > m_params.config_blocks) {
         cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash()
                << " , will be remove.";
-        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+//        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+        return false;
     }
 
     if (info().number() == 0 || m_cached_blocks.size() == 0) {
