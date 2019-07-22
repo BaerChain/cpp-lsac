@@ -170,8 +170,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                     auto type = op_obj["type"].get_int();
                     switch (type) {
                         case vote: {
-							auto new_op = new vote_operation((op_type)type,
-															 Address(""),
+                            auto new_op = new vote_operation((op_type) type,
+                                                             Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
 															 u256(op_obj["m_vote_numbers"].get_str())
@@ -232,6 +232,13 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                                               agreeMsgs
                                                                               );
                             tx.ops.push_back(std::shared_ptr<changeMiner_operation>(changeMiner_op));
+                            break;
+						}
+                        case receivingincome:{
+							auto receivingincome_op = new receivingincome_operation( (op_type)type,
+							            Address(op_obj["m_from"].get_str())
+                                                                              );
+                            tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
 						}
 					}

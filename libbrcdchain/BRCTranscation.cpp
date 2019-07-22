@@ -1,8 +1,13 @@
 #include "BRCTranscation.h"
+#include "DposVote.h"
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
-
+#include <libbrccore/config.h>
 using namespace dev::brc::ex;
+
+#define VOTETIME 60*1000
+#define VOTEBLOCKNUM 100
+
 
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
@@ -326,4 +331,32 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 			BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
 		}
 	}
+}
+
+void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
+{
+    std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
+    if(_pair.second == Votingstage::ERRORSTAGE)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+    }
+
+    if(_pair.second == Votingstage::VOTE)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+    }
+    auto a = m_state.account(_from);
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    VoteSnapshot _voteSnapshot;
+    if(ret_pair.first)
+        _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
+    else
+        _voteSnapshot = a->vote_snashot();
+    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+
+    if (_numberofrounds >= (_voteSnapshot.m_latest_round -1))
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+    }
+
 }

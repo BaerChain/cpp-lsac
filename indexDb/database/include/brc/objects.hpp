@@ -203,6 +203,7 @@ namespace dev {
             };
 
             struct by_sender;
+            struct by_acceptor;
             struct by_greater_id;
             typedef multi_index_container<
                     order_result_object,
@@ -213,6 +214,13 @@ namespace dev {
                             ordered_non_unique<tag<by_sender>,
                                     composite_key<order_result_object,
                                             member<order_result_object, Address, &order_result_object::sender>,
+                                            member<order_result_object, Time_ms, &order_result_object::create_time>
+                                    >,
+                                    composite_key_compare<std::less<Address>, std::less<Time_ms>>
+                            >,
+                            ordered_non_unique<tag<by_acceptor>,
+                                    composite_key<order_result_object,
+                                            member<order_result_object, Address, &order_result_object::acceptor>,
                                             member<order_result_object, Time_ms, &order_result_object::create_time>
                                     >,
                                     composite_key_compare<std::less<Address>, std::less<Time_ms>>

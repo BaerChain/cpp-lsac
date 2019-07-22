@@ -32,5 +32,7 @@ extern Address const ElectorAddress;
 
 // the systemAddress to save Elector's Address
 extern Address const VarlitorAddress;
+
+extern Address const systemAddress;
 }
 

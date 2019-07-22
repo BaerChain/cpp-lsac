@@ -5,6 +5,7 @@
 #include "SecureTrieDB.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
+#include "ChainParams.h"
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
@@ -112,7 +113,10 @@ struct Change
         BRC,
         FBRC,               // = 12
         FBalance,
-        BlockReward
+        BlockReward,
+        NewVoteSnapshot,
+        Numofrounds,
+        CooikeIncomeNum
     };
 
     Kind kind;        ///< The kind of the change.
@@ -123,6 +127,8 @@ struct Change
     std::pair<Address, u256> vote;         // 投票事件
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
     std::pair<u256, u256> blockReward;
+    VoteSnapshot vote_snapshot;
+    u256 cooikeIncomeNum = 0;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -157,6 +163,11 @@ struct Change
     {
         blockReward = std::make_pair(_pair.first, _pair.second);
     }
+    Change(Address const& _addr, VoteSnapshot const& _vote) : kind(NewVoteSnapshot), address(_addr)
+    {
+        vote_snapshot = _vote;
+    }
+
 };
 
 using ChangeLog = std::vector<Change>;
@@ -338,6 +349,8 @@ public:
 
 	Json::Value successPendingOrderMsg(uint32_t _getSize);
 
+	Json::Value successPendingOrderForAddrMsg(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize);
+
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
 
@@ -352,7 +365,7 @@ public:
     void addPoll(Address const& _addr, u256 const& _value);
     void subPoll(Address const& _adddr, u256 const& _value);
 
-	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops);
+	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, int64_t block_num);
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
@@ -367,6 +380,22 @@ public:
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
+
+	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
+
+	void receivingIncome(Address const & _addr, int64_t _blockNum);
+
+
+	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);
+	void subCookieIncomeNum(Address const& _addr, u256 const& _value);
+	void setCookieIncomeNum(Address const& _addr, u256 const& _value);
+
+	void setNumofrounds(Address const& _addr, u256 const& _value);
+
+    /// interface about vote snapshot
+    void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
+
+
 private:
     //投票数据
     //获取投出得票数
@@ -375,6 +404,7 @@ private:
     u256 voteAdress(Address const& _id, Address const& _recivedAddr) const;
     //投票
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value);
+    void initBallot(Address const& _id, Address const& _recivedAddr, u256 _value);
     //撤销投票
     void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     //获取指定地址的voteDate

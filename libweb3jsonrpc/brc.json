@@ -8,6 +8,7 @@
 { "name": "brc_blockNumber", "params": [], "order": [], "returns" : ""},
 { "name": "brc_getSuccessPendingOrder", "params": ["",""], "order": [], "returns": ""},
 { "name": "brc_getPendingOrderPoolForAddr", "params": ["","",""], "order": [], "returns" : ""},
+{ "name": "brc_getSuccessPendingOrderForAddr", "params": ["","","","",""], "order": [], "returns": ""},
 { "name": "brc_getPendingOrderPool", "params": ["","","",""], "order": [], "returns" : ""},
 { "name": "brc_getBalance", "params": ["", ""], "order": [], "returns" : ""},
 { "name": "brc_getBlockReward", "params": ["", "", "", ""], "order": [], "returns": ""},

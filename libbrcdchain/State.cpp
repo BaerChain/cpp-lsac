@@ -192,11 +192,15 @@ Account *State::account(Address const &_addr) {
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
-	if(timestamp() > FORKSIGNSTIME && state.itemCount() >= 13){
-		std::vector<std::string> tmp;
-		tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
-		i.first->second.initChangeList(tmp);
-	}
+	std::vector<std::string> tmp;
+	tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+	i.first->second.initChangeList(tmp);
+
+	u256 _cookieNum  = state[13].toInt<u256>();
+	i.first->second.setCookieIncome(_cookieNum);
+
+    const bytes  vote_sna_b = state[14].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.init_vote_snapshot(vote_sna_b);
 
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
@@ -876,6 +880,34 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
     return _JsArray;
 }
 
+Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTime, int64_t _maxTime,
+                                                 uint32_t _maxSize)
+{
+    std::vector<result_order> _retV = m_exdb.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
+    Json::Value  _JsArray;
+
+    for(auto val : _retV)
+    {
+        Json::Value _value;
+        _value["Address"] = toJS(val.sender);
+        _value["Acceptor"] = toJS(val.acceptor);
+        _value["Hash"] = toJS(val.send_trxid);
+        _value["AcceptorHash"] = toJS(val.to_trxid);
+        _value["price"] = std::string(val.price);
+        _value["amount"] = std::string(val.amount);
+        _value["create_time"] = toJS(val.create_time);
+        std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
+                                                                                      val.buy_type);
+        _value["order_type"] = get<0>(_resultTuple);
+        _value["order_token_type"] = get<1>(_resultTuple);
+        _value["order_buy_type"] = get<2>(_resultTuple);
+        _JsArray.append(_value);
+    }
+
+    return _JsArray;
+
+}
+
 std::tuple<std::string, std::string, std::string>
 State::enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
     std::string _type, _token_type, _buy_type;
@@ -964,14 +996,14 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
 	std::vector<h256> _hashV;
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen =std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
-		if(!can_pen){
+		if(!can_pen){ 
 			cerror << "cancelPendingOrders  dynamic type field!";
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 		_hashV.push_back({ can_pen->m_hash });
 	}
 
-	try{
+	try{ 
 		_resultV = m_exdb.cancel_order_by_trxid(_hashV, false);
 	}
 	catch(Exception &e){
@@ -1012,6 +1044,119 @@ void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNu
     {
        m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
     }
+}
+
+
+
+void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
+{
+    if(auto a = account(_addr))
+    {
+        a->addCooikeIncome(_value);
+    }else{
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+    }
+
+    if(_value)
+    {
+        m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
+    }
+
+}
+
+void State::subCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
+{
+    if(_value == 0)
+    {
+        return;
+    }
+
+    auto a = account(_addr);
+    if(!a || a->CookieIncome())
+    {
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist or account CookieIncome is too low ")));
+    }
+
+    addCooikeIncomeNum(_addr, 0 - _value);
+}
+
+void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
+{
+    Account *a = account(_addr);
+    u256 original = a ? a->CookieIncome() : 0;
+
+    // Fall back to addBalance().
+    addCooikeIncomeNum(_addr, _value - original);
+}
+
+std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr, uint32_t _snapshotNum)
+{
+    if(auto a = account(_addr))
+    {
+        return a->findSnapshotSummary(_snapshotNum);
+    }else{
+        return std::unordered_map<Address, u256>();
+    }
+}
+
+void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
+{
+    try_new_vote_snapshot(_addr, _blockNum);
+
+    u256 _income = 0;
+    auto a = account(_addr);
+    VoteSnapshot _voteSnapshot = a->vote_snashot();
+    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+    u256 last_num = _voteSnapshot.m_latest_round;
+    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
+
+    std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
+    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);      //first->rounds second->polls
+
+    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment("There is currently no income to receive"));
+    }
+
+    for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
+    {
+        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1);       // first->rounds second->summaryCooike
+        if (_pollDataIt->second <= 0 || _ownedHandingfee == _voteSnapshot.m_blockSummaryHistory.end())
+            continue;
+        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
+    }
+
+    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
+    {
+        for(auto const &it : _voteDataIt->second)
+        {
+            Address _polladdr = it.first;
+            u256 _voteNum = it.second;
+            try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
+            Account *pollAccount = account(_polladdr);
+            if(pollAccount)
+            {
+                VoteSnapshot _pollAccountvoteSnapshot = pollAccount->vote_snashot();
+                auto _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
+                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1);
+                if(_pollMap == _pollAccountvoteSnapshot.m_pollNumHistory.end() || _handingfeeMap == _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
+                    continue;
+                u256 _pollNum = 0;
+                u256 _handingfee = 0;
+                _pollNum = _pollMap->second;
+                if (!_pollNum)
+                    continue;
+                _handingfee = _handingfeeMap->second;
+                _income += (_handingfee / 2 / _pollNum) * _voteNum ;
+                //rounds = _voteDataIt->first;
+            }
+        }
+    }
+    if(_income)
+        addBalance(_addr, _income);
+    if (rounds != _numberofrounds)
+        a->set_numberofrounds(rounds);
 }
 
 void State::createContract(Address const& _address)
@@ -1219,6 +1364,12 @@ void State::rollback(size_t _savepoint) {
             case Change::BlockReward:
                 account.addBlockRewardRecoding(change.blockReward);
                 break;
+            case Change::NewVoteSnapshot:
+                account.set_vote_snapshot(change.vote_snapshot);
+                break;
+            case Change::CooikeIncomeNum:
+                account.addCooikeIncome(0 -change.value);
+                break;
             default:
                 break;
         }
@@ -1320,7 +1471,7 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     addPoll(_addr, 0 - _value);
 }
 
-void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops){
+void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops, int64_t block_num){
 
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(val);
@@ -1329,18 +1480,32 @@ void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::share
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 		VoteType _type = (VoteType)_p->m_vote_type;
-		if(_type == VoteType::EBuyVote)
-			transferBallotBuy(_addr, _p->m_vote_numbers);
-		else if(_type == VoteType::ESellVote)
-			transferBallotSell(_addr, _p->m_vote_numbers);
-		else if(_type == VoteType::ELoginCandidate)
-			addSysVoteDate(SysElectorAddress, _addr);
-		else if(_type == VoteType::ELoginCandidate)
-			subSysVoteDate(SysElectorAddress, _addr);
-		else if(_type == VoteType::EDelegate)
-			addVote(_addr, _p->m_to, _p->m_vote_numbers);
-		else if(_type == EUnDelegate)
-			subVote(_addr, _p->m_to, _p->m_vote_numbers);
+		if(_type == VoteType::EBuyVote) {
+		    try_new_vote_snapshot(_addr, block_num);
+            transferBallotBuy(_addr, _p->m_vote_numbers);
+        }
+		else if(_type == VoteType::ESellVote) {
+            try_new_vote_snapshot(_addr, block_num);
+            transferBallotSell(_addr, _p->m_vote_numbers);
+        }
+		else if(_type == VoteType::ELoginCandidate) {
+            try_new_vote_snapshot(_addr, block_num);
+            addSysVoteDate(SysElectorAddress, _addr);
+        }
+		else if(_type == VoteType::ELogoutCandidate) {
+            try_new_vote_snapshot(_addr, block_num);
+            subSysVoteDate(SysElectorAddress, _addr);
+        }
+		else if(_type == VoteType::EDelegate) {
+            try_new_vote_snapshot(_addr, block_num);
+            try_new_vote_snapshot(_p->m_to, block_num);
+            addVote(_addr, _p->m_to, _p->m_vote_numbers);
+        }
+		else if(_type == EUnDelegate) {
+            try_new_vote_snapshot(_addr, block_num);
+            try_new_vote_snapshot(_p->m_to, block_num);
+            subVote(_addr, _p->m_to, _p->m_vote_numbers);
+        }
 	}
 }
 
@@ -1356,6 +1521,7 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 		jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
 		jv["nonce"] = toJS(a->nonce());
+		jv["cookieinsummury"] = toJS(a->CookieIncome());
         Json::Value _array;
         for (auto val : a->voteData()) {
             Json::Value _v;
@@ -1467,7 +1633,8 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 		{
 			Json::Value _v;
 			_v["address"] = toJS(val.first);
-			_v["vote_num"] = toJS(val.second);
+            auto a = account(val.first);
+			_v["vote_num"] = toJS(a->poll());
 			_arry.append(_v);
 		}
 		jv["electors"] = _arry;
@@ -1523,7 +1690,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::map<u256, u256> _map = { {u256(1), systenCookie} };
-	order _order = { h256(1), dev::VoteAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };
 
 	try
@@ -1585,6 +1752,29 @@ void dev::brc::State::addVote(Address const &_id, Address const &_recivedAddr, u
     }
 }
 
+void dev::brc::State::initBallot(Address const &_id, Address const &_recivedAddr, u256 _value) {
+    Account *a = account(_id);
+    if (!a){
+        createAccount(_id, {0});
+        a = account(_id);
+    }
+    Account *rec_a = account(_recivedAddr);
+    if (!rec_a){
+        createAccount(_recivedAddr, {0});
+        rec_a = account(_recivedAddr);
+    }
+    rec_a->addBallot(_value);
+    rec_a->addPoll(_value);
+    a->addVote(std::make_pair(_recivedAddr, _value));
+    cwarn << "initballot " << rec_a->ballot() << " value:" << _value.str();
+
+    if (_value) {
+        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
+        m_changeLog.emplace_back(Change::Poll, _id, _value);
+    }
+}
+
 
 void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u256 _value) {
     //撤销投票
@@ -1592,20 +1782,24 @@ void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u
     Account *a = account(_id);
     if (a && rec_a) {
         // 验证投票将记录
-        if (a->vote(_recivedAddr) < _value)
+        if (a->vote(_recivedAddr) < _value) {
+            cerror << "not has enough tickets...";
             BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
+        }
         a->addVote(std::make_pair(_recivedAddr, 0 - _value));
         a->addBallot(_value);
         if (rec_a->poll() < _value)
             _value = rec_a->poll();
         rec_a->addPoll(0 - _value);
-    } else
+    } else {
+        cerror << "address error!";
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
+    }
 
     if (_value) {
         m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, 0 - _value));
         m_changeLog.emplace_back(Change::Ballot, _id, _value);
-        m_changeLog.emplace_back(Change::Poll, _id, 0 - _value);
+        m_changeLog.emplace_back(Change::Poll, _recivedAddr, 0 - _value);
     }
 }
 
@@ -1644,11 +1838,32 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
 }
 
+void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
+    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
+    if (_pair.second == Votingstage::ERRORSTAGE)
+        return ;
+    auto  a = account(_addr);
+    if(!a){
+        createAccount(_addr, {0});
+        a = account(_addr);
+        if (!a)
+            BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
+    }
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    if (!ret_pair.first)
+        return ;
+    VoteSnapshot _vote_sna = a->vote_snashot();
+    a->try_new_snapshot(ret_pair.second);
+    m_changeLog.emplace_back(_addr, _vote_sna);
+    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
+    setCookieIncomeNum(_addr, 0);
+
+}
 
 void dev::brc::State::transferBallotBuy(
         Address const &_from, u256 const &_value) {
     subBRC(_from, _value * BALLOTPRICE);
-    addBRC(SystemVoteBrcAddress, _value * BALLOTPRICE);
+    addBRC(dev::systemAddress, _value * BALLOTPRICE);
     addBallot(_from, _value);
 }
 
@@ -1656,7 +1871,7 @@ void dev::brc::State::transferBallotSell(
         Address const &_from, u256 const &_value) {
     subBallot(_from, _value);
     addBRC(_from, _value * BALLOTPRICE);
-    subBRC(SystemVoteBrcAddress, _value * BALLOTPRICE );
+    subBRC(dev::systemAddress, _value * BALLOTPRICE );
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
@@ -1763,7 +1978,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(_time > FORKSIGNSTIME ? 13 : 12);
+				s.appendList(15);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -1803,26 +2018,32 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.FBRC();
                 s << i.second.FBalance();
                 s << i.second.assetInjectStatus();
-				{
-					RLPStream _rlp;
-					size_t _num = i.second.blockReward().size();
-					_rlp.appendList(_num + 1);
-					_rlp << _num;
-					for (auto it : i.second.blockReward())
-					{
-						_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
-					}
-					s << _rlp.out();
-				}
-                if(_time > FORKSIGNSTIME)
-                    s << i.second.willChangeList();
+                {
+                    RLPStream _rlp;
+                    size_t _num = i.second.blockReward().size();
+                    _rlp.appendList(_num + 1);
+                    _rlp << _num;
+                    for (auto it : i.second.blockReward())
+                    {
+                    	_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+                    }
+                    s << _rlp.out();
+                }
+
+                s << i.second.willChangeList();
+                s << i.second.CookieIncome();
+                {
+                    RLPStream _s;
+                    i.second.vote_snashot().streamRLP(_s);
+                    s << _s.out();
+                }
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
         }
     return ret;
 }
-
 
 template AddressHash dev::brc::commit<OverlayDB>(
         AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, uint64_t _time = FORKSIGNSTIME);

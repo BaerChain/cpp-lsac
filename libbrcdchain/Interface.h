@@ -136,6 +136,10 @@ public:
 	{
 		return successPendingOrderMessage(_getSize, m_default);
 	}
+    Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize)
+    {
+        return successPendingOrderForAddrMessage(_a, _minTime, _maxTime, _maxSize, m_default);
+    }
 
     virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
     virtual u256 ballotAt(Address _a, BlockNumber _block) const = 0;
@@ -154,7 +158,7 @@ public:
         uint8_t _order_type, uint8_t _order_toke_type, u256 getSize, BlockNumber _block) const = 0;
     virtual Json::Value pendingOrderPoolForAddrMessage(
         Address _a, uint32_t _getSize, BlockNumber _block) const = 0;
-		
+    virtual Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize, BlockNumber _block) const = 0;
 	virtual Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const = 0;
 	virtual Json::Value votedMessage(Address _a, BlockNumber _block) const = 0;
 	virtual Json::Value electorMessage(BlockNumber _block) const = 0;
