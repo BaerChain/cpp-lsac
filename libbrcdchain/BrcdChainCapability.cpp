@@ -431,47 +431,55 @@ void BrcdChainCapability::completeSync()
 
 void BrcdChainCapability::doBackgroundWork()
 {
-    ensureInitialised();
-    auto h = m_chain.currentHash();
-    // If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
-    if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
-    {
-        if (m_newTransactions)
+    try{
+        ensureInitialised();
+        auto h = m_chain.currentHash();
+        // If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
+        if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
         {
-            m_newTransactions = false;
-            maintainTransactions();
-        }
-        if (m_newBlocks)
-        {
-            m_newBlocks = false;
-            maintainBlocks(h);
-        }
-    }
-    if(m_newSend)
-	{
-		m_newSend = false;
-		sendNewBlock();
-	}
-
-    time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-    if (now - m_lastTick >= 1)
-    {
-        m_lastTick = now;
-        for (auto const& peer : m_peers)
-        {
-            time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-
-            if (now - peer.second.lastAsk() > 10 && peer.second.isConversing()){
-                // timeout
-                cwarn << "disconnect node : " << peer.first;
-                m_host->disconnect(peer.first, p2p::PingTimeout);
+            if (m_newTransactions)
+            {
+                m_newTransactions = false;
+                maintainTransactions();
+            }
+            if (m_newBlocks)
+            {
+                m_newBlocks = false;
+                maintainBlocks(h);
             }
         }
+
+        time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+        if (now - m_lastTick >= 1)
+        {
+            m_lastTick = now;
+            for (auto const& peer : m_peers)
+            {
+                time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+
+                if (now - peer.second.lastAsk() > 10 && peer.second.isConversing()){
+                    // timeout
+                    cwarn << "disconnect node : " << peer.first;
+                    m_host->disconnect(peer.first, p2p::PingTimeout);
+                }
+            }
+        }
+
+        if (m_backgroundWorkEnabled)
+            m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
+    }
+    catch (const std::exception &e){
+        cwarn << "exception : " << e.what() ;
+    }
+    catch (const boost::exception &e){
+        cwarn << "boost exception : " << boost::diagnostic_information(e);
+    }
+    catch (...){
+        cwarn << "doBackgroundWork exception .";
     }
 
-    if (m_backgroundWorkEnabled)
-		m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
-	    //m_host->scheduleExecution(c_backroundWorkPeriodMs, [this](){ doBackgroundWork(); });
+
+
 }
 
 void BrcdChainCapability::maintainTransactions()
@@ -615,7 +623,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
 
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-            auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
+            auto s = randomSelection(25, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
             bool isSend = false;
@@ -631,6 +639,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
+                        itPeer->second.clearKnownBlocks();
                         isSend = true;
                     }
                 }
@@ -651,6 +660,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 if (itPeer != m_peers.end())
                 {
                     m_host->sealAndSend(peerID, ts);
+                    itPeer->second.clearKnownBlocks();
                     isSend = true;
                 }
             }

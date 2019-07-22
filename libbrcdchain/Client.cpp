@@ -402,8 +402,10 @@ void Client::syncBlockQueue()
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
-    if (ir.liveBlocks.empty())
+    if (ir.liveBlocks.empty()){
+        cwarn << "client liveBlocks.size == 0 ";
         return;
+    }
 
     onChainChanged(ir);
 }
@@ -471,8 +473,11 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
     for (auto const& h: _blocks)
         LOG(m_loggerDetail) << "Live block: " << h;
 
-    if (auto h = m_host.lock())
+    if (auto h = m_host.lock()){
+        cwarn << "note new blocks.";
         h->noteNewBlocks();
+    }
+
 
     for (auto const& h: _blocks)
         appendFromBlock(h, BlockPolarity::Live, io_changed);
@@ -561,7 +566,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		resyncStateFromChain();
 	}
     noteChanged(changeds);
-	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
+//	m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const

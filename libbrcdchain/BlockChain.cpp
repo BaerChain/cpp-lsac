@@ -394,6 +394,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         }
         catch (...) {
             // Failed to import - stop here.
+            cerror <<  "rebuild blocks error.";
             break;
         }
 
@@ -792,7 +793,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     if (_block.info.number() < info().number() - m_params.config_blocks && info().number() > m_params.config_blocks) {
         cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash()
                << " , will be remove.";
-        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+//        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+        return false;
     }
 
     if (info().number() == 0 || m_cached_blocks.size() == 0) {
@@ -1108,6 +1110,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
                                                              _totalDifficulty == details(last).totalDifficulty &&
                                                              _block.info.gasUsed() > info(last).gasUsed())) {
+//    {
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
@@ -1181,7 +1184,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
                       << (details(_block.info.parentHash()).children.size() - 1)
                       << " siblings. Route: " << route;
     } else {
-        LOG(m_loggerDetail) << "   Imported but not best (oTD: " << details(last).totalDifficulty
+       cwarn << "   Imported but not best (oTD: " << details(last).totalDifficulty
                             << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
                             << _block.info.number() << ")";
     }
