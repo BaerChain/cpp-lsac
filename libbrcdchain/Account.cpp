@@ -37,20 +37,17 @@ u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
 
 void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 {
-    auto ret = m_voteData.find(_votePair.first);
-    if(ret == m_voteData.end())
+    auto  ret = std::find(m_vote_data.begin(), m_vote_data.end(), _votePair.first);
+    if(ret == m_vote_data.end() && _votePair.second)
     {
-        if(_votePair.second)
-        {
-            m_voteData.insert(_votePair);
-            changed();
-            return;
-        }
+        m_vote_data.push_back({_votePair.first, _votePair.second, 0});
+        changed();
+        return;
     }
-    if(ret->second + _votePair.second > 0)
-        ret->second += _votePair.second;
+    if(ret->m_poll + _votePair.second > 0)
+        ret->m_poll += _votePair.second;
     else
-        m_voteData.erase(ret);
+        m_vote_data.erase(ret);
 	changed();
 }
 
@@ -84,6 +81,44 @@ void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, 
 	else if(!_isLogin && ret != m_voteData.end())
 		m_voteData.erase(ret);
 	changed();
+}
+
+void Account::manageSysVote(Address const &_otherAddr, bool _isLogin, u256 _tickets, int64_t _time) {
+    // The interface retains data of 0 votes when becoming or revoking whether, _tickets is 0
+    auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _otherAddr);
+    if (_isLogin && ret == m_vote_data.end()){
+        m_vote_data.emplace_back(_otherAddr, _tickets, _time);
+    }
+    else if (!_isLogin && ret != m_vote_data.end())
+        m_vote_data.erase(ret);
+    changed();
+}
+void Account::set_system_poll(const dev::Address &_addr, const dev::u256 &_val) {
+    auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _addr);
+    if (ret == m_vote_data.end()){
+        m_vote_data.emplace_back(_addr, _val, 0);
+    }
+    ret->m_poll = _val;
+    changed();
+}
+
+void Account::set_system_poll(const PollData& _p) {
+    auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _p.m_addr);
+    if (ret == m_vote_data.end()){
+        m_vote_data.emplace_back(_p.m_addr, _p.m_poll, _p.m_time);
+    }
+    ret->m_poll = _p.m_poll;
+    ret->m_time = _p.m_time;
+    changed();
+}
+
+
+PollData Account::poll_data(Address const &_addr) const {
+    auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _addr);
+    if (ret != m_vote_data.end()){
+        return  *ret;
+    }
+    return PollData();
 }
 
 bool dev::brc::Account::insertMiner(Address before, Address after, unsigned blockNumber)

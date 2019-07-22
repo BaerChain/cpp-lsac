@@ -34,6 +34,40 @@ namespace brc
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
 
+/// vote data
+
+struct PollData{
+    Address     m_addr;
+    u256        m_poll = 0;
+    int64_t     m_time = 0;
+
+    PollData(){ m_addr = Address(); }
+    PollData(Address const& addr, u256 const& poll, int64_t time):m_addr (addr), m_poll(poll), m_time(time){}
+    PollData(Address const& addr): m_addr(addr), m_poll(0), m_time(0){}
+
+    PollData& operator = (PollData const& _p){
+        m_addr = _p.m_addr;
+        m_poll = _p.m_poll;
+        m_time = _p.m_time;
+        return *this;
+    }
+
+    void  streamRLP(RLPStream& _s) const{
+
+    }
+
+    void populate(bytes const& _b){
+
+    }
+
+    bool operator == (PollData const& p){
+        return m_addr == p.m_addr;
+    }
+
+
+
+};
+
 struct VoteSnapshot{
     std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
     std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
@@ -42,7 +76,7 @@ struct VoteSnapshot{
     u256 m_latest_round = 0;                                    // the last snapshot rounds of record
     VoteSnapshot(){}
 
-    VoteSnapshot&operator = (VoteSnapshot const& s_v){
+    VoteSnapshot& operator = (VoteSnapshot const& s_v){
         clear();
         for(auto const& val : s_v.m_voteDataHistory){
             std::map<Address, u256> _temp = val.second;
@@ -402,11 +436,20 @@ public:
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
     u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
-    void addVote(std::pair<Address, u256> _votePair);
     std::map<Address, u256> const& voteData() const { return m_voteData; }
     void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
     // 系统管理竞选人/验证人
 	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
+
+    void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
+    /// this interface only for normalAddress
+    void addVote(std::pair<Address, u256> _votePair);
+    void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets, int64_t _time);
+    std::vector<PollData> const& vote_data() const { return  m_vote_data; }
+    PollData poll_data(Address const& _addr) const;
+    /// this interface only for systemAddress
+    void set_system_poll(Address const& _addr, u256 const& _val);
+    void set_system_poll(PollData const& _p);
 
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
@@ -516,6 +559,11 @@ private:
     */
     std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
+
+    /// poll_data
+    /// if this not is systemAddress : the address vote to other
+    /// if this is systemAddress : this storage candidates_data or Varlitor ...
+    std::vector<PollData> m_vote_data;
 
     // The snapshot about voteData
     VoteSnapshot    m_vote_sapshot;

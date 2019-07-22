@@ -1107,10 +1107,7 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
-<<<<<<< HEAD
-=======
     u256 last_num = _voteSnapshot.m_latest_round;
->>>>>>> 1443e43baabaefdfd4282891e06360b4de3db141
 
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
@@ -1373,6 +1370,9 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::CooikeIncomeNum:
                 account.addCooikeIncome(0 -change.value);
+                break;
+            case Change::SystemAddressPoll:
+                account.set_system_poll(change.poll_data);
                 break;
             default:
                 break;
@@ -1717,44 +1717,60 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	cnote << m_exdb.check_version(false);
 }
 
-dev::u256 dev::brc::State::voteAll(Address const& _id) const
-{
-    if (auto a = account(_id))
-        return a->voteAll();
-    else
-        return 0;
-}
-
-
-dev::u256 dev::brc::State::voteAdress(Address const &_id, Address const &_recivedAddr) const {
-    if (auto a = account(_id))
-        return a->vote(_recivedAddr);
-    else
-        return 0;
-}
-
-
 void dev::brc::State::addVote(Address const &_id, Address const &_recivedAddr, u256 _value) {
     //此为投票接口  没有投票人地址失败   投票人票数不足 失败
     Account *a = account(_id);
     Account *rec_a = account(_recivedAddr);
-    if (a && rec_a) {
-        // 一个原子操作
-        //扣票
+    Account *sys_a = account(SysElectorAddress);
+    u256  _poll = 0;
+    if (a && rec_a && sys_a) {
         if (a->ballot() < _value)
             BOOST_THROW_EXCEPTION(NotEnoughBallot() << errinfo_interface("State::addvote()"));
+        _poll = rec_a->poll();
+
         a->addBallot(0 - _value);
-        //加票
-        rec_a->addPoll(_value);
-        //添加记录
         a->addVote(std::make_pair(_recivedAddr, _value));
+        rec_a->addPoll(_value);
+        sys_a->addVote(std::make_pair(_recivedAddr, _value));
+        sys_a->set_system_poll(_recivedAddr, rec_a->poll());
     } else
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
 
     if (_value) {
-        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll, _id, std::make_pair(_recivedAddr, _poll));
         m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
-        m_changeLog.emplace_back(Change::Poll, _id, _value);
+        m_changeLog.emplace_back(Change::Poll, _recivedAddr, _value);
+    }
+}
+
+void dev::brc::State::add_vote(const dev::Address &_id, const dev::brc::PollData &p_data) {
+    Address  _recivedAddr = p_data.m_addr;
+    u256 _value = p_data.m_poll;
+    Account *a = account(_id);
+    Account *rec_a = account(_recivedAddr);
+    Account *sys_a = account(SysElectorAddress);
+    u256  _poll = 0;
+    PollData poll_data ;
+    if (a && rec_a && sys_a) {
+        if (a->ballot() < _value)
+            BOOST_THROW_EXCEPTION(NotEnoughBallot() << errinfo_interface("State::addvote()"));
+        _poll = rec_a->poll();
+        poll_data = sys_a->poll_data(_recivedAddr);
+
+        a->addBallot(0 - _value);
+        a->addVote(std::make_pair(_recivedAddr, _value));
+        rec_a->addPoll(_value);
+        sys_a->addVote(std::make_pair(_recivedAddr, _value));
+        sys_a->set_system_poll({_recivedAddr, rec_a->poll(), poll_data.m_time > 0 ? poll_data.m_time : p_data.m_time});
+    } else
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
+
+    if (_value) {
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll, _id, poll_data);
+        m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
+        m_changeLog.emplace_back(Change::Poll, _recivedAddr, _value);
     }
 }
 
@@ -1769,14 +1785,21 @@ void dev::brc::State::initBallot(Address const &_id, Address const &_recivedAddr
         createAccount(_recivedAddr, {0});
         rec_a = account(_recivedAddr);
     }
-    rec_a->addBallot(_value);
+    Account *sys_a = account(SysElectorAddress);
+    if(!sys_a){
+        createAccount(SysElectorAddress, {0});
+        sys_a = account(_recivedAddr);
+    }
+    u256 _poll = rec_a->poll();
+    //rec_a->addBallot(_value);
     rec_a->addPoll(_value);
     a->addVote(std::make_pair(_recivedAddr, _value));
     cwarn << "initballot " << rec_a->ballot() << " value:" << _value.str();
     
     if (_value) {
-        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, _value));
-        m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll,_id, std::make_pair(_recivedAddr, _poll));
+        //m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
         m_changeLog.emplace_back(Change::Poll, _id, _value);
     }
 }
@@ -1786,27 +1809,76 @@ void dev::brc::State::subVote(Address const &_id, Address const &_recivedAddr, u
     //撤销投票
     Account *rec_a = account(_recivedAddr);
     Account *a = account(_id);
-    if (a && rec_a) {
+    Account *sys_a = account(SysElectorAddress);
+    u256 _poll;
+    if (a && rec_a && sys_a) {
         // 验证投票将记录
         if (a->vote(_recivedAddr) < _value) {
             cerror << "not has enough tickets...";
             BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
         }
+        _poll = rec_a->poll();
         a->addVote(std::make_pair(_recivedAddr, 0 - _value));
         a->addBallot(_value);
         if (rec_a->poll() < _value)
             _value = rec_a->poll();
         rec_a->addPoll(0 - _value);
+        sys_a->set_system_poll(_recivedAddr, rec_a->poll());
     } else {
         cerror << "address error!";
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
     }
 
     if (_value) {
-        m_changeLog.emplace_back(_id, std::make_pair(_recivedAddr, 0 - _value));
+        m_changeLog.emplace_back(Change::Vote,_id, std::make_pair(_recivedAddr, 0 - _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll,_id, std::make_pair(_recivedAddr, _poll));
         m_changeLog.emplace_back(Change::Ballot, _id, _value);
         m_changeLog.emplace_back(Change::Poll, _recivedAddr, 0 - _value);
     }
+}
+
+void dev::brc::State::sub_vote(const dev::Address &_id, const dev::brc::PollData &p_data) {
+    Address  _recivedAddr = p_data.m_addr;
+    u256 _value = p_data.m_poll;
+    Account *rec_a = account(_recivedAddr);
+    Account *a = account(_id);
+    Account *sys_a = account(SysElectorAddress);
+    u256 _poll;
+    PollData poll_data ;
+
+    if (a && rec_a && sys_a) {
+        // 验证投票将记录
+        if (a->vote(_recivedAddr) < _value) {
+            cerror << "not has enough tickets...";
+            BOOST_THROW_EXCEPTION(NotEnoughVoteLog() << errinfo_interface("State::subVote()"));
+        }
+        _poll = rec_a->poll();
+        poll_data = sys_a->poll_data(_recivedAddr);
+
+        a->addVote(std::make_pair(_recivedAddr, 0 - _value));
+        a->addBallot(_value);
+        if (rec_a->poll() < _value)
+            _value = rec_a->poll();
+        rec_a->addPoll(0 - _value);
+        sys_a->set_system_poll({_recivedAddr, rec_a->poll(), poll_data.m_time > 0 ? poll_data.m_time: p_data.m_time});
+    } else {
+        cerror << "address error!";
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
+    }
+
+    if (_value) {
+        m_changeLog.emplace_back(Change::Vote,_id, std::make_pair(_recivedAddr, 0 - _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll,_id, poll_data );
+        m_changeLog.emplace_back(Change::Ballot, _id, _value);
+        m_changeLog.emplace_back(Change::Poll, _recivedAddr, 0 - _value);
+    }
+}
+
+PollData dev::brc::State::vote_data(const dev::Address &_addr) const {
+    if(auto a = account(SysElectorAddress)){
+        return  a->poll_data(_addr);
+    }
+    return PollData();
 }
 
 
@@ -1840,7 +1912,7 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
         BOOST_THROW_EXCEPTION(InvalidSysAddress() << errinfo_interface("State::subSysVoteDate()"));
     if (!a)
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subSysVoteDate()"));
-    sysAddr->manageSysVote(_id, false, 0);
+    sysAddr->manageSysVote(_id, false, a->poll(), 0);
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
 }
 

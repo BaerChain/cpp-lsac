@@ -116,7 +116,8 @@ struct Change
         BlockReward,
         NewVoteSnapshot,
         Numofrounds,
-        CooikeIncomeNum
+        CooikeIncomeNum,
+        SystemAddressPoll,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -129,6 +130,7 @@ struct Change
     std::pair<u256, u256> blockReward;
     VoteSnapshot vote_snapshot;
     u256 cooikeIncomeNum = 0;
+    PollData poll_data;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -151,7 +153,7 @@ struct Change
     {}
 
     //  Helper constructor for vote change log
-    Change(Address const& _addr, std::pair<Address, u256> _vote) : kind(Vote), address(_addr)
+    Change(Kind _kind, Address const& _addr, std::pair<Address, u256> _vote) : kind(_kind), address(_addr)
     {
         vote = std::make_pair(_vote.first, _vote.second);
     }
@@ -166,6 +168,10 @@ struct Change
     Change(Address const& _addr, VoteSnapshot const& _vote) : kind(NewVoteSnapshot), address(_addr)
     {
         vote_snapshot = _vote;
+    }
+    Change(Kind _kind, Address const& _addr, PollData const& p_data) : kind(SystemAddressPoll), address(_addr)
+    {
+        poll_data = p_data;
     }
 
 };
@@ -397,11 +403,6 @@ public:
 
 
 private:
-    //投票数据
-    //获取投出得票数
-    u256 voteAll(Address const& _id) const;
-    //获取给指定Address的投票数
-    u256 voteAdress(Address const& _id, Address const& _recivedAddr) const;
     //投票
     void addVote(Address const& _id, Address const& _recivedAddr, u256 _value);
     void initBallot(Address const& _id, Address const& _recivedAddr, u256 _value);
@@ -412,6 +413,11 @@ private:
     //竞选人，验证人管理
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
+
+    ///new interface
+    void add_vote(Address const& _id, PollData const& p_data);
+    void sub_vote(Address const& _id, PollData const& p_data);
+    PollData vote_data(Address const& _addr) const ;
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);
