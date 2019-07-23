@@ -339,6 +339,7 @@ public:
 	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
         u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyTypes);
+	void systemAutoPendingOrder(std::vector<ex::order> const& _v);
 
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
