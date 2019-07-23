@@ -660,11 +660,11 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 
 		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
 			if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::BRC)
-				total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
+				total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRECISION;
 			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::BRC)
 				total_free_brc += pen->m_Pendingorder_num;
 			else if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
-				total_free_balance += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
+				total_free_balance += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRECISION;
 			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
 				total_free_balance += pen->m_Pendingorder_num;
 		}
@@ -677,9 +677,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
 	}
 
-	for(uint32_t i = 0; i < _result_v.size(); ++i){
-		result_order _result_order = _result_v[i];
-	}
+	std::vector<order> _autoV;
 
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
 		result_order _result_order = _result_v[i];
@@ -689,13 +687,21 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 
 		if(_result_order.buy_type == order_buy_type::only_price){
 			if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
-				total_free_brc -= _result_order.amount* _result_order.old_price;
+				total_free_brc -= _result_order.amount* _result_order.old_price / PRECISION;
 			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
 				total_free_brc -= _result_order.amount;
 			else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-				total_free_balance -= _result_order.amount * _result_order.old_price;
+				total_free_balance -= _result_order.amount * _result_order.old_price / PRECISION;
 			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
 				total_free_balance -= _result_order.amount;
+		}
+
+		if(_result_order.acceptor == dev::systemAddress)
+		{
+            auto find_token = _result_order.token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
+            std::map<u256, u256> _autoMap = {{_result_order.amount, u256(100000000)}};
+            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, find_token, order_type::sell, _autoMap, _nowTime};
+            _autoV.push_back(_o);
 		}
 	}
 	if(total_free_balance < 0 || total_free_brc < 0){
@@ -710,6 +716,72 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		subBRC(_addr, (u256)total_free_brc);
 		addFBRC(_addr, (u256)total_free_brc);
 	}
+
+	if(_autoV.size() > 0)
+    {
+	    systemAutoPendingOrder(_autoV);
+    }
+}
+
+void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
+{
+    std::vector<result_order> _result_v;
+
+    bigint total_free_brc = 0;
+    bigint total_free_balance = 0;
+
+    try {
+        _result_v = m_exdb.insert_operation(_v, false, true);
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled() << errinfo_comment(std::string("Coupling to the system order, the system automatically fails to place the order")));
+    }
+
+    std::vector<order> _autoV;
+
+    for(uint32_t i = 0; i < _result_v.size(); ++i){
+        result_order _result_order = _result_v[i];
+
+        pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
+                             _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
+
+        if(_result_order.buy_type == order_buy_type::only_price){
+            if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
+                total_free_brc -= _result_order.amount* _result_order.old_price / PRECISION;
+            else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
+                total_free_brc -= _result_order.amount;
+            else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+                total_free_balance -= _result_order.amount * _result_order.old_price / PRECISION;
+            else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
+                total_free_balance -= _result_order.amount;
+        }
+
+        if(_result_order.acceptor == dev::systemAddress)
+        {
+            auto find_token = _result_order.token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
+            std::map<u256, u256> _autoMap = {{_result_order.amount, u256(100000000)}};
+            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, find_token, order_type::sell, _autoMap, _result_order.create_time};
+            _autoV.push_back(_o);
+        }
+    }
+    if(total_free_balance < 0 || total_free_brc < 0){
+        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+    }
+    if(total_free_balance > 0){
+        subBalance(dev::systemAddress, (u256)total_free_balance);
+        addFBalance(dev::systemAddress, (u256)total_free_balance);
+    }
+    if(total_free_brc){
+        subBRC(dev::systemAddress, (u256)total_free_brc);
+        addFBRC(dev::systemAddress, (u256)total_free_brc);
+    }
+
+    if(_autoV.size() > 0)
+    {
+        systemAutoPendingOrder(_autoV);
+    }
 }
 
 void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
