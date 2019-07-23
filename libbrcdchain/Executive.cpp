@@ -583,7 +583,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(), m_batch_params._operation);
                 break;
             }
-            case transationTool::op_type::cancelPendingOrder{
+            case transationTool::op_type::cancelPendingOrder:{
                 m_s.cancelPendingOrders(m_batch_params._operation);
                 break;
             }
