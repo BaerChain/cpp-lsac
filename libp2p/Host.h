@@ -233,6 +233,9 @@ public:
 
     std::shared_ptr<CapabilityHostFace> capabilityHost() const { return m_capabilityHost; }
 
+    bytes Networkrlp() const { return m_restoreNetwork;}
+
+    std::unordered_map<NodeID, std::weak_ptr<SessionFace>> nodeSessionFace() { return m_sessions;}
 protected:
     void onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e);
 

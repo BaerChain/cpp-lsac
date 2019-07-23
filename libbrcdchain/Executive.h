@@ -298,7 +298,7 @@ private:
     SealEngineFace const& m_sealEngine;
 
     std::vector<TransationParameters> m_callParameters_v;  //  batchTransation callParameters
-	batch_transaction_params m_batch_params;        //batchTransation callParameters 
+	batch_transaction_params m_batch_params;        //batchTransation callParameters
 
     bool m_isCreation = false;
     Address m_newAddress;

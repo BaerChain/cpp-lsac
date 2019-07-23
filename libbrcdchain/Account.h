@@ -53,18 +53,20 @@ struct PollData{
     }
 
     void  streamRLP(RLPStream& _s) const{
-
+        _s.appendList(3);
+        _s<< m_addr << m_poll << (u256)m_time;
     }
 
     void populate(bytes const& _b){
-
+        RLP _rlp(_b);
+        m_addr = _rlp[0].convert<Address>(RLP::LaissezFaire);
+        m_poll = _rlp[1].convert<u256>(RLP::LaissezFaire);
+        m_time = (int64_t)_rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 
-    bool operator == (PollData const& p){
-        return m_addr == p.m_addr;
+    bool operator == (Address const& addr) const{
+        return m_addr == addr;
     }
-
-
 
 };
 
@@ -86,6 +88,7 @@ struct VoteSnapshot{
         m_blockSummaryHistory.insert(s_v.m_blockSummaryHistory.begin(),s_v.m_blockSummaryHistory.end());
         numberofrounds = s_v.numberofrounds;
         m_latest_round = s_v.m_latest_round;
+        return  *this;
     }
 
     void  streamRLP(RLPStream& _s) const{
@@ -267,7 +270,7 @@ public:
         m_poll = 0;
         m_ballot = 0;
 		m_assetInjectStatus = 0;
-        m_voteData.clear();
+        m_vote_data.clear();
         m_willChangeList.clear();
 		m_BlockReward.clear();
         changed();
@@ -285,7 +288,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0 && voteAll() == 0;  }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() && m_BlockReward.size() == 0 && ballot() == 0 ;  }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -434,23 +437,17 @@ public:
     bool changeVoteData(Address before, Address after);
 
     // VoteDate 投票数据
-    u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
-    u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
-    std::map<Address, u256> const& voteData() const { return m_voteData; }
-    void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
-    // 系统管理竞选人/验证人
-	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
-
+    u256 voteAll()const { u256 vote_num = 0; for(auto val : m_vote_data) vote_num += val.m_poll; return vote_num; }
     void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
+
     /// this interface only for normalAddress
     void addVote(std::pair<Address, u256> _votePair);
-    void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets, int64_t _time);
+    void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets, int64_t _time =0);
+
+    /// this interface only for systemAddress
+    void set_system_poll(PollData const& _p);
     std::vector<PollData> const& vote_data() const { return  m_vote_data; }
     PollData poll_data(Address const& _addr) const;
-    /// this interface only for systemAddress
-    void set_system_poll(Address const& _addr, u256 const& _val);
-    void set_system_poll(PollData const& _p);
-
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
@@ -458,13 +455,6 @@ public:
 
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
-
-
-	void setCookieSummary(std::unordered_map<int32_t, std::unordered_map<Address, u256>> _map)
-	{
-        //m_cookieSummary.clear();
-        //m_cookieSummary.insert(_map.begin(), _map.end());
-	}
 
 	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
 
@@ -488,11 +478,14 @@ public:
     //interface about sanpshot
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+
     ///@return <true, rounds> if the snapshot need rocord new snapshot
     /// rounds: the last rounds need to snapshot
     std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
+
     /// update snapshot
     void try_new_snapshot(u256 _rounds);
+
     ///@retrue VoteSnapshot_data temp for verify
     VoteSnapshot try_new_temp_snapshot(u256 _rounds);
 
@@ -544,8 +537,6 @@ private:
 
     // Account's FBRC
     u256 m_FBRC = 0;
-
-    // Account's FCookie
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
@@ -553,11 +544,6 @@ private:
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
 
-    /* dpos 投票数据
-       Address : 投票目标 size_t: 票数
-       当该Account 为系统预制地址表表示为 竞选人集合
-    */
-    std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
 
     /// poll_data
@@ -586,6 +572,10 @@ private:
 
     /// Value for m_codeHash when this account is having its code determined.
     static const h256 c_contractConceptionCodeHash;
+
+    /// Varlitor's create_block records
+
+
 };
 
 class AccountMask

@@ -93,9 +93,6 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     m_preSeal = bc().genesisBlock(m_stateDB, m_StateExDB);
     m_postSeal = m_preSeal;
 
-
-
-
     m_bq.setChain(bc());
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
@@ -405,8 +402,10 @@ void Client::syncBlockQueue()
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
-    if (ir.liveBlocks.empty())
+    if (ir.liveBlocks.empty()){
+        cwarn << "client liveBlocks.size == 0 ";
         return;
+    }
 
     onChainChanged(ir);
 }
@@ -474,8 +473,11 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
     for (auto const& h: _blocks)
         LOG(m_loggerDetail) << "Live block: " << h;
 
-    if (auto h = m_host.lock())
+    if (auto h = m_host.lock()){
+        cwarn << "note new blocks.";
         h->noteNewBlocks();
+    }
+
 
     for (auto const& h: _blocks)
         appendFromBlock(h, BlockPolarity::Live, io_changed);
@@ -486,6 +488,7 @@ void Client::resyncStateFromChain()
     DEV_READ_GUARDED(x_working)
         if (bc().currentHash() == m_working.info().parentHash())
             return;
+
     restartMining();
 }
 
@@ -563,12 +566,13 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		resyncStateFromChain();
 	}
     noteChanged(changeds);
-	//m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
+//	m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }
 
 bool Client::remoteActive() const
 {
-    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
+//    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
+    return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(1 * bc().chainParams().config_blocks);
 }
 
 void Client::onPostStateChanged()
@@ -704,9 +708,16 @@ void Client::noteChanged(h256Hash const& _filters)
 void Client::doWork(bool _doWait)
 {
     bool t = true;
+
+
 	cwarn << "   Client::doWork :   " << m_needStateReset;
+
+
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
         syncBlockQueue();
+
+
+
 
     if (m_needStateReset)
     {
@@ -883,12 +894,13 @@ bool Client::submitSealed(bytes const& _header)
 		u256 _diff = m_bc.details().totalDifficulty + 20;
 		//m_bq.clearVerifiedBlocks();
 		//m_working.info().hash();
-		m_bq.insertSendBlock({ _diff, newBlock });
-		if(auto h = this->m_host.lock())
-			h->noteNewBlocksSend();
+        BlockHeader _h = BlockHeader(newBlock);
+		CLATE_LOG << "time:" << utcTimeMilliSec() << "insertSendBlock " << (utcTimeMilliSec() - _h.timestamp()) << " height: " << _h.number();
+//		m_bq.insertSendBlock({ _diff, newBlock });
+//		if(auto h = this->m_host.lock())
+//			h->noteNewBlocksSend();
 	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
-
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }
 

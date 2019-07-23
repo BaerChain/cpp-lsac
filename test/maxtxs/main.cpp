@@ -6,7 +6,7 @@
 
 #include <boost/random.hpp>
 #include <boost/filesystem.hpp>
-
+#include <libdevcore/FixedHash.h>
 namespace dx = dev::brc::ex;
 
 namespace bbfs = boost::filesystem;

@@ -70,19 +70,6 @@ void dev::brc::Account::addBlockRewardRecoding(std::pair<u256, u256> _pair)
     changed();
 }
 
-void dev::brc::Account::manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets)
-{
-	// 该接口 保留票数为0的数据  当是成为或者撤销竞选人是否，_tickets 为0
-	auto ret = m_voteData.find(_otherAddr);
-	if(_isLogin && ret == m_voteData.end())
-	{
-		m_voteData[_otherAddr] = _tickets;
-	}
-	else if(!_isLogin && ret != m_voteData.end())
-		m_voteData.erase(ret);
-	changed();
-}
-
 void Account::manageSysVote(Address const &_otherAddr, bool _isLogin, u256 _tickets, int64_t _time) {
     // The interface retains data of 0 votes when becoming or revoking whether, _tickets is 0
     auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _otherAddr);
@@ -91,14 +78,6 @@ void Account::manageSysVote(Address const &_otherAddr, bool _isLogin, u256 _tick
     }
     else if (!_isLogin && ret != m_vote_data.end())
         m_vote_data.erase(ret);
-    changed();
-}
-void Account::set_system_poll(const dev::Address &_addr, const dev::u256 &_val) {
-    auto ret = std::find(m_vote_data.begin(), m_vote_data.end(), _addr);
-    if (ret == m_vote_data.end()){
-        m_vote_data.emplace_back(_addr, _val, 0);
-    }
-    ret->m_poll = _val;
     changed();
 }
 
@@ -131,13 +110,20 @@ bool dev::brc::Account::insertMiner(Address before, Address after, unsigned bloc
 
 bool dev::brc::Account::changeVoteData(Address before, Address after)
 {
-    std::map<Address, u256>::iterator del = m_voteData.find(before);
-    if (del != m_voteData.end()){
-        u256 tmp = m_voteData[before];
-        m_voteData.erase(del);
-        m_voteData[after] = tmp;
+//    std::map<Address, u256>::iterator del = m_voteData.find(before);
+//    if (del != m_voteData.end()){
+//        u256 tmp = m_voteData[before];
+//        m_voteData.erase(del);
+//        m_voteData[after] = tmp;
+//        changed();
+//        return true;
+//    }
+//    return false;
+
+    auto  ret_del = std::find(m_vote_data.begin(), m_vote_data.end(), before);
+    if (ret_del != m_vote_data.end()){
+        ret_del->m_addr = after;
         changed();
-        return true;
     }
     return false;
 }
@@ -197,7 +183,9 @@ void Account::try_new_snapshot(u256 _rounds) {
     for (u256 j = m_vote_sapshot.m_latest_round+1; j <= _rounds ; ++j) {
         if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
             std::map<Address, u256> _temp ;
-            _temp.insert(m_voteData.begin(), m_voteData.end());
+            for(auto const& val: m_vote_data){
+                _temp[val.m_addr] = val.m_poll;
+            }
             m_vote_sapshot.m_voteDataHistory[j] = _temp;
         }
         if (!m_vote_sapshot.m_pollNumHistory.count(j)){
@@ -380,14 +368,14 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if ( haveGenesisCreator)
         {
 			ret[a] = Account(0, 0);
-			if (!ret.count(ElectorAddress))
-                ret[ElectorAddress] = Account(0,0);
+			if (!ret.count(SysElectorAddress))
+                ret[SysElectorAddress] = Account(0,0);
 			js::mArray creater = accountMaskJson.at(c_genesisVarlitor).get_array();
 			for(auto const& val : creater)
 			{
 			    Address _addr= Address(val.get_str());
                 ret[a].manageSysVote(_addr, true, 0);
-                ret[ElectorAddress].manageSysVote(_addr, true, 0);
+                ret[SysElectorAddress].manageSysVote(_addr, true, 0);
 			}
         }
 
@@ -421,13 +409,15 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if (haveVote)
 		{
 			js::mObject _v = accountMaskJson.at(c_vote).get_obj();
+            if (!ret.count(SysElectorAddress))
+                ret[SysElectorAddress] = Account(0,0);
+            int64_t _time= 0;
 			for (auto voteData : _v){
                 Address to(voteData.first);
                 u256 ballots(voteData.second.get_str());
                 auto it = ret.find(to);
                 
                 if (it != ret.end()){
-                    //it->second.addBallot(ballots);
                     it->second.addPoll(ballots);
                 } else {
                     ret[to] = Account(0);
@@ -438,6 +428,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                     ret[a] = Account(0);
                 }
                 ret[a].addVote(std::make_pair(to, ballots));
+                ret[SysElectorAddress].set_system_poll({to, ballots, ++_time});
 			}
 		}
     }

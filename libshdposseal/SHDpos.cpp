@@ -47,6 +47,9 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader& _bi, BlockHeader const& 
 
 void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent /*= BlockHeader()*/, bytesConstRef _block /*= bytesConstRef()*/) const {
     // will verify sign and creater
+
+    auto start = utcTimeMilliSec();
+    CLATE_LOG << "SHDpos time begin " << start;
 	SealEngineBase::verify(_s, _bi, _parent, _block);
     std::vector<Address> _v;
 
@@ -56,7 +59,7 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
         if(ret == _v.end())
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
     }
-
+    CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
 }
 
 void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)
@@ -217,9 +220,11 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
     offet /= m_config.varlitorInterval;
     offet %= _vector.size();
     Address const& curr_valitor = _vector[offet];
+    //testlog << curr_valitor << m_dpos_cleint->author();
 
-    bool ret = isCurrBlock(curr_valitor);
-    return chooseBlockAddr(curr_valitor, ret);
+    return  curr_valitor == m_dpos_cleint->author();
+    //bool ret = isCurrBlock(curr_valitor);
+    //return chooseBlockAddr(curr_valitor, ret);
 }
 
 bool dev::bacd::SHDpos::chooseBlockAddr(Address const& _addr, bool _isok)
@@ -357,20 +362,7 @@ void dev::bacd::SHDpos::tryElect(uint64_t _now)
 	cdebug << BrcYellow "init0 new epoch... _last_time: " << _last_time << "|now:" << _now;
     //统计投票
     countVotes();
-    // 判断验证人集合中是否有需要惩罚的验证人，若有则踢出,返回踢出人数ret
-    size_t ret = kickoutVarlitors();
-    // 如果 候选人集合不为空，用候选人代替出块
-    if (!m_curr_candidate.empty() && ret > 0)
-    {
-        candidateReplaceVarlitors(ret);
-    }
-    else
-    {
-        cdebug << "m_curr_candidate:" << m_curr_candidate.size() << "kickoutVarlitors:" << ret;
-    }
 
-    ////打乱验证人顺序
-    disorganizeVotes();
 }
 
 

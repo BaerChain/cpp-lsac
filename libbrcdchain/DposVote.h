@@ -15,14 +15,8 @@ namespace dev
 {
 namespace brc
 {
-
-//using SysElectorAddress = ElectorAddress;    // 竞选人集合地址
-//using SysVarlitorAddress = VarlitorAddress;  // 验证人集合地址
-
-const Address SysElectorAddress  { "0x000000000000456c6563746f7241646472657373" };
 const Address SysVarlitorAddress { "000000000067656e657369735661726c69746f72" };
 const Address SysCanlitorAddress { "0000000067656e6573697343616e646964617465" };
-const Address SystemVoteBrcAddress {"000000766f746542726353797374656d41646472"};
 
 //投票类型
 enum VoteType
@@ -66,25 +60,13 @@ public:
     ~DposVote(){}
     void setState(State& _s) { m_state = _s; }
 public:
-    void verifyVote(Address const& _from, Address const& _to, size_t _type, u256 tickets = 0);
 	void verifyVote(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-	std::map<Address, u256>  VarlitorsAddress() const { return m_state.voteDate(SysVarlitorAddress); }
-	std::map<Address, u256>  CanlitorAddress() const { return m_state.voteDate(SysCanlitorAddress); }
+	const std::vector<PollData>  VarlitorsAddress() const { return m_state.vote_data(SysVarlitorAddress); }
+	const std::vector<PollData>  CanlitorAddress() const { return m_state.vote_data(SysCanlitorAddress); }
     std::pair <uint32_t, Votingstage> returnVotingstage(EnvInfo const& _envinfo) const;
-//	std::map<Address, u256>  incomeSummary(uint32_t _snapshotNum) const { return m_state.incomeSummary(SysVarlitorAddress,_snapshotNum);}
-	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;	
-    void addVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.addVote(_id, _recivedAddr, _value);} 
-//    void addincomeSummary(uint32_t _snapshotNum, Address const& _addr) { m_state};
-    void subVote(Address const& _id, Address const& _recivedAddr, u256 _value) { m_state.subVote(_id, _recivedAddr, _value);}
-    void voteLoginCandidate(Address const& _addr);    
-    void voteLogoutCandidate(Address const& _addr); 
+	void getSortElectors(std::vector<Address>& _electors, size_t _num, std::vector<Address> _ignore) const;
 
-	Secret  getVarlitorSecret(Address const& /*_add*/) { return Secret(); }
-
-
-public:
-    std::map<Address, u256> getVoteDate(Address const& _id)const { return m_state.voteDate(_id);}
-	inline std::map<Address, u256>  getElectors() const { return m_state.voteDate(SysElectorAddress); }
+	inline std::vector<PollData>  getElectors() const { return m_state.vote_data(SysElectorAddress); }
 
 private: 
     State&      m_state;

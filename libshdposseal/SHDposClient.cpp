@@ -6,6 +6,8 @@
 #include <libdevcore/Log.h>
 #include <time.h>
 #include <libdevcore/CommonIO.h>
+
+
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
@@ -31,7 +33,9 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath,
     boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,
     TransactionQueue::Limits const& _l)
-  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l)
+  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l),
+	m_nodemonitor(_host.Networkrlp(), _params.getnodemonitorIp()),
+	m_p2pHost(_host)
 {
     // will throw if we're not an dpos seal engine.
     asDposClient(*this);
@@ -77,7 +81,11 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
         //compare_exchange_strong(T& expected, T val, ...)
 
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
-            syncBlockQueue();
+		{
+			syncBlockQueue();
+			sendDataToNodeMonitor();
+		}
+
 
         if(m_needStateReset)
         {
@@ -117,7 +125,15 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
 
 }
 
-
+void dev::bacd::SHDposClient::sendDataToNodeMonitor()
+{
+	if(utcTimeMilliSec() - 30 * 1000 < bc().info().timestamp() ){
+		monitorData _data = { bc().number(), bc().info().author() ,bc().info().hash(), bc().info().gasUsed(), utcTimeMilliSec() - bc().info().timestamp(),
+							  bc().transactions().size(), pending().size(), m_p2pHost.peerCount(), utcTimeMilliSec(), m_p2pHost.peerSessionInfo()};
+		//cnote << "sendDataToNodeMonitor threadid: " << std::this_thread::get_id();
+		m_nodemonitor.setData(_data);
+	}
+}
 
 void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector) const
 {
@@ -129,14 +145,20 @@ void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _
 /// so can't use the function
 void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
 {
-	//Block _block = blockByNumber(LatestBlock);
-	std::map<Address, u256> creaters;
-	if(_type == CreaterType::Canlitor)
-		creaters = preSeal().mutableVote().CanlitorAddress();
-	else if(_type == CreaterType::Varlitor)
-		creaters = preSeal().mutableVote().VarlitorsAddress();
+	std::vector<PollData> creaters;
+	switch (_type){
+        case Canlitor:
+            creaters = preSeal().mutableVote().CanlitorAddress();
+            break;
+        case Varlitor:
+            creaters = preSeal().mutableVote().VarlitorsAddress();
+            break;
+        default:
+            break;
+	}
+    _creaters.clear();
 	for(auto const& val : creaters)
-		_creaters.push_back(val.first);
+	    _creaters.push_back(val.m_addr);
 }
 
 
@@ -212,7 +234,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 				// TODO is that needed? we have "Generating seal on" below
 				m_working.commitToSeal(bc(), m_extraData);
 				//try into next new epoch and check some about varlitor for SH-DPOS
-				dpos()->tryElect(utcTimeMilliSec());
+//				dpos()->tryElect(utcTimeMilliSec());
 			}
 			DEV_READ_GUARDED(x_working)
 			{
@@ -241,7 +263,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 					}
 					else
 						LOG(m_logger) << "Submitting block failed...";
-											  });
+				});
 				ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
 				sealEngine()->generateSeal(m_sealingInfo);
 			}

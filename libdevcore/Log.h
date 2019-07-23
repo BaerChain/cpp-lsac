@@ -88,6 +88,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(
 
 #define testlog LOG(dev::g_warnLogger::get())
 
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_lateLogger,
+     boost::log::sources::severity_channel_logger_mt<>,
+     (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "latecy"))
+#define CLATE_LOG LOG(dev::g_lateLogger::get())
+
 
 struct LoggingOptions
 {

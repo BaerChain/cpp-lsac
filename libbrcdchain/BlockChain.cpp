@@ -4,7 +4,6 @@
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 #include "State.h"
-#include "SecureTrieDB.h"
 #include "ThreadPackTransactions.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
@@ -324,7 +323,6 @@ void BlockChain::close() {
     m_cacheUsage.clear();
     m_inUse.clear();
     m_lastBlockHashes->clear();
-
 }
 
 void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, unsigned)> const &_progress) {
@@ -397,6 +395,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         }
         catch (...) {
             // Failed to import - stop here.
+            cerror <<  "rebuild blocks error.";
             break;
         }
 
@@ -439,6 +438,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
+                CLATE_LOG << "import block laste1 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
                 //DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
@@ -452,6 +452,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions),
                           std::back_inserter(goodTransactions));
                 ++count;
+                CLATE_LOG << "import block laste2 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
             }
             catch (dev::brc::AlreadyHaveBlock const &) {
                 cwarn << "ODD: Import queue contains already imported block";
@@ -479,7 +480,11 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                     m_onBad(ex);
                 // NOTE: don't reimport since the queue should guarantee everything in the right order.
                 // Can't continue - chain  bad.
+                cwarn << "bad block: " << ex.what();
                 badBlocks.push_back(block.verified.info.hash());
+            }
+            catch (...){
+                cerror << "unkown exception..";
             }
         } while (false);
     }
@@ -704,8 +709,8 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
             std::ostringstream os;
             os << "size : " << itr.size() << "  ";
             for (auto detail : itr) {
-                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: "
-                   << detail.info.parentHash() << " |";
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash().abridged() << " p: "
+                   << detail.info.parentHash().abridged() << " |";
             }
             cwarn << os.str();
         }
@@ -789,7 +794,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     if (_block.info.number() < info().number() - m_params.config_blocks && info().number() > m_params.config_blocks) {
         cerror << " this block is too old , block number: " << _block.info.number() << " hash : " << _block.info.hash()
                << " , will be remove.";
-        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+//        BOOST_THROW_EXCEPTION(BlockIsTooOld());
+        return false;
     }
 
     if (info().number() == 0 || m_cached_blocks.size() == 0) {
@@ -802,8 +808,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         for (auto itr : data) {
             std::ostringstream os;
             for (auto detail : itr) {
-                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash() << " p: "
-                   << detail.info.parentHash() << " |";
+                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash().abridged() << " p: "
+                   << detail.info.parentHash().abridged() << " |";
             }
             cwarn << os.str();
         }
@@ -1049,7 +1055,7 @@ void BlockChain::checkBlockTimestamp(BlockHeader const &_header) const {
     // Check it's not crazy
     if (_header.timestamp() > utcTimeMilliSec() && !m_params.allowFutureBlocks) {
         cwarn << _header.hash() << " : Future time " << _header.timestamp()
-              << " (now at " << utcTimeMilliSec() << ")";
+                            << " (now at " << utcTimeMilliSec() << ")";
         // Block has a timestamp in the future. This is no good.
         BOOST_THROW_EXCEPTION(FutureTime());
     }
@@ -1074,10 +1080,9 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         _performanceLogger.onStageFinished("collation");
 
         blocksWriteBatch->insert(toSlice(_block.info.hash()), db::Slice(_block.block));
-        DEV_READ_GUARDED(x_details)
-            extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),
-                                     (db::Slice) dev::ref(
-                                             m_details[_block.info.parentHash()].rlp()));
+        DEV_READ_GUARDED(x_details)extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),
+                                                            (db::Slice) dev::ref(
+                                                                    m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
         extrasWriteBatch->insert(
@@ -1106,7 +1111,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
                                                              _totalDifficulty == details(last).totalDifficulty &&
                                                              _block.info.gasUsed() > info(last).gasUsed())) {
-//        cwarn << "switch from " << m_lastBlockNumber << " to " << _block.info.number();
+//    {
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
@@ -1180,9 +1185,9 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
                       << (details(_block.info.parentHash()).children.size() - 1)
                       << " siblings. Route: " << route;
     } else {
-        LOG(m_logger) << "   Imported but not best (oTD: " << details(last).totalDifficulty
-                      << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
-                      << _block.info.number() << ")";
+       cwarn << "   Imported but not best (oTD: " << details(last).totalDifficulty
+                            << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
+                            << _block.info.number() << ")";
     }
 
     try {
@@ -1451,8 +1456,7 @@ static unsigned getHashSize(unordered_map<K, T> const &_map) {
 
 void BlockChain::updateStats() const {
     m_lastStats.memBlocks = 0;
-    DEV_READ_GUARDED(x_blocks)
-        for (auto const &i: m_blocks)
+    DEV_READ_GUARDED(x_blocks)for (auto const &i: m_blocks)
             m_lastStats.memBlocks += i.second.size() + 64;
     DEV_READ_GUARDED(x_details)m_lastStats.memDetails = getHashSize(m_details);
     size_t logBloomsSize = 0;
@@ -1549,8 +1553,7 @@ void BlockChain::checkConsistency() {
 
 void BlockChain::clearCachesDuringChainReversion(unsigned _firstInvalid) {
     unsigned end = m_lastBlockNumber + 1;
-    DEV_WRITE_GUARDED(x_blockHashes)
-        for (auto i = _firstInvalid; i < end; ++i)
+    DEV_WRITE_GUARDED(x_blockHashes)for (auto i = _firstInvalid; i < end; ++i)
             m_blockHashes.erase(i);
     DEV_WRITE_GUARDED(
             x_transactionAddresses)m_transactionAddresses.clear(); // TODO: could perhaps delete them individually?
@@ -1747,6 +1750,8 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
                                          ImportRequirements::value _ir) const {
     VerifiedBlockRef res;
     BlockHeader h;
+    Timer cost_timer;
+    CLATE_LOG << "verifyBlock time1 " << cost_timer.elapsed() * 1000 << " ms";
     try {
         h = BlockHeader(_block);
         if (!!(_ir & ImportRequirements::PostGenesis) && (!h.parentHash() || h.number() == 0))
@@ -1774,6 +1779,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
         throw;
     }
 
+    CLATE_LOG << "verifyBlock time2 " << cost_timer.elapsed() * 1000 << " ms";
     RLP r(_block);
     unsigned i = 0;
     if (_ir & (ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
@@ -1802,69 +1808,83 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-    if (_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures)) {
+    CLATE_LOG << "verifyBlock time3 " << cost_timer.elapsed() * 1000 << " ms";
+    if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
+	{
 
-        if (r[1].itemCount() > c_maxSyncTransactions) {
-            BOOST_THROW_EXCEPTION(TooMuchTransaction()
-                                          << errinfo_transactionIndex(r[1].itemCount())
-                                          << errinfo_block(_block.toBytes()));
-        }
+        if(r[1].itemCount() > c_maxSyncTransactions)
+		{
+			BOOST_THROW_EXCEPTION(TooMuchTransaction() 
+								  << errinfo_transactionIndex(r[1].itemCount())
+								  << errinfo_block(_block.toBytes()));
+		}
 
-        if (r[1].itemCount() > 300) {
-            // more thread to do
-            size_t th_num = r[1].itemCount() / 200 + 1;   //test for : the transaction num:150 for one thread todo
-            th_num = (th_num % 2 != 0) ? th_num - 1 : th_num;
-            th_num = th_num > 8 ? 8 : th_num;
-            //th_num = 6;
-            std::vector<bytes> v_trxb;
-            for (auto val : r[1])
-                v_trxb.push_back(val.data().toBytes());
-            std::vector<Transaction> ret_t;
-            Task<bytes, Transaction> task_t(th_num);
+        if(r[1].itemCount() > 300)
+		{
+			// more thread to do
+			size_t th_num = r[1].itemCount() / 200 + 1;   //test for : the transaction num:150 for one thread todo
+			th_num = (th_num % 2 != 0) ? th_num - 1 : th_num;
+			th_num = th_num > 8 ? 8 : th_num;
+			//th_num = 6;
+			std::vector<bytes> v_trxb;
+               for(auto val : r[1])
+				v_trxb.push_back(val.data().toBytes());
+			std::vector<Transaction> ret_t;
+			Task<bytes, Transaction> task_t(th_num);
 
-            try {
-                task_t.go_task(v_trxb, ret_t, [&_ir](bytes const &b) {
-                    return Transaction(b,
-                                       (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything
-                                                                                         : CheckTransaction::None);
-                });
-            }
-            catch (Exception &ex) {
-                ex << errinfo_phase(1);
-                ex << errinfo_transactionIndex(i);
-                addBlockInfo(ex, h, _block.toBytes());
-                if (_onBad)
-                    _onBad(ex);
-                throw;
-            }
-            res.transactions.clear();
-            res.transactions = ret_t;
-        } else {
-            double p_time = 0;
-            double v_time = 0;
-            for (RLP const &tr : r[1]) {
-                bytesConstRef d = tr.data();
-                try {
-                    Transaction t(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything
-                                                                                       : CheckTransaction::None);
-                    m_sealEngine->verifyTransaction(_ir, t, h,
-                                                    0); // the gasUsed vs blockGasLimit is checked later in enact function
-                    res.transactions.push_back(t);
-                }
-                catch (Exception &ex) {
-                    ex << errinfo_phase(1);
-                    ex << errinfo_transactionIndex(i);
-                    ex << errinfo_transaction(d.toBytes());
-                    addBlockInfo(ex, h, _block.toBytes());
-                    if (_onBad)
-                        _onBad(ex);
-                    throw;
-                }
-                ++i;
-            }
-        }
+            try 
+			{
+			    task_t.go_task(v_trxb, ret_t, [&_ir](bytes const& b){
+				    return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+			    });
 
-    }
+			    for(auto &itr : ret_t){
+                    m_sealEngine->verifyTransaction(_ir, itr, h, 0);
+			    }
+
+
+			}
+            catch(Exception& ex)
+			{
+				ex << errinfo_phase(1);
+				ex << errinfo_transactionIndex(i);
+				addBlockInfo(ex, h, _block.toBytes());
+				if(_onBad)
+					_onBad(ex);
+				throw;
+			}
+			res.transactions.clear();
+			res.transactions = ret_t;
+		}
+        else
+		{
+			double p_time = 0;
+			double v_time = 0;
+			for(RLP const& tr : r[1])
+			{
+				bytesConstRef d = tr.data();
+				try
+				{
+					Transaction t(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
+					m_sealEngine->verifyTransaction(_ir, t, h, 0); // the gasUsed vs blockGasLimit is checked later in enact function
+					res.transactions.push_back(t);
+				}
+				catch(Exception& ex)
+				{
+					ex << errinfo_phase(1);
+					ex << errinfo_transactionIndex(i);
+					ex << errinfo_transaction(d.toBytes());
+					addBlockInfo(ex, h, _block.toBytes());
+					if(_onBad)
+						_onBad(ex);
+					throw;
+				}
+				++i;
+			}
+		}
+		
+	}
+    CLATE_LOG << "verifyBlock time4 " << cost_timer.elapsed() * 1000 << " ms";
     res.block = bytesConstRef(_block);
     return res;
 }

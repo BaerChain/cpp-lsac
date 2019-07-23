@@ -236,6 +236,7 @@ int main(int argc, char **argv) {
 
 	fs::path accountPath;
     string accountJSON;
+    string nodemonitorIP;
 
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
@@ -247,6 +248,8 @@ int main(int argc, char **argv) {
                     "Configure specialised blockchain using given JSON information\n");
     addClientOption("accountJson", po::value<string>()->value_name("<file>"),
         "AccountJson specialised blockchain using given JSON information\n");
+    addClientOption("nodemonitor,n",po::value<string>(),
+        "Set the data processing server ip to open the node push \n");
     addClientOption("mode,o", po::value<string>()->value_name("<full/peer>"),
                     "Start a full node or a peer node (default: full)\n");
     addClientOption("ipc", "Enable IPC server (default: on)");
@@ -316,6 +319,8 @@ int main(int argc, char **argv) {
                         "Connect to the given remote port (default: 30303)");
     addNetworkingOption("network-id", po::value<unsigned>()->value_name("<n>"),
                         "Only connect to other hosts with this network id");
+	addNetworkingOption("node-key", po::value<string>()->value_name("<node_key>"),
+						"Set own node-key and node_id to connect other (default: none and random create new)");
 #if BRC_MINIUPNPC
     addNetworkingOption(
         "upnp", po::value<string>()->value_name("<on/off>"), "Use UPnP for NAT (default: on)");
@@ -535,7 +540,6 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
-    
     if (vm.count("extra-data")) {
         try {
             extraData = fromHex(vm["extra-data"].as<string>());
@@ -572,6 +576,11 @@ int main(int argc, char **argv) {
             cerr << "Bad --bid option: " << vm["bid"].as<string>() << "\n";
             return -1;
         }
+    }
+    if (vm.count("nodemonitor"))
+    {
+        nodemonitorIP = vm["nodemonitor"].as<string>();
+        std::cout << "ip = " << nodemonitorIP << std::endl;
     }
     if (vm.count("listen-ip")) {
         listenIP = vm["listen-ip"].as<string>();
@@ -724,7 +733,12 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
-    
+
+    if (!nodemonitorIP.empty())
+    {
+        chainParams.savenodemonitorIP(nodemonitorIP);
+    }
+
     setupLogging(loggingOptions);
 
     if (!privateChain.empty()) {
@@ -826,6 +840,11 @@ int main(int argc, char **argv) {
 
     auto nodesState = contents(getDataDir() / fs::path("network.rlp"));
     auto caps = set<string>{"brc"};
+    if(vm.count("node-key")){
+		//Secret _k = Secret(vm["node-key"].as<string>());
+		auto node_key = dev::Secret(dev::crypto::from_base58(vm["node-key"].as<string>()));
+		WebThreeDirect::replace_node(nodesState, node_key);
+	}
 
     if (testingMode)
         chainParams.allowFutureBlocks = true;
@@ -1095,8 +1114,8 @@ int main(int argc, char **argv) {
     if (ipc) {
         using FullServer = ModularServer<
                 rpc::BrcFace,
-                rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
-                rpc::AdminBrcFace, rpc::AdminNetFace,
+                rpc::NetFace, rpc::Web3Face, /*rpc::PersonalFace,*/
+                /*rpc::AdminBrcFace, rpc::AdminNetFace,*/
                 rpc::DebugFace, rpc::TestFace
         >;
 
@@ -1110,9 +1129,9 @@ int main(int argc, char **argv) {
 
         jsonrpcIpcServer.reset(new FullServer(
                 brcFace, new rpc::Net(web3),
-                new rpc::Web3(web3.clientVersion()), new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
-                new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
-                new rpc::AdminNet(web3, *sessionManager.get()),
+                new rpc::Web3(web3.clientVersion()), /*new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),*/
+                //new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
+               // new rpc::AdminNet(web3, *sessionManager.get()),
                 new rpc::Debug(*web3.brcdChain()),
                 testBrc
         ));

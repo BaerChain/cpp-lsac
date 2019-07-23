@@ -299,6 +299,9 @@ public:
 
 	unsigned int exc_transaction_time(){ return m_total_seal_time; }
 
+	///
+
+
 private:
     SealEngineFace* sealEngine() const;
 

@@ -259,7 +259,7 @@ namespace dev {
                 }
             }
 
-            bool exchange_plugin::commit(int64_t version, const h256 &block_hash, const h256& root_hash) {
+             bool exchange_plugin::commit(int64_t version, const h256 &block_hash, const h256& root_hash) {
                 check_db();
 
                 db->with_write_lock([&]() {
@@ -297,7 +297,6 @@ namespace dev {
                 db->undo_all();
                 return true;
             }
-
 
             std::vector<exchange_order>
             exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {

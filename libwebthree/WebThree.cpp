@@ -113,3 +113,26 @@ void WebThreeDirect::addPeer(NodeSpec const &_s, PeerType _t) {
     m_net.addPeer(_s, _t);
 }
 
+void dev::WebThreeDirect::replace_node(bytes &_b, Secret const& _key){
+    if(!_key)
+		return;
+	RLP r(_b);
+	if(r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3 && _key != Secret()){
+		cwarn << " node_id will  be replaced by new nodeId...";
+		if(_key == Secret(r[1].toBytes()))
+			return;
+		RLPStream rlp(3);
+		rlp << dev::p2p::c_protocolVersion << _key.ref();
+		RLPStream network;
+		int count = r[2].itemCount();
+        for (auto i : r[2]){
+			network.appendRaw(i.data(), i.itemCount());
+        }
+		if(count){
+			rlp.appendList(count);
+			rlp.appendRaw(network.out(), count);
+		}
+		rlp.swapOut(_b);
+	}
+}
+

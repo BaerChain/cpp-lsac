@@ -161,7 +161,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
         DEV_GUARDED(x_info)
         {
             m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-            cwarn << "Latency: "
+            CLATE_LOG << "Latency: "
                         << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count()
                         << " ms";
         }
@@ -210,8 +210,10 @@ void Session::send(bytes&& _msg)
     if (!checkPacket(msg))
         cnetlog << "INVALID PACKET CONSTRUCTED!";
 
-    if (!m_socket->ref().is_open())
+    if (!m_socket->ref().is_open()){
+        CLATE_LOG << "socker is not open. " << m_peer->id;
         return;
+    }
 
     bool doWrite = false;
     DEV_GUARDED(x_framing)
@@ -248,8 +250,10 @@ void Session::write()
             DEV_GUARDED(x_framing)
             {
                 m_writeQueue.pop_front();
-                if (m_writeQueue.empty())
+                if (m_writeQueue.empty()){
+                    CLATE_LOG << "time write : " <<  utcTimeMilliSec();
                     return;
+                }
             }
             write();
         });

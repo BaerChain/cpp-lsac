@@ -110,6 +110,7 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
 	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
+    // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
     // TODO: check.
@@ -121,8 +122,6 @@ void Block::resetCurrent(int64_t _timestamp) {
 
     m_committedToSeal = false;
     m_vote.setState(m_state);
-	m_sealed_transactions.clear();
-	m_total_seal_time = 0;
 
 //    performIrregularModifications();
     updateBlockhashContract();
@@ -400,7 +399,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 			}
 		}
 		if(++try_times >= 2 || is_break){
-            break;     // the bad transation run_times is max and break 
+            break;     // the bad transation run_times is max and break
         }
     }
     if(_num > 0){

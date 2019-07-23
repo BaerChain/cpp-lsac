@@ -42,6 +42,7 @@ void OverlayDB::commit()
             {
                 if (i.second.second)
                     writeBatch->insert(toSlice(i.first), toSlice(i.second.first));
+//              cnote << i.first << "#" << m_main[i.first].second;
             }
             for (auto const& i: m_aux)
                 if (i.second.second)

@@ -26,15 +26,6 @@ namespace bpo = boost::program_options;
 namespace bfs1 = boost::filesystem;
 using namespace dev::brc;
 
-// bool creation = false;
-//	Address from;
-//	Address to;
-//	u256 value;
-//	bytes data;
-//	u256 nonce = Invalid256;
-//	u256 gas = Invalid256;
-//	u256 gasPrice = Invalid256;
-
 
 #define DATA_KEY_FROM "from"
 #define DATA_KEY_TO "to"
@@ -43,6 +34,7 @@ using namespace dev::brc;
 #define DATA_KEY_VALUE "value"
 #define DATA_KEY_GAS "gas"
 #define DATA_KEY_Price "gasPrice"
+#define DATA_KEY_ChainId "chainId"
 
 
 namespace js = json_spirit;
@@ -53,13 +45,14 @@ static size_t nonce = 0;
 
 bool validate_obj(const json_spirit::mObject &obj) {
     requireJsonFields(obj, "data",
-                      {{DATA_KEY_FROM,  {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_TO,    {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_VALUE, {{js::str_type}, JsonFieldPresence::Optional}},
-                       {DATA_KEY_DATA,  {{js::obj_type}, JsonFieldPresence::Optional}},
-                       {DATA_KEY_NONCE, {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_GAS,   {{js::str_type}, JsonFieldPresence::Required}},
-                       {DATA_KEY_Price, {{js::str_type}, JsonFieldPresence::Required}}}
+                      {{DATA_KEY_FROM,      {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_TO,        {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_VALUE,     {{js::str_type}, JsonFieldPresence::Optional}},
+                       {DATA_KEY_DATA,      {{js::obj_type}, JsonFieldPresence::Optional}},
+					   {DATA_KEY_ChainId,   {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_NONCE,     {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_GAS,       {{js::str_type}, JsonFieldPresence::Required}},
+                       {DATA_KEY_Price,     {{js::str_type}, JsonFieldPresence::Required}}}
 
     );
     return true;
@@ -84,6 +77,7 @@ struct trx_source {
     u256 nonce = Invalid256;
     u256 gas = Invalid256;
     u256 gasPrice = Invalid256;
+	u256 chainId = -4;
     std::vector<std::shared_ptr<operation>> ops;
 	Contract isContract = Contract::null;
 };
@@ -169,7 +163,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
                 tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
-                tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
+				tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
+				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));   // must same with genesis chainId
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
                     auto type = op_obj["type"].get_int();
@@ -179,7 +174,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                              Address(op_obj["m_from"].get_str()),
                                                              Address(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
-															 size_t(op_obj["m_vote_numbers"].get_int())
+															 u256(op_obj["m_vote_numbers"].get_str())
                                                              );
                             tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
                             break;
@@ -221,14 +216,14 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 							tx.data = fromHex(op_obj["contract"].get_str());
 							tx.isContract = trx_source::Contract::execute;
                             break;
-						}   
+						}
                         case changeMiner:{
                             std::vector<Signature> agreeMsgs;
                             for(auto &nodeMsg : op_obj["m_agreeMsg"].get_array()){
                                 agreeMsgs.push_back(Signature(nodeMsg.get_str()));
                             }
                             Signature signature(op_obj["m_signature"].get_str());
-                            
+
 							auto changeMiner_op = new changeMiner_operation( (op_type)type,
                                                                               Address(op_obj["m_before"].get_str()),
                                                                               Address(op_obj["m_after"].get_str()),
@@ -245,7 +240,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                                                                               );
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
-						}  
+						}
 					}
                 }
                 trx_datas.push_back(tx);
@@ -358,8 +353,9 @@ void write_simple_to_file(const bfs1::path &path) {
 void generate_key(const std::string &seed){
     auto key_pair = KeyPair::create();
     auto sec = key_pair.secret();
-    std::cout << "private key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
-    std::cout << "address : " << key_pair.address() << std::endl;
+    std::cout << "private-key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
+    std::cout << "address    : " << key_pair.address() << std::endl;
+    std::cout << "public-key : " << toString(key_pair.pub())<<std::endl;
 
 }
 

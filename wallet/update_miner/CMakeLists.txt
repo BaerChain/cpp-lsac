@@ -1,5 +1,5 @@
 add_executable(updateMiner main.cpp)
-target_link_libraries( updateMiner  ${Boost_LIBRARIES} devcrypto devcore brcdchain web3jsonrpc ${OPENSSL_LIBRARIES} Boost::program_options ${JSON_RPC_CPP_CLIENT_LIBRARY} Jsoncpp)
+target_link_libraries( updateMiner  ${Boost_LIBRARIES} devcrypto devcore brcdchain web3jsonrpc ${OPENSSL_LIBRARIES} Boost::program_options ${JSON_RPC_CPP_CLIENT_LIBRARY} ${JSONCPP_LIBRARY})
 
 target_include_directories(updateMiner
         PUBLIC

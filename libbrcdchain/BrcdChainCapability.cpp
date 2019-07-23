@@ -404,7 +404,7 @@ bool BrcdChainCapability::ensureInitialised()
     {
         // First time - just initialise.
         m_latestBlockSent = m_chain.currentHash();
-        LOG(m_logger) << "Initialising: latest=" << m_latestBlockSent;
+        LOG(m_logger) << "Initialising: latest= " << m_latestBlockSent;
 
         m_transactionsSent = m_tq.knownTransactions();
         return true;
@@ -431,45 +431,55 @@ void BrcdChainCapability::completeSync()
 
 void BrcdChainCapability::doBackgroundWork()
 {
-    ensureInitialised();
-    auto h = m_chain.currentHash();
-    // If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
-    if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
-    {
-        if (m_newTransactions)
+    try{
+        ensureInitialised();
+        auto h = m_chain.currentHash();
+        // If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
+        if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
         {
-            m_newTransactions = false;
-            maintainTransactions();
+            if (m_newTransactions)
+            {
+                m_newTransactions = false;
+                maintainTransactions();
+            }
+            if (m_newBlocks)
+            {
+                m_newBlocks = false;
+                maintainBlocks(h);
+            }
         }
-        if (m_newBlocks)
+
+        time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+        if (now - m_lastTick >= 1)
         {
-            m_newBlocks = false;
-            maintainBlocks(h);
+            m_lastTick = now;
+            for (auto const& peer : m_peers)
+            {
+                time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+
+                if (now - peer.second.lastAsk() > 10 && peer.second.isConversing()){
+                    // timeout
+                    cwarn << "disconnect node : " << peer.first;
+                    m_host->disconnect(peer.first, p2p::PingTimeout);
+                }
+            }
         }
+
+        if (m_backgroundWorkEnabled)
+            m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
     }
-    if(m_newSend)
-	{
-		m_newSend = false;
-		sendNewBlock();
-	}
-
-    time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-    if (now - m_lastTick >= 1)
-    {
-        m_lastTick = now;
-        for (auto const& peer : m_peers)
-        {
-            time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-
-            if (now - peer.second.lastAsk() > 10 && peer.second.isConversing())
-                // timeout
-                m_host->disconnect(peer.first, p2p::PingTimeout);
-        }
+    catch (const std::exception &e){
+        cwarn << "exception : " << e.what() ;
+    }
+    catch (const boost::exception &e){
+        cwarn << "boost exception : " << boost::diagnostic_information(e);
+    }
+    catch (...){
+        cwarn << "doBackgroundWork exception .";
     }
 
-    if (m_backgroundWorkEnabled)
-		m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
-	    //m_host->scheduleExecution(c_backroundWorkPeriodMs, [this](){ doBackgroundWork(); });
+
+
 }
 
 void BrcdChainCapability::maintainTransactions()
@@ -603,35 +613,38 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
     // Send any new blocks.
     auto detailsFrom = m_chain.details(m_latestBlockSent);
     auto detailsTo = m_chain.details(_currentHash);
-    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
+//    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
     {
         if (diff(detailsFrom.number, detailsTo.number) < 20)
         {
             // don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
-            LOG(m_logger) << "Sending a new block (current is " << _currentHash << ", was "
-                          << m_latestBlockSent << ")";
-			if(m_bq.inSended(_currentHash))
-				return;
+            CLATE_LOG << "Sending a new block (current is " << _currentHash << ", was "
+                           << m_latestBlockSent << ")"  << " height " << detailsTo.number;
+
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-            auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
+            auto s = randomSelection(25, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
-            for (NodeID const& peerID : get<0>(s))
+            bool isSend = false;
+            for (NodeID const& peerID : get<0>(s)){
                 for (auto const& b: blocks)
                 {
                     RLPStream ts;
                     m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
-                        .appendRaw(m_chain.block(b), 1)
-                        .append(m_chain.details(b).totalDifficulty);        
+                            .appendRaw(m_chain.block(b), 1)
+                            .append(m_chain.details(b).totalDifficulty);
 
                     auto itPeer = m_peers.find(peerID);
                     if (itPeer != m_peers.end())
                     {
                         m_host->sealAndSend(peerID, ts);
-                        //itPeer->second.clearKnownBlocks();
+                        itPeer->second.clearKnownBlocks();
+                        isSend = true;
                     }
                 }
+            }
+
             for (NodeID const& peerID : get<1>(s))
             {
                 RLPStream ts;
@@ -647,8 +660,13 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                 if (itPeer != m_peers.end())
                 {
                     m_host->sealAndSend(peerID, ts);
-                    //itPeer->second.clearKnownBlocks();
+                    itPeer->second.clearKnownBlocks();
+                    isSend = true;
                 }
+            }
+            if(!isSend){
+                cwarn << "send new block error. (current is " << _currentHash << ", was "
+                      << m_latestBlockSent << ")"  << " height " << detailsTo.number;
             }
         }
         m_latestBlockSent = _currentHash;
@@ -992,6 +1010,7 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 	
     for (auto b: _blocks)
     {
+        Timer _timer;
 		BlockHeader _h = BlockHeader(b.m_block);
 		h256 _hash = _h.hash();
         if(m_bq.inSended(_hash))
@@ -999,9 +1018,16 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 		auto s = randomSelection(100, [&](BrcdChainPeer const& _peer){
 			return !_peer.isBlockKnown(_hash);
 								 });
+		for(auto itr :  get<0>(s)){
+            cwarn << "send chose " << itr ;
+		}
+		for(auto itr : get<1>(s)){
+            cwarn << "send allow " << itr ;
+		}
+
 		for(NodeID const& peerID : get<0>(s))
 		{
-			Timer _timer;
+
 			RLPStream ts;
 			m_host->prep(peerID, name(), ts, NewBlockPacket, 2)
 				.appendRaw(b.m_block, 1)
@@ -1014,6 +1040,8 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				itPeer->second.markBlockAsKnown(_hash);
 			}
 		}
+        cwarn << "send chose time" << _timer.elapsed()* 1000 << " ms";
+		_timer.restart();
 
 		for(NodeID const& peerID : get<1>(s))
 		{
@@ -1029,8 +1057,11 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
 				m_host->sealAndSend(peerID, ts);
 			}
 		}
+        cwarn << "send allow time" << _timer.elapsed() * 1000 << " ms";
+        _timer.restart();
 		m_latestBlockSent = _hash;
 		m_bq.insertSendedHash(_hash);
+        cwarn << "time:" << utcTimeMilliSec() << " send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
     }
 	m_bq.clearVerifiedBlocks();
 }

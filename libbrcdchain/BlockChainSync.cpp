@@ -737,6 +737,7 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
 	if(peer.isBlockKnown(h))
 		return;
     peer.markBlockAsKnown(h);
+    CLATE_LOG << " from id : " << _peerID << " time:" << utcTimeMilliSec() << " get block time " << (utcTimeMilliSec() - info.timestamp()) << " ms " << " height " << info.number() ;
     unsigned blockNumber = static_cast<unsigned>(info.number());
     if (blockNumber > (m_lastImportedBlock + 1))
     {

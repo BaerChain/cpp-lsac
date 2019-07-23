@@ -157,7 +157,7 @@ struct Change
     {
         vote = std::make_pair(_vote.first, _vote.second);
     }
-    Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(Vote), address(_addr)
+    Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(SysVoteData), address(_addr)
     {
         sysVotedate = std::make_pair(_sysVote.first, _sysVote.second);
     }
@@ -371,7 +371,7 @@ public:
     void addPoll(Address const& _addr, u256 const& _value);
     void subPoll(Address const& _adddr, u256 const& _value);
 
-	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, int64_t block_num);
+	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, EnvInfo const& info);
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
@@ -403,21 +403,14 @@ public:
 
 
 private:
-    //投票
-    void addVote(Address const& _id, Address const& _recivedAddr, u256 _value);
-    void initBallot(Address const& _id, Address const& _recivedAddr, u256 _value);
-    //撤销投票
-    void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
-    //获取指定地址的voteDate
-    std::map<Address, u256> voteDate(Address const& _id) const;
-    //竞选人，验证人管理
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
 
     ///new interface
     void add_vote(Address const& _id, PollData const& p_data);
     void sub_vote(Address const& _id, PollData const& p_data);
-    PollData vote_data(Address const& _addr) const ;
+    const PollData poll_data(Address const& _addr, Address const& _recv_addr) const;
+    const std::vector<PollData> vote_data(Address const& _addr) const ;
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);

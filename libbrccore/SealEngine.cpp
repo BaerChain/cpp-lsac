@@ -59,12 +59,15 @@ void SealEngineFace::verify(Strictness _s, BlockHeader const& _bi, BlockHeader c
 
     if (_s != CheckNothingNew)
     {
-        //取消难度检查
+        if(_bi.chain_id() != chainParams().chainID){
+			std::string ret = " error chainid!  expected:" + toString(_bi.chain_id()) + "  got:" + std::to_string(chainParams().chainID);
+			//cerror << " verify field." << ret;
+			BOOST_THROW_EXCEPTION(InvalidSignature() << errinfo_comment(ret));
+		}
         if (_bi.difficulty() < chainParams().minimumDifficulty)
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
                     bigint(chainParams().minimumDifficulty), bigint(_bi.difficulty())));
-        //保留消耗验证
         if (_bi.gasLimit() < chainParams().minGasLimit)
             BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(
                                       bigint(chainParams().minGasLimit), bigint(_bi.gasLimit())));
@@ -141,12 +144,15 @@ void SealEngineFace::verifyTransaction(ImportRequirements::value _ir, Transactio
 
     // Avoid transactions that would take us beyond the block gas limit.
     if (_gasUsed + (bigint)_t.gas() > _header.gasLimit()){
-		testlog << "except:" << " _gasused:" << _gasUsed << " _t.gas():" << _t.gas() << " _header.gasLimit():" << _header.gasLimit() << " autor:"<< toString(_header.author());
+
         BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementErrorComment(
                 (bigint)(_header.gasLimit() - _gasUsed), (bigint)_t.gas(),
                 string("_gasUsed + (bigint)_t.gas() > _header.gasLimit()")));
     }
 
+	if(_ir & ImportRequirements::TransactionSignatures){
+		_t.checkChainId(chainParams().chainID);
+	}
 
 }
 

@@ -933,17 +933,11 @@ string dev::rpc::exceptionToErrorMessage()
 		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
 			ret += std::string(*_error);
 	}
-    catch(ChangeMinerFailed const& ex)
-    {
-        ret = "ChangeMiner is error";
-        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-        {
-            ret += std::string(*_error);
-        }
-    }
-	catch (InvalidSignature const&)
+	catch (InvalidSignature const&ex)
 	{
 		ret = "Invalid transaction signature.";
+		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+			ret += std::string(*_error);
 	}
 	// Acount holder exceptions
 	catch (AccountLocked const&)
@@ -957,6 +951,9 @@ string dev::rpc::exceptionToErrorMessage()
 	catch (TransactionRefused const&)
 	{
 		ret = "Transaction rejected by user.";
+	}
+	catch (ChangeMinerFailed const &e){
+        ret = "Replace witness operations cannot be batch operated.";
 	}
 	catch (...)
 	{

@@ -464,12 +464,6 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-
-
-
-
-
-
 	static const unsigned c_maxSyncTransactions = 1000;
 
     mutable Logger m_logger{createLogger(VerbosityDebug, "chain")};

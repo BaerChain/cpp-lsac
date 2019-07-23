@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(bearChain VERSION 1.0)
+project(baerChain VERSION 1.0)
 
 
 include(ExternalProject)
@@ -7,6 +7,9 @@ include(CheckTypeSize)
 include(CheckSymbolExists)
 set(CMAKE_CXX_STANDARD 14)
 #add_definitions(-fvisibility=hidden)
+
+
+
 
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
@@ -17,6 +20,7 @@ endif()
 ##add cmake file directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 message(STATUS "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME} ${APPLE}")
+
 
 find_package(Boost 1.65.1 REQUIRED COMPONENTS
         thread
