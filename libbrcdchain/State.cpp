@@ -22,6 +22,7 @@ namespace fs = boost::filesystem;
 
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
+#define PRECISION 100000000
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -562,7 +563,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 	u256 _totalSum;
 	if (_pendingOrderBuyType == order_buy_type::only_price)
 	{
-		_totalSum = _pendingOrderNum * _pendingOrderPrice;
+		_totalSum = _pendingOrderNum * _pendingOrderPrice / PRECISION;
 	}
 	else {
 		_totalSum = _pendingOrderPrice;
@@ -592,7 +593,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
                              _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
         CombinationNum += _result_order.amount;
-        CombinationTotalAmount += _result_order.amount * _result_order.price;
+        CombinationTotalAmount += _result_order.amount * _result_order.price / PRECISION;
     }
 
 	if (_pendingOrderBuyType == order_buy_type::only_price)
@@ -721,8 +722,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
         // 2、转账给他人
         //subFBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
         //subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
+		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
 		subFBalance(_to, _toPendingOrderNum);
 		addBalance(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
@@ -730,8 +731,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                _pendingOrderBuyTypes == order_buy_type::all_price) {
         //subFBRC(_from, _toPendingOrderPrice * _toPendingOrderNum);
 		//subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
+		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
 		subFBalance(_to, _toPendingOrderNum);
 		addBalance(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
@@ -739,8 +740,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                _pendingOrderBuyTypes == order_buy_type::only_price) {
         //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderPrice * _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum);
+		subBalance(_from, _toPendingOrderPrice * _toPendingOrderNum / PRECISION);
+		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum / PRECISION);
 		subFBRC(_to, _toPendingOrderNum);
 		addBRC(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::buy &&
@@ -748,8 +749,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                _pendingOrderBuyTypes == order_buy_type::all_price) {
         //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
 		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
+		subBalance(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
 		subFBRC(_to, _toPendingOrderNum);
 		addBRC(_from, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::sell &&
@@ -758,8 +759,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
         //subFBRC(_from, _toPendingOrderNum);
 		//subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
+        subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
         subBRC(_from, _toPendingOrderNum);
         addBRC(_to, _toPendingOrderNum);
     } else if (_pendingOrderType == order_type::sell &&
@@ -770,8 +771,8 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
 		//subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
 		subBalance(_from, _toPendingOrderNum);
 		addBalance(_to, _toPendingOrderNum);
-		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
+		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
     }
 }
 
@@ -1689,7 +1690,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	std::string _num = "2900000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
-	std::map<u256, u256> _map = { {u256(1), systenCookie} };
+	std::map<u256, u256> _map = { {u256Safe(std::string("100000000")), systenCookie} };
 	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
 	std::vector<order> _v = { {_order} };
 
