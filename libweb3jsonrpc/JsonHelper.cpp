@@ -167,7 +167,6 @@ namespace dev {
             return res;
         }
 
-/***************************************************************************/
         Json::Value toJson(dev::brc::LocalisedTransactionReceipt const &_t) {
             Json::Value res;
             res["transactionHash"] = toJS(_t.hash());
@@ -212,7 +211,6 @@ namespace dev {
             return res;
         }
 
-/**********************************************************************************/
         Json::Value toJson(dev::brc::LocalisedTransaction const &_t) {
             Json::Value res;
             if (_t) {
@@ -290,20 +288,6 @@ namespace dev {
                     res["m_hash"] = toJS(_cancel_op.m_hash);
                     _JsArray.append(res);
                 }
-                // if(_type == dev::brc::transationTool::deployContract) {
-                //     Json::Value res;
-                //     dev::brc::transationTool::contract_operation _contract_op = dev::brc::transationTool::contract_operation(val);
-                //     res["type"] = toJS(_type);
-                //     res["contract"] = toJS(_contract_op.m_date);
-                //     _JsArray.append(res);
-                // }
-                // if(_type == dev::brc::transationTool::executeContract) {
-                //     Json::Value res;
-                //     dev::brc::transationTool::contract_operation _contract_op = dev::brc::transationTool::contract_operation(val);
-                //     res["type"] = toJS(_type);
-                //     res["contract"] = toJS(_contract_op.m_date);
-                //     _JsArray.append(res);
-                // }
             }
             return _JsArray;
         }
