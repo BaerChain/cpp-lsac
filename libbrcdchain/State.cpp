@@ -1846,9 +1846,6 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     auto  a = account(_addr);
     if(!a){
         createAccount(_addr, {0});
-        a = account(_addr);
-        if (!a)
-            BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     if (!ret_pair.first)

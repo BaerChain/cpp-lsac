@@ -143,7 +143,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 
 		switch(dType){
 		case dev::brc::ENull:
-		break;
+			break;
 		case dev::brc::EBuyVote:
 		{
 			total_brc -= p_op->m_vote_numbers * BALLOTPRICE;
