@@ -664,7 +664,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
                     isSend = true;
                 }
             }
-            if(!isSend){
+            if(!isSend && get<0>(s).size() > 0 && get<1>(s).size() > 0){
                 cwarn << "send new block error. (current is " << _currentHash << ", was "
                       << m_latestBlockSent << ")"  << " height " << detailsTo.number;
             }

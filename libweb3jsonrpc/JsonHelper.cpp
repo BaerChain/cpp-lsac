@@ -5,6 +5,7 @@
 #include <libbrccore/SealEngine.h>
 #include <libbrcdchain/Client.h>
 #include <libwebthree/WebThree.h>
+#include <libbrcdchain/Transaction.h>
 
 using namespace std;
 using namespace dev;
@@ -177,7 +178,7 @@ namespace dev {
             res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
             res["gasUsed"] = toJS(_t.gasUsed());
             res["contractAddress"] = toJS(_t.contractAddress());
-            res["logs"] = dev::toJson(_t.localisedLogs());
+            res["logs"] = dev::toJson(_t.localisedLogs()); 
             res["logsBloom"] = toJS(_t.bloom());
             if (_t.hasStatusCode())
                 res["status"] = toString(_t.statusCode());
@@ -224,8 +225,71 @@ namespace dev {
                 res["blockHash"] = toJS(_t.blockHash());
                 res["transactionIndex"] = toJS(_t.transactionIndex());
                 res["blockNumber"] = toJS(_t.blockNumber());
+                if(!_t.isCreation()) {
+                    if(!_t.data().empty()) {
+                        res["data"] = dev::brc::analysisData(_t.data());
+                    }else {
+                        res["data"] = "";
+                    }
+                }
+
             }
             return res;
+        }
+
+        Json::Value analysisData(bytes const& _data) {
+            RLP _r(_data);
+            Json::Value _JsArray;
+            std::vector<bytes> _ops = _r.toVector<bytes>();
+            for (auto val : _ops) {
+                dev::brc::transationTool::op_type _type =  dev::brc::transationTool::operation::get_type(val);
+                if(_type == dev::brc::transationTool::brcTranscation) {
+                    Json::Value res; 
+                    dev::brc::transationTool::transcation_operation _transation_op = dev::brc::transationTool::transcation_operation(val);
+                    res["type"] = toJS(_type);
+                    if(_transation_op.m_from != Address(0))
+                        res["from"] = toJS(_transation_op.m_from);
+                    res["to"] = toJS(_transation_op.m_to);
+                    res["transcation_type"] = toJS(_transation_op.m_type);
+                    res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
+                    _JsArray.append(res);
+                }
+                if(_type == dev::brc::transationTool::vote) {
+                    Json::Value res;
+                    dev::brc::transationTool::vote_operation _vote_op = dev::brc::transationTool::vote_operation(val);
+                    res["type"] = toJS(_type);
+                    if(_vote_op.m_from != Address(0))
+                        res["from"] = toJS(_vote_op.m_from);
+                    res["to"] = toJS(_vote_op.m_to);
+                    res["vote_type"] = toJS(_vote_op.m_vote_type);
+                    res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
+                    _JsArray.append(res);
+                }
+                if(_type == dev::brc::transationTool::pendingOrder) {
+                    Json::Value res;
+                    dev::brc::transationTool::pendingorder_opearaion _pendering_op = dev::brc::transationTool::pendingorder_opearaion(val);
+                    uint8_t m_Pendingorder_type = (uint8_t)_pendering_op.m_Pendingorder_type;
+                    uint8_t m_Pendingorder_Token_type = (uint8_t)_pendering_op.m_Pendingorder_Token_type;
+                    uint8_t m_Pendingorder_buy_type = (uint8_t)_pendering_op.m_Pendingorder_buy_type;
+
+                    res["type"] = toJS(_type);
+                    res["from"] = toJS(_pendering_op.m_from);
+                    res["type"] = toJS(m_Pendingorder_type);
+                    res["token_type"] = toJS(m_Pendingorder_Token_type);
+                    res["buy_type"] = toJS(m_Pendingorder_buy_type);
+                    res["num"] = toJS(_pendering_op.m_Pendingorder_num);
+                    res["price"] = toJS(_pendering_op.m_Pendingorder_price);
+                    _JsArray.append(res);
+                }
+                if(_type == dev::brc::transationTool::cancelPendingOrder) {
+                    Json::Value res;
+                    dev::brc::transationTool::cancelPendingorder_operation _cancel_op = dev::brc::transationTool::cancelPendingorder_operation(val);
+                    res["type"] = toJS(_type);
+                    res["hash"] = toJS(_cancel_op.m_hash);
+                    _JsArray.append(res);
+                }
+            }
+            return _JsArray;
         }
 
         Json::Value toJson(dev::brc::LocalisedLogEntry const &_e) {

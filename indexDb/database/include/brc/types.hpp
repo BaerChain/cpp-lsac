@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string>
 namespace dev {
     namespace brc {
         namespace ex {
@@ -25,6 +26,19 @@ namespace dev {
                 all_price = 0,
                 only_price
             };
+
+            template <typename T>
+            std::string enum_to_string(const T &t);
+
+            template <>
+            std::string enum_to_string<order_buy_type>(const order_buy_type &t);
+
+            template <>
+            std::string enum_to_string<order_token_type>(const order_token_type &t);
+
+            template <>
+            std::string enum_to_string<order_type>(const order_type &t);
+
         }
     }
 }
