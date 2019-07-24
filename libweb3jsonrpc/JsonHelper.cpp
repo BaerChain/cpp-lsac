@@ -248,10 +248,10 @@ namespace dev {
                     dev::brc::transationTool::transcation_operation _transation_op = dev::brc::transationTool::transcation_operation(val);
                     res["type"] = toJS(_type);
                     if(_transation_op.m_from != Address(0))
-                        res["m_from"] = toJS(_transation_op.m_from);
-                    res["m_to"] = toJS(_transation_op.m_to);
-                    res["m_transcation_type"] = toJS(_transation_op.m_type);
-                    res["m_transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
+                        res["from"] = toJS(_transation_op.m_from);
+                    res["to"] = toJS(_transation_op.m_to);
+                    res["transcation_type"] = toJS(_transation_op.m_type);
+                    res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
                     _JsArray.append(res);
                 }
                 if(_type == dev::brc::transationTool::vote) {
@@ -259,10 +259,10 @@ namespace dev {
                     dev::brc::transationTool::vote_operation _vote_op = dev::brc::transationTool::vote_operation(val);
                     res["type"] = toJS(_type);
                     if(_vote_op.m_from != Address(0))
-                        res["m_from"] = toJS(_vote_op.m_from);
-                    res["m_to"] = toJS(_vote_op.m_to);
-                    res["m_vote_type"] = toJS(_vote_op.m_vote_type);
-                    res["m_vote_numbers"] = toJS(_vote_op.m_vote_numbers);
+                        res["from"] = toJS(_vote_op.m_from);
+                    res["to"] = toJS(_vote_op.m_to);
+                    res["vote_type"] = toJS(_vote_op.m_vote_type);
+                    res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
                     _JsArray.append(res);
                 }
                 if(_type == dev::brc::transationTool::pendingOrder) {
@@ -273,19 +273,19 @@ namespace dev {
                     uint8_t m_Pendingorder_buy_type = (uint8_t)_pendering_op.m_Pendingorder_buy_type;
 
                     res["type"] = toJS(_type);
-                    res["m_from"] = toJS(_pendering_op.m_from);
-                    res["m_type"] = toJS(m_Pendingorder_type);
-                    res["m_token_type"] = toJS(m_Pendingorder_Token_type);
-                    res["m_buy_type"] = toJS(m_Pendingorder_buy_type);
-                    res["m_num"] = toJS(_pendering_op.m_Pendingorder_num);
-                    res["m_price"] = toJS(_pendering_op.m_Pendingorder_price);
+                    res["from"] = toJS(_pendering_op.m_from);
+                    res["type"] = toJS(m_Pendingorder_type);
+                    res["token_type"] = toJS(m_Pendingorder_Token_type);
+                    res["buy_type"] = toJS(m_Pendingorder_buy_type);
+                    res["num"] = toJS(_pendering_op.m_Pendingorder_num);
+                    res["price"] = toJS(_pendering_op.m_Pendingorder_price);
                     _JsArray.append(res);
                 }
                 if(_type == dev::brc::transationTool::cancelPendingOrder) {
                     Json::Value res;
                     dev::brc::transationTool::cancelPendingorder_operation _cancel_op = dev::brc::transationTool::cancelPendingorder_operation(val);
                     res["type"] = toJS(_type);
-                    res["m_hash"] = toJS(_cancel_op.m_hash);
+                    res["hash"] = toJS(_cancel_op.m_hash);
                     _JsArray.append(res);
                 }
             }
