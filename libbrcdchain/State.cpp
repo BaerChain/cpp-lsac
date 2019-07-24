@@ -672,8 +672,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
 	}
 
-	std::vector<order> _autoV;
-
+	std::set<order_type> _set;
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
 		result_order _result_order = _result_v[i];
 
@@ -687,18 +686,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 				total_free_balance -= _result_order.amount;
 		}
 
-		if(_result_order.acceptor == dev::systemAddress) {
-            std::pair<u256, u256> _autoPair;
-            if (_result_order.type == order_type::buy)
-            {
-                _autoPair = {u256(BUYCOOKIE) , _result_order.amount * PRICEPRECISION / BUYCOOKIE};
-            }else if(_result_order.type == order_type::sell)
-            {
-                _autoPair = {u256(SELLCOOKIE) , _result_order.amount * PRICEPRECISION / SELLCOOKIE};
-            }
-            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL, _result_order.type, _autoPair, _nowTime};
-            _autoV.push_back(_o);
-		}
+		_set.emplace(_result_order.type);
 	}
 	if(total_free_balance < 0 || total_free_brc < 0){
 		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
@@ -713,83 +701,75 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		addFBRC(_addr, (u256)total_free_brc);
 	}
 
-	if(_autoV.size() > 0)
+	if(_set.size() > 0)
     {
-	    systemAutoPendingOrder(_autoV);
+	    systemAutoPendingOrder(_set, _nowTime);
     }
 }
 
-void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
+void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _nowTime)
 {
     std::vector<result_order> _result_v;
+    std::set<order_type> _autoSet;
+    std::vector<order> _v;
+    u256 _needBrc = 0;
+    u256 _needCookie = 0;
 
-    bigint total_free_brc = 0;
-    bigint total_free_balance = 0;
-
-
-    for(auto const& val : _v)
+    for(auto it : _set)
     {
-        if(val.buy_type == order_buy_type::only_price){
-            if(val.type == order_type::buy && val.token_type == order_token_type::FUEL)
-                total_free_brc += val.price_token.second * val.price_token.first / PRICEPRECISION;
-            else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
-                total_free_balance += val.price_token.second;
+        if(it == order_type::buy)
+        {
+            u256 _num = BRC(systemAddress) / BUYCOOKIE / 10000 * 10000;
+            _needBrc = _num * u256(BUYCOOKIE);
+            std::pair<u256, u256> _pair = {u256(BUYCOOKIE), _num};
+            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, _pair, _nowTime};
+            _v.push_back(_order);
+        }else if(it == order_type::sell)
+        {
+            u256 _num = balance(systemAddress);
+            _needCookie = _num;
+            std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
+            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, _pair, _nowTime};
+            _v.push_back(_order);
         }
     }
 
-    try {
+    try{
         _result_v = m_exdb.insert_operation(_v, false, true);
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled() << errinfo_comment(std::string("Coupling to the system order, the system automatically fails to place the order")));
-    }
-
-    std::vector<order> _autoV;
-
-    for(uint32_t i = 0; i < _result_v.size(); ++i){
-        result_order _result_order = _result_v[i];
-
-        pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
-                             _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
-
-        if(_result_order.buy_type == order_buy_type::only_price){
-            if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-                total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
-            else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
-                total_free_balance -= _result_order.amount;
-        }
-
-        if(_result_order.acceptor == dev::systemAddress)
-        {
-            std::pair<u256, u256> _autoPair;
-            if (_result_order.type == order_type::buy)
-            {
-                _autoPair = {u256(BUYCOOKIE),  _result_order.amount * PRICEPRECISION / BUYCOOKIE};
-            }else if(_result_order.type == order_type::sell)
-            {
-                _autoPair = { u256(SELLCOOKIE) , _result_order.amount * PRICEPRECISION / SELLCOOKIE};
-            }
-            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL , _result_order.type, _autoPair, _result_order.create_time};
-            _autoV.push_back(_o);
-        }
-    }
-    if(total_free_balance < 0 || total_free_brc < 0){
-        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
+    catch(const boost::exception &e){
+        cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
         BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
     }
-    if(total_free_balance > 0){
-        subBalance(dev::systemAddress, (u256)total_free_balance);
-        addFBalance(dev::systemAddress, (u256)total_free_balance);
-    }
-    if(total_free_brc){
-        subBRC(dev::systemAddress, (u256)total_free_brc);
-        addFBRC(dev::systemAddress, (u256)total_free_brc);
-    }
 
-    if(_autoV.size() > 0)
+    for(auto _result : _result_v)
     {
-        systemAutoPendingOrder(_autoV);
+        pendingOrderTransfer(_result.sender, _result.acceptor, _result.amount,
+                             _result.price, _result.type, _result.token_type, _result.buy_type);
+
+        if(_result.buy_type == order_buy_type::only_price){
+            if(_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
+                _needBrc -= _result.amount * _result.old_price / PRICEPRECISION;
+            else if(_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
+                _needCookie -= _result.amount;
+        }
+        _autoSet.emplace(_result.type);
+    }
+    if(_needBrc < 0 || _needCookie < 0){
+        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << _needCookie << " brc:" << _needBrc;
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+    }
+    if(_needCookie > 0){
+        subBalance(systemAddress, _needCookie);
+        addFBalance(systemAddress, _needCookie);
+    }
+    if(_needBrc){
+        subBRC(systemAddress, _needBrc);
+        addFBRC(systemAddress, _needBrc);
+    }
+    if(_set.size() > 0)
+    {
+        systemAutoPendingOrder(_set, _nowTime);
     }
 }
 
