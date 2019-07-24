@@ -390,6 +390,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
+            cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
         }
         catch (...) {
@@ -1740,13 +1741,11 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
-
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();
     return ret;
 }
-
 VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<void(Exception &)> const &_onBad,
                                          ImportRequirements::value _ir) const {
     VerifiedBlockRef res;

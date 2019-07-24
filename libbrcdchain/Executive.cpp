@@ -20,6 +20,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
+
 namespace
 {
 std::string dumpStackAndMemory(LegacyVM const& _vm)
@@ -251,7 +252,6 @@ void Executive::initialize(Transaction const& _transaction)
 			m_excepted = TransactionException::InvalidGasPrice;
 			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
 		}
-
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;
@@ -298,17 +298,17 @@ void Executive::initialize(Transaction const& _transaction)
 					cwarn << "There cannot be multiple types of transactions in bulk transactions";
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
 				}
-                if(_type == transationTool::vote)
+                /*if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
 					cwarn << " this function is closed type:" << _type;
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
-				}else if(_type == transationTool::changeMiner && _ops.size() > 1)
+				}*/
+                if( _type != transationTool::brcTranscation && _ops.size() > 1)
                 {
-                    BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Replace witness operations cannot be batch operated"));
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Replace witness operations cannot be batch operated"));
                 }
-
 
 
 				m_batch_params._type = _type;
@@ -368,7 +368,7 @@ void Executive::initialize(Transaction const& _transaction)
                 {
                     transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(val);
 					try {
-						// check 'from' and 'm_before' 
+						// check 'from' and 'm_before'
                         if(m_t.sender() != _changeMiner_op.m_before){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
                         }
@@ -384,7 +384,7 @@ void Executive::initialize(Transaction const& _transaction)
                         if (0 == addrMap.count(m_t.sender())){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Permission denied"));
                         }
-                                                
+
                         // check other node sign and num >= 2/3(include own)
                         int count = 1;
                         sort(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end());
@@ -413,6 +413,13 @@ void Executive::initialize(Transaction const& _transaction)
 						BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
+                }
+                break;
+				case transationTool::receivingincome:
+                {
+                    transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
+
                 }
                 break;
                 default:
@@ -444,11 +451,13 @@ void Executive::initialize(Transaction const& _transaction)
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)
-					m_vote.verifyVote(m_t.sender(), m_batch_params._operation);
+					m_vote.verifyVote(m_t.sender(), m_envInfo ,m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
+				else if(m_batch_params._type == transationTool::op_type::receivingincome)
+                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";
@@ -462,6 +471,10 @@ void Executive::initialize(Transaction const& _transaction)
 			catch(CancelPendingOrderFiled const& _c){
 				BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
 			}
+			catch(receivingincomeFiled const& _r)
+            {
+			    BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_r)));
+            }
 		}
 	}
 }
@@ -553,13 +566,13 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     else
     {
-
 		if(m_batch_params.size() < 1)
 			return false;
 		transationTool::op_type  _type = m_batch_params._type;
 
 		if(_type == transationTool::op_type::vote){
-			m_s.execute_vote(m_t.sender(), m_batch_params._operation);
+		    //m_s.try_new_vote_snapshot(m_t.sender(), m_envInfo.number());
+			m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo.number());
 		}
 		else if(_type == transationTool::op_type::brcTranscation){
 			m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);
@@ -573,6 +586,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         else if(_type == transationTool::op_type::changeMiner){
 		    m_s.changeMiner(m_batch_params._operation);
 		}
+		else if(_type == transationTool::op_type::receivingincome){
+            m_s.receivingIncome(m_t.sender(), m_envInfo.number());
+		}
+
 		m_batch_params.clear();
 		return true;
     }
@@ -785,6 +802,8 @@ bool Executive::finalize()
     {
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+        m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+        m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
 		// m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
 		// //m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
 		// m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);

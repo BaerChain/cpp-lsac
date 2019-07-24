@@ -56,7 +56,7 @@ namespace dev
         {
 #define SERIALIZE_MACRO(r, data, elem) data.append(elem);
 #define OPERATION_SERIALIZE(MEMBERS)                             \
-    virtual bytes serialize()  const                                  \
+    virtual bytes serialize()  const                             \
     {                                                            \
         RLPStream stream(BOOST_PP_SEQ_SIZE(MEMBERS));            \
         BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS); \
@@ -78,9 +78,10 @@ namespace dev
                 brcTranscation = 2,
                 pendingOrder = 3,
                 cancelPendingOrder = 4,
-                deployContract =5,
-                executeContract =6,
-                changeMiner = 7
+                deployContract = 5,
+                executeContract = 6,
+                changeMiner = 7,
+                receivingincome = 8
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -91,7 +92,14 @@ namespace dev
                     {cancelPendingOrder, 2000},
                     {deployContract, 0},
                     {executeContract, 0},
-                    {changeMiner, 0}
+                    {changeMiner, 0},
+                    {receivingincome, 0}
+            };
+
+            enum dividendcycle : uint8_t
+            {
+                blocknum = 0,
+                timestamp = 1
             };
 
             struct operation
@@ -151,7 +159,6 @@ namespace dev
                           m_Transcation_type(transcation_type),
                           m_Transcation_numbers(transcation_num){
                 }
-
                 /// unserialize from data
                 /// \param Data
                 OPERATION_UNSERIALIZE(
@@ -273,6 +280,20 @@ namespace dev
                 contract_operation(op_type _type, bytes _d):m_type(_type) { m_date = _d; }
                 OPERATION_UNSERIALIZE(contract_operation, (m_date))
                 OPERATION_SERIALIZE((m_date))
+            };
+
+            struct receivingincome_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_from;
+                receivingincome_operation(){}
+                receivingincome_operation(op_type _type, Address _from) : m_type(_type), m_from(_from)
+                {}
+
+                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_from))
+
+                OPERATION_SERIALIZE((m_type)(m_from))
+
             };
 
         }  // namespace transationTool

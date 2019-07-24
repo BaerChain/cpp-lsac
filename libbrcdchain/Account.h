@@ -4,6 +4,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieCommon.h>
 #include <libbrccore/Common.h>
+#include "libbrccore/config.h"
 
 #include <boost/filesystem/path.hpp>
 
@@ -32,6 +33,125 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
+
+struct VoteSnapshot{
+    std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
+    std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
+    std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
+    u256 numberofrounds = 0;                                    // the rounds of got awards
+    u256 m_latest_round = 0;                                    // the last snapshot rounds of record
+    VoteSnapshot(){}
+
+
+    VoteSnapshot&operator = (VoteSnapshot const& s_v){
+        clear();
+        for(auto const& val : s_v.m_voteDataHistory){
+            std::map<Address, u256> _temp = val.second;
+            m_voteDataHistory[val.first] = _temp;
+        }
+        m_pollNumHistory.insert(s_v.m_pollNumHistory.begin(),s_v.m_pollNumHistory.end());
+        m_blockSummaryHistory.insert(s_v.m_blockSummaryHistory.begin(),s_v.m_blockSummaryHistory.end());
+        numberofrounds = s_v.numberofrounds;
+        m_latest_round = s_v.m_latest_round;
+        return  *this;
+    }
+
+    void  streamRLP(RLPStream& _s) const{
+        _s.appendList(5);
+
+        RLPStream vote_s(m_voteDataHistory.size());
+        for(auto vote : m_voteDataHistory){
+            RLPStream data_s(vote.second.size());
+            for(auto const& v: vote.second){
+                data_s.append<Address, u256>(std::make_pair(v.first, v.second));
+            }
+            vote_s.append<u256, bytes>(std::make_pair(vote.first, data_s.out()));
+        }
+        _s << vote_s.out();
+
+        RLPStream poll_s;
+        poll_s.appendList(m_pollNumHistory.size());
+        for(auto const& poll : m_pollNumHistory){
+            poll_s.append<u256, u256>(std::make_pair(poll.first, poll.second));
+        }
+        _s << poll_s.out();
+
+        RLPStream block_s(m_blockSummaryHistory.size());
+        for(auto const& b: m_blockSummaryHistory){
+            block_s.append<u256, u256>(std::make_pair(b.first, b.second));
+        }
+        _s << block_s.out();
+        _s << numberofrounds << m_latest_round;
+
+    }
+    void populate(bytes const& _b){
+        RLP rlp(_b);
+        bytes b_vote = rlp[0].toBytes();
+        for(auto const& val: RLP(b_vote)){
+            std::pair<u256 , bytes > _pair = val.toPair<u256, bytes>();
+            std::map<Address, u256> vote_data;
+            for(auto const& v: RLP(_pair.second)){
+                std::pair<Address , u256> v_pair = v.toPair<Address, u256>();
+                vote_data[v_pair.first] = v_pair.second;
+            }
+            m_voteDataHistory[_pair.first] = vote_data;
+        }
+
+        bytes  poll_b= rlp[1].toBytes();
+        for(auto const& val : RLP(poll_b)){
+            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
+            m_pollNumHistory[_pair.first] = _pair.second;
+        }
+
+        bytes block_b = rlp[2].toBytes();
+        for(auto const& val: RLP(block_b)){
+            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
+            m_blockSummaryHistory[_pair.first] = _pair.second;
+        }
+
+        numberofrounds = rlp[3].toInt<u256>();
+        m_latest_round = rlp[4].toInt<u256>();
+    }
+    void clear(){
+        m_voteDataHistory.clear();
+        m_pollNumHistory.clear();
+        m_blockSummaryHistory.clear();
+        numberofrounds = 0;
+        m_latest_round = 0;
+    }
+
+};
+
+inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
+    out <<std::endl;
+    out<< "data_history:{";
+    for(auto const& val : t.m_voteDataHistory){
+        out<< "rounds:("<< val.first << ":";
+        for(auto const& v : val.second){
+            out<<"["<< v.first << ","<< v.second<<"]";
+        }
+        out<< ")";
+    }
+    out<< "}"<<std::endl;
+
+    out << "poll:{";
+    for(auto const& val: t.m_pollNumHistory){
+        out<<"["<<val.first <<","<< val.second<<"]";
+    }
+    out << "}"<<std::endl;
+
+    out << "blockSummaryHistory:{";
+    for(auto const& val : t.m_blockSummaryHistory){
+        out<<"["<<val.first <<","<< val.second<<"]";
+    }
+    out << "}"<<std::endl;
+
+    out << "rounds:"<< t.numberofrounds<<std::endl;
+    out << "atest_round:"<< t.m_latest_round<<std::endl;
+
+    return out;
+}
+
 class Account
 {
 public:
@@ -51,6 +171,10 @@ public:
     /// or for a contract account in the conception phase, where the code is not yet known.
     Account(u256 _nonce, u256 _balance, Changedness _c = Changed)
       : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
+    {}
+
+    Account(u256 _ballot, Changedness _c = Changed)
+      : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(0), m_ballot(_ballot)
     {}
 
 	Account(u256 _nonce, u256 _balance, u256 _BRC, u256 _fbalance = 0, Changedness _c = Changed)
@@ -129,7 +253,7 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0 && voteData().empty() && m_BlockReward.size() == 0;  }
+    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0 && voteAll() == 0;  }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -294,8 +418,51 @@ public:
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 
+
+	void setCookieSummary(std::unordered_map<int32_t, std::unordered_map<Address, u256>> _map)
+	{
+        //m_cookieSummary.clear();
+        //m_cookieSummary.insert(_map.begin(), _map.end());
+	}
+
+	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
+
+    u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
+
+    u256 const& CookieIncome() const {return m_CooikeIncomeNum;}
+    void setCookieIncome(u256 const& _value)
+    {
+        m_CooikeIncomeNum = _value;
+        changed();
+    }
+    void addCooikeIncome(u256 _value)
+    {
+        m_CooikeIncomeNum += _value;
+        changed();
+    }
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
+
+    //interface about sanpshot
+    void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
+    VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+    ///@return <true, rounds> if the snapshot need rocord new snapshot
+    /// rounds: the last rounds need to snapshot
+    std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
+    /// update snapshot
+    void try_new_snapshot(u256 _rounds);
+    ///@retrue VoteSnapshot_data temp for verify
+    VoteSnapshot try_new_temp_snapshot(u256 _rounds);
+
+    void set_numberofrounds(u256 _val){
+        m_vote_sapshot.numberofrounds = _val;
+        changed();
+    }
+    void set_vote_snapshot(VoteSnapshot const& _vote_sna){
+        m_vote_sapshot = _vote_sna;
+    }
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -339,6 +506,10 @@ private:
     u256 m_FBalance = 0;
 
 	u256 m_assetInjectStatus = 0;
+
+	// Summary of the proceeds from the block address itself
+	u256 m_CooikeIncomeNum = 0;
+
     /* dpos 投票数据
        Address : 投票目标 size_t: 票数
        当该Account 为系统预制地址表表示为 竞选人集合
@@ -346,7 +517,13 @@ private:
     std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
 
-	//std::unordered_map<u256, u256> m_BlockReward;
+    // The snapshot about voteData
+    VoteSnapshot    m_vote_sapshot;
+
+    //std::unordered_map<u256, u256> m_BlockReward;
+
+//	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;
+//    std::map <uint32_t, bool> m_receiveStats;
 
     std::vector<std::pair<u256, u256>> m_BlockReward;
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.

@@ -1,6 +1,9 @@
 #include "DposVote.h"
 #include <unordered_map>
 
+using namespace dev::brc;
+
+
 void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, size_t _type, u256 tickets)
 {
 	std::string _ex_info = "";
@@ -38,7 +41,7 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 				_ex_info = "not have enough tickets to sell... tickes:" + toString(tickets);
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 			}
-            if((tickets * BALLOTPRICE) > m_state.BRC(SystemVoteBrcAddress))
+            if((tickets * BALLOTPRICE) > m_state.BRC(dev::systemAddress))
 			{
 				_ex_info = "system not enough BRC to author, can't sell ticks";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
@@ -113,8 +116,8 @@ void dev::brc::DposVote::verifyVote(Address const & _from, Address const & _to, 
 }
 
 
-void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::shared_ptr<transationTool::vote_operation> p_op = nullptr;
+void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+    std::shared_ptr<transationTool::vote_operation> p_op = nullptr;
 	bigint total_brc = m_state.BRC(_from);
 	bigint total_tickets = m_state.ballot(_from);
 	u256 sell_tickes = 0;
@@ -130,6 +133,14 @@ void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::share
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("tickets must bigger 0! ticket:"));
 			}
 		}
+
+        std::pair <uint32_t, Votingstage> _pair = returnVotingstage(_envinfo);
+        if(_pair.second != Votingstage::VOTE)
+        {
+            if (dType == dev::brc::EDelegate || dev::brc::EUnDelegate)
+                BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("The time point that is not currently in the voting phase"));
+        }
+
 		switch(dType){
 		case dev::brc::ENull:
 		break;
@@ -147,7 +158,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::share
 			if(total_tickets < 0)
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("not have enough tickets to sell... tickes:"));
 			sell_tickes += p_op->m_vote_numbers;
-			if((sell_tickes * BALLOTPRICE) > m_state.BRC(SystemVoteBrcAddress))
+			if((sell_tickes * BALLOTPRICE) > m_state.BRC(dev::systemAddress))
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("system not enough BRC to author, can't sell ticks"));
 		}
 		break;
@@ -210,7 +221,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, std::vector<std::share
 			else
 			{
 				m_tickets[p_op->m_to] += p_op->m_vote_numbers;
-				if(m_tickets[p_op->m_to] > ret->second){
+				if(m_tickets[p_op->m_to] > ret->second || m_tickets[p_op->m_to] > m_state.poll(p_op->m_to)){
 					std::string _ex_info = " Address:" + toString(_from) + " not voted:" + toString(p_op->m_vote_numbers) + " tickets to :" + toString(p_op->m_to);
 					BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
 				}
@@ -308,4 +319,9 @@ void dev::brc::DposVote::voteLoginCandidate(Address const& _addr)
 void dev::brc::DposVote::voteLogoutCandidate(Address const& _addr)
 {
 	m_state.subSysVoteDate(SysElectorAddress, _addr);
+}
+
+std::pair<uint32_t, dev::brc::Votingstage > dev::brc::DposVote::returnVotingstage(const dev::brc::EnvInfo &_envinfo) const
+{
+    return config::getVotingCycle(_envinfo.number());
 }

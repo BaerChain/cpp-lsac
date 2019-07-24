@@ -16,6 +16,9 @@ using namespace brc;
 using namespace shh;
 using namespace dev::rpc;
 
+
+#define MAXQUERIES 50
+
 Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
   : m_brc(_brc), m_brcAccounts(_brcAccounts)
 {}
@@ -109,6 +112,24 @@ Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
 }
+
+Json::Value Brc::brc_getSuccessPendingOrderForAddr(string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
+{
+    if(jsToInt(_maxSize) > MAXQUERIES)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException("The number of query data cannot exceed 50"));
+    }
+
+    try {
+        return client()->successPendingOrderForAddrMessage(jsToAddress(_address), jsToint64(_minTime),
+                jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNumber(_blockNum));
+    }catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+
+}
+
 
 Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumber)
 {
@@ -881,6 +902,14 @@ string dev::rpc::exceptionToErrorMessage()
     catch (CancelPendingOrderFiled const& _c)
     {
         ret = "cancelPendingorder failed :" + std::string(*boost::get_error_info<errinfo_comment>(_c));
+    }
+    catch (receivingincomeFiled const& _r)
+    {
+        ret = "receivingincome failed :" + std::string(*boost::get_error_info<errinfo_comment >(_r));
+    }
+    catch (getVotingCycleFailed const _g)
+    {
+        ret = std::string(*boost::get_error_info<errinfo_comment >(_g));
     }
     catch (NotEnoughBallot const&)
     {

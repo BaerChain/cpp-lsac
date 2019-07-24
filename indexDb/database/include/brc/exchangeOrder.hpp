@@ -54,6 +54,16 @@ namespace dev {
                 /// \return             vector<result_orders>.
                 std::vector<result_order> get_result_orders_by_news(uint32_t size = 50) const;
 
+
+                /// get result_order of address by time, size must < 50
+                /// \param addr         which Address
+                /// \param min_time     min time
+                /// \param max_time     max time
+                /// \param max_size     once get size.
+                /// \return             result_order
+                std::vector<result_order> get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time, uint32_t max_size = 50) const;
+
+
                 /// get exchange order by type (sell or buy && BRC or  FUEL)
                 /// \param type         sell or buy
                 /// \param token_type   BRC OR FUEL

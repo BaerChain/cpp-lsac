@@ -131,6 +131,68 @@ bool dev::brc::Account::changeMiner(unsigned blockNumber)
     return true;
 }
 
+std::unordered_map<Address, u256> dev::brc::Account::findSnapshotSummary(uint32_t _snapshotNum)
+{
+//    if(m_cookieSummary.count(_snapshotNum))
+//    {
+//        std::unordered_map<uint32_t, std::unordered_map<Address, u256>>::const_iterator _it = m_cookieSummary.find(_snapshotNum);
+//        return _it->second;
+//    }else{
+//        return  std::unordered_map<Address, u256>();
+//    }
+    return std::unordered_map<Address, u256>();
+
+}
+
+u256 dev::brc::Account::findSnapshotSummaryForAddr(uint32_t _snapshotNum, dev::Address _addr)
+{
+    std::unordered_map<Address, u256> _map = findSnapshotSummary(_snapshotNum);
+    if(_map.count(_addr))
+    {
+        std::unordered_map<Address, u256>::const_iterator _addrIt = _map.find(_addr);
+        return _addrIt->second;
+    }
+    else{
+        return u256(0);
+    }
+}
+
+void Account::try_new_snapshot(u256 _rounds) {
+    u256 summary_cooike =CookieIncome();
+    for (u256 j = m_vote_sapshot.m_latest_round+1; j <= _rounds ; ++j) {
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+            std::map<Address, u256> _temp ;
+            _temp.insert(m_voteData.begin(), m_voteData.end());
+            m_vote_sapshot.m_voteDataHistory[j] = _temp;
+        }
+        if (!m_vote_sapshot.m_pollNumHistory.count(j)){
+            m_vote_sapshot.m_pollNumHistory[j] = poll();
+        }
+        if (!m_vote_sapshot.m_blockSummaryHistory.count(j)){
+            m_vote_sapshot.m_blockSummaryHistory[j] = summary_cooike;
+            summary_cooike = 0;
+        }
+    }
+    m_vote_sapshot.m_latest_round = _rounds;
+}
+
+VoteSnapshot Account::try_new_temp_snapshot(u256 _rounds){
+    VoteSnapshot vote_snap = m_vote_sapshot;
+    try_new_snapshot(_rounds);
+    VoteSnapshot vote1 = m_vote_sapshot;
+    m_vote_sapshot = vote_snap;
+    return vote1;
+}
+
+std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage _state) {
+    u256 last_round = _rounds;
+    if(_rounds >0 && _state == Votingstage::VOTE)
+        last_round --;
+    if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
+        return std::make_pair(false, 0);
+    return  std::make_pair(true, last_round);
+}
+
 namespace js = json_spirit;
 
 namespace
@@ -206,6 +268,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         bool shouldNotExists = accountMaskJson.count(c_shouldnotexist);
 		bool haveGenesisCreator = accountMaskJson.count(c_genesisVarlitor);
 		bool haveCurrency = accountMaskJson.count(c_currency);
+        bool haveVote = accountMaskJson.count(c_vote);
 
         if (haveStorage || haveCode || haveNonce || haveBalance)
         {
@@ -282,11 +345,14 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if ( haveGenesisCreator)
         {
 			ret[a] = Account(0, 0);
+			if (!ret.count(ElectorAddress))
+                ret[ElectorAddress] = Account(0,0);
 			js::mArray creater = accountMaskJson.at(c_genesisVarlitor).get_array();
 			for(auto const& val : creater)
 			{
 			    Address _addr= Address(val.get_str());
-				ret[a].manageSysVote(_addr, true, 0);
+                ret[a].manageSysVote(_addr, true, 0);
+                ret[ElectorAddress].manageSysVote(_addr, true, 0);
 			}
         }
 
@@ -308,7 +374,36 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 			{
 				fcookie = u256Safe(_v["fcookie"].get_str());
 			}
-			ret[a] = Account(0, cookie, BRC, fcookie);
+            auto it = ret.find(a);
+            if (it == ret.end()) {
+                ret[a] = Account(0, cookie, BRC, fcookie);
+            } else {
+                ret[a].addBalance(cookie);
+                ret[a].addBRC(BRC);
+                ret[a].addFBRC(fcookie);
+            }
+		}
+        if (haveVote)
+		{
+			js::mObject _v = accountMaskJson.at(c_vote).get_obj();
+			for (auto voteData : _v){
+                Address to(voteData.first);
+                u256 ballots(voteData.second.get_str());
+                auto it = ret.find(to);
+                
+                if (it != ret.end()){
+                    //it->second.addBallot(ballots);
+                    it->second.addPoll(ballots);
+                } else {
+                    ret[to] = Account(0);
+                    ret[to].addPoll(ballots);
+                }
+                it = ret.find(a);
+                if (it == ret.end()) {
+                    ret[a] = Account(0);
+                }
+                ret[a].addVote(std::make_pair(to, ballots));
+			}
 		}
     }
 

@@ -37,6 +37,8 @@ DEV_SIMPLE_EXCEPTION(DefaultError);
 DEV_SIMPLE_EXCEPTION(VerifyPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(CancelPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(pendingorderAllPriceFiled);
+DEV_SIMPLE_EXCEPTION(receivingincomeFiled);
+DEV_SIMPLE_EXCEPTION(getVotingCycleFailed);
 DEV_SIMPLE_EXCEPTION(GasPriceTooLow);
 DEV_SIMPLE_EXCEPTION(BlockGasLimitReached);
 DEV_SIMPLE_EXCEPTION(FeeTooSmall);
