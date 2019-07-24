@@ -687,9 +687,14 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 				total_free_balance -= _result_order.amount;
 		}
 
-		if(_result_order.acceptor == dev::systemAddress)
-		{
-            std::pair<u256, u256> _autoPair = {_result_order.amount, u256(100000000)};
+		if(_result_order.acceptor == dev::systemAddress) {
+            if (_result_order.type == order_type::buy)
+            {
+                std::pair<u256, u256> _autoPair = {_result_order.amount, u256(99000000)};
+            }else if(_result_order.type == order_type::sell)
+            {
+                std::pair<u256, u256> _autoPair = {_result_order.amount, u256(SELLCOOKIE)};
+            }
             order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL, _result_order.type, _autoPair, _nowTime};
             _autoV.push_back(_o);
 		}
@@ -756,8 +761,14 @@ void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
 
         if(_result_order.acceptor == dev::systemAddress)
         {
-            std::pair<u256, u256> _autoPair = {_result_order.amount, u256(100000000)};
-            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL , order_type::sell, _autoPair, _result_order.create_time};
+            if (_result_order.type == order_type::buy)
+            {
+                std::pair<u256, u256> _autoPair = {_result_order.amount, u256(99000000)};
+            }else if(_result_order.type == order_type::sell)
+            {
+                std::pair<u256, u256> _autoPair = {_result_order.amount, u256(SELLCOOKIE)};
+            }
+            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL , _result_order.type, _autoPair, _result_order.create_time};
             _autoV.push_back(_o);
         }
     }
