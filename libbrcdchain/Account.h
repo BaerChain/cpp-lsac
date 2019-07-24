@@ -188,7 +188,7 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _assetInjectStatus = 0)
+        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
@@ -199,8 +199,7 @@ public:
         m_poll(_poll),
         m_BRC(_BRC),
         m_FBRC(_FBRC),
-        m_FBalance(_FBalance),
-		m_assetInjectStatus(_assetInjectStatus)
+        m_FBalance(_FBalance)
     {
         assert(_contractRoot);
     }
@@ -234,7 +233,6 @@ public:
         m_nonce = 0;
         m_poll = 0;
         m_ballot = 0;
-		m_assetInjectStatus = 0;
         m_voteData.clear();
         m_willChangeList.clear();
 		m_BlockReward.clear();
@@ -308,8 +306,6 @@ public:
     /// @returns the nonce of the account.
     u256 nonce() const { return m_nonce; }
 
-	u256 assetInjectStatus() const{ return m_assetInjectStatus; }
-	void setAssetInjectStatus() { m_assetInjectStatus = 1; }
     /// Increment the nonce of the account by one.
     void incNonce()
     {
@@ -505,8 +501,6 @@ private:
     u256 m_FBRC = 0;
     u256 m_FBalance = 0;
 
-	u256 m_assetInjectStatus = 0;
-
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
 
@@ -520,6 +514,8 @@ private:
     // The snapshot about voteData
     VoteSnapshot    m_vote_sapshot;
 
+
+    // Coupling system freezing fee
     //std::unordered_map<u256, u256> m_BlockReward;
 
 //	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;

@@ -9,5 +9,6 @@ Address const VoteAddress       { "0x00000000000000000000000000000000766f7465"};
 Address const ElectorAddress    { "0x000000000000456c6563746f7241646472657373"};
 Address const VarlitorAddress   { "0x00000000005661726c69746f7241646472657373"};
 Address const systemAddress     { "0xda9f759bd5f993311bc95c5fd8a2705e72c38f8d"};
+Address const PdSystemAddress   { "0x13c014cf9d848081b95a0a2b3372905c0b57b6d8"};
 }  // namespace dev
 

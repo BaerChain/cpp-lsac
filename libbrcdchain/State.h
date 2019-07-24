@@ -376,8 +376,6 @@ public:
 	Json::Value electorMessage(Address _addr) const;
 
 
-	void assetInjection(Address const& _addr);
-
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 

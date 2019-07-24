@@ -189,7 +189,7 @@ Account *State::account(Address const &_addr) {
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
-								 Account::Unchanged, state[10].toInt<u256>()));
+								 Account::Unchanged));
     i.first->second.setVoteDate(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
@@ -729,6 +729,22 @@ void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
 
     bigint total_free_brc = 0;
     bigint total_free_balance = 0;
+
+
+    for(auto const& val : _v)
+    {
+        std::map<u256, u256>::const_iterator _it = val.price_token.begin();
+        if(val.buy_type == order_buy_type::only_price){
+            if(val.type == order_type::buy && val.token_type == order_token_type::BRC)
+                total_free_brc += _it->second * _it->first / PRECISION;
+            else if(val.type == order_type::sell && val.token_type == order_token_type::BRC)
+                total_free_brc += _it->second;
+            else if(val.type == order_type::buy && val.token_type == order_token_type::FUEL)
+                total_free_balance += _it->second * _it->first / PRECISION;
+            else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
+                total_free_balance += _it->second;
+        }
+    }
 
     try {
         _result_v = m_exdb.insert_operation(_v, false, true);
@@ -1727,27 +1743,6 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	return jv;
 }
 
-void dev::brc::State::assetInjection(Address const& _addr)
-{
-    // if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
-    //    return;
-    auto it = account(dev::VoteAddress);
-    if (it->balance() < COOKIENUM || it->BRC() < BRCNUM)
-        return;
-
-    auto a = account(_addr);
-    if (a->assetInjectStatus() == 0)
-    {
-        addBRC(_addr, BRCNUM);
-        addBalance(_addr, COOKIENUM);
-        a->setAssetInjectStatus();
-    }
-    else
-    {
-        return;
-    }
-}
-
 void dev::brc::State::systemPendingorder(int64_t _time)
 {
     auto u256Safe = [](std::string const& s) -> u256 {
@@ -2051,7 +2046,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(15);
+				s.appendList(14);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2090,7 +2085,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
-                s << i.second.assetInjectStatus();
                 {
                     RLPStream _rlp;
                     size_t _num = i.second.blockReward().size();

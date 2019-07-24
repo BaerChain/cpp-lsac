@@ -34,5 +34,7 @@ extern Address const ElectorAddress;
 extern Address const VarlitorAddress;
 
 extern Address const systemAddress;
+
+extern Address const PdSystemAddress;
 }
 
