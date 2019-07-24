@@ -138,8 +138,8 @@ namespace dev {
                 /// \param token_type   BRC OR FUEL
                 /// \param price        upper price.
                 /// \return         std::pair<lower iterator, upper iterator>
-                auto get_buy_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
+                auto get_buy_itr(order_token_type find_token, u256 price) {
+//                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_less>();
 
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell, find_token,
@@ -158,8 +158,8 @@ namespace dev {
                 /// \param token_type   BRC OR FUEL,
                 /// \param price        lower price.
                 /// \return             std::pair<lower iterator, upper iterator>
-                auto get_sell_itr(order_token_type token_type, u256 price) {
-                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
+                auto get_sell_itr(order_token_type find_token, u256 price) {
+//                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                     const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_greater>();  //↑
 
                     auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,

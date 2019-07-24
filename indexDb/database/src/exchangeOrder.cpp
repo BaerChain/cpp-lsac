@@ -42,27 +42,23 @@ namespace dev {
 //                    try {
                         for (const auto &itr : orders) {
                             if (itr.buy_type == order_buy_type::only_price) {
-                                for (const auto t :  itr.price_token) {
                                     if (itr.type == order_type::buy) {
-                                        auto find_itr = get_buy_itr(itr.token_type, t.first);
-                                        process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second,
+                                        auto find_itr = get_buy_itr(itr.token_type, itr.price_token.first);
+                                        process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first, itr.price_token.second,
                                                            result,
                                                            throw_exception);
+
                                     } else { //sell
-                                        auto find_itr = get_sell_itr(itr.token_type, t.first);
-                                        process_only_price(find_itr.first, find_itr.second, itr, t.first, t.second,
+                                        auto find_itr = get_sell_itr(itr.token_type, itr.price_token.first);
+                                        process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first, itr.price_token.second,
                                                            result,
                                                            throw_exception);
                                     }
 
-                                }
                             } else {
-                                if (itr.price_token.size() != 1) {
-                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
-                                }
                                 if (itr.type == order_type::buy) {
                                     auto find_itr = get_buy_itr(itr.token_type, u256(-1));
-                                    auto total_price = itr.price_token.begin()->first;
+                                    auto total_price = itr.price_token.first;
                                     auto begin = find_itr.first;
                                     auto end = find_itr.second;
                                     if (begin != end) {
@@ -104,7 +100,7 @@ namespace dev {
                                     auto find_itr = get_sell_itr(itr.token_type, u256(0));
                                     auto begin = find_itr.first;
                                     auto end = find_itr.second;
-                                    auto total_amount = itr.price_token.begin()->second;
+                                    auto total_amount = itr.price_token.second;
                                     if (begin != end) {
                                         while (total_amount > 0 && begin != end) {
                                             result_order ret;
@@ -352,7 +348,10 @@ namespace dev {
 						o.token_type = begin->token_type;
 						o.type = begin->type;
 						o.time = begin->create_time;
-                        o.price_token[begin->price] = begin->token_amount;
+    //                        o.price_token[begin->price] = begin->token_amount;
+                        o.price_token.first = begin->price;
+                        o.price_token.second = begin->token_amount;
+
 						ret.push_back(o);
 
                         const auto rm = db->find(begin->id);

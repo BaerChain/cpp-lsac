@@ -22,7 +22,6 @@ namespace fs = boost::filesystem;
 
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
-#define PRECISION 100000000
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -563,15 +562,15 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 	u256 _totalSum;
 	if (_pendingOrderBuyType == order_buy_type::only_price)
 	{
-		_totalSum = _pendingOrderNum * _pendingOrderPrice / PRECISION;
+		_totalSum = _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
 	}
 	else {
 		_totalSum = _pendingOrderPrice;
 	}
 
-    std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
+    std::pair<u256, u256> _pair = {_pendingOrderPrice, _pendingOrderNum};
     order _order = {_pendingOrderHash, _addr, (order_buy_type) _pendingOrderBuyType,
-                    (order_token_type) _pendingOrderTokenType, (order_type) _pendingOrderType, _map, _nowTime};
+                    (order_token_type) _pendingOrderTokenType, (order_type) _pendingOrderType, _pair, _nowTime};
     std::vector<order> _v = {{_order}};
     std::vector<result_order> _result_v;
 
@@ -593,7 +592,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
                              _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
         CombinationNum += _result_order.amount;
-        CombinationTotalAmount += _result_order.amount * _result_order.price / PRECISION;
+        CombinationTotalAmount += _result_order.amount * _result_order.price / PRICEPRECISION;
     }
 
 	if (_pendingOrderBuyType == order_buy_type::only_price)
@@ -653,18 +652,14 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 
-		std::map<u256, u256> _map = { {pen->m_Pendingorder_price, pen->m_Pendingorder_num} };
+		std::pair<u256, u256> _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
 		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
-						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _map, _nowTime };
+						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _pair, _nowTime };
 		_v.push_back(_order);
 
 		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
-			if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::BRC)
-				total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRECISION;
-			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::BRC)
-				total_free_brc += pen->m_Pendingorder_num;
-			else if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
-				total_free_balance += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRECISION;
+		    if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+                total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRICEPRECISION;
 			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
 				total_free_balance += pen->m_Pendingorder_num;
 		}
@@ -686,21 +681,16 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
 		if(_result_order.buy_type == order_buy_type::only_price){
-			if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
-				total_free_brc -= _result_order.amount* _result_order.old_price / PRECISION;
-			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
-				total_free_brc -= _result_order.amount;
-			else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-				total_free_balance -= _result_order.amount * _result_order.old_price / PRECISION;
+		    if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+				total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
 			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
 				total_free_balance -= _result_order.amount;
 		}
 
 		if(_result_order.acceptor == dev::systemAddress)
 		{
-            auto find_token = _result_order.token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
-            std::map<u256, u256> _autoMap = {{_result_order.amount, u256(100000000)}};
-            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, find_token, order_type::sell, _autoMap, _nowTime};
+            std::pair<u256, u256> _autoPair = {_result_order.amount, u256(100000000)};
+            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL, _result_order.type, _autoPair, _nowTime};
             _autoV.push_back(_o);
 		}
 	}
@@ -733,16 +723,11 @@ void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
 
     for(auto const& val : _v)
     {
-        std::map<u256, u256>::const_iterator _it = val.price_token.begin();
         if(val.buy_type == order_buy_type::only_price){
-            if(val.type == order_type::buy && val.token_type == order_token_type::BRC)
-                total_free_brc += _it->second * _it->first / PRECISION;
-            else if(val.type == order_type::sell && val.token_type == order_token_type::BRC)
-                total_free_brc += _it->second;
-            else if(val.type == order_type::buy && val.token_type == order_token_type::FUEL)
-                total_free_balance += _it->second * _it->first / PRECISION;
+            if(val.type == order_type::buy && val.token_type == order_token_type::FUEL)
+                total_free_brc += val.price_token.second * val.price_token.first / PRICEPRECISION;
             else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
-                total_free_balance += _it->second;
+                total_free_balance += val.price_token.second;
         }
     }
 
@@ -763,21 +748,16 @@ void State::systemAutoPendingOrder(std::vector<dev::brc::ex::order> const& _v)
                              _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
         if(_result_order.buy_type == order_buy_type::only_price){
-            if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
-                total_free_brc -= _result_order.amount* _result_order.old_price / PRECISION;
-            else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
-                total_free_brc -= _result_order.amount;
-            else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-                total_free_balance -= _result_order.amount * _result_order.old_price / PRECISION;
+            if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+                total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
             else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
                 total_free_balance -= _result_order.amount;
         }
 
         if(_result_order.acceptor == dev::systemAddress)
         {
-            auto find_token = _result_order.token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
-            std::map<u256, u256> _autoMap = {{_result_order.amount, u256(100000000)}};
-            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, find_token, order_type::sell, _autoMap, _result_order.create_time};
+            std::pair<u256, u256> _autoPair = {_result_order.amount, u256(100000000)};
+            order _o = {h256(1), dev::systemAddress, order_buy_type::only_price, order_token_type::FUEL , order_type::sell, _autoPair, _result_order.create_time};
             _autoV.push_back(_o);
         }
     }
@@ -804,64 +784,34 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                                  u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
                                  ex::order_buy_type _pendingOrderBuyTypes) {
 
-    if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
-        _pendingOrderBuyTypes == order_buy_type::only_price) {
-        // 1、解冻相应金额
-        // 2、转账给他人
-        //subFBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-        //subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		subFBalance(_to, _toPendingOrderNum);
-		addBalance(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::BRC &&
-               _pendingOrderBuyTypes == order_buy_type::all_price) {
-        //subFBRC(_from, _toPendingOrderPrice * _toPendingOrderNum);
-		//subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		subFBalance(_to, _toPendingOrderNum);
-		addBalance(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::FUEL &&
-               _pendingOrderBuyTypes == order_buy_type::only_price) {
-        //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderPrice * _toPendingOrderNum / PRECISION);
-		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum / PRECISION);
-		subFBRC(_to, _toPendingOrderNum);
-		addBRC(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::FUEL &&
-               _pendingOrderBuyTypes == order_buy_type::all_price) {
-        //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		subFBRC(_to, _toPendingOrderNum);
-		addBRC(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::sell &&
-               _pendingOrderTokenType == order_token_type::BRC &&
-               (_pendingOrderBuyTypes == order_buy_type::only_price ||
-                _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        //subFBRC(_from, _toPendingOrderNum);
-		//subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-        subBRC(_from, _toPendingOrderNum);
-        addBRC(_to, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::sell &&
-               _pendingOrderTokenType == order_token_type::FUEL &&
-               (_pendingOrderBuyTypes == order_buy_type::only_price ||
-                _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        //subFBalance(_from, _toPendingOrderNum);
-		//subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subBalance(_from, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderNum);
-		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
-		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRECISION);
+    u256 _totalPrice = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+    u256 _quantityFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
+    if(_from != dev::systemAddress)
+    {
+        _totalPrice = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
     }
+    if(_to != dev::systemAddress)
+    {
+        _quantityFee = _toPendingOrderNum / MATCHINGFEERATIO;
+    }
+    if (_pendingOrderType == order_type::buy &&
+               _pendingOrderTokenType == order_token_type::FUEL &&
+            (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
+        subBRC(_from, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION - _totalPrice);
+        addBRC(_to, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION - _totalPrice);
+        subFBalance(_to, _toPendingOrderNum - _quantityFee);
+        addBalance(_from, _toPendingOrderNum - _quantityFee);
+    } else if (_pendingOrderType == order_type::sell &&
+               _pendingOrderTokenType == order_token_type::FUEL &&
+               (_pendingOrderBuyTypes == order_buy_type::only_price ||
+                _pendingOrderBuyTypes == order_buy_type::all_price)) {
+		subBalance(_from, _toPendingOrderNum - _quantityFee);
+		addBalance(_to, _toPendingOrderNum - _quantityFee);
+		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _totalPrice);
+		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _totalPrice);
+    }
+    addBRC(dev::PdSystemAddress, _totalPrice);
+    addBalance(dev::PdSystemAddress, _quantityFee);
 }
 
 void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
@@ -1053,28 +1003,12 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 
     for (auto val : _resultV) {
-		if(val.type == order_type::sell && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second);
-				addBRC(val.sender, _mapval.second);
-			}
-		}
-		else if(val.type == order_type::buy && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second * _mapval.first);
-				addBRC(val.sender, _mapval.second * _mapval.first);
-			}
-		}
-		else if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-			for(auto _mapval : val.price_token){
-				subFBalance(val.sender, _mapval.second * _mapval.first);
-				addBalance(val.sender, _mapval.second * _mapval.first);
-			}
+		if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+				subFBalance(val.sender, val.price_token.second * val.price_token.first);
+				addBalance(val.sender, val.price_token.second * val.price_token.first);
         } else if ( val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
-            for (auto _mapval : val.price_token) {
-                subFBalance(val.sender, _mapval.second);
-                addBalance(val.sender, _mapval.second);
-            }
+                subFBalance(val.sender, val.price_token.second);
+                addBalance(val.sender, val.price_token.second);
         }
     }
 }
@@ -1101,19 +1035,14 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
 	}
 
 	for(auto val : _resultV){
-		if((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second);
-				addBRC(val.sender, _mapval.second);
-			}
-		}
-		else if((val.type == order_type::buy || val.type == order_type::sell) &&
-				val.token_type == order_token_type::FUEL){
-			for(auto _mapval : val.price_token){
-				subFBalance(val.sender, _mapval.second);
-				addBalance(val.sender, _mapval.second);
-			}
-		}
+	    if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+				subFBRC(val.sender, val.price_token.second);
+				addBRC(val.sender, val.price_token.second);
+		}else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
+        {
+            subFBalance(val.sender, val.price_token.second);
+            addBalance(val.sender, val.price_token.second);
+        }
 	}
 }
 
@@ -1757,8 +1686,8 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	std::string _num = "2900000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
-	std::map<u256, u256> _map = { {u256Safe(std::string("100000000")), systenCookie} };
-	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	std::pair<u256, u256> _pair = {u256Safe(std::string("100000000")), systenCookie};
+	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _pair, _time };
 	std::vector<order> _v = { {_order} };
 
 	try
@@ -1913,9 +1842,6 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     auto  a = account(_addr);
     if(!a){
         createAccount(_addr, {0});
-        a = account(_addr);
-        if (!a)
-            BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     if (!ret_pair.first)

@@ -21,14 +21,18 @@ namespace dev {
 
 
 
-
+            /*
+             *  @param token_type : only cook
+             *  @param price_token :    if all_price && buy brc :   price == 0, token > 0;
+             *                          if all_price && sell brc :  price > 0, token == 0;
+             *  */
             struct order {
                 h256 trxid;
                 Address sender;
                 order_buy_type buy_type;
                 order_token_type token_type;
                 order_type type;
-                std::map<u256, u256> price_token;
+                std::pair<u256, u256> price_token;
                 Time_ms time;
             };
 

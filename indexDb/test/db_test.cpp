@@ -420,11 +420,9 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
     
     BOOST_AUTO_TEST_CASE(db_test6) {
     
-    
         bbfs::path cur_dir = bbfs::current_path();
         cur_dir /= bbfs::path("data");
         cur_dir /= bbfs::unique_path();
-
 
         try {
             dev::brc::ex::exchange_plugin db(cur_dir);
@@ -436,6 +434,45 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             }
             std::cout << " time: " << t.elapsed() << "  size: " << test.size() << std::endl;
             db.commit(1, h256(), h256());
+
+        } catch (const dev::Exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const std::exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+            std::cout <<  boost::diagnostic_information_what(e) << std::endl;
+        }
+        catch (...) {
+            std::cout << "exit exception.\n";
+            exit(1);
+        }
+
+    }
+
+
+
+    BOOST_AUTO_TEST_CASE(db_test7) {
+        /*  only test BRC/cook
+         *  operation: buy brc, sell brc.
+         *
+         *
+         *
+         * */
+
+        bbfs::path cur_dir = bbfs::current_path();
+        cur_dir /= bbfs::path("data");
+        cur_dir /= bbfs::unique_path();
+
+        try {
+            dev::brc::ex::exchange_plugin db(cur_dir);
+
+            //insert buy brc  only_price
+
+
+
+
+
+
 
         } catch (const dev::Exception &e) {
             std::cout << e.what() << std::endl;

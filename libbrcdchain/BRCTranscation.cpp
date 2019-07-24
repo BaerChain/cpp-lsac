@@ -126,9 +126,9 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 	{
 		try
 		{
-			std::map<u256, u256> _map = { {_pendingOrderPrice, _pendingOrderNum} };
+			std::pair<u256, u256> _pair = {_pendingOrderPrice, _pendingOrderNum};
 			order _order = { _pendingOrderHash, _form, (order_buy_type)_buy_type,
-				(order_token_type)_token_type, (order_type)_type, _map, _nowTime };
+				(order_token_type)_token_type, (order_type)_type, _pair, _nowTime };
 			const std::vector<order> _v = { {_order} };
 			std::vector<result_order> _retV = _exdb.insert_operation(_v, true, true);
 
@@ -249,14 +249,14 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
         if (_type == order_type::buy) {
             if (_buy_type == order_buy_type::only_price)
             {
-                total_brc += _pendingOrderNum * _pendingOrderPrice / 100000000;
+                total_brc += _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
                 if(total_brc > m_state.BRC(_form))
                 {
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie only_price :Address BRC < Num * Price")));
                 }
             }else if(_buy_type == order_buy_type::all_price)
             {
-                total_brc += _pendingOrderPrice / 100000000;
+                total_brc += _pendingOrderPrice / PRICEPRECISION;
                 if(total_brc > m_state.BRC(_form))
                 {
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie all_price :Address BRC < Num * Price")));
@@ -291,8 +291,8 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		}
 
 		if(_type == order_type::buy && _token_type == order_token_type::FUEL && _buy_type == order_buy_type::all_price){
-				std::map<u256, u256> _map = { {_pendingOrderPrice, _pendingOrderNum} };
-				order _order = { _pendingOrderHash, _form, (order_buy_type)_buy_type,(order_token_type)_token_type, (order_type)_type, _map, _nowTime };
+				std::pair<u256, u256> _pair = { _pendingOrderPrice, _pendingOrderNum};
+				order _order = { _pendingOrderHash, _form, (order_buy_type)_buy_type,(order_token_type)_token_type, (order_type)_type, _pair, _nowTime };
 				_verfys.push_back(_order);
 		}
 	}

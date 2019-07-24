@@ -3,6 +3,9 @@
 
 #include <libdevcore/Common.h>
 
+#define PRICEPRECISION 100000000
+#define MATCHINGFEERATIO 2000
+
 namespace dev
 {
     namespace brc{
