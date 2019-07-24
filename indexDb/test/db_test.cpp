@@ -505,19 +505,6 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             Address ad("0000000000000000000000000000000000000123");
             dev::brc::ex::exchange_plugin db(cur_dir);
 
-            //insert buy book  only_price
-            order o1 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {100000000, 100}, 1};
-            order o2 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {200000000, 100}, 3};
-            order o3 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {300000000, 100}, 2};
-            order o4 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {400000000, 100}, 4};
-            order o5 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {500000000, 100}, 5};
-
-            db.insert_operation({o1}, false);
-            db.insert_operation({o2}, false);
-            db.insert_operation({o3}, false);
-            db.insert_operation({o4}, false);
-            db.insert_operation({o5}, false);
-
 
             order o6 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {300000000, 250}, 5};
             order o7 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {600000000, 250}, 5};
@@ -530,6 +517,40 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             db.insert_operation({o8}, false);
             db.insert_operation({o9}, false);
             db.insert_operation({o10}, false);
+
+
+            //insert buy book  only_price
+            order o1 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {100000000, 100}, 1};
+            order o2 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {200000000, 100}, 3};
+            order o3 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {300000000, 100}, 2};
+            order o4 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {400000000, 100}, 4};
+            order o5 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {500000000, 100}, 5};
+
+            auto ret1 = db.insert_operation({o1}, false);
+            BOOST_CHECK(ret1.size() == 0);
+
+            ret1 = db.insert_operation({o2}, false);
+            BOOST_CHECK(ret1.size() == 0);
+
+            ret1 = db.insert_operation({o3}, false);
+            BOOST_CHECK(ret1[0].price == u256(300000000));
+            BOOST_CHECK(ret1[0].amount == u256(100));
+            BOOST_CHECK(ret1[0].old_price  == u256(300000000));
+
+
+            ret1 = db.insert_operation({o4}, false);
+            BOOST_CHECK(ret1[0].price == u256(300000000));
+            BOOST_CHECK(ret1[0].amount == u256(100));
+            BOOST_CHECK(ret1[0].old_price  == u256(400000000));
+
+
+            ret1 = db.insert_operation({o5}, false);
+            BOOST_CHECK(ret1[0].price == u256(300000000));
+            BOOST_CHECK(ret1[0].amount == u256(50));
+            BOOST_CHECK(ret1[0].old_price  == u256(500000000));
+
+
+
             print_data(db, false);
 
 
@@ -547,6 +568,189 @@ BOOST_AUTO_TEST_SUITE(test_brc_db)
             exit(1);
         }
 
+    }
+
+    BOOST_AUTO_TEST_CASE(db_test8){
+
+        bbfs::path cur_dir = bbfs::current_path();
+        cur_dir /= bbfs::path("data");
+        cur_dir /= bbfs::unique_path();
+
+        try {
+
+            auto print_data = [&](dev::brc::ex::exchange_plugin &data, bool write_file = false) {
+                auto exchange_orders_sell = data.get_order_by_type(order_type::sell, order_token_type::FUEL, 1000);
+                auto exchange_orders_buy = data.get_order_by_type(order_type::buy, order_token_type::FUEL, 1000);
+
+                auto pp = [](const std::vector<exchange_order> &exchange_orders){
+                    std::cout << "----------------------------------------------------------------------------------------\n";
+                    std::cout << boost::format("%|59t|%1% | %|59t|%2% | %3% | %4% | %5% | %6% | %7% | %8%")
+                                 % "trxid"
+                                 % "sender"
+                                 % "price"
+                                 % "token_amount"
+                                 % "source_amount "
+                                 % "create_time"
+                                 % "type"
+                                 % "token_type"
+                              << std::endl;
+                    for (auto &itr : exchange_orders) {
+                        std::cout << boost::format("%1% | %2% | %3% price | %4% / %5% token | %6% ms | %7% | %8%")
+                                     % itr.trxid
+                                     % itr.sender
+                                     % itr.price
+                                     % itr.token_amount
+                                     % itr.source_amount
+                                     % itr.create_time
+                                     % enum_to_string(itr.type)
+                                     % enum_to_string(itr.token_type)
+                                  << std::endl;
+                    }
+                };
+
+                pp(exchange_orders_sell);
+                pp(exchange_orders_buy);
+
+
+
+            };
+
+
+            h256 id("1234500000000000000000000000000000000000000000000000000000001234");
+            Address ad("0000000000000000000000000000000000000123");
+            dev::brc::ex::exchange_plugin db(cur_dir);
+
+
+            order o6 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {100000000, 150}, 5};
+            order o7 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {600000000, 150}, 5};
+            order o8 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {700000000, 150}, 5};
+            order o9 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {800000000, 150}, 5};
+            order o10 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, {900000000, 150}, 5};
+
+            db.insert_operation({o6}, false);
+            db.insert_operation({o7}, false);
+            db.insert_operation({o8}, false);
+            db.insert_operation({o9}, false);
+            db.insert_operation({o10}, false);
+
+
+            //insert buy book  only_price
+            order o1 = {id, ad, order_buy_type::all_price, order_token_type::FUEL, order_type::sell, { 0, 300}, 1};
+            auto ret1 = db.insert_operation({o1}, false);
+            BOOST_CHECK(ret1.size() == 2);
+            BOOST_CHECK(ret1[0].price == u256(900000000));
+            BOOST_CHECK(ret1[0].old_price == u256(0));
+            BOOST_CHECK(ret1[0].amount == u256(150));
+
+            BOOST_CHECK(ret1[1].price == u256(800000000));
+            BOOST_CHECK(ret1[1].old_price == u256(0));
+            BOOST_CHECK(ret1[1].amount == u256(150));
+
+            print_data(db, false);
+
+        } catch (const dev::Exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const std::exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+            std::cout <<  boost::diagnostic_information_what(e) << std::endl;
+        }
+        catch (...) {
+            std::cout << "exit exception.\n";
+            exit(1);
+        }
+    }
+
+
+    BOOST_AUTO_TEST_CASE(db_test9){
+
+        bbfs::path cur_dir = bbfs::current_path();
+        cur_dir /= bbfs::path("data");
+        cur_dir /= bbfs::unique_path();
+
+        try {
+
+            auto print_data = [&](dev::brc::ex::exchange_plugin &data, bool write_file = false) {
+                auto exchange_orders_sell = data.get_order_by_type(order_type::sell, order_token_type::FUEL, 1000);
+                auto exchange_orders_buy = data.get_order_by_type(order_type::buy, order_token_type::FUEL, 1000);
+
+                auto pp = [](const std::vector<exchange_order> &exchange_orders){
+                    std::cout << "----------------------------------------------------------------------------------------\n";
+                    std::cout << boost::format("%|59t|%1% | %|59t|%2% | %3% | %4% | %5% | %6% | %7% | %8%")
+                                 % "trxid"
+                                 % "sender"
+                                 % "price"
+                                 % "token_amount"
+                                 % "source_amount "
+                                 % "create_time"
+                                 % "type"
+                                 % "token_type"
+                              << std::endl;
+                    for (auto &itr : exchange_orders) {
+                        std::cout << boost::format("%1% | %2% | %3% price | %4% / %5% token | %6% ms | %7% | %8%")
+                                     % itr.trxid
+                                     % itr.sender
+                                     % itr.price
+                                     % itr.token_amount
+                                     % itr.source_amount
+                                     % itr.create_time
+                                     % enum_to_string(itr.type)
+                                     % enum_to_string(itr.token_type)
+                                  << std::endl;
+                    }
+                };
+
+                pp(exchange_orders_sell);
+                pp(exchange_orders_buy);
+
+
+
+            };
+
+
+            h256 id("1234500000000000000000000000000000000000000000000000000000001234");
+            Address ad("0000000000000000000000000000000000000123");
+            dev::brc::ex::exchange_plugin db(cur_dir);
+
+
+            order o6 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {10000, 150}, 5};
+            order o7 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {20000, 150}, 5};
+            order o8 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {30000, 150}, 5};
+            order o9 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {40000, 150}, 5};
+            order o10 = {id, ad, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, {50000, 150}, 5};
+
+            db.insert_operation({o6}, false);
+            db.insert_operation({o7}, false);
+            db.insert_operation({o8}, false);
+            db.insert_operation({o9}, false);
+            db.insert_operation({o10}, false);
+
+
+            //insert buy book  only_price
+            order o1 = {id, ad, order_buy_type::all_price, order_token_type::FUEL, order_type::buy, { u256("4000000"), 0}, 1};
+            auto ret1 = db.insert_operation({o1}, false);
+            BOOST_CHECK(ret1.size() == 2);
+            BOOST_CHECK(ret1[0].price == u256(10000));
+            BOOST_CHECK(ret1[0].old_price == u256(0));
+            BOOST_CHECK(ret1[0].amount == u256(150));
+
+            BOOST_CHECK(ret1[1].price == u256(20000));
+            BOOST_CHECK(ret1[1].old_price == u256(0));
+            BOOST_CHECK(ret1[1].amount == u256(125));
+
+            print_data(db, false);
+
+        } catch (const dev::Exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const std::exception &e) {
+            std::cout << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+            std::cout <<  boost::diagnostic_information_what(e) << std::endl;
+        }
+        catch (...) {
+            std::cout << "exit exception.\n";
+            exit(1);
+        }
     }
 
 
