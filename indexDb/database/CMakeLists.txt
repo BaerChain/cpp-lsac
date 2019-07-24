@@ -10,6 +10,7 @@ add_library(brc_db STATIC
             include/brc/exception.hpp
             src/database.cpp
             src/exchangeOrder.cpp
+        src/types.cpp
         )
 
 target_link_libraries(brc_db  devcore  chainbase )
