@@ -784,34 +784,45 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                                  u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
                                  ex::order_buy_type _pendingOrderBuyTypes) {
 
-    u256 _totalPrice = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
-    u256 _quantityFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
-    if(_from != dev::systemAddress)
-    {
-        _totalPrice = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
-    }
-    if(_to != dev::systemAddress)
-    {
-        _quantityFee = _toPendingOrderNum / MATCHINGFEERATIO;
-    }
+    u256 _fromFee = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+    u256 _toFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
+
     if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::FUEL &&
             (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
+        if(_from != dev::systemAddress)
+        {
+            _fromFee = _toPendingOrderNum / MATCHINGFEERATIO;
+        }
+        if(_to != dev::systemAddress)
+        {
+            _toFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+        }
         subBRC(_from, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION);
-        addBRC(_to, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION - _totalPrice);
+        addBRC(_to, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION - _toFee);
         subFBalance(_to, _toPendingOrderNum);
-        addBalance(_from, _toPendingOrderNum - _quantityFee);
+        addBalance(_from, _toPendingOrderNum - _fromFee);
+        addBRC(dev::PdSystemAddress, _toFee);
+        addBalance(dev::PdSystemAddress, _fromFee);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::FUEL &&
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
+        if(_from != dev::systemAddress)
+        {
+            _fromFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+        }
+        if(_to != dev::systemAddress)
+        {
+            _toFee = _toPendingOrderNum / MATCHINGFEERATIO;
+        }
 		subBalance(_from, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderNum - _quantityFee);
+		addBalance(_to, _toPendingOrderNum - _toFee);
 		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION);
-		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _totalPrice);
+		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _fromFee);
+        addBRC(dev::PdSystemAddress, _fromFee);
+        addBalance(dev::PdSystemAddress, _toFee);
     }
-    addBRC(dev::PdSystemAddress, _totalPrice);
-    addBalance(dev::PdSystemAddress, _quantityFee);
 }
 
 void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
