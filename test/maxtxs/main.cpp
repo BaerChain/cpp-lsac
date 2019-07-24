@@ -48,7 +48,7 @@ std::vector<dx::order> random_orders(size_t length) {
 //        o.buy_type = get_random_type() ? dx::order_buy_type::all_price : dx::order_buy_type::only_price;
         o.buy_type = dx::order_buy_type::only_price;
         o.type = get_random_type() ? dx::order_type::buy : dx::order_type::sell;
-        o.price_token[get_random_u256()] = get_random_u256();
+        o.price_token = {get_random_u256(),get_random_u256()};
         o.time = i;
         o.trxid = dev::h256(i);
         ret.push_back(o);

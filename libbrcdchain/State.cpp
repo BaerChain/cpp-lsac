@@ -171,7 +171,7 @@ Account *State::account(Address const &_addr) {
         _vote.insert(_pair);
     }
 
-	const bytes _bBlockReward = state[11].toBytes();
+	const bytes _bBlockReward = state[10].toBytes();
 	RLP _rlpBlockReward(_bBlockReward);
 	num = _rlpBlockReward[0].toInt<size_t>();
 	std::vector<std::pair<u256, u256>> _blockReward;
@@ -193,13 +193,13 @@ Account *State::account(Address const &_addr) {
 	i.first->second.setBlockReward(_blockReward);
 
 	std::vector<std::string> tmp;
-	tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+	tmp = state[11].convert<std::vector<std::string>>(RLP::LaissezFaire);
 	i.first->second.initChangeList(tmp);
 
-	u256 _cookieNum  = state[13].toInt<u256>();
+	u256 _cookieNum  = state[12].toInt<u256>();
 	i.first->second.setCookieIncome(_cookieNum);
 
-    const bytes  vote_sna_b = state[14].convert<bytes>(RLP::LaissezFaire);
+    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
 
     m_unchangedCacheEntries.push_back(_addr);
