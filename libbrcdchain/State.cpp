@@ -719,8 +719,8 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     {
         if(it == order_type::buy)
         {
-            u256 _num = BRC(systemAddress) / BUYCOOKIE / 10000 * 10000;
-            _needBrc = _num * u256(BUYCOOKIE);
+            u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE  / 10000 * 10000 ;
+            _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
             std::pair<u256, u256> _pair = {u256(BUYCOOKIE), _num};
             order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, _pair, _nowTime};
             _v.push_back(_order);
@@ -767,9 +767,9 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
         subBRC(systemAddress, _needBrc);
         addFBRC(systemAddress, _needBrc);
     }
-    if(_set.size() > 0)
+    if(_autoSet.size() > 0)
     {
-        systemAutoPendingOrder(_set, _nowTime);
+        systemAutoPendingOrder(_autoSet, _nowTime);
     }
 }
 
