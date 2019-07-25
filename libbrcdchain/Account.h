@@ -122,6 +122,44 @@ struct VoteSnapshot{
 
 };
 
+
+struct CouplingSystemfee
+{
+    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
+    u256 m_rounds = 0;
+    u256 m_numofrounds = 0;
+
+    void streamRLP(RLPStream &_rlp)
+    {
+        RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
+        for(auto it : m_Feesnapshot)
+        {
+            _Feesnapshotrlp.append<u256, std::pair<u256, u256>> (std::make_pair(it.first, it.second));
+        }
+        rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
+    }
+
+    void unstreamRLP(bytes const& _byte)
+    {
+        RLP _rlp(_byte);
+        bytes _feesnapshot = _rlp[0].toBytes();
+        for(auto it : RLP(_feesnapshot))
+        {
+            std::pair<u256 , std::pair<u256, u256> > _pair = it.toPair<u256, std::pair<u256, u256>>();
+            m_Feesnapshot[_pair.first] = _pair.second;
+        }
+        m_rounds = _rlp[1].toInt<u256>();
+        m_numofrounds = _rlp[2].toInt<u256>();
+    }
+
+    void clear()
+    {
+        m_Feesnapshot.clear();
+        m_numofrounds = 0;
+        m_rounds = 0;
+    }
+};
+
 inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
     out <<std::endl;
     out<< "data_history:{";
