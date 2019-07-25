@@ -5,6 +5,7 @@
 #include <libbrccore/Common.h>
 #include <libbrccore/BlockHeader.h>
 #include <libbrcdchain/LogFilter.h>
+#include <libbrcdchain/Transaction.h>
 namespace dev
 {
 
@@ -49,6 +50,8 @@ Json::Value toJsonByBlock(LocalisedLogEntries const& _entries);
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.
+
+Json::Value analysisData(bytes const& _data);
 
 class AddressResolver
 {
