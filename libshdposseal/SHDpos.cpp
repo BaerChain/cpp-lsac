@@ -58,11 +58,11 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
         m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, var_v);
         auto ret = find(var_v.begin(), var_v.end(), _bi.author());
         if(ret == var_v.end()) {
-            uint64_t  offet = (_bi.timestamp()+5) / m_config.varlitorInterval;
+            uint64_t  offet = (_bi.timestamp() + 5) / m_config.varlitorInterval;
             offet %= var_v.size();
-            if(!verify_standby(var_v[offet], _bi.author())){
-                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
-            }
+//            if(!verify_standby(var_v[offet], _bi.author())){
+//                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
+//            }
         }
     }
     CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
@@ -233,11 +233,11 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 
    BlockHeader h = m_dpos_cleint->getCurrHeader();
    //testlog << h.number() << " "<< m_dpos_cleint->author();
-   //if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle())
-   if (h.number() <= 10 * dev::brc::config::minimum_cycle())
+   if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()){
        return false;
-    return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
-
+   }
+//   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
+    return true;
 }
 
 bool dev::bacd::SHDpos::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
