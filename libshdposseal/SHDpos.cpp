@@ -2,6 +2,7 @@
 #include <libbrccore/TransactionBase.h>
 #include <libdevcore/Address.h>
 #include <libdevcore/Exceptions.h>
+#include <libbrccore/config.h>
 #include <cstdlib>
 
 dev::bacd::SHDpos::SHDpos()
@@ -51,13 +52,18 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
     auto start = utcTimeMilliSec();
     CLATE_LOG << "SHDpos time begin " << start;
 	SealEngineBase::verify(_s, _bi, _parent, _block);
-    std::vector<Address> _v;
+    std::vector<Address> var_v;
 
     if(m_dpos_cleint){
-        m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, _v);
-        auto ret = find(_v.begin(), _v.end(), _bi.author());
-        if(ret == _v.end())
-            BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress( toString(_bi.author())));
+        m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, var_v);
+        auto ret = find(var_v.begin(), var_v.end(), _bi.author());
+        if(ret == var_v.end()) {
+            uint64_t  offet = (_bi.timestamp()+5) / m_config.varlitorInterval;
+            offet %= var_v.size();
+            if(!verify_standby(var_v[offet], _bi.author())){
+                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
+            }
+        }
     }
     CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
 }
@@ -67,7 +73,6 @@ void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const & m_params)
     m_config.epochInterval = m_params.epochInterval;
     m_config.blockInterval = m_params.blockInterval;
     m_config.varlitorInterval = m_params.varlitorInterval;
-    m_config.maxValitorNum = m_params.maxVarlitorNum;
     LOG(m_logger) << BrcYellow "dpos config:" << m_config;
 }
 
@@ -209,22 +214,37 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 {
 	Timer _timer;
 	m_curr_varlitors.clear();
+	if(!m_dpos_cleint)
+        return false;
 	m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
 	if(m_curr_varlitors.empty())
 	{
 		cerror << " not have Varlitors to create block!";
 		return false;
 	}
-    std::vector<Address> _vector = m_curr_varlitors;
-    uint64_t offet = _now % (m_config.epochInterval ? m_config.epochInterval : timesc_20y);  // 当前轮 进入了多时间
-    offet /= m_config.varlitorInterval;
-    offet %= _vector.size();
-    Address const& curr_valitor = _vector[offet];
-    //testlog << curr_valitor << m_dpos_cleint->author();
 
-    return  curr_valitor == m_dpos_cleint->author();
-    //bool ret = isCurrBlock(curr_valitor);
-    //return chooseBlockAddr(curr_valitor, ret);
+    uint64_t  offet = _now / m_config.varlitorInterval;
+    offet %= m_curr_varlitors.size();
+    if(m_curr_varlitors[offet] == m_dpos_cleint->author())
+        return true;
+
+    if(std::find(m_curr_varlitors.begin(), m_curr_varlitors.end(), m_dpos_cleint->author()) != m_curr_varlitors.end())
+        return false;
+
+   BlockHeader h = m_dpos_cleint->getCurrHeader();
+   //testlog << h.number() << " "<< m_dpos_cleint->author();
+   //if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle())
+   if (h.number() <= 10 * dev::brc::config::minimum_cycle())
+       return false;
+    return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
+
+}
+
+bool dev::bacd::SHDpos::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
+
+    if (!m_dpos_cleint)
+        return false;
+    return m_dpos_cleint->verify_standby(super_addr, own_addr);
 }
 
 bool dev::bacd::SHDpos::chooseBlockAddr(Address const& _addr, bool _isok)
@@ -500,7 +520,7 @@ void dev::bacd::SHDpos::getVarlitorsAndCandidate(std::vector<Address>& _curr_var
     _curr_varlitors.clear();
     m_curr_candidate.clear();
 
-	auto index = m_config.maxValitorNum;
+	auto index =dev::brc::config::varlitorNum();
 	for(auto v : _v)
 	{
 		if(index > 0)

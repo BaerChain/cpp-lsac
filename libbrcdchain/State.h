@@ -118,6 +118,7 @@ struct Change
         Numofrounds,
         CooikeIncomeNum,
         SystemAddressPoll,
+        LastCreateRecord,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -131,6 +132,7 @@ struct Change
     VoteSnapshot vote_snapshot;
     u256 cooikeIncomeNum = 0;
     PollData poll_data;
+    std::pair<u256, int64_t > create_record;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -169,9 +171,13 @@ struct Change
     {
         vote_snapshot = _vote;
     }
-    Change(Kind _kind, Address const& _addr, PollData const& p_data) : kind(SystemAddressPoll), address(_addr)
+    Change(Kind _kind, Address const& _addr, PollData const& p_data) : kind(_kind), address(_addr)
     {
         poll_data = p_data;
+    }
+    Change(Kind _kind, Address const& _addr, std::pair<u256, int64_t> const& value) : kind(_kind), address(_addr)
+    {
+        create_record = value;
     }
 
 };
@@ -515,6 +521,15 @@ public:
 
 	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
 	uint64_t timestamp() const{ return m_timestamp; }
+
+	///interface for create_block record
+	///Get last create_block record
+	///@returns create_time
+	int64_t last_block_record(Address const& _id) const;
+    ///Set new record
+    void set_last_block_record(Address const& _id, std::pair<u256, int64_t> const& value);
+
+    BlockRecord block_record() const;
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.

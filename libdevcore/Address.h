@@ -31,5 +31,7 @@ extern Address const VoteAddress;
 extern Address const SysElectorAddress;
 
 extern Address const systemAddress;
+
+extern Address const SysBolckCreateRecordAddress;
 }
 

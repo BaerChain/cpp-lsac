@@ -496,6 +496,8 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
             ++i;
         }
 
+    // execute create_block records
+    execute_block_record();
 
     h256 receiptsRoot;
     DEV_TIMED_ABOVE(".receiptsRoot()", 500) receiptsRoot = orderedTrieRoot(receipts);
@@ -895,4 +897,8 @@ void Block::cleanup() {
                   << m_previousBlock.hash();
 
     resetCurrent();
+}
+
+void Block::execute_block_record(){
+    m_state.set_last_block_record(info().author(), std::make_pair(info().number(), info().timestamp()));
 }

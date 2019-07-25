@@ -217,12 +217,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 				LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
 			}
 
-			/*int64_t seal_time = m_params.blockInterval ? m_params.blockInterval * 2 / 5 : 400;
-			if(utcTimeMilliSec() > (dpos()->get_next_time() - seal_time)){
-				cwarn << " not have enough time to seal Block and out...";
-				return;
-			}*/
-
 			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
 			DEV_WRITE_GUARDED(x_working)
 			{
@@ -231,10 +225,10 @@ void dev::bacd::SHDposClient::rejigSealing()
 					LOG(m_logger) << "Tried to seal sealed block...";
 					return;
 				}
+				// record crete_block
+				m_working.execute_block_record();
 				// TODO is that needed? we have "Generating seal on" below
 				m_working.commitToSeal(bc(), m_extraData);
-				//try into next new epoch and check some about varlitor for SH-DPOS
-//				dpos()->tryElect(utcTimeMilliSec());
 			}
 			DEV_READ_GUARDED(x_working)
 			{
@@ -378,20 +372,38 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 	int64_t curr_time = utcTimeMilliSec() / dpos()->dposConfig().blockInterval * dpos()->dposConfig().blockInterval;
 	if(m_working.info().timestamp() < curr_time)
 		return false;
-
-	//std::vector<Address> const& creaters = dpos()->getCurrCreaters();
-	//auto ret = find(creaters.begin(), creaters.end(), _pAddr);
-	////testlog << " ret1:" << *ret;
-	//if(ret == creaters.end())
-	//	return false;
-	//if(++ret == creaters.end())
-	//	ret = creaters.begin();
-	////testlog << " ret2:" << *ret;
-
-	//int64_t curr_time = utcTimeMilliSec() / dpos()->dposConfig().blockInterval * dpos()->dposConfig().blockInterval;
-
-	////testlog << " _ph:" << _ph.timestamp() << " now:" << curr_time << " ret_time:" << _ph.timestamp() + dpos()->dposConfig().blockInterval;
-	//if(*ret != author() && (_ph.timestamp() + dpos()->dposConfig().blockInterval) < curr_time )
-	//	return false; 
 	return true;
+}
+
+bool dev::bacd::SHDposClient::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
+	//testlog << BrcYellow "verify: stand:"<< own_addr << " super:"<< super_addr;
+    BlockRecord b_record = preSeal().mutableState().block_record();
+    std::map<Address, int64_t > records = b_record.m_last_time;
+    auto super = records.find(super_addr);
+    if (super != records.end()){
+        if (super->second + config::varlitorNum() * dpos()->dposConfig().varlitorInterval* config::minimum_cycle() > utcTimeMilliSec())
+            return false;
+    }
+
+    // can_addr has sorted
+    std::vector<Address> can_addr;
+    getCurrCreater(CreaterType::Canlitor, can_addr);
+
+    auto ret_own = std::find(can_addr.begin(), can_addr.end(), own_addr);
+    if (ret_own == can_addr.end())
+        return false;
+
+    for(auto const& val: can_addr){
+        auto ret = records.find(val);
+        if (ret == records.end()){
+            return  val == own_addr;
+        }
+        else{
+            if (ret->second + config::varlitorNum() * dpos()->dposConfig().varlitorInterval < utcTimeMilliSec()){
+				//testlog << BrcYellow " will to deal block..." << BrcReset;
+                return val == own_addr;
+            }
+        }
+    }
+    return false;
 }

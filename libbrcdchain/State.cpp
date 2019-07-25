@@ -200,6 +200,9 @@ Account *State::account(Address const &_addr) {
     const bytes  vote_sna_b = state[14].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
 
+    const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.init_block_record(record_b);
+
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -1533,6 +1536,10 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
+
+        Json::Value record;
+        record["time"] = toJS(a->last_records(_addr));
+        jv["last_block_created"] = record;
 		/*Json::Value _rewardArray;
 		if (a->blockReward().size() > 0)
 		{
@@ -1853,6 +1860,34 @@ void dev::brc::State::transferBallotSell(Address const &_from, u256 const &_valu
     subBRC(dev::systemAddress, _value * BALLOTPRICE );
 }
 
+int64_t dev::brc::State::last_block_record(Address const& _id) const{
+    auto a = account(SysBolckCreateRecordAddress);
+    if(!a){
+        return 0;
+    }
+    return a->last_records(_id);
+
+}
+
+void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<dev::u256, int64_t> &value) {
+    auto a = account(SysBolckCreateRecordAddress);
+    if(!a){
+        createAccount(SysBolckCreateRecordAddress, {0});
+        a = account(SysBolckCreateRecordAddress);
+    }
+    int64_t _time = a->last_records(_id);
+    a->set_create_record(std::make_pair(_id, value.second));
+    //testlog << _id << " "<< value.first << " "<< value.second;
+    m_changeLog.emplace_back(Change::LastCreateRecord, _id, std::make_pair(_id, _time));
+}
+
+BlockRecord dev::brc::State::block_record() const {
+    auto  a= account(SysBolckCreateRecordAddress);
+    if (!a)
+        return BlockRecord();
+    return  a->block_record();
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
@@ -1957,7 +1992,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(15);
+				s.appendList(16);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2015,6 +2050,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     i.second.vote_snashot().streamRLP(_s);
                     s << _s.out();
                 }
+                s << i.second.block_record().streamRLP();
 
                 _state.insert(i.first, &s.out());
             }

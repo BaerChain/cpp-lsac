@@ -35,7 +35,6 @@ namespace brc
  */
 
 /// vote data
-
 struct PollData{
     Address     m_addr;
     u256        m_poll = 0;
@@ -131,19 +130,16 @@ struct VoteSnapshot{
             }
             m_voteDataHistory[_pair.first] = vote_data;
         }
-
         bytes  poll_b= rlp[1].toBytes();
         for(auto const& val : RLP(poll_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_pollNumHistory[_pair.first] = _pair.second;
         }
-
         bytes block_b = rlp[2].toBytes();
         for(auto const& val: RLP(block_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_blockSummaryHistory[_pair.first] = _pair.second;
         }
-
         numberofrounds = rlp[3].toInt<u256>();
         m_latest_round = rlp[4].toInt<u256>();
     }
@@ -186,6 +182,41 @@ inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
 
     return out;
 }
+
+/// for record own  creater_block log
+/**
+ * If the latest recorded event is less than three creater_node round robin cycles then
+ * the standby node starts to block in its place
+ * */
+struct BlockRecord{
+    std::map<Address, int64_t > m_last_time;
+
+    bytes streamRLP() const{
+        RLPStream s(1);
+
+        RLPStream time_s(m_last_time.size());
+        for(auto const& val: m_last_time){
+            time_s.append<Address, u256>(std::make_pair(val.first, val.second));
+        }
+        s<< time_s.out();
+        return  s.out();
+    }
+    void populate(bytes const& b){
+        RLP rlp(b);
+
+        bytes time_b = rlp[0].toBytes();
+        for(auto const& val: RLP(time_b)){
+            std::pair<Address , u256 > pair = val.toPair<Address, u256>();
+            m_last_time[pair.first] = (int64_t)pair.second;
+        }
+    }
+    void set_last_block(std::pair<Address , int64_t >const& value){
+        m_last_time[value.first] = value.second;
+    }
+    bool is_empty() const{
+        return  m_last_time.empty();
+    }
+};
 
 class Account
 {
@@ -288,7 +319,11 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() && m_BlockReward.size() == 0 && ballot() == 0 ;  }
+    bool isEmpty() const {
+        return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
+                FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
+                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() ;
+    }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -495,7 +530,23 @@ public:
     }
     void set_vote_snapshot(VoteSnapshot const& _vote_sna){
         m_vote_sapshot = _vote_sna;
+        changed();
     }
+
+    ///interface for Varlitor's create_block records
+    void set_create_record(std::pair<Address , int64_t > const& value){
+        m_block_records.set_last_block(value);
+        changed();
+    }
+    int64_t last_records(Address const& _id) const{
+        auto ret = m_block_records.m_last_time.find(_id);
+        if(ret != m_block_records.m_last_time.end()){
+            return ret->second;
+        }
+        return  0;
+    }
+    BlockRecord const& block_record() const { return  m_block_records;}
+    void init_block_record(bytes const& _b){ m_block_records.populate(_b);}
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -574,7 +625,7 @@ private:
     static const h256 c_contractConceptionCodeHash;
 
     /// Varlitor's create_block records
-
+    BlockRecord m_block_records;
 
 };
 

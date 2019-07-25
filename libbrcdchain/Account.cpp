@@ -428,7 +428,8 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                     ret[a] = Account(0);
                 }
                 ret[a].addVote(std::make_pair(to, ballots));
-                ret[SysElectorAddress].set_system_poll({to, ballots, ++_time});
+                u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
+                ret[SysElectorAddress].set_system_poll({to, _ballot+ballots, ++_time});
 			}
 		}
     }
