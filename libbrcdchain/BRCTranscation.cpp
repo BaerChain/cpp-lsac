@@ -401,32 +401,34 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, 
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,
-                                                    const dev::brc::DposVote &_vote)
-{
-    std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
-    if(_pair.second == Votingstage::ERRORSTAGE)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+                                                    const dev::brc::DposVote &_vote) {
+    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
+    if (_pair.second == Votingstage::ERRORSTAGE) {
+        BOOST_THROW_EXCEPTION(
+                receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
 
-    if(_pair.second == Votingstage::VOTE)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+    if (_pair.second == Votingstage::VOTE) {
+        BOOST_THROW_EXCEPTION(
+                receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }
     auto a = m_state.account(_from);
-    if(!a)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account that receives the income does not exist")));
+    if (!a) {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(
+                std::string("The account that receives the income does not exist")));
     }
 
-    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
     VoteSnapshot _voteSnapshot;
-    if(ret_pair.first)
+    if (ret_pair.first)
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
-
+    if (_voteSnapshot.m_voteDataHistory.size() == 0)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("no votedataHistory: There is currently no income to receive")));
+    }
     if (_numberofrounds >= (_voteSnapshot.m_latest_round -1))
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
