@@ -430,6 +430,16 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 ret[a].addVote(std::make_pair(to, ballots));
                 u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
                 ret[SysElectorAddress].set_system_poll({to, _ballot+ballots, ++_time});
+
+                if (ret.count(SysVarlitorAddress) && ret[SysVarlitorAddress].poll_data(to) == to){
+                    ret[SysVarlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
+                    ret[SysVarlitorAddress].sort_vote_data();
+                }
+                else if (ret.count(SysCanlitorAddress) && ret[SysCanlitorAddress].poll_data(to) == to){
+                    ret[SysCanlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
+                    ret[SysCanlitorAddress].sort_vote_data();
+                }
+
 			}
 		}
     }

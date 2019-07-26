@@ -1,6 +1,7 @@
 #pragma once
 #include "State.h"
 #include <libdevcore/Common.h>
+#include <libdevcore/Address.h>
 #include <libdevcrypto/Common.h>
 #include <libbvm/ExtVMFace.h>
 #include <libbrccore/config.h>
@@ -15,8 +16,6 @@ namespace dev
 {
 namespace brc
 {
-const Address SysVarlitorAddress { "000000000067656e657369735661726c69746f72" };
-const Address SysCanlitorAddress { "0000000067656e6573697343616e646964617465" };
 
 //投票类型
 enum VoteType

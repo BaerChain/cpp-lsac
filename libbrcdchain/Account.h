@@ -67,6 +67,14 @@ struct PollData{
         return m_addr == addr;
     }
 
+    bool  operator > (PollData const& p ) const{
+        if( m_poll > p.m_poll)
+            return true;
+        if (m_time < p.m_time)
+            return true;
+        return false;
+    }
+
 };
 
 struct VoteSnapshot{
@@ -483,6 +491,8 @@ public:
     void set_system_poll(PollData const& _p);
     std::vector<PollData> const& vote_data() const { return  m_vote_data; }
     PollData poll_data(Address const& _addr) const;
+
+    void sort_vote_data(){ std::sort(m_vote_data.begin(), m_vote_data.end(), std::greater<PollData>()); changed();}
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
