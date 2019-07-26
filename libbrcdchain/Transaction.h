@@ -282,7 +282,7 @@ namespace dev
             struct receivingincome_operation : public operation
             {
                 uint8_t m_type;
-                uint8_t m_receivingType;
+                uint8_t m_receivingType;   //1.Receive block fee redemption  2.Receive a matching system fee
                 Address m_from;
                 receivingincome_operation(){}
                 receivingincome_operation(op_type _type, uint8_t _receivingType, Address _from) : m_type(_type), m_receivingType(_receivingType),m_from(_from)
