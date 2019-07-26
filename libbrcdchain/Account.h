@@ -348,7 +348,6 @@ public:
         m_nonce = 0;
         m_poll = 0;
         m_ballot = 0;
-        m_voteData.clear();
         m_willChangeList.clear();
 		m_BlockReward.clear();
         changed();

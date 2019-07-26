@@ -187,7 +187,7 @@ Account *State::account(Address const &_addr) {
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
 								 Account::Unchanged));
-    i.first->second.setVoteDate(_vote);
+    i.first->second.set_vote_data(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
 	std::vector<std::string> tmp;

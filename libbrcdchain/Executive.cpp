@@ -574,7 +574,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
         switch (_type){
             case transationTool::op_type::vote:{
-                m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo.number());
+                m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo);
                 break;
             }
             case transationTool::op_type::brcTranscation:{
