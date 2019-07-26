@@ -204,8 +204,8 @@ struct CouplingSystemfee
         for(auto it : RLP(_feesnapshot))
         {
             std::pair<u256 , bytes> _pair = it.toPair<u256, bytes>();
-            std::pair<u256, u256> _amountPair = RLP(_pair.second).toPair<u256, u256>());
-            m_Feesnapshot[_pair.first] = _amountPair;
+            RLP _amount(_pair.second);
+            m_Feesnapshot[_pair.first] = std::pair<u256, u256>(_amount[0].toInt<u256>(), _amount[1].toInt<u256>());
         }
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
