@@ -129,14 +129,14 @@ struct CouplingSystemfee
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
-    void streamRLP(RLPStream &_rlp)
+    void streamRLP(RLPStream &_rlp) const
     {
         RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
         for(auto it : m_Feesnapshot)
         {
-            _Feesnapshotrlp.append<u256, std::pair<u256, u256>> (std::make_pair(it.first, it.second));
+            _Feesnapshotrlp.append<u256, std::pair<u256, u256>>(std::make_pair(it.first, it.second));
         }
-        rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
+        _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
     }
 
     void unstreamRLP(bytes const& _byte)
@@ -497,6 +497,14 @@ public:
         m_vote_sapshot = _vote_sna;
     }
 
+
+    CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
+    void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
+    void tryRecordSnapshot(u256 _rounds);
+    u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
+    u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
+    void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -552,7 +560,7 @@ private:
     // The snapshot about voteData
     VoteSnapshot    m_vote_sapshot;
 
-
+    CouplingSystemfee m_couplingSystemFee;
     // Coupling system freezing fee
     //std::unordered_map<u256, u256> m_BlockReward;
 

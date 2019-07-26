@@ -285,14 +285,15 @@ namespace dev
             struct receivingincome_operation : public operation
             {
                 uint8_t m_type;
+                uint8_t m_receivingType;
                 Address m_from;
                 receivingincome_operation(){}
-                receivingincome_operation(op_type _type, Address _from) : m_type(_type), m_from(_from)
+                receivingincome_operation(op_type _type, uint8_t _receivingType, Address _from) : m_type(_type), m_receivingType(_receivingType),m_from(_from)
                 {}
 
-                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_from))
+                OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_receivingType)(m_from))
 
-                OPERATION_SERIALIZE((m_type)(m_from))
+                OPERATION_SERIALIZE((m_type)(m_receivingType)(m_from))
 
             };
 

@@ -377,7 +377,31 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 	}
 }
 
-void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
+void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
+{
+    for(auto const& _it : _ops)
+    {
+        std::shared_ptr<transationTool::receivingincome_operation> _op =  std::dynamic_pointer_cast<transationTool::receivingincome_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome_operation is error")));
+        }
+
+        ReceivingType _receType = (ReceivingType)_op->m_receivingType;
+        if(_receType == ReceivingType::RBlockFeeIncome)
+        {
+            verifyBlockFeeincome(_from, _envinfo, _vote);
+        }else if(_receType == ReceivingType::RPdFeeIncome)
+        {
+            verifyPdFeeincome(_from, _envinfo.number(), _vote);
+        }else{
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome type is null")));
+        }
+    }
+}
+
+void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,
+                                                    const dev::brc::DposVote &_vote)
 {
     std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_envinfo.number());
     if(_pair.second == Votingstage::ERRORSTAGE)
@@ -390,6 +414,11 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
     }
     auto a = m_state.account(_from);
+    if(!a)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account that receives the income does not exist")));
+    }
+
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     VoteSnapshot _voteSnapshot;
     if(ret_pair.first)
@@ -402,5 +431,33 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address _from, dev::br
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
+}
 
+void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int64_t _blockNum, dev::brc::DposVote const& _vote)
+{
+    std::pair <uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    if(_pair.second == Votingstage::ERRORSTAGE)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+    }
+
+    if(_pair.second == Votingstage::VOTE)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
+    }
+
+    auto a = m_state.account(_from);
+    auto systemAccount = m_state.account(dev::PdSystemAddress);
+    if(!a)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account that receives the income does not exist")));
+    }
+
+    u256 _rounds = systemAccount->getSnapshotRounds();
+    u256 _numofRounds = a->getFeeNumofRounds();
+
+    if(_numofRounds >= _rounds)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("Not enough income to receive")));
+    }
 }

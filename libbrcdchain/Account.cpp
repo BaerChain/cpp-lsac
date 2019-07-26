@@ -194,6 +194,19 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
     return  std::make_pair(true, last_round);
 }
 
+
+
+void Account::tryRecordSnapshot(u256 _rounds)
+{
+    for(u256 _num = m_couplingSystemFee.m_rounds + 1; _num < _rounds; _num++)
+    {
+        if(!m_couplingSystemFee.m_Feesnapshot.count(_num))
+            m_couplingSystemFee.m_Feesnapshot[_num] = std::pair<u256, u256>(0 ,0);
+    }
+    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (BRC(), balance());
+    m_couplingSystemFee.m_rounds = _rounds;
+}
+
 namespace js = json_spirit;
 
 namespace

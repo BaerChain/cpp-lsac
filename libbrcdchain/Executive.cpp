@@ -457,7 +457,7 @@ void Executive::initialize(Transaction const& _transaction)
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                    m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";

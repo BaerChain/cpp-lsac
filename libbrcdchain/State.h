@@ -116,7 +116,8 @@ struct Change
         BlockReward,
         NewVoteSnapshot,
         Numofrounds,
-        CooikeIncomeNum
+        CooikeIncomeNum,
+        CoupingSystemFeeSnapshot
     };
 
     Kind kind;        ///< The kind of the change.
@@ -128,6 +129,7 @@ struct Change
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
     std::pair<u256, u256> blockReward;
     VoteSnapshot vote_snapshot;
+    CouplingSystemfee feeSnapshot;
     u256 cooikeIncomeNum = 0;
 
     /// Helper constructor to make change log update more readable.
@@ -166,6 +168,10 @@ struct Change
     Change(Address const& _addr, VoteSnapshot const& _vote) : kind(NewVoteSnapshot), address(_addr)
     {
         vote_snapshot = _vote;
+    }
+    Change(Address const& _addr, CouplingSystemfee const& _fee) : kind(CoupingSystemFeeSnapshot), address(_addr)
+    {
+        feeSnapshot = _fee;
     }
 
 };
@@ -393,7 +399,7 @@ public:
 
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
-
+    void tryRecordFeeSnapshot(int64_t _blockNum);
 
 private:
     //投票数据

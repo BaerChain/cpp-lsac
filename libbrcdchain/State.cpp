@@ -202,6 +202,9 @@ Account *State::account(Address const &_addr) {
     const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
 
+    const bytes _feeSnapshotBytes = state[14].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.initCoupingSystemFee(_feeSnapshotBytes);
+
     m_unchangedCacheEntries.push_back(_addr);
     return &i.first->second;
 }
@@ -1390,7 +1393,10 @@ void State::rollback(size_t _savepoint) {
                 account.set_vote_snapshot(change.vote_snapshot);
                 break;
             case Change::CooikeIncomeNum:
-                account.addCooikeIncome(0 -change.value);
+                account.addCooikeIncome(0 - change.value);
+                break;
+            case Change::CoupingSystemFeeSnapshot:
+                account.setCouplingSystemFeeSnapshot(change.feeSnapshot);
                 break;
             default:
                 break;
@@ -1846,6 +1852,7 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     auto  a = account(_addr);
     if(!a){
         createAccount(_addr, {0});
+        a = account(_addr);
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     if (!ret_pair.first)
@@ -1853,10 +1860,33 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
     m_changeLog.emplace_back(_addr, _vote_sna);
-    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
+    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0 - a->CookieIncome());
     setCookieIncomeNum(_addr, 0);
-
 }
+
+void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
+{
+    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    auto a = account(dev::PdSystemAddress);
+    if(!a)
+    {
+        createAccount(dev::PdSystemAddress, {0});
+        a = account(dev::PdSystemAddress);
+    }
+    u256 _rounds = a->getSnapshotRounds();
+    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
+    {
+        CouplingSystemfee _fee = a->getFeeSnapshot();
+        a->tryRecordSnapshot(_pair.first);
+        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, 0 - a->BRC());
+        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, 0 - a->balance());
+        setBRC(dev::PdSystemAddress, 0);
+        setBalance(dev::PdSystemAddress, 0);
+        m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
+    }
+    return;
+}
+
 
 void dev::brc::State::transferBallotBuy(
         Address const &_from, u256 const &_value) {
@@ -1976,7 +2006,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(14);
+				s.appendList(15);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2033,6 +2063,11 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     RLPStream _s;
                     i.second.vote_snashot().streamRLP(_s);
                     s << _s.out();
+                }
+                {
+                    RLPStream _feeRlp;
+                    i.second.getFeeSnapshot().streamRLP(_feeRlp);
+                    s << _feeRlp.out();
                 }
 
                 _state.insert(i.first, &s.out());
