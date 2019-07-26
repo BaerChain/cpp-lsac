@@ -14,13 +14,12 @@
 #include <libdevcore/Address.h>
 #include <boost/filesystem/path.hpp>
 
-
 namespace dev
 {
     namespace bacd
     {
-        using namespace dev ::brc;
-		const size_t timesc_20y = 60 * 60 * 24 * 365 * 20;
+        using namespace dev::brc;
+		//const uint64_t timesc_30y =1000 * 60 * 60 * 24 * 365 * 30;
 		class SHDpos: public SealEngineBase , Worker
         {
         public:
@@ -70,7 +69,14 @@ namespace dev
             bool				isCurrBlock(Address const& _curr);
 			void				addCandidatePunishBlock();
         private:
-            bool                CheckValidator(uint64_t _now);                  //验证是否该当前节点出块
+            /// Verify whether the current_node blocks
+            bool                CheckValidator(uint64_t _now);
+
+            /// If the super_node offline , verify standby_node to create_block
+            ///@param super_addr: offline's node
+            ///@param own_addr: It could be all of the create_nodes
+            bool                verify_standby(Address const& super_addr, Address const& own_addr) const;
+
             size_t              kickoutVarlitors();      //踢出不合格的候选人, 自定义踢出候选人规则，踢出后也不能成为验证人
             void                countVotes();
             void                disorganizeVotes();

@@ -299,6 +299,10 @@ public:
 
 	unsigned int exc_transaction_time(){ return m_total_seal_time; }
 
+	/// to record the last create_block_record
+	/// this called after excuted transactions
+	void execute_block_record();
+
 private:
     SealEngineFace* sealEngine() const;
 

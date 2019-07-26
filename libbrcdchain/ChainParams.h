@@ -45,11 +45,9 @@ struct ChainParams: public ChainOperationParams
     AccountMap genesisState;
 
 
-	size_t   epochInterval = 0;           /// shdpos epoch time if 0 shdpos will only one epoch 
+	size_t   epochInterval = 0;           /// shdpos epoch time if 0 shdpos will only one epoch
 	size_t   varlitorInterval = 1000;        /// creater seal block time
 	size_t   blockInterval = 1000;           /// a block sealed time
-	size_t   checkVarlitorNum = 1;        // 
-	size_t   maxVarlitorNum = 21;          /// variltor num
 
     SignatureStruct     m_sign_data;
     unsigned sealFields = 0;
