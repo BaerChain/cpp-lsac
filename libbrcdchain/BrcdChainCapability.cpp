@@ -751,8 +751,7 @@ bool BrcdChainCapability::interpretCapabilityPacket(
             LOG(m_logger) << "Status: " << peerProtocolVersion << " / " << networkId << " / "
                           << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash;
 
-            peer.setStatus(
-                peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash);
+            peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash);
             setIdle(_peerID);
             m_peerObserver->onPeerStatus(peer);
             break;

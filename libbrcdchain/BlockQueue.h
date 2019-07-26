@@ -264,6 +264,7 @@ public:
     bool knownFull() const;
     bool unknownFull() const;
     u256 difficulty() const;	// Total difficulty of queueud blocks
+    int64_t blockNumber() const;
     bool isActive() const;
 
 	std::vector<VerifiedSendData>  getVerifiedBlocks() 
@@ -327,6 +328,7 @@ private:
 
     std::function<void(Exception&)> m_onBad;							///< Called if we have a block that doesn't verify.
     u256 m_difficulty;													///< Total difficulty of blocks in the queue
+    int64_t m_now_height;                                             ///< max block number in the queue.
     u256 m_drainingDifficulty;											///< Total difficulty of blocks in draining
 
     Logger m_logger{createLogger(VerbosityDebug, "bq")};
