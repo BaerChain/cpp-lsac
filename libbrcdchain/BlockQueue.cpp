@@ -524,7 +524,7 @@ u256 BlockQueue::difficulty() const
 
 int64_t BlockQueue::blockNumber() const {
     UpgradableGuard l(m_lock);
-    return m_now_number;
+    return m_now_height;
 }
 
 

@@ -473,6 +473,7 @@ void dev::bacd::SHDpos::initBadBlockByDB()
 
 void dev::bacd::SHDpos::onDposMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
 {
+    CP2P_LOG << " connnt SH-Dpos onDposMsg...";
 	if(_id < SHDposPacketCount && _id >= SHDposStatuspacket)
 	{
 		cdebug << "onRaftMsg: id=" << _id << ",from=" << _nodeid;
@@ -488,7 +489,7 @@ void dev::bacd::SHDpos::requestStatus(NodeID const & _nodeID, u256 const & _peer
 {
     // connet net
     // TODO
-    LOG(m_logger) << " connnt SH-Dpos net...";
+    CP2P_LOG << " connnt SH-Dpos net...";
 }
 
 
