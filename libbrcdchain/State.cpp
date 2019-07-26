@@ -2077,7 +2077,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << _s.out();
                 }
                 {
-                    RLPStream _feeRlp;
+                    RLPStream _feeRlp(3);
                     i.second.getFeeSnapshot().streamRLP(_feeRlp);
                     s << _feeRlp.out();
                 }
