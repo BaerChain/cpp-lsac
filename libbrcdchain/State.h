@@ -117,7 +117,9 @@ struct Change
         NewVoteSnapshot,
         Numofrounds,
         CooikeIncomeNum,
-        CoupingSystemFeeSnapshot
+        CoupingSystemFeeSnapshot,
+        SystemAddressPoll,
+        LastCreateRecord,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -131,6 +133,8 @@ struct Change
     VoteSnapshot vote_snapshot;
     CouplingSystemfee feeSnapshot;
     u256 cooikeIncomeNum = 0;
+    PollData poll_data;
+    std::pair<u256, int64_t > create_record;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -153,11 +157,11 @@ struct Change
     {}
 
     //  Helper constructor for vote change log
-    Change(Address const& _addr, std::pair<Address, u256> _vote) : kind(Vote), address(_addr)
+    Change(Kind _kind, Address const& _addr, std::pair<Address, u256> _vote) : kind(_kind), address(_addr)
     {
         vote = std::make_pair(_vote.first, _vote.second);
     }
-    Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(Vote), address(_addr)
+    Change(Address const& _addr, std::pair<Address, bool> _sysVote) : kind(SysVoteData), address(_addr)
     {
         sysVotedate = std::make_pair(_sysVote.first, _sysVote.second);
     }
@@ -172,6 +176,14 @@ struct Change
     Change(Address const& _addr, CouplingSystemfee const& _fee) : kind(CoupingSystemFeeSnapshot), address(_addr)
     {
         feeSnapshot = _fee;
+    }
+    Change(Kind _kind, Address const& _addr, PollData const& p_data) : kind(_kind), address(_addr)
+    {
+        poll_data = p_data;
+    }
+    Change(Kind _kind, Address const& _addr, std::pair<u256, int64_t> const& value) : kind(_kind), address(_addr)
+    {
+        create_record = value;
     }
 
 };
@@ -345,7 +357,6 @@ public:
 	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
         u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyTypes);
-	//void systemAutoPendingOrder(std::vector<ex::order> const& _v);
 	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
@@ -372,7 +383,7 @@ public:
     void addPoll(Address const& _addr, u256 const& _value);
     void subPoll(Address const& _adddr, u256 const& _value);
 
-	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, int64_t block_num);
+	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, EnvInfo const& info);
 
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
@@ -402,21 +413,14 @@ public:
     void tryRecordFeeSnapshot(int64_t _blockNum);
 
 private:
-    //投票数据
-    //获取投出得票数
-    u256 voteAll(Address const& _id) const;
-    //获取给指定Address的投票数
-    u256 voteAdress(Address const& _id, Address const& _recivedAddr) const;
-    //投票
-    void addVote(Address const& _id, Address const& _recivedAddr, u256 _value);
-    void initBallot(Address const& _id, Address const& _recivedAddr, u256 _value);
-    //撤销投票
-    void subVote(Address const& _id, Address const& _recivedAddr, u256 _value);
-    //获取指定地址的voteDate
-    std::map<Address, u256> voteDate(Address const& _id) const;
-    //竞选人，验证人管理
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
+
+    ///new interface
+    void add_vote(Address const& _id, PollData const& p_data);
+    void sub_vote(Address const& _id, PollData const& p_data);
+    const PollData poll_data(Address const& _addr, Address const& _recv_addr) const;
+    const std::vector<PollData> vote_data(Address const& _addr) const ;
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);
@@ -521,6 +525,15 @@ public:
 
 	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
 	uint64_t timestamp() const{ return m_timestamp; }
+
+	///interface for create_block record
+	///Get last create_block record
+	///@returns create_time
+	int64_t last_block_record(Address const& _id) const;
+    ///Set new record
+    void set_last_block_record(Address const& _id, std::pair<u256, int64_t> const& value);
+
+    BlockRecord block_record() const;
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.

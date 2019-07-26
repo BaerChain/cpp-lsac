@@ -627,6 +627,9 @@ ImportRoute
 BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
     // Check block doesn't already exist first!
+//    RLPStream stream;
+//    _block.info.streamRLP(stream);
+//    cwarn << "import block data rlp : " << stream.out();
     if (_mustBeNew)
         checkBlockIsNew(_block);
 
@@ -680,14 +683,10 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     m_cached_blocks.clear();
     m_cached_blocks = copy_data;
 
-
-
     //remove unused hash and bytes.
     std::vector<h256> remove_hash;
     for(auto &itr : m_cached_bytes){
         bool find = false;
-
-
         for(auto &list : m_cached_blocks){
             for(auto &b : list){
                 if(itr.first == b.info.hash()){
@@ -854,15 +853,61 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         cwarn << "cant find parent hash.";
         return false;
     }
+
     //this block is true, dont switch chain.
     if (_block.info.parentHash() == info().hash()) {
         return true;
     } else {
         ///dont switch chain, only insert this block to m_cached_blocks
-        if (_block.info.number() <= info().number()) {
+        if (_block.info.number() < info().number()) {
             cwarn << "only insert , can't switch chain.";
             return false;
-        } else if (_block.info.number() == info().number() + 1) {
+        }
+        else if(_block.info.number() == info().number()){
+            //this switch chain on one SysVarlitor dont create one block.
+            if(_block.info.parentHash() == info().parentHash()){
+                cwarn << " check miner online , will switch chain.11111111111111111";
+                State state_db(Invalid256, _db, _exdb, BaseState::PreExisting);
+                auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
+                auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
+                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
+                    cwarn << " check miner online , will switch chain.22222222222";
+                }
+                else if( standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
+                         && exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+                    //switch....
+                    //rollback one.
+                    VerifiedBlockRef current_block;
+                    VerifiedBlockRef parent_block;
+
+                    auto current_hash = info().hash();
+                    auto parent_hash = info().parentHash();
+
+                    for(auto itr : m_cached_blocks){
+                        for(auto detail : itr){
+                            if(detail.info.hash() == current_hash){
+                                current_block = detail;
+                            }
+                            if(detail.info.hash() == parent_hash){
+                                parent_block = detail;
+                            }
+                        }
+                    }
+
+                    remove_blocks_from_database({parent_block}, _db, _exdb);
+                    rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
+                    cwarn << " check miner online , will switch chain.";
+                    return true;
+                }
+                else if(standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
+                        && standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+                    //chose  front miner
+                    cwarn << " check miner online , will switch chain.333333333333333";
+                }
+            }
+            return false;
+        }
+        else if (_block.info.number() == info().number() + 1) {
             /// this condition , chain must switch.
             /*  step 1, we will remove last chain  from same block's hash.
              *  step 2, delete executive blocks state and rollback exdb state until same block's hash. then execute new blocks.
@@ -972,6 +1017,11 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 
         }
     }
+
+
+
+
+
 
     return false;
 }

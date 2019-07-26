@@ -1,7 +1,4 @@
 #pragma once
-
-
-
 #include <libbrccore/ChainOperationParams.h>
 #include <libbrccore/Common.h>
 #include <libbrccore/TransactionBase.h>

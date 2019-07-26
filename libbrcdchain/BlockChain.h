@@ -351,9 +351,6 @@ private:
     /// \return         true
 	bool rollback_from_database(const VerifiedBlockRef &from, const VerifiedBlockRef &to, const std::list<dev::brc::VerifiedBlockRef> &blocks, OverlayDB const &_db, ex::exchange_plugin &_exdb);
 
-
-
-
     static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
     /// Initialise everything and ready for openning the database.

@@ -112,7 +112,6 @@ struct SHDposConfigParams
 	size_t epochInterval = 0;         //  sh-dpos a epoch need time ms
 	size_t varlitorInterval = 1000;      //  a varlitor to create block time ms     
 	size_t blockInterval = 1000;         //  a block created need time ms
-	size_t maxValitorNum = 21;           //  check the varlitor for max nu
     size_t totalElectorNum = 51;
 	u256   candidateBlance = 1000000;    // to be candidatator need brc
 
@@ -126,13 +125,11 @@ struct SHDposConfigParams
 		epochInterval = _f.epochInterval;
 		varlitorInterval = _f.varlitorInterval;
 		blockInterval = _f.blockInterval;
-		maxValitorNum = _f.maxValitorNum;
 	}
 	friend std::ostream& operator << (std::ostream& out, SHDposConfigParams const& _f) 
 	{
 		out << "epochInterval:" << _f.epochInterval << "ms|varlitorInterval:" << _f.varlitorInterval <<
-			"ms|blockInterval:" << _f.blockInterval << "ms|checkvarlitorNum:" <<
-			"|maxValitorNum:" << _f.maxValitorNum ;
+			"ms|blockInterval:" << _f.blockInterval;
 		return out;
 	}
 };

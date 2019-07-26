@@ -62,8 +62,6 @@ namespace dev {
             string const c_epochInterval = "dposEpochInterval";
             string const c_varlitorInterval = "dposVarlitorInterval";
             string const c_blockInterval = "dposBlockInterval";
-            string const c_checkVarlitorNum = "dposCheckVarlitorNum";
-            string const c_maxVarlitorNum = "dposMaxvarlitorNum";
 
             void validateConfigJson(js::mObject const &_obj) {
                 requireJsonFields(_obj, "ChainParams::loadConfig",
