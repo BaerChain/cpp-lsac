@@ -85,10 +85,6 @@ ChainParams ChainParams::loadConfig(
 		cp.varlitorInterval = size_t(params.at(c_varlitorInterval).get_int());
 	if(params.count(c_blockInterval))
 		cp.blockInterval = size_t(params.at(c_blockInterval).get_int());
-	if(params.count(c_checkVarlitorNum))
-		cp.checkVarlitorNum = size_t(params.at(c_checkVarlitorNum).get_int());
-	if(params.count(c_maxVarlitorNum))
-		cp.maxVarlitorNum = size_t(params.at(c_maxVarlitorNum).get_int());
 
     ////Poa Validators
     //string poaStr = js::write_string(obj[c_poa], false);

@@ -381,7 +381,8 @@ void Executive::initialize(Transaction const& _transaction)
                         auto currentCheckerCount = addrMap.size() - addrMap.size() / 3;
 
                         // check Permission
-                        if (0 == addrMap.count(m_t.sender())){
+                        auto  ret = std::find(addrMap.begin(), addrMap.end(), m_t.sender());
+                        if (ret == addrMap.end()){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Permission denied"));
                         }
 
@@ -394,7 +395,8 @@ void Executive::initialize(Transaction const& _transaction)
                             if(addr == m_t.sender()){
                                 continue;
                             }
-                            if(addrMap.count(addr)){
+                            auto  ret_addr = std::find(addrMap.begin(), addrMap.end(), addr);
+                            if(ret_addr != addrMap.end()){
                                 count++;
                             }
                         }
@@ -572,7 +574,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
 		if(_type == transationTool::op_type::vote){
 		    //m_s.try_new_vote_snapshot(m_t.sender(), m_envInfo.number());
-			m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo.number());
+			m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo);
 		}
 		else if(_type == transationTool::op_type::brcTranscation){
 			m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);

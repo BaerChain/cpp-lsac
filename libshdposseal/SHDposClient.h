@@ -12,6 +12,7 @@
 #include "libbrcdchain/Interface.h"
 #include "Common.h"
 #include "libbrcdchain/Nodemonitor.h"
+#include <libbrcdchain/Account.h>
 
 namespace dev
 {
@@ -49,6 +50,11 @@ public:
 
 	bool verifyVarlitorPrivatrKey() const;
 	bool verifyVarlitorPrivatrKey(Address const& _addr) const;
+
+	/// verify standby_node
+    ///@return true if own_addr can create_block
+    ///@param super_addr : offline super_node addr
+	bool  verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const;
 
 protected:
     void rejigSealing();

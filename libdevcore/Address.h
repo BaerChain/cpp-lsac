@@ -28,11 +28,10 @@ extern Address const SystemAddress;
 extern Address const VoteAddress;
 
 // the systemAddress to save Elector's Address 
-extern Address const ElectorAddress;
-
-// the systemAddress to save Elector's Address
-extern Address const VarlitorAddress;
+extern Address const SysElectorAddress;
 
 extern Address const systemAddress;
+
+extern Address const SysBolckCreateRecordAddress;
 }
 

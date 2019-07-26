@@ -34,6 +34,41 @@ namespace brc
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
 
+/// vote data
+struct PollData{
+    Address     m_addr;
+    u256        m_poll = 0;
+    int64_t     m_time = 0;
+
+    PollData(){ m_addr = Address(); }
+    PollData(Address const& addr, u256 const& poll, int64_t time):m_addr (addr), m_poll(poll), m_time(time){}
+    PollData(Address const& addr): m_addr(addr), m_poll(0), m_time(0){}
+
+    PollData& operator = (PollData const& _p){
+        m_addr = _p.m_addr;
+        m_poll = _p.m_poll;
+        m_time = _p.m_time;
+        return *this;
+    }
+
+    void  streamRLP(RLPStream& _s) const{
+        _s.appendList(3);
+        _s<< m_addr << m_poll << (u256)m_time;
+    }
+
+    void populate(bytes const& _b){
+        RLP _rlp(_b);
+        m_addr = _rlp[0].convert<Address>(RLP::LaissezFaire);
+        m_poll = _rlp[1].convert<u256>(RLP::LaissezFaire);
+        m_time = (int64_t)_rlp[2].convert<u256>(RLP::LaissezFaire);
+    }
+
+    bool operator == (Address const& addr) const{
+        return m_addr == addr;
+    }
+
+};
+
 struct VoteSnapshot{
     std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
     std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
@@ -42,8 +77,7 @@ struct VoteSnapshot{
     u256 m_latest_round = 0;                                    // the last snapshot rounds of record
     VoteSnapshot(){}
 
-
-    VoteSnapshot&operator = (VoteSnapshot const& s_v){
+    VoteSnapshot& operator = (VoteSnapshot const& s_v){
         clear();
         for(auto const& val : s_v.m_voteDataHistory){
             std::map<Address, u256> _temp = val.second;
@@ -96,19 +130,16 @@ struct VoteSnapshot{
             }
             m_voteDataHistory[_pair.first] = vote_data;
         }
-
         bytes  poll_b= rlp[1].toBytes();
         for(auto const& val : RLP(poll_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_pollNumHistory[_pair.first] = _pair.second;
         }
-
         bytes block_b = rlp[2].toBytes();
         for(auto const& val: RLP(block_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_blockSummaryHistory[_pair.first] = _pair.second;
         }
-
         numberofrounds = rlp[3].toInt<u256>();
         m_latest_round = rlp[4].toInt<u256>();
     }
@@ -151,6 +182,41 @@ inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
 
     return out;
 }
+
+/// for record own  creater_block log
+/**
+ * If the latest recorded event is less than three creater_node round robin cycles then
+ * the standby node starts to block in its place
+ * */
+struct BlockRecord{
+    std::map<Address, int64_t > m_last_time;
+
+    bytes streamRLP() const{
+        RLPStream s(1);
+
+        RLPStream time_s(m_last_time.size());
+        for(auto const& val: m_last_time){
+            time_s.append<Address, u256>(std::make_pair(val.first, val.second));
+        }
+        s<< time_s.out();
+        return  s.out();
+    }
+    void populate(bytes const& b){
+        RLP rlp(b);
+
+        bytes time_b = rlp[0].toBytes();
+        for(auto const& val: RLP(time_b)){
+            std::pair<Address , u256 > pair = val.toPair<Address, u256>();
+            m_last_time[pair.first] = (int64_t)pair.second;
+        }
+    }
+    void set_last_block(std::pair<Address , int64_t >const& value){
+        m_last_time[value.first] = value.second;
+    }
+    bool is_empty() const{
+        return  m_last_time.empty();
+    }
+};
 
 class Account
 {
@@ -235,7 +301,7 @@ public:
         m_poll = 0;
         m_ballot = 0;
 		m_assetInjectStatus = 0;
-        m_voteData.clear();
+        m_vote_data.clear();
         m_willChangeList.clear();
 		m_BlockReward.clear();
         changed();
@@ -253,7 +319,11 @@ public:
 
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
-    bool isEmpty() const { return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && voteData().empty() && m_BlockReward.size() == 0 && ballot() == 0 && voteAll() == 0;  }
+    bool isEmpty() const {
+        return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
+                FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
+                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() ;
+    }
 
     /// @returns the balance of this account.
     u256 const& balance() const { return m_balance; }
@@ -402,14 +472,17 @@ public:
     bool changeVoteData(Address before, Address after);
 
     // VoteDate 投票数据
-    u256 voteAll()const { u256 vote_num = 0; for(auto val : m_voteData) vote_num += val.second; return vote_num; }
-    u256 vote(Address const& _id) const { auto ret = m_voteData.find(_id); if(ret == m_voteData.end()) return 0; return ret->second; }
-    void addVote(std::pair<Address, u256> _votePair);
-    std::map<Address, u256> const& voteData() const { return m_voteData; }
-    void setVoteDate(std::unordered_map<Address, u256> const& _vote) { m_voteData.clear(); m_voteData.insert(_vote.begin(), _vote.end()); }
-    // 系统管理竞选人/验证人
-	void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets);
+    u256 voteAll()const { u256 vote_num = 0; for(auto val : m_vote_data) vote_num += val.m_poll; return vote_num; }
+    void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
 
+    /// this interface only for normalAddress
+    void addVote(std::pair<Address, u256> _votePair);
+    void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets, int64_t _time =0);
+
+    /// this interface only for systemAddress
+    void set_system_poll(PollData const& _p);
+    std::vector<PollData> const& vote_data() const { return  m_vote_data; }
+    PollData poll_data(Address const& _addr) const;
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
@@ -417,13 +490,6 @@ public:
 
 	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
-
-
-	void setCookieSummary(std::unordered_map<int32_t, std::unordered_map<Address, u256>> _map)
-	{
-        //m_cookieSummary.clear();
-        //m_cookieSummary.insert(_map.begin(), _map.end());
-	}
 
 	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
 
@@ -447,11 +513,14 @@ public:
     //interface about sanpshot
     void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
     VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+
     ///@return <true, rounds> if the snapshot need rocord new snapshot
     /// rounds: the last rounds need to snapshot
     std::pair<bool, u256> get_no_record_snapshot(u256 _rounds, Votingstage _state);
+
     /// update snapshot
     void try_new_snapshot(u256 _rounds);
+
     ///@retrue VoteSnapshot_data temp for verify
     VoteSnapshot try_new_temp_snapshot(u256 _rounds);
 
@@ -461,7 +530,23 @@ public:
     }
     void set_vote_snapshot(VoteSnapshot const& _vote_sna){
         m_vote_sapshot = _vote_sna;
+        changed();
     }
+
+    ///interface for Varlitor's create_block records
+    void set_create_record(std::pair<Address , int64_t > const& value){
+        m_block_records.set_last_block(value);
+        changed();
+    }
+    int64_t last_records(Address const& _id) const{
+        auto ret = m_block_records.m_last_time.find(_id);
+        if(ret != m_block_records.m_last_time.end()){
+            return ret->second;
+        }
+        return  0;
+    }
+    BlockRecord const& block_record() const { return  m_block_records;}
+    void init_block_record(bytes const& _b){ m_block_records.populate(_b);}
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -510,12 +595,12 @@ private:
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
 
-    /* dpos 投票数据
-       Address : 投票目标 size_t: 票数
-       当该Account 为系统预制地址表表示为 竞选人集合
-    */
-    std::map<Address, u256> m_voteData;
     std::vector<std::string> m_willChangeList;
+
+    /// poll_data
+    /// if this not is systemAddress : the address vote to other
+    /// if this is systemAddress : this storage candidates_data or Varlitor ...
+    std::vector<PollData> m_vote_data;
 
     // The snapshot about voteData
     VoteSnapshot    m_vote_sapshot;
@@ -538,6 +623,10 @@ private:
 
     /// Value for m_codeHash when this account is having its code determined.
     static const h256 c_contractConceptionCodeHash;
+
+    /// Varlitor's create_block records
+    BlockRecord m_block_records;
+
 };
 
 class AccountMask
