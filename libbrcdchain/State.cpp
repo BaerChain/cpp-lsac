@@ -1912,7 +1912,18 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     if (previous_pair.second != Votingstage::RECEIVINGINCOME)
         return;
     //will countVote and replace creater
+    auto a = account(SysElectorAddress);
+    if (!a)
+        return;
+    std::vector<PollData> p_data = a->vote_data();
+    std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
+    u256 var_num = config::varlitorNum();
+    u256 standby_num = config::standbyNum();
+    for(auto const& val: p_data){
+        if (var_num){
 
+        }
+    }
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

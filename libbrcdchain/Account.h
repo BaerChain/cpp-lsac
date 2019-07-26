@@ -180,12 +180,12 @@ struct CouplingSystemfee
 
     void streamRLP(RLPStream &_rlp) const
     {
+        _rlp.appendList(4);
         RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
         for(auto it : m_Feesnapshot)
         {
             RLPStream _amountRlp(2);
             _amountRlp << it.second.first << it.second.second;
-
             _Feesnapshotrlp.append<u256, bytes>(std::make_pair(it.first, _amountRlp.out()));
         }
         _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
@@ -204,14 +204,12 @@ struct CouplingSystemfee
         for(auto it : RLP(_feesnapshot))
         {
             std::pair<u256 , bytes> _pair = it.toPair<u256, bytes>();
-            std::pair<u256, u256> _amountPair = RLP(_pair.second).toPair<u256, u256>();
-
+            std::pair<u256, u256> _amountPair = RLP(_pair.second).toPair<u256, u256>());
             m_Feesnapshot[_pair.first] = _amountPair;
         }
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
-
-        for(auto const& val: _rlp[4].toVector<bytes>()){
+        for(auto const& val: _rlp[3].toVector<bytes>()){
             PollData p_data;
             p_data.populate(val);
             m_sorted_creaters.emplace_back(p_data);
