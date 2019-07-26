@@ -67,6 +67,14 @@ struct PollData{
         return m_addr == addr;
     }
 
+    bool  operator > (PollData const& p ) const{
+        if( m_poll > p.m_poll)
+            return true;
+        if (m_time < p.m_time)
+            return true;
+        return false;
+    }
+
 };
 
 struct VoteSnapshot{
@@ -130,16 +138,19 @@ struct VoteSnapshot{
             }
             m_voteDataHistory[_pair.first] = vote_data;
         }
+
         bytes  poll_b= rlp[1].toBytes();
         for(auto const& val : RLP(poll_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_pollNumHistory[_pair.first] = _pair.second;
         }
+
         bytes block_b = rlp[2].toBytes();
         for(auto const& val: RLP(block_b)){
             std::pair< u256, u256> _pair = val.toPair<u256,u256>();
             m_blockSummaryHistory[_pair.first] = _pair.second;
         }
+
         numberofrounds = rlp[3].toInt<u256>();
         m_latest_round = rlp[4].toInt<u256>();
     }
@@ -151,6 +162,44 @@ struct VoteSnapshot{
         m_latest_round = 0;
     }
 
+};
+
+
+struct CouplingSystemfee
+{
+    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
+    u256 m_rounds = 0;
+    u256 m_numofrounds = 0;
+
+    void streamRLP(RLPStream &_rlp) const
+    {
+        RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
+        for(auto it : m_Feesnapshot)
+        {
+            _Feesnapshotrlp.append<u256, std::pair<u256, u256>>(std::make_pair(it.first, it.second));
+        }
+        _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
+    }
+
+    void unstreamRLP(bytes const& _byte)
+    {
+        RLP _rlp(_byte);
+        bytes _feesnapshot = _rlp[0].toBytes();
+        for(auto it : RLP(_feesnapshot))
+        {
+            std::pair<u256 , std::pair<u256, u256> > _pair = it.toPair<u256, std::pair<u256, u256>>();
+            m_Feesnapshot[_pair.first] = _pair.second;
+        }
+        m_rounds = _rlp[1].toInt<u256>();
+        m_numofrounds = _rlp[2].toInt<u256>();
+    }
+
+    void clear()
+    {
+        m_Feesnapshot.clear();
+        m_numofrounds = 0;
+        m_rounds = 0;
+    }
 };
 
 inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
@@ -254,7 +303,7 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c, u256 _assetInjectStatus = 0)
+        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c)
       : m_isAlive(true),
         m_isUnchanged(_c == Unchanged),
         m_nonce(_nonce),
@@ -265,8 +314,7 @@ public:
         m_poll(_poll),
         m_BRC(_BRC),
         m_FBRC(_FBRC),
-        m_FBalance(_FBalance),
-		m_assetInjectStatus(_assetInjectStatus)
+        m_FBalance(_FBalance)
     {
         assert(_contractRoot);
     }
@@ -300,8 +348,6 @@ public:
         m_nonce = 0;
         m_poll = 0;
         m_ballot = 0;
-		m_assetInjectStatus = 0;
-        m_vote_data.clear();
         m_willChangeList.clear();
 		m_BlockReward.clear();
         changed();
@@ -378,8 +424,6 @@ public:
     /// @returns the nonce of the account.
     u256 nonce() const { return m_nonce; }
 
-	u256 assetInjectStatus() const{ return m_assetInjectStatus; }
-	void setAssetInjectStatus() { m_assetInjectStatus = 1; }
     /// Increment the nonce of the account by one.
     void incNonce()
     {
@@ -484,6 +528,8 @@ public:
     std::vector<PollData> const& vote_data() const { return  m_vote_data; }
     PollData poll_data(Address const& _addr) const;
 
+    void sort_vote_data(){ std::sort(m_vote_data.begin(), m_vote_data.end(), std::greater<PollData>()); changed();}
+
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
     void initChangeList(std::vector<std::string> _changeList) {m_willChangeList = _changeList; }
@@ -548,6 +594,14 @@ public:
     BlockRecord const& block_record() const { return  m_block_records;}
     void init_block_record(bytes const& _b){ m_block_records.populate(_b);}
 
+
+    CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
+    void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
+    void tryRecordSnapshot(u256 _rounds);
+    u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
+    u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
+    void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -590,8 +644,6 @@ private:
     u256 m_FBRC = 0;
     u256 m_FBalance = 0;
 
-	u256 m_assetInjectStatus = 0;
-
 	// Summary of the proceeds from the block address itself
 	u256 m_CooikeIncomeNum = 0;
 
@@ -605,6 +657,8 @@ private:
     // The snapshot about voteData
     VoteSnapshot    m_vote_sapshot;
 
+    CouplingSystemfee m_couplingSystemFee;
+    // Coupling system freezing fee
     //std::unordered_map<u256, u256> m_BlockReward;
 
 //	std::unordered_map <uint32_t, std::unordered_map<Address, u256>> m_cookieSummary;

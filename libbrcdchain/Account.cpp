@@ -110,20 +110,11 @@ bool dev::brc::Account::insertMiner(Address before, Address after, unsigned bloc
 
 bool dev::brc::Account::changeVoteData(Address before, Address after)
 {
-//    std::map<Address, u256>::iterator del = m_voteData.find(before);
-//    if (del != m_voteData.end()){
-//        u256 tmp = m_voteData[before];
-//        m_voteData.erase(del);
-//        m_voteData[after] = tmp;
-//        changed();
-//        return true;
-//    }
-//    return false;
-
     auto  ret_del = std::find(m_vote_data.begin(), m_vote_data.end(), before);
     if (ret_del != m_vote_data.end()){
         ret_del->m_addr = after;
         changed();
+        return true;
     }
     return false;
 }
@@ -214,6 +205,19 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
     if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
         return std::make_pair(false, 0);
     return  std::make_pair(true, last_round);
+}
+
+
+
+void Account::tryRecordSnapshot(u256 _rounds)
+{
+    for(u256 _num = m_couplingSystemFee.m_rounds + 1; _num < _rounds; _num++)
+    {
+        if(!m_couplingSystemFee.m_Feesnapshot.count(_num))
+            m_couplingSystemFee.m_Feesnapshot[_num] = std::pair<u256, u256>(0 ,0);
+    }
+    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (BRC(), balance());
+    m_couplingSystemFee.m_rounds = _rounds;
 }
 
 namespace js = json_spirit;
@@ -418,6 +422,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 auto it = ret.find(to);
                 
                 if (it != ret.end()){
+                    //it->second.addBallot(ballots);
                     it->second.addPoll(ballots);
                 } else {
                     ret[to] = Account(0);
@@ -430,6 +435,16 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 ret[a].addVote(std::make_pair(to, ballots));
                 u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
                 ret[SysElectorAddress].set_system_poll({to, _ballot+ballots, ++_time});
+
+                if (ret.count(SysVarlitorAddress) && ret[SysVarlitorAddress].poll_data(to) == to){
+                    ret[SysVarlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
+                    ret[SysVarlitorAddress].sort_vote_data();
+                }
+                else if (ret.count(SysCanlitorAddress) && ret[SysCanlitorAddress].poll_data(to) == to){
+                    ret[SysCanlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
+                    ret[SysCanlitorAddress].sort_vote_data();
+                }
+
 			}
 		}
     }

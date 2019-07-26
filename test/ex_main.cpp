@@ -91,7 +91,7 @@ int main(){
 
     for(auto &itr : keys){
         auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(itr)));
-        cwarn << toHex(keyPair.address())  << "  key :"<< dev::crypto::from_base58(itr);
+        cwarn << toHex(keyPair.address())  << "  key :"<< dev::crypto::from_base58(itr) << "  pub:" << toHex(keyPair.pub());
     }
 
 

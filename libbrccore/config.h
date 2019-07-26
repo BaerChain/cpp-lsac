@@ -3,6 +3,13 @@
 
 #include <libdevcore/Common.h>
 
+#define PRICEPRECISION 100000000
+#define MATCHINGFEERATIO 2000
+#define SELLCOOKIE 100000000
+#define BUYCOOKIE 99000000
+
+
+
 namespace dev
 {
     namespace brc{

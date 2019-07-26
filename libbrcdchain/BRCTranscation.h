@@ -23,6 +23,13 @@ namespace dev {
             EPendingOrderMax
         };
 
+        enum class ReceivingType : uint8_t
+        {
+            RReceivingNull = 0,
+            RBlockFeeIncome = 1,
+            RPdFeeIncome
+        };
+
         class BRCTranscation {
         public:
             BRCTranscation(State &_state) : m_state(_state) {}
@@ -44,8 +51,9 @@ namespace dev {
 
 			void verifyCancelPendingOrder(ex::exchange_plugin &_exdb, Address _addr, h256 _HashV);
 			void verifyCancelPendingOrders(ex::exchange_plugin &_exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-			void verifyreceivingincome(Address _from, transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
-
+			void verifyreceivingincome(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
+            void verifyBlockFeeincome(Address const& _from, EnvInfo const& _envinfo, DposVote const& _vote);
+            void verifyPdFeeincome(Address const& _from, int64_t _blockNum, DposVote const& _vote);
         private:
             State &m_state;
         };

@@ -169,7 +169,7 @@ Account *State::account(Address const &_addr) {
         _vote.push_back(p_data);
     }
 
-	const bytes _bBlockReward = state[11].toBytes();
+	const bytes _bBlockReward = state[10].toBytes();
 	RLP _rlpBlockReward(_bBlockReward);
 	size_t num = _rlpBlockReward[0].toInt<size_t>();
 	std::vector<std::pair<u256, u256>> _blockReward;
@@ -186,19 +186,22 @@ Account *State::account(Address const &_addr) {
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
-								 Account::Unchanged, state[10].toInt<u256>()));
+								 Account::Unchanged));
     i.first->second.set_vote_data(_vote);
 	i.first->second.setBlockReward(_blockReward);
 
 	std::vector<std::string> tmp;
-	tmp = state[12].convert<std::vector<std::string>>(RLP::LaissezFaire);
+	tmp = state[11].convert<std::vector<std::string>>(RLP::LaissezFaire);
 	i.first->second.initChangeList(tmp);
 
-	u256 _cookieNum  = state[13].toInt<u256>();
+	u256 _cookieNum  = state[12].toInt<u256>();
 	i.first->second.setCookieIncome(_cookieNum);
 
-    const bytes  vote_sna_b = state[14].convert<bytes>(RLP::LaissezFaire);
+    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
+
+    const bytes _feeSnapshotBytes = state[14].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.initCoupingSystemFee(_feeSnapshotBytes);
 
     const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_block_record(record_b);
@@ -563,15 +566,15 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 	u256 _totalSum;
 	if (_pendingOrderBuyType == order_buy_type::only_price)
 	{
-		_totalSum = _pendingOrderNum * _pendingOrderPrice;
+		_totalSum = _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
 	}
 	else {
 		_totalSum = _pendingOrderPrice;
 	}
 
-    std::map<u256, u256> _map = {{_pendingOrderPrice, _pendingOrderNum}};
+    std::pair<u256, u256> _pair = {_pendingOrderPrice, _pendingOrderNum};
     order _order = {_pendingOrderHash, _addr, (order_buy_type) _pendingOrderBuyType,
-                    (order_token_type) _pendingOrderTokenType, (order_type) _pendingOrderType, _map, _nowTime};
+                    (order_token_type) _pendingOrderTokenType, (order_type) _pendingOrderType, _pair, _nowTime};
     std::vector<order> _v = {{_order}};
     std::vector<result_order> _result_v;
 
@@ -593,7 +596,7 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
                              _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
         CombinationNum += _result_order.amount;
-        CombinationTotalAmount += _result_order.amount * _result_order.price;
+        CombinationTotalAmount += _result_order.amount * _result_order.price / PRICEPRECISION;
     }
 
 	if (_pendingOrderBuyType == order_buy_type::only_price)
@@ -653,18 +656,14 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 
-		std::map<u256, u256> _map = { {pen->m_Pendingorder_price, pen->m_Pendingorder_num} };
+		std::pair<u256, u256> _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
 		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
-						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _map, _nowTime };
+						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _pair, _nowTime };
 		_v.push_back(_order);
 
 		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
-			if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::BRC)
-				total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
-			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::BRC)
-				total_free_brc += pen->m_Pendingorder_num;
-			else if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
-				total_free_balance += pen->m_Pendingorder_num * pen->m_Pendingorder_price;
+		    if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+                total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRICEPRECISION;
 			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
 				total_free_balance += pen->m_Pendingorder_num;
 		}
@@ -677,10 +676,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
 	}
 
-	for(uint32_t i = 0; i < _result_v.size(); ++i){
-		result_order _result_order = _result_v[i];
-	}
-
+	std::set<order_type> _set;
 	for(uint32_t i = 0; i < _result_v.size(); ++i){
 		result_order _result_order = _result_v[i];
 
@@ -688,15 +684,13 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
 		if(_result_order.buy_type == order_buy_type::only_price){
-			if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::BRC)
-				total_free_brc -= _result_order.amount* _result_order.old_price;
-			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::BRC)
-				total_free_brc -= _result_order.amount;
-			else if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-				total_free_balance -= _result_order.amount * _result_order.old_price;
+		    if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+				total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
 			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
 				total_free_balance -= _result_order.amount;
 		}
+
+		_set.emplace(_result_order.type);
 	}
 	if(total_free_balance < 0 || total_free_brc < 0){
 		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
@@ -710,69 +704,121 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		subBRC(_addr, (u256)total_free_brc);
 		addFBRC(_addr, (u256)total_free_brc);
 	}
+
+	if(_set.size() > 0)
+    {
+	    systemAutoPendingOrder(_set, _nowTime);
+    }
+}
+
+void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _nowTime)
+{
+    std::vector<result_order> _result_v;
+    std::set<order_type> _autoSet;
+    std::vector<order> _v;
+    u256 _needBrc = 0;
+    u256 _needCookie = 0;
+
+    for(auto it : _set)
+    {
+        if(it == order_type::buy)
+        {
+            u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE  / 10000 * 10000 ;
+            _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
+            std::pair<u256, u256> _pair = {u256(BUYCOOKIE), _num};
+            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, _pair, _nowTime};
+            _v.push_back(_order);
+        }else if(it == order_type::sell)
+        {
+            u256 _num = balance(systemAddress);
+            _needCookie = _num;
+            std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
+            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, _pair, _nowTime};
+            _v.push_back(_order);
+        }
+    }
+
+    try{
+        _result_v = m_exdb.insert_operation(_v, false, true);
+    }
+    catch(const boost::exception &e){
+        cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+    }
+
+    for(auto _result : _result_v)
+    {
+        pendingOrderTransfer(_result.sender, _result.acceptor, _result.amount,
+                             _result.price, _result.type, _result.token_type, _result.buy_type);
+
+        if(_result.buy_type == order_buy_type::only_price){
+            if(_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
+                _needBrc -= _result.amount * _result.old_price / PRICEPRECISION;
+            else if(_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
+                _needCookie -= _result.amount;
+        }
+        _autoSet.emplace(_result.type);
+    }
+    if(_needBrc < 0 || _needCookie < 0){
+        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << _needCookie << " brc:" << _needBrc;
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+    }
+    if(_needCookie > 0){
+        subBalance(systemAddress, _needCookie);
+        addFBalance(systemAddress, _needCookie);
+    }
+    if(_needBrc){
+        subBRC(systemAddress, _needBrc);
+        addFBRC(systemAddress, _needBrc);
+    }
+    if(_autoSet.size() > 0)
+    {
+        systemAutoPendingOrder(_autoSet, _nowTime);
+    }
 }
 
 void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
                                  u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
                                  ex::order_buy_type _pendingOrderBuyTypes) {
 
-    if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
-        _pendingOrderBuyTypes == order_buy_type::only_price) {
-        // 1、解冻相应金额
-        // 2、转账给他人
-        //subFBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-        //subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subFBalance(_to, _toPendingOrderNum);
-		addBalance(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::BRC &&
-               _pendingOrderBuyTypes == order_buy_type::all_price) {
-        //subFBRC(_from, _toPendingOrderPrice * _toPendingOrderNum);
-		//subFBalance(_to, _toPendingOrderNum);
-		subBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subFBalance(_to, _toPendingOrderNum);
-		addBalance(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
+    u256 _fromFee = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+    u256 _toFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
+
+    if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::FUEL &&
-               _pendingOrderBuyTypes == order_buy_type::only_price) {
-        //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderPrice * _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderPrice * _toPendingOrderNum);
-		subFBRC(_to, _toPendingOrderNum);
-		addBRC(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::FUEL &&
-               _pendingOrderBuyTypes == order_buy_type::all_price) {
-        //subFBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		//subFBRC(_to, _toPendingOrderNum);
-		subBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-		addBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		subFBRC(_to, _toPendingOrderNum);
-		addBRC(_from, _toPendingOrderNum);
-    } else if (_pendingOrderType == order_type::sell &&
-               _pendingOrderTokenType == order_token_type::BRC &&
-               (_pendingOrderBuyTypes == order_buy_type::only_price ||
-                _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        //subFBRC(_from, _toPendingOrderNum);
-		//subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        subFBalance(_to, _toPendingOrderNum * _toPendingOrderPrice);
-        addBalance(_from, _toPendingOrderNum * _toPendingOrderPrice);
-        subBRC(_from, _toPendingOrderNum);
-        addBRC(_to, _toPendingOrderNum);
+            (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
+        if(_from != dev::systemAddress)
+        {
+            _fromFee = _toPendingOrderNum / MATCHINGFEERATIO;
+        }
+        if(_to != dev::systemAddress)
+        {
+            _toFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+        }
+        subBRC(_from, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION);
+        addBRC(_to, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION - _toFee);
+        subFBalance(_to, _toPendingOrderNum);
+        addBalance(_from, _toPendingOrderNum - _fromFee);
+        addBRC(dev::PdSystemAddress, _toFee);
+        addBalance(dev::PdSystemAddress, _fromFee);
     } else if (_pendingOrderType == order_type::sell &&
                _pendingOrderTokenType == order_token_type::FUEL &&
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        //subFBalance(_from, _toPendingOrderNum);
-		//subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
+        if(_from != dev::systemAddress)
+        {
+            _fromFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
+        }
+        if(_to != dev::systemAddress)
+        {
+            _toFee = _toPendingOrderNum / MATCHINGFEERATIO;
+        }
 		subBalance(_from, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderNum);
-		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice);
-		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice);
+		addBalance(_to, _toPendingOrderNum - _toFee);
+		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION);
+		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _fromFee);
+        addBRC(dev::PdSystemAddress, _fromFee);
+        addBalance(dev::PdSystemAddress, _toFee);
     }
 }
 
@@ -965,28 +1011,12 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 
     for (auto val : _resultV) {
-		if(val.type == order_type::sell && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second);
-				addBRC(val.sender, _mapval.second);
-			}
-		}
-		else if(val.type == order_type::buy && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second * _mapval.first);
-				addBRC(val.sender, _mapval.second * _mapval.first);
-			}
-		}
-		else if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-			for(auto _mapval : val.price_token){
-				subFBalance(val.sender, _mapval.second * _mapval.first);
-				addBalance(val.sender, _mapval.second * _mapval.first);
-			}
+		if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+				subFBalance(val.sender, val.price_token.second * val.price_token.first);
+				addBalance(val.sender, val.price_token.second * val.price_token.first);
         } else if ( val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
-            for (auto _mapval : val.price_token) {
-                subFBalance(val.sender, _mapval.second);
-                addBalance(val.sender, _mapval.second);
-            }
+                subFBalance(val.sender, val.price_token.second);
+                addBalance(val.sender, val.price_token.second);
         }
     }
 }
@@ -1013,19 +1043,14 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
 	}
 
 	for(auto val : _resultV){
-		if((val.type == order_type::buy || val.type == order_type::sell) && val.token_type == order_token_type::BRC){
-			for(auto _mapval : val.price_token){
-				subFBRC(val.sender, _mapval.second);
-				addBRC(val.sender, _mapval.second);
-			}
-		}
-		else if((val.type == order_type::buy || val.type == order_type::sell) &&
-				val.token_type == order_token_type::FUEL){
-			for(auto _mapval : val.price_token){
-				subFBalance(val.sender, _mapval.second);
-				addBalance(val.sender, _mapval.second);
-			}
-		}
+	    if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+				subFBRC(val.sender, val.price_token.second);
+				addBRC(val.sender, val.price_token.second);
+		}else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
+        {
+            subFBalance(val.sender, val.price_token.second);
+            addBalance(val.sender, val.price_token.second);
+        }
 	}
 }
 
@@ -1369,10 +1394,13 @@ void State::rollback(size_t _savepoint) {
                 account.set_vote_snapshot(change.vote_snapshot);
                 break;
             case Change::CooikeIncomeNum:
-                account.addCooikeIncome(0 -change.value);
+                account.addCooikeIncome(0 - change.value);
                 break;
             case Change::SystemAddressPoll:
                 account.set_system_poll(change.poll_data);
+                break;
+            case Change::CoupingSystemFeeSnapshot:
+                account.setCouplingSystemFeeSnapshot(change.feeSnapshot);
                 break;
             default:
                 break;
@@ -1540,18 +1568,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
         Json::Value record;
         record["time"] = toJS(a->last_records(_addr));
         jv["last_block_created"] = record;
-		/*Json::Value _rewardArray;
-		if (a->blockReward().size() > 0)
-		{
-			for (auto it : a->blockReward())
-			{
-				Json::Value _vReward;
-				_vReward["blockNum"] = toJS(it.first);
-				_vReward["rewardNum"] = toJS(it.second);
-				_rewardArray.append(_vReward);
-			}
-			jv["BlockReward"] = _rewardArray;
-		}*/
     }
     return jv;
 }
@@ -1664,27 +1680,6 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	return jv;
 }
 
-void dev::brc::State::assetInjection(Address const& _addr)
-{
-    // if (balance(VoteAddress) < COOKIENUM || BRC(VoteAddress) < BRCNUM)
-    //    return;
-    auto it = account(dev::VoteAddress);
-    if (it->balance() < COOKIENUM || it->BRC() < BRCNUM)
-        return;
-
-    auto a = account(_addr);
-    if (a->assetInjectStatus() == 0)
-    {
-        addBRC(_addr, BRCNUM);
-        addBalance(_addr, COOKIENUM);
-        a->setAssetInjectStatus();
-    }
-    else
-    {
-        return;
-    }
-}
-
 void dev::brc::State::systemPendingorder(int64_t _time)
 {
     auto u256Safe = [](std::string const& s) -> u256 {
@@ -1699,8 +1694,8 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	std::string _num = "2900000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
-	std::map<u256, u256> _map = { {u256(1), systenCookie} };
-	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _map, _time };
+	std::pair<u256, u256> _pair = {u256Safe(std::string("100000000")), systenCookie};
+	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _pair, _time };
 	std::vector<order> _v = { {_order} };
 
 	try
@@ -1834,8 +1829,6 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     if(!a){
         createAccount(_addr, {0});
         a = account(_addr);
-        if (!a)
-            BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::try_new_vote_snapshot"));
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
     if (!ret_pair.first)
@@ -1843,9 +1836,31 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     VoteSnapshot _vote_sna = a->vote_snashot();
     a->try_new_snapshot(ret_pair.second);
     m_changeLog.emplace_back(_addr, _vote_sna);
-    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0- a->CookieIncome());
+    m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0 - a->CookieIncome());
     setCookieIncomeNum(_addr, 0);
+}
 
+void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
+{
+    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    auto a = account(dev::PdSystemAddress);
+    if(!a)
+    {
+        createAccount(dev::PdSystemAddress, {0});
+        a = account(dev::PdSystemAddress);
+    }
+    u256 _rounds = a->getSnapshotRounds();
+    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
+    {
+        CouplingSystemfee _fee = a->getFeeSnapshot();
+        a->tryRecordSnapshot(_pair.first);
+        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, 0 - a->BRC());
+        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, 0 - a->balance());
+        setBRC(dev::PdSystemAddress, 0);
+        setBalance(dev::PdSystemAddress, 0);
+        m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
+    }
+    return;
 }
 
 void dev::brc::State::transferBallotBuy(Address const &_from, u256 const &_value) {
@@ -2030,7 +2045,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.BRC();
                 s << i.second.FBRC();
                 s << i.second.FBalance();
-                s << i.second.assetInjectStatus();
                 {
                     RLPStream _rlp;
                     size_t _num = i.second.blockReward().size();
@@ -2049,6 +2063,11 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     RLPStream _s;
                     i.second.vote_snashot().streamRLP(_s);
                     s << _s.out();
+                }
+                {
+                    RLPStream _feeRlp;
+                    i.second.getFeeSnapshot().streamRLP(_feeRlp);
+                    s << _feeRlp.out();
                 }
                 s << i.second.block_record().streamRLP();
 

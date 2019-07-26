@@ -117,6 +117,7 @@ struct Change
         NewVoteSnapshot,
         Numofrounds,
         CooikeIncomeNum,
+        CoupingSystemFeeSnapshot,
         SystemAddressPoll,
         LastCreateRecord,
     };
@@ -130,6 +131,7 @@ struct Change
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
     std::pair<u256, u256> blockReward;
     VoteSnapshot vote_snapshot;
+    CouplingSystemfee feeSnapshot;
     u256 cooikeIncomeNum = 0;
     PollData poll_data;
     std::pair<u256, int64_t > create_record;
@@ -170,6 +172,10 @@ struct Change
     Change(Address const& _addr, VoteSnapshot const& _vote) : kind(NewVoteSnapshot), address(_addr)
     {
         vote_snapshot = _vote;
+    }
+    Change(Address const& _addr, CouplingSystemfee const& _fee) : kind(CoupingSystemFeeSnapshot), address(_addr)
+    {
+        feeSnapshot = _fee;
     }
     Change(Kind _kind, Address const& _addr, PollData const& p_data) : kind(_kind), address(_addr)
     {
@@ -351,7 +357,7 @@ public:
 	void pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
         u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyTypes);
-
+	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
     
@@ -387,8 +393,6 @@ public:
 	Json::Value electorMessage(Address _addr) const;
 
 
-	void assetInjection(Address const& _addr);
-
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
@@ -406,7 +410,7 @@ public:
 
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
-
+    void tryRecordFeeSnapshot(int64_t _blockNum);
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);

@@ -19,27 +19,27 @@ using namespace dev;
 
 
 #define SUB_STR_LENGTH      5
-template<typename T>
-std::string enum_to_string(T type) {
-    return "null";
-}
-
-
-template<>
-std::string enum_to_string<order_type>(order_type type) {
-    return type == order_type::buy ? "buy" : "sell";
-}
-
-template<>
-std::string enum_to_string<order_token_type>(order_token_type type) {
-    return type == order_token_type::BRC ? "BRC" : "FUEL";
-}
-
-template<>
-std::string enum_to_string<order_buy_type>(order_buy_type type) {
-    return type == order_buy_type::all_price ? "all" : "only";
-}
-
+//template<typename T>
+//std::string enum_to_string(T type) {
+//    return "null";
+//}
+//
+//
+//template<>
+//std::string enum_to_string<order_type>(order_type type) {
+//    return type == order_type::buy ? "buy" : "sell";
+//}
+//
+//template<>
+//std::string enum_to_string<order_token_type>(order_token_type type) {
+//    return type == order_token_type::BRC ? "BRC" : "FUEL";
+//}
+//
+//template<>
+//std::string enum_to_string<order_buy_type>(order_buy_type type) {
+//    return type == order_buy_type::all_price ? "all" : "only";
+//}
+//
 
 class test_helper {
 public:
@@ -172,7 +172,7 @@ public:
             o.buy_type = buy_type;
             o.token_type = t_type;
             o.type = type;
-            o.price_token = {{get_random_price(1000, 2000), get_random_price(500, 1000)}};
+            o.price_token = {get_random_price(1000, 2000), get_random_price(500, 1000)};
             o.time = i;
             os.push_back(o);
         }
