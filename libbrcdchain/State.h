@@ -535,6 +535,9 @@ public:
 
     BlockRecord block_record() const;
 
+    /// try into new rounds if into: will statistical_poll and sort varlitor
+    void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();

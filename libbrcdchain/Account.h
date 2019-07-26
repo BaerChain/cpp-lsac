@@ -56,6 +56,12 @@ struct PollData{
         _s<< m_addr << m_poll << (u256)m_time;
     }
 
+    bytes streamRLP() const{
+        RLPStream _s(3);
+        _s<< m_addr << m_poll << (u256)m_time;
+        return _s.out();
+    }
+
     void populate(bytes const& _b){
         RLP _rlp(_b);
         m_addr = _rlp[0].convert<Address>(RLP::LaissezFaire);
@@ -168,6 +174,7 @@ struct VoteSnapshot{
 struct CouplingSystemfee
 {
     std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
+    std::vector<PollData>   m_sorted_creaters;
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
@@ -179,6 +186,12 @@ struct CouplingSystemfee
             _Feesnapshotrlp.append<u256, std::pair<u256, u256>>(std::make_pair(it.first, it.second));
         }
         _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
+
+        std::vector<bytes> sort_b;
+        for(auto const& val: m_sorted_creaters){
+            sort_b.emplace_back(val.streamRLP());
+        }
+        _rlp.appendVector<bytes>(sort_b);
     }
 
     void unstreamRLP(bytes const& _byte)
@@ -192,6 +205,12 @@ struct CouplingSystemfee
         }
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
+
+        for(auto const& val: _rlp[4].toVector<bytes>()){
+            PollData p_data;
+            p_data.populate(val);
+            m_sorted_creaters.emplace_back(p_data);
+        }
     }
 
     void clear()
