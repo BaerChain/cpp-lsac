@@ -1856,11 +1856,18 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
     if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
     {
         CouplingSystemfee _fee = a->getFeeSnapshot();
-        a->tryRecordSnapshot(_pair.first, vote_data(SysVarlitorAddress));
-        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, 0 - a->BRC());
-        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, 0 - a->balance());
-        setBRC(dev::PdSystemAddress, 0);
-        setBalance(dev::PdSystemAddress, 0);
+
+        auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_pair.first);
+        if (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())
+            return;
+        u256 remainder_brc = a->BRC()% ret_fee->second.size();
+        u256 remainder_ballance = a->balance()% ret_fee->second.size();
+        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
+
+        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, remainder_brc - a->BRC());
+        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
+        setBRC(dev::PdSystemAddress, remainder_brc);
+        setBalance(dev::PdSystemAddress, remainder_ballance);
         m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
     }
     return;

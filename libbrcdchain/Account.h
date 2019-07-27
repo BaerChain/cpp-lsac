@@ -638,7 +638,7 @@ public:
 
     CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
     void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
-    void tryRecordSnapshot(u256 _rounds, std::vector<PollData>const& p_datas ={});
+    void tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData>const& p_datas ={});
     u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}
