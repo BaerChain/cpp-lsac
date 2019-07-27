@@ -1223,14 +1223,14 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
         std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(_voteDataIt->first);
         std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(_voteDataIt->first + 1);
         std::vector<PollData> _PollDataV = _it->second;
-        std::vector<Address> _superNodeAddrV;
+        std::map<Address, u256> _superNodeAddrMap;
         u256 _BrcIncome = 0;
         u256 _CookieIncome = 0;
         u256 _totalPoll = 0;
         u256 _totalBrcFee = _amountIt->second.first;
         u256 _totalCookieFee = _amountIt->second.second;
         bool _isSuperNode = false;
-        bool _superNodePoll = 0;
+        u256 _superNodePoll = 0;
         for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
         {
             _totalPoll += _PollDataV[i].m_poll;
@@ -1239,24 +1239,33 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
                 _isSuperNode = true;
                 _superNodePoll = _PollDataV[i].m_poll;
             }
-            _superNodeAddrV.push_back(_PollDataV[i].m_addr);
+            _superNodeAddrMap[_PollDataV[i].m_addr] = _PollDataV[i].m_poll;
         }
 
         if(_isSuperNode == true)
         {
             u256 _Brc = _totalBrcFee / _totalPoll * _superNodePoll;
-            u256 _Cookie = _totalCookieFee / _totalPoll * _superNodePoll
+            u256 _Cookie = _totalCookieFee / _totalPoll * _superNodePoll;
             _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
             _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
         }
 
         for(auto const& _voteAddressIt : _voteDataIt->second)
         {
-            if(std::count(_superNodeAddrV.begin(), _superNodeAddrV.end(), _voteAddressIt.first))
+            if(_superNodeAddrMap.count(_voteAddressIt.first))
             {
-                
+                std::map<Address, u256>::const_iterator _addrPollIt = _superNodeAddrMap.find(_voteAddressIt.first);
+                u256 _currentNodeBrc = _totalBrcFee / _totalPoll * _addrPollIt->second;
+                u256 _currentNodeCookie = _totalCookieFee / _totalPoll * _addrPollIt->second;
+                _BrcIncome += (_currentNodeBrc / 2 / _addrPollIt->second * _voteAddressIt.second);
+                _CookieIncome += (_currentNodeCookie / 2 / _addrPollIt->second * _voteAddressIt.second);
             }
         }
+    }
+
+    if(rounds)
+    {
+        a->set_numberofrounds(rounds);
     }
 
 }
