@@ -1857,7 +1857,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
     {
         CouplingSystemfee _fee = a->getFeeSnapshot();
 
-        auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_pair.first);
+        auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
         if (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())
             return;
         u256 remainder_brc = a->BRC()% ret_fee->second.size();
