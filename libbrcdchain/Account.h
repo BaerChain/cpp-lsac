@@ -174,7 +174,7 @@ struct VoteSnapshot{
 struct CouplingSystemfee
 {
     std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
-    std::vector<PollData>   m_sorted_creaters;
+    std::map<u256, std::vector<PollData> > m_sorted_creaters;
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
@@ -190,11 +190,17 @@ struct CouplingSystemfee
         }
         _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
 
-        std::vector<bytes> sort_b;
+        RLPStream s_sort;
         for(auto const& val: m_sorted_creaters){
-            sort_b.emplace_back(val.streamRLP());
+            std::vector<bytes> sort_b;
+            for(auto const& poll: val.second){
+                sort_b.emplace_back(poll.streamRLP());
+            }
+            RLPStream s_polls;
+            s_polls.appendVector<bytes>(sort_b);
+            s_sort.append<u256, bytes>(std::make_pair(val.first, s_polls.out()));
         }
-        _rlp.appendVector<bytes>(sort_b);
+        _rlp << s_sort.out();
     }
 
     void unstreamRLP(bytes const& _byte)
@@ -209,11 +215,20 @@ struct CouplingSystemfee
         }
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
-        for(auto const& val: _rlp[3].toVector<bytes>()){
-            PollData p_data;
-            p_data.populate(val);
-            m_sorted_creaters.emplace_back(p_data);
+
+        bytes _sort_b = _rlp[3].toBytes();
+        for(auto const& val: RLP(_sort_b)){
+            std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
+            std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
+            std::vector<PollData> p_datas;
+            for(auto const& v: polls){
+                PollData p_data;
+                p_data.populate(v);
+                p_datas.emplace_back(p_data);
+            }
+            m_sorted_creaters[pair.first] = p_datas;
         }
+
     }
 
     void clear()
@@ -619,7 +634,7 @@ public:
 
     CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
     void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
-    void tryRecordSnapshot(u256 _rounds);
+    void tryRecordSnapshot(u256 _rounds, std::vector<PollData>const& p_datas ={});
     u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}

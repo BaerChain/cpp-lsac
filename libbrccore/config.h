@@ -35,6 +35,8 @@ namespace dev
                 static  u256 standbyNum() { return 30;}
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle() { return  3;}
+                ///@return num for snapshot about minner_rank
+                static  uint32_t minner_rank_num() { return  7;}
         };
     }
 }
