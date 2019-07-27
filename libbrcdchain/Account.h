@@ -76,7 +76,7 @@ struct PollData{
     bool  operator > (PollData const& p ) const{
         if( m_poll > p.m_poll)
             return true;
-        if (m_time < p.m_time)
+        if (m_poll == p.m_poll && !m_time && m_time < p.m_time)
             return true;
         return false;
     }
@@ -178,6 +178,16 @@ struct CouplingSystemfee
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
+    u256 get_total_poll(u256 round) const{
+        auto ret = m_sorted_creaters.find(round);
+        if(ret == m_sorted_creaters.end())
+            return 0;
+        u256 total =0;
+        for(auto const& val: ret->second)
+            total += val.m_poll;
+        return total;
+    }
+
     void streamRLP(RLPStream &_rlp) const
     {
         _rlp.appendList(4);
@@ -269,6 +279,10 @@ inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
     out << "atest_round:"<< t.m_latest_round<<std::endl;
 
     return out;
+}
+inline std::ostream& operator << (std::ostream& out, PollData const& p) {
+    out<< p.m_addr << " "<< p.m_poll << " "<< p.m_time;
+    return  out;
 }
 
 /// for record own  creater_block log
@@ -636,7 +650,7 @@ public:
 
     CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
     void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
-    void tryRecordSnapshot(u256 _rounds, std::vector<PollData>const& p_datas ={});
+    void tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData>const& p_datas ={});
     u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}

@@ -120,6 +120,7 @@ struct Change
         CoupingSystemFeeSnapshot,
         SystemAddressPoll,
         LastCreateRecord,
+        MinnerSnapshot,
     };
 
     Kind kind;        ///< The kind of the change.
@@ -135,6 +136,7 @@ struct Change
     u256 cooikeIncomeNum = 0;
     PollData poll_data;
     std::pair<u256, int64_t > create_record;
+    std::vector<PollData> minners;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -184,6 +186,10 @@ struct Change
     Change(Kind _kind, Address const& _addr, std::pair<u256, int64_t> const& value) : kind(_kind), address(_addr)
     {
         create_record = value;
+    }
+    Change(Kind _kind, Address const& _addr, std::vector<PollData> const& poll) : kind(_kind), address(_addr)
+    {
+        minners = poll;
     }
 
 };

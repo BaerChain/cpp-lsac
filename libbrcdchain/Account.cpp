@@ -209,11 +209,11 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
 
 
 
-void Account::tryRecordSnapshot(u256 _rounds, std::vector<PollData>const& p_datas)
+void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vector<PollData>const& p_datas)
 {
     if (_rounds <= m_couplingSystemFee.m_rounds)
         return;
-    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (BRC(), balance());
+    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (brc, balance);
     m_couplingSystemFee.m_rounds = _rounds;
 
     std::vector<PollData> snapshot_data;

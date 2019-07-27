@@ -222,7 +222,7 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 		cerror << " not have Varlitors to create block!";
 		return false;
 	}
-
+	//testlog << m_curr_varlitors;
     uint64_t  offet = _now / m_config.varlitorInterval;
     offet %= m_curr_varlitors.size();
     if(m_curr_varlitors[offet] == m_dpos_cleint->author())

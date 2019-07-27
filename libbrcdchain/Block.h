@@ -303,6 +303,12 @@ public:
 	/// this called after excuted transactions
 	void execute_block_record();
 
+    /// try into new rounds
+    /// do: record snapshot minner_rank and sort new
+    void try_into_new_rounds(){
+        m_state.try_newrounds_count_vote(info(), previousBlock());
+    }
+
 private:
     SealEngineFace* sealEngine() const;
 
