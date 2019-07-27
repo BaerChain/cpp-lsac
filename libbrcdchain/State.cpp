@@ -1853,7 +1853,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
     if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
     {
         CouplingSystemfee _fee = a->getFeeSnapshot();
-        a->tryRecordSnapshot(_pair.first);
+        a->tryRecordSnapshot(_pair.first, vote_data(SysVarlitorAddress));
         m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, 0 - a->BRC());
         m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, 0 - a->balance());
         setBRC(dev::PdSystemAddress, 0);
@@ -1917,11 +1917,11 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
         return;
     std::vector<PollData> p_data = a->vote_data();
     std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
-    u256 var_num = config::varlitorNum();
-    u256 standby_num = config::standbyNum();
+    u256 var_num = config::varlitorNum()+1;
+    u256 standby_num = config::standbyNum() +1;
     for(auto const& val: p_data){
-        if (var_num){
-
+        if (++var_num){
+            
         }
     }
 }
