@@ -76,7 +76,7 @@ struct PollData{
     bool  operator > (PollData const& p ) const{
         if( m_poll > p.m_poll)
             return true;
-        if (m_time < p.m_time)
+        if (m_poll == p.m_poll && !m_time && m_time < p.m_time)
             return true;
         return false;
     }
@@ -267,6 +267,10 @@ inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
     out << "atest_round:"<< t.m_latest_round<<std::endl;
 
     return out;
+}
+inline std::ostream& operator << (std::ostream& out, PollData const& p) {
+    out<< p.m_addr << " "<< p.m_poll << " "<< p.m_time;
+    return  out;
 }
 
 /// for record own  creater_block log

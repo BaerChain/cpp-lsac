@@ -1402,6 +1402,9 @@ void State::rollback(size_t _savepoint) {
             case Change::CoupingSystemFeeSnapshot:
                 account.setCouplingSystemFeeSnapshot(change.feeSnapshot);
                 break;
+            case Change::MinnerSnapshot:
+                account.set_vote_data(change.minners);
+                break;
             default:
                 break;
         }
@@ -1903,27 +1906,56 @@ BlockRecord dev::brc::State::block_record() const {
     return  a->block_record();
 }
 
-void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header,
-                                               const dev::brc::BlockHeader &previous_header) {
+void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header, const dev::brc::BlockHeader &previous_header) {
+    //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
     std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
-    if (previous_pair.first == curr_pair.first)
+    if (previous_header.number() >= curr_header.number())
         return;
-    if (previous_pair.second != Votingstage::RECEIVINGINCOME)
+    if (curr_pair.second != Votingstage::RECEIVINGINCOME || curr_pair.second == previous_pair.second)
         return;
+    //testlog << "start to new rounds";
+    // add minnner_snapshot
+    tryRecordFeeSnapshot(curr_header.number());
+
     //will countVote and replace creater
     auto a = account(SysElectorAddress);
     if (!a)
         return;
+    auto varlitor_a = account(SysVarlitorAddress);
+    if (!varlitor_a){
+        createAccount(SysVarlitorAddress, {0});
+        varlitor_a = account(SysVarlitorAddress);
+    }
+    auto standby_a = account(SysCanlitorAddress);
+    if (!standby_a) {
+        createAccount(SysCanlitorAddress, {0});
+        standby_a = account(SysCanlitorAddress);
+    }
+
     std::vector<PollData> p_data = a->vote_data();
+    //testlog << " eletor:"<< p_data;
     std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
+
     u256 var_num = config::varlitorNum()+1;
     u256 standby_num = config::standbyNum() +1;
+    std::vector<PollData> varlitors;
+    std::vector<PollData> standbys;
     for(auto const& val: p_data){
-        if (++var_num){
-            
+        if (--var_num){
+            varlitors.emplace_back(val);
+        } else if (--standby_num){
+            standbys.emplace_back(val);
         }
     }
+    if (varlitors.empty())
+        return;
+    m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
+    m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
+    varlitor_a->set_vote_data(varlitors);
+    standby_a->set_vote_data(standbys);
+    //testlog << varlitors;
+    //testlog << standbys;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
