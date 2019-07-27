@@ -236,8 +236,8 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
    if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()){
        return false;
    }
-//   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
-    return true;
+   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
+//    return true;
 }
 
 bool dev::bacd::SHDpos::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{

@@ -17,6 +17,7 @@
 #include <libdevcore/dbfwd.h>
 #include <boost/exception/errinfo_nested_exception.hpp>
 #include <boost/filesystem.hpp>
+#include <libbrccore/config.h>
 
 using namespace std;
 using namespace dev;
@@ -717,7 +718,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     if(m_cached_blocks.size() > 2){
         cwarn << "config ...............";
-        print_route(m_cached_blocks);
+//        print_route(m_cached_blocks);
     }
     if(info().number() > m_params.config_blocks){
         _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
@@ -813,6 +814,37 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             cwarn << os.str();
         }
     };
+
+    //check node down
+    {
+        Block s(*this, _db, _exdb);
+        s.populateFromChain(*this, currentHash());
+        State &state_db = s.mutableState();
+        auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
+        auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
+        assert(exe_miners.size() != 0);
+        assert(standby_miners.size() != 0);
+        if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+            bool find_node_down = false;
+            for(const auto &itr : exe_miners){
+                auto time = (int64_t)m_params.blockInterval * config::varlitorNum() * config::minimum_cycle();
+                auto last_block_time = state_db.last_block_record(itr.m_addr);
+                if(last_block_time < info().timestamp() - time){
+                    find_node_down = true;
+                    cwarn << "find node down ...." << itr.m_time << " time : " << info().timestamp() << " insertvl : " << time << "  " << info().timestamp() - time;
+                    break;
+                }
+            }
+
+            if(!find_node_down){
+                cwarn << "dont find node down .... ,  go next";
+                return false;
+            }
+
+
+        }
+    }
+
 //    cwarn << "insert -----------------";
 //    print_route(m_cached_blocks);
     bool find = false;
@@ -850,7 +882,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     }
 
     if (!find) {
-        cwarn << "cant find parent hash.";
+        cwarn << "cant find parent hash." << _block.info.number()  << " hash : " << _block.info.hash() << " author" << _block.info.author();
         return false;
     }
 
@@ -867,9 +899,15 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             //this switch chain on one SysVarlitor dont create one block.
             if(_block.info.parentHash() == info().parentHash()){
                 cwarn << " check miner online , will switch chain.11111111111111111";
-                State state_db(Invalid256, _db, _exdb, BaseState::PreExisting);
+                Block s(*this, _db, _exdb);
+                s.populateFromChain(*this, currentHash());
+
+                State &state_db = s.mutableState();
                 auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
                 auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
+                assert(exe_miners.size() != 0);
+                assert(standby_miners.size() != 0);
+                cwarn << " check miner online , will switch chain. before";
                 if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
                     cwarn << " check miner online , will switch chain.22222222222";
                 }
@@ -877,6 +915,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                          && exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
                     //switch....
                     //rollback one.
+                    cwarn << " check miner online , will switch chain. xxxxxx";
                     VerifiedBlockRef current_block;
                     VerifiedBlockRef parent_block;
 
@@ -896,7 +935,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 
                     remove_blocks_from_database({parent_block}, _db, _exdb);
                     rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
-                    cwarn << " check miner online , will switch chain.";
+                    cwarn << " check miner online , will switch chain.aaaaaa";
                     return true;
                 }
                 else if(standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
@@ -904,6 +943,20 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                     //chose  front miner
                     cwarn << " check miner online , will switch chain.333333333333333";
                 }
+                else{
+                    cwarn << " check miner online , will switch chain.444444444444";
+                    std::ostringstream os;
+                    os << "exe_miners : ";
+                    for(auto itr : exe_miners){
+                        os << " [address " << toHex(itr.m_addr) << " ]";
+                    }
+                    os << "\n standby_miners: ";
+                    for(auto itr : standby_miners){
+                        os << " [address " << toHex(itr.m_addr) << " ]";
+                    }
+                    cwarn << os.str();
+                }
+
             }
             return false;
         }
@@ -974,10 +1027,10 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             source_block_list.pop_front();
             dest_block_list.pop_front();
 
-            cwarn << "-------------------------------11";
-            print_route({source_block_list});
-            print_route({dest_block_list});
-            cwarn << "-------------------------------11";
+//            cwarn << "-------------------------------11";
+//            print_route({source_block_list});
+//            print_route({dest_block_list});
+//            cwarn << "-------------------------------11";
             //find state_root , and then remove them.
             remove_blocks_from_database(source_block_list, _db, _exdb);
             rollback_from_database(source_block_list.back(), common_block, source_block_list, _db, _exdb);
@@ -1059,7 +1112,7 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
     int max_count = m_params.config_blocks;
     while(from_block.info.stateRoot() != to.info.stateRoot()  && --max_count > 0){
         if(overdb.exists(from_block.info.stateRoot())){
-            cwarn << "will remove state root " << from_block.info.stateRoot();
+//            cwarn << "will remove state root " << from_block.info.stateRoot();
             overdb.kill(from_block.info.stateRoot());
         }
         else{
@@ -1158,10 +1211,12 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     bool isImportedAndBest = false;
     // This might be the new best block...
     h256 last = currentHash();
-    if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
-                                                             _totalDifficulty == details(last).totalDifficulty &&
-                                                             _block.info.gasUsed() > info(last).gasUsed())) {
+//    if (_totalDifficulty > details(last).totalDifficulty || (m_sealEngine->chainParams().tieBreakingGas &&
+//                                                             _totalDifficulty == details(last).totalDifficulty &&
+//                                                             _block.info.gasUsed() > info(last).gasUsed())) {
 //    {
+    if(_block.info.number() >= details(last).number)
+    {
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
