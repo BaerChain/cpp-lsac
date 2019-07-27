@@ -399,7 +399,9 @@ public:
 
 	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
 
-	void receivingIncome(Address const & _addr, int64_t _blockNum);
+	void receivingIncome(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum);
+	void receivingBlockFeeIncome(Address const& _addr, int64_t _blockNum);
+	void receivingPdFeeIncome(Address const& _addr, int64_t _blockNum);
 
 
 	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);

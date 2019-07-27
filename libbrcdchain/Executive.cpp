@@ -594,7 +594,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::receivingincome:{
-                m_s.receivingIncome(m_t.sender(), m_envInfo.number());
+                m_s.receivingIncome(m_t.sender(), m_batch_params._operation ,m_envInfo.number());
                 break;
             }
             default:

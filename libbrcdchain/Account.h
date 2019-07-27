@@ -201,6 +201,7 @@ struct CouplingSystemfee
             s_sort.append<u256, bytes>(std::make_pair(val.first, s_polls.out()));
         }
         _rlp << s_sort.out();
+
     }
 
     void unstreamRLP(bytes const& _byte)
@@ -228,6 +229,7 @@ struct CouplingSystemfee
             }
             m_sorted_creaters[pair.first] = p_datas;
         }
+
 
     }
 

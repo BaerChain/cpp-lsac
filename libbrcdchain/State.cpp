@@ -1125,10 +1125,30 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
     }
 }
 
-void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
+void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum)
 {
     try_new_vote_snapshot(_addr, _blockNum);
+    for(auto _it : _ops)
+    {
+        std::shared_ptr<transationTool::receivingincome_operation> _op =  std::dynamic_pointer_cast<transationTool::receivingincome_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome_operation is error")));
+        }
 
+        ReceivingType _receType = (ReceivingType)_op->m_receivingType;
+        if(_receType == ReceivingType::RBlockFeeIncome)
+        {
+            receivingBlockFeeIncome(_addr, _blockNum);
+        }else if(_receType == ReceivingType::RPdFeeIncome)
+        {
+            receivingPdFeeIncome(_addr, _blockNum);
+        }
+    }
+}
+
+void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
+{
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
@@ -1183,6 +1203,62 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
         addBalance(_addr, _income);
     if (rounds != _numberofrounds)
         a->set_numberofrounds(rounds);
+}
+
+void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
+{
+    std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
+
+    auto a = account(_addr);
+    auto systemAccount = account(dev::PdSystemAddress);
+
+    u256 _numofRounds = a->getFeeNumofRounds();
+    VoteSnapshot _voteSnapshot = a->vote_snashot();
+    CouplingSystemfee _couplingSystemfee = systemAccount->getFeeSnapshot();
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numofRounds + 1);
+
+    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
+    {
+        std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(_voteDataIt->first);
+        std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(_voteDataIt->first + 1);
+        std::vector<PollData> _PollDataV = _it->second;
+        std::vector<Address> _superNodeAddrV;
+        u256 _BrcIncome = 0;
+        u256 _CookieIncome = 0;
+        u256 _totalPoll = 0;
+        u256 _totalBrcFee = _amountIt->second.first;
+        u256 _totalCookieFee = _amountIt->second.second;
+        bool _isSuperNode = false;
+        bool _superNodePoll = 0;
+        for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
+        {
+            _totalPoll += _PollDataV[i].m_poll;
+            if(_addr == _PollDataV[i].m_addr)
+            {
+                _isSuperNode = true;
+                _superNodePoll = _PollDataV[i].m_poll;
+            }
+            _superNodeAddrV.push_back(_PollDataV[i].m_addr);
+        }
+
+        if(_isSuperNode == true)
+        {
+            u256 _Brc = _totalBrcFee / _totalPoll * _superNodePoll;
+            u256 _Cookie = _totalCookieFee / _totalPoll * _superNodePoll
+            _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
+            _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
+        }
+
+        for(auto const& _voteAddressIt : _voteDataIt->second)
+        {
+            if(std::count(_superNodeAddrV.begin(), _superNodeAddrV.end(), _voteAddressIt.first))
+            {
+                
+            }
+        }
+    }
+
 }
 
 void State::createContract(Address const& _address)
