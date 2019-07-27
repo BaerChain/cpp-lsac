@@ -491,7 +491,7 @@ public:
     void set_system_poll(PollData const& _p);
     std::vector<PollData> const& vote_data() const { return  m_vote_data; }
     PollData poll_data(Address const& _addr) const;
-
+    /// for vote_data sort only for sysAddress
     void sort_vote_data(){ std::sort(m_vote_data.begin(), m_vote_data.end(), std::greater<PollData>()); changed();}
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);

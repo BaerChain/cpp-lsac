@@ -1888,6 +1888,17 @@ BlockRecord dev::brc::State::block_record() const {
     return  a->block_record();
 }
 
+void dev::brc::State::try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header) {
+    std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
+    std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
+    if (previous_pair.first == curr_pair.first)
+        return;
+    if (previous_pair.second != Votingstage::RECEIVINGINCOME)
+        return;
+    //will countVote and replace creater
+
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;

@@ -386,8 +386,10 @@ public:
 	Json::Value votedMessage(Address const& _addr) const;
 	Json::Value electorMessage(Address _addr) const;
 
+    /// interface about vote snapshot
+    void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
 
-	void assetInjection(Address const& _addr);
+    void assetInjection(Address const& _addr);
 
 	void systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
@@ -403,10 +405,6 @@ public:
 	void setCookieIncomeNum(Address const& _addr, u256 const& _value);
 
 	void setNumofrounds(Address const& _addr, u256 const& _value);
-
-    /// interface about vote snapshot
-    void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
-
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
@@ -530,6 +528,10 @@ public:
     void set_last_block_record(Address const& _id, std::pair<u256, int64_t> const& value);
 
     BlockRecord block_record() const;
+
+    /// try into new rounds if into: will statistical_poll and sort varlitor
+    void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
+
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
