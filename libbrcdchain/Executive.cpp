@@ -453,13 +453,13 @@ void Executive::initialize(Transaction const& _transaction)
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)
-					m_vote.verifyVote(m_t.sender(), m_envInfo ,m_batch_params._operation);
+					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincome(m_t.sender(), transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                    m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			}
 			catch(VerifyVoteField &ex){
 				cerror << "verifyVote field ! ";
@@ -572,25 +572,35 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 			return false;
 		transationTool::op_type  _type = m_batch_params._type;
 
-		if(_type == transationTool::op_type::vote){
-		    //m_s.try_new_vote_snapshot(m_t.sender(), m_envInfo.number());
-			m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo);
-		}
-		else if(_type == transationTool::op_type::brcTranscation){
-			m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);
-		}
-	    else if(_type == transationTool::op_type::pendingOrder){
-		    m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(), m_batch_params._operation);
-	    }
-		else if(_type == transationTool::op_type::cancelPendingOrder){
-		    m_s.cancelPendingOrders(m_batch_params._operation);
-		}
-        else if(_type == transationTool::op_type::changeMiner){
-		    m_s.changeMiner(m_batch_params._operation);
-		}
-		else if(_type == transationTool::op_type::receivingincome){
-            m_s.receivingIncome(m_t.sender(), m_envInfo.number());
-		}
+        switch (_type){
+            case transationTool::op_type::vote:{
+                m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo);
+                break;
+            }
+            case transationTool::op_type::brcTranscation:{
+                m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);
+                break;
+            }
+            case transationTool::op_type::pendingOrder:{
+                m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(), m_batch_params._operation);
+                break;
+            }
+            case transationTool::op_type::cancelPendingOrder:{
+                m_s.cancelPendingOrders(m_batch_params._operation);
+                break;
+            }
+            case transationTool::op_type::changeMiner:{
+                m_s.changeMiner(m_batch_params._operation);
+                break;
+            }
+            case transationTool::op_type::receivingincome:{
+                m_s.receivingIncome(m_t.sender(), m_envInfo.number());
+                break;
+            }
+            default:
+                //TODO: unkown null.
+                assert(1);
+        }
 
 		m_batch_params.clear();
 		return true;
@@ -806,13 +816,6 @@ bool Executive::finalize()
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
         m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
-		// m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-		// //m_s.addBalance(m_envInfo.author(), m_totalGas - m_needRefundGas);
-		// m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
-        // // m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
-
-        //u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-        // m_s.addBalance(m_envInfo.author(), feesEarned);
     }
 
     // Suicides...

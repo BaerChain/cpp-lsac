@@ -37,5 +37,7 @@ extern Address const SysBolckCreateRecordAddress;
 extern Address const SysVarlitorAddress;
 
 extern Address const SysCanlitorAddress;
+
+extern Address const PdSystemAddress;
 }
 
