@@ -175,6 +175,7 @@ struct CouplingSystemfee
 {
     std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
     std::vector<PollData>   m_sorted_creaters;
+  //  std::map<u256, std::vector<PollData>> m_sorted_creaters;
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
@@ -623,7 +624,7 @@ public:
     u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}
-
+    std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return std::map<u256, std::vector<PollData>>(); }
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

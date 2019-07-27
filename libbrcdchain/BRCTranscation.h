@@ -54,6 +54,7 @@ namespace dev {
 			void verifyreceivingincome(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyBlockFeeincome(Address const& _from, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyPdFeeincome(Address const& _from, int64_t _blockNum, DposVote const& _vote);
+            bool findAddress(std::map<Address, u256> const& _voteData, std::vector<PollData> const& _pollData);
         private:
             State &m_state;
         };

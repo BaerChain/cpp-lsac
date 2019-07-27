@@ -462,4 +462,36 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("Not enough income to receive")));
     }
+
+    std::map<u256, std::vector<PollData>> _map = systemAccount->getPollDataSnapshot();
+    VoteSnapshot _voteSnapshot = a->vote_snashot();
+    std::map<u256, std::map<Address, u256>> _voteDataHistory = _voteSnapshot.m_voteDataHistory;
+
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDatait = _voteDataHistory.find(_numofRounds + 1);
+
+    bool _status = false;
+    for(; _voteDatait != _voteDataHistory.end(); _voteDatait++)
+    {
+        _status = findAddress(_voteDatait->second, _map[_voteDatait->first]);
+    }
+    if(_status == false)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("This account does not meet the redemption fee")));
+    }
+}
+
+bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
+{
+    bool _status = false;
+    for(auto _voteDataIt : _voteData)
+    {
+        for(uint32_t i = 0; i < 7 && i < _pollData.size(); i++)
+        {
+            if(_voteDataIt.first == _pollData[i].m_addr)
+            {
+                _status = true;
+            }
+        }
+    }
+    return  _status;
 }
