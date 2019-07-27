@@ -178,6 +178,16 @@ struct CouplingSystemfee
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
 
+    u256 get_total_poll(u256 round) const{
+        auto ret = m_sorted_creaters.find(round);
+        if(ret == m_sorted_creaters.end())
+            return 0;
+        u256 total =0;
+        for(auto const& val: ret->second)
+            total += val.m_poll;
+        return total;
+    }
+
     void streamRLP(RLPStream &_rlp) const
     {
         _rlp.appendList(4);

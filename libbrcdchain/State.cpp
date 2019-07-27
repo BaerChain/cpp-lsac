@@ -1860,8 +1860,12 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
         if (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())
             return;
-        u256 remainder_brc = a->BRC()% ret_fee->second.size();
-        u256 remainder_ballance = a->balance()% ret_fee->second.size();
+        u256 total_poll = a->getFeeSnapshot().get_total_poll(_rounds);
+        if (total_poll == 0)
+            return;
+        u256 remainder_brc = a->BRC()% total_poll;
+        u256 remainder_ballance = a->balance()% total_poll;
+
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
         m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, remainder_brc - a->BRC());
