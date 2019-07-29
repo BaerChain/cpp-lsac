@@ -200,15 +200,15 @@ struct CouplingSystemfee
         }
         _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
 
-        RLPStream s_sort;
+        RLPStream s_sort(m_sorted_creaters.size());
         for(auto const& val: m_sorted_creaters){
-            RLPStream _pollRlp;
-            _pollRlp.appendList(val.second.size());
-            for(auto const& _pollIt : val.second)
-            {
-                _pollRlp << _pollIt.streamRLP();
+            std::vector<bytes> sort_b;
+            for(auto const& poll: val.second){
+                sort_b.emplace_back(poll.streamRLP());
             }
-            s_sort.append<u256, bytes>(std::make_pair(val.first, _pollRlp.out()));
+            RLPStream s_polls;
+            s_polls.appendVector<bytes>(sort_b);
+            s_sort.append<u256, bytes>(std::make_pair(val.first, s_polls.out()));
         }
         _rlp << s_sort.out();
 
@@ -227,39 +227,38 @@ struct CouplingSystemfee
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
 
-        bytes _sort_b = _rlp[3].toBytes();
-        for(auto const& _sortIt : RLP(_sort_b))
-        {
-            std::pair<u256, bytes> _pair = _sortIt.toPair<u256, bytes>();
-            std::cout << "123123" << std::endl;
-            RLP _pollRlp(_pair.second);
-            std::cout << "123123" << std::endl;
-            size_t _num = _pollRlp[0].toInt<size_t>();
-            std::cout << "123123" << std::endl;
-            std::vector<PollData> _pollDataV;
-            std::cout << "123123" << std::endl;
-            for(uint32_t i = 1; i < _num; i++)
-            {
-                PollData _pollData;
-                _pollData.populate(_pollRlp[i].toBytes());
-                _pollDataV.push_back(_pollData);
-            }
-            m_sorted_creaters[_pair.first] = _pollDataV;
-        }
-
-
 //        bytes _sort_b = _rlp[3].toBytes();
-//        for(auto const& val: RLP(_sort_b)){
-//            std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
-//            std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
-//            std::vector<PollData> p_datas;
-//            for(auto const& v: polls){
-//                PollData p_data;
-//                p_data.populate(v);
-//                p_datas.emplace_back(p_data);
+//        for(auto const& _sortIt : RLP(_sort_b))
+//        {
+//            std::pair<u256, bytes> _pair = _sortIt.toPair<u256, bytes>();
+//            std::cout << "123123" << std::endl;
+//            RLP _pollRlp(_pair.second);
+//            std::cout << "123123" << std::endl;
+//            size_t _num = _pollRlp[0].toInt<size_t>();
+//            std::cout << "123123" << std::endl;
+//            std::vector<PollData> _pollDataV;
+//            std::cout << "123123" << std::endl;
+//            for(uint32_t i = 1; i < _num; i++)
+//            {
+//                PollData _pollData;
+//                _pollData.populate(_pollRlp[i].toBytes());
+//                _pollDataV.push_back(_pollData);
 //            }
-//            m_sorted_creaters[pair.first] = p_datas;
+//            m_sorted_creaters[_pair.first] = _pollDataV;
 //        }
+
+        bytes _sort_b = _rlp[3].toBytes();
+        for(auto const& val: RLP(_sort_b)){
+            std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
+            std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
+            std::vector<PollData> p_datas;
+            for(auto const& v: polls){
+                PollData p_data;
+                p_data.populate(v);
+                p_datas.emplace_back(p_data);
+            }
+            m_sorted_creaters[pair.first] = p_datas;
+        }
     }
 
     void clear()
