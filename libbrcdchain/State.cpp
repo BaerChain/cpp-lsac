@@ -1937,21 +1937,36 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         createAccount(dev::PdSystemAddress, {0});
         a = account(dev::PdSystemAddress);
     }
+    testlog <<a->getFeeSnapshot();
     u256 _rounds = a->getSnapshotRounds();
-    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
-    {
+    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME) {
         CouplingSystemfee _fee = a->getFeeSnapshot();
 
         auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
-        if (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())
+        if (_rounds != 0 && (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())) {
+            testlog << "sssssss";
             return;
+        }
         u256 total_poll = a->getFeeSnapshot().get_total_poll(_rounds);
-        if (total_poll == 0)
+        if (total_poll == 0 && _pair.first > 2) {
+            testlog << "dasdada";
             return;
-        u256 remainder_brc = a->BRC()% total_poll;
-        u256 remainder_ballance = a->balance()% total_poll;
+        }
+
+        u256 remainder_brc = 0;
+        u256 remainder_ballance = 0;
+        if (total_poll != 0)
+        {
+            remainder_brc = a->BRC()% total_poll;
+            remainder_ballance = a->balance()% total_poll;
+        }
+        else
+        {
+        }
 
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
+
+        testlog <<a->getFeeSnapshot();
 
         m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, remainder_brc - a->BRC());
         m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());

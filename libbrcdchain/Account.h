@@ -284,6 +284,30 @@ inline std::ostream& operator << (std::ostream& out, PollData const& p) {
     out<< p.m_addr << " "<< p.m_poll << " "<< p.m_time;
     return  out;
 }
+inline std::ostream& operator << (std::ostream& out, CouplingSystemfee const& c) {
+//    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
+//    std::map<u256, std::vector<PollData> > m_sorted_creaters;
+//    u256 m_rounds = 0;
+//    u256 m_numofrounds = 0;
+    out << std::endl << "Feesnapshot:{"<<std::endl;
+    for(auto const& val: c.m_Feesnapshot){
+        out<< val.first<<"["<<val.second.first <<" "<< val.second.second<<"]";
+    }
+    out<< "}"<< std::endl;
+    out<< "orted_creaters:{"<<std::endl;
+    for(auto const& val: c.m_sorted_creaters){
+        out<<val.first << "(" ;
+        for(auto const& v: val.second){
+            out<< v<<",";
+        }
+        out<< ")";
+    }
+    out<<"}"<<std::endl;
+
+    out<< "m_rounds"<< c.m_numofrounds<<std::endl;
+    out<< "m_numofrounds"<<c.m_numofrounds <<std::endl;
+    return out;
+}
 
 /// for record own  creater_block log
 /**

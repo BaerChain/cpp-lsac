@@ -222,7 +222,7 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
         if (--index)
             snapshot_data.emplace_back(val);
     }
-    m_couplingSystemFee.m_sorted_creaters[_rounds] = snapshot_data;
+    m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
 
 }
 
