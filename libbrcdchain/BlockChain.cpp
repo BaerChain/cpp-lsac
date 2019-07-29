@@ -824,24 +824,33 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
         assert(exe_miners.size() != 0);
         assert(standby_miners.size() != 0);
+
+
+
+
         if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+                return false;
+            }
+
             bool find_node_down = false;
             for(const auto &itr : exe_miners){
                 auto time = (int64_t)m_params.blockInterval * config::varlitorNum() * config::minimum_cycle();
                 auto last_block_time = state_db.last_block_record(itr.m_addr);
                 if(last_block_time < info().timestamp() - time){
                     find_node_down = true;
-                    cwarn << "find node down ...." << itr.m_time << " time : " << info().timestamp() << " insertvl : " << time << "  " << info().timestamp() - time;
                     break;
                 }
+
+
+
+
             }
 
             if(!find_node_down){
                 cwarn << "dont find node down .... ,  go next";
                 return false;
             }
-
-
         }
     }
 
