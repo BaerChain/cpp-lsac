@@ -202,13 +202,13 @@ struct CouplingSystemfee
 
         RLPStream s_sort;
         for(auto const& val: m_sorted_creaters){
-            std::vector<bytes> sort_b;
-            for(auto const& poll: val.second){
-                sort_b.emplace_back(poll.streamRLP());
+            RLPStream _pollRlp;
+            _pollRlp.appendList(val.second.size());
+            for(auto const& _pollIt : val.second)
+            {
+                _pollRlp << _pollIt.streamRLP();
             }
-            RLPStream s_polls;
-            s_polls.appendVector<bytes>(sort_b);
-            s_sort.append<u256, bytes>(std::make_pair(val.first, s_polls.out()));
+            s_sort.append<u256, bytes>(std::make_pair(val.first, _pollRlp.out()));
         }
         _rlp << s_sort.out();
 
@@ -228,19 +228,38 @@ struct CouplingSystemfee
         m_numofrounds = _rlp[2].toInt<u256>();
 
         bytes _sort_b = _rlp[3].toBytes();
-        for(auto const& val: RLP(_sort_b)){
-            std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
-            std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
-            std::vector<PollData> p_datas;
-            for(auto const& v: polls){
-                PollData p_data;
-                p_data.populate(v);
-                p_datas.emplace_back(p_data);
+        for(auto const& _sortIt : RLP(_sort_b))
+        {
+            std::pair<u256, bytes> _pair = _sortIt.toPair<u256, bytes>();
+            std::cout << "123123" << std::endl;
+            RLP _pollRlp(_pair.second);
+            std::cout << "123123" << std::endl;
+            size_t _num = _pollRlp[0].toInt<size_t>();
+            std::cout << "123123" << std::endl;
+            std::vector<PollData> _pollDataV;
+            std::cout << "123123" << std::endl;
+            for(uint32_t i = 1; i < _num; i++)
+            {
+                PollData _pollData;
+                _pollData.populate(_pollRlp[i].toBytes());
+                _pollDataV.push_back(_pollData);
             }
-            m_sorted_creaters[pair.first] = p_datas;
+            m_sorted_creaters[_pair.first] = _pollDataV;
         }
 
 
+//        bytes _sort_b = _rlp[3].toBytes();
+//        for(auto const& val: RLP(_sort_b)){
+//            std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
+//            std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
+//            std::vector<PollData> p_datas;
+//            for(auto const& v: polls){
+//                PollData p_data;
+//                p_data.populate(v);
+//                p_datas.emplace_back(p_data);
+//            }
+//            m_sorted_creaters[pair.first] = p_datas;
+//        }
     }
 
     void clear()
@@ -304,7 +323,7 @@ inline std::ostream& operator << (std::ostream& out, CouplingSystemfee const& c)
     }
     out<<"}"<<std::endl;
 
-    out<< "m_rounds"<< c.m_numofrounds<<std::endl;
+    out<< "m_rounds"<< c.m_rounds<<std::endl;
     out<< "m_numofrounds"<<c.m_numofrounds <<std::endl;
     return out;
 }
@@ -677,7 +696,7 @@ public:
     void tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData>const& p_datas ={});
     u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
-    void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;}
+    void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;changed();}
     std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
 private:
     /// Is this account existant? If not, it represents a deleted account.

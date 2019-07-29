@@ -213,8 +213,12 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
 {
     if (_rounds <= m_couplingSystemFee.m_rounds)
         return;
+    if(!m_couplingSystemFee.m_Feesnapshot.count(_rounds - 1))
+    {
+        m_couplingSystemFee.m_Feesnapshot[_rounds - 1] = std::pair<u256, u256> (u256(0), u256(0));
+    }
     m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (brc, balance);
-    m_couplingSystemFee.m_rounds = _rounds;
+    m_couplingSystemFee.m_rounds = _rounds - 1;
 
     std::vector<PollData> snapshot_data;
     uint32_t  index = config::minner_rank_num() +1;
@@ -223,7 +227,7 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
             snapshot_data.emplace_back(val);
     }
     m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
-
+    changed();
 }
 
 namespace js = json_spirit;

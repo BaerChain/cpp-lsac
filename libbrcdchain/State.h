@@ -120,7 +120,7 @@ struct Change
         CoupingSystemFeeSnapshot,
         SystemAddressPoll,
         LastCreateRecord,
-        MinnerSnapshot,
+        MinnerSnapshot
     };
 
     Kind kind;        ///< The kind of the change.

@@ -1955,21 +1955,26 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
 
         u256 remainder_brc = 0;
         u256 remainder_ballance = 0;
-        if (total_poll != 0)
-        {
-            remainder_brc = a->BRC()% total_poll;
-            remainder_ballance = a->balance()% total_poll;
+
+        std::vector<PollData> _pollDataV = vote_data(SysVarlitorAddress);
+        u256 _snapshotTotalPoll = 0;
+        for (uint32_t i = 0; i < 7 && i < _pollDataV.size(); i++) {
+            _snapshotTotalPoll += _pollDataV[i].m_poll;
         }
-        else
+
+        if (_snapshotTotalPoll != 0)
         {
+            remainder_brc = a->BRC()% _snapshotTotalPoll;
+            remainder_ballance = a->balance()% _snapshotTotalPoll;
         }
+
 
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
         testlog <<a->getFeeSnapshot();
 
-        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, remainder_brc - a->BRC());
-        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
+//        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
+//        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
         m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
