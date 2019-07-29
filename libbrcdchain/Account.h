@@ -227,25 +227,6 @@ struct CouplingSystemfee
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
 
-//        bytes _sort_b = _rlp[3].toBytes();
-//        for(auto const& _sortIt : RLP(_sort_b))
-//        {
-//            std::pair<u256, bytes> _pair = _sortIt.toPair<u256, bytes>();
-//            std::cout << "123123" << std::endl;
-//            RLP _pollRlp(_pair.second);
-//            std::cout << "123123" << std::endl;
-//            size_t _num = _pollRlp[0].toInt<size_t>();
-//            std::cout << "123123" << std::endl;
-//            std::vector<PollData> _pollDataV;
-//            std::cout << "123123" << std::endl;
-//            for(uint32_t i = 1; i < _num; i++)
-//            {
-//                PollData _pollData;
-//                _pollData.populate(_pollRlp[i].toBytes());
-//                _pollDataV.push_back(_pollData);
-//            }
-//            m_sorted_creaters[_pair.first] = _pollDataV;
-//        }
 
         bytes _sort_b = _rlp[3].toBytes();
         for(auto const& val: RLP(_sort_b)){

@@ -1217,18 +1217,22 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     CouplingSystemfee _couplingSystemfee = systemAccount->getFeeSnapshot();
     std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numofRounds + 1);
-
+    u256 _BrcIncome = 0;
+    u256 _CookieIncome = 0;
     for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(_voteDataIt->first);
         std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(_voteDataIt->first + 1);
+        if(_amountIt == _couplingSystemfee.m_Feesnapshot.end())
+        {
+            break;
+        }
         std::vector<PollData> _PollDataV = _it->second;
         std::map<Address, u256> _superNodeAddrMap;
-        u256 _BrcIncome = 0;
-        u256 _CookieIncome = 0;
         u256 _totalPoll = 0;
         u256 _totalBrcFee = _amountIt->second.first;
         u256 _totalCookieFee = _amountIt->second.second;
+        CFEE_LOG << " _totalBrcFee:" << _totalBrcFee << "   _totalCookieFee:" << _totalCookieFee;
         bool _isSuperNode = false;
         u256 _superNodePoll = 0;
         for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
@@ -1249,7 +1253,7 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
             _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
             _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
         }
-
+        CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
         for(auto const& _voteAddressIt : _voteDataIt->second)
         {
             if(_superNodeAddrMap.count(_voteAddressIt.first))
@@ -1262,7 +1266,9 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
             }
         }
     }
-
+    CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
+    addBalance(_addr, _CookieIncome);
+    addBRC(_addr, _BrcIncome);
     if(rounds)
     {
         a->set_numberofrounds(rounds);
@@ -1937,19 +1943,19 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         createAccount(dev::PdSystemAddress, {0});
         a = account(dev::PdSystemAddress);
     }
-    testlog <<a->getFeeSnapshot();
+    CFEE_LOG <<a->getFeeSnapshot();
     u256 _rounds = a->getSnapshotRounds();
     if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME) {
         CouplingSystemfee _fee = a->getFeeSnapshot();
 
         auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
         if (_rounds != 0 && (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())) {
-            testlog << "sssssss";
+            CFEE_LOG << "sssssss";
             return;
         }
         u256 total_poll = a->getFeeSnapshot().get_total_poll(_rounds);
         if (total_poll == 0 && _pair.first > 2) {
-            testlog << "dasdada";
+            CFEE_LOG << "dasdada";
             return;
         }
 
@@ -1971,7 +1977,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
 
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
-        testlog <<a->getFeeSnapshot();
+        CFEE_LOG <<a->getFeeSnapshot();
 
 //        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
 //        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());

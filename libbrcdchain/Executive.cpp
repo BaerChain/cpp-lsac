@@ -812,6 +812,7 @@ bool Executive::finalize()
 
     if (m_t)
     {
+        CFEE_LOG << "fee: " << m_totalGas - m_needRefundGas;
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());

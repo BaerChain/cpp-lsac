@@ -94,6 +94,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_lateLogger,
 #define CLATE_LOG LOG(dev::g_lateLogger::get())
 
 
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_FeeLogger,
+                                             boost::log::sources::severity_channel_logger_mt<>,
+                                             (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "fee"))
+#define CFEE_LOG LOG(dev::g_FeeLogger::get())
+
 struct LoggingOptions
 {
     int verbosity = VerbosityInfo;
