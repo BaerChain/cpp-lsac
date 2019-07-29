@@ -93,6 +93,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_lateLogger,
      (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "latecy"))
 #define CLATE_LOG LOG(dev::g_lateLogger::get())
 
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_p2pTestLogger,
+     boost::log::sources::severity_channel_logger_mt<>,
+     (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "p2ptest"))
+#define CP2P_LOG  LOG(dev::g_p2pTestLogger::get())
+
 
 struct LoggingOptions
 {

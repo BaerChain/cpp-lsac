@@ -236,8 +236,8 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
    if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()){
        return false;
    }
-//   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
-    return true;
+   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
+//    return true;
 }
 
 bool dev::bacd::SHDpos::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
@@ -482,6 +482,7 @@ void dev::bacd::SHDpos::initBadBlockByDB()
 
 void dev::bacd::SHDpos::onDposMsg(NodeID _nodeid, unsigned _id, RLP const & _r)
 {
+    CP2P_LOG << " connnt SH-Dpos onDposMsg...";
 	if(_id < SHDposPacketCount && _id >= SHDposStatuspacket)
 	{
 		cdebug << "onRaftMsg: id=" << _id << ",from=" << _nodeid;
@@ -497,7 +498,7 @@ void dev::bacd::SHDpos::requestStatus(NodeID const & _nodeID, u256 const & _peer
 {
     // connet net
     // TODO
-    LOG(m_logger) << " connnt SH-Dpos net...";
+    CP2P_LOG << " connnt SH-Dpos net...";
 }
 
 

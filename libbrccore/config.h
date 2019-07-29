@@ -30,9 +30,9 @@ namespace dev
                 ~config(){}
                 static std::pair<uint32_t, Votingstage> getVotingCycle(int64_t _blockNum);
                 ///@return varlitor num in chain
-                static  u256 varlitorNum() { return 3;}
+                static  uint32_t varlitorNum() { return 3;}
                 ///@return alternate num in chain
-                static  u256 standbyNum() { return 30;}
+                static  uint32_t standbyNum() { return 30;}
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle() { return  3;}
         };

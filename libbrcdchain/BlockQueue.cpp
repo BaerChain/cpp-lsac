@@ -58,6 +58,7 @@ void BlockQueue::clear()
     m_future.clear();
     m_futureSet.clear();
     m_difficulty = 0;
+    m_now_height = 0;
     m_drainingDifficulty = 0;
 }
 
@@ -206,6 +207,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         LOG(m_loggerDetail) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTimeMilliSec()
                          << "] - will wait until " << buf;
         m_difficulty += bi.difficulty();
+        m_now_height = bi.number() > m_now_height ? bi.number() : m_now_height;
         h256 const parentHash = bi.parentHash();
         bool const unknown = !contains(m_readySet, parentHash) &&
                              !contains(m_drainingSet, parentHash) &&
@@ -229,7 +231,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_unknown.insert(bi.parentHash(), h, _block.toBytes());
             m_unknownSet.insert(h);
             m_difficulty += bi.difficulty();
-
+            m_now_height = bi.number() > m_now_height ? bi.number() : m_now_height;
             return ImportResult::UnknownParent;
         }
         else
@@ -242,7 +244,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_moreToVerify.notify_one();
             m_readySet.insert(h);
             m_difficulty += bi.difficulty();
-
+            m_now_height = bi.number() > m_now_height ? bi.number() : m_now_height;
             noteReady_WITH_LOCK(h);
 
             return ImportResult::Success;
@@ -519,6 +521,12 @@ u256 BlockQueue::difficulty() const
     UpgradableGuard l(m_lock);
     return m_difficulty;
 }
+
+int64_t BlockQueue::blockNumber() const {
+    UpgradableGuard l(m_lock);
+    return m_now_height;
+}
+
 
 bool BlockQueue::isActive() const
 {
