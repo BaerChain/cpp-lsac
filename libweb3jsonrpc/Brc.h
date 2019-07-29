@@ -62,7 +62,7 @@ public:
     virtual std::string brc_getBallot(std::string const& _address, std::string const& _blockNumber) override;
 	virtual std::string brc_getStorageAt(std::string const& _address, std::string const& _position, std::string const& _blockNumber) override;
 	virtual std::string brc_getStorageRoot(std::string const& _address, std::string const& _blockNumber) override;
-	virtual std::string brc_getTransactionCount(std::string const& _address, std::string const& _blockNumber) override;
+	virtual std::string brc_getTransactionCount(std::string const& _addressgett, std::string const& _blockNumber) override;
 	virtual Json::Value brc_pendingTransactions() override;
 	virtual Json::Value brc_getBlockTransactionCountByHash(std::string const& _blockHash) override;
 	virtual Json::Value brc_getBlockTransactionCountByNumber(std::string const& _blockNumber) override;
