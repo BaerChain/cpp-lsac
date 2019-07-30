@@ -21,10 +21,10 @@ namespace dev
     //i [105 69]
     //n [110 6e]
 
-    Address const SysBolckCreateRecordAddress  { "0x000000537973425265636f726441646472657373"};
-    Address const SysElectorAddress { "0x000000000000456c6563746f7241646472657373"};
-    Address const SysVarlitorAddress { "000000000067656e657369735661726c69746f72" };
-    Address const SysCanlitorAddress { "0000000067656e6573697343616e646964617465" };
+    Address const SysBolckCreateRecordAddress   { "0x000000537973425265636f726441646472657373"};
+    Address const SysElectorAddress             { "0x000000000000456c6563746f7241646472657373"};
+    Address const SysVarlitorAddress            { "0x000000000067656e657369735661726c69746f72" };
+    Address const SysCanlitorAddress            { "0x0000000067656e6573697343616e646964617465" };
 
 }  // namespace dev
 

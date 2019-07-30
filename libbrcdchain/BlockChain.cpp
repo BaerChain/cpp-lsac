@@ -832,6 +832,10 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
                 return false;
             }
+            else{
+                //verify standby should to seal
+                //if()
+            }
 
             bool find_node_down = false;
             for(const auto &itr : exe_miners){
@@ -841,10 +845,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                     find_node_down = true;
                     break;
                 }
-
-
-
-
             }
 
             if(!find_node_down){

@@ -385,6 +385,8 @@ public:
 
 	void execute_vote(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops, EnvInfo const& info);
 
+    const std::vector<PollData> vote_data(Address const& _addr) const ;
+
     // 详细信息 test
     Json::Value accoutMessage(Address const& _addr);
     Json::Value blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum);
@@ -420,7 +422,6 @@ private:
     void add_vote(Address const& _id, PollData const& p_data);
     void sub_vote(Address const& _id, PollData const& p_data);
     const PollData poll_data(Address const& _addr, Address const& _recv_addr) const;
-    const std::vector<PollData> vote_data(Address const& _addr) const ;
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);

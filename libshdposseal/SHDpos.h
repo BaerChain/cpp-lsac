@@ -75,7 +75,7 @@ namespace dev
             /// If the super_node offline , verify standby_node to create_block
             ///@param super_addr: offline's node
             ///@param own_addr: It could be all of the create_nodes
-            bool                verify_standby(Address const& super_addr, Address const& own_addr) const;
+            bool                verify_standby(int64_t block_time, Address const& own_addr) const;
 
             size_t              kickoutVarlitors();      //踢出不合格的候选人, 自定义踢出候选人规则，踢出后也不能成为验证人
             void                countVotes();

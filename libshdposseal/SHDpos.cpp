@@ -60,9 +60,9 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
         if(ret == var_v.end()) {
             uint64_t  offet = (_bi.timestamp() + 5) / m_config.varlitorInterval;
             offet %= var_v.size();
-//            if(!verify_standby(var_v[offet], _bi.author())){
-//                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
-//            }
+            if(!verify_standby(_bi.timestamp(), _bi.author())){
+                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
+            }
         }
     }
     CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
@@ -236,15 +236,15 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
    if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()){
        return false;
    }
-   return verify_standby(m_curr_varlitors[offet], m_dpos_cleint->author());
+   return verify_standby( _now -(_now % m_config.varlitorInterval) , m_dpos_cleint->author());
 //    return true;
 }
 
-bool dev::bacd::SHDpos::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
+bool dev::bacd::SHDpos::verify_standby(int64_t block_time, Address const& own_addr) const{
 
     if (!m_dpos_cleint)
         return false;
-    return m_dpos_cleint->verify_standby(super_addr, own_addr);
+    return m_dpos_cleint->verify_standby(block_time, own_addr, m_config.varlitorInterval);
 }
 
 bool dev::bacd::SHDpos::chooseBlockAddr(Address const& _addr, bool _isok)

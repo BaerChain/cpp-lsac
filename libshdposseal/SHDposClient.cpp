@@ -6,6 +6,7 @@
 #include <libdevcore/Log.h>
 #include <time.h>
 #include <libdevcore/CommonIO.h>
+#include <libbrcdchain/Verify.h>
 
 
 using namespace std;
@@ -188,21 +189,19 @@ void dev::bacd::SHDposClient::rejigSealing()
 {
     if(!m_wouldSeal)
         return;
-	Timer _timer;
-    //打包出块验证 包括出块周期，出块时间，出块人验证
-    uint64_t _time = utcTimeMilliSec();            //get the systemTime
-    if(!isBlockSeal(_time))
-    {
-        return;
-    }
-
-	if (!verifyVarlitorPrivatrKey()){
-		cwarn << "not find private key..";
-		return;
-	}
-
 	if((wouldSeal() || remoteActive()) && !isMajorSyncing())
 	{
+        if (!verifyVarlitorPrivatrKey()){
+            cwarn << "not find private key..";
+            return;
+        }
+
+        //verify block_rounds/seal_block/minner ....
+        if(!isBlockSeal(utcTimeMilliSec()))
+        {
+            return;
+        }
+
 		if(sealEngine()->shouldSeal(this))
 		{
 			m_wouldButShouldnot = false;
@@ -375,35 +374,10 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 	return true;
 }
 
-bool dev::bacd::SHDposClient::verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const{
+bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const{
 	//testlog << BrcYellow "verify: stand:"<< own_addr << " super:"<< super_addr;
-    BlockRecord b_record = preSeal().mutableState().block_record();
-    std::map<Address, int64_t > records = b_record.m_last_time;
-    auto super = records.find(super_addr);
-    if (super != records.end()){
-        if (super->second + config::varlitorNum() * dpos()->dposConfig().varlitorInterval* config::minimum_cycle() > utcTimeMilliSec())
-            return false;
-    }
-
-    // can_addr has sorted
-    std::vector<Address> can_addr;
-    getCurrCreater(CreaterType::Canlitor, can_addr);
-
-    auto ret_own = std::find(can_addr.begin(), can_addr.end(), own_addr);
-    if (ret_own == can_addr.end())
-        return false;
-
-    for(auto const& val: can_addr){
-        auto ret = records.find(val);
-        if (ret == records.end()){
-            return  val == own_addr;
-        }
-        else{
-            if (ret->second + config::varlitorNum() * dpos()->dposConfig().varlitorInterval < utcTimeMilliSec()){
-				//testlog << BrcYellow " will to deal block..." << BrcReset;
-                return val == own_addr;
-            }
-        }
-    }
-    return false;
+    testlog << " state 00:"<< preSeal().mutableState().rootHash();
+    Verify verify_standby(preSeal().mutableState());
+    return  verify_standby.verify_standby(block_time, own_addr, varlitorInterval_time);
+    //return false;
 }

@@ -54,7 +54,7 @@ public:
 	/// verify standby_node
     ///@return true if own_addr can create_block
     ///@param super_addr : offline super_node addr
-	bool  verify_standby(const dev::Address &super_addr, const dev::Address &own_addr) const;
+	bool  verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const;
 
 protected:
     void rejigSealing();
