@@ -486,7 +486,7 @@ Json::Value Brc::brc_getTransactionByHash(string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(h));
+        return toJson(client()->localisedTransaction(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -504,7 +504,7 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti));
+        return toJson(client()->localisedTransaction(bh, ti), client()->sealEngine());
     }
     catch (...)
     {
@@ -523,7 +523,7 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti));
+        return toJson(client()->localisedTransaction(bh, ti), client()->sealEngine());
     }
     catch (...)
     {
