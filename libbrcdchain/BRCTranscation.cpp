@@ -304,7 +304,7 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		std::vector<result_order> _retV = _exdb.insert_operation(_verfys, true, true);
 		u256 _cookieNum = 0;
 		for(auto it : _retV){
-			if(it.type == order_type::buy && it.token_type == order_token_type::BRC && it.buy_type == order_buy_type::all_price){
+			if(it.type == order_type::buy && it.token_type == order_token_type::FUEL && it.buy_type == order_buy_type::all_price){
 				_cookieNum += it.amount;
 			}
 		}
@@ -313,8 +313,8 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 		}
 	}
 	catch(const boost::exception& e){
+        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
 		BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice is failed!")));
-		cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
 	}
 	catch(...){
 		BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice unkonwn failed!")));
