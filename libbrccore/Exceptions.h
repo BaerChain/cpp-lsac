@@ -85,6 +85,7 @@ DEV_SIMPLE_EXCEPTION(ZeroSignatureTransaction);
 DEV_SIMPLE_EXCEPTION(TooMuchTransaction);
 DEV_SIMPLE_EXCEPTION(UnknownTransactionValidationError);
 DEV_SIMPLE_EXCEPTION(UnknownError);
+DEV_SIMPLE_EXCEPTION(InvalidMinner);
 
 DEV_SIMPLE_EXCEPTION(InvalidDatabaseKind);
 DEV_SIMPLE_EXCEPTION(DatabaseAlreadyOpen);

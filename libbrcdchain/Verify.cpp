@@ -6,13 +6,10 @@
 using namespace dev;
 using namespace dev::brc;
 
-bool dev::brc::Verify::verify_standby(int64_t block_time, const dev::Address &standby_addr, size_t varlitorInterval_time) const {
-
-    testlog << " state:"<< m_state.rootHash() << " tandby:"<< standby_addr << " "<< dev::toString(SysVarlitorAddress);
-    std::map<Address, int64_t > records = m_state.block_record().m_last_time;
+bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, const dev::Address &standby_addr, size_t varlitorInterval_time) const {
+    std::map<Address, int64_t > records = state.block_record().m_last_time;
     std::vector<Address > minners;
-    std::vector<PollData> minner_addrs = m_state.vote_data(SysVarlitorAddress);
-    for(auto const& val: minner_addrs){
+    for(auto const& val: state.vote_data(SysVarlitorAddress)){
         minners.push_back(val.m_addr);
     }
     uint32_t  offset = (block_time / varlitorInterval_time) % minners.size();
@@ -30,14 +27,13 @@ bool dev::brc::Verify::verify_standby(int64_t block_time, const dev::Address &st
 
     // super offline
     // standby_addr has sorted
-    std::vector<PollData> can_addr = m_state.vote_data(SysCanlitorAddress);
+    std::vector<PollData> can_addr = state.vote_data(SysCanlitorAddress);
 
     auto ret_own = std::find(can_addr.begin(), can_addr.end(), standby_addr);
-    if (ret_own == can_addr.end())
+    if (ret_own == can_addr.end()) {
+        testlog << "can't find standby:"<<standby_addr;
         return false;
-
-    beyond_num -= config::minimum_cycle() +1;
-    testlog << " beyond_num:" << beyond_num;
+    }
 
     //first find standby_own can to create
     // if not: return false  if can:will next verify
@@ -46,6 +42,9 @@ bool dev::brc::Verify::verify_standby(int64_t block_time, const dev::Address &st
         if((ret_own_record->second + config::varlitorNum() * varlitorInterval_time) > block_time )
             return false;
     }
+
+    beyond_num = beyond_num - config::minimum_cycle();
+    testlog << " beyond_num:" << beyond_num;
 
     // find the last_standby_addr for super_minner
     int64_t last_time =0;
@@ -64,33 +63,26 @@ bool dev::brc::Verify::verify_standby(int64_t block_time, const dev::Address &st
     }
     testlog << "last_time:" << last_time << " last_standby_addr:"<<last_standby_addr << " beyond_standby_num:"<<beyond_standby_num;
 
-    bool is_run_last_standby = false;
+    bool is_loop_last_standby = false;
     for(auto const& val: can_addr){
         if(!last_time) {
-            if (--beyond_num >=1 && val.m_addr == standby_addr) {
-                testlog<< " not has old record ... will seal..."<< standby_addr;
-                return true;
+            if (beyond_num >=1 ) {
+                if (val.m_addr == standby_addr) {
+                    testlog << " not has old record ... will seal..." << standby_addr;
+                    return true;
+                }
+                if (records.count(val.m_addr) && ((records[val.m_addr] + config::varlitorNum() * varlitorInterval_time) > block_time)){
+                    --beyond_num ;
+                }
             }
         } else{
-            if (records.count(val.m_addr)){
-                if ( (block_time -  records[val.m_addr]) /(varlitorInterval_time * config::varlitorNum()) >=1 && val.m_addr == standby_addr) {
-                    testlog<< " has old record ... begins standby will seal..."<< standby_addr;
-                    return true;
-                }
+            if (val.m_addr == standby_addr && beyond_standby_num >=1 ) {
+                testlog<< " has old record ... begins standby will seal..."<< standby_addr;
+                return true;
             }
-            if (last_standby_addr == val.m_addr && beyond_standby_num >= 1 ){
-                if (val.m_addr == standby_addr) {
-                    DST_LOG<< " old record ...middle standby  will seal..."<< standby_addr;
-                    return true;
-                }
-                else{
-                    beyond_standby_num--;
-                    is_run_last_standby = true;
-                }
-            }
-            if (is_run_last_standby && --beyond_standby_num) {
-                testlog<< " old record ...middle standby's next will seal..."<< standby_addr;
-                return val.m_addr == standby_addr;
+            if(last_standby_addr == val.m_addr || is_loop_last_standby){
+                --beyond_standby_num;
+                is_loop_last_standby = true;
             }
         }
     }

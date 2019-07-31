@@ -532,7 +532,7 @@ public:
 	///@returns create_time
 	int64_t last_block_record(Address const& _id) const;
     ///Set new record
-    void set_last_block_record(Address const& _id, std::pair<u256, int64_t> const& value);
+    void set_last_block_record(Address const& _id, std::pair<u256, int64_t> const& value, uint32_t  varlitor_time);
 
     BlockRecord block_record() const;
 

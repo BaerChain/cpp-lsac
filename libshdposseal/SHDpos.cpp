@@ -52,19 +52,23 @@ void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeade
     auto start = utcTimeMilliSec();
     CLATE_LOG << "SHDpos time begin " << start;
 	SealEngineBase::verify(_s, _bi, _parent, _block);
-    std::vector<Address> var_v;
 
-    if(m_dpos_cleint){
-        m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, var_v);
-        auto ret = find(var_v.begin(), var_v.end(), _bi.author());
-        if(ret == var_v.end()) {
-            uint64_t  offet = (_bi.timestamp() + 5) / m_config.varlitorInterval;
-            offet %= var_v.size();
-            if(!verify_standby(_bi.timestamp(), _bi.author())){
-                BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
-            }
-        }
-    }
+	///can't to verify any about State
+//	if(_s == Strictness::CheckEverything) {
+//        std::vector<Address> var_v;
+//        if (m_dpos_cleint) {
+//            m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, var_v);
+//            auto ret = find(var_v.begin(), var_v.end(), _bi.author());
+//            if (ret == var_v.end()) {
+//                uint64_t offet = (_bi.timestamp() + 5) / m_config.varlitorInterval;
+//                offet %= var_v.size();
+//                if (!verify_standby(_bi.timestamp(), _bi.author())) {
+//                    BOOST_THROW_EXCEPTION(
+//                            InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
+//                }
+//            }
+//        }
+//    }
     CLATE_LOG << "SHDpos time end " << utcTimeMilliSec() - start << " ms";
 }
 
@@ -212,8 +216,6 @@ void dev::bacd::SHDpos::brocastMsg(SHDposPacketType _type, RLPStream& _msg_s)
 
 bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
 {
-	Timer _timer;
-	m_curr_varlitors.clear();
 	if(!m_dpos_cleint)
         return false;
 	m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, m_curr_varlitors);
@@ -232,12 +234,10 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
         return false;
 
    BlockHeader h = m_dpos_cleint->getCurrHeader();
-   //testlog << h.number() << " "<< m_dpos_cleint->author();
    if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()){
        return false;
    }
    return verify_standby( _now -(_now % m_config.varlitorInterval) , m_dpos_cleint->author());
-//    return true;
 }
 
 bool dev::bacd::SHDpos::verify_standby(int64_t block_time, Address const& own_addr) const{

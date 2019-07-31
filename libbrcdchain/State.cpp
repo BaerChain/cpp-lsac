@@ -1884,7 +1884,7 @@ int64_t dev::brc::State::last_block_record(Address const& _id) const{
 
 }
 
-void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<dev::u256, int64_t> &value) {
+void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<dev::u256, int64_t> &value, uint32_t varlitor_time) {
     auto a = account(SysBolckCreateRecordAddress);
     if(!a){
         createAccount(SysBolckCreateRecordAddress, {0});
@@ -1892,7 +1892,28 @@ void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::
     }
     int64_t _time = a->last_records(_id);
     a->set_create_record(std::make_pair(_id, value.second));
-    //testlog << _id << " "<< value.first << " "<< value.second;
+
+    if(value.first == 1){
+        // if the first block will record all super_minner
+        // bese for _id's offset to set other-time
+        if(auto varlitor_a = account(SysVarlitorAddress)){
+            // find offset
+            int offset = 0;
+            for(auto const& val: varlitor_a->vote_data()){
+                if(val.m_addr == _id)
+                    break;
+                ++offset;
+            }
+            int index =0;
+            for(auto const& val: varlitor_a->vote_data()){
+                if (val.m_addr != _id){
+                    int64_t  _time= value.second +  (index-offset) * (int)varlitor_time;
+                    a->set_create_record(std::make_pair(val.m_addr, _time));
+                }
+                ++index;
+            }
+        }
+    }
     m_changeLog.emplace_back(Change::LastCreateRecord, _id, std::make_pair(_id, _time));
 }
 

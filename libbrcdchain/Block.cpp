@@ -900,5 +900,8 @@ void Block::cleanup() {
 }
 
 void Block::execute_block_record(){
-    m_state.set_last_block_record(info().author(), std::make_pair(info().number(), info().timestamp()));
+    uint32_t  varlitor_time = 1000;
+    if (m_sealEngine)
+        varlitor_time = m_sealEngine->chainParams().varlitorInterval;
+    m_state.set_last_block_record(info().author(), std::make_pair(info().number(), info().timestamp()), varlitor_time);
 }

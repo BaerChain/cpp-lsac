@@ -18,6 +18,7 @@
 #include <boost/exception/errinfo_nested_exception.hpp>
 #include <boost/filesystem.hpp>
 #include <libbrccore/config.h>
+#include "Verify.h"
 
 using namespace std;
 using namespace dev;
@@ -475,6 +476,10 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 this_thread::sleep_for(chrono::milliseconds(50));
                 continue;
             }
+            catch (dev::brc::InvalidMinner const&){
+                cwarn << "the Miner cant't to Seal Block in this tinme_point";
+                badBlocks.push_back(block.verified.info.hash());
+            }
             catch (Exception &ex) {
 //              cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!";// << LogTag::Error << diagnostic_information(ex);
                 if (m_onBad)
@@ -817,41 +822,73 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 
     //check node down
     {
+
+        // Block ret(bc(), m_stateDB, m_StateExDB);
+        //        ret.populateFromChain(bc(), _block);
+        //        return ret;
         Block s(*this, _db, _exdb);
-        s.populateFromChain(*this, currentHash());
+        //s.populateFromChain(*this, currentHash());
+        s.populateFromChain(*this, _block.info.parentHash());
+
         State &state_db = s.mutableState();
         auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
         auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
         assert(exe_miners.size() != 0);
         assert(standby_miners.size() != 0);
 
+        for(auto val: exe_miners){
+            testlog<< val.m_addr;
+        }
+        testlog <<(_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size() << " " <<_block.info.timestamp() <<" "<< _block.info.number();
 
-
-
-        if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
-            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
-                return false;
-            }
-            else{
-                //verify standby should to seal
-                //if()
-            }
-
-            bool find_node_down = false;
-            for(const auto &itr : exe_miners){
-                auto time = (int64_t)m_params.blockInterval * config::varlitorNum() * config::minimum_cycle();
-                auto last_block_time = state_db.last_block_record(itr.m_addr);
-                if(last_block_time < info().timestamp() - time){
-                    find_node_down = true;
-                    break;
-                }
-            }
-
-            if(!find_node_down){
-                cwarn << "dont find node down .... ,  go next";
-                return false;
+        ///verify the miner Legitimacy
+        if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+            int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
+            if (_block.info.author() != exe_miners[offset].m_addr){
+                // throw
+                cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
+                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
             }
         }
+        else{
+            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
+                // throw
+                cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
+                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+            }
+            ///verify the standby Legitimacy
+            Verify verify_creater;
+            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+               // throw
+                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+            }
+        }
+
+//        if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+//            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+//                return false;
+//            }
+//            else{
+//                //verify standby should to seal
+//                //if()
+//            }
+//
+//            bool find_node_down = false;
+//            for(const auto &itr : exe_miners){
+//                auto time = (int64_t)m_params.blockInterval * config::varlitorNum() * config::minimum_cycle();
+//                auto last_block_time = state_db.last_block_record(itr.m_addr);
+//                if(last_block_time < info().timestamp() - time){
+//                    find_node_down = true;
+//                    break;
+//                }
+//            }
+//
+//            if(!find_node_down){
+//                cwarn << "dont find node down .... ,  go next";
+//                return false;
+//            }
+//        }
     }
 
 //    cwarn << "insert -----------------";
@@ -891,7 +928,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     }
 
     if (!find) {
-        cwarn << "cant find parent hash." << _block.info.number()  << " hash : " << _block.info.hash() << " author" << _block.info.author();
+        cwarn << "cant find parent hash." << _block.info.number()  << " hash : " << _block.info.hash() <<
+                " author" << _block.info.author() << " parent_hash:"<< _block.info.parentHash();
         return false;
     }
 
@@ -951,6 +989,42 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                         && standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
                     //chose  front miner
                     cwarn << " check miner online , will switch chain.333333333333333";
+                    bool need_switch = false;
+                    if(info().hash() != _block.info.hash()) {
+                        for (auto const &val: standby_miners) {
+                            if (val.m_addr == info().author()) {
+                                break;
+                            }
+                            if (val.m_addr == _block.info.author()) {
+                                need_switch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (need_switch){
+                        cwarn << " check highter , will switch chain. xxxxxx";
+                        VerifiedBlockRef current_block;
+                        VerifiedBlockRef parent_block;
+
+                        auto current_hash = info().hash();
+                        auto parent_hash = info().parentHash();
+
+                        for(auto itr : m_cached_blocks){
+                            for(auto detail : itr){
+                                if(detail.info.hash() == current_hash){
+                                    current_block = detail;
+                                }
+                                if(detail.info.hash() == parent_hash){
+                                    parent_block = detail;
+                                }
+                            }
+                        }
+
+                        remove_blocks_from_database({parent_block}, _db, _exdb);
+                        rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
+                        cwarn << " check highter standby , will switch chain.bbbbbbbbbbbbbb";
+                        return true;
+                    }
                 }
                 else{
                     cwarn << " check miner online , will switch chain.444444444444";

@@ -202,6 +202,12 @@ void dev::bacd::SHDposClient::rejigSealing()
             return;
         }
 
+        if (m_is_firt_run){
+            m_is_firt_run  = false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));  //sleep : wait to sync
+            return;
+        }
+
 		if(sealEngine()->shouldSeal(this))
 		{
 			m_wouldButShouldnot = false;
@@ -375,9 +381,6 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 }
 
 bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const{
-	//testlog << BrcYellow "verify: stand:"<< own_addr << " super:"<< super_addr;
-    testlog << " state 00:"<< preSeal().mutableState().rootHash();
-    Verify verify_standby(preSeal().mutableState());
-    return  verify_standby.verify_standby(block_time, own_addr, varlitorInterval_time);
-    //return false;
+    Verify verify_standby;
+    return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
 }

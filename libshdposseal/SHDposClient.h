@@ -78,6 +78,7 @@ private:
 
     p2p::Host                       &m_p2pHost;
     NodeMonitor                     m_nodemonitor;
+    bool                            m_is_firt_run = true;
 };
 
 SHDposClient& asDposClient(Interface& _c);
