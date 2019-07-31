@@ -285,19 +285,19 @@ void Executive::initialize(Transaction const& _transaction)
 			bigint totalCost = m_t.gas()* m_t.gasPrice();
 			m_addCostValue = 0;
 			m_batch_params.clear();
-            for (auto val : _ops)
-            {
+            for (auto val : _ops) {
                 transationTool::op_type _type = transationTool::operation::get_type(val);
-				if(m_batch_params.size() == 0){
-					totalCost += transationTool::c_add_value[_type] * m_t.gasPrice();
-					m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
-				}
-				bool is_verfy_cost = true;
+                if (m_batch_params.size() == 0) {
+                    totalCost += transationTool::c_add_value[_type] * m_t.gasPrice();
+                    m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
+                }
+                bool is_verfy_cost = true;
 
-				if(m_batch_params._type != _type && m_batch_params.size() > 0){
-					cwarn << "There cannot be multiple types of transactions in bulk transactions";
-					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
-				}
+                if (m_batch_params._type != _type && m_batch_params.size() > 0) {
+                    cwarn << "There cannot be multiple types of transactions in bulk transactions";
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
+                            std::string("There cannot be multiple types of transactions in bulk transactions")));
+                }
                 /*if(_type == transationTool::vote)
 				{
                     // now is closed and will open in future
@@ -305,9 +305,15 @@ void Executive::initialize(Transaction const& _transaction)
 					std::string ex_info = "This function is suspended type:" + toString(_type);
 					BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(ex_info));
 				}*/
-                if( _type != transationTool::brcTranscation && _ops.size() > 1)
+                if (_type != transationTool::brcTranscation && _ops.size() > 1) {
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
+                            "Replace witness operations cannot be batch operated"));
+                }
+
+                if (_type == transationTool::brcTranscation && _ops.size() > 50)
                 {
-                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Replace witness operations cannot be batch operated"));
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
+                            "The number of bulk transfers cannot exceed 50"));
                 }
 
 
@@ -349,7 +355,7 @@ void Executive::initialize(Transaction const& _transaction)
                     transationTool::pendingorder_opearaion _pengdingorder_op = transationTool::pendingorder_opearaion(val);
                     if(_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
                             _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
-                            _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::BRC &&
+                            _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
                             m_s.balance(m_t.sender()) < totalCost)
                      {
                          m_pendingorderStatus = true;
@@ -441,6 +447,7 @@ void Executive::initialize(Transaction const& _transaction)
 					BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))<< errinfo_comment(ex_info));
 				}
             }
+
 
 			if(totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue )
 			{
@@ -594,7 +601,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::receivingincome:{
-                m_s.receivingIncome(m_t.sender(), m_envInfo.number());
+                m_s.receivingIncome(m_t.sender(), m_batch_params._operation ,m_envInfo.number());
                 break;
             }
             default:
@@ -812,6 +819,7 @@ bool Executive::finalize()
 
     if (m_t)
     {
+        CFEE_LOG << "fee: " << m_totalGas - m_needRefundGas;
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());

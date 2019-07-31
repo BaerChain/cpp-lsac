@@ -1125,10 +1125,30 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
     }
 }
 
-void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
+void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum)
 {
     try_new_vote_snapshot(_addr, _blockNum);
+    for(auto _it : _ops)
+    {
+        std::shared_ptr<transationTool::receivingincome_operation> _op =  std::dynamic_pointer_cast<transationTool::receivingincome_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome_operation is error")));
+        }
 
+        ReceivingType _receType = (ReceivingType)_op->m_receivingType;
+        if(_receType == ReceivingType::RBlockFeeIncome)
+        {
+            receivingBlockFeeIncome(_addr, _blockNum);
+        }else if(_receType == ReceivingType::RPdFeeIncome)
+        {
+            receivingPdFeeIncome(_addr, _blockNum);
+        }
+    }
+}
+
+void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
+{
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
@@ -1183,6 +1203,77 @@ void State::receivingIncome(const dev::Address &_addr, int64_t _blockNum)
         addBalance(_addr, _income);
     if (rounds != _numberofrounds)
         a->set_numberofrounds(rounds);
+}
+
+void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
+{
+    std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
+
+    auto a = account(_addr);
+    auto systemAccount = account(dev::PdSystemAddress);
+
+    u256 _numofRounds = a->getFeeNumofRounds();
+    VoteSnapshot _voteSnapshot = a->vote_snashot();
+    CouplingSystemfee _couplingSystemfee = systemAccount->getFeeSnapshot();
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numofRounds + 1);
+    u256 _BrcIncome = 0;
+    u256 _CookieIncome = 0;
+    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
+    {
+        std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(_voteDataIt->first);
+        std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(_voteDataIt->first + 1);
+        if(_amountIt == _couplingSystemfee.m_Feesnapshot.end())
+        {
+            break;
+        }
+        std::vector<PollData> _PollDataV = _it->second;
+        std::map<Address, u256> _superNodeAddrMap;
+        u256 _totalPoll = 0;
+        u256 _totalBrcFee = _amountIt->second.first;
+        u256 _totalCookieFee = _amountIt->second.second;
+        CFEE_LOG << " _totalBrcFee:" << _totalBrcFee << "   _totalCookieFee:" << _totalCookieFee;
+        bool _isSuperNode = false;
+        u256 _superNodePoll = 0;
+        for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
+        {
+            _totalPoll += _PollDataV[i].m_poll;
+            if(_addr == _PollDataV[i].m_addr)
+            {
+                _isSuperNode = true;
+                _superNodePoll = _PollDataV[i].m_poll;
+            }
+            _superNodeAddrMap[_PollDataV[i].m_addr] = _PollDataV[i].m_poll;
+        }
+
+        if(_isSuperNode == true)
+        {
+            u256 _Brc = _totalBrcFee / _totalPoll * _superNodePoll;
+            u256 _Cookie = _totalCookieFee / _totalPoll * _superNodePoll;
+            _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
+            _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
+        }
+        CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
+        for(auto const& _voteAddressIt : _voteDataIt->second)
+        {
+            if(_superNodeAddrMap.count(_voteAddressIt.first))
+            {
+                std::map<Address, u256>::const_iterator _addrPollIt = _superNodeAddrMap.find(_voteAddressIt.first);
+                u256 _currentNodeBrc = _totalBrcFee / _totalPoll * _addrPollIt->second;
+                u256 _currentNodeCookie = _totalCookieFee / _totalPoll * _addrPollIt->second;
+                _BrcIncome += (_currentNodeBrc / 2 / _addrPollIt->second * _voteAddressIt.second);
+                _CookieIncome += (_currentNodeCookie / 2 / _addrPollIt->second * _voteAddressIt.second);
+            }
+        }
+    }
+    CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
+    addBalance(_addr, _CookieIncome);
+    addBRC(_addr, _BrcIncome);
+    if(rounds)
+    {
+        a->set_numberofrounds(rounds);
+    }
+
 }
 
 void State::createContract(Address const& _address)
@@ -1401,6 +1492,9 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::CoupingSystemFeeSnapshot:
                 account.setCouplingSystemFeeSnapshot(change.feeSnapshot);
+                break;
+            case Change::MinnerSnapshot:
+                account.set_vote_data(change.minners);
                 break;
             default:
                 break;
@@ -1849,15 +1943,46 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         createAccount(dev::PdSystemAddress, {0});
         a = account(dev::PdSystemAddress);
     }
+    CFEE_LOG <<a->getFeeSnapshot();
     u256 _rounds = a->getSnapshotRounds();
-    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME)
-    {
+    if(_pair.first > _rounds && _pair.second == Votingstage::RECEIVINGINCOME) {
         CouplingSystemfee _fee = a->getFeeSnapshot();
-        a->tryRecordSnapshot(_pair.first);
-        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress, 0 - a->BRC());
-        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, 0 - a->balance());
-        setBRC(dev::PdSystemAddress, 0);
-        setBalance(dev::PdSystemAddress, 0);
+
+        auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
+        if (_rounds != 0 && (ret_fee == a->getFeeSnapshot().m_sorted_creaters.end() || ret_fee->second.empty())) {
+            CFEE_LOG << "sssssss";
+            return;
+        }
+        u256 total_poll = a->getFeeSnapshot().get_total_poll(_rounds);
+        if (total_poll == 0 && _pair.first > 2) {
+            CFEE_LOG << "dasdada";
+            return;
+        }
+
+        u256 remainder_brc = 0;
+        u256 remainder_ballance = 0;
+
+        std::vector<PollData> _pollDataV = vote_data(SysVarlitorAddress);
+        u256 _snapshotTotalPoll = 0;
+        for (uint32_t i = 0; i < 7 && i < _pollDataV.size(); i++) {
+            _snapshotTotalPoll += _pollDataV[i].m_poll;
+        }
+
+        if (_snapshotTotalPoll != 0)
+        {
+            remainder_brc = a->BRC()% _snapshotTotalPoll;
+            remainder_ballance = a->balance()% _snapshotTotalPoll;
+        }
+
+
+        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
+
+        CFEE_LOG <<a->getFeeSnapshot();
+
+//        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
+//        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
+        setBRC(dev::PdSystemAddress, remainder_brc);
+        setBalance(dev::PdSystemAddress, remainder_ballance);
         m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
     }
     return;
@@ -1924,26 +2049,56 @@ BlockRecord dev::brc::State::block_record() const {
     return  a->block_record();
 }
 
-void dev::brc::State::try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header) {
+void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header, const dev::brc::BlockHeader &previous_header) {
+    //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
     std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
-    if (previous_pair.first == curr_pair.first)
+    if (previous_header.number() >= curr_header.number())
         return;
-    if (previous_pair.second != Votingstage::RECEIVINGINCOME)
+    if (curr_pair.second != Votingstage::RECEIVINGINCOME || curr_pair.second == previous_pair.second)
         return;
+    //testlog << "start to new rounds";
+    // add minnner_snapshot
+    tryRecordFeeSnapshot(curr_header.number());
+
     //will countVote and replace creater
     auto a = account(SysElectorAddress);
     if (!a)
         return;
-    std::vector<PollData> p_data = a->vote_data();
-    std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
-    u256 var_num = config::varlitorNum();
-    u256 standby_num = config::standbyNum();
-    for(auto const& val: p_data){
-        if (var_num){
+    auto varlitor_a = account(SysVarlitorAddress);
+    if (!varlitor_a){
+        createAccount(SysVarlitorAddress, {0});
+        varlitor_a = account(SysVarlitorAddress);
+    }
+    auto standby_a = account(SysCanlitorAddress);
+    if (!standby_a) {
+        createAccount(SysCanlitorAddress, {0});
+        standby_a = account(SysCanlitorAddress);
+    }
 
+    std::vector<PollData> p_data = a->vote_data();
+    //testlog << " eletor:"<< p_data;
+    std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
+
+    u256 var_num = config::varlitorNum()+1;
+    u256 standby_num = config::standbyNum() +1;
+    std::vector<PollData> varlitors;
+    std::vector<PollData> standbys;
+    for(auto const& val: p_data){
+        if (--var_num){
+            varlitors.emplace_back(val);
+        } else if (--standby_num){
+            standbys.emplace_back(val);
         }
     }
+    if (varlitors.empty())
+        return;
+    m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
+    m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
+    varlitor_a->set_vote_data(varlitors);
+    standby_a->set_vote_data(standbys);
+    //testlog << varlitors;
+    //testlog << standbys;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

@@ -34,13 +34,13 @@ using TransactionHashes = h256s;
 
 Json::Value toJson(BlockHeader const& _bi, SealEngineFace* _face = nullptr);
 //TODO: wrap these params into one structure eg. "LocalisedTransaction"
-Json::Value toJson(Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber);
+Json::Value toJson(Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, SealEngineFace* _face = nullptr);
 Json::Value toJson(BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face = nullptr);
 Json::Value toJson(BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face = nullptr);
 Json::Value toJson(TransactionSkeleton const& _t);
 Json::Value toJson(Transaction const& _t);
 Json::Value toJson(Transaction const& _t, bytes const& _rlp);
-Json::Value toJson(LocalisedTransaction const& _t);
+Json::Value toJson(LocalisedTransaction const& _t, SealEngineFace* _face = nullptr);
 Json::Value toJson(TransactionReceipt const& _t);
 Json::Value toJson(LocalisedTransactionReceipt const& _t);
 Json::Value toJson(LocalisedLogEntry const& _e);
