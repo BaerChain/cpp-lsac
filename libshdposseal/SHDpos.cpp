@@ -230,7 +230,7 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now)
     if(m_curr_varlitors[offet] == m_dpos_cleint->author())
         return true;
 
-    return false;
+    //return false;
     if(std::find(m_curr_varlitors.begin(), m_curr_varlitors.end(), m_dpos_cleint->author()) != m_curr_varlitors.end())
         return false;
 
