@@ -836,10 +836,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         assert(exe_miners.size() != 0);
         assert(standby_miners.size() != 0);
 
-        for(auto val: exe_miners){
-            testlog<< val.m_addr;
-        }
-        testlog <<(_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size() << " " <<_block.info.timestamp() <<" "<< _block.info.number();
 
         ///verify the miner Legitimacy
         if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){

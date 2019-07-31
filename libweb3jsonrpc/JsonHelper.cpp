@@ -89,15 +89,22 @@ namespace dev {
 
 
         Json::Value toJson(
-                dev::brc::Transaction const &_t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber) {
+                dev::brc::Transaction const &_t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, SealEngineFace* _face) {
             Json::Value res;
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
-                RLP data(_t.data());
-                res["input"] = toJS(data);//toJS(_t.data());
                 res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
+                if(_t.isCreation() || _t.type() == dev::brc::TransactionBase::MessageCall){
+                    res["data"] = toHex(_t.data());
+                } else{
+                    res["txData"] =  dev::brc::analysisData(_t.data());// toJS(data);//toJS(_t.data());
+                }
                 res["from"] = toJS(_t.safeSender());
                 res["gas"] = toJS(_t.gas());
+                if( _face != nullptr)
+                {
+                    res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_blockNumber))));
+                }
                 res["gasPrice"] = toJS(_t.gasPrice());
                 res["nonce"] = toJS(_t.nonce());
                 res["value"] = toJS(_t.value());
@@ -123,7 +130,7 @@ namespace dev {
                 res["transactions"] = Json::Value(Json::arrayValue);
                 for (unsigned i = 0; i < _ts.size(); i++)
                     res["transactions"].append(
-                            toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber) _bi.number()));
+                            toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber) _bi.number(), _face));
             }
             return res;
         }
@@ -176,6 +183,10 @@ namespace dev {
             res["from"] = toJS(_t.from());
             res["to"] = toJS(_t.to());
             res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
+//            if(_face != nullptr)
+//            {
+//                res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
+//            }
             res["gasUsed"] = toJS(_t.gasUsed());
             res["contractAddress"] = toJS(_t.contractAddress());
             res["logs"] = dev::toJson(_t.localisedLogs()); 
@@ -211,13 +222,17 @@ namespace dev {
             return res;
         }
 
-        Json::Value toJson(dev::brc::LocalisedTransaction const &_t) {
+        Json::Value toJson(dev::brc::LocalisedTransaction const &_t, SealEngineFace* _face) {
             Json::Value res;
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
-                res["input"] = toJS(_t.data());
+                //res["input"] = toJS(_t.data());
                 res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
                 res["from"] = toJS(_t.safeSender());
+                if(_face != nullptr)
+                {
+                    res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
+                }
                 res["gas"] = toJS(_t.gas());
                 res["gasPrice"] = toJS(_t.gasPrice());
                 res["nonce"] = toJS(_t.nonce());
@@ -225,14 +240,18 @@ namespace dev {
                 res["blockHash"] = toJS(_t.blockHash());
                 res["transactionIndex"] = toJS(_t.transactionIndex());
                 res["blockNumber"] = toJS(_t.blockNumber());
-                if(!_t.isCreation()) {
-                    if(!_t.data().empty()) {
-                        res["data"] = dev::brc::analysisData(_t.data());
-                    }else {
-                        res["data"] = "";
-                    }
+                if(_t.isCreation() || _t.type() == dev::brc::TransactionBase::MessageCall){
+                    res["data"] = toHex(_t.data());
+                } else{
+                    res["txData"] =  dev::brc::analysisData(_t.data());// toJS(data);//toJS(_t.data());
                 }
-
+//                if(!_t.isCreation()) {
+//                    if(!_t.data().empty()) {
+//                        res["txData"] = dev::brc::analysisData(_t.data());
+//                    }else {
+//                        res["data"] = "";
+//                    }
+//                }
             }
             return res;
         }

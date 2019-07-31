@@ -86,7 +86,7 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(
     BOOST_LOG_STREAM_WITH_PARAMS(dev::g_clogLogger::get(), \
         (boost::log::keywords::severity = SEVERITY)(boost::log::keywords::channel = CHANNEL)) << FORMAT_FILE
 
-#define testlog LOG(dev::g_warnLogger::get())
+#define testlog LOG(dev::g_debugLogger::get())
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_lateLogger,
      boost::log::sources::severity_channel_logger_mt<>,
@@ -98,6 +98,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_p2pTestLogger,
      (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "p2ptest"))
 #define CP2P_LOG  LOG(dev::g_p2pTestLogger::get())
 
+
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_FeeLogger,
+                                             boost::log::sources::severity_channel_logger_mt<>,
+                                             (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "fee"))
+#define CFEE_LOG LOG(dev::g_FeeLogger::get())
 
 struct LoggingOptions
 {

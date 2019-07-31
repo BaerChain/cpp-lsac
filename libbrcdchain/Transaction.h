@@ -121,6 +121,7 @@ namespace dev
             };
             struct vote_operation : public operation
             {
+
                 uint8_t m_type = null;
                 Address m_from;
                 Address m_to;

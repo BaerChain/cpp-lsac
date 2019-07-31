@@ -80,7 +80,7 @@ public:
     /// @throws InvalidSValue if the chain id is neither nor equal to @a chainId
     /// Note that  is the chain ID of the pre-155 rules, which should also be considered valid
     /// after EIP155
-    void checkChainId(int chainId =1) const;
+    void checkChainId(int chainId = 1) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction; }
@@ -152,6 +152,15 @@ public:
     static int64_t baseGasRequired(bool _contractCreation, bytesConstRef _data, BRCSchedule const& _es);
 
 protected:
+
+
+
+    static bool isZeroSignature(u256 const& _r, u256 const& _s) { return !_r && !_s; }
+
+    /// Clears the signature.
+    void clearSignature() { m_vrs = SignatureStruct(); }
+public:
+
     /// Type of transaction.
     enum Type
     {
@@ -161,11 +170,6 @@ protected:
         VoteMassage
     };
 
-    static bool isZeroSignature(u256 const& _r, u256 const& _s) { return !_r && !_s; }
-
-    /// Clears the signature.
-    void clearSignature() { m_vrs = SignatureStruct(); }
-public:
     Type type() const { return m_type; }
 protected:
     Type m_type = NullTransaction;        ///< Is this a contract-creation transaction or a message-call transaction?

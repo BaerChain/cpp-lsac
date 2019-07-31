@@ -209,15 +209,25 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
 
 
 
-void Account::tryRecordSnapshot(u256 _rounds)
+void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vector<PollData>const& p_datas)
 {
-    for(u256 _num = m_couplingSystemFee.m_rounds + 1; _num < _rounds; _num++)
+    if (_rounds <= m_couplingSystemFee.m_rounds)
+        return;
+    if(!m_couplingSystemFee.m_Feesnapshot.count(_rounds - 1))
     {
-        if(!m_couplingSystemFee.m_Feesnapshot.count(_num))
-            m_couplingSystemFee.m_Feesnapshot[_num] = std::pair<u256, u256>(0 ,0);
+        m_couplingSystemFee.m_Feesnapshot[_rounds - 1] = std::pair<u256, u256> (u256(0), u256(0));
     }
-    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (BRC(), balance());
-    m_couplingSystemFee.m_rounds = _rounds;
+    m_couplingSystemFee.m_Feesnapshot[_rounds] = std::pair<u256, u256> (brc, balance);
+    m_couplingSystemFee.m_rounds = _rounds - 1;
+
+    std::vector<PollData> snapshot_data;
+    uint32_t  index = config::minimum_cycle() +1;
+    for(auto const& val: p_datas){
+        if (--index)
+            snapshot_data.emplace_back(val);
+    }
+    m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
+    changed();
 }
 
 namespace js = json_spirit;

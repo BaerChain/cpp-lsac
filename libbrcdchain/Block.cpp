@@ -499,6 +499,9 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     // execute create_block records
     execute_block_record();
 
+    //try into new rounds to rank minner
+    try_into_new_rounds();
+
     h256 receiptsRoot;
     DEV_TIMED_ABOVE(".receiptsRoot()", 500) receiptsRoot = orderedTrieRoot(receipts);
 
