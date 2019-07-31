@@ -857,12 +857,12 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
             }
             ///verify the standby Legitimacy
-            Verify verify_creater;
-            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
-               // throw
-                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
+//            Verify verify_creater;
+//            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+//               // throw
+//                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
         }
 
 //        if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
