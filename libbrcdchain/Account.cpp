@@ -221,7 +221,7 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     m_couplingSystemFee.m_rounds = _rounds - 1;
 
     std::vector<PollData> snapshot_data;
-    uint32_t  index = config::minimum_cycle() +1;
+    uint32_t  index = config::minner_rank_num() +1;
     for(auto const& val: p_datas){
         if (--index)
             snapshot_data.emplace_back(val);

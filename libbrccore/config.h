@@ -35,6 +35,7 @@ namespace dev
                 static  uint32_t standbyNum();
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle();
+                static  uint32_t minner_rank_num() { return  7;}
         };
     }
 }
