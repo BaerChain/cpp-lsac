@@ -395,6 +395,12 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
         }
+        catch (const std::exception &e){
+            cwarn << "rebuild exception : " << e.what();
+        }
+        catch (const boost::exception &e){
+            cwarn << "rebuild exception boost : " <<   cwarn <<  boost::diagnostic_information(e);
+        }
         catch (...) {
             // Failed to import - stop here.
             cerror <<  "rebuild blocks error.";
