@@ -74,13 +74,32 @@ struct PollData{
     }
 
     bool  operator > (PollData const& p ) const{
-        if( m_poll > p.m_poll)
+        if( p.m_poll > m_poll)
             return true;
-        if (m_poll == p.m_poll && !m_time && m_time < p.m_time)
+        if (m_poll == p.m_poll && !p.m_time && p.m_time < m_time)
             return true;
         return false;
     }
 
+    static  void sort_greater(std::vector<PollData>& p_data){
+        int index = p_data.size();
+        for(int i=0; i<index-1; i++){
+            for(int j = i+1; j< index; j++){
+                if(p_data[j] > p_data[i]){
+                    PollData data = p_data[j];
+                    p_data[j]= p_data[i];
+                    p_data[j]= data;
+                }
+            }
+        }
+    }
+
+};
+class PollDataComparerGreater {
+    public:
+            bool operator() (const PollData& a, const PollData& b) const {
+                return b > a;
+            }
 };
 
 struct VoteSnapshot{

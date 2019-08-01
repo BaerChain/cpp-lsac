@@ -2076,19 +2076,25 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
         standby_a = account(SysCanlitorAddress);
     }
 
-    std::vector<PollData> p_data = a->vote_data();
-    //testlog << " eletor:"<< p_data;
-    std::sort(p_data.begin(), p_data.end(), std::greater<PollData>());
+    ///in this rounds will Mandatory sorting for miner
 
-    u256 var_num = config::varlitorNum()+1;
-    u256 standby_num = config::standbyNum() +1;
+
+    std::vector<PollData> p_data = a->vote_data();
+    //std::sort(p_data.begin(), p_data.end(), std::greater<struct PollData>());
+    PollData::sort_greater(p_data);
+
+    u256 var_num = config::varlitorNum();
+    u256 standby_num = config::standbyNum();
     std::vector<PollData> varlitors;
     std::vector<PollData> standbys;
+
     for(auto const& val: p_data){
-        if (--var_num){
+        if (var_num){
             varlitors.emplace_back(val);
-        } else if (--standby_num){
+            var_num --;
+        } else if (standby_num){
             standbys.emplace_back(val);
+            standby_num--;
         }
     }
     if (varlitors.empty())
@@ -2097,8 +2103,6 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
     varlitor_a->set_vote_data(varlitors);
     standby_a->set_vote_data(standbys);
-    //testlog << varlitors;
-    //testlog << standbys;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
