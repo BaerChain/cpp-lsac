@@ -71,6 +71,12 @@ namespace dev {
                                             total_price -= begin_total_price;
                                             ret.set_data(itr, begin, begin->token_amount, begin->price);
                                             result.push_back(ret);
+
+                                            db->create<order_result_object>([&](order_result_object &obj) {
+                                                obj.set_data(ret);
+                                            });
+                                            update_dynamic_result_orders();
+
                                             const auto rm_obj = db->find(begin->id);
                                             begin++;
                                             db->remove(*rm_obj);
@@ -82,17 +88,18 @@ namespace dev {
                                             }
                                             ret.set_data(itr, begin, can_buy_amount, begin->price);
                                             result.push_back(ret);
+
+                                            db->create<order_result_object>([&](order_result_object &obj) {
+                                                obj.set_data(ret);
+                                            });
+                                            update_dynamic_result_orders();
+
                                             const auto rm_obj = db->find(begin->id);
                                             db->modify(*rm_obj, [&](order_object &obj) {
                                                 obj.token_amount -= can_buy_amount;
                                             });
                                             break;
                                         }
-
-                                        db->create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
-                                        update_dynamic_result_orders();
                                     }
                                 } else {
                                     BOOST_THROW_EXCEPTION(all_price_operation_error());

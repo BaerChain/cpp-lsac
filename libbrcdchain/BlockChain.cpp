@@ -392,18 +392,12 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
-//            cerror << " import begin blockchain import";
+            cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
-        }
-        catch (const std::exception &e){
-            cerror << e.what() ;
-        }
-        catch (const boost::exception &e){
-            cwarn <<  boost::diagnostic_information(e);
         }
         catch (...) {
             // Failed to import - stop here.
-            cerror <<  "rebuild blocks error. number " << d;
+            cerror <<  "rebuild blocks error.";
             break;
         }
 
@@ -842,6 +836,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         assert(exe_miners.size() != 0);
         assert(standby_miners.size() != 0);
 
+
         ///verify the miner Legitimacy
         if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
             int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
@@ -865,6 +860,31 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 //                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
 //            }
         }
+
+//        if(exe_miners.end() == std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+//            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+//                return false;
+//            }
+//            else{
+//                //verify standby should to seal
+//                //if()
+//            }
+//
+//            bool find_node_down = false;
+//            for(const auto &itr : exe_miners){
+//                auto time = (int64_t)m_params.blockInterval * config::varlitorNum() * config::minimum_cycle();
+//                auto last_block_time = state_db.last_block_record(itr.m_addr);
+//                if(last_block_time < info().timestamp() - time){
+//                    find_node_down = true;
+//                    break;
+//                }
+//            }
+//
+//            if(!find_node_down){
+//                cwarn << "dont find node down .... ,  go next";
+//                return false;
+//            }
+//        }
     }
 
 //    cwarn << "insert -----------------";
