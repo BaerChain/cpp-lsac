@@ -399,7 +399,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             cwarn << "rebuild exception : " << e.what();
         }
         catch (const boost::exception &e){
-            cwarn << "rebuild exception boost : " <<   cwarn <<  boost::diagnostic_information(e);
+            cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
         }
         catch (...) {
             // Failed to import - stop here.
