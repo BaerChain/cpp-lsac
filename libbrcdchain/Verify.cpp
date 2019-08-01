@@ -7,6 +7,7 @@ using namespace dev;
 using namespace dev::brc;
 
 bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, const dev::Address &standby_addr, size_t varlitorInterval_time) const {
+
     std::map<Address, int64_t > records = state.block_record().m_last_time;
     std::vector<Address > minners;
     for(auto const& val: state.vote_data(SysVarlitorAddress)){
