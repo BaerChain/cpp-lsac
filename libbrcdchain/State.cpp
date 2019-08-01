@@ -2076,9 +2076,6 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
         standby_a = account(SysCanlitorAddress);
     }
 
-    ///in this rounds will Mandatory sorting for miner
-
-
     std::vector<PollData> p_data = a->vote_data();
     //std::sort(p_data.begin(), p_data.end(), std::greater<struct PollData>());
     PollData::sort_greater(p_data);
