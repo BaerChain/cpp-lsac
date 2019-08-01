@@ -1978,7 +1978,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
         CFEE_LOG <<a->getFeeSnapshot();
-
+        //CFEE_LOG <<
 //        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
 //        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
         setBRC(dev::PdSystemAddress, remainder_brc);

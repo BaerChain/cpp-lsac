@@ -168,6 +168,14 @@ struct VoteSnapshot{
         m_latest_round = 0;
     }
 
+    bool isEmpty() const
+    {
+        if(m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty())
+        {
+            return true;
+        }
+        return false;
+    }
 };
 
 
@@ -247,6 +255,15 @@ struct CouplingSystemfee
         m_Feesnapshot.clear();
         m_numofrounds = 0;
         m_rounds = 0;
+    }
+
+    bool isEmpty() const
+    {
+        if(m_Feesnapshot.empty() && m_sorted_creaters.empty())
+        {
+            return true;
+        }
+        return false;
     }
 };
 
@@ -444,7 +461,8 @@ public:
     bool isEmpty() const {
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
-                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() ;
+                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty();
     }
 
     /// @returns the balance of this account.

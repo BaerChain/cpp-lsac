@@ -443,14 +443,17 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                     ret[a] = Account(0);
                 }
                 ret[a].addVote(std::make_pair(to, ballots));
-                u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
-                ret[SysElectorAddress].set_system_poll({to, _ballot+ballots, ++_time});
+                u256 _ballot = 0;
+//                u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
+                //ret[SysCanlitorAddress].set_system_poll({to, ballots+ _ballot, ++_time});
 
                 if (ret.count(SysVarlitorAddress) && ret[SysVarlitorAddress].poll_data(to) == to){
+                    _ballot = ret[SysVarlitorAddress].poll_data(to).m_poll;
                     ret[SysVarlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
                     ret[SysVarlitorAddress].sort_vote_data();
                 }
                 else if (ret.count(SysCanlitorAddress) && ret[SysCanlitorAddress].poll_data(to) == to){
+                    _ballot = ret[SysCanlitorAddress].poll_data(to).m_poll;
                     ret[SysCanlitorAddress].set_system_poll({to, ballots+ _ballot, 0});
                     ret[SysCanlitorAddress].sort_vote_data();
                 }
