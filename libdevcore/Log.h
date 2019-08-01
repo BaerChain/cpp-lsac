@@ -98,6 +98,11 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_p2pTestLogger,
      (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "p2ptest"))
 #define CP2P_LOG  LOG(dev::g_p2pTestLogger::get())
 
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_MinersLogger,
+     boost::log::sources::severity_channel_logger_mt<>,
+     (boost::log::keywords::severity = VerbosityWarning)(boost::log::keywords::channel = "miners"))
+#define CMINER_LOG LOG(dev::g_MinersLogger::get())
+
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_FeeLogger,
                                              boost::log::sources::severity_channel_logger_mt<>,

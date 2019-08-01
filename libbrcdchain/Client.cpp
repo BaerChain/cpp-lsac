@@ -894,9 +894,6 @@ bool Client::submitSealed(bytes const& _header)
 		//m_working.info().hash();
         BlockHeader _h = BlockHeader(newBlock);
 		CLATE_LOG << "time:" << utcTimeMilliSec() << "insertSendBlock " << (utcTimeMilliSec() - _h.timestamp()) << " height: " << _h.number();
-//		m_bq.insertSendBlock({ _diff, newBlock });
-//		if(auto h = this->m_host.lock())
-//			h->noteNewBlocksSend();
 	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
     return m_bq.import(&newBlock, true) == ImportResult::Success;
