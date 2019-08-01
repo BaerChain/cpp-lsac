@@ -25,6 +25,7 @@
 #include <libwebthree/WebThree.h>
 #include <libbrchashseal/Brchash.h>
 #include <libdevcrypto/LibSnark.h>
+#include <libbrccore/config.h>
 
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/Brc.h>
@@ -749,7 +750,7 @@ int main(int argc, char **argv) {
 
     if (!chainConfigIsSet)
         // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(genesisInfo(brc::Network::MainNetwork), genesisStateRoot(brc::Network::MainNetwork));
+        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
 
     if (loggingOptions.verbosity > 0)
         cout << BrcGrayBold "brcd, a C++ BrcdChain client" BrcReset << "\n";
@@ -1155,8 +1156,10 @@ int main(int argc, char **argv) {
 
 	if(bootstrap && privateChain.empty())
 	{
-		for(auto const &i : Host::pocHosts())
-			web3.requirePeer(i.first, i.second);
+		for(auto const &i : Host::pocHosts()) {
+            cnote << " try connnect:" << i.first << " " << i.second;
+            web3.requirePeer(i.first, i.second);
+        }
 
 		for(auto const&i : chainParams.getConnectPeers())
 		{

@@ -22,6 +22,15 @@ namespace dev
             ERRORSTAGE = 2
         };
 
+        enum class ChainNetWork{
+            ///< Normal Olympic chain.
+            // Olympic = 0,
+            /// main_network chain for open.
+            MainNetwork = 1,
+        };
+
+        //extern std::string const c_genesisInfoMainNetwork;
+
 
         class config
         {
@@ -35,6 +44,9 @@ namespace dev
                 static  uint32_t standbyNum();
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle();
+                static  uint32_t minner_rank_num() { return  7;}
+
+                static std::string const& genesis_info(ChainNetWork chain_type);
         };
     }
 }
