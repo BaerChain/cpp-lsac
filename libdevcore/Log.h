@@ -106,7 +106,7 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_MinersLogger,
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_FeeLogger,
                                              boost::log::sources::severity_channel_logger_mt<>,
-                                             (boost::log::keywords::severity = VerbosityDebug)(boost::log::keywords::channel = "fee"))
+                                             (boost::log::keywords::severity = VerbosityInfo)(boost::log::keywords::channel = "fee"))
 #define CFEE_LOG LOG(dev::g_FeeLogger::get())
 
 struct LoggingOptions
