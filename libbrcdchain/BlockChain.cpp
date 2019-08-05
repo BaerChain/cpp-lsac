@@ -446,7 +446,6 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
     for (VerifiedBlock const &block: blocks) {
         do {
             try {
-                CLATE_LOG << "import block laste1 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
                 // Nonce & uncle nonces already verified in verification thread at this point.
                 ImportRoute r;
                 //DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
@@ -460,7 +459,6 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions),
                           std::back_inserter(goodTransactions));
                 ++count;
-                CLATE_LOG << "import block laste2 " <<  (utcTimeMilliSec() -  block.verified.info.timestamp()) << "ms";
             }
             catch (dev::brc::AlreadyHaveBlock const &) {
                 cwarn << "ODD: Import queue contains already imported block";
@@ -1941,7 +1939,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
     VerifiedBlockRef res;
     BlockHeader h;
     Timer cost_timer;
-    CLATE_LOG << "verifyBlock time1 " << cost_timer.elapsed() * 1000 << " ms";
     try {
         h = BlockHeader(_block);
         if (!!(_ir & ImportRequirements::PostGenesis) && (!h.parentHash() || h.number() == 0))
@@ -1969,7 +1966,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
         throw;
     }
 
-    CLATE_LOG << "verifyBlock time2 " << cost_timer.elapsed() * 1000 << " ms";
     RLP r(_block);
     unsigned i = 0;
     if (_ir & (ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
@@ -1998,7 +1994,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     i = 0;
-    CLATE_LOG << "verifyBlock time3 " << cost_timer.elapsed() * 1000 << " ms";
     if(_ir & (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 	{
 
@@ -2074,7 +2069,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 		}
 		
 	}
-    CLATE_LOG << "verifyBlock time4 " << cost_timer.elapsed() * 1000 << " ms";
     res.block = bytesConstRef(_block);
     return res;
 }
