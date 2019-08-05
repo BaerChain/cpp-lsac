@@ -284,6 +284,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 				{
 					ts.data = t.data;
 				}
+				ts.chainId = t.chainId;
                 ts.from = t.from;
                 ts.to = t.to;
                 ts.value = t.value;
