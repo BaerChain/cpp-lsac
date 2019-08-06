@@ -1658,10 +1658,10 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-
-        Json::Value record;
-        record["time"] = toJS(a->last_records(_addr));
-        jv["last_block_created"] = record;
+//
+//        Json::Value record;
+//        record["time"] = toJS(a->last_records(_addr));
+//        jv["last_block_created"] = record;
     }
     return jv;
 }
