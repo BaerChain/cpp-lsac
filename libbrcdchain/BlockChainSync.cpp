@@ -229,15 +229,22 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     if (m_state == SyncState::Waiting)
         return;
 
+    u256 td = host().chain().details().totalDifficulty;
+    if (host().bq().isActive())
+        td += host().bq().difficulty();
 
-    int64_t host_number = host().chain().details().number;
-    if (host().bq().isActive()){
-        host_number = host().bq().blockNumber();
-    }
+    u256 syncingDifficulty = std::max(m_syncingTotalDifficulty, td);
 
     auto& peer = m_host.peer(_peerID);
-    if(_force || peer.unknownNewBlocks() > host_number){
-        m_lastImportedBlock = peer.unknownNewBlocks();
+    u256 peerTotalDifficulty = peer.totalDifficulty();
+
+    if (_force || peerTotalDifficulty > syncingDifficulty)
+    {
+        if (peerTotalDifficulty > syncingDifficulty)
+            LOG(m_logger) << "Discovered new highest difficulty";
+
+        // start sync
+        m_syncingTotalDifficulty = peerTotalDifficulty;
         if (m_state == SyncState::Idle || m_state == SyncState::NotSynced)
         {
             LOG(m_loggerInfo) << "Starting full sync";
@@ -245,7 +252,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
         }
         peer.requestBlockHeaders(peer.latestHash(), 1, 0, false);
         peer.setWaitingForTransactions(true);
-        return ;
+        return;
     }
 
     if (m_state == SyncState::Blocks)

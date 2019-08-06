@@ -656,7 +656,13 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 
-		std::pair<u256, u256> _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
+		std::pair<u256, u256> _pair;
+		if(pen->m_Pendingorder_buy_type == order_buy_type::all_price && pen->m_Pendingorder_type == order_type::buy) {
+            _pair = {pen->m_Pendingorder_price * PRICEPRECISION, pen->m_Pendingorder_num};
+        }else{
+            _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
+		}
+
 		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
 						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _pair, _nowTime };
 		_v.push_back(_order);

@@ -1160,13 +1160,13 @@ int main(int argc, char **argv) {
             cnote << " try connnect:" << i.first << " " << i.second;
             web3.requirePeer(i.first, i.second);
         }
-
-		for(auto const&i : chainParams.getConnectPeers())
-		{
-			web3.requirePeer(i.first, i.second);
-			cnote << " connnect:" << i.first << " " << i.second;
-		}
 	}
+
+    for(auto const&i : chainParams.getConnectPeers())
+    {
+        web3.requirePeer(i.first, i.second);
+        cnote << " connnect:" << i.first << " " << i.second;
+    }
 
     if (!remoteHost.empty())
         web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));

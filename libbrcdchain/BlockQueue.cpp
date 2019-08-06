@@ -149,7 +149,6 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 {
     Timer test_timer;
-    CLATE_LOG << "time:" << utcTimeMilliSec() ;
 //    cwarn << _block;
     // Check if we already know this block.
     h256 h = BlockHeader::headerHashFromBlock(_block);
@@ -169,7 +168,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     BlockHeader bi;
     try
     {
-        CLATE_LOG << "time1:" << test_timer.elapsed() * 1000 << " ms" ;
         // TODO: quick verification of seal - will require BlockQueue to be templated on SealEngine
         // VERIFY: populates from the block and checks the block is internally coherent.
         bi = m_bc->verifyBlock(_block, m_onBad, ImportRequirements::PostGenesis).info;
@@ -183,7 +181,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 
     LOG(m_loggerDetail) << "Block " << h << " is " << bi.number() << " parent is " << bi.parentHash();
 
-    CLATE_LOG << "time2:" << test_timer.elapsed() * 1000 << " ms" ;
     // Check block doesn't already exist first!
     if (m_bc->isKnown(h))
     {
@@ -194,7 +191,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     UpgradeGuard ul(l);
     DEV_INVARIANT_CHECK;
 
-    CLATE_LOG << "time3:" << test_timer.elapsed() * 1000 << " ms" ;
     // Check it's not in the future
     if (bi.timestamp() > utcTimeMilliSec() && !_isOurs)
     {
@@ -237,7 +233,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         else
         {
             // If valid, append to blocks.
-            CLATE_LOG << "time:" << utcTimeMilliSec() << " OK - ready for chain insertion. " << (utcTimeMilliSec() - bi.timestamp()) << "ms" << " height: " << bi.number();
 
             DEV_GUARDED(m_verification)
                 m_unverified.enqueue(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
