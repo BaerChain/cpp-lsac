@@ -63,6 +63,11 @@ namespace dev {
             string const c_varlitorInterval = "dposVarlitorInterval";
             string const c_blockInterval = "dposBlockInterval";
 
+            string const c_varlitorNum = "varlitorNum";
+            string const c_standbyNum = "standbyNum";
+            string const c_minimum_cycle = "minimum_cycle";
+
+
             void validateConfigJson(js::mObject const &_obj) {
                 requireJsonFields(_obj, "ChainParams::loadConfig",
                                   {{c_sealEngine, {{js::str_type}, JsonFieldPresence::Required}},

@@ -86,6 +86,10 @@ public:
     size_t   epochInterval = 0;           /// shdpos epoch time if 0 shdpos will only one epoch
     size_t   varlitorInterval = 1000;        /// creater seal block time
     size_t   blockInterval = 1000;           /// a block sealed time
+    size_t   varlitorNum =21;            // super miner num
+    size_t   standbyNum =30;             // standby miner num
+    size_t   minimum_cycle =3;           // the min cycle of super miner offline
+
 
     /// Precompiled contracts as specified in the chain params.
     std::unordered_map<Address, PrecompiledContract> precompiled;

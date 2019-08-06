@@ -86,6 +86,13 @@ ChainParams ChainParams::loadConfig(
 	if(params.count(c_blockInterval))
 		cp.blockInterval = size_t(params.at(c_blockInterval).get_int());
 
+    if(params.count(c_varlitorNum))
+        cp.varlitorNum = size_t(params.at(c_varlitorNum).get_int());
+    if(params.count(c_standbyNum))
+        cp.standbyNum = size_t(params.at(c_standbyNum).get_int());
+    if(params.count(c_minimum_cycle))
+        cp.minimum_cycle = size_t(params.at(c_minimum_cycle).get_int());
+
     ////Poa Validators
     //string poaStr = js::write_string(obj[c_poa], false);
     //cp = cp.loadpoaValidators(poaStr, _stateRoot);
@@ -99,6 +106,8 @@ ChainParams ChainParams::loadConfig(
                 genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath);
 
     cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot(true);
+
+    config::getInstance(cp.varlitorNum, cp.standbyNum, cp.minimum_cycle);
 
     return cp;
 }

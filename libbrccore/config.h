@@ -35,9 +35,19 @@ namespace dev
         class config
         {
             public:
-                config(){}
-                ~config(){}
                 static std::pair<uint32_t, Votingstage> getVotingCycle(int64_t _blockNum);
+
+                static const config getInstance(uint32_t _varlitor_num = 21, uint32_t _standby_num =30, uint32_t _min_cycle =3){
+                    static config instance;
+                    if(!instance.is_init){
+                        instance.varlitor_num = _varlitor_num;
+                        instance.standby_num =_standby_num;
+                        instance.min_cycel = _min_cycle;
+                        instance.is_init = true;
+                    }
+                    return instance;
+                }
+
                 ///@return varlitor num in chain
                 static  uint32_t varlitorNum();
                 ///@return alternate num in chain
@@ -47,6 +57,14 @@ namespace dev
                 static  uint32_t minner_rank_num() { return  7;}
 
                 static std::string const& genesis_info(ChainNetWork chain_type);
+
+        private:
+            config(){}
+            //~config(){}
+            bool is_init = false;
+            uint32_t varlitor_num =21;
+            uint32_t standby_num = 30;
+            uint32_t min_cycel = 3;
         };
     }
 }
