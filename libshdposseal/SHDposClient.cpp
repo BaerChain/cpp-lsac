@@ -75,6 +75,8 @@ void dev::bacd::SHDposClient::startSealing()
     Client::startSealing();
 }
 
+int dev::bacd::SHDposClient::chainId() const{ return m_params.chainID;}
+
 void dev::bacd::SHDposClient::doWork(bool _doWait)
 {
     try{

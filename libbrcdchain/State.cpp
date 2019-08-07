@@ -1655,8 +1655,12 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
         jv["poll"] = toJS(a->poll());
 		jv["nonce"] = toJS(a->nonce());
 		jv["cookieinsummury"] = toJS(a->CookieIncome());
-        Json::Value _array;
+
+		Json::Value _array;
+        uint32_t  num =0;
         for (auto val : a->vote_data()) {
+            if(num++ > config::max_message_num())   // limit message num
+                break;
             Json::Value _v;
             _v["Address"] = toJS(val.m_addr);
             _v["vote_num"] = toJS(val.m_poll);

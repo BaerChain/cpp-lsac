@@ -28,6 +28,8 @@ uint32_t config::standbyNum() {  return config::getInstance().standby_num;}
 
 uint32_t config::minimum_cycle() { return config::getInstance().min_cycel;}
 
+uint32_t config::max_message_num() { return 50;}
+
 static std::string const c_genesisInfoMainNetwork = std::string() +
 R"E(
 {

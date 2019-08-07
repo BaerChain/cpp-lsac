@@ -37,6 +37,7 @@ public:
     SHDpos* dpos() const;
     void startSealing() override;
     void doWork(bool _doWait) override;
+    int chainId() const override;
 
     inline const BlockHeader    getCurrHeader()const     { return m_bc.info(); }
     inline h256                 getCurrBlockhash()const  { return m_bc.currentHash(); }

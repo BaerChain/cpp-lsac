@@ -55,6 +55,8 @@ namespace dev
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle();
                 static  uint32_t minner_rank_num() { return  7;}
+                ///@return the max num of rpc_interdace message
+                static  uint32_t max_message_num();
 
                 static std::string const& genesis_info(ChainNetWork chain_type);
 
