@@ -49,6 +49,7 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
 
     if (db::isDiskDatabase() && _we == WithExisting::Kill) {
         clog(VerbosityDebug, "statedb") << "Killing state database (WithExisting::Kill).";
+        cwarn << "will remove " << path << "/" << fs::path("state");
         fs::remove_all(path / fs::path("state"));
     }
 

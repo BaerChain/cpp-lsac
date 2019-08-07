@@ -337,6 +337,9 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
 
+    cwarn << "path " << path;
+    cwarn << "chainPath " << chainPath;
+    cwarn << "extrasPath " << extrasPath;
     unsigned originalNumber = m_lastBlockNumber;
 
     ///////////////////////////////
@@ -353,7 +356,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
 
     // Open a fresh state DB
 
-    Block s = genesisBlock(State::openDB(path.string(), m_genesisHash, WithExisting::Kill),
+    Block s = genesisBlock(State::openDB(chainPath.string(), m_genesisHash, WithExisting::Kill),
                            State::openExdb(fs::path(path.string() + std::string("/exdb")), WithExisting::Kill));
 
     // Clear all memos ready for replay.
@@ -392,26 +395,30 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 return;
             }
             lastHash = bi.hash();
-//            cerror << " import begin blockchain import";
             import(b, s.db(), s.exdb(), 0);
         }
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
+            cwarn << "please connect mainnet sync blocks.";
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
+            cwarn << "please connect mainnet sync blocks.";
         }
         catch (...) {
             // Failed to import - stop here.
             cerror <<  "rebuild blocks error.";
+            cwarn << "please connect mainnet sync blocks.";
             break;
         }
 
         if (_progress)
             _progress(d, originalNumber);
     }
-
-    fs::remove_all(path / fs::path("extras.old"));
+    cwarn << "rebuild complete , rename extras.old";
+    std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
+//    fs::remove_all(extrasPath / fs::path("extras.old" + ));
+    fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
 }
 
 string BlockChain::dumpDatabase() const {
@@ -1905,6 +1912,9 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
+    }
+    else{
+        cwarn << "systemPendingorder error.";
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();
