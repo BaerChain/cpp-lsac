@@ -337,9 +337,9 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
 
-    cwarn << "path " << path;
-    cwarn << "chainPath " << chainPath;
-    cwarn << "extrasPath " << extrasPath;
+//    cwarn << "path " << path;
+//    cwarn << "chainPath " << chainPath;
+//    cwarn << "extrasPath " << extrasPath;
     unsigned originalNumber = m_lastBlockNumber;
 
     ///////////////////////////////
@@ -400,10 +400,12 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
             cwarn << "please connect mainnet sync blocks.";
+            break;
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
             cwarn << "please connect mainnet sync blocks.";
+            break;
         }
         catch (...) {
             // Failed to import - stop here.
