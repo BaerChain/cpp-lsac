@@ -461,6 +461,18 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 			}
 		}
     }
-
+//    if (ret.count(SysVarlitorAddress)) {
+//        cwarn << "aaaaaaaaaaaaaaaaaaaaaaaa";
+//        cwarn << ret[SysVarlitorAddress].vote_data();
+//    }
+//    if (ret.count(SysCanlitorAddress)) {
+//        cwarn << "bbbbbbbbbbbbbbbbbbbbbbb";
+//        cwarn << ret[SysCanlitorAddress].vote_data();
+//    }
+//    if (ret.count(SysElectorAddress)) {
+//        cwarn << "sssssssssssssssssssssssssss";
+//        ret[SysCanlitorAddress].sort_vote_data();
+//        cwarn << ret[SysElectorAddress].vote_data();
+//    }
     return ret;
 }
