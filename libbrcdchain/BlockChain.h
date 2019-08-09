@@ -102,7 +102,7 @@ class  BlockChain
 public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback(), int64_t _rebuild_num = 0);
     ~BlockChain();
 
     /// @brief clean up unconfig blocks.
@@ -460,6 +460,8 @@ private:
     std::function<void(BlockHeader const&)> m_onBlockImport;                                        ///< Called if we have imported a new block into the db
 
     boost::filesystem::path m_dbPath;
+
+    int64_t  m_rebuild_num =0;
 
 	static const unsigned c_maxSyncTransactions = 1000;
 

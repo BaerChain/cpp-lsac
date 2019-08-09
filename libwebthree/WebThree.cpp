@@ -28,7 +28,7 @@ WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
                                boost::filesystem::path const &_dbPath, boost::filesystem::path const &_snapshotPath,
                                brc::ChainParams const &_params, WithExisting _we,
                                std::set<std::string> const &_interfaces,
-                               NetworkConfig const &_n, bytesConstRef _network, bool _testing)
+                               NetworkConfig const &_n, bytesConstRef _network, bool _testing,int64_t _rebuild_num)
         : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network) {
     if (_interfaces.count("brc")) {
         if (_testing)
@@ -46,7 +46,7 @@ WebThreeDirect::WebThreeDirect(std::string const &_clientVersion,
                                                     shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
             else if (_params.sealEngineName == bacd::SHDpos::name())
                 m_brcdChain.reset(new bacd::SHDposClient(_params, (int) _params.networkID, m_net,
-                                                      shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+                                                      shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we, _rebuild_num));
             else
                 BOOST_THROW_EXCEPTION(ChainParamsInvalid() << errinfo_comment(
                         "Unknown seal engine: " + _params.sealEngineName));

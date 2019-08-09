@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
                     "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
                     "start-up)");
     addClientOption("kill,K", "Kill the blockchain first");
-    addClientOption("rebuild,R", "Rebuild the blockchain from the existing database");
+    addClientOption("rebuild,R", po::value<int64_t >()->value_name("<number>"), "Rebuild the blockchain from the existing database");
     addClientOption("rescue", "Attempt to rescue a corrupt database\n");
     addClientOption("import-presale", po::value<string>()->value_name("<file>"),
                     "Import a pre-sale key; you'll need to specify the password to this key");
@@ -679,10 +679,14 @@ int main(int argc, char **argv) {
             cerr << "Bad " << "--private" << " option: " << vm["private"].as<string>() << "\n";
             return -1;
         }
+
+    int64_t _rebuild_num =0;
     if (vm.count("kill"))
         withExisting = WithExisting::Kill;
-    if (vm.count("rebuild"))
+    if (vm.count("rebuild")) {
         withExisting = WithExisting::Verify;
+        _rebuild_num = vm["rebuild"].as<int64_t >();
+    }
     if (vm.count("rescue"))
         withExisting = WithExisting::Rescue;
     
@@ -851,7 +855,7 @@ int main(int argc, char **argv) {
         chainParams.allowFutureBlocks = true;
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("brcd"), db::databasePath(),
                              snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
-                             netPrefs, &nodesState, testingMode);
+                             netPrefs, &nodesState, testingMode, _rebuild_num);
 
     if (!extraData.empty())
         web3.brcdChain()->setExtraData(extraData);

@@ -32,9 +32,9 @@ SHDposClient* dev::bacd::asDposClient(Interface* _c)
 
 dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath,
-    boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,
+    boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,int64_t _rebuild_num,
     TransactionQueue::Limits const& _l)
-  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l),
+  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l, _rebuild_num),
 	m_nodemonitor(_host.Networkrlp(), _params.getnodemonitorIp()),
 	m_p2pHost(_host)
 {

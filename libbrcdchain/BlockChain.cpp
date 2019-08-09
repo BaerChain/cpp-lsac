@@ -140,9 +140,10 @@ static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
-BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc) :
+BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, int64_t _rebuild_num) :
         m_lastBlockHashes(new LastBlockHashes(*this)),
-        m_dbPath(_dbPath) {
+        m_dbPath(_dbPath),
+        m_rebuild_num(_rebuild_num){
     init(_p);
     open(_dbPath, _we, _pc);
 }
@@ -300,7 +301,7 @@ void BlockChain::open(fs::path const &_path, WithExisting _we, ProgressCallback 
         rebuild(_path, _pc);
 }
 
-void BlockChain::reopen(ChainParams const &_p, WithExisting _we, ProgressCallback const &_pc) {
+void BlockChain::reopen(ChainParams const &_p, WithExisting _we, ProgressCallback const &_pc ) {
     close();
     init(_p);
     open(m_dbPath, _we, _pc);
@@ -341,6 +342,8 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
 //    cwarn << "chainPath " << chainPath;
 //    cwarn << "extrasPath " << extrasPath;
     unsigned originalNumber = m_lastBlockNumber;
+    if (m_rebuild_num >0 && (unsigned)m_rebuild_num < originalNumber)
+        originalNumber = (unsigned) m_rebuild_num;
 
     ///////////////////////////////
     // TODO
@@ -383,6 +386,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             t.restart();
         }
         try {
+            //cwarn << "start_num "<<d;
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
                                     .value);
@@ -1859,7 +1863,7 @@ bytes BlockChain::block(h256 const &_hash) const {
 
     string const d = m_blocksDB->lookup(toSlice(_hash));
     if (d.empty()) {
-        cwarn << "Couldn't find requested block:" << _hash;
+        cwarn << "Couldn't find requested block:" << dev::toString(_hash);
         return bytes();
     }
 
