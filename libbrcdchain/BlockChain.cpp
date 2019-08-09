@@ -1251,9 +1251,8 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         _performanceLogger.onStageFinished("collation");
 
         blocksWriteBatch->insert(toSlice(_block.info.hash()), db::Slice(_block.block));
-        DEV_READ_GUARDED(x_details)extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),
-                                                            (db::Slice) dev::ref(
-                                                                    m_details[_block.info.parentHash()].rlp()));
+        DEV_READ_GUARDED(x_details)
+            extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),(db::Slice) dev::ref(m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
         extrasWriteBatch->insert(
@@ -1262,9 +1261,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         BlockLogBlooms blb;
         for (auto i: RLP(_receipts))
             blb.blooms.push_back(TransactionReceipt(i.data()).bloom());
-        extrasWriteBatch->insert(
-                toSlice(_block.info.hash(), ExtraLogBlooms), (db::Slice) dev::ref(blb.rlp()));
-
+        extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraLogBlooms), (db::Slice) dev::ref(blb.rlp()));
         extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraReceipts), (db::Slice) _receipts);
 
         _performanceLogger.onStageFinished("writing");
@@ -1332,18 +1329,14 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
                 TransactionAddress ta;
                 ta.blockHash = tbi.hash();
                 for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
-                    extrasWriteBatch->insert(
-                            toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress),
-                            (db::Slice) dev::ref(ta.rlp()));
+                    extrasWriteBatch->insert( toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress), (db::Slice) dev::ref(ta.rlp()));
             }
 
             // Update database with them.
             ReadGuard l1(x_blocksBlooms);
             for (auto const &h: alteredBlooms)
-                extrasWriteBatch->insert(
-                        toSlice(h, ExtraBlocksBlooms), (db::Slice) dev::ref(m_blocksBlooms[h].rlp()));
-            extrasWriteBatch->insert(toSlice(h256(tbi.number()), ExtraBlockHash),
-                                     (db::Slice) dev::ref(BlockHash(tbi.hash()).rlp()));
+                extrasWriteBatch->insert( toSlice(h, ExtraBlocksBlooms), (db::Slice) dev::ref(m_blocksBlooms[h].rlp()));
+            extrasWriteBatch->insert(toSlice(h256(tbi.number()), ExtraBlockHash), (db::Slice) dev::ref(BlockHash(tbi.hash()).rlp()));
         }
 
         // FINALLY! change our best hash.
@@ -1914,9 +1907,6 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
             // TODO: maybe try to fix it by altering the m_params's genesis block?
             exit(-1);
         }
-    }
-    else{
-        cwarn << "systemPendingorder error.";
     }
     ret.m_previousBlock = BlockHeader(m_params.genesisBlock());
     ret.resetCurrent();

@@ -21,7 +21,7 @@ public:
     {}
 
     void setStatus(unsigned _protocolVersion, u256 const& _networkId, u256 const& _totalDifficulty,
-        h256 const& _latestHash, h256 const& _genesisHash);
+        h256 const& _latestHash, h256 const& _genesisHash, u256 const &height);
 
     std::string validate(h256 const& _hostGenesisHash, unsigned _hostProtocolVersion,
         u256 const& _hostNetworkId) const;
@@ -29,6 +29,8 @@ public:
     NodeID id() const { return m_id; }
 
     u256 totalDifficulty() const { return m_totalDifficulty; }
+
+    u256 block_number() const { return m_height;}
 
     time_t lastAsk() const { return m_lastAsk; }
     void setLastAsk(time_t _lastAsk) { m_lastAsk = _lastAsk; }
@@ -53,8 +55,7 @@ public:
     unsigned unknownNewBlocks() const { return m_unknownNewBlocks; }
     void incrementUnknownNewBlocks() { ++m_unknownNewBlocks; }
 
-    void requestStatus(u256 _hostNetworkId, u256 _chainTotalDifficulty, h256 _chainCurrentHash,
-        h256 _chainGenesPeersh);
+    void requestStatus(u256 _hostNetworkId, u256 _chainTotalDifficulty, h256 _chainCurrentHash, h256 _chainGenesPeersh, u256 height);
 
     /// Request hashes for given parent hash.
     void requestBlockHeaders(
@@ -92,6 +93,7 @@ private:
     /// Peer's latest block's total difficulty.
     u256 m_totalDifficulty;
     h256 m_genesisHash;  ///< Peer's genesis hash
+    u256 m_height;
     /// Have we received a GetTransactions packet that we haven't yet answered?
     bool m_requireTransactions = false;
 

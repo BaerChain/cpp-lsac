@@ -37,13 +37,14 @@ string toString(Asking _a)
 }  // namespace
 
 void BrcdChainPeer::setStatus(unsigned _protocolVersion, u256 const& _networkId,
-    u256 const& _totalDifficulty, h256 const& _latestHash, h256 const& _genesisHash)
+    u256 const& _totalDifficulty, h256 const& _latestHash, h256 const& _genesisHash, u256 const &height)
 {
     m_protocolVersion = _protocolVersion;
     m_networkId = _networkId;
     m_totalDifficulty = _totalDifficulty;
     m_latestHash = _latestHash;
     m_genesisHash = _genesisHash;
+    m_height = height;
 }
 
 
@@ -64,15 +65,15 @@ std::string BrcdChainPeer::validate(
 }
 
 void BrcdChainPeer::requestStatus(
-    u256 _hostNetworkId, u256 _chainTotalDifficulty, h256 _chainCurrentHash, h256 _chainGenesisHash)
+    u256 _hostNetworkId, u256 _chainTotalDifficulty, h256 _chainCurrentHash, h256 _chainGenesisHash, u256 height)
 {
     assert(m_asking == Asking::Nothing);
     setAsking(Asking::State);
     m_requireTransactions = true;
     RLPStream s;
-    m_host->prep(m_id, c_brcCapability, s, StatusPacket, 5)
+    m_host->prep(m_id, c_brcCapability, s, StatusPacket, 6)
         << c_protocolVersion << _hostNetworkId << _chainTotalDifficulty << _chainCurrentHash
-        << _chainGenesisHash;
+        << _chainGenesisHash << height;
     m_host->sealAndSend(m_id, s);
 }
 

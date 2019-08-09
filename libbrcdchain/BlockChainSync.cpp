@@ -229,25 +229,18 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     if (m_state == SyncState::Waiting)
         return;
 
-    u256 td = host().chain().details().totalDifficulty;
-    if (host().bq().isActive())
-        td += host().bq().difficulty();
 
-    u256 syncingDifficulty = std::max(m_syncingTotalDifficulty, td);
+    uint32_t height = host().chain().details().number;
+    uint32_t last_block_num = m_lastImportedBlock;
 
     auto& peer = m_host.peer(_peerID);
-    u256 peerTotalDifficulty = peer.totalDifficulty();
+    uint32_t  peer_block_number = (uint32_t)peer.block_number();
 
-    if (_force || peerTotalDifficulty > syncingDifficulty)
-    {
-        if (peerTotalDifficulty > syncingDifficulty)
-            LOG(m_logger) << "Discovered new highest difficulty";
 
-        // start sync
-        m_syncingTotalDifficulty = peerTotalDifficulty;
-        if (m_state == SyncState::Idle || m_state == SyncState::NotSynced)
-        {
-            LOG(m_loggerInfo) << "Starting full sync";
+    if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks){
+        if(m_state == SyncState::Idle || m_state == SyncState::NotSynced){
+            LOG(m_loggerInfo) << "Starting full sync from " << _peerID << " self height " << height  << " peer height " << peer_block_number
+            << "  last import h: " << last_block_num;
             m_state = SyncState::Blocks;
         }
         peer.requestBlockHeaders(peer.latestHash(), 1, 0, false);
@@ -631,6 +624,7 @@ void BlockChainSync::collectBlocks()
     unsigned got = 0;
     unsigned unknown = 0;
     size_t i = 0;
+    LOG(m_logger) << "import blocks " << headers.second.size();
     for (; i < headers.second.size() && i < bodies.second.size(); i++)
     {
         RLPStream blockStream(3);
@@ -640,6 +634,7 @@ void BlockChainSync::collectBlocks()
         blockStream.appendRaw(body[1].data());
         bytes block;
         blockStream.swapOut(block);
+
         switch (host().bq().import(&block))
         {
         case ImportResult::Success:
@@ -648,6 +643,7 @@ void BlockChainSync::collectBlocks()
             {
                 m_lastImportedBlock = headers.first + (unsigned)i;
                 m_lastImportedBlockHash = headers.second[i].hash;
+
             }
             break;
         case ImportResult::Malformed:

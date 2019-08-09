@@ -719,7 +719,7 @@ void BrcdChainCapability::onConnect(NodeID const& _peerID, u256 const& _peerCapa
     BrcdChainPeer peer{m_host, _peerID, _peerCapabilityVersion};
     m_peers.emplace(_peerID, peer);
     peer.requestStatus(m_networkId, m_chain.details().totalDifficulty, m_chain.currentHash(),
-        m_chain.genesisHash());
+        m_chain.genesisHash(), m_chain.details().number);
 }
 
 void BrcdChainCapability::onDisconnect(NodeID const& _peerID)
@@ -747,11 +747,12 @@ bool BrcdChainCapability::interpretCapabilityPacket(
             auto const totalDifficulty = _r[2].toInt<u256>();
             auto const latestHash = _r[3].toHash<h256>();
             auto const genesisHash = _r[4].toHash<h256>();
+            auto const height = _r[5].toInt<u256>();
 
             LOG(m_logger) << "Status: " << peerProtocolVersion << " / " << networkId << " / "
-                          << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash;
+                          << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash << " height : " << height;
 
-            peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash);
+            peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash, height);
             setIdle(_peerID);
             m_peerObserver->onPeerStatus(peer);
             break;
@@ -793,8 +794,10 @@ bool BrcdChainCapability::interpretCapabilityPacket(
         case BlockHeadersPacket:
         {
             if (peer.asking() != Asking::BlockHeaders)
+            {
                 LOG(m_loggerImpolite)
                     << "Peer giving us block headers when we didn't ask for them.";
+            }
             else
             {
                 setIdle(_peerID);
@@ -957,8 +960,7 @@ void BrcdChainCapability::setAsking(NodeID const& _peerID, Asking _a)
 
     m_host->addNote(_peerID, "ask", ::toString(_a));
     m_host->addNote(_peerID, "sync",
-        string(isCriticalSyncing(_peerID) ? "ONGOING" : "holding") +
-            (needsSyncing(_peerID) ? " & needed" : ""));
+            string(isCriticalSyncing(_peerID) ? "ONGOING" : "holding") + (needsSyncing(_peerID) ? " & needed" : ""));
 }
 
 bool BrcdChainCapability::isCriticalSyncing(NodeID const& _peerID) const
