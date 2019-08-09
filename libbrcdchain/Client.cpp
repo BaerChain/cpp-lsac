@@ -52,12 +52,12 @@ std::ostream& dev::brc::operator<<(std::ostream& _out, ActivityReport const& _r)
 
 Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l)
+    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l, int64_t _rebuild_num)
   : Worker("brc", 0),
     m_bc(_params, _dbPath, _forceAction,
         [](unsigned d, unsigned t) {
             std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-        }),
+        }, _rebuild_num),
     m_tq(_l),
     m_gp(_gpForAdoption ? _gpForAdoption : make_shared<TrivialGasPricer>()),
     m_preSeal(chainParams().accountStartNonce),

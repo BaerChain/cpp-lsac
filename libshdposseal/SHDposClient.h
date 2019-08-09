@@ -29,6 +29,7 @@ public:
         std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath = {},
         boost::filesystem::path const& _snapshotPath = {},
         WithExisting _forceAction = WithExisting::Trust,
+        int64_t _rebuild_num = 0,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{102400, 102400});
 
     ~SHDposClient();
