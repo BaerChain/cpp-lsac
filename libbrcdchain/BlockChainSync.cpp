@@ -236,6 +236,10 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     auto& peer = m_host.peer(_peerID);
     uint32_t  peer_block_number = (uint32_t)peer.block_number();
 
+    if(peer.peer_block_number == UINT32_MAX){
+        return;
+    }
+
 
     if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks){
         if(m_state == SyncState::Idle || m_state == SyncState::NotSynced){
