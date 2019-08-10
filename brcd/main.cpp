@@ -723,7 +723,13 @@ int main(int argc, char **argv) {
         }
     }
 
-     if (!accountJSON.empty())
+    if (!chainConfigIsSet){
+        // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
+        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
+    }
+
+
+    if (!accountJSON.empty())
     {
         try
         {
@@ -752,9 +758,8 @@ int main(int argc, char **argv) {
         chainParams.gasLimit = u256(1) << 32;
     }
 
-    if (!chainConfigIsSet)
-        // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
+
+
 
     if (loggingOptions.verbosity > 0)
         cout << BrcGrayBold "brcd, a C++ BrcdChain client" BrcReset << "\n";
