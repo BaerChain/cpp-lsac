@@ -465,8 +465,6 @@ void BrcdChainCapability::doBackgroundWork()
             }
         }
 
-        if (m_backgroundWorkEnabled)
-            m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
     }
     catch (const std::exception &e){
         cwarn << "exception : " << e.what() ;
