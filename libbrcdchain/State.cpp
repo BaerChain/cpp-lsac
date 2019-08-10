@@ -1665,7 +1665,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             Json::Value _v;
             _v["Address"] = toJS(val.m_addr);
             _v["vote_num"] = toJS(val.m_poll);
-            _v["time"] = toJS(val.m_time);
             _array.append(_v);
         }
         jv["vote"] = _array;
@@ -1743,7 +1742,6 @@ Json::Value dev::brc::State::votedMessage(Address const& _addr) const
 			Json::Value _v;
 			_v["address"] = toJS(val.m_addr);
 			_v["voted_num"] = toJS(val.m_poll);
-			_v["time"] = toJS(val.m_time);
 			_arry.append(_v);
 			_num += (int)val.m_poll;
 		}
@@ -1765,7 +1763,6 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 			Json::Value _v;
 			_v["address"] = toJS(val.m_addr);
 			_v["vote_num"] = toJS(val.m_poll);
-			_v["time"] = toJS(val.m_time);
 			_arry.append(_v);
 		}
 		jv["electors"] = _arry;
