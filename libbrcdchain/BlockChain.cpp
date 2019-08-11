@@ -843,40 +843,40 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         // Block ret(bc(), m_stateDB, m_StateExDB);
         //        ret.populateFromChain(bc(), _block);
         //        return ret;
-        Block s(*this, _db, _exdb);
-        //s.populateFromChain(*this, currentHash());
-        s.populateFromChain(*this, _block.info.parentHash());
-
-        State &state_db = s.mutableState();
-        auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
-        auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
-        assert(exe_miners.size() != 0);
-        assert(standby_miners.size() != 0);
-
-
-        ///verify the miner Legitimacy
-        if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
-            int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
-            if (_block.info.author() != exe_miners[offset].m_addr){
-                // throw
-                cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
-        }
-        else{
-            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
-                // throw
-                cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
-            ///verify the standby Legitimacy
-            Verify verify_creater;
-            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
-               // throw
-                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
-        }
+//        Block s(*this, _db, _exdb);
+//        //s.populateFromChain(*this, currentHash());
+//        s.populateFromChain(*this, _block.info.parentHash());
+//
+//        State &state_db = s.mutableState();
+//        auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
+//        auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
+//        assert(exe_miners.size() != 0);
+//        assert(standby_miners.size() != 0);
+//
+//
+//        ///verify the miner Legitimacy
+//        if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+//            int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
+//            if (_block.info.author() != exe_miners[offset].m_addr){
+//                // throw
+//                cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
+//        }
+//        else{
+//            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
+//                // throw
+//                cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
+//            ///verify the standby Legitimacy
+//            Verify verify_creater;
+//            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+//               // throw
+//                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
+//        }
 
     }
 
