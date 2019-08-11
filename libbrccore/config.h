@@ -64,8 +64,8 @@ namespace dev
             config(){}
             //~config(){}
             bool is_init = false;
-            uint32_t varlitor_num =21;
-            uint32_t standby_num = 30;
+            uint32_t varlitor_num =3;
+            uint32_t standby_num = 2;
             uint32_t min_cycel = 3;
         };
     }
