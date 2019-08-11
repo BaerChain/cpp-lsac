@@ -807,7 +807,7 @@ bool BrcdChainCapability::interpretCapabilityPacket(
 
                 if(itemCount == 0){
                     if(peer.get_request_zero_times() > 5){
-                        m_host->disconnect(_peerID, UserReason);
+                        m_host->disconnect(_peerID, p2p::UserReason);
                         break;
                     }
                     else{
