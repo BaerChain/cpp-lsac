@@ -840,18 +840,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     //check node down
     {
 
-        // Block ret(bc(), m_stateDB, m_StateExDB);
-        //        ret.populateFromChain(bc(), _block);
-        //        return ret;
-//        Block s(*this, _db, _exdb);
-//        //s.populateFromChain(*this, currentHash());
-//        s.populateFromChain(*this, m_genesisHash);
-//
-//        State &state_db = s.mutableState();
-//        auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
-//        auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
-//        assert(exe_miners.size() != 0);
-//        assert(standby_miners.size() != 0);
 
         std::vector<PollData> exe_miners;
         std::vector<PollData> standby_miners;
