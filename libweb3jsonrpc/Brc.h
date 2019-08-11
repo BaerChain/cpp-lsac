@@ -109,6 +109,8 @@ public:
 	virtual Json::Value brc_getObtainVote(const std::string& _address, const std::string& _blockNumber) override;
 	virtual Json::Value brc_getVoted(const std::string& _address, const std::string& _blockNumber) override;
 	virtual Json::Value brc_getElector(const std::string& _blockNumber) override;
+
+	virtual Json::Value brc_getAnalysisData(std::string const& _data) override;
 	
 	void setTransactionDefaults(brc::TransactionSkeleton& _t);
 protected:
