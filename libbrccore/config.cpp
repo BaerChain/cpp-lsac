@@ -6,32 +6,14 @@ using namespace dev::brc;
 
 std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
-//    if(_blockNum >= 0 && _blockNum < 1700000)
-//    {
-//        if(_blockNum >= 0 && _blockNum < 1000000)
-//        {
-//            return std::pair<uint32_t , Votingstage>(2, Votingstage::VOTE);
-//        }else if(_blockNum >= 1000000 && _blockNum < 1700000)
-//        {
-//            return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
-//        }
-//    }
-    if(_blockNum >= 0 && _blockNum < 1000)
+    if(_blockNum >= 0 && _blockNum < 1700000)
     {
-        if(_blockNum >= 1 && _blockNum < 15)
+        if(_blockNum >= 0 && _blockNum < 1000000)
         {
             return std::pair<uint32_t , Votingstage>(2, Votingstage::VOTE);
-        }else if(_blockNum >= 15 && _blockNum < 30)
+        }else if(_blockNum >= 1000000 && _blockNum < 1700000)
         {
             return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
-        }
-        else if(_blockNum >= 30 && _blockNum < 40)
-        {
-            return std::pair<uint32_t, Votingstage>(3, Votingstage::RECEIVINGINCOME);
-        }
-        else if(_blockNum >= 40 && _blockNum < 70)
-        {
-            return std::pair<uint32_t, Votingstage>(3, Votingstage::RECEIVINGINCOME);
         }
     }
     //return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
