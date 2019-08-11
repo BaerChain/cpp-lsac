@@ -68,9 +68,11 @@ public:
 
     void onPeerTransactions(NodeID const& _peerID, RLP const& _r) override
     {
-        unsigned itemCount = _r.itemCount();
-        LOG(m_logger) << "Transactions (" << dec << itemCount << " entries)";
-        m_tq.enqueue(_r, _peerID);
+        if(!m_sync->isSyncing()){
+            unsigned itemCount = _r.itemCount();
+            LOG(m_logger) << "Transactions (" << dec << itemCount << " entries)";
+            m_tq.enqueue(_r, _peerID);
+        }
     }
 
     void onPeerAborting() override

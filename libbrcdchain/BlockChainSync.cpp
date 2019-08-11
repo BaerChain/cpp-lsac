@@ -14,9 +14,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-unsigned const c_maxPeerUknownNewBlocks = 1024; /// Max number of unknown new blocks peer can give us
-unsigned const c_maxRequestHeaders = 1024;
-unsigned const c_maxRequestBodies = 1024;
+unsigned const c_maxPeerUknownNewBlocks = 512; /// Max number of unknown new blocks peer can give us
+unsigned const c_maxRequestHeaders = 512;
+unsigned const c_maxRequestBodies = 512;
 
 
 std::ostream& dev::brc::operator<<(std::ostream& _out, SyncStatus const& _sync)
@@ -463,12 +463,18 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
         LOG(m_loggerDetail) << "Peer does not have the blocks requested";
         m_host.capabilityHost().updateRating(_peerID, -1);
     }
+    if(itemCount > 0){
+        std::ostringstream os;
+        os << "[ ";
+        for(auto i = 0; i < itemCount; i++){
+            BlockHeader from(_r[i].data(), HeaderData);
+            os << from.number() << ",";
+        }
+        LOG(m_logger) << "get headerData  from number " << os.str();
+    }
     for (unsigned i = 0; i < itemCount; i++)
     {
         BlockHeader info(_r[i].data(), HeaderData);
-        if(i == 0){
-            LOG(m_logger) << "get headerData  from number " << info.number();
-        }
         unsigned blockNumber = static_cast<unsigned>(info.number());
         if (blockNumber < m_chainStartBlock)
         {
@@ -732,6 +738,9 @@ void BlockChainSync::logImported(
 
 void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
 {
+    if(isSyncing()){
+        return ;
+    }
     RecursiveGuard l(x_sync);
     DEV_INVARIANT_CHECK;
 
