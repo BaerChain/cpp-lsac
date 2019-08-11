@@ -404,12 +404,12 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
             cwarn << "please connect mainnet sync blocks.";
-            break;
+//            break;
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
             cwarn << "please connect mainnet sync blocks.";
-            break;
+//            break;
         }
         catch (...) {
             // Failed to import - stop here.
