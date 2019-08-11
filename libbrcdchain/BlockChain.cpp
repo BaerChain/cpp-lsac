@@ -837,8 +837,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         State &state_db = s.mutableState();
         auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
         auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
-        assert(exe_miners.size() != 0);
-        assert(standby_miners.size() != 0);
+        //assert(exe_miners.size() != 0);
+        //assert(standby_miners.size() != 0);
 
 
         ///verify the miner Legitimacy

@@ -631,6 +631,7 @@ public:
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto val : m_vote_data) vote_num += val.m_poll; return vote_num; }
     void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
+    void clear_vote_data() { m_vote_data.clear();}
 
     /// this interface only for normalAddress
     void addVote(std::pair<Address, u256> _votePair);
