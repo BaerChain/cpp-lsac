@@ -263,7 +263,7 @@ public:
         bytes rlp;
         unsigned itemCount = 0;
         vector<h256> hashes;
-        cnote << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders;
+        cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders;
         for (unsigned i = 0; i != numHeadersToSend; ++i)
         {
             if (!blockHash || !m_chain.isKnown(blockHash))
@@ -274,7 +274,7 @@ public:
 
             blockHash = nextHash(blockHash, step);
         }
-        cnote  << "response hashes.size() " << hashes.size();
+        cwarn  << "response hashes.size() " << hashes.size();
 
         for (unsigned i = 0; i < hashes.size() && rlp.size() < c_maxPayload; ++i)
             rlp += m_chain.headerData(hashes[_reverse ? i : hashes.size() - 1 - i]);
