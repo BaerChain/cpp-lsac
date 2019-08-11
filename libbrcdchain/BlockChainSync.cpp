@@ -137,7 +137,7 @@ template<typename T> void mergeInto(std::map<unsigned, std::vector<T>>& _contain
 BlockChainSync::BlockChainSync(BrcdChainCapability& _host)
   : m_host(_host),
     m_chainStartBlock(_host.chain().chainStartBlockNumber()),
-    m_startingBlock(_host.chain().number()),
+    m_startingBlock(_host.chain().info().number()),
     m_lastImportedBlock(m_startingBlock),
     m_lastImportedBlockHash(_host.chain().currentHash())
 {
@@ -231,7 +231,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
 
 
-    uint32_t height = host().chain().details().number;
+    uint32_t height = host().chain().info().number();
     uint32_t last_block_num = m_lastImportedBlock;
 
     auto& peer = m_host.peer(_peerID);

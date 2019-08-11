@@ -1167,7 +1167,7 @@ int main(int argc, char **argv) {
 	{
 		for(auto const &i : Host::pocHosts()) {
             cnote << " try connnect:" << i.first << " " << i.second;
-            web3.requirePeer(i.first, i.second);
+//            web3.requirePeer(i.first, i.second);
         }
 	}
 
