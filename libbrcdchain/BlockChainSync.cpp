@@ -230,6 +230,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
         return;
 
 
+
     uint32_t height = host().chain().details().number;
     uint32_t last_block_num = m_lastImportedBlock;
 
@@ -259,10 +260,15 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     }
 }
 
-void BlockChainSync::continueSync()
+void BlockChainSync::continueSync(NodeID id)
 {
-    host().capabilityHost().foreachPeer(m_host.name(), [this](NodeID const& _peerID) {
-        syncPeer(_peerID, false);
+    if(id != NodeID()){
+        syncPeer(id, false);
+    }
+    host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
+        if(id != _peerID){
+            syncPeer(_peerID, false);
+        }
         return true;
     });
 }
@@ -278,6 +284,7 @@ void BlockChainSync::requestBlocks(NodeID const& _peerID)
     }
     // check to see if we need to download any block bodies first
     auto header = m_headers.begin();
+
     h256s neededBodies;
     vector<unsigned> neededNumbers;
     unsigned index = 0;
@@ -459,6 +466,9 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
     for (unsigned i = 0; i < itemCount; i++)
     {
         BlockHeader info(_r[i].data(), HeaderData);
+        if(i == 0){
+            LOG(m_logger) << "get headerData  from number " << info.number();
+        }
         unsigned blockNumber = static_cast<unsigned>(info.number());
         if (blockNumber < m_chainStartBlock)
         {

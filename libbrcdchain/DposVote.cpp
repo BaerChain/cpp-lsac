@@ -75,7 +75,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(" not have enough ticket to vote..."));
 			}
 			//verify the Elector exist
-            const PollData p_data = m_state.poll_data(_from, p_op->m_to);
+            const PollData p_data = m_state.poll_data(SysElectorAddress, p_op->m_to);
             if(p_data.m_addr != p_op->m_to){
 				std::string _ex_info = "the Elector:" + toString(p_op->m_to) + " not exist !";
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(_ex_info));
