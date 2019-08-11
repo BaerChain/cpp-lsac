@@ -263,7 +263,7 @@ public:
         bytes rlp;
         unsigned itemCount = 0;
         vector<h256> hashes;
-        cdebug << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders;
+        cnote << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders;
         for (unsigned i = 0; i != numHeadersToSend; ++i)
         {
             if (!blockHash || !m_chain.isKnown(blockHash))
@@ -274,7 +274,7 @@ public:
 
             blockHash = nextHash(blockHash, step);
         }
-        cdebug  << "response hashes.size() " << hashes.size();
+        cnote  << "response hashes.size() " << hashes.size();
 
         for (unsigned i = 0; i < hashes.size() && rlp.size() < c_maxPayload; ++i)
             rlp += m_chain.headerData(hashes[_reverse ? i : hashes.size() - 1 - i]);
@@ -783,9 +783,12 @@ bool BrcdChainCapability::interpretCapabilityPacket(
                 break;
             }
 
+
+
             pair<bytes, unsigned> const rlpAndItemCount =
                 m_hostData->blockHeaders(blockId, numHeadersToSend, skip, reverse);
-
+            LOG(m_logger) << "GetBlockHeadersPacket " << blockId  << " maxHeaders " << maxHeaders << " skip " << skip << " reverse " << reverse
+             << " response size " << rlpAndItemCount.second;
             RLPStream s;
             m_host->prep(_peerID, name(), s, BlockHeadersPacket, rlpAndItemCount.second)
                 .appendRaw(rlpAndItemCount.first, rlpAndItemCount.second);
@@ -805,16 +808,16 @@ bool BrcdChainCapability::interpretCapabilityPacket(
                 setIdle(_peerID);
                 auto itemCount = _r[0].itemCount();
 
-                if(itemCount == 0){
-                    if(peer.get_request_zero_times() > 5){
-                        m_host->disconnect(_peerID, p2p::UserReason);
-                        break;
-                    }
-                    else{
-                        peer.set_request_zero_times(peer.get_request_zero_times() + 1);
-                    }
-
-                }
+//                if(itemCount == 0){
+//                    if(peer.get_request_zero_times() > 5){
+//                        m_host->disconnect(_peerID, p2p::UserReason);
+//                        break;
+//                    }
+//                    else{
+//                        peer.set_request_zero_times(peer.get_request_zero_times() + 1);
+//                    }
+//
+//                }
 
                 m_peerObserver->onPeerBlockHeaders(_peerID, _r);
             }

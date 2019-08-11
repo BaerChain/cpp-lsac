@@ -102,11 +102,12 @@ public:
 
     void disablePeer(NodeID const& _peerID, std::string const& _problem);
 
+    void doBackgroundWork() override;
 private:
     std::shared_ptr<WarpPeerObserverFace> createPeerObserver(
         boost::filesystem::path const& _snapshotDownloadPath);
 
-    void doBackgroundWork();
+
 
     void setAsking(NodeID const& _peerID, Asking _a);
 
