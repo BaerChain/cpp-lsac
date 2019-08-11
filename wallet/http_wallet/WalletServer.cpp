@@ -60,7 +60,18 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
         }
         else if (!m_send_url.empty()){
             std::cout << "to send:" << m_send_url<<" rlp:"<< _pair.second<< std::endl;
-            respone["sendRet"] =Json::Value(ToolTransaction::sendRawTransation(_pair.second, m_send_url));
+            respone["rlp"] = _pair.second;
+            respone["hash"] = _hash;
+            std::string _str=ToolTransaction::sendRawTransation(_pair.second, m_send_url);
+            Json::Reader reader;
+            Json::Value value;
+            if (reader.parse(_str, value)) {            // json字符串转为json对象
+                respone["sendRet"] = value;
+            }
+            else{
+                respone["isSend"] = false;
+                respone["sendRet"] = "send error , check the send_url";
+            }
         }
         else{
             std::cout << "error: not has url"<<std::endl;
