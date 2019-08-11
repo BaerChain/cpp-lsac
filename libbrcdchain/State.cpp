@@ -1178,7 +1178,6 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             continue;
         _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
     }
-
     for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         for(auto const &it : _voteDataIt->second)
@@ -1941,13 +1940,13 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
         a = account(_addr);
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
+    cwarn << " " << ret_pair.first << " "<< ret_pair.second;
     if (!ret_pair.first)
         return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
     /// try new snapshot
     a->try_new_snapshot(ret_pair.second);
     /// clear genesis_vote_data and genesis_rounds poll
-    cwarn << " last_rouds:" << _vote_sna.m_latest_round;
     if(_vote_sna.m_latest_round == 0){
         std::vector<PollData> poll_data= a->vote_data();
         a->clear_vote_data();
