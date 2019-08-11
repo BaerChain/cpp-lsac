@@ -303,7 +303,7 @@ namespace dev {
                 }
                 return _JsArray;
             }             
-            catch (boost::exception const &) {
+            catch (...) {
                 throw jsonrpc::JsonRpcException("Invalid data format!");
             }
 
