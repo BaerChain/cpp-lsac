@@ -263,7 +263,7 @@ public:
         bytes rlp;
         unsigned itemCount = 0;
         vector<h256> hashes;
-        cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders;
+        cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash;
         for (unsigned i = 0; i != numHeadersToSend; ++i)
         {
             if (!blockHash || !m_chain.isKnown(blockHash))
