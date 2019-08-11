@@ -296,15 +296,6 @@ namespace dev {
                         res["hash"] = toJS(_cancel_op.m_hash);
                         _JsArray.append(res);
                     }
-                    if(_type == dev::brc::transationTool::changeMiner) {
-                        Json::Value res;
-                        dev::brc::transationTool::changeMiner_operation _op = dev::brc::transationTool::changeMiner_operation(val);
-                        res["type"] = toJS(_type);
-                        res["before"] = toJS(_op.m_before);
-                        res["after"] = toJS(_op.m_after);
-                        res["blockNumber"] = toJS(_op.m_blockNumber);
-                        _JsArray.append(res);
-                    }
                     if(_type == dev::brc::transationTool::receivingincome) {
                         Json::Value res;
                         dev::brc::transationTool::receivingincome_operation _op = dev::brc::transationTool::receivingincome_operation(val);
