@@ -47,9 +47,7 @@ public:
 	brc::AccountHolder const& brcAccounts() const { return m_brcAccounts; }
 
 	virtual std::string brc_protocolVersion() override;
-	virtual std::string brc_hashrate() override;
 	virtual std::string brc_coinbase() override;
-	virtual bool brc_mining() override;
 	virtual std::string brc_gasPrice() override;
 	virtual Json::Value brc_accounts() override;
 	virtual std::string brc_blockNumber()override;
@@ -69,10 +67,8 @@ public:
 	virtual Json::Value brc_getUncleCountByBlockHash(std::string const& _blockHash) override;
 	virtual Json::Value brc_getUncleCountByBlockNumber(std::string const& _blockNumber) override;
 	virtual std::string brc_getCode(std::string const& _address, std::string const& _blockNumber) override;
-	virtual std::string brc_sendTransaction(Json::Value const& _json) override;
 	virtual std::string brc_call(Json::Value const& _json, std::string const& _blockNumber) override;
 	virtual std::string brc_estimateGas(Json::Value const& _json) override;
-	virtual bool brc_flush() override;
 	virtual Json::Value brc_getBlockByHash(std::string const& _blockHash, bool _includeTransactions) override;
 	virtual Json::Value brc_getBlockByNumber(std::string const& _blockNumber, bool _includeTransactions) override;
 	virtual Json::Value brc_getTransactionByHash(std::string const& _transactionHash) override;
@@ -92,13 +88,9 @@ public:
 	virtual Json::Value brc_getFilterLogsEx(std::string const& _filterId) override;
 	virtual Json::Value brc_getLogs(Json::Value const& _json) override;
 	virtual Json::Value brc_getLogsEx(Json::Value const& _json) override;
-	virtual Json::Value brc_getWork() override;
-	virtual bool brc_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash) override;
-	virtual bool brc_submitHashrate(std::string const& _hashes, std::string const& _id) override;
 	virtual std::string brc_register(std::string const& _address) override;
 	virtual bool brc_unregister(std::string const& _accountId) override;
 	virtual Json::Value brc_fetchQueuedTransactions(std::string const& _accountId) override;
-	virtual Json::Value brc_signTransaction(Json::Value const& _transaction) override;
 	virtual Json::Value brc_inspectTransaction(std::string const& _rlp) override;
 	virtual std::string brc_sendRawTransaction(std::string const& _rlp) override;
 	virtual std::string brc_importBlock(const std::string &_rlp) override;
