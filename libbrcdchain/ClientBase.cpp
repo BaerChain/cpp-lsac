@@ -338,9 +338,7 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
     auto& w = m_watches.at(_watchId);
     //	LOG(m_loggerWatch) << "lastPoll updated to " <<
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-    //std::swap(ret, w.changes);
-    ret = w.changes;
-    w.changes.clear();
+    std::swap(ret, w.changes);
     if (w.lastPoll != chrono::system_clock::time_point::max())
         w.lastPoll = chrono::system_clock::now();
 
