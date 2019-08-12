@@ -1162,12 +1162,22 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
         if(m_blocksDB->exists(remove_hash)){
             m_blocksDB->kill(remove_hash);
         }
-        else if(m_extrasDB->exists(remove_hash)){
-            m_extrasDB->kill(remove_hash);
+
+        try {
+            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
+            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
+
+            m_extrasDB->commit(std::move(extrasWriteBatch));
+        }catch (Exception &ex){
+            cwarn << "remove_blocks_from_database " << ex.what();
+        }catch (...){
+            cwarn << "remove m_blocksDB error";
         }
-        else{
-            cwarn << "remove block data error , hash : " << itr.info.hash() << " height: " << itr.info.number();
-        }
+
+
     }
 
 
@@ -1262,8 +1272,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),(db::Slice) dev::ref(m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
-        extrasWriteBatch->insert(
-                toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
+        extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
 
         BlockLogBlooms blb;
         for (auto i: RLP(_receipts))
