@@ -423,9 +423,6 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
         if (haveVote)
 		{
 			js::mObject _v = accountMaskJson.at(c_vote).get_obj();
-            if (!ret.count(SysElectorAddress))
-                ret[SysElectorAddress] = Account(0,0);
-            int64_t _time= 0;
 			for (auto voteData : _v){
                 Address to(voteData.first);
                 u256 ballots(voteData.second.get_str());
@@ -444,8 +441,6 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
                 }
                 ret[a].addVote(std::make_pair(to, ballots));
                 u256 _ballot = 0;
-//                u256 _ballot = ret[SysElectorAddress].poll_data(to).m_poll;
-                //ret[SysCanlitorAddress].set_system_poll({to, ballots+ _ballot, ++_time});
 
                 if (ret.count(SysVarlitorAddress) && ret[SysVarlitorAddress].poll_data(to) == to){
                     _ballot = ret[SysVarlitorAddress].poll_data(to).m_poll;
