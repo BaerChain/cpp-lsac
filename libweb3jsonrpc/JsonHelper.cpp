@@ -278,7 +278,7 @@ namespace dev {
 
                         res["type"] = toJS(_type);
                         res["from"] = toJS(_pendering_op.m_from);
-                        res["type"] = toJS(m_Pendingorder_type);
+                        res["pendingorder_type"] = toJS(m_Pendingorder_type);
                         res["token_type"] = toJS(m_Pendingorder_Token_type);
                         res["buy_type"] = toJS(m_Pendingorder_buy_type);
                         res["num"] = toJS(_pendering_op.m_Pendingorder_num);
