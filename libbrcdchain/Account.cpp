@@ -471,3 +471,8 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 //    }
     return ret;
 }
+
+std::map<Address, std::pair<u256, u256>> dev::brc::VoteSnapshot::receive_cookies(dev::u256 rounds) {
+
+    return std::map<Address, std::pair<u256, u256>>();
+}

@@ -108,6 +108,10 @@ struct VoteSnapshot{
     std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
     u256 numberofrounds = 0;                                    // the rounds of got awards
     u256 m_latest_round = 0;                                    // the last snapshot rounds of record
+
+    std::map<u256, std::map<Address, u256> > m_received_cookies;  // <rounds,<address, total_recived >> recevied from other
+    std::map<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
+
     VoteSnapshot(){}
 
     VoteSnapshot& operator = (VoteSnapshot const& s_v){
@@ -186,15 +190,18 @@ struct VoteSnapshot{
         numberofrounds = 0;
         m_latest_round = 0;
     }
-
     bool isEmpty() const
     {
-        if(m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty())
+        if(m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty() && m_received_cookies.empty())
         {
             return true;
         }
         return false;
     }
+
+    ///@return <address <get_cookies, left_cookies>>
+    ///@param now_rounds in chain
+    std::map<Address, std::pair<u256, u256>> receive_cookies(u256 rounds);
 };
 
 
