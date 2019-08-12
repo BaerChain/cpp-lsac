@@ -191,7 +191,6 @@ struct Change
     {
         minners = poll;
     }
-
 };
 
 using ChangeLog = std::vector<Change>;

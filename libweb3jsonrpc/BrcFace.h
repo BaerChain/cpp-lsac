@@ -125,6 +125,10 @@ public:
             jsonrpc::Procedure("brc_getTransactionByHash", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getTransactionByHashI);
+        this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getAnalysisData", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getAnalysisDataI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getTransactionByBlockHashAndIndex",
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
@@ -376,6 +380,10 @@ public:
     {
         response = this->brc_getTransactionByHash(request[0u].asString());
     }
+    inline virtual void brc_getAnalysisDataI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getAnalysisData(request[0u].asString());
+    }
     inline virtual void brc_getTransactionByBlockHashAndIndexI(
         const Json::Value& request, Json::Value& response)
     {
@@ -562,6 +570,7 @@ public:
     virtual Json::Value brc_getBlockByHash(const std::string& param1, bool param2) = 0;
     virtual Json::Value brc_getBlockByNumber(const std::string& param1, bool param2) = 0;
     virtual Json::Value brc_getTransactionByHash(const std::string& param1) = 0;
+    virtual Json::Value brc_getAnalysisData(const std::string& param1) = 0;
     virtual Json::Value brc_getTransactionByBlockHashAndIndex(
         const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getTransactionByBlockNumberAndIndex(

@@ -478,7 +478,7 @@ Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeT
     }
 }
 
-Json::Value Brc::brc_getTransactionByHash(string const& _transactionHash)
+Json::Value Brc::brc_getTransactionByHash(std::string const& _transactionHash)
 {
     try
     {
@@ -492,6 +492,12 @@ Json::Value Brc::brc_getTransactionByHash(string const& _transactionHash)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
+}
+
+Json::Value Brc::brc_getAnalysisData(std::string const& _data)
+{
+    bytes r = fromHex(_data);
+    return analysisData(r);
 }
 
 Json::Value Brc::brc_getTransactionByBlockHashAndIndex(

@@ -27,6 +27,7 @@
 { "name": "brc_getBlockByHash", "params": ["", false],"order": [], "returns": {}},
 { "name": "brc_getBlockByNumber", "params": ["", false],"order": [], "returns": {}},
 { "name": "brc_getTransactionByHash", "params": [""], "order": [], "returns": {}},
+{ "name": "brc_getAnalysisData", "params": [""], "order": [], "returns": {}},
 { "name": "brc_getTransactionByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "brc_getTransactionByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "brc_getTransactionReceipt", "params": [""], "order": [], "returns": {}},
