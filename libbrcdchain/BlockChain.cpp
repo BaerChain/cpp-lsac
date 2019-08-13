@@ -385,6 +385,9 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
             t.restart();
         }
+        if( !(d % 10000)){
+            cwarn << "rebuild block number " << d;
+        }
         try {
             //cwarn << "start_num "<<d;
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
@@ -396,7 +399,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             if (bi.parentHash() != lastHash) {
                 cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
                       << "; expected" << lastHash << "#" << (d - 1);
-                return;
+                break;
             }
             lastHash = bi.hash();
             import(b, s.db(), s.exdb(), 0);
@@ -404,12 +407,12 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
             cwarn << "please connect mainnet sync blocks.";
-//            break;
+            break;
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
             cwarn << "please connect mainnet sync blocks.";
-//            break;
+            break;
         }
         catch (...) {
             // Failed to import - stop here.
