@@ -39,5 +39,7 @@ extern Address const SysVarlitorAddress;
 extern Address const SysCanlitorAddress;
 
 extern Address const PdSystemAddress;
+
+extern Address const SysMinerSnapshotAddress;
 }
 

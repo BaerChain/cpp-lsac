@@ -104,8 +104,19 @@ class PollDataComparerGreater {
 
 struct ReceivedCookies {
     std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
-    std::pair<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
     u256 m_numberofRound = 0;
+    std::pair<u256, bool> m_is_received = std::make_pair(1, false);               // <rounds, bool> is recevied all in this rounds
+
+    void up_received_cookies(u256 rounds, Address const& adress, std::pair<u256, u256> _pair){
+        if(!m_received_cookies.count(rounds)){
+            std::map<Address, std::pair<u256, u256>> val;
+            val[adress] = _pair;
+            m_received_cookies[rounds] = val;
+            return;
+        }
+        m_received_cookies[rounds][adress] = _pair;
+    }
+
     ReceivedCookies()= default;
     bytes streamRLP() const{
         RLPStream _s(2);
@@ -124,15 +135,7 @@ struct ReceivedCookies {
 
         return  _s.out();
     }
-    void up_received_cookies(u256 rounds, Address const& adress, std::pair<u256, u256> _pair){
-        if(!m_received_cookies.count(rounds)){
-            std::map<Address, std::pair<u256, u256>> val;
-            val[adress] = _pair;
-            m_received_cookies[rounds] = val;
-            return;
-        }
-        m_received_cookies[rounds][adress] = _pair;
-    }
+
     void populate(bytes const& _b){
         RLP rlp = RLP(_b);
         bytes b_receive = rlp[0].toBytes();
@@ -151,9 +154,9 @@ struct ReceivedCookies {
     void clear(){
         m_received_cookies.clear();
     }
+    bool empty() const{ return m_received_cookies.empty();}
 
 };
-
 
 struct VoteSnapshot{
     std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
@@ -244,18 +247,12 @@ struct VoteSnapshot{
         numberofrounds = 0;
         m_latest_round = 0;
     }
-    bool isEmpty() const
-    {
-        if(m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty())
-        {
-            return true;
-        }
-        return false;
+    bool isEmpty() const{
+        return m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty();
     }
 
 
 };
-
 
 struct CouplingSystemfee
 {
@@ -278,7 +275,7 @@ struct CouplingSystemfee
     {
         _rlp.appendList(4);
         RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
-        for(auto it : m_Feesnapshot)
+        for(auto const& it : m_Feesnapshot)
         {
             RLPStream _amountRlp(2);
             _amountRlp << it.second.first << it.second.second;
@@ -335,13 +332,8 @@ struct CouplingSystemfee
         m_rounds = 0;
     }
 
-    bool isEmpty() const
-    {
-        if(m_Feesnapshot.empty() && m_sorted_creaters.empty())
-        {
-            return true;
-        }
-        return false;
+    bool isEmpty() const{
+        return  m_Feesnapshot.empty() && m_sorted_creaters.empty();
     }
 };
 
@@ -402,6 +394,23 @@ inline std::ostream& operator << (std::ostream& out, CouplingSystemfee const& c)
     out<< "m_numofrounds"<<c.m_numofrounds <<std::endl;
     return out;
 }
+inline std::ostream& operator << (std::ostream& out, ReceivedCookies const& c){
+    out << std::endl;
+    out<< "{"<<std::endl;
+    for(auto const&val : c.m_received_cookies){
+        out<< "     ["<< val.first<<":"<<std::endl;
+        out<< "     ";
+        for(auto const& v: val.second){
+            out <<"("<< v.first <<"  "<< v.second.first << "  "<< v.second.second << ")";
+        }
+        out<<std::endl<<"     ]"<< std::endl;
+    }
+    out<< "is_recevied:" << c.m_is_received.first << "  "<<c.m_is_received.second;
+    out<<std::endl<< "}"<<std::endl;
+
+    return out;
+}
+
 
 /// for record own  creater_block log
 /**
@@ -540,7 +549,7 @@ public:
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
-                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty();
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty();
     }
 
     /// @returns the balance of this account.
@@ -775,10 +784,13 @@ public:
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;changed();}
     std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
+    void add_new_rounds_miner_sapshot(u256 _round, std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data;}
+
 
     ///interface about received_cookies
     void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received;}
-    ReceivedCookies const& get_received_cookies() { return  m_received_cookies;}
+    ReceivedCookies const& get_received_cookies() const { return  m_received_cookies;}
+    void init_received_cookies(bytes const& _b) { m_received_cookies.populate(_b);}
     /// 1 calculate old_rounds and now_rounds is before not has calculated
     /// 2 update m_received_cookies
     ///@return <is_update, get_total_cookies>

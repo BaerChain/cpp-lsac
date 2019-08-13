@@ -555,6 +555,9 @@ public:
     /// try into new rounds if into: will statistical_poll and sort varlitor
     void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
 
+    /// get the miner sanpshot
+    std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
