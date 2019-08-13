@@ -199,10 +199,8 @@ VoteSnapshot Account::try_new_temp_snapshot(u256 _rounds){
 }
 
 std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage _state) {
-    u256 last_round = _rounds;
-    if(_rounds >0 && _state == Votingstage::VOTE)
-        last_round --;
-    if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
+    u256 last_round = _rounds--;
+if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
         return std::make_pair(false, 0);
     return  std::make_pair(true, last_round);
 }
