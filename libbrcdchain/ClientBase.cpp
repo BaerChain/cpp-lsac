@@ -151,6 +151,11 @@ Json::Value dev::brc::ClientBase::queryExchangeRewardMessage(BlockNumber _block)
     return blockByNumber(_block).mutableState().queryExchangeReward();
 }
 
+Json::Value dev::brc::ClientBase::queryBlockRewardMessage(BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().queryBlcokReward();
+}
+
 Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _block) const
 {
 	return blockByNumber(_block).mutableState().electorMessage(_a);

@@ -68,6 +68,10 @@ public:
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getQueryExchangeRewardI);
         this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getQueryBlockReward", jsonrpc::PARAMS_BY_POSITION, 
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getQueryBlockRewardI);
+        this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getBallot", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBallotI);
@@ -283,7 +287,11 @@ public:
     }
     inline virtual void brc_getQueryExchangeRewardI(const Json::Value& request, Json::Value& response)
     {
-            response = this->brc_getAnalysisData(request[0u].asString());
+            response = this->brc_getQueryExchangeReward(request[0u].asString());
+    }
+    inline virtual void brc_getQueryBlockRewardI(const Json::Value& request, Json::Value& response)
+    {
+            response = this->brc_getQueryBlockReward(request[0u].asString());
     }
     inline virtual void brc_getBallotI(const Json::Value& request, Json::Value& response)
     {
@@ -499,6 +507,7 @@ public:
 	virtual Json::Value brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getBlockReward(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4) = 0;
     virtual Json::Value brc_getQueryExchangeReward(const std::string& param1) = 0;
+    virtual Json::Value brc_getQueryBlockReward(const std::string& param1) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
