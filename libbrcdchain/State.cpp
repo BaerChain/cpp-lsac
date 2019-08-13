@@ -207,7 +207,11 @@ Account *State::account(Address const &_addr) {
     const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_block_record(record_b);
 
+    const bytes received_cookies = state[16].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.init_received_cookies(received_cookies);
+
     m_unchangedCacheEntries.push_back(_addr);
+
     return &i.first->second;
 }
 
@@ -1153,9 +1157,7 @@ void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_p
         }
     }
 }
-
-void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
-{
+void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum){
     u256 _income = 0;
     auto a = account(_addr);
     VoteSnapshot _voteSnapshot = a->vote_snashot();
@@ -2119,13 +2121,32 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     }
     if (varlitors.empty())
         return;
-    ///add sanpshot about miner and standby
 
+    ///add sanpshot about miner and standby
+    auto minersanp_a = account(SysMinerSnapshotAddress);
+    if (!minersanp_a){
+        createAccount(SysMinerSnapshotAddress, {0});
+        minersanp_a = account(SysMinerSnapshotAddress);
+    }
+    std::vector<PollData> _v = varlitor_a->vote_data();
+    std::vector<PollData> _v1 = standby_a->vote_data();
+    _v.insert(_v.end(), _v1.begin(), _v1.end());
 
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
+    m_changeLog.emplace_back(SysMinerSnapshotAddress, minersanp_a->getFeeSnapshot());
+
+    minersanp_a->add_new_rounds_miner_sapshot(curr_pair.first, _v);
     varlitor_a->set_vote_data(varlitors);
     standby_a->set_vote_data(standbys);
+}
+
+std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() const{
+    auto minersanp_a = account(SysMinerSnapshotAddress);
+    if (!minersanp_a){
+        return std::map<u256, std::vector<PollData>>();
+    }
+    return  minersanp_a->getFeeSnapshot().m_sorted_creaters;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
@@ -2232,7 +2253,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(16);
+				s.appendList(17);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2295,6 +2316,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << _feeRlp.out();
                 }
                 s << i.second.block_record().streamRLP();
+
+                s << i.second.get_received_cookies().streamRLP();
 
                 _state.insert(i.first, &s.out());
             }
