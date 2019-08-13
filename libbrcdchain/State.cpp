@@ -2229,7 +2229,7 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
     m_changeLog.emplace_back(SysMinerSnapshotAddress, minersanp_a->getFeeSnapshot());
 
-    minersanp_a->add_new_rounds_miner_sapshot(curr_pair.first, _v);
+    minersanp_a->add_new_rounds_miner_sapshot(previous_pair.first, _v);
     varlitor_a->set_vote_data(varlitors);
     standby_a->set_vote_data(standbys);
 }
