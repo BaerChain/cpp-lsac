@@ -2225,13 +2225,15 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     std::vector<PollData> _v1 = standby_a->vote_data();
     _v.insert(_v.end(), _v1.begin(), _v1.end());
 
-    m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
-    m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
     m_changeLog.emplace_back(SysMinerSnapshotAddress, minersanp_a->getFeeSnapshot());
-
     minersanp_a->add_new_rounds_miner_sapshot(previous_pair.first, _v);
-    varlitor_a->set_vote_data(varlitors);
-    standby_a->set_vote_data(standbys);
+
+    if (previous_pair.first > dev::brc::config::getVotingCycle(0).first) {
+        m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
+        m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
+        varlitor_a->set_vote_data(varlitors);
+        standby_a->set_vote_data(standbys);
+    }
 }
 
 std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() const{
