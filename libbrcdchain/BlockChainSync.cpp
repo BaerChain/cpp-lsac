@@ -262,13 +262,8 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
 void BlockChainSync::continueSync(NodeID id)
 {
-    if(id != NodeID()){
-        syncPeer(id, false);
-    }
     host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
-        if(id != _peerID){
             syncPeer(_peerID, false);
-        }
         return true;
     });
 }

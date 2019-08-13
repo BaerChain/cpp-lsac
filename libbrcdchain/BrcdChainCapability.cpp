@@ -263,7 +263,7 @@ public:
         bytes rlp;
         unsigned itemCount = 0;
         vector<h256> hashes;
-        cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash;
+
         for (unsigned i = 0; i != numHeadersToSend; ++i)
         {
             if (!blockHash || !m_chain.isKnown(blockHash))
@@ -274,7 +274,9 @@ public:
 
             blockHash = nextHash(blockHash, step);
         }
-        cwarn  << "response hashes.size() " << hashes.size();
+        if(hashes.size() == 0 ||  hashes.size() != _maxHeaders){
+            cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash <<  " response hashes.size() " << hashes.size();
+        }
 
         for (unsigned i = 0; i < hashes.size() && rlp.size() < c_maxPayload; ++i)
             rlp += m_chain.headerData(hashes[_reverse ? i : hashes.size() - 1 - i]);
@@ -806,19 +808,6 @@ bool BrcdChainCapability::interpretCapabilityPacket(
             else
             {
                 setIdle(_peerID);
-                auto itemCount = _r[0].itemCount();
-
-//                if(itemCount == 0){
-//                    if(peer.get_request_zero_times() > 5){
-//                        m_host->disconnect(_peerID, p2p::UserReason);
-//                        break;
-//                    }
-//                    else{
-//                        peer.set_request_zero_times(peer.get_request_zero_times() + 1);
-//                    }
-//
-//                }
-
                 m_peerObserver->onPeerBlockHeaders(_peerID, _r);
             }
             break;
