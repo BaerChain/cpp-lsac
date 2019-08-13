@@ -382,13 +382,15 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
+
+    CFEE_LOG << _voteSnapshot;
     u256 _numberofrounds = _voteSnapshot.numberofrounds;
     if (_voteSnapshot.m_voteDataHistory.size() == 0 && a->vote_data().size() == 0)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("no votedataHistory: There is currently no income to receive")));
     }
 
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds - 1);
 
     if(_voteIt == _voteSnapshot.m_voteDataHistory.end())
     {
@@ -401,7 +403,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
         }
         if(_status == false)
         {
-            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The node that this account votes does not have a super node")));
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("isMainNode fasle :The node that this account votes does not have a super node")));
         }
     }else {
         bool _status = false;
@@ -413,7 +415,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
 
         if(_status == false)
         {
-            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The node that this account votes does not have a super node")));
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string(" voteDataSnapshot end: The node that this account votes does not have a super node")));
         }
     }
 }

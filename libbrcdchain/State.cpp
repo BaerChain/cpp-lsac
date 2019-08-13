@@ -206,10 +206,8 @@ Account *State::account(Address const &_addr) {
 
     const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_block_record(record_b);
-
     const bytes received_cookies = state[16].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_received_cookies(received_cookies);
-
     m_unchangedCacheEntries.push_back(_addr);
 
     return &i.first->second;

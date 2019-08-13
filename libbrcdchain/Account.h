@@ -122,7 +122,7 @@ struct ReceivedCookies {
     }
     ReceivedCookies()= default;
     bytes streamRLP() const{
-        RLPStream _s(2);
+        RLPStream _s(3);
         RLPStream receive_s(m_received_cookies.size());
         for(auto const& receive : m_received_cookies){
             RLPStream data_s(receive.second.size());
@@ -133,8 +133,8 @@ struct ReceivedCookies {
             }
             receive_s.append<u256, bytes>(std::make_pair(receive.first, data_s.out()));
         }
-        _s << receive_s.out();
-        _s.append<u256, bool>(std::make_pair(m_is_received.first, m_is_received.second));
+        _s << receive_s.out() << m_numberofRound;
+        _s.append<u256, uint8_t>(std::make_pair(m_is_received.first, (uint8_t)m_is_received.second));
 
         return  _s.out();
     }
@@ -142,6 +142,7 @@ struct ReceivedCookies {
     void populate(bytes const& _b){
         RLP rlp = RLP(_b);
         bytes b_receive = rlp[0].toBytes();
+        m_numberofRound = rlp[1].toInt<u256>();
         for(auto const& val: RLP(b_receive)){
             std::pair<u256 , bytes> _pair = val.toPair<u256, bytes>();
             std::map<Address, std::pair<u256, u256>> receve_data;
@@ -152,7 +153,9 @@ struct ReceivedCookies {
             }
             m_received_cookies[_pair.first] = receve_data;
         }
-        std::pair<u256, bool> _pair = rlp[1].toPair<u256, bool>();
+        std::pair<u256, uint8_t> _pair = rlp[2].toPair<u256, uint8_t>();
+        m_is_received = {_pair.first, (bool)_pair.second};
+
     }
     void clear(){
         m_received_cookies.clear();
