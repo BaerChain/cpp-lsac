@@ -409,7 +409,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("isMainNode fasle :The node that this account votes does not have a super node")));
         }
     }else {
-        bool _status = false;
+        bool _status = true;
 
         for (; _voteIt != _voteSnapshot.m_voteDataHistory.end(); _voteIt++)
         {

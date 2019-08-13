@@ -34,9 +34,9 @@ std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 
 }
 
-uint32_t config::varlitorNum() { return config::getInstance().varlitor_num;}
+uint32_t config::varlitorNum() { return 2;/*config::getInstance().varlitor_num;*/}
 
-uint32_t config::standbyNum() {  return config::getInstance().standby_num;}
+uint32_t config::standbyNum() {  return 1;}//config::getInstance().standby_num;}
 
 uint32_t config::minimum_cycle() { return config::getInstance().min_cycel;}
 

@@ -1165,26 +1165,19 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
     std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 _numberofrounds = config::getvoteRound(_receivedCookies.m_numberofRound);
     u256 _cookieFee = 0;
+    u256 _isMainNodeFee = 0;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(_numberofrounds - 1);
-    std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_numberofrounds - 1);
 
 
     // If you receive the account, you will receive the income from the block node account.
-    for (; _pollDataIt != _votesnapshot.m_pollNumHistory.end(); _pollDataIt++)
+
+    //Receive an account to receive voting dividends
+    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
+        std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_voteDataIt->first);
         auto _pollNum = _pollDataIt->second;
         if(_pollNum > 0)
         {
-            u256 _receivedNum = 0;
-            if(_receivedCookies.m_received_cookies.count(_pollDataIt->first + 1))
-            {
-                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_numberofrounds];
-                CFEE_LOG << "_addrReceivedCookie:" << _addrReceivedCookie << endl;
-                if(_addrReceivedCookie.count(_addr))
-                {
-                    _receivedNum += _addrReceivedCookie.find(_addr)->second.second;
-                }
-            }
             u256 _pollFee = 0;
             if(_pollDataIt->first + 1 < _pair.first)
             {
@@ -1195,18 +1188,11 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             }else{
                 _pollFee = a->CookieIncome();
             }
-            CFEE_LOG << "_receivedNum: " << _receivedNum << endl;
             CFEE_LOG << "_pollfee:" << _pollFee << endl;
-            _cookieFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum) - _receivedNum;
+            _isMainNodeFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum);
             CFEE_LOG << "_cookieFee:" << _cookieFee << endl;
-            _receivedCookies.up_received_cookies(_pollDataIt->first + 1, _addr, std::pair<u256, u256>(_pollFee, _cookieFee + _receivedNum));
+            CFEE_LOG << _receivedCookies;
         }
-    }
-
-
-    //Receive an account to receive voting dividends
-    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
         for(auto _voteIt : _voteDataIt->second)
         {
             auto _pollAddr = account(_voteIt.first);
@@ -1216,6 +1202,8 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             u256 _pollNum = _pollMap.find(_voteDataIt->first)->second;
             u256 _pollCookieFee = 0;
             u256 _receivedNum = 0;
+            u256 _pollFeeIncome = 0;
+            u256 _numTotalFee = 0;
             if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
             {
                 std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
@@ -1235,9 +1223,17 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             }
             CFEE_LOG << "_voteDataIt: _receivedNum: " << _receivedNum << endl;
             CFEE_LOG << "_voteDataIt :_pollCookieFee:" << _pollCookieFee << endl;
-            _cookieFee += _pollCookieFee / 2 / _pollNum * _voteIt.second - _receivedNum;
+            _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
             CFEE_LOG << "_voteDataIt :_cookieFee:" << _cookieFee << endl;
-            _receivedCookies.up_received_cookies(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _cookieFee + _receivedNum));
+
+            if(_voteIt.first == _addr)
+            {
+                _numTotalFee += _pollFeeIncome + _isMainNodeFee - _receivedNum;
+            }else{
+                _numTotalFee += _pollFeeIncome - _receivedNum;
+            }
+            _cookieFee += _numTotalFee;
+            _receivedCookies.up_received_cookies(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
         }
     }
     addBalance(_addr, _cookieFee);
