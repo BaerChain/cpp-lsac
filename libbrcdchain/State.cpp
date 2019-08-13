@@ -1154,62 +1154,77 @@ void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_p
     }
 }
 
-void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
-{
-    u256 _income = 0;
+void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
     auto a = account(_addr);
-    VoteSnapshot _voteSnapshot = a->vote_snashot();
-    u256 _numberofrounds = _voteSnapshot.numberofrounds;
-
-    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
-    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
-
-    std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds + 1);
-    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);      //first->rounds second->polls
-
-    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
+    ReceivedCookies _receivedCookies = a->get_received_cookies();
+    VoteSnapshot _votesnapshot = a->vote_snashot();
+    std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    std::map<u256, bool> _isReceived = _receivedCookies.m_is_received;
+    u256 _numberofRounds = config::getvoteRound(_receivedCookies.m_numberofRound);
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
+            _numberofRounds);
+    for (; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment("There is currently no income to receive"));
-    }
 
-    for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
-    {
-        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1);       // first->rounds second->summaryCooike
-        if (_pollDataIt->second <= 0 || _ownedHandingfee == _voteSnapshot.m_blockSummaryHistory.end())
-            continue;
-        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
     }
-    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
-        for(auto const &it : _voteDataIt->second)
-        {
-            Address _polladdr = it.first;
-            u256 _voteNum = it.second;
-            try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
-            Account *pollAccount = account(_polladdr);
-            if(pollAccount)
-            {
-                VoteSnapshot _pollAccountvoteSnapshot = pollAccount->vote_snashot();
-                auto _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
-                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1);
-                if(_pollMap == _pollAccountvoteSnapshot.m_pollNumHistory.end() || _handingfeeMap == _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
-                    continue;
-                u256 _pollNum = 0;
-                u256 _handingfee = 0;
-                _pollNum = _pollMap->second;
-                if (!_pollNum)
-                    continue;
-                _handingfee = _handingfeeMap->second;
-                _income += (_handingfee / 2 / _pollNum) * _voteNum ;
-                //rounds = _voteDataIt->first;
-            }
-        }
-    }
-    if(_income)
-        addBalance(_addr, _income);
-    if (rounds != _numberofrounds)
-        a->set_numberofrounds(rounds);
 }
+
+//void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
+//{
+//    u256 _income = 0;
+//    auto a = account(_addr);
+//    VoteSnapshot _voteSnapshot = a->vote_snashot();
+//    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+//
+//    std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
+//    u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
+//
+//    std::map<u256, std::map<Address, u256>>::iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(0 + 1);
+//    std::map<u256, u256>::iterator _pollDataIt = _voteSnapshot.m_pollNumHistory.find(_numberofrounds + 1);      //first->rounds second->polls
+//
+//    if(_voteDataIt == _voteSnapshot.m_voteDataHistory.end() && _pollDataIt == _voteSnapshot.m_pollNumHistory.end())
+//    {
+//        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment("There is currently no income to receive"));
+//    }
+//
+//    for(; _pollDataIt != _voteSnapshot.m_pollNumHistory.end(); _pollDataIt++)
+//    {
+//        auto _ownedHandingfee = _voteSnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1);       // first->rounds second->summaryCooike
+//        if (_pollDataIt->second <= 0 || _ownedHandingfee == _voteSnapshot.m_blockSummaryHistory.end())
+//            continue;
+//        _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
+//    }
+//    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
+//    {
+//        for(auto const &it : _voteDataIt->second)
+//        {
+//            Address _polladdr = it.first;
+//            u256 _voteNum = it.second;
+//            try_new_vote_snapshot(_polladdr, _blockNum);  // update polladd's snapshot
+//            Account *pollAccount = account(_polladdr);
+//            if(pollAccount)
+//            {
+//                VoteSnapshot _pollAccountvoteSnapshot = pollAccount->vote_snashot();
+//                auto _pollMap = _pollAccountvoteSnapshot.m_pollNumHistory.find(_voteDataIt->first);
+//                auto _handingfeeMap = _pollAccountvoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1);
+//                if(_pollMap == _pollAccountvoteSnapshot.m_pollNumHistory.end() || _handingfeeMap == _pollAccountvoteSnapshot.m_blockSummaryHistory.end())
+//                    continue;
+//                u256 _pollNum = 0;
+//                u256 _handingfee = 0;
+//                _pollNum = _pollMap->second;
+//                if (!_pollNum)
+//                    continue;
+//                _handingfee = _handingfeeMap->second;
+//                _income += (_handingfee / 2 / _pollNum) * _voteNum ;
+//                //rounds = _voteDataIt->first;
+//            }
+//        }
+//    }
+//    if(_income)
+//        addBalance(_addr, _income);
+//    if (rounds != _numberofrounds)
+//        a->set_numberofrounds(rounds);
+//}
 
 void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
 {

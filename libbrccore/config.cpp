@@ -30,6 +30,14 @@ uint32_t config::minimum_cycle() { return config::getInstance().min_cycel;}
 
 uint32_t config::max_message_num() { return 50;}
 
+u256 config::getvoteRound(dev::u256 _numberofrounds)
+{
+    if(_numberofrounds == 0)
+    {
+        return 1;
+    }
+    return _numberofrounds;
+}
 static std::string const c_genesisInfoMainNetwork = std::string() +
 R"E(
 {

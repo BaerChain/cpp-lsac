@@ -105,7 +105,7 @@ class PollDataComparerGreater {
 struct ReceivedCookies {
     std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
     std::map<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
-
+    u256 m_numberofRound = 0;
     ReceivedCookies()= default;
     bytes streamRLP() const{
         RLPStream _s(2);
