@@ -1179,7 +1179,6 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             continue;
         _income += _ownedHandingfee->second - (_ownedHandingfee->second / 2 / _pollDataIt->second) * _pollDataIt->second;
     }
-
     for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
     {
         for(auto const &it : _voteDataIt->second)
@@ -1737,8 +1736,11 @@ Json::Value dev::brc::State::votedMessage(Address const& _addr) const
 	{
 		Json::Value _arry;
 		int _num = 0;
-		for(auto val : a->vote_data())
+        uint32_t  num =0;
+        for(auto val : a->vote_data())
 		{
+            if(num++ > config::max_message_num())   // limit message num
+                break;
 			Json::Value _v;
 			_v["address"] = toJS(val.m_addr);
 			_v["voted_num"] = toJS(val.m_poll);
@@ -1758,8 +1760,11 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
     const std::vector<PollData> _data = vote_data(SysElectorAddress);
 	if(_addr == ZeroAddress)
 	{
+	    int num=0;
 		for(auto val : _data)
 		{
+            if(num++ > config::max_message_num())   // limit message num
+                break;
 			Json::Value _v;
 			_v["address"] = toJS(val.m_addr);
 			_v["vote_num"] = toJS(val.m_poll);
@@ -1840,7 +1845,7 @@ void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
 
     if (_value) {
-        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, _value));
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, 0-_value));
         m_changeLog.emplace_back(Change::SystemAddressPoll, _id, poll_data);
         m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
         m_changeLog.emplace_back(Change::Poll, _recivedAddr, _value);
@@ -1936,7 +1941,16 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     if (!ret_pair.first)
         return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
+    /// try new snapshot
     a->try_new_snapshot(ret_pair.second);
+    /// clear genesis_vote_data and genesis_rounds poll
+    if(_vote_sna.m_latest_round == 0){
+        std::vector<PollData> poll_data= a->vote_data();
+        a->clear_vote_data();
+        subPoll(_addr, a->poll());
+        m_changeLog.emplace_back(Change::MinnerSnapshot, _addr, poll_data);
+    }
+
     m_changeLog.emplace_back(_addr, _vote_sna);
     m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, 0 - a->CookieIncome());
     setCookieIncomeNum(_addr, 0);
