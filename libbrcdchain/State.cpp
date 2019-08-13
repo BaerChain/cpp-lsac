@@ -2004,9 +2004,6 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
         CFEE_LOG <<a->getFeeSnapshot();
-        //CFEE_LOG <<
-//        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
-//        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
         m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
@@ -2122,6 +2119,9 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     }
     if (varlitors.empty())
         return;
+    ///add sanpshot about miner and standby
+
+
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
     varlitor_a->set_vote_data(varlitors);

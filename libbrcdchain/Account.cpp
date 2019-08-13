@@ -231,6 +231,17 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
 }
 
 std::pair<bool, u256> Account::calculate_receive_cookies(dev::u256 rounds) {
+//    m_vote_sapshot;
+//    std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
+//    std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
+//    std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
+//    u256 numberofrounds = 0;                                    // the rounds of got awards
+//    m_received_cookies;
+//    std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;
+//    std::map<u256, bool> m_is_received;
+
+
+
     return  std::make_pair(false, 0);
 }
 
