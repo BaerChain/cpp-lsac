@@ -377,6 +377,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
     }
 
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
+    CFEE_LOG << ret_pair.second;
     VoteSnapshot _voteSnapshot;
     if (ret_pair.first)
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
@@ -384,14 +385,16 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
         _voteSnapshot = a->vote_snashot();
 
     CFEE_LOG << _voteSnapshot;
-    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+//    u256 _numberofrounds = _voteSnapshot.numberofrounds;
     if (_voteSnapshot.m_voteDataHistory.size() == 0 && a->vote_data().size() == 0)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("no votedataHistory: There is currently no income to receive")));
     }
 
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofrounds - 1);
-
+    ReceivedCookies _receivedcookie = a->get_received_cookies();
+    u256 _numberofround = config::getvoteRound(_receivedcookie.m_numberofRound);
+    std::map<u256, std::vector<PollData>> _minerSnap =  m_state.get_miner_snapshot();
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofround - 1);
     if(_voteIt == _voteSnapshot.m_voteDataHistory.end())
     {
         std::vector<PollData> _dataV = a->vote_data();
