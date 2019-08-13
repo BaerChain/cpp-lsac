@@ -1502,6 +1502,9 @@ void State::rollback(size_t _savepoint) {
             case Change::MinnerSnapshot:
                 account.set_vote_data(change.minners);
                 break;
+            case Change::ReceiveCookies:
+                account.set_received(change.received);
+                break;
             default:
                 break;
         }
