@@ -230,9 +230,7 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     changed();
 }
 
-std::pair<bool, u256> Account::calculate_receive_cookies(dev::u256 rounds) {
-    return  std::make_pair(false, 0);
-}
+
 
 namespace js = json_spirit;
 

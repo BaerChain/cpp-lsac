@@ -104,7 +104,7 @@ class PollDataComparerGreater {
 
 struct ReceivedCookies {
     std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
-    std::map<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
+    std::pair<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
     u256 m_numberofRound = 0;
     ReceivedCookies()= default;
     bytes streamRLP() const{
@@ -120,14 +120,18 @@ struct ReceivedCookies {
             receive_s.append<u256, bytes>(std::make_pair(receive.first, data_s.out()));
         }
         _s << receive_s.out();
-
-        RLPStream received_s(m_is_received.size());
-        for(auto const& poll : m_is_received){
-            received_s.append<u256, bool>(std::make_pair(poll.first, poll.second));
-        }
-        _s << received_s.out();
+        _s.append<u256, bool>(std::make_pair(m_is_received.first, m_is_received.second));
 
         return  _s.out();
+    }
+    void up_received_cookies(u256 rounds, Address const& adress, std::pair<u256, u256> _pair){
+        if(!m_received_cookies.count(rounds)){
+            std::map<Address, std::pair<u256, u256>> val;
+            val[adress] = _pair;
+            m_received_cookies[rounds] = val;
+            return;
+        }
+        m_received_cookies[rounds][adress] = _pair;
     }
     void populate(bytes const& _b){
         RLP rlp = RLP(_b);
@@ -142,17 +146,10 @@ struct ReceivedCookies {
             }
             m_received_cookies[_pair.first] = receve_data;
         }
-
-        bytes  b_receiced= rlp[1].toBytes();
-        for(auto const& val : RLP(b_receiced)){
-            std::pair< u256, bool> _pair = val.toPair<u256,bool>();
-            m_is_received[_pair.first] = _pair.second;
-        }
-
+        std::pair<u256, bool> _pair = rlp[1].toPair<u256, bool>();
     }
     void clear(){
         m_received_cookies.clear();
-        m_is_received.clear();
     }
 
 };
@@ -210,24 +207,6 @@ struct VoteSnapshot{
         _s << block_s.out();
         _s << numberofrounds << m_latest_round;
 
-//        RLPStream receive_s(m_received_cookies.size());
-//        for(auto const& receive : m_received_cookies){
-//            RLPStream data_s(receive.second.size());
-//            for(auto const& v: receive.second){
-//                RLPStream totala_s(2);
-//                totala_s << v.second.first << v.second.second;
-//                data_s.append<Address, bytes>(std::make_pair(v.first, totala_s.out()));
-//            }
-//            receive_s.append<u256, bytes>(std::make_pair(receive.first, data_s.out()));
-//        }
-//        _s << receive_s.out();
-//
-//        RLPStream received_s(m_is_received.size());
-//        for(auto const& poll : m_is_received){
-//            received_s.append<u256, bool>(std::make_pair(poll.first, poll.second));
-//        }
-//        _s << received_s.out();
-
     }
     void populate(bytes const& _b){
         RLP rlp(_b);
@@ -256,24 +235,6 @@ struct VoteSnapshot{
 
         numberofrounds = rlp[3].toInt<u256>();
         m_latest_round = rlp[4].toInt<u256>();
-
-//        bytes b_receive = rlp[5].toBytes();
-//        for(auto const& val: RLP(b_receive)){
-//            std::pair<u256 , bytes> _pair = val.toPair<u256, bytes>();
-//            std::map<Address, std::pair<u256, u256>> receve_data;
-//            for(auto const& v: RLP(_pair.second)){
-//                std::pair<Address , bytes> v_pair = v.toPair<Address, bytes>();
-//                auto r_total = RLP(v_pair.second);
-//                receve_data[v_pair.first] = std::make_pair(r_total[0].toInt<u256>(), r_total[1].toInt<u256>());
-//            }
-//            m_received_cookies[_pair.first] = receve_data;
-//        }
-//
-//        bytes  b_receiced= rlp[6].toBytes();
-//        for(auto const& val : RLP(b_receiced)){
-//            std::pair< u256, bool> _pair = val.toPair<u256,bool>();
-//            m_is_received[_pair.first] = _pair.second;
-//        }
 
     }
     void clear(){
@@ -818,9 +779,10 @@ public:
     ///interface about received_cookies
     void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received;}
     ReceivedCookies const& get_received_cookies() { return  m_received_cookies;}
-    /// 1 以前和当前轮数据
-    /// 2 更新m_received_cookies
-    std::pair<bool, u256> calculate_receive_cookies(u256 rounds);
+    /// 1 calculate old_rounds and now_rounds is before not has calculated
+    /// 2 update m_received_cookies
+    ///@return <is_update, get_total_cookies>
+
 
 private:
     /// Is this account existant? If not, it represents a deleted account.

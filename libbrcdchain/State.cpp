@@ -1154,19 +1154,79 @@ void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_p
     }
 }
 
+
 void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
     auto a = account(_addr);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
     VoteSnapshot _votesnapshot = a->vote_snashot();
     std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
-    std::map<u256, bool> _isReceived = _receivedCookies.m_is_received;
-    u256 _numberofRounds = config::getvoteRound(_receivedCookies.m_numberofRound);
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
-            _numberofRounds);
-    for (; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
+    u256 _numberofrounds = config::getvoteRound(_receivedCookies.m_numberofRound);
+    u256 _cookieFee = 0;
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(_numberofrounds - 1);
+    std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_numberofrounds - 1);
 
+    for (; _pollDataIt != _votesnapshot.m_pollNumHistory.end(); _pollDataIt++)
+    {
+        auto _pollNum = _pollDataIt->second;
+        if(_pollNum > 0)
+        {
+            u256 _receivedNum = 0;
+            if(_receivedCookies.m_received_cookies.count(_pollDataIt->first + 1))
+            {
+                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_numberofrounds];
+                if(_addrReceivedCookie.count(_addr))
+                {
+                    _receivedNum += _addrReceivedCookie.find(_addr)->second.second;
+                }
+            }
+            u256 _pollFee = 0;
+            if(_pollDataIt->first + 1 < _pair.first)
+            {
+                if(_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1))
+                {
+                    _pollFee = _votesnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1)->second;
+                }
+            }else{
+                _pollFee = a->CookieIncome();
+            }
+            _cookieFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum) - _receivedNum;
+            _receivedCookies.up_received_cookies(_pollDataIt->first + 1, _addr, std::pair<u256, u256>(_pollFee, _cookieFee + _receivedNum));
+        }
     }
+
+    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
+    {
+        for(auto _voteIt : _voteDataIt->second)
+        {
+            auto _pollAddr = account(_voteIt.first);
+            try_new_vote_snapshot(_voteIt.first, _blockNum);
+            VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
+            auto _pollMap = _pollVoteSnapshot.m_pollNumHistory;
+            u256 _pollNum = _pollMap.find(_voteDataIt->first)->second;
+            u256 _pollCookieFee = 0;
+            u256 _receivedNum = 0;
+            if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
+            {
+                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
+                if(_addrReceivedCookie.count(_voteIt.first))
+                {
+                    _receivedNum += _addrReceivedCookie.find(_voteIt.first)->second.second;
+                }
+            }
+            if(_voteDataIt->first + 1 < _pair.first)
+            {
+                if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
+                {
+                    _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
+                }
+            }else{
+                _pollCookieFee = _pollAddr->CookieIncome();
+            }
+            _cookieFee += _pollCookieFee / 2 / _pollNum * _voteIt.second - _receivedNum;
+            _receivedCookies.up_received_cookies(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _cookieFee + _receivedNum));
+        }
+    }
+    addBalance(_addr, _cookieFee);
 }
 
 //void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
@@ -2019,9 +2079,6 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
         a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
 
         CFEE_LOG <<a->getFeeSnapshot();
-        //CFEE_LOG <<
-//        m_changeLog.emplace_back(Change::BRC, dev::PdSystemAddress,remainder_brc -  a->BRC());
-//        m_changeLog.emplace_back(Change::Balance, dev::PdSystemAddress, remainder_ballance - a->balance());
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
         m_changeLog.emplace_back(dev::PdSystemAddress, _fee);
@@ -2137,6 +2194,9 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     }
     if (varlitors.empty())
         return;
+    ///add sanpshot about miner and standby
+
+
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysVarlitorAddress, varlitor_a->vote_data());
     m_changeLog.emplace_back(Change::MinnerSnapshot, SysCanlitorAddress, standby_a->vote_data());
     varlitor_a->set_vote_data(varlitors);

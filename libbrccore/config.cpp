@@ -34,7 +34,7 @@ u256 config::getvoteRound(dev::u256 _numberofrounds)
 {
     if(_numberofrounds == 0)
     {
-        return 1;
+        return 2;
     }
     return _numberofrounds;
 }
