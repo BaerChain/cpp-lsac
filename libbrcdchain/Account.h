@@ -116,7 +116,10 @@ struct ReceivedCookies {
         }
         m_received_cookies[rounds][adress] = _pair;
     }
-
+    void updataNumberofRound(u256 _numofround)
+    {
+        m_numberofRound = _numofround;
+    }
     ReceivedCookies()= default;
     bytes streamRLP() const{
         RLPStream _s(2);

@@ -1161,6 +1161,8 @@ void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_p
 void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
     auto a = account(_addr);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
+    CFEE_LOG << "before : " << _receivedCookies << endl;
+    ReceivedCookies _oldreceivedCookies = a->get_received_cookies();
     VoteSnapshot _votesnapshot = a->vote_snashot();
     std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 _numberofrounds = config::getvoteRound(_receivedCookies.m_numberofRound);
@@ -1179,6 +1181,7 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             if(_receivedCookies.m_received_cookies.count(_pollDataIt->first + 1))
             {
                 std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_numberofrounds];
+                CFEE_LOG << "_addrReceivedCookie:" << _addrReceivedCookie << endl;
                 if(_addrReceivedCookie.count(_addr))
                 {
                     _receivedNum += _addrReceivedCookie.find(_addr)->second.second;
@@ -1194,7 +1197,10 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             }else{
                 _pollFee = a->CookieIncome();
             }
+            CFEE_LOG << "_receivedNum: " << _receivedNum << endl;
+            CFEE_LOG << "_pollfee:" << _pollFee << endl;
             _cookieFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum) - _receivedNum;
+            CFEE_LOG << "_cookieFee:" << _cookieFee << endl;
             _receivedCookies.up_received_cookies(_pollDataIt->first + 1, _addr, std::pair<u256, u256>(_pollFee, _cookieFee + _receivedNum));
         }
     }
@@ -1229,12 +1235,17 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             }else{
                 _pollCookieFee = _pollAddr->CookieIncome();
             }
+            CFEE_LOG << "_voteDataIt: _receivedNum: " << _receivedNum << endl;
+            CFEE_LOG << "_voteDataIt :_pollCookieFee:" << _pollCookieFee << endl;
             _cookieFee += _pollCookieFee / 2 / _pollNum * _voteIt.second - _receivedNum;
+            CFEE_LOG << "_voteDataIt :_cookieFee:" << _cookieFee << endl;
             _receivedCookies.up_received_cookies(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _cookieFee + _receivedNum));
         }
     }
     addBalance(_addr, _cookieFee);
-    m_changeLog.emplace_back(Change::ReceiveCookies, _addr, _receivedCookies);
+    _receivedCookies.updataNumberofRound(_pair.first);
+    CFEE_LOG << "new :" <<_receivedCookies << endl;
+    m_changeLog.emplace_back(Change::ReceiveCookies, _addr, _oldreceivedCookies);
 }
 
 //void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
