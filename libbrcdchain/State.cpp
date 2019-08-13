@@ -2168,10 +2168,13 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
     std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
-    if (previous_header.number() >= curr_header.number())
+//    if (previous_header.number() >= curr_header.number())
+//        return;
+//    if (curr_pair.second != Votingstage::RECEIVINGINCOME || curr_pair.second == previous_pair.second)
+//        return;
+    if (curr_pair.first <= previous_pair.first)
         return;
-    if (curr_pair.second != Votingstage::RECEIVINGINCOME || curr_pair.second == previous_pair.second)
-        return;
+
     //testlog << "start to new rounds";
     // add minnner_snapshot
     tryRecordFeeSnapshot(curr_header.number());

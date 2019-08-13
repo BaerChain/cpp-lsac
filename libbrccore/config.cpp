@@ -6,19 +6,21 @@ using namespace dev::brc;
 
 std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
-    if(_blockNum >= 0 && _blockNum < 80){
-        if(_blockNum >= 0 && _blockNum < 60)
+    if (_blockNum == 0)
+        return  std::pair<uint32_t, Votingstage>(1, Votingstage::VOTE);
+    if(_blockNum > 0 && _blockNum < 80){
+        if(_blockNum > 0 && _blockNum < 60)
         {
             return std::pair<uint32_t , Votingstage>(2, Votingstage::RECEIVINGINCOME);
         }else if(_blockNum >= 60 && _blockNum < 80)
         {
-            return std::pair<uint32_t, Votingstage>(3, Votingstage::VOTE);
+            return std::pair<uint32_t, Votingstage>(2, Votingstage::VOTE);
         }
 
     } else if(_blockNum >= 80 && _blockNum < 140){
         if(_blockNum >= 80 && _blockNum < 120)
         {
-            return std::pair<uint32_t , Votingstage>(2, Votingstage::RECEIVINGINCOME);
+            return std::pair<uint32_t , Votingstage>(3, Votingstage::RECEIVINGINCOME);
         }else if(_blockNum >= 120 && _blockNum < 140)
         {
             return std::pair<uint32_t, Votingstage>(3, Votingstage::VOTE);
