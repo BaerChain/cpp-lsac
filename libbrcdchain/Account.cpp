@@ -230,6 +230,10 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     changed();
 }
 
+std::pair<bool, u256> Account::calculate_receive_cookies(dev::u256 rounds) {
+    return  std::make_pair(false, 0);
+}
+
 namespace js = json_spirit;
 
 namespace
@@ -472,7 +476,3 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
     return ret;
 }
 
-std::map<Address, std::pair<u256, u256>> dev::brc::VoteSnapshot::receive_cookies(dev::u256 rounds) {
-
-    return std::map<Address, std::pair<u256, u256>>();
-}
