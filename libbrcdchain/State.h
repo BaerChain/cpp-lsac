@@ -376,7 +376,7 @@ public:
 
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
-
+    Json::Value queryExchangeReward();
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;

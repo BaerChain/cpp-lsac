@@ -136,6 +136,24 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
     }
 }
 
+Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
+{
+    try{
+        if(jsToInt(_blockNumber) > 0)
+            return client()->queryExchangeRewardMessage(jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+// Json::Value Brc::brc_getAnalysisData(std::string const& _data)
+// {
+//     bytes r = fromHex(_data);
+//     return analysisData(r);
+// }
+
 string Brc::brc_getBallot(string const& _address, string const& _blockNumber)
 {
     try

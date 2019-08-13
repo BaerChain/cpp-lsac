@@ -140,6 +140,7 @@ public:
     {
         return successPendingOrderForAddrMessage(_a, _minTime, _maxTime, _maxSize, m_default);
     }
+    Json::Value queryExchangeRewardMessage() { return queryExchangeRewardMessage(m_default); }
 
     virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
     virtual u256 ballotAt(Address _a, BlockNumber _block) const = 0;
@@ -162,7 +163,7 @@ public:
 	virtual Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const = 0;
 	virtual Json::Value votedMessage(Address _a, BlockNumber _block) const = 0;
 	virtual Json::Value electorMessage(BlockNumber _block) const = 0;
-	
+	virtual Json::Value queryExchangeRewardMessage(BlockNumber _block) const = 0;
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
