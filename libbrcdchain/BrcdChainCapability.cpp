@@ -627,7 +627,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
 
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-            auto s = randomSelection(25, [&](BrcdChainPeer const& _peer) {
+            auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
             bool isSend = false;
