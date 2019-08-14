@@ -867,6 +867,18 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
+Json::Value State::queryExchangeReward(Address const& _address) {
+    Json::Value res;
+    res["queryExchangeReward"] = "";
+    return res;
+}
+
+Json::Value State::queryBlcokReward(Address const& _address) {
+    Json::Value res;
+    res["queryBlcokReward"] = "";
+    return res;
+}
+
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize) {
     std::vector<exchange_order> _v = m_exdb.get_order_by_type(
             (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) getSize);
