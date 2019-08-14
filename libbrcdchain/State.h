@@ -120,7 +120,8 @@ struct Change
         CoupingSystemFeeSnapshot,
         SystemAddressPoll,
         LastCreateRecord,
-        MinnerSnapshot
+        MinnerSnapshot,
+        ReceiveCookies
     };
 
     Kind kind;        ///< The kind of the change.
@@ -137,6 +138,9 @@ struct Change
     PollData poll_data;
     std::pair<u256, int64_t > create_record;
     std::vector<PollData> minners;
+    ReceivedCookies received;
+
+
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -190,6 +194,11 @@ struct Change
     Change(Kind _kind, Address const& _addr, std::vector<PollData> const& poll) : kind(_kind), address(_addr)
     {
         minners = poll;
+    }
+    Change(Kind _kind, Address const& _addr, ReceivedCookies const& _received) :
+        kind(_kind), address(_addr)
+    {
+        received =_received;
     }
 };
 
@@ -376,7 +385,8 @@ public:
 
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
-
+    Json::Value queryExchangeReward(Address const& _address);
+    Json::Value queryBlcokReward(Address const& _address);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -545,6 +555,9 @@ public:
 
     /// try into new rounds if into: will statistical_poll and sort varlitor
     void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
+
+    /// get the miner sanpshot
+    std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.

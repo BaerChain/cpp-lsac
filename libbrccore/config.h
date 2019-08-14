@@ -60,6 +60,7 @@ namespace dev
 
                 static std::string const& genesis_info(ChainNetWork chain_type);
 
+                static u256 getvoteRound(u256 _numberofrounds);
         private:
             config(){}
             //~config(){}

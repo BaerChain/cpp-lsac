@@ -6,30 +6,50 @@ using namespace dev::brc;
 
 std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
-    if(_blockNum >= 0 && _blockNum < 1700000)
-    {
-        if(_blockNum >= 0 && _blockNum < 1000000)
+    if (_blockNum == 0)
+        return  std::pair<uint32_t, Votingstage>(1, Votingstage::VOTE);
+    if(_blockNum > 0 && _blockNum < 80){
+        if(_blockNum > 0 && _blockNum < 60)
         {
-            return std::pair<uint32_t , Votingstage>(2, Votingstage::VOTE);
-        }else if(_blockNum >= 1000000 && _blockNum < 1700000)
+            return std::pair<uint32_t , Votingstage>(2, Votingstage::RECEIVINGINCOME);
+        }else if(_blockNum >= 60 && _blockNum < 80)
         {
-            return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
+            return std::pair<uint32_t, Votingstage>(2, Votingstage::VOTE);
         }
+
+    } else if(_blockNum >= 80 && _blockNum < 140){
+        if(_blockNum >= 80 && _blockNum < 120)
+        {
+            return std::pair<uint32_t , Votingstage>(3, Votingstage::RECEIVINGINCOME);
+        }else if(_blockNum >= 120 && _blockNum < 140)
+        {
+            return std::pair<uint32_t, Votingstage>(3, Votingstage::VOTE);
+        }
+
+
     }
     //return std::pair<uint32_t, Votingstage>(2, Votingstage::RECEIVINGINCOME);
     //BOOST_THROW_EXCEPTION(getVotingCycleFailed() << errinfo_comment(std::string("getVotingCycle error : Current time point is not in the voting period")));
-    return std::pair<uint32_t, Votingstage>(-1, Votingstage::ERRORSTAGE);
+    return std::pair<uint32_t, Votingstage>(3, Votingstage::VOTE);
 
 }
 
-uint32_t config::varlitorNum() { return config::getInstance().varlitor_num;}
+uint32_t config::varlitorNum() { return 2;/*config::getInstance().varlitor_num;*/}
 
-uint32_t config::standbyNum() {  return config::getInstance().standby_num;}
+uint32_t config::standbyNum() {  return 1;}//config::getInstance().standby_num;}
 
 uint32_t config::minimum_cycle() { return config::getInstance().min_cycel;}
 
 uint32_t config::max_message_num() { return 50;}
 
+u256 config::getvoteRound(dev::u256 _numberofrounds)
+{
+    if(_numberofrounds == 0)
+    {
+        return 2;
+    }
+    return _numberofrounds;
+}
 static std::string const c_genesisInfoMainNetwork = std::string() +
 R"E(
 {

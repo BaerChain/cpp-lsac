@@ -364,30 +364,76 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
                 receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
 
-    if (_pair.second == Votingstage::VOTE) {
-        BOOST_THROW_EXCEPTION(
-                receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-    }
     auto a = m_state.account(_from);
     if (!a) {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(
                 std::string("The account that receives the income does not exist")));
     }
 
+    auto sysAccount = m_state.account(SysVarlitorAddress);
+    if (!sysAccount)
+    {
+        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("Unable to get system account instance")));
+    }
+
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
+    CFEE_LOG << ret_pair.second;
     VoteSnapshot _voteSnapshot;
     if (ret_pair.first)
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
-    u256 _numberofrounds = _voteSnapshot.numberofrounds;
-    if (_voteSnapshot.m_voteDataHistory.size() == 0)
+
+    CFEE_LOG << _voteSnapshot;
+//    u256 _numberofrounds = _voteSnapshot.numberofrounds;
+    if (_voteSnapshot.m_voteDataHistory.size() == 0 && a->vote_data().size() == 0)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("no votedataHistory: There is currently no income to receive")));
     }
-    if (_numberofrounds >= (_voteSnapshot.m_latest_round -1))
+
+    ReceivedCookies _receivedcookie = a->get_received_cookies();
+    u256 _numberofround = config::getvoteRound(_receivedcookie.m_numberofRound);
+    std::map<u256, std::vector<PollData>> _minerSnap =  m_state.get_miner_snapshot();
+    CFEE_LOG << _minerSnap;
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofround - 1);
+    if(_voteIt == _voteSnapshot.m_voteDataHistory.end())
     {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
+        std::vector<PollData> _dataV = a->vote_data();
+        bool _status = false;
+        std::vector<PollData> _mainNodeAddr = sysAccount->vote_data();
+        if(isMainNode(_dataV, _mainNodeAddr))
+        {
+            _status = true;
+        }
+        if(_status == false)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("isMainNode fasle :The node that this account votes does not have a super node")));
+        }
+    }else {
+        bool _status = false;
+
+        for (; _voteIt != _voteSnapshot.m_voteDataHistory.end(); _voteIt++)
+        {
+            if(_minerSnap.count(_voteIt->first))
+            {
+                std::vector<PollData> _mainNodeV = _minerSnap[_voteIt->first];
+                if(isMainNode(_voteIt->second, _mainNodeV))
+                {
+                    _status = true;
+                }
+            }else{
+                std::vector<PollData> _nowMiner = m_state.vote_data(SysVarlitorAddress);
+                if(isMainNode(_voteIt->second, _nowMiner))
+                {
+                    _status = true;
+                }
+            }
+        }
+
+        if(_status == false)
+        {
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string(" voteDataSnapshot end: The node that this account votes does not have a super node")));
+        }
     }
 }
 
@@ -450,4 +496,36 @@ bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteD
         }
     }
     return  _status;
+}
+
+bool dev::brc::BRCTranscation::isMainNode(const std::map<Address, u256> &_voteData,  const std::vector<dev::brc::PollData> &_pollData)
+{
+    bool _status = false;
+    for(auto voteIt : _voteData)
+    {
+        for(uint32_t i = 0; i < _pollData.size(); i++)
+        {
+            if(voteIt.first == _pollData[i].m_addr)
+            {
+                _status = true;
+            }
+        }
+    }
+    return _status;
+}
+
+bool dev::brc::BRCTranscation::isMainNode(const std::vector<dev::brc::PollData> &_voteData, const std::vector<dev::brc::PollData> &_pollData)
+{
+    bool _status = false;
+    for(auto _voteIt : _voteData)
+    {
+        for(auto _pollIt : _pollData)
+        {
+            if(_voteIt.m_addr == _pollIt.m_addr)
+            {
+                _status = true;
+            }
+        }
+    }
+    return _status;
 }

@@ -15,15 +15,15 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_protocolVersion",
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_protocolVersionI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_hashrate", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_STRING, NULL),
-            &dev::rpc::BrcFace::brc_hashrateI);
+//        this->bindAndAddMethod(jsonrpc::Procedure("brc_hashrate", jsonrpc::PARAMS_BY_POSITION,
+//                                   jsonrpc::JSON_STRING, NULL),
+//            &dev::rpc::BrcFace::brc_hashrateI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_coinbase", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_coinbaseI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_mining", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_BOOLEAN, NULL),
-            &dev::rpc::BrcFace::brc_miningI);
+//        this->bindAndAddMethod(jsonrpc::Procedure("brc_mining", jsonrpc::PARAMS_BY_POSITION,
+//                                   jsonrpc::JSON_BOOLEAN, NULL),
+//            &dev::rpc::BrcFace::brc_miningI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_gasPrice", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_gasPriceI);
@@ -64,6 +64,14 @@ public:
                 jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBlockRewardI);
         this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getQueryExchangeReward", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, 
+                "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getQueryExchangeRewardI);
+        this->bindAndAddMethod(
+            jsonrpc::Procedure("brc_getQueryBlockReward", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, 
+                "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getQueryBlockRewardI);
+        this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getBallot", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getBallotI);
@@ -103,16 +111,9 @@ public:
                 "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getCodeI);
         this->bindAndAddMethod(
-            jsonrpc::Procedure("brc_sendTransaction", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL),
-            &dev::rpc::BrcFace::brc_sendTransactionI);
-        this->bindAndAddMethod(
             jsonrpc::Procedure("brc_call", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                 "param1", jsonrpc::JSON_OBJECT, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_callI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_flush", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_BOOLEAN, NULL),
-            &dev::rpc::BrcFace::brc_flushI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getBlockByHash", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
                                    jsonrpc::JSON_BOOLEAN, NULL),
@@ -186,17 +187,6 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getLogsEx", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL),
             &dev::rpc::BrcFace::brc_getLogsExI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_getWork", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_ARRAY, NULL),
-            &dev::rpc::BrcFace::brc_getWorkI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_submitWork", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, "param2",
-                                   jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
-            &dev::rpc::BrcFace::brc_submitWorkI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_submitHashrate", jsonrpc::PARAMS_BY_POSITION,
-                                   jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, "param2",
-                                   jsonrpc::JSON_STRING, NULL),
-            &dev::rpc::BrcFace::brc_submitHashrateI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_register", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_registerI);
@@ -207,10 +197,6 @@ public:
             jsonrpc::Procedure("brc_fetchQueuedTransactions", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_fetchQueuedTransactionsI);
-        this->bindAndAddMethod(
-            jsonrpc::Procedure("brc_signTransaction", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL),
-            &dev::rpc::BrcFace::brc_signTransactionI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_inspectTransaction", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
@@ -250,20 +236,10 @@ public:
         (void)request;
         response = this->brc_protocolVersion();
     }
-    inline virtual void brc_hashrateI(const Json::Value& request, Json::Value& response)
-    {
-        (void)request;
-        response = this->brc_hashrate();
-    }
     inline virtual void brc_coinbaseI(const Json::Value& request, Json::Value& response)
     {
         (void)request;
         response = this->brc_coinbase();
-    }
-    inline virtual void brc_miningI(const Json::Value& request, Json::Value& response)
-    {
-        (void)request;
-        response = this->brc_mining();
     }
     inline virtual void brc_gasPriceI(const Json::Value& request, Json::Value& response)
     {
@@ -308,6 +284,14 @@ public:
     {
         response = this->brc_getBlockReward(request[0u].asString(), request[1u].asString(), 
             request[2u].asString(), request[3u].asString());
+    }
+    inline virtual void brc_getQueryExchangeRewardI(const Json::Value& request, Json::Value& response)
+    {
+            response = this->brc_getQueryExchangeReward(request[0u].asString(), request[1u].asString());
+    }
+    inline virtual void brc_getQueryBlockRewardI(const Json::Value& request, Json::Value& response)
+    {
+            response = this->brc_getQueryBlockReward(request[0u].asString(), request[1u].asString());
     }
     inline virtual void brc_getBallotI(const Json::Value& request, Json::Value& response)
     {
@@ -355,18 +339,9 @@ public:
     {
         response = this->brc_getCode(request[0u].asString(), request[1u].asString());
     }
-    inline virtual void brc_sendTransactionI(const Json::Value& request, Json::Value& response)
-    {
-        response = this->brc_sendTransaction(request[0u]);
-    }
     inline virtual void brc_callI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_call(request[0u], request[1u].asString());
-    }
-    inline virtual void brc_flushI(const Json::Value& request, Json::Value& response)
-    {
-        (void)request;
-        response = this->brc_flush();
     }
     inline virtual void brc_getBlockByHashI(const Json::Value& request, Json::Value& response)
     {
@@ -460,20 +435,6 @@ public:
     {
         response = this->brc_getLogsEx(request[0u]);
     }
-    inline virtual void brc_getWorkI(const Json::Value& request, Json::Value& response)
-    {
-        (void)request;
-        response = this->brc_getWork();
-    }
-    inline virtual void brc_submitWorkI(const Json::Value& request, Json::Value& response)
-    {
-        response = this->brc_submitWork(
-            request[0u].asString(), request[1u].asString(), request[2u].asString());
-    }
-    inline virtual void brc_submitHashrateI(const Json::Value& request, Json::Value& response)
-    {
-        response = this->brc_submitHashrate(request[0u].asString(), request[1u].asString());
-    }
     inline virtual void brc_registerI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_register(request[0u].asString());
@@ -486,10 +447,6 @@ public:
         const Json::Value& request, Json::Value& response)
     {
         response = this->brc_fetchQueuedTransactions(request[0u].asString());
-    }
-    inline virtual void brc_signTransactionI(const Json::Value& request, Json::Value& response)
-    {
-        response = this->brc_signTransaction(request[0u]);
     }
     inline virtual void brc_inspectTransactionI(const Json::Value& request, Json::Value& response)
     {
@@ -537,9 +494,7 @@ public:
 					response = this->brc_getElector(request[0u].asString());
 				}
     virtual std::string brc_protocolVersion() = 0;
-    virtual std::string brc_hashrate() = 0;
     virtual std::string brc_coinbase() = 0;
-    virtual bool brc_mining() = 0;
     virtual std::string brc_gasPrice() = 0;
     virtual Json::Value brc_accounts() = 0;
     virtual std::string brc_blockNumber() = 0;
@@ -551,6 +506,8 @@ public:
 	virtual Json::Value brc_getSuccessPendingOrderForAddr(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4, const std::string& param5) = 0;
 	virtual Json::Value brc_getBalance(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getBlockReward(const std::string& param1, const std::string& param2, const std::string& param3, const std::string& param4) = 0;
+    virtual Json::Value brc_getQueryExchangeReward(const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getQueryBlockReward(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getBallot(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_getStorageAt(
         const std::string& param1, const std::string& param2, const std::string& param3) = 0;
@@ -564,9 +521,7 @@ public:
     virtual Json::Value brc_getUncleCountByBlockHash(const std::string& param1) = 0;
     virtual Json::Value brc_getUncleCountByBlockNumber(const std::string& param1) = 0;
     virtual std::string brc_getCode(const std::string& param1, const std::string& param2) = 0;
-    virtual std::string brc_sendTransaction(const Json::Value& param1) = 0;
     virtual std::string brc_call(const Json::Value& param1, const std::string& param2) = 0;
-    virtual bool brc_flush() = 0;
     virtual Json::Value brc_getBlockByHash(const std::string& param1, bool param2) = 0;
     virtual Json::Value brc_getBlockByNumber(const std::string& param1, bool param2) = 0;
     virtual Json::Value brc_getTransactionByHash(const std::string& param1) = 0;
@@ -591,14 +546,9 @@ public:
     virtual Json::Value brc_getFilterLogsEx(const std::string& param1) = 0;
     virtual Json::Value brc_getLogs(const Json::Value& param1) = 0;
     virtual Json::Value brc_getLogsEx(const Json::Value& param1) = 0;
-    virtual Json::Value brc_getWork() = 0;
-    virtual bool brc_submitWork(
-        const std::string& param1, const std::string& param2, const std::string& param3) = 0;
-    virtual bool brc_submitHashrate(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_register(const std::string& param1) = 0;
     virtual bool brc_unregister(const std::string& param1) = 0;
     virtual Json::Value brc_fetchQueuedTransactions(const std::string& param1) = 0;
-    virtual Json::Value brc_signTransaction(const Json::Value& param1) = 0;
     virtual Json::Value brc_inspectTransaction(const std::string& param1) = 0;
     virtual std::string brc_sendRawTransaction(const std::string& param1) = 0;
     virtual std::string brc_importBlock(const std::string& param1) = 0;

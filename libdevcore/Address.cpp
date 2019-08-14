@@ -25,6 +25,7 @@ namespace dev
     Address const SysElectorAddress             { "0x000000000000456c6563746f7241646472657373"};
     Address const SysVarlitorAddress            { "0x000000000067656e657369735661726c69746f72" };
     Address const SysCanlitorAddress            { "0x0000000067656e6573697343616e646964617465" };
+    Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
 
 }  // namespace dev
 

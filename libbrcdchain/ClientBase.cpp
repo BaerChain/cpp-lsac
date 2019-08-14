@@ -146,6 +146,15 @@ Json::Value dev::brc::ClientBase::successPendingOrderForAddrMessage(dev::Address
     return blockByNumber(_block).mutableState().successPendingOrderForAddrMsg(_a, _minTime, _maxTime, _maxSize);
 }
 
+Json::Value dev::brc::ClientBase::queryExchangeRewardMessage(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().queryExchangeReward(_a);
+}
+
+Json::Value dev::brc::ClientBase::queryBlockRewardMessage(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().queryBlcokReward(_a);
+}
 
 Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _block) const
 {

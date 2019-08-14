@@ -199,9 +199,9 @@ VoteSnapshot Account::try_new_temp_snapshot(u256 _rounds){
 }
 
 std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage _state) {
-    u256 last_round = _rounds;
-    if(_rounds >0 && _state == Votingstage::VOTE)
-        last_round --;
+    if (_rounds == 0)
+        return  std::make_pair(false, 0);
+    u256 last_round = --_rounds;
     if (last_round <= 0 || last_round <= m_vote_sapshot.m_latest_round)
         return std::make_pair(false, 0);
     return  std::make_pair(true, last_round);
@@ -229,6 +229,8 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
     changed();
 }
+
+
 
 namespace js = json_spirit;
 
@@ -471,3 +473,4 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 //    }
     return ret;
 }
+

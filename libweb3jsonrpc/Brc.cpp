@@ -18,6 +18,7 @@ using namespace dev::rpc;
 
 
 #define MAXQUERIES 50
+#define ZERONUM 0
 
 Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
   : m_brc(_brc), m_brcAccounts(_brcAccounts)
@@ -33,29 +34,6 @@ string Brc::brc_coinbase()
     return toJS(client()->author());
 }
 
-string Brc::brc_hashrate()
-{
-    try
-    {
-        return toJS(asBrchashClient(client())->hashrate());
-    }
-    catch (InvalidSealEngine&)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-bool Brc::brc_mining()
-{
-    try
-    {
-        return asBrchashClient(client())->isMining();
-    }
-    catch (InvalidSealEngine&)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 string Brc::brc_gasPrice()
 {
@@ -152,6 +130,30 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
         }
         return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string const& _blockNumber)
+{
+    try {
+
+        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getQueryBlockReward(string const& _address, std::string const& _blockNumber)
+{
+
+    try {
+        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
     }
     catch(...)
     {
@@ -312,50 +314,6 @@ void Brc::setTransactionDefaults(TransactionSkeleton& _t)
         _t.from = m_brcAccounts.defaultTransactAccount();
 }
 
-string Brc::brc_sendTransaction(Json::Value const& _json)
-{
-    try
-    {
-        TransactionSkeleton t = toTransactionSkeleton(_json);
-        setTransactionDefaults(t);
-        pair<bool, Secret> ar = m_brcAccounts.authenticate(t);
-        if (!ar.first)
-        {
-            h256 txHash = client()->submitTransaction(t, ar.second);
-            return toJS(txHash);
-        }
-        else
-        {
-            m_brcAccounts.queueTransaction(t);
-            h256 emptyHash;
-            return toJS(emptyHash);  // TODO: give back something more useful than an empty hash.
-        }
-    }
-    catch (Exception const&)
-    {
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
-}
-
-Json::Value Brc::brc_signTransaction(Json::Value const& _json)
-{
-    try
-    {
-        TransactionSkeleton ts = toTransactionSkeleton(_json);
-        setTransactionDefaults(ts);
-        ts = client()->populateTransactionWithDefaults(ts);
-        pair<bool, Secret> ar = m_brcAccounts.authenticate(ts);
-        Transaction t(ts, ar.second);
-        RLPStream s;
-        t.streamRLP(s);
-        return toJson(t, s.out());
-    }
-    catch (Exception const&)
-    {
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
-}
-
 Json::Value Brc::brc_inspectTransaction(std::string const& _rlp)
 {
     try
@@ -428,12 +386,6 @@ string Brc::brc_estimateGas(Json::Value const& _json)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
-}
-
-bool Brc::brc_flush()
-{
-    client()->flushTransactions();
-    return true;
 }
 
 Json::Value Brc::brc_getBlockByHash(string const& _blockHash, bool _includeTransactions)
@@ -709,23 +661,6 @@ Json::Value Brc::brc_getLogsEx(Json::Value const& _json)
     }
 }
 
-Json::Value Brc::brc_getWork()
-{
-    try
-    {
-        Json::Value ret(Json::arrayValue);
-        auto r = asBrchashClient(client())->getBrchashWork();
-        ret.append(toJS(get<0>(r)));
-        ret.append(toJS(get<1>(r)));
-        ret.append(toJS(get<2>(r)));
-        return ret;
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
 Json::Value Brc::brc_syncing()
 {
     dev::brc::SyncStatus sync = client()->syncStatus();
@@ -744,31 +679,6 @@ string Brc::brc_chainId()
     return toJS(client()->chainId());
 }
 
-bool Brc::brc_submitWork(string const& _nonce, string const&, string const& _mixHash)
-{
-    try
-    {
-        return asBrchashClient(client())->submitBrchashWork(
-            jsToFixed<32>(_mixHash), jsToFixed<Nonce::size>(_nonce));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-bool Brc::brc_submitHashrate(string const& _hashes, string const& _id)
-{
-    try
-    {
-        asBrchashClient(client())->submitExternalHashrate(jsToInt<32>(_hashes), jsToFixed<32>(_id));
-        return true;
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 string Brc::brc_register(string const& _address)
 {
