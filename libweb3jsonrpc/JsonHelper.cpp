@@ -89,7 +89,7 @@ namespace dev {
 
 
         Json::Value toJson(
-                dev::brc::Transaction const &_t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, SealEngineFace* _face) {
+                dev::brc::Transaction const &_t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber,bool _detialStatus, SealEngineFace* _face) {
             Json::Value res;
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
@@ -110,12 +110,16 @@ namespace dev {
                 res["v"] = toJS(_t.signature().v);
                 res["r"] = toJS(_t.signature().r);
                 res["s"] = toJS(_t.signature().s);
+                if(_detialStatus == true)
+                {
+                    res["txdata"] = analysisData(_t.data());
+                }
             }
             return res;
         }
 
         Json::Value toJson(dev::brc::BlockHeader const &_bi, BlockDetails const &_bd,
-                           UncleHashes const &_us, Transactions const &_ts, SealEngineFace *_face) {
+                           UncleHashes const &_us, Transactions const &_ts, bool _detialStatus, SealEngineFace *_face) {
             Json::Value res = toJson(_bi, _face);
             if (_bi) {
                 res["totalDifficulty"] = toJS(_bd.totalDifficulty);
@@ -126,7 +130,7 @@ namespace dev {
                 res["transactions"] = Json::Value(Json::arrayValue);
                 for (unsigned i = 0; i < _ts.size(); i++)
                     res["transactions"].append(
-                            toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber) _bi.number(), _face));
+                            toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber) _bi.number(), _detialStatus, _face));
             }
             return res;
         }
@@ -218,8 +222,9 @@ namespace dev {
             return res;
         }
 
-        Json::Value toJson(dev::brc::LocalisedTransaction const &_t, SealEngineFace* _face) {
+        Json::Value toJson(dev::brc::LocalisedTransaction const &_t, bool _detialStatus, SealEngineFace* _face) {
             Json::Value res;
+            std::cout << "123:" << _detialStatus << endl;
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
                 res["input"] = toJS(_t.data());
@@ -236,6 +241,10 @@ namespace dev {
                 res["blockHash"] = toJS(_t.blockHash());
                 res["transactionIndex"] = toJS(_t.transactionIndex());
                 res["blockNumber"] = toJS(_t.blockNumber());
+                if(_detialStatus == true)
+                {
+                    res["txdata"] = analysisData(_t.data());
+                }
             }
             return res;
         }
