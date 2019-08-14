@@ -254,7 +254,7 @@ namespace dev {
                         if(_transation_op.m_from != Address(0))
                             res["from"] = toJS(_transation_op.m_from);
                         res["to"] = toJS(_transation_op.m_to);
-                        res["transcation_type"] = toJS(_transation_op.m_type);
+                        res["transcation_type"] = toJS(_transation_op.m_Transcation_type);
                         res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
                         _JsArray.append(res);
                     }
@@ -289,6 +289,7 @@ namespace dev {
                         Json::Value res;
                         dev::brc::transationTool::cancelPendingorder_operation _cancel_op = dev::brc::transationTool::cancelPendingorder_operation(val);
                         res["type"] = toJS(_type);
+                        res["cancelType"] = toJS(_cancel_op.m_cancelType);
                         res["hash"] = toJS(_cancel_op.m_hash);
                         _JsArray.append(res);
                     }
