@@ -1065,8 +1065,8 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
 
 	for(auto val : _resultV){
 	    if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-				subFBRC(val.sender, val.price_token.second);
-				addBRC(val.sender, val.price_token.second);
+				subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+				addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
 		}else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
         {
             subFBalance(val.sender, val.price_token.second);
