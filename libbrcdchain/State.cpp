@@ -1798,7 +1798,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     };
 
 	auto a = account(dev::VoteAddress);
-	std::string _num = "2900000000000000";
+	std::string _num = "1450000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::pair<u256, u256> _pair = {u256Safe(std::string("100000000")), systenCookie};
