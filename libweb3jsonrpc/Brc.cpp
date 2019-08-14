@@ -18,6 +18,7 @@ using namespace dev::rpc;
 
 
 #define MAXQUERIES 50
+#define ZERONUM 0
 
 Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
   : m_brc(_brc), m_brcAccounts(_brcAccounts)
@@ -138,9 +139,8 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
 
 Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
 {
-    try{
-        if(jsToInt(_blockNumber) > 0)
-            return client()->queryExchangeRewardMessage(jsToBlockNumber(_blockNumber));
+    try {
+        return client()->queryExchangeRewardMessage(jsToBlockNumber(_blockNumber));
     }
     catch(...)
     {
@@ -150,13 +150,14 @@ Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
 
 Json::Value Brc::brc_getQueryBlockReward(std::string const& _blockNumber)
 {
+
     try {
-        if(jsToInt(_blockNumber) > 0)
-            return client()->queryBlockRewardMessage(jsToBlockNumber(_blockNumber));
+        return client()->queryBlockRewardMessage(jsToBlockNumber(_blockNumber));
     }
     catch(...)
     {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+        BOOST_THROW_EXCEPTION(JsonRpcException("invalid paramas"));
+        //BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
 }
 
