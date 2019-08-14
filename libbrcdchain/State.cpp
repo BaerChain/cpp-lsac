@@ -1385,14 +1385,8 @@ void State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blo
     auto a =  account(_addr);
     auto systemAccount = account(dev::PdSystemAddress);
     if(!a || !systemAccount){
-        //throw ;
+        BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_comment(std::string("can't get Account in received fee")));
     }
-//    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;   // <rounds, <brc, cookies>>
-//    std::map<u256, std::vector<PollData> > m_sorted_creaters;
-//    u256 m_rounds = 0;
-//    u256 m_numofrounds = 0;
-//    std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
-//    std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_brcs;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
     auto received_sanp = a->getFeeSnapshot();
     auto system_sanp = systemAccount->getFeeSnapshot();
     VoteSnapshot vote_sanp = a->vote_snashot();
@@ -1458,6 +1452,8 @@ void State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blo
             std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
             /// loop all
             for(auto const& val: check_creater){
+                if(val.m_poll == 0 || _totalPoll ==0)
+                    continue;
                 // val = PollData
                 u256 node_summary_cookies =  summary.second / _totalPoll * val.m_poll;
                 u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
@@ -2296,10 +2292,7 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
     std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
-//    if (previous_header.number() >= curr_header.number())
-//        return;
-//    if (curr_pair.second != Votingstage::RECEIVINGINCOME || curr_pair.second == previous_pair.second)
-//        return;
+
     if (curr_pair.first <= previous_pair.first)
         return;
     //testlog << "start to new rounds";
@@ -2322,7 +2315,6 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     }
 
     std::vector<PollData> p_data = a->vote_data();
-    //std::sort(p_data.begin(), p_data.end(), std::greater<struct PollData>());
     PollData::sort_greater(p_data);
 
     u256 var_num = config::varlitorNum();
