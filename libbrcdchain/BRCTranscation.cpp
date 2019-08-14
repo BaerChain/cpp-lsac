@@ -422,7 +422,11 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
                     _status = true;
                 }
             }else{
-                BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string(" could not find mainNode!")));
+                std::vector<PollData> _nowMiner = m_state.vote_data(SysVarlitorAddress);
+                if(isMainNode(_voteIt->second, _nowMiner))
+                {
+                    _status = true;
+                }
             }
         }
 
