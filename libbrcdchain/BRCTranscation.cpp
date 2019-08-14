@@ -377,14 +377,11 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
     }
 
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
-    CFEE_LOG << ret_pair.second;
     VoteSnapshot _voteSnapshot;
     if (ret_pair.first)
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
-
-    CFEE_LOG << _voteSnapshot;
 //    u256 _numberofrounds = _voteSnapshot.numberofrounds;
     if (_voteSnapshot.m_voteDataHistory.size() == 0 && a->vote_data().size() == 0)
     {
@@ -394,7 +391,6 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
     ReceivedCookies _receivedcookie = a->get_received_cookies();
     u256 _numberofround = config::getvoteRound(_receivedcookie.m_numberofRound);
     std::map<u256, std::vector<PollData>> _minerSnap =  m_state.get_miner_snapshot();
-    CFEE_LOG << _minerSnap;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofround - 1);
     if(_voteIt == _voteSnapshot.m_voteDataHistory.end())
     {
@@ -445,38 +441,47 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
 
-    if(_pair.second == Votingstage::VOTE)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-    }
-
     auto a = m_state.account(_from);
     auto systemAccount = m_state.account(dev::PdSystemAddress);
-    if(!a)
+    auto miners = m_state.account(dev::SysVarlitorAddress);
+    if(!a || !miners)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account that receives the income does not exist")));
     }
 
     u256 _rounds = systemAccount->getSnapshotRounds();
     u256 _numofRounds = a->getFeeNumofRounds();
-
-    if(_numofRounds >= _rounds)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("Not enough income to receive")));
-    }
-
     std::map<u256, std::vector<PollData>> _map = systemAccount->getPollDataSnapshot();
     VoteSnapshot _voteSnapshot = a->vote_snashot();
-    std::map<u256, std::map<Address, u256>> _voteDataHistory = _voteSnapshot.m_voteDataHistory;
+    bool  is_received = false;
 
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDatait = _voteDataHistory.find(_numofRounds + 1);
-
-    bool _status = false;
-    for(; _voteDatait != _voteDataHistory.end(); _voteDatait++)
-    {
-        _status = findAddress(_voteDatait->second, _map[_voteDatait->first]);
+    for(int i= (int)_numofRounds ; i< _pair.first; i++){
+        if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
+            for(auto const& val: _map[i]){
+                if (_voteSnapshot.m_voteDataHistory[i-1].count(val.m_addr) && _voteSnapshot.m_voteDataHistory[i-1][val.m_addr] !=0){
+                    is_received = true;
+                    return;
+                }
+            }
+        }
+        if (is_received)
+            break;
     }
-    if(_status == false)
+
+    uint32_t  num = config::minner_rank_num();
+    if (_voteSnapshot.m_voteDataHistory.count(_pair.first-1)) {
+        for (auto const &val: miners->vote_data()) {
+            if (num <= 0)
+                break;
+            --num;
+            if (_voteSnapshot.m_voteDataHistory[_pair.first-1].count(val.m_addr)){
+                is_received = true;
+                break;
+            }
+        }
+    }
+
+    if(is_received == false)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("This account does not meet the redemption fee")));
     }
