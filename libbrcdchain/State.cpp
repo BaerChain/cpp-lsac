@@ -866,10 +866,15 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 }
 
 Json::Value State::queryExchangeReward() {
+    Json::Value _res;
+    _res["queryExchangeReward"] = "";
+    return _res;
 }
 
 Json::Value State::queryBlcokReward() {
-    
+    Json::Value _res;
+    _res["queryBlcokReward"] = "";
+    return _res;
 }
 
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize) {
