@@ -394,6 +394,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
     ReceivedCookies _receivedcookie = a->get_received_cookies();
     u256 _numberofround = config::getvoteRound(_receivedcookie.m_numberofRound);
     std::map<u256, std::vector<PollData>> _minerSnap =  m_state.get_miner_snapshot();
+    CFEE_LOG << _minerSnap;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteIt = _voteSnapshot.m_voteDataHistory.find(_numberofround - 1);
     if(_voteIt == _voteSnapshot.m_voteDataHistory.end())
     {
@@ -409,11 +410,20 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("isMainNode fasle :The node that this account votes does not have a super node")));
         }
     }else {
-        bool _status = true;
+        bool _status = false;
 
         for (; _voteIt != _voteSnapshot.m_voteDataHistory.end(); _voteIt++)
         {
-
+            if(_minerSnap.count(_voteIt->first))
+            {
+                std::vector<PollData> _mainNodeV = _minerSnap[_voteIt->first];
+                if(isMainNode(_voteIt->second, _mainNodeV))
+                {
+                    _status = true;
+                }
+            }else{
+                BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string(" could not find mainNode!")));
+            }
         }
 
         if(_status == false)

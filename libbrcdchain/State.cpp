@@ -1233,12 +1233,12 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
                 _numTotalFee += _pollFeeIncome - _receivedNum;
             }
             _cookieFee += _numTotalFee;
-            _receivedCookies.up_received_cookies(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
+            a->addSetreceivedCookie(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
         }
     }
     addBalance(_addr, _cookieFee);
-    _receivedCookies.updataNumberofRound(_pair.first);
-    CFEE_LOG << "new :" <<_receivedCookies << endl;
+    a->updateNumofround(_pair.first);
+    CFEE_LOG << "new :" << a->get_received_cookies() << endl;
     m_changeLog.emplace_back(Change::ReceiveCookies, _addr, _oldreceivedCookies);
 }
 
@@ -2029,7 +2029,7 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
         a = account(_addr);
     }
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
-    cwarn << " " << ret_pair.first << " "<< ret_pair.second;
+//    cwarn << " " << ret_pair.first << " "<< ret_pair.second;
     if (!ret_pair.first)
         return ;
     VoteSnapshot _vote_sna = a->vote_snashot();
