@@ -84,8 +84,8 @@ public:
     Json::Value pendingOrderPoolForAddrMessage(Address _a, uint32_t _getSize, BlockNumber _block) const override;
 	Json::Value successPendingOrderMessage(uint32_t _getSize, BlockNumber _block) const override;
 	Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize, BlockNumber _block) const override;
-    Json::Value queryExchangeRewardMessage(BlockNumber _block) const override;
-    Json::Value queryBlockRewardMessage(BlockNumber _block) const override;
+    Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const override;
+    Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const override;
 
 	Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
 	Json::Value votedMessage(Address _a, BlockNumber _block) const override;

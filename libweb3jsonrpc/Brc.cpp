@@ -137,11 +137,11 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
     }
 }
 
-Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
+Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string const& _blockNumber)
 {
     try {
 
-        return client()->queryExchangeRewardMessage(jsToBlockNumber(_blockNumber));
+        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
     }
     catch(...)
     {
@@ -149,11 +149,11 @@ Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
     }
 }
 
-Json::Value Brc::brc_getQueryBlockReward(std::string const& _blockNumber)
+Json::Value Brc::brc_getQueryBlockReward(string const& _address, std::string const& _blockNumber)
 {
 
     try {
-        return client()->queryBlockRewardMessage(jsToBlockNumber(_blockNumber));
+        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
     }
     catch(...)
     {
