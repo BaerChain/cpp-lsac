@@ -140,6 +140,7 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
 Json::Value Brc::brc_getQueryExchangeReward(std::string const& _blockNumber)
 {
     try {
+
         return client()->queryExchangeRewardMessage(jsToBlockNumber(_blockNumber));
     }
     catch(...)
@@ -156,8 +157,7 @@ Json::Value Brc::brc_getQueryBlockReward(std::string const& _blockNumber)
     }
     catch(...)
     {
-        BOOST_THROW_EXCEPTION(JsonRpcException("invalid paramas"));
-        //BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
 }
 
