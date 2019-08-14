@@ -231,8 +231,8 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
 
 
-    uint32_t height = host().chain().info().number();
-    uint32_t last_block_num = m_lastImportedBlock;
+    int64_t height = host().chain().info().number();
+    int64_t last_block_num = m_lastImportedBlock;
 
     auto& peer = m_host.peer(_peerID);
     uint32_t  peer_block_number = (uint32_t)peer.block_number();
