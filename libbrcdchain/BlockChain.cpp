@@ -176,10 +176,14 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
 
         //remove children
         std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
-        auto last_block_detail = m_details[last_config_hash];
-        last_block_detail.children.clear();
-        extrasWriteBatch->insert(toSlice(last_config_hash, ExtraDetails), (db::Slice) dev::ref(last_block_detail.rlp()));
+        auto last_block_header = info(last_config_hash);
+        auto pd = details(last_block_header.parentHash());
+        BlockDetails bd(last_block_header.number(), last_block_header.difficulty(), last_block_header.parentHash(), {});
+        extrasWriteBatch->insert(toSlice(last_config_hash, ExtraDetails), (db::Slice) dev::ref(bd.rlp()));
+
+
         m_extrasDB->commit(std::move(extrasWriteBatch));
+
 
         //rollback exdb
         _stateExDB.remove_all_session();
