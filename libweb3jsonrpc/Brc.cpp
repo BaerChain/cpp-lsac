@@ -252,11 +252,11 @@ Json::Value Brc::brc_getBlockTransactionCountByNumber(string const& _blockNumber
 {
     try
     {
-        BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(blockNumber))
             return Json::Value(Json::nullValue);
 
-        return toJS(client()->transactionCount(jsToBlockNumber(_blockNumber)));
+        return toJS(client()->transactionCount(jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -284,7 +284,7 @@ Json::Value Brc::brc_getUncleCountByBlockNumber(string const& _blockNumber)
 {
     try
     {
-        BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(blockNumber))
             return Json::Value(Json::nullValue);
 
@@ -413,7 +413,7 @@ Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeT
 {
     try
     {
-        BlockNumber h = jsToBlockNumber(_blockNumber);
+        BlockNumber h = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(h))
             return Json::Value(Json::nullValue);
 
@@ -475,7 +475,9 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
 {
     try
     {
-        BlockNumber bn = jsToBlockNumber(_blockNumber);
+        BlockNumber bn = jsToBlockNum(_blockNumber);
+        if (!client()->isKnown(bn))
+            return Json::Value(Json::nullValue);
         h256 bh = client()->hashFromNumber(bn);
         unsigned ti = jsToInt(_transactionIndex);
         if (!client()->isKnownTransaction(bh, ti))
@@ -524,7 +526,10 @@ Json::Value Brc::brc_getUncleByBlockNumberAndIndex(
 {
     try
     {
-        return toJson(client()->uncle(jsToBlockNumber(_blockNumber), jsToInt(_uncleIndex)),
+        BlockNumber h = jsToBlockNum(_blockNumber);
+        if (!client()->isKnown(h))
+            return Json::Value(Json::nullValue);
+        return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
             client()->sealEngine());
     }
     catch (...)
