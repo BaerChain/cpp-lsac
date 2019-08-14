@@ -37,6 +37,11 @@ namespace brc
 {
 BlockNumber jsToBlockNumber(std::string const& _js)
 {
+    return LatestBlock;
+}
+
+BlockNumber jsToBlockNum(std::string const& _js)
+{
     if (_js == "latest")
         return LatestBlock;
     else if (_js == "earliest")
@@ -44,7 +49,7 @@ BlockNumber jsToBlockNumber(std::string const& _js)
     else if (_js == "pending")
         return PendingBlock;
     else
-        return (unsigned)jsToInt(_js);
+        return (unsigned)jsToInt(_js);     
 }
 
 uint8_t jsToOrderEnum(std::string const& _js)
