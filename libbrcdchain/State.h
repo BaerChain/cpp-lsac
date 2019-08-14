@@ -420,6 +420,7 @@ public:
 	void receivingIncome(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum);
 	void receivingBlockFeeIncome(Address const& _addr, int64_t _blockNum);
 	void receivingPdFeeIncome(Address const& _addr, int64_t _blockNum);
+	void anytime_receivingPdFeeIncome(Address const& _addr, int64_t _blockNum);
 
 
 	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);

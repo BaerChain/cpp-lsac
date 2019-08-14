@@ -260,21 +260,45 @@ struct VoteSnapshot{
 
 };
 
+enum CouplingReceiveType{
+    Cookies =1,
+    Brcs=2
+};
+
 struct CouplingSystemfee
 {
-    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
+    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;   // <rounds, <brc, cookies>>
     std::map<u256, std::vector<PollData> > m_sorted_creaters;
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
+    std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <brcs, cookies>>> recevied from other
+    std::pair<u256, u256> m_total_summary;
 
-    u256 get_total_poll(u256 round) const{
+    u256 get_total_poll(u256 round, uint32_t miner_num =7) const{
         auto ret = m_sorted_creaters.find(round);
         if(ret == m_sorted_creaters.end())
             return 0;
         u256 total =0;
-        for(auto const& val: ret->second)
+        for(auto const& val: ret->second) {
+            if(!miner_num)
+                break;
             total += val.m_poll;
+            --miner_num;
+        }
         return total;
+    }
+
+    void up_received_cookies_brcs(u256 rounds, Address const& adress, std::pair<u256, u256> _pair_received, std::pair<u256, u256> _pair_summary){
+
+        if(!m_received_cookies.count(rounds)){
+            std::map<Address, std::pair<u256, u256>> val;
+            val[adress] = _pair_received;
+            m_received_cookies[rounds] = val;
+            return;
+        }
+        m_received_cookies[rounds][adress] = _pair_received;
+        m_total_summary = _pair_summary;
+
     }
 
     void streamRLP(RLPStream &_rlp) const
@@ -301,6 +325,19 @@ struct CouplingSystemfee
         }
         _rlp << s_sort.out();
 
+        RLPStream receive_cookies(m_received_cookies.size());
+        for(auto const& receive : m_received_cookies){
+            RLPStream data_s(receive.second.size());
+            for(auto const& v: receive.second){
+                RLPStream totala_s(2);
+                totala_s << v.second.first << v.second.second;
+                data_s.append<Address, bytes>(std::make_pair(v.first, totala_s.out()));
+            }
+            receive_cookies.append<u256, bytes>(std::make_pair(receive.first, data_s.out()));
+        }
+        _rlp << receive_cookies.out();
+
+        _rlp.append<u256, u256>(m_total_summary) ;
     }
 
     void unstreamRLP(bytes const& _byte)
@@ -329,6 +366,20 @@ struct CouplingSystemfee
             }
             m_sorted_creaters[pair.first] = p_datas;
         }
+
+        bytes b_receive_cookies = _rlp[4].toBytes();
+        for(auto const& val: RLP(b_receive_cookies)){
+            std::pair<u256 , bytes> _pair = val.toPair<u256, bytes>();
+            std::map<Address, std::pair<u256, u256>> receve_data;
+            for(auto const& v: RLP(_pair.second)){
+                std::pair<Address , bytes> v_pair = v.toPair<Address, bytes>();
+                auto r_total = RLP(v_pair.second);
+                receve_data[v_pair.first] = std::make_pair(r_total[0].toInt<u256>(), r_total[1].toInt<u256>());
+            }
+            m_received_cookies[_pair.first] = receve_data;
+        }
+
+       m_total_summary = _rlp[5].toPair<u256, u256>();
     }
 
     void clear()
@@ -398,6 +449,21 @@ inline std::ostream& operator << (std::ostream& out, CouplingSystemfee const& c)
 
     out<< "m_rounds"<< c.m_rounds<<std::endl;
     out<< "m_numofrounds"<<c.m_numofrounds <<std::endl;
+
+    //std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies
+    out << " m_received_cookies:{"<< std::endl;
+    for(auto const& val: c.m_received_cookies){
+        out << "rounds:"<< val.first << std::endl;
+        for(auto const& v: val.second){
+            out << "    ["<<v.first << "  "<<v.second.first << "  "<<  v.second.second<<"]";
+        }
+    }
+    out <<std::endl<< "}"<< std::endl;
+
+    out << " m_total_summary:"<<c.m_total_summary.first << " "<< c.m_total_summary.second<< std::endl;
+
+    out <<std::endl<< "}"<< std::endl;
+
     return out;
 }
 inline std::ostream& operator << (std::ostream& out, ReceivedCookies const& c){

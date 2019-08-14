@@ -431,38 +431,51 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("There is currently no income to receive")));
     }
 
-    if(_pair.second == Votingstage::VOTE)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("No time to receive dividend income")));
-    }
-
     auto a = m_state.account(_from);
     auto systemAccount = m_state.account(dev::PdSystemAddress);
-    if(!a)
+    auto miners = m_state.account(dev::SysVarlitorAddress);
+    if(!a || !miners)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("The account that receives the income does not exist")));
     }
 
     u256 _rounds = systemAccount->getSnapshotRounds();
     u256 _numofRounds = a->getFeeNumofRounds();
-
-    if(_numofRounds >= _rounds)
-    {
-        BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("Not enough income to receive")));
-    }
-
     std::map<u256, std::vector<PollData>> _map = systemAccount->getPollDataSnapshot();
     VoteSnapshot _voteSnapshot = a->vote_snashot();
-    std::map<u256, std::map<Address, u256>> _voteDataHistory = _voteSnapshot.m_voteDataHistory;
+    bool  is_received = false;
 
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDatait = _voteDataHistory.find(_numofRounds + 1);
-
-    bool _status = false;
-    for(; _voteDatait != _voteDataHistory.end(); _voteDatait++)
-    {
-        _status = findAddress(_voteDatait->second, _map[_voteDatait->first]);
+    CFEE_LOG << "_numofRounds:" << _numofRounds;
+    CFEE_LOG << "noW_rounds:" << _pair.first;
+    CFEE_LOG << "_voteSnapshot:" << _voteSnapshot;
+    CFEE_LOG << "miners:" << miners->vote_data();
+    for(int i= (int)_numofRounds ; i< _pair.first; i++){
+        if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
+            for(auto const& val: _map[i]){
+                if (_voteSnapshot.m_voteDataHistory[i-1].count(val.m_addr) && _voteSnapshot.m_voteDataHistory[i-1][val.m_addr] !=0){
+                    is_received = true;
+                    return;
+                }
+            }
+        }
+        if (is_received)
+            break;
     }
-    if(_status == false)
+
+    uint32_t  num = config::minner_rank_num();
+    if (_voteSnapshot.m_voteDataHistory.count(_pair.first-1)) {
+        for (auto const &val: miners->vote_data()) {
+            if (num <= 0)
+                break;
+            --num;
+            if (_voteSnapshot.m_voteDataHistory[_pair.first-1].count(val.m_addr)){
+                is_received = true;
+                break;
+            }
+        }
+    }
+
+    if(is_received == false)
     {
         BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("This account does not meet the redemption fee")));
     }
