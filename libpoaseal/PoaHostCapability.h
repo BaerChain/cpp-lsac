@@ -34,6 +34,8 @@ namespace brc
 
         inline std::shared_ptr<p2p::CapabilityHostFace> hostFace()const { return m_host;}
 
+        virtual void doBackgroundWork() override { };
+        virtual std::chrono::milliseconds backgroundWorkInterval() const override{ return std::chrono::milliseconds{1000};};
     private:
         std::shared_ptr<p2p::CapabilityHostFace> m_host;
         u256 m_networkId;

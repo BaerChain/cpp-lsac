@@ -14,9 +14,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-unsigned const c_maxPeerUknownNewBlocks = 1024; /// Max number of unknown new blocks peer can give us
-unsigned const c_maxRequestHeaders = 1024;
-unsigned const c_maxRequestBodies = 1024;
+unsigned const c_maxPeerUknownNewBlocks = 512; /// Max number of unknown new blocks peer can give us
+unsigned const c_maxRequestHeaders = 512;
+unsigned const c_maxRequestBodies = 512;
 
 
 std::ostream& dev::brc::operator<<(std::ostream& _out, SyncStatus const& _sync)
@@ -137,7 +137,7 @@ template<typename T> void mergeInto(std::map<unsigned, std::vector<T>>& _contain
 BlockChainSync::BlockChainSync(BrcdChainCapability& _host)
   : m_host(_host),
     m_chainStartBlock(_host.chain().chainStartBlockNumber()),
-    m_startingBlock(_host.chain().number()),
+    m_startingBlock(_host.chain().info().number()),
     m_lastImportedBlock(m_startingBlock),
     m_lastImportedBlockHash(_host.chain().currentHash())
 {
@@ -230,11 +230,16 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
         return;
 
 
-    uint32_t height = host().chain().details().number;
+
+    uint32_t height = host().chain().info().number();
     uint32_t last_block_num = m_lastImportedBlock;
 
     auto& peer = m_host.peer(_peerID);
     uint32_t  peer_block_number = (uint32_t)peer.block_number();
+
+    if(peer_block_number == UINT32_MAX){
+        return;
+    }
 
 
     if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks){
@@ -255,10 +260,10 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     }
 }
 
-void BlockChainSync::continueSync()
+void BlockChainSync::continueSync(NodeID id)
 {
-    host().capabilityHost().foreachPeer(m_host.name(), [this](NodeID const& _peerID) {
-        syncPeer(_peerID, false);
+    host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
+            syncPeer(_peerID, false);
         return true;
     });
 }
@@ -274,6 +279,7 @@ void BlockChainSync::requestBlocks(NodeID const& _peerID)
     }
     // check to see if we need to download any block bodies first
     auto header = m_headers.begin();
+
     h256s neededBodies;
     vector<unsigned> neededNumbers;
     unsigned index = 0;
@@ -451,6 +457,15 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
     {
         LOG(m_loggerDetail) << "Peer does not have the blocks requested";
         m_host.capabilityHost().updateRating(_peerID, -1);
+    }
+    if(itemCount > 0){
+        std::ostringstream os;
+        os << "[ ";
+        for(auto i = 0; i < itemCount; i++){
+            BlockHeader from(_r[i].data(), HeaderData);
+            os << from.number() << ",";
+        }
+        LOG(m_logger) << "get headerData  from number " << os.str();
     }
     for (unsigned i = 0; i < itemCount; i++)
     {
@@ -718,6 +733,9 @@ void BlockChainSync::logImported(
 
 void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
 {
+    if(isSyncing()){
+        return ;
+    }
     RecursiveGuard l(x_sync);
     DEV_INVARIANT_CHECK;
 

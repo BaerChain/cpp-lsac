@@ -68,7 +68,7 @@ public:
 
 private:
     /// Resume downloading after witing state
-    void continueSync();
+    void continueSync(NodeID id = NodeID());
 
     /// Enter waiting state
     void pauseSync();

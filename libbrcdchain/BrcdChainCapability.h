@@ -127,6 +127,9 @@ public:
     BrcdChainPeer& peer(NodeID const& _peerID);
     void disablePeer(NodeID const& _peerID, std::string const& _problem);
 
+    virtual void doBackgroundWork() override;
+
+    std::chrono::milliseconds backgroundWorkInterval()  const override { return std::chrono::milliseconds{10};}
 private:
     static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 
@@ -135,7 +138,7 @@ private:
             return true;
         });
 
-    void doBackgroundWork();
+
 
     void maintainTransactions();
     void maintainBlocks(h256 const& _currentBlock);

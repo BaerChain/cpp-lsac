@@ -42,6 +42,10 @@ public:
     /// Called by the Host when the peer is disconnected.
     /// Guaranteed to be called last after any interpretCapabilityPacket for this peer.
     virtual void onDisconnect(NodeID const& _nodeID) = 0;
+    /// Background work loop - called by the host every backgroundWorkInterval()
+    virtual void doBackgroundWork() = 0;
+    virtual std::chrono::milliseconds backgroundWorkInterval() const = 0;
+
 };
 
 }  // namespace p2p

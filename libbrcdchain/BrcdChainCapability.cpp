@@ -68,9 +68,11 @@ public:
 
     void onPeerTransactions(NodeID const& _peerID, RLP const& _r) override
     {
-        unsigned itemCount = _r.itemCount();
-        LOG(m_logger) << "Transactions (" << dec << itemCount << " entries)";
-        m_tq.enqueue(_r, _peerID);
+        if(!m_sync->isSyncing()){
+            unsigned itemCount = _r.itemCount();
+            LOG(m_logger) << "Transactions (" << dec << itemCount << " entries)";
+            m_tq.enqueue(_r, _peerID);
+        }
     }
 
     void onPeerAborting() override
@@ -261,6 +263,7 @@ public:
         bytes rlp;
         unsigned itemCount = 0;
         vector<h256> hashes;
+
         for (unsigned i = 0; i != numHeadersToSend; ++i)
         {
             if (!blockHash || !m_chain.isKnown(blockHash))
@@ -270,6 +273,9 @@ public:
             ++itemCount;
 
             blockHash = nextHash(blockHash, step);
+        }
+        if(hashes.size() == 0 ||  hashes.size() != _maxHeaders){
+            cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash <<  " response hashes.size() " << hashes.size();
         }
 
         for (unsigned i = 0; i < hashes.size() && rlp.size() < c_maxPayload; ++i)
@@ -465,8 +471,6 @@ void BrcdChainCapability::doBackgroundWork()
             }
         }
 
-        if (m_backgroundWorkEnabled)
-            m_host->scheduleExecution(10, [this](){ doBackgroundWork(); });
     }
     catch (const std::exception &e){
         cwarn << "exception : " << e.what() ;
@@ -623,7 +627,7 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
 
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-            auto s = randomSelection(25, [&](BrcdChainPeer const& _peer) {
+            auto s = randomSelection(100, [&](BrcdChainPeer const& _peer) {
                 return !_peer.isBlockKnown(_currentHash);
             });
             bool isSend = false;
@@ -781,9 +785,12 @@ bool BrcdChainCapability::interpretCapabilityPacket(
                 break;
             }
 
+
+
             pair<bytes, unsigned> const rlpAndItemCount =
                 m_hostData->blockHeaders(blockId, numHeadersToSend, skip, reverse);
-
+            LOG(m_logger) << "GetBlockHeadersPacket " << blockId  << " maxHeaders " << maxHeaders << " skip " << skip << " reverse " << reverse
+             << " response size " << rlpAndItemCount.second;
             RLPStream s;
             m_host->prep(_peerID, name(), s, BlockHeadersPacket, rlpAndItemCount.second)
                 .appendRaw(rlpAndItemCount.first, rlpAndItemCount.second);
