@@ -867,9 +867,13 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
-Json::Value State::queryExchangeReward(Address const& _address) {
+Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockNum) {
+    std::pair<u256 , u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t)_blockNum, false);
     Json::Value res;
-    res["queryExchangeReward"] = "";
+    Json::Value ret;
+    ret["BRC"] = toJS(_pair.first);
+    ret["Cookies"] = toJS(_pair.second);
+    res["queryExchangeReward"] = ret;
     return res;
 }
 
@@ -1458,7 +1462,7 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
 
 }
 
-void State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum){
+std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum, bool _is_update /*true*/){
     u256 total_income_cookies = 0;
     u256 total_income_brcs = 0;
     bool  is_update = false;
@@ -1572,13 +1576,14 @@ void State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blo
         total_income_brcs += round_brcs;
         //CFEE_LOG << " total:" << total_income_brcs << "  "<< total_income_cookies;
     }
-    if(is_update) {
+    if(is_update && _is_update) {
         fee_temp.m_numofrounds = _pair.first;
         m_changeLog.emplace_back(dev::PdSystemAddress, a->getFeeSnapshot());
         a->setCouplingSystemFeeSnapshot(fee_temp);
         a->addBRC(total_income_brcs);
         a->addBalance(total_income_cookies);
     }
+    return std::make_pair(total_income_brcs, total_income_cookies);
 }
 
 void State::createContract(Address const& _address)
