@@ -118,14 +118,26 @@ public:
                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
                                    jsonrpc::JSON_BOOLEAN, NULL),
             &dev::rpc::BrcFace::brc_getBlockByHashI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getBlockDetialByHash", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_BOOLEAN, NULL),
+                &dev::rpc::BrcFace::brc_getBlockDetialByHashI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getBlockByNumber",
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_BOOLEAN, NULL),
             &dev::rpc::BrcFace::brc_getBlockByNumberI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getBlockDetialByNumber",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
+                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_BOOLEAN, NULL),
+             &dev::rpc::BrcFace::brc_getBlockDetialByNumberI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getTransactionByHash", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getTransactionByHashI);
+        this->bindAndAddMethod(
+                jsonrpc::Procedure("brc_getTransactionDetialByHash", jsonrpc::PARAMS_BY_POSITION,
+                                   jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
+                &dev::rpc::BrcFace::brc_getTransactionDetialByHashI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getAnalysisData", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
@@ -134,10 +146,18 @@ public:
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getTransactionByBlockHashAndIndexI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getTransactionDetialByBlockHashAndIndex",
+                                   jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
+                                   jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getTransactionDetialByBlockHashAndIndexI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getTransactionByBlockNumberAndIndex",
                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getTransactionByBlockNumberAndIndexI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getTransactionDetialByBlockNumberAndIndex",
+                                   jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
+                                   jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getTransactionDetialByBlockNumberAndIndexI);
         this->bindAndAddMethod(
             jsonrpc::Procedure("brc_getTransactionReceipt", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
@@ -347,13 +367,25 @@ public:
     {
         response = this->brc_getBlockByHash(request[0u].asString(), request[1u].asBool());
     }
+    inline virtual void brc_getBlockDetialByHashI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getBlockDetialByHash(request[0u].asString(), request[1].asBool());
+    }
     inline virtual void brc_getBlockByNumberI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getBlockByNumber(request[0u].asString(), request[1u].asBool());
     }
+    inline virtual void brc_getBlockDetialByNumberI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getBlockDetialByNumber(request[0u].asString(), request[1u].asBool());
+    }
     inline virtual void brc_getTransactionByHashI(const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getTransactionByHash(request[0u].asString());
+    }
+    inline virtual void brc_getTransactionDetialByHashI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getTransactionDetialByHash(request[0u].asString());
     }
     inline virtual void brc_getAnalysisDataI(const Json::Value& request, Json::Value& response)
     {
@@ -365,11 +397,23 @@ public:
         response = this->brc_getTransactionByBlockHashAndIndex(
             request[0u].asString(), request[1u].asString());
     }
+    inline virtual void brc_getTransactionDetialByBlockHashAndIndexI(
+            const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getTransactionDetialByBlockHashAndIndex(
+                request[0u].asString(), request[1u].asString());
+    }
     inline virtual void brc_getTransactionByBlockNumberAndIndexI(
         const Json::Value& request, Json::Value& response)
     {
         response = this->brc_getTransactionByBlockNumberAndIndex(
             request[0u].asString(), request[1u].asString());
+    }
+    inline virtual void brc_getTransactionDetialByBlockNumberAndIndexI(
+            const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getTransactionDetialByBlockNumberAndIndex(
+                request[0u].asString(), request[1u].asString());
     }
     inline virtual void brc_getTransactionReceiptI(
         const Json::Value& request, Json::Value& response)
@@ -523,12 +567,19 @@ public:
     virtual std::string brc_getCode(const std::string& param1, const std::string& param2) = 0;
     virtual std::string brc_call(const Json::Value& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getBlockByHash(const std::string& param1, bool param2) = 0;
+    virtual Json::Value brc_getBlockDetialByHash(const std::string &param1, bool param2) = 0;
     virtual Json::Value brc_getBlockByNumber(const std::string& param1, bool param2) = 0;
+    virtual Json::Value brc_getBlockDetialByNumber(const std::string& param1, bool param2) = 0;
     virtual Json::Value brc_getTransactionByHash(const std::string& param1) = 0;
+    virtual Json::Value brc_getTransactionDetialByHash(const std::string& param1) = 0;
     virtual Json::Value brc_getAnalysisData(const std::string& param1) = 0;
     virtual Json::Value brc_getTransactionByBlockHashAndIndex(
         const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getTransactionDetialByBlockHashAndIndex(
+        const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getTransactionByBlockNumberAndIndex(
+        const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getTransactionDetialByBlockNumberAndIndex(
         const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getTransactionReceipt(const std::string& param1) = 0;
     virtual Json::Value brc_getUncleByBlockHashAndIndex(

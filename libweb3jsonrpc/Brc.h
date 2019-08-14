@@ -63,7 +63,7 @@ public:
 	virtual std::string brc_getBallot(std::string const& _address, std::string const& _blockNumber) override;
 	virtual std::string brc_getStorageAt(std::string const& _address, std::string const& _position, std::string const& _blockNumber) override;
 	virtual std::string brc_getStorageRoot(std::string const& _address, std::string const& _blockNumber) override;
-	virtual std::string brc_getTransactionCount(std::string const& _addressgett, std::string const& _blockNumber) override;
+	virtual std::string brc_getTransactionCount(std::string const& _address, std::string const& _blockNumber) override;
 	virtual Json::Value brc_pendingTransactions() override;
 	virtual Json::Value brc_getBlockTransactionCountByHash(std::string const& _blockHash) override;
 	virtual Json::Value brc_getBlockTransactionCountByNumber(std::string const& _blockNumber) override;
@@ -73,10 +73,15 @@ public:
 	virtual std::string brc_call(Json::Value const& _json, std::string const& _blockNumber) override;
 	virtual std::string brc_estimateGas(Json::Value const& _json) override;
 	virtual Json::Value brc_getBlockByHash(std::string const& _blockHash, bool _includeTransactions) override;
+	virtual Json::Value brc_getBlockDetialByHash(std::string const& _blockHash, bool _includeTransactions) override;
 	virtual Json::Value brc_getBlockByNumber(std::string const& _blockNumber, bool _includeTransactions) override;
+	virtual Json::Value brc_getBlockDetialByNumber(std::string const& _blockNumber, bool _includeTransactions) override;
 	virtual Json::Value brc_getTransactionByHash(std::string const& _transactionHash) override;
+	virtual Json::Value brc_getTransactionDetialByHash(std::string const& _transactionHash) override;
 	virtual Json::Value brc_getTransactionByBlockHashAndIndex(std::string const& _blockHash, std::string const& _transactionIndex) override;
+	virtual Json::Value brc_getTransactionDetialByBlockHashAndIndex(std::string const& _blockHash, std::string const& _transactionIndex) override;
 	virtual Json::Value brc_getTransactionByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _transactionIndex) override;
+	virtual Json::Value brc_getTransactionDetialByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _transactionIndex) override;
 	virtual Json::Value brc_getTransactionReceipt(std::string const& _transactionHash) override;
 	virtual Json::Value brc_getUncleByBlockHashAndIndex(std::string const& _blockHash, std::string const& _uncleIndex) override;
 	virtual Json::Value brc_getUncleByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _uncleIndex) override;
