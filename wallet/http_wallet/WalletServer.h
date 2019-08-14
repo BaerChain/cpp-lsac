@@ -23,6 +23,9 @@ public:
     /// transaction sign and return sing_data
     void sign_transaction(const Json::Value & request, Json::Value & respone);
 
+    /// new address by
+    void new_address(const  Json::Value & request, Json::Value & respone);
+
 private:
     std::string m_send_url;
 

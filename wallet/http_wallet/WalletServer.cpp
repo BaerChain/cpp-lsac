@@ -18,6 +18,10 @@ wallet::WalletServer::WalletServer(HttpServer &server, std::string _send_url):Ab
                                      "param", JSON_OBJECT, NULL),
                            &WalletServer::sign_transaction_send);
 
+//    this->bindAndAddMethod(Procedure("new_address", PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL), &WalletServer::new_address);
+
+    this->bindAndAddMethod(Procedure("new_address", PARAMS_BY_POSITION, JSON_OBJECT, "param1", JSON_STRING, NULL),
+                           &WalletServer::new_address);
 }
 
 void wallet::WalletServer::sign_transaction(const Json::Value &request, Json::Value &respone) {
@@ -90,4 +94,37 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
 void wallet::WalletServer::testhello(const Json::Value &request, Json::Value &respone){
     std::cout<< "test:"<< request["test"].asString()<<  std::endl;
     respone = "test..." + request["test"].asString();
+}
+
+void wallet::WalletServer::new_address(const Json::Value & request, Json::Value & respone) {
+
+    try {
+        int create_number = std::atol(request[0u].asString().data());
+
+        if(create_number <= 0){
+            respone["error"] = "numberm must > 0.";
+            return;
+        }
+        Json::Value result;
+
+        if(create_number > 0){
+            for(int i = 0 ; i < create_number; i++){
+                auto key_pair = KeyPair::create();
+                auto sec = key_pair.secret();
+
+                Json::Value value;
+                value["pri-key-base58"] = dev::crypto::to_base58((char*)sec.data(), 32);
+                value["pri-key-bigInt"] = toHex(sec.ref());
+                value["address"] = toHex(key_pair.address());
+                value["pub-key"] = toHex(key_pair.pub());
+
+                result.append(value);
+            }
+        }
+
+        respone["result"] = result;
+    }catch (...){
+        respone["error"] = "invalid format";
+    }
+
 }
