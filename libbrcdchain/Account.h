@@ -303,7 +303,7 @@ struct CouplingSystemfee
 
     void streamRLP(RLPStream &_rlp) const
     {
-        _rlp.appendList(4);
+        _rlp.appendList(6);
         RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
         for(auto const& it : m_Feesnapshot)
         {
@@ -863,6 +863,8 @@ public:
     void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received;}
     ReceivedCookies const& get_received_cookies() const { return  m_received_cookies;}
     void init_received_cookies(bytes const& _b) { m_received_cookies.populate(_b);}
+    void addSetreceivedCookie(u256 _round, Address const& _addr, std::pair<u256, u256> _pair){ m_received_cookies.up_received_cookies(_round, _addr, _pair); changed();}
+    void updateNumofround(u256 _rounds){ m_received_cookies.updataNumberofRound(_rounds); changed();}
     /// 1 calculate old_rounds and now_rounds is before not has calculated
     /// 2 update m_received_cookies
     ///@return <is_update, get_total_cookies>

@@ -161,8 +161,8 @@ void Host::doneWorking()
         m_ioService.poll();
 
     // stop capabilities (brc: stops syncing or block/tx broadcast)
-    for (auto const& h: m_capabilities)
-        h.second->onStopping();
+//    for (auto const& h: m_capabilities)
+//        h.second.ca;
 
     // disconnect pending handshake, before peers, as a handshake may create a peer
     for (unsigned n = 0;; n = 0)
@@ -319,8 +319,8 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
             if (itCap == m_capabilities.end())
                 return session->disconnect(IncompatibleProtocol);
 
-            auto capability = itCap->second;
-            offset = itCap->second->offset();
+            auto capability = itCap->second.capability;
+            offset = itCap->second.capability->offset();
             session->registerCapability(capDesc, offset, capability);
 
             cnetlog << "New session for capability " << capDesc.first << "; idOffset: " << offset;
@@ -493,7 +493,7 @@ void Host::registerCapability(std::shared_ptr<CapabilityFace> const& _cap)
 void Host::registerCapability(
     std::shared_ptr<CapabilityFace> const& _cap, std::string const& _name, u256 const& _version)
 {
-    m_capabilities[std::make_pair(_name, _version)] = _cap;
+    m_capabilities[std::make_pair(_name, _version)] = {_cap, std::make_shared<ba::steady_timer>(m_ioService)};
 }
 
 void Host::addPeer(NodeSpec const& _s, PeerType _t)
@@ -751,8 +751,7 @@ void Host::startedWorking()
     }
 
     // start capability threads (ready for incoming connections)
-    for (auto const& h: m_capabilities)
-        h.second->onStarting();
+    startCapabilities();
 
     // try to open acceptor (todo: ipv6)
     int port = Network::tcp4Listen(m_tcp4Acceptor, m_netConfig);
@@ -794,6 +793,36 @@ void Host::doWork()
         cwarn << "Network Restart is Recommended.";
     }
 }
+
+void Host::startCapabilities()
+{
+    for (auto const& itCap : m_capabilities)
+    {
+        scheduleCapabilityWorkLoop(*itCap.second.capability, itCap.second.backgroundWorkTimer);
+    }
+}
+
+void Host::scheduleCapabilityWorkLoop(CapabilityFace& _cap, shared_ptr<ba::steady_timer> _timer)
+{
+    _timer->expires_from_now(_cap.backgroundWorkInterval());
+    _timer->async_wait([this, _timer, &_cap](boost::system::error_code _ec) {
+        if (_timer->expires_at() == c_steadyClockMin || _ec == boost::asio::error::operation_aborted)
+        {
+            LOG(m_logger) << "Timer was probably cancelled for capability: " ;//<< _cap.descriptor();
+            return;
+        }
+        else if (_ec)
+        {
+            LOG(m_logger) << "Timer error detected for capability: ";// << _cap.descriptor();
+            return;
+        }
+
+        _cap.doBackgroundWork();
+        scheduleCapabilityWorkLoop(_cap, move(_timer));
+    });
+}
+
+
 
 void Host::keepAlivePeers()
 {

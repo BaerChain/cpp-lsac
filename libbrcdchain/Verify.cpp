@@ -14,6 +14,8 @@ bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, co
     for(auto const& val: state.vote_data(SysVarlitorAddress)){
         minners.push_back(val.m_addr);
     }
+    if(minners.empty() || records.empty())
+        return false;
     uint32_t  offset = (block_time / varlitorInterval_time) % minners.size();
 
     int beyond_num =0;      //out_of minner_rounds  if minner is offline , the beyond = time / (varlitorInterval_time * config::varlitorNum())

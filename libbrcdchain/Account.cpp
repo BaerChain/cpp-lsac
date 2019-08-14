@@ -211,7 +211,6 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
 
 void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vector<PollData>const& p_datas)
 {
-    CFEE_LOG << " inito tryRecordSnapshot...";
     if (_rounds <= m_couplingSystemFee.m_rounds)
         return;
 //    if(!m_couplingSystemFee.m_Feesnapshot.count(_rounds - 1))
@@ -229,7 +228,6 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     }
     m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
     changed();
-    CFEE_LOG << " out tryRecordSnapshot...";
 }
 
 

@@ -17,6 +17,8 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <boost/asio/steady_timer.hpp>
+
 namespace ba = boost::asio;
 namespace bi = ba::ip;
 
@@ -107,7 +109,7 @@ class Host: public Worker
 {
     friend class HostNodeTableHandler;
     friend class RLPXHandshake;
-    
+
     friend class Session;
 
 public:
@@ -143,13 +145,13 @@ public:
 
     bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
     CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
-
+    bool haveCapabilities() const { return !caps().empty(); }
     /// Add a potential peer.
     void addPeer(NodeSpec const& _s, PeerType _t);
 
     /// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
     void addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint);
-    
+
     /// Create Peer and attempt keeping peer connected.
     void requirePeer(NodeID const& _node, NodeIPEndpoint const& _endpoint);
 
@@ -158,13 +160,13 @@ public:
 
     /// Note peer as no longer being required.
     void relinquishPeer(NodeID const& _node);
-    
+
     /// Set ideal number of peers.
     void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
     /// Set multipier for max accepted connections.
     void setPeerStretch(unsigned _n) { m_stretchPeers = _n; }
-    
+
     /// Get peer information.
     PeerSessionInfos peerSessionInfo() const;
 
@@ -202,7 +204,7 @@ public:
 
     /// @returns if network is started and interactive.
     bool haveNetwork() const { Guard l(x_runTimer); Guard ll(x_nodeTable); return m_run && !!m_nodeTable; }
-    
+
     /// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
     void startPeerSession(Public const& _id, RLP const& _hello, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s);
 
@@ -242,11 +244,19 @@ protected:
     /// Deserialise the data and populate the set of known peers.
     void restoreNetwork(bytesConstRef _b);
 
+    struct CapabilityRuntime
+    {
+        std::shared_ptr<CapabilityFace> capability;
+        std::shared_ptr<ba::steady_timer> backgroundWorkTimer;
+    };
+
+
+
 private:
     enum PeerSlotType { Egress, Ingress };
-    
+
     unsigned peerSlots(PeerSlotType _type) { return _type == Egress ? m_idealPeerCount : m_idealPeerCount * m_stretchPeers; }
-    
+
     bool havePeerSession(NodeID const& _id) { return !!peerSession(_id); }
 
     /// Determines and sets m_tcpPublic to publicly advertised address.
@@ -256,12 +266,18 @@ private:
 
     /// Returns true if pending and connected peer count is less than maximum
     bool peerSlotsAvailable(PeerSlotType _type = Ingress);
-    
+
     /// Ping the peers to update the latency information and disconnect peers which have timed out.
     void keepAlivePeers();
 
     /// Disconnect peers which didn't respond to keepAlivePeers ping prior to c_keepAliveTimeOut.
     void disconnectLatePeers();
+
+    /// Start registered capabilities, typically done on network start
+    void startCapabilities();
+
+    /// Schedule's a capability's work loop on the network thread
+    void scheduleCapabilityWorkLoop(CapabilityFace& _cap, std::shared_ptr<ba::steady_timer> _timer);
 
     /// Called only from startedWorking().
     void runAcceptor();
@@ -318,7 +334,7 @@ private:
 
     /// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
     std::unordered_map<NodeID, std::shared_ptr<Peer>> m_peers;
-    
+
     /// Peers we try to connect regardless of p2p network.
     std::set<NodeID> m_requiredPeers;
     mutable Mutex x_requiredPeers;
@@ -327,7 +343,7 @@ private:
     /// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
     mutable std::unordered_map<NodeID, std::weak_ptr<SessionFace>> m_sessions;
     mutable RecursiveMutex x_sessions;
-    
+
     std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
     Mutex x_connecting;													///< Mutex for m_connecting.
 
@@ -335,7 +351,7 @@ private:
     unsigned m_stretchPeers = 7;										///< Accepted connection multiplier (max peers = ideal*stretch).
 
     /// Each of the capabilities we support.
-    std::map<CapDesc, std::shared_ptr<CapabilityFace>> m_capabilities;
+    std::map<CapDesc, CapabilityRuntime> m_capabilities;
 
     /// Deadline timers used for isolated network events. GC'd by run.
     std::list<std::unique_ptr<boost::asio::deadline_timer>> m_timers;

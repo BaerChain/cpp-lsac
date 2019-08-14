@@ -287,4 +287,6 @@ int64_t utcTime();
 
 int64_t utcTimeMilliSec();
 
+    static const auto c_steadyClockMin = std::chrono::steady_clock::time_point::min();
+
 }

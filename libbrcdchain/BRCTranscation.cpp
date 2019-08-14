@@ -377,14 +377,11 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
     }
 
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
-    CFEE_LOG << ret_pair.second;
     VoteSnapshot _voteSnapshot;
     if (ret_pair.first)
         _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
     else
         _voteSnapshot = a->vote_snashot();
-
-    CFEE_LOG << _voteSnapshot;
 //    u256 _numberofrounds = _voteSnapshot.numberofrounds;
     if (_voteSnapshot.m_voteDataHistory.size() == 0 && a->vote_data().size() == 0)
     {
@@ -409,11 +406,24 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("isMainNode fasle :The node that this account votes does not have a super node")));
         }
     }else {
-        bool _status = true;
+        bool _status = false;
 
         for (; _voteIt != _voteSnapshot.m_voteDataHistory.end(); _voteIt++)
         {
-
+            if(_minerSnap.count(_voteIt->first))
+            {
+                std::vector<PollData> _mainNodeV = _minerSnap[_voteIt->first];
+                if(isMainNode(_voteIt->second, _mainNodeV))
+                {
+                    _status = true;
+                }
+            }else{
+                std::vector<PollData> _nowMiner = m_state.vote_data(SysVarlitorAddress);
+                if(isMainNode(_voteIt->second, _nowMiner))
+                {
+                    _status = true;
+                }
+            }
         }
 
         if(_status == false)
@@ -445,10 +455,6 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     bool  is_received = false;
 
-    CFEE_LOG << "_numofRounds:" << _numofRounds;
-    CFEE_LOG << "noW_rounds:" << _pair.first;
-    CFEE_LOG << "_voteSnapshot:" << _voteSnapshot;
-    CFEE_LOG << "miners:" << miners->vote_data();
     for(int i= (int)_numofRounds ; i< _pair.first; i++){
         if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
             for(auto const& val: _map[i]){

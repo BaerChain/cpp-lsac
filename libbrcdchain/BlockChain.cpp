@@ -170,8 +170,10 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
     if(m_cached_blocks.size() > 0){
         cwarn << "rollback number: " << info().number();
         remove_blocks_from_database(m_cached_blocks[position], _stateDB, _stateExDB);
-        auto last_config_hash = numberHash(info().number() - m_params.config_blocks);
-        cwarn << "close " << info().number() - m_params.config_blocks << " hash " << last_config_hash;
+        int64_t rollback_number = std::min((size_t)m_params.config_blocks, m_cached_blocks[position].size());
+        auto last_config_hash = numberHash(info().number() - rollback_number);
+        cwarn << "close " << info().number() - rollback_number << " hash " << last_config_hash;
+
         m_extrasDB->insert(db::Slice("best"), db::Slice((char const *) &last_config_hash, 32));
 
         //remove children
@@ -385,6 +387,9 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
             t.restart();
         }
+        if( !(d % 10000)){
+            cwarn << "rebuild block number " << d;
+        }
         try {
             //cwarn << "start_num "<<d;
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
@@ -396,7 +401,7 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             if (bi.parentHash() != lastHash) {
                 cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
                       << "; expected" << lastHash << "#" << (d - 1);
-                return;
+                break;
             }
             lastHash = bi.hash();
             import(b, s.db(), s.exdb(), 0);
@@ -840,19 +845,22 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     //check node down
     {
 
-        // Block ret(bc(), m_stateDB, m_StateExDB);
-        //        ret.populateFromChain(bc(), _block);
-        //        return ret;
-        Block s(*this, _db, _exdb);
-        //s.populateFromChain(*this, currentHash());
-        s.populateFromChain(*this, _block.info.parentHash());
 
-        State &state_db = s.mutableState();
-        auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
-        auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
+        std::vector<PollData> exe_miners;
+        std::vector<PollData> standby_miners;
+        auto account_map = m_params.genesisState;
+        if(account_map.count(SysVarlitorAddress)){
+            exe_miners = account_map[SysVarlitorAddress].vote_data();
+        }
+        if(account_map.count(SysCanlitorAddress)){
+            standby_miners = account_map[SysCanlitorAddress].vote_data();
+        }
+
         assert(exe_miners.size() != 0);
         assert(standby_miners.size() != 0);
 
+        Block s(0);
+        State &state_db = s.mutableState();
 
         ///verify the miner Legitimacy
         if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
@@ -871,11 +879,11 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             }
             ///verify the standby Legitimacy
             Verify verify_creater;
-            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
-               // throw
-                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
+//            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+//               // throw
+//                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
         }
 
     }
@@ -1159,12 +1167,22 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
         if(m_blocksDB->exists(remove_hash)){
             m_blocksDB->kill(remove_hash);
         }
-        else if(m_extrasDB->exists(remove_hash)){
-            m_extrasDB->kill(remove_hash);
+
+        try {
+            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
+            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
+            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
+
+            m_extrasDB->commit(std::move(extrasWriteBatch));
+        }catch (Exception &ex){
+            cwarn << "remove_blocks_from_database " << ex.what();
+        }catch (...){
+            cwarn << "remove m_blocksDB error";
         }
-        else{
-            cwarn << "remove block data error , hash : " << itr.info.hash() << " height: " << itr.info.number();
-        }
+
+
     }
 
 
@@ -1259,8 +1277,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),(db::Slice) dev::ref(m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
-        extrasWriteBatch->insert(
-                toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
+        extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
 
         BlockLogBlooms blb;
         for (auto i: RLP(_receipts))
