@@ -873,10 +873,90 @@ Json::Value State::queryExchangeReward(Address const& _address) {
     return res;
 }
 
-Json::Value State::queryBlcokReward(Address const& _address) {
-    Json::Value res;
-    res["queryBlcokReward"] = "";
-    return res;
+Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum) {
+    auto a = account(_address);
+    ReceivedCookies _receivedCookies = a->get_received_cookies();
+    CFEE_LOG << "before : " << _receivedCookies << endl;
+    ReceivedCookies _oldreceivedCookies = a->get_received_cookies();
+    VoteSnapshot _votesnapshot = a->vote_snashot();
+    std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
+    u256 _numberofrounds = config::getvoteRound(_receivedCookies.m_numberofRound);
+    u256 _cookieFee = 0;
+    u256 _isMainNodeFee = 0;
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(_numberofrounds - 1);
+
+
+    // If you receive the account, you will receive the income from the block node account.
+
+    //Receive an account to receive voting dividends
+    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
+    {
+        std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_voteDataIt->first);
+        auto _pollNum = _pollDataIt->second;
+        if(_pollNum > 0)
+        {
+            u256 _pollFee = 0;
+            if(_pollDataIt->first + 1 < _pair.first)
+            {
+                if(_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1))
+                {
+                    _pollFee = _votesnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1)->second;
+                }
+            }else{
+                _pollFee = a->CookieIncome();
+            }
+            CFEE_LOG << "_pollfee:" << _pollFee << endl;
+            _isMainNodeFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum);
+            CFEE_LOG << "_cookieFee:" << _cookieFee << endl;
+            CFEE_LOG << _receivedCookies;
+        }
+        for(auto _voteIt : _voteDataIt->second)
+        {
+            auto _pollAddr = account(_voteIt.first);
+            try_new_vote_snapshot(_voteIt.first, _blockNum);
+            VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
+            auto _pollMap = _pollVoteSnapshot.m_pollNumHistory;
+            u256 _pollNum = _pollMap.find(_voteDataIt->first)->second;
+            u256 _pollCookieFee = 0;
+            u256 _receivedNum = 0;
+            u256 _pollFeeIncome = 0;
+            u256 _numTotalFee = 0;
+            if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
+            {
+                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
+                if(_addrReceivedCookie.count(_voteIt.first))
+                {
+                    _receivedNum += _addrReceivedCookie.find(_voteIt.first)->second.second;
+                }
+            }
+            if(_voteDataIt->first + 1 < _pair.first)
+            {
+                if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
+                {
+                    _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
+                }
+            }else{
+                _pollCookieFee = _pollAddr->CookieIncome();
+            }
+            CFEE_LOG << "_voteDataIt: _receivedNum: " << _receivedNum << endl;
+            CFEE_LOG << "_voteDataIt :_pollCookieFee:" << _pollCookieFee << endl;
+            _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
+            CFEE_LOG << "_voteDataIt :_cookieFee:" << _cookieFee << endl;
+
+            if(_voteIt.first == _address)
+            {
+                _numTotalFee += _pollFeeIncome + _isMainNodeFee - _receivedNum;
+            }else{
+                _numTotalFee += _pollFeeIncome - _receivedNum;
+            }
+            _cookieFee += _numTotalFee;
+            a->addSetreceivedCookie(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
+        }
+    }
+    Json::Value _retVal;
+    _retVal["CookieFeeIncome"] = toJS(_cookieFee);
+    return  _retVal;
+
 }
 
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize) {
