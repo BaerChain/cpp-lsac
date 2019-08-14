@@ -1171,7 +1171,7 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
-            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
+//            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
 
             m_extrasDB->commit(std::move(extrasWriteBatch));
         }catch (Exception &ex){
