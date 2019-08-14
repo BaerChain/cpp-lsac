@@ -170,8 +170,10 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
     if(m_cached_blocks.size() > 0){
         cwarn << "rollback number: " << info().number();
         remove_blocks_from_database(m_cached_blocks[position], _stateDB, _stateExDB);
-        auto last_config_hash = numberHash(info().number() - m_params.config_blocks);
-        cwarn << "close " << info().number() - m_params.config_blocks << " hash " << last_config_hash;
+        int64_t rollback_number = std::min((size_t)m_params.config_blocks, m_cached_blocks[position].size());
+        auto last_config_hash = numberHash(info().number() - rollback_number);
+        cwarn << "close " << info().number() - rollback_number << " hash " << last_config_hash;
+
         m_extrasDB->insert(db::Slice("best"), db::Slice((char const *) &last_config_hash, 32));
 
         //remove children

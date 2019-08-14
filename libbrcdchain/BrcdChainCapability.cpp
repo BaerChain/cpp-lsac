@@ -275,7 +275,7 @@ public:
             blockHash = nextHash(blockHash, step);
         }
         if(hashes.size() == 0 ||  hashes.size() != _maxHeaders){
-            cwarn << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash <<  " response hashes.size() " << hashes.size();
+            cnote << "request " << _blockId.toInt<bigint>() <<  "  _maxHeaders " << _maxHeaders << " blockHash " << blockHash <<  " response hashes.size() " << hashes.size();
         }
 
         for (unsigned i = 0; i < hashes.size() && rlp.size() < c_maxPayload; ++i)
