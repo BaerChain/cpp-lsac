@@ -2035,7 +2035,7 @@ void dev::brc::State::transferBallotSell(Address const &_from, u256 const &_valu
 }
 
 int64_t dev::brc::State::last_block_record(Address const& _id) const{
-    auto a = account(SysBolckCreateRecordAddress);
+    auto a = account(SysBlockCreateRecordAddress);
     if(!a){
         return 0;
     }
@@ -2044,10 +2044,10 @@ int64_t dev::brc::State::last_block_record(Address const& _id) const{
 }
 
 void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<dev::u256, int64_t> &value, uint32_t varlitor_time) {
-    auto a = account(SysBolckCreateRecordAddress);
+    auto a = account(SysBlockCreateRecordAddress);
     if(!a){
-        createAccount(SysBolckCreateRecordAddress, {0});
-        a = account(SysBolckCreateRecordAddress);
+        createAccount(SysBlockCreateRecordAddress, {0});
+        a = account(SysBlockCreateRecordAddress);
     }
     int64_t _time = a->last_records(_id);
     a->set_create_record(std::make_pair(_id, value.second));
@@ -2077,7 +2077,7 @@ void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::
 }
 
 BlockRecord dev::brc::State::block_record() const {
-    auto  a= account(SysBolckCreateRecordAddress);
+    auto  a= account(SysBlockCreateRecordAddress);
     if (!a)
         return BlockRecord();
     return  a->block_record();
