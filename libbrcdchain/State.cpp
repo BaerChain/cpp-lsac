@@ -1504,6 +1504,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     /// loop any not received rounds . to now rounds
     for(int i=start_round; i<= _pair.first; i++) {
         is_now_rounds = (i == _pair.first);
+        CFEE_LOG << "start into rounds:"<< i;
         u256 round_cookies = 0;
         u256 round_brcs = 0;
         u256 _totalPoll = 0;
@@ -1532,9 +1533,11 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 old_summary = std::make_pair(0,0);
                 continue;
             }
-
+            CFEE_LOG << "summary:" << summary;
+            CFEE_LOG<< "_totalPoll:"<<_totalPoll;
             //vote log for other
             std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
+            CFEE_LOG << "vote_log" << vote_log;
             /// loop all
             for(auto const& val: check_creater){
                 if(val.m_poll == 0 || _totalPoll ==0)
@@ -1544,6 +1547,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
                 u256 _income_cookies =0;
                 u256 _income_brcs = 0;
+                CFEE_LOG << "node_summary:" << node_summary_cookies << "  "<<node_summary_cookies;
                 std::pair<u256, u256> _old_get; //<brc, cookies>
 
                 if (received_sanp.m_received_cookies.count(i) && received_sanp.m_received_cookies[i].count(val.m_addr)){
