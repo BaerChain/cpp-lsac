@@ -455,10 +455,15 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     bool  is_received = false;
 
+    CFEE_LOG << "_voteSnapshot:" << _voteSnapshot;
     for(int i= (int)_numofRounds ; i< _pair.first; i++){
         if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
             for(auto const& val: _map[i]){
                 if (_voteSnapshot.m_voteDataHistory[i-1].count(val.m_addr) && _voteSnapshot.m_voteDataHistory[i-1][val.m_addr] !=0){
+                    is_received = true;
+                    return;
+                }
+                if (_from == val.m_addr){
                     is_received = true;
                     return;
                 }
@@ -474,7 +479,7 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
             if (num <= 0)
                 break;
             --num;
-            if (_voteSnapshot.m_voteDataHistory[_pair.first-1].count(val.m_addr)){
+            if (_voteSnapshot.m_voteDataHistory[_pair.first-1].count(val.m_addr) || _from == val.m_addr){
                 is_received = true;
                 break;
             }

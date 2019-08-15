@@ -868,6 +868,7 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 }
 
 Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockNum) {
+    try_new_vote_snapshot(_address, _blockNum);
     std::pair<u256 , u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t)_blockNum, false);
     Json::Value res;
     Json::Value ret;
