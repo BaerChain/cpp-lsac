@@ -15,8 +15,8 @@ using namespace dev;
 using namespace dev::brc;
 
 unsigned const c_maxPeerUknownNewBlocks = 512; /// Max number of unknown new blocks peer can give us
-unsigned const c_maxRequestHeaders = 512;
-unsigned const c_maxRequestBodies = 512;
+unsigned const c_maxRequestHeaders = 64;
+unsigned const c_maxRequestBodies = 64;
 
 
 std::ostream& dev::brc::operator<<(std::ostream& _out, SyncStatus const& _sync)

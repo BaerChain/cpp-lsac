@@ -295,6 +295,7 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
 
     m_lastBlockNumber = number(m_lastBlockHash);
 
+    cwarn << "find last block number " << isKnown(m_lastBlockHash);
     ctrace << "Opened blockchain DB. Latest: " << currentHash()
            << (lastMinor == c_minorProtocolVersion ? "(rebuild not needed)" : "*** REBUILD NEEDED ***");
     return lastMinor;
