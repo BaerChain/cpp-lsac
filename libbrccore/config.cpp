@@ -8,11 +8,11 @@ std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
     if (_blockNum == 0)
         return  std::pair<uint32_t, Votingstage>(1, Votingstage::VOTE);
-    if(_blockNum > 0 && _blockNum < 80){
-        if(_blockNum > 0 && _blockNum < 60)
+    if(_blockNum > 0 && _blockNum < 10000){
+        if(_blockNum > 0 && _blockNum < 10000)
         {
             return std::pair<uint32_t , Votingstage>(2, Votingstage::RECEIVINGINCOME);
-        }else if(_blockNum >= 60 && _blockNum < 80)
+        }else if(_blockNum >= 10000 && _blockNum < 20000)
         {
             return std::pair<uint32_t, Votingstage>(2, Votingstage::VOTE);
         }

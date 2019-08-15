@@ -50,7 +50,7 @@ BlockNumber jsToBlockNum(std::string const& _js)
     else if (_js == "pending")
         return PendingBlock;
     else
-        return (unsigned)jsToInt(_js);
+        return (unsigned)jsToInt(_js);     
 }
 
 uint8_t jsToOrderEnum(std::string const& _js)

@@ -385,8 +385,8 @@ public:
 
 	std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
 
-    Json::Value queryExchangeReward(Address const& _address);
-    Json::Value queryBlcokReward(Address const& _address);
+    Json::Value queryExchangeReward(Address const& _address, unsigned _blockNum);
+    Json::Value queryBlcokReward(Address const& _address, unsigned _blockNum);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -421,6 +421,9 @@ public:
 	void receivingIncome(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum);
 	void receivingBlockFeeIncome(Address const& _addr, int64_t _blockNum);
 	void receivingPdFeeIncome(Address const& _addr, int64_t _blockNum);
+	///@return <brc, cookies>
+	///@param is_update if true will up state_data
+	std::pair<u256, u256> anytime_receivingPdFeeIncome(Address const& _addr, int64_t _blockNum , bool _is_update = true);
 
 
 	void addCooikeIncomeNum(Address const& _addr, u256 const& _value);
