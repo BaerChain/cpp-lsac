@@ -14,7 +14,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-unsigned const c_maxPeerUknownNewBlocks = 512; /// Max number of unknown new blocks peer can give us
+unsigned const c_maxPeerUknownNewBlocks = 1024; /// Max number of unknown new blocks peer can give us
 unsigned const c_maxRequestHeaders = 512;
 unsigned const c_maxRequestBodies = 512;
 

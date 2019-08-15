@@ -178,10 +178,14 @@ void BlockChain::clean_cached_blocks(const dev::OverlayDB &_stateDB, dev::brc::e
 
         //remove children
         std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
-        auto last_block_detail = m_details[last_config_hash];
-        last_block_detail.children.clear();
-        extrasWriteBatch->insert(toSlice(last_config_hash, ExtraDetails), (db::Slice) dev::ref(last_block_detail.rlp()));
+        auto last_block_header = info(last_config_hash);
+        auto pd = details(last_block_header.parentHash());
+        BlockDetails bd(last_block_header.number(), last_block_header.difficulty(), last_block_header.parentHash(), {});
+        extrasWriteBatch->insert(toSlice(last_config_hash, ExtraDetails), (db::Slice) dev::ref(bd.rlp()));
+
+
         m_extrasDB->commit(std::move(extrasWriteBatch));
+
 
         //rollback exdb
         _stateExDB.remove_all_session();
@@ -293,6 +297,7 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
 
     m_lastBlockNumber = number(m_lastBlockHash);
 
+    cwarn << "last block number " << m_lastBlockNumber  << "   find all data: " << isKnown(m_lastBlockHash);
     ctrace << "Opened blockchain DB. Latest: " << currentHash()
            << (lastMinor == c_minorProtocolVersion ? "(rebuild not needed)" : "*** REBUILD NEEDED ***");
     return lastMinor;
@@ -395,7 +400,11 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
                                     .value);
-
+            if(b.size() == 0){
+                cwarn << "cant find block number " << d;
+                cwarn << "please connect mainnet sync blocks.";
+                break;
+            }
             BlockHeader bi(&b);
 
             if (bi.parentHash() != lastHash) {
@@ -408,19 +417,19 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         }
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
         catch (...) {
             // Failed to import - stop here.
             cerror <<  "rebuild blocks error.";
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
 
         if (_progress)
@@ -1165,17 +1174,20 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
     for(const auto &itr : blocks){
         const auto &remove_hash = toSlice(itr.info.hash());
         if(m_blocksDB->exists(remove_hash)){
-            m_blocksDB->kill(remove_hash);
+//            m_blocksDB->kill(remove_hash);
+            cwarn << "remove log " << itr.info.hash() << " number " << itr.info.number();
+        }
+        else{
+            cwarn << "cant find  remove log " << itr.info.hash() << " number " << itr.info.number();
         }
 
-        try {
-            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
-            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
 
-            m_extrasDB->commit(std::move(extrasWriteBatch));
+        try {
+//            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
+//            m_extrasDB->commit(std::move(extrasWriteBatch));
         }catch (Exception &ex){
             cwarn << "remove_blocks_from_database " << ex.what();
         }catch (...){
@@ -1277,6 +1289,11 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),(db::Slice) dev::ref(m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
+
+        if(m_extrasDB->exists(toSlice(_block.info.hash(), ExtraDetails))){
+            cwarn << "exits " << _block.info.hash() << "  number " << _block.info.number();
+        }
+
         extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
 
         BlockLogBlooms blb;
@@ -1307,6 +1324,9 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         // just tack it on afterwards.
         unsigned commonIndex;
         tie(route, common, commonIndex) = treeRoute(last, _block.info.parentHash());
+        if(last != _block.info.parentHash()){
+            cwarn << "insert block route  last " <<  last << "   paraentHash() " << _block.info.parentHash();
+        }
         route.push_back(_block.info.hash());
 
         // Most of the time these two will be equal - only when we're doing a chain revert will they not be
@@ -1899,7 +1919,7 @@ bytes BlockChain::headerData(h256 const &_hash) const {
 
     string const d = m_blocksDB->lookup(toSlice(_hash));
     if (d.empty()) {
-        cwarn << "Couldn't find requested block:" << _hash;
+        cwarn << "Couldn't find requested block headerData:" << _hash;
         return bytes();
     }
 
