@@ -455,7 +455,6 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     bool  is_received = false;
 
-    CFEE_LOG << "_voteSnapshot:" << _voteSnapshot;
     for(int i= (int)_numofRounds ; i< _pair.first; i++){
         if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
             for(auto const& val: _map[i]){
