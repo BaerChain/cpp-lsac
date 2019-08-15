@@ -297,7 +297,7 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
 
     m_lastBlockNumber = number(m_lastBlockHash);
 
-    cwarn << "find last block number " << isKnown(m_lastBlockHash);
+    cwarn << "last block number " << m_lastBlockNumber  << "   find all data: " << isKnown(m_lastBlockHash);
     ctrace << "Opened blockchain DB. Latest: " << currentHash()
            << (lastMinor == c_minorProtocolVersion ? "(rebuild not needed)" : "*** REBUILD NEEDED ***");
     return lastMinor;
@@ -1178,8 +1178,6 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
             extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
-//            extrasWriteBatch->kill(toSlice(itr.info.parentHash(), ExtraDetails));
-
             m_extrasDB->commit(std::move(extrasWriteBatch));
         }catch (Exception &ex){
             cwarn << "remove_blocks_from_database " << ex.what();
