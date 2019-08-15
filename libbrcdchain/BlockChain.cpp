@@ -1171,7 +1171,12 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
         const auto &remove_hash = toSlice(itr.info.hash());
         if(m_blocksDB->exists(remove_hash)){
             m_blocksDB->kill(remove_hash);
+            cwarn << "remove log " << itr.info.hash() << " number " << itr.info.number();
         }
+        else{
+            cwarn << "cant find  remove log " << itr.info.hash() << " number " << itr.info.number();
+        }
+
 
         try {
             std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
@@ -1280,6 +1285,11 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
             extrasWriteBatch->insert(toSlice(_block.info.parentHash(), ExtraDetails),(db::Slice) dev::ref(m_details[_block.info.parentHash()].rlp()));
 
         BlockDetails const details((unsigned) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {});
+
+        if(m_extrasDB->exists(toSlice(_block.info.hash(), ExtraDetails))){
+            cwarn << "exits " << _block.info.hash() << "  number " << _block.info.number();
+        }
+
         extrasWriteBatch->insert(toSlice(_block.info.hash(), ExtraDetails), (db::Slice) dev::ref(details.rlp()));
 
         BlockLogBlooms blb;
