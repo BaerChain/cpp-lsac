@@ -35,7 +35,13 @@ std::string prettyU256(u256 _n, bool _abridged)
 
 namespace brc
 {
+
 BlockNumber jsToBlockNumber(std::string const& _js)
+{
+    return LatestBlock;
+}
+
+BlockNumber jsToBlockNum(std::string const& _js)
 {
     if (_js == "latest")
         return LatestBlock;
