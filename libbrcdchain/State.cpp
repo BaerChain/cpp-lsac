@@ -868,6 +868,7 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 }
 
 Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockNum) {
+    try_new_vote_snapshot(_address, _blockNum);
     std::pair<u256 , u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t)_blockNum, false);
     Json::Value res;
     Json::Value ret;
@@ -880,7 +881,6 @@ Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockN
 Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum) {
     auto a = account(_address);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
-    CFEE_LOG << "before : " << _receivedCookies << endl;
     ReceivedCookies _oldreceivedCookies = a->get_received_cookies();
     VoteSnapshot _votesnapshot = a->vote_snashot();
     std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
@@ -909,10 +909,7 @@ Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum)
             }else{
                 _pollFee = a->CookieIncome();
             }
-            CFEE_LOG << "_pollfee:" << _pollFee << endl;
             _isMainNodeFee += _pollFee - (_pollFee / 2 / _pollNum * _pollNum);
-            CFEE_LOG << "_cookieFee:" << _cookieFee << endl;
-            CFEE_LOG << _receivedCookies;
         }
         for(auto _voteIt : _voteDataIt->second)
         {
@@ -942,10 +939,7 @@ Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum)
             }else{
                 _pollCookieFee = _pollAddr->CookieIncome();
             }
-            CFEE_LOG << "_voteDataIt: _receivedNum: " << _receivedNum << endl;
-            CFEE_LOG << "_voteDataIt :_pollCookieFee:" << _pollCookieFee << endl;
             _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
-            CFEE_LOG << "_voteDataIt :_cookieFee:" << _cookieFee << endl;
 
             if(_voteIt.first == _address)
             {
@@ -1313,10 +1307,7 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             }else{
                 _pollCookieFee = _pollAddr->CookieIncome();
             }
-            CFEE_LOG << "_voteDataIt: _receivedNum: " << _receivedNum << endl;
-            CFEE_LOG << "_voteDataIt :_pollCookieFee:" << _pollCookieFee << endl;
             _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
-            CFEE_LOG << "_voteDataIt :_cookieFee:" << _cookieFee << endl;
 
             if(_voteIt.first == _addr)
             {
@@ -1330,7 +1321,6 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
     }
     addBalance(_addr, _cookieFee);
     a->updateNumofround(_pair.first);
-    CFEE_LOG << "new :" << a->get_received_cookies() << endl;
     m_changeLog.emplace_back(Change::ReceiveCookies, _addr, _oldreceivedCookies);
 }
 
@@ -1418,7 +1408,6 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
         u256 _totalPoll = 0;
         u256 _totalBrcFee = _amountIt->second.first;
         u256 _totalCookieFee = _amountIt->second.second;
-        CFEE_LOG << " _totalBrcFee:" << _totalBrcFee << "   _totalCookieFee:" << _totalCookieFee;
         bool _isSuperNode = false;
         u256 _superNodePoll = 0;
         for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
@@ -1439,7 +1428,6 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
             _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
             _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
         }
-        CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
         for(auto const& _voteAddressIt : _voteDataIt->second)
         {
             if(_superNodeAddrMap.count(_voteAddressIt.first))
@@ -1452,7 +1440,6 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
             }
         }
     }
-    CFEE_LOG << "_BrcIncome : " << _BrcIncome << "   _CookieIncome:" << _CookieIncome;
     addBalance(_addr, _CookieIncome);
     addBRC(_addr, _BrcIncome);
     if(rounds)
@@ -1474,11 +1461,9 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     auto received_sanp = a->getFeeSnapshot();
     auto system_sanp = systemAccount->getFeeSnapshot();
     VoteSnapshot vote_sanp = a->vote_snashot();
-    //CFEE_LOG << "vote_sanp:" << vote_sanp;
 
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     CouplingSystemfee fee_temp = a->getFeeSnapshot();
-    //CFEE_LOG << " ......1....... fee_temp:" << fee_temp;
 
     /// calculate now vote_log and summary_income
     std::vector<PollData> now_miner;
@@ -1496,8 +1481,6 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     u256 now_total_brcs = systemAccount->BRC();
     //auto old_sunmmary = received_sanp.m_total_summary();
     std::pair<u256, u256> old_summary = received_sanp.m_total_summary;
-//    CFEE_LOG << "now_total_cookies:" << now_total_cookies;
-//    CFEE_LOG << "now_total_brcs:" << now_total_brcs;
     bool is_now_rounds = false;
     int start_round = received_sanp.m_numofrounds != 0 ? (int)received_sanp.m_numofrounds : 1;
     /// loop any not received rounds . to now rounds
@@ -1531,7 +1514,6 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 old_summary = std::make_pair(0,0);
                 continue;
             }
-
             //vote log for other
             std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
             /// loop all
@@ -1555,15 +1537,12 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                     // super
                     _income_brcs += node_summary_brcs - (node_summary_brcs / 2 / val.m_poll *val.m_poll);
                     _income_cookies += node_summary_cookies - (node_summary_cookies / 2 / val.m_poll *val.m_poll);
-                    //CFEE_LOG << " super:" << _income_brcs << "  "<< _income_cookies;
                 }
                 if (vote_log.count(val.m_addr)){
                     // vote node
                     _income_brcs += node_summary_brcs / 2 / val.m_poll * vote_log[val.m_addr];
                     _income_cookies += node_summary_cookies / 2 / val.m_poll * vote_log[val.m_addr];
-                    //CFEE_LOG << " vote + super:" << _income_brcs << "  "<< _income_cookies;
                 }
-                //CFEE_LOG << " old-brcs-cookies"<< _old_get  << " _income_ brc--cookies :" <<_income_brcs <<"  "<< _income_cookies;
                 fee_temp.up_received_cookies_brcs(i, val.m_addr, std::make_pair(_income_brcs, _income_cookies), summary);
                 round_brcs += (_income_brcs - _old_get.first);
                 round_cookies += (_income_cookies - _old_get.second);
@@ -1574,7 +1553,6 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
         /// add received
         total_income_cookies += round_cookies;
         total_income_brcs += round_brcs;
-        //CFEE_LOG << " total:" << total_income_brcs << "  "<< total_income_cookies;
     }
     if(is_update && _is_update) {
         fee_temp.m_numofrounds = _pair.first;
@@ -2105,7 +2083,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
     };
 
 	auto a = account(dev::VoteAddress);
-	std::string _num = "2900000000000000";
+	std::string _num = "1450000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
 	std::pair<u256, u256> _pair = {u256Safe(std::string("100000000")), systenCookie};
@@ -2325,7 +2303,7 @@ void dev::brc::State::transferBallotSell(Address const &_from, u256 const &_valu
 }
 
 int64_t dev::brc::State::last_block_record(Address const& _id) const{
-    auto a = account(SysBolckCreateRecordAddress);
+    auto a = account(SysBlockCreateRecordAddress);
     if(!a){
         return 0;
     }
@@ -2334,10 +2312,10 @@ int64_t dev::brc::State::last_block_record(Address const& _id) const{
 }
 
 void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<dev::u256, int64_t> &value, uint32_t varlitor_time) {
-    auto a = account(SysBolckCreateRecordAddress);
+    auto a = account(SysBlockCreateRecordAddress);
     if(!a){
-        createAccount(SysBolckCreateRecordAddress, {0});
-        a = account(SysBolckCreateRecordAddress);
+        createAccount(SysBlockCreateRecordAddress, {0});
+        a = account(SysBlockCreateRecordAddress);
     }
     int64_t _time = a->last_records(_id);
     a->set_create_record(std::make_pair(_id, value.second));
@@ -2367,7 +2345,7 @@ void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::
 }
 
 BlockRecord dev::brc::State::block_record() const {
-    auto  a= account(SysBolckCreateRecordAddress);
+    auto  a= account(SysBlockCreateRecordAddress);
     if (!a)
         return BlockRecord();
     return  a->block_record();

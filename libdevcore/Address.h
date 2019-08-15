@@ -32,7 +32,7 @@ extern Address const SysElectorAddress;
 
 extern Address const systemAddress;
 
-extern Address const SysBolckCreateRecordAddress;
+extern Address const SysBlockCreateRecordAddress;
 
 extern Address const SysVarlitorAddress;
 

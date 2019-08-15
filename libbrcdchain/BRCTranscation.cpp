@@ -462,6 +462,10 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
                     is_received = true;
                     return;
                 }
+                if (_from == val.m_addr){
+                    is_received = true;
+                    return;
+                }
             }
         }
         if (is_received)
@@ -478,6 +482,16 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
                 is_received = true;
                 break;
             }
+        }
+    }
+    num = config::minner_rank_num();
+    for(auto const& val: miners->vote_data()){
+        if (num <=0)
+            break;
+        --num;
+        if (_from == val.m_addr){
+            is_received = true;
+            break;
         }
     }
 
