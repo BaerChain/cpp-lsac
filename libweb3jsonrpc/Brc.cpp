@@ -430,26 +430,7 @@ Json::Value Brc::brc_getBlockDetialByHash(const string &_blockHash, bool _includ
     }
 }
 
-Json::Value Brc::brc_getBlockDetialByHash(const string &_blockHash, bool _includeTransactions)
-{
-    try
-    {
-        h256 h = jsToFixed<32>(_blockHash);
-        if (!client()->isKnown(h))
-            return Json::Value(Json::nullValue);
 
-        if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                          client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
-        else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                          client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeTransactions)
 {
@@ -567,23 +548,7 @@ Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(
     }
 }
 
-Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(
-        string const& _blockHash, string const& _transactionIndex)
-{
-    try
-    {
-        h256 bh = jsToFixed<32>(_blockHash);
-        unsigned ti = jsToInt(_transactionIndex);
-        if (!client()->isKnownTransaction(bh, ti))
-            return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
     string const& _blockNumber, string const& _transactionIndex)
@@ -625,24 +590,6 @@ Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(
     }
 }
 
-Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(
-        string const& _blockNumber, string const& _transactionIndex)
-{
-    try
-    {
-        BlockNumber bn = jsToBlockNumber(_blockNumber);
-        h256 bh = client()->hashFromNumber(bn);
-        unsigned ti = jsToInt(_transactionIndex);
-        if (!client()->isKnownTransaction(bh, ti))
-            return Json::Value(Json::nullValue);
-
-        return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 Json::Value Brc::brc_getTransactionReceipt(string const& _transactionHash)
 {
