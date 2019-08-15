@@ -400,7 +400,11 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
                                     .value);
-
+            if(b.size() == 0){
+                cwarn << "cant find block number " << d;
+                cwarn << "please connect mainnet sync blocks.";
+                break;
+            }
             BlockHeader bi(&b);
 
             if (bi.parentHash() != lastHash) {
@@ -413,19 +417,19 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         }
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
         catch (const boost::exception &e){
             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
         catch (...) {
             // Failed to import - stop here.
             cerror <<  "rebuild blocks error.";
-            cwarn << "please connect mainnet sync blocks.";
-            break;
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
         }
 
         if (_progress)
@@ -1915,7 +1919,7 @@ bytes BlockChain::headerData(h256 const &_hash) const {
 
     string const d = m_blocksDB->lookup(toSlice(_hash));
     if (d.empty()) {
-        cwarn << "Couldn't find requested block:" << _hash;
+        cwarn << "Couldn't find requested block headerData:" << _hash;
         return bytes();
     }
 
