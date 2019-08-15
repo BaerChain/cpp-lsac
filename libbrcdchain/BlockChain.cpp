@@ -1170,7 +1170,7 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
     for(const auto &itr : blocks){
         const auto &remove_hash = toSlice(itr.info.hash());
         if(m_blocksDB->exists(remove_hash)){
-            m_blocksDB->kill(remove_hash);
+//            m_blocksDB->kill(remove_hash);
             cwarn << "remove log " << itr.info.hash() << " number " << itr.info.number();
         }
         else{
@@ -1179,11 +1179,11 @@ uint32_t BlockChain::remove_blocks_from_database(const std::list<dev::brc::Verif
 
 
         try {
-            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
-            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
-            m_extrasDB->commit(std::move(extrasWriteBatch));
+//            std::unique_ptr<db::WriteBatchFace> extrasWriteBatch = m_extrasDB->createWriteBatch();
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraDetails));
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraLogBlooms));
+//            extrasWriteBatch->kill(toSlice(itr.info.hash(), ExtraReceipts));
+//            m_extrasDB->commit(std::move(extrasWriteBatch));
         }catch (Exception &ex){
             cwarn << "remove_blocks_from_database " << ex.what();
         }catch (...){
@@ -1320,6 +1320,9 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         // just tack it on afterwards.
         unsigned commonIndex;
         tie(route, common, commonIndex) = treeRoute(last, _block.info.parentHash());
+        if(last != _block.info.parentHash()){
+            cwarn << "insert block route  last " <<  last << "   paraentHash() " << _block.info.parentHash();
+        }
         route.push_back(_block.info.hash());
 
         // Most of the time these two will be equal - only when we're doing a chain revert will they not be
