@@ -18,6 +18,7 @@ using namespace dev::rpc;
 
 
 #define MAXQUERIES 50
+#define ZERONUM 0
 
 Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
   : m_brc(_brc), m_brcAccounts(_brcAccounts)
@@ -33,29 +34,6 @@ string Brc::brc_coinbase()
     return toJS(client()->author());
 }
 
-string Brc::brc_hashrate()
-{
-    try
-    {
-        return toJS(asBrchashClient(client())->hashrate());
-    }
-    catch (InvalidSealEngine&)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-bool Brc::brc_mining()
-{
-    try
-    {
-        return asBrchashClient(client())->isMining();
-    }
-    catch (InvalidSealEngine&)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 string Brc::brc_gasPrice()
 {
@@ -159,6 +137,30 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
     }
 }
 
+Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string const& _blockNumber)
+{
+    try {
+
+        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getQueryBlockReward(string const& _address, std::string const& _blockNumber)
+{
+
+    try {
+        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string Brc::brc_getBallot(string const& _address, string const& _blockNumber)
 {
     try
@@ -250,11 +252,11 @@ Json::Value Brc::brc_getBlockTransactionCountByNumber(string const& _blockNumber
 {
     try
     {
-        BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(blockNumber))
             return Json::Value(Json::nullValue);
 
-        return toJS(client()->transactionCount(jsToBlockNumber(_blockNumber)));
+        return toJS(client()->transactionCount(jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -282,7 +284,7 @@ Json::Value Brc::brc_getUncleCountByBlockNumber(string const& _blockNumber)
 {
     try
     {
-        BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(blockNumber))
             return Json::Value(Json::nullValue);
 
@@ -310,50 +312,6 @@ void Brc::setTransactionDefaults(TransactionSkeleton& _t)
 {
     if (!_t.from)
         _t.from = m_brcAccounts.defaultTransactAccount();
-}
-
-string Brc::brc_sendTransaction(Json::Value const& _json)
-{
-    try
-    {
-        TransactionSkeleton t = toTransactionSkeleton(_json);
-        setTransactionDefaults(t);
-        pair<bool, Secret> ar = m_brcAccounts.authenticate(t);
-        if (!ar.first)
-        {
-            h256 txHash = client()->submitTransaction(t, ar.second);
-            return toJS(txHash);
-        }
-        else
-        {
-            m_brcAccounts.queueTransaction(t);
-            h256 emptyHash;
-            return toJS(emptyHash);  // TODO: give back something more useful than an empty hash.
-        }
-    }
-    catch (Exception const&)
-    {
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
-}
-
-Json::Value Brc::brc_signTransaction(Json::Value const& _json)
-{
-    try
-    {
-        TransactionSkeleton ts = toTransactionSkeleton(_json);
-        setTransactionDefaults(ts);
-        ts = client()->populateTransactionWithDefaults(ts);
-        pair<bool, Secret> ar = m_brcAccounts.authenticate(ts);
-        Transaction t(ts, ar.second);
-        RLPStream s;
-        t.streamRLP(s);
-        return toJson(t, s.out());
-    }
-    catch (Exception const&)
-    {
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
 }
 
 Json::Value Brc::brc_inspectTransaction(std::string const& _rlp)
@@ -430,12 +388,6 @@ string Brc::brc_estimateGas(Json::Value const& _json)
     }
 }
 
-bool Brc::brc_flush()
-{
-    client()->flushTransactions();
-    return true;
-}
-
 Json::Value Brc::brc_getBlockByHash(string const& _blockHash, bool _includeTransactions)
 {
     try
@@ -446,10 +398,31 @@ Json::Value Brc::brc_getBlockByHash(string const& _blockHash, bool _includeTrans
 
         if (_includeTransactions)
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactions(h), client()->sealEngine());
+                client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
         else
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
                 client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getBlockDetialByHash(const string &_blockHash, bool _includeTransactions)
+{
+    try
+    {
+        h256 h = jsToFixed<32>(_blockHash);
+        if (!client()->isKnown(h))
+            return Json::Value(Json::nullValue);
+
+        if (_includeTransactions)
+            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+                          client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
+        else
+            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+                          client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -461,16 +434,37 @@ Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeT
 {
     try
     {
+        BlockNumber h = jsToBlockNum(_blockNumber);
+        if (!client()->isKnown(h))
+            return Json::Value(Json::nullValue);
+
+        if (_includeTransactions)
+            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+                client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
+        else
+            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+                client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getBlockDetialByNumber(string const& _blockNumber, bool _includeTransactions)
+{
+    try
+    {
         BlockNumber h = jsToBlockNumber(_blockNumber);
         if (!client()->isKnown(h))
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactions(h), client()->sealEngine());
+                          client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
         else
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+                          client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -486,7 +480,23 @@ Json::Value Brc::brc_getTransactionByHash(std::string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(h), client()->sealEngine());
+        return toJson(client()->localisedTransaction(h), false, client()->sealEngine());
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getTransactionDetialByHash(std::string const& _transactionHash)
+{
+    try
+    {
+        h256 h = jsToFixed<32>(_transactionHash);
+        if (!client()->isKnownTransaction(h))
+            return Json::Value(Json::nullValue);
+
+        return toJson(client()->localisedTransaction(h), true, client()->sealEngine());
     }
     catch (...)
     {
@@ -510,7 +520,7 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), client()->sealEngine());
+        return toJson(client()->localisedTransaction(bh, ti),false, client()->sealEngine());
     }
     catch (...)
     {
@@ -518,8 +528,48 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
     }
 }
 
+Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(
+        string const& _blockHash, string const& _transactionIndex)
+{
+    try
+    {
+        h256 bh = jsToFixed<32>(_blockHash);
+        unsigned ti = jsToInt(_transactionIndex);
+        if (!client()->isKnownTransaction(bh, ti))
+            return Json::Value(Json::nullValue);
+
+        return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+
 Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
     string const& _blockNumber, string const& _transactionIndex)
+{
+    try
+    {
+        BlockNumber bn = jsToBlockNum(_blockNumber);
+        if (!client()->isKnown(bn))
+            return Json::Value(Json::nullValue);
+        h256 bh = client()->hashFromNumber(bn);
+        unsigned ti = jsToInt(_transactionIndex);
+        if (!client()->isKnownTransaction(bh, ti))
+            return Json::Value(Json::nullValue);
+
+        return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(
+        string const& _blockNumber, string const& _transactionIndex)
 {
     try
     {
@@ -529,7 +579,7 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), client()->sealEngine());
+        return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
     }
     catch (...)
     {
@@ -572,7 +622,10 @@ Json::Value Brc::brc_getUncleByBlockNumberAndIndex(
 {
     try
     {
-        return toJson(client()->uncle(jsToBlockNumber(_blockNumber), jsToInt(_uncleIndex)),
+        BlockNumber h = jsToBlockNum(_blockNumber);
+        if (!client()->isKnown(h))
+            return Json::Value(Json::nullValue);
+        return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
             client()->sealEngine());
     }
     catch (...)
@@ -709,23 +762,6 @@ Json::Value Brc::brc_getLogsEx(Json::Value const& _json)
     }
 }
 
-Json::Value Brc::brc_getWork()
-{
-    try
-    {
-        Json::Value ret(Json::arrayValue);
-        auto r = asBrchashClient(client())->getBrchashWork();
-        ret.append(toJS(get<0>(r)));
-        ret.append(toJS(get<1>(r)));
-        ret.append(toJS(get<2>(r)));
-        return ret;
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
 Json::Value Brc::brc_syncing()
 {
     dev::brc::SyncStatus sync = client()->syncStatus();
@@ -744,31 +780,6 @@ string Brc::brc_chainId()
     return toJS(client()->chainId());
 }
 
-bool Brc::brc_submitWork(string const& _nonce, string const&, string const& _mixHash)
-{
-    try
-    {
-        return asBrchashClient(client())->submitBrchashWork(
-            jsToFixed<32>(_mixHash), jsToFixed<Nonce::size>(_nonce));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-bool Brc::brc_submitHashrate(string const& _hashes, string const& _id)
-{
-    try
-    {
-        asBrchashClient(client())->submitExternalHashrate(jsToInt<32>(_hashes), jsToFixed<32>(_id));
-        return true;
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 string Brc::brc_register(string const& _address)
 {
