@@ -14,7 +14,7 @@ namespace dev {
         namespace ex {
 
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
-                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)),
+                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024 * 30ULL)),
                       _new_session(false) {
 
                 db->add_index<order_object_index>();
