@@ -238,7 +238,7 @@ void Executive::initialize(Transaction const& _transaction)
         }
         if (m_t.nonce() != nonceReq)
         {
-            cerror << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+            cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                               << nonceReq << " Got " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
@@ -247,7 +247,7 @@ void Executive::initialize(Transaction const& _transaction)
         }
         //check gasPrice the must bigger c_min_price
 		if(m_t.gasPrice() < c_min_price){
-			cerror << "Sender: " << m_t.sender().hex() << " Invalid gasPrice: Require >"
+            cdebug << "Sender: " << m_t.sender().hex() << " Invalid gasPrice: Require >"
 				<< c_min_price << " Got " << m_t.gasPrice();
 			m_excepted = TransactionException::InvalidGasPrice;
 			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
@@ -266,7 +266,7 @@ void Executive::initialize(Transaction const& _transaction)
                                   << m_t.value() << " Got" << m_s.BRC(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
-				std::string ex_info = "not enough BRC to execute tarnsaction will cost:"+ toString(totalCost);
+				std::string ex_info = "not enough BRC or Cookie to execute tarnsaction will cost:"+ toString(totalCost);
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
                                                       << errinfo_comment(ex_info));
             }
@@ -443,7 +443,7 @@ void Executive::initialize(Transaction const& _transaction)
 						<< " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
 						<< m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
 					m_excepted = TransactionException::NotEnoughCash;
-					std::string ex_info = "not enough BRC to execute tarnsaction will cost:" + toString(totalCost);
+					std::string ex_info = "not enough Cookie to execute tarnsaction will cost:" + toString(totalCost);
 					BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))<< errinfo_comment(ex_info));
 				}
             }
@@ -469,8 +469,8 @@ void Executive::initialize(Transaction const& _transaction)
                     m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			}
 			catch(VerifyVoteField &ex){
-				cerror << "verifyVote field ! ";
-				cerror << " except:" << ex.what();
+                cdebug << "verifyVote field ! ";
+                cdebug << " except:" << ex.what();
 				m_excepted = TransactionException::VerifyVoteField;
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 			}
