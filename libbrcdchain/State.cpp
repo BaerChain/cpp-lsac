@@ -1544,6 +1544,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 if(val.m_poll == 0 || _totalPoll ==0)
                     continue;
                 // val = PollData
+                CFEE_LOG <<"address:" << val.m_addr;
                 u256 node_summary_cookies =  summary.second / _totalPoll * val.m_poll;
                 u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
                 u256 _income_cookies =0;
