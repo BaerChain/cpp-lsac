@@ -1547,7 +1547,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
                 u256 _income_cookies =0;
                 u256 _income_brcs = 0;
-                CFEE_LOG << "node_summary:" << node_summary_cookies << "  "<<node_summary_cookies;
+                CFEE_LOG << "node_summary:" << node_summary_brcs << "  "<<node_summary_cookies;
                 std::pair<u256, u256> _old_get; //<brc, cookies>
 
                 if (received_sanp.m_received_cookies.count(i) && received_sanp.m_received_cookies[i].count(val.m_addr)){
