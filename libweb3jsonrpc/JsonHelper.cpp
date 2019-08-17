@@ -110,7 +110,7 @@ namespace dev {
                 res["v"] = toJS(_t.signature().v);
                 res["r"] = toJS(_t.signature().r);
                 res["s"] = toJS(_t.signature().s);
-                if(_detialStatus == true)
+                if(_detialStatus == true && _t.isCreation() != true && _t.type() != MessageCall)
                 {
                     res["txdata"] = analysisData(_t.data());
                 }
@@ -241,7 +241,7 @@ namespace dev {
                 res["blockHash"] = toJS(_t.blockHash());
                 res["transactionIndex"] = toJS(_t.transactionIndex());
                 res["blockNumber"] = toJS(_t.blockNumber());
-                if(_detialStatus == true)
+                if(_detialStatus == true && _t.isCreation() != true && _t.type() != MessageCall)
                 {
                     res["txdata"] = analysisData(_t.data());
                 }
