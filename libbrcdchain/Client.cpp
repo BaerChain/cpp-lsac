@@ -393,7 +393,7 @@ void Client::syncBlockQueue()
 		{
 
 			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms ("
-				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << count
+				<< (count / elapsed) << " blocks/s) in #" << bc().number() << "  author: " << last.author() << " late: " << late << "ms size: " << ir.goodTranactions.size()
 				<< "  " << m_StateExDB.check_version(false);
 		}
 	}
