@@ -143,12 +143,12 @@ void setupLogging(LoggingOptions const& _options)
 
 	auto file_sink = boost::log::add_file_log(
 		keywords::file_name = "%Y-%m-%d_%N.log",            //log fileName
-		keywords::rotation_size = 10 * 1024 * 1024,         //a file size
+		keywords::rotation_size = 200 * 1024 * 1024,         //a file size
 		keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0)    //rebuild everyday    
 	);
 	file_sink->locked_backend()->set_file_collector(boost::log::sinks::file::make_collector(
 		keywords::target = "logs",                      //logs dir name 
-		keywords::max_size = 50 * 1024 * 1024,          //dir max size
+		keywords::max_size = 200 * 500 * 1024 * 1024,          //dir max size
 		keywords::min_free_space = 100 * 1024 * 1024    //reserved dir size
 	));
 	file_sink->set_filter([_options](boost::log::attribute_value_set const& _set){
