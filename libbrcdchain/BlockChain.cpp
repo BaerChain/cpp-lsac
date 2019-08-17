@@ -754,7 +754,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 
     if(m_cached_blocks.size() > 2){
         cwarn << "config ...............";
-//        print_route(m_cached_blocks);
+        print_route(m_cached_blocks);
     }
     if(info().number() > m_params.config_blocks){
         _exdb.commit_disk(info().number() - m_params.config_blocks + 1);

@@ -147,9 +147,9 @@ void setupLogging(LoggingOptions const& _options)
 		keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0)    //rebuild everyday    
 	);
 	file_sink->locked_backend()->set_file_collector(boost::log::sinks::file::make_collector(
-		keywords::target = "logs",                      //logs dir name 
-		keywords::max_size = 500 * 1024 * 1024,          //dir max size
-		keywords::min_free_space = 1000 * 1024 * 1024    //reserved dir size
+		keywords::target = "logs",                      //logs dir name
+		keywords::max_size = 1000 * 1024 * 1024,          //dir max size
+		keywords::min_free_space = 2000 * 1024 * 1024    //reserved dir size
 	));
 	file_sink->set_filter([_options](boost::log::attribute_value_set const& _set){
 		if(_set[severity] > _options.verbosity)

@@ -14,7 +14,7 @@ namespace dev {
         namespace ex {
 
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
-                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024ULL)),
+                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024 * 30ULL)),
                       _new_session(false) {
 
                 db->add_index<order_object_index>();
@@ -153,56 +153,66 @@ namespace dev {
 
             std::vector<exchange_order> exchange_plugin::get_order_by_address(const Address &addr) const {
                 check_db();
-                std::vector<exchange_order> ret;
+                return db->with_read_lock([&](){
+                    std::vector<exchange_order> ret;
 
-                const auto &index = db->get_index<order_object_index>().indices().get<by_address>();
-                auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
-                auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
-                while (lower_itr != up_itr && lower_itr != index.end()) {
-                    ret.push_back(exchange_order(*lower_itr));
-                    lower_itr++;
-                }
+                    const auto &index = db->get_index<order_object_index>().indices().get<by_address>();
+                    auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
+                    auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
+                    while (lower_itr != up_itr && lower_itr != index.end()) {
+                        ret.push_back(exchange_order(*lower_itr));
+                        lower_itr++;
+                    }
 
-                return ret;
+                    return ret;
+
+                });
+
             }
 
             std::vector<exchange_order> exchange_plugin::get_orders(uint32_t size) const {
                 check_db();
-                std::vector<exchange_order> ret;
-                const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
-                auto begin = index.begin();
-                while (begin != index.end() && size > 0) {
-                    ret.push_back(exchange_order(*begin));
-                    begin++;
-                    size--;
-                }
-                return ret;
+                return db->with_read_lock([&](){
+                    std::vector<exchange_order> ret;
+                    const auto &index = db->get_index<order_object_index>().indices().get<by_price_less>();
+                    auto begin = index.begin();
+                    while (begin != index.end() && size > 0) {
+                        ret.push_back(exchange_order(*begin));
+                        begin++;
+                        size--;
+                    }
+                    return ret;
+                });
+
             }
 
             std::vector<result_order> exchange_plugin::get_result_orders_by_news(uint32_t size) const {
                 check_db();
-                vector<result_order> ret;
-                const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
-                auto begin = index.begin();
-                while (begin != index.end() && size > 0) {
-                    result_order eo;
+                return db->with_read_lock([&](){
+                    vector<result_order> ret;
+                    const auto &index = db->get_index<order_result_object_index>().indices().get<by_greater_id>();
+                    auto begin = index.begin();
+                    while (begin != index.end() && size > 0) {
+                        result_order eo;
 
-                    eo.sender = begin->sender;
-                    eo.acceptor = begin->acceptor;
-                    eo.type = begin->type;
-                    eo.token_type = begin->token_type;
-                    eo.buy_type = begin->buy_type;
-                    eo.create_time = begin->create_time;
-                    eo.send_trxid = begin->send_trxid;
-                    eo.to_trxid = begin->to_trxid;
-                    eo.amount = begin->amount;
-                    eo.price = begin->price;
+                        eo.sender = begin->sender;
+                        eo.acceptor = begin->acceptor;
+                        eo.type = begin->type;
+                        eo.token_type = begin->token_type;
+                        eo.buy_type = begin->buy_type;
+                        eo.create_time = begin->create_time;
+                        eo.send_trxid = begin->send_trxid;
+                        eo.to_trxid = begin->to_trxid;
+                        eo.amount = begin->amount;
+                        eo.price = begin->price;
 
-                    ret.push_back(eo);
-                    begin++;
-                    size--;
-                }
-                return ret;
+                        ret.push_back(eo);
+                        begin++;
+                        size--;
+                    }
+                    return ret;
+                });
+
             }
 
 
@@ -284,96 +294,108 @@ namespace dev {
             }
 
             bool exchange_plugin::commit_disk(int64_t version, bool first_commit) {
-                if (first_commit) {
-                    const auto &obj = db->get<dynamic_object>();
-                    db->modify(obj, [&](dynamic_object &obj) {
-                        obj.version = version;
-                    });
-                }
-                db->commit(version);
-                db->flush();
+                db->with_write_lock([&]() {
+                    if (first_commit) {
+                        const auto &obj = db->get<dynamic_object>();
+                        db->modify(obj, [&](dynamic_object &obj) {
+                            obj.version = version;
+                        });
+                    }
+                    db->commit(version);
+                    db->flush();
+                });
                 return true;
             }
 
             bool exchange_plugin::remove_all_session() {
-                db->undo_all();
+                db->with_write_lock([&]() {
+                    db->undo_all();
+                });
+
                 return true;
             }
 
             std::vector<exchange_order>
             exchange_plugin::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
-                check_db();
-                vector<exchange_order> ret;
-                if (type == order_type::buy) {
-                    const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
-                                                                                                token_type,
-                                                                                                u256(-1), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
-                                                                                                token_type,
-                                                                                                u256(0), INT64_MAX);
-                    auto begin = index_greater.lower_bound(find_lower);
-                    auto end = index_greater.upper_bound(find_upper);
 
-                    while (begin != end && size > 0) {
-                        ret.push_back(exchange_order(*begin));
-                        begin++;
-                        size--;
+                check_db();
+                return db->with_read_lock([&](){
+                    vector<exchange_order> ret;
+                    if (type == order_type::buy) {
+                        const auto &index_greater = db->get_index<order_object_index>().indices().get<by_price_greater>();
+                        auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                                                                                                    token_type,
+                                                                                                               u256(-1), 0);
+                        auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                                                                                                    token_type,
+                                                                                                    u256(0), INT64_MAX);
+                        auto begin = index_greater.lower_bound(find_lower);
+                        auto end = index_greater.upper_bound(find_upper);
+
+                        while (begin != end && size > 0) {
+                            ret.push_back(exchange_order(*begin));
+                            begin++;
+                            size--;
+                        }
+                    } else {
+                        const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
+                        auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                                                                                                    token_type,
+                                                                                                    u256(0), 0);
+                        auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                                                                                                    token_type,
+                                                                                                    u256(-1), INT64_MAX);
+                        auto begin = index_less.lower_bound(find_lower);
+                        auto end = index_less.upper_bound(find_upper);
+                        while (begin != end && size > 0) {
+                            ret.push_back(exchange_order(*begin));
+                            begin++;
+                            size--;
+                        }
                     }
-                } else {
-                    const auto &index_less = db->get_index<order_object_index>().indices().get<by_price_less>();
-                    auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
-                                                                                                token_type,
-                                                                                                u256(0), 0);
-                    auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
-                                                                                                token_type,
-                                                                                                u256(-1), INT64_MAX);
-                    auto begin = index_less.lower_bound(find_lower);
-                    auto end = index_less.upper_bound(find_upper);
-                    while (begin != end && size > 0) {
-                        ret.push_back(exchange_order(*begin));
-                        begin++;
-                        size--;
-                    }
-                }
-                return ret;
+                    return ret;
+                });
+
             }
 
             std::vector<order> exchange_plugin::cancel_order_by_trxid(const std::vector<h256> &os, bool reset) {
                 check_db();
-                auto session = db->start_undo_session(true);
-                std::vector<order> ret;
-                const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
-                for (const auto &t : os) {
-                    auto begin = index_trx.lower_bound(t);
-                    auto end = index_trx.upper_bound(t);
-                    if (begin == end) {
-                        BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
-                    }
-                    while (begin != end) {
-                        order o;
-                        o.trxid = begin->trxid;
-                        o.sender = begin->sender;
-                        o.buy_type = order_buy_type::only_price;
-                        o.token_type = begin->token_type;
-                        o.type = begin->type;
-                        o.time = begin->create_time;
-                        //                        o.price_token[begin->price] = begin->token_amount;
-                        o.price_token.first = begin->price;
-                        o.price_token.second = begin->token_amount;
+                return db->with_write_lock([&]() {
+                    auto session = db->start_undo_session(true);
+                    std::vector<order> ret;
+                    const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
+                    for (const auto &t : os) {
+                        auto begin = index_trx.lower_bound(t);
+                        auto end = index_trx.upper_bound(t);
+                        if (begin == end) {
+                            BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
+                        }
+                        while (begin != end) {
+                            order o;
+                            o.trxid = begin->trxid;
+                            o.sender = begin->sender;
+                            o.buy_type = order_buy_type::only_price;
+                            o.token_type = begin->token_type;
+                            o.type = begin->type;
+                            o.time = begin->create_time;
+                            //                        o.price_token[begin->price] = begin->token_amount;
+                            o.price_token.first = begin->price;
+                            o.price_token.second = begin->token_amount;
 
-                        ret.push_back(o);
+                            ret.push_back(o);
 
-                        const auto rm = db->find(begin->id);
-                        begin++;
-                        db->remove(*rm);
+                            const auto rm = db->find(begin->id);
+                            begin++;
+                            db->remove(*rm);
+                        }
+                        update_dynamic_orders(false);
                     }
-                    update_dynamic_orders(false);
-                }
-                if (!reset) {
-                    session.squash();
-                }
-                return ret;
+                    if (!reset) {
+                        session.squash();
+                    }
+                    return ret;
+                });
+
             }
 
             const dynamic_object &exchange_plugin::get_dynamic_object() const {

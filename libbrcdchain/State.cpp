@@ -1290,33 +1290,36 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             u256 _receivedNum = 0;
             u256 _pollFeeIncome = 0;
             u256 _numTotalFee = 0;
-            if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
+            if(_pollNum > 0)
             {
-                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
-                if(_addrReceivedCookie.count(_voteIt.first))
+                if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
                 {
-                    _receivedNum += _addrReceivedCookie.find(_voteIt.first)->second.second;
+                    std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
+                    if(_addrReceivedCookie.count(_voteIt.first))
+                    {
+                        _receivedNum += _addrReceivedCookie.find(_voteIt.first)->second.second;
+                    }
                 }
-            }
-            if(_voteDataIt->first + 1 < _pair.first)
-            {
-                if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
+                if(_voteDataIt->first + 1 < _pair.first)
                 {
-                    _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
+                    if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
+                    {
+                        _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
+                    }
+                }else{
+                    _pollCookieFee = _pollAddr->CookieIncome();
                 }
-            }else{
-                _pollCookieFee = _pollAddr->CookieIncome();
-            }
-            _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
+                _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
 
-            if(_voteIt.first == _addr)
-            {
-                _numTotalFee += _pollFeeIncome + _isMainNodeFee - _receivedNum;
-            }else{
-                _numTotalFee += _pollFeeIncome - _receivedNum;
+                if(_voteIt.first == _addr)
+                {
+                    _numTotalFee += _pollFeeIncome + _isMainNodeFee - _receivedNum;
+                }else{
+                    _numTotalFee += _pollFeeIncome - _receivedNum;
+                }
+                _cookieFee += _numTotalFee;
+                a->addSetreceivedCookie(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
             }
-            _cookieFee += _numTotalFee;
-            a->addSetreceivedCookie(_voteDataIt->first + 1, _voteIt.first, std::pair<u256, u256>(_pollCookieFee, _numTotalFee + _receivedNum));
         }
     }
     addBalance(_addr, _cookieFee);

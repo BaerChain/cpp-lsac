@@ -457,7 +457,7 @@ Json::Value Brc::brc_getBlockDetialByNumber(string const& _blockNumber, bool _in
 {
     try
     {
-        BlockNumber h = jsToBlockNumber(_blockNumber);
+        BlockNumber h = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(h))
             return Json::Value(Json::nullValue);
 
