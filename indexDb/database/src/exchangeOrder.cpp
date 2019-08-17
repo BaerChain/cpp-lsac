@@ -358,15 +358,33 @@ namespace dev {
 
             }
 
-            bool exchange_plugin::exits_trxid(const dev::h256 &trxid) {
+            std::vector<order> exchange_plugin::exits_trxid(const dev::h256 &trxid) {
                 return db->with_read_lock([&](){
+                    std::vector<order> ret;
                     const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
                     auto begin = index_trx.lower_bound(trxid);
                     auto end = index_trx.upper_bound(trxid);
                     if (begin == end) {
-                        return false;
+                        return ret;
                     }
-                    return true;
+
+                    while (begin != end) {
+                        order o;
+                        o.trxid = begin->trxid;
+                        o.sender = begin->sender;
+                        o.buy_type = order_buy_type::only_price;
+                        o.token_type = begin->token_type;
+                        o.type = begin->type;
+                        o.time = begin->create_time;
+                        //                        o.price_token[begin->price] = begin->token_amount;
+                        o.price_token.first = begin->price;
+                        o.price_token.second = begin->token_amount;
+
+                        ret.push_back(o);
+
+                        begin++;
+                    }
+                    return ret;
                 });
             }
 
@@ -377,6 +395,7 @@ namespace dev {
                     std::vector<order> ret;
                     const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
                     for (const auto &t : os) {
+                        cdebug << "remove tx id " << toHex(t);
                         auto begin = index_trx.lower_bound(t);
                         auto end = index_trx.upper_bound(t);
                         if (begin == end) {
@@ -400,6 +419,7 @@ namespace dev {
                             begin++;
                             db->remove(*rm);
                         }
+
                         update_dynamic_orders(false);
                     }
                     if (!reset) {
