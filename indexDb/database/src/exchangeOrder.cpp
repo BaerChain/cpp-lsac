@@ -358,6 +358,18 @@ namespace dev {
 
             }
 
+            bool exchange_plugin::exits_trxid(const dev::h256 &trxid) {
+                return db->with_read_lock([&](){
+                    const auto &index_trx = db->get_index<order_object_index>().indices().get<by_trx_id>();
+                    auto begin = index_trx.lower_bound(trxid);
+                    auto end = index_trx.upper_bound(trxid);
+                    if (begin == end) {
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
             std::vector<order> exchange_plugin::cancel_order_by_trxid(const std::vector<h256> &os, bool reset) {
                 check_db();
                 return db->with_write_lock([&]() {
