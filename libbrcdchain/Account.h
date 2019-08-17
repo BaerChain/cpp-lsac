@@ -786,9 +786,9 @@ public:
 
 	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
-    void initChangeList(std::vector<std::string> _changeList) {m_willChangeList = _changeList; }
+    void initChangeList(std::vector<std::string> _changeList) {m_willChangeList = _changeList;  changed();}
 
-	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward;}
+	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward; changed();}
 	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
 
 	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
