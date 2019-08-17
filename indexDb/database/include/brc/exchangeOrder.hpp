@@ -71,6 +71,8 @@ namespace dev {
                 /// \return             complete order.
                 std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
 
+                bool exits_trxid(const h256  &trxid);
+
                 /// rollback before packed block.
                 /// \return
                 bool rollback();
