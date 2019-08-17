@@ -452,9 +452,15 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     u256 _rounds = systemAccount->getSnapshotRounds();
     u256 _numofRounds = a->getFeeNumofRounds();
     std::map<u256, std::vector<PollData>> _map = systemAccount->getPollDataSnapshot();
-    VoteSnapshot _voteSnapshot = a->vote_snashot();
-    bool  is_received = false;
 
+    VoteSnapshot _voteSnapshot;
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
+    if (ret_pair.first)
+        _voteSnapshot = a->try_new_temp_snapshot(ret_pair.second);
+    else
+        _voteSnapshot = a->vote_snashot();
+
+    bool  is_received = false;
     for(int i= (int)_numofRounds ; i< _pair.first; i++){
         if (_voteSnapshot.m_voteDataHistory.count(i-1) && _map.count(i)){
             for(auto const& val: _map[i]){
