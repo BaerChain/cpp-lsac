@@ -430,8 +430,6 @@ public:
 	void subCookieIncomeNum(Address const& _addr, u256 const& _value);
 	void setCookieIncomeNum(Address const& _addr, u256 const& _value);
 
-	void setNumofrounds(Address const& _addr, u256 const& _value);
-
     void tryRecordFeeSnapshot(int64_t _blockNum);
 
 private:

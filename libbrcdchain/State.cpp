@@ -1682,6 +1682,8 @@ bytes const &State::code(Address const &_addr) const {
 
 void State::setCode(Address const &_address, bytes &&_code) {
     m_changeLog.emplace_back(_address, code(_address));
+    if(!m_cache.count(_address))
+        return;
     m_cache[_address].setCode(std::move(_code));
 }
 
