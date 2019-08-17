@@ -15,6 +15,8 @@ IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
 #    SET(BUILD_SHARED_LIBRARIES OFF)
 #    SET(CMAKE_EXE_LINKER_FLAGS "-static")
+    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
+    #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 endif()
 
 ##add cmake file directory
