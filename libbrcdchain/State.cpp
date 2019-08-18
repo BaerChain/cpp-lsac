@@ -1899,7 +1899,7 @@ bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc co
         return _e.finalize();
     }
     catch (Exception const &) {
-        cwarn << "rollback tx id " << toHex(_t.sha3()) << " rlp : " << toHex(_t.rlp());
+        cdebug << "rollback tx id " << toHex(_t.sha3()) << " rlp : " << toHex(_t.rlp());
         rollback(savept);
         throw;
     }
