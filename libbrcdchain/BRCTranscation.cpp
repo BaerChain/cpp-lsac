@@ -318,24 +318,27 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 	}
 
 	std::vector <ex::order> _resultV;
-	std::vector<bool> _statusV;
+
     try{
         for(auto _it : _HashV)
         {
-            bool _status = false;
-            _status = _exdb.exits_trxid(_it);
-            _statusV.push_back(_status);
+            _resultV = _exdb.exits_trxid(_it);
         }
 	}
 	catch(const boost::exception& e){
 		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
 		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool")));
 	}
+	if(_resultV.size() == 0){
+        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool  . vertiy")));
+	}
 
-	for(auto val : _statusV){
-		if(val == false){
-			BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
-		}
+
+	for(auto val : _resultV){
+        if (_addr != val.sender)
+        {
+            BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
+        }
 	}
 }
 
