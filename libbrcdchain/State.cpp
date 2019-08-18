@@ -1760,7 +1760,7 @@ void State::rollback(size_t _savepoint) {
     while (_savepoint != m_changeLog.size()) {
         auto &change = m_changeLog.back();
         auto &account = m_cache[change.address];
-        cwarn << BrcYellow "rollback: "
+        cdebug << BrcYellow "rollback: "
                   << " change.kind" << (size_t) change.kind << " change.value:" << change.value << " address " << change.address
                   << BrcReset << std::endl;
         // Public State API cannot be used here because it will add another
