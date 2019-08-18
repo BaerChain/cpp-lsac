@@ -233,12 +233,6 @@ void dev::bacd::SHDposClient::rejigSealing()
 					return;
 				}
 
-				// record crete_block
-				m_working.execute_block_record();
-
-				// try into new rounds
-                m_working.try_into_new_rounds();
-
 				// TODO is that needed? we have "Generating seal on" below
 				m_working.commitToSeal(bc(), m_extraData);
 			}
