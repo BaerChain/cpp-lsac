@@ -496,12 +496,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
             ++i;
         }
 
-    // execute create_block records
-    execute_block_record(_block.info);
-
-    //try into new rounds to rank minner
-    try_into_new_rounds(_block.info, m_previousBlock);
-
     h256 receiptsRoot;
     DEV_TIMED_ABOVE(".receiptsRoot()", 500) receiptsRoot = orderedTrieRoot(receipts);
 
@@ -609,6 +603,11 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 
     assert(_bc.sealEngine());
     DEV_TIMED_ABOVE("applyRewards", 500)applyRewards(rewarded, _bc.sealEngine()->blockReward(m_currentBlock.number()));
+
+    // execute create_block records
+    execute_block_record(_block.info);
+    //try into new rounds to rank minner
+    try_into_new_rounds(_block.info, m_previousBlock);
 
     update_miner();
 
@@ -789,6 +788,11 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     assert(_bc.sealEngine());
     applyRewards(uncleBlockHeaders, _bc.sealEngine()->blockReward(m_currentBlock.number()));
 
+    // record crete_block
+    execute_block_record(info());
+    // try into new rounds
+    try_into_new_rounds(info(), previousBlock());
+
     update_miner();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
@@ -906,5 +910,5 @@ void Block::execute_block_record(BlockHeader const& curr_info){
     uint32_t  varlitor_time = 1000;
     if (m_sealEngine)
         varlitor_time = m_sealEngine->chainParams().varlitorInterval;
-    m_state.set_last_block_record(curr_info().author(), std::make_pair((curr_info().number(), curr_info().timestamp()), varlitor_time);
+    m_state.set_last_block_record(curr_info.author(), std::make_pair(curr_info.number(), curr_info.timestamp()), varlitor_time);
 }

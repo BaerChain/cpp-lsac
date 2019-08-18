@@ -2355,7 +2355,7 @@ int64_t dev::brc::State::last_block_record(Address const& _id) const{
 
 }
 
-void dev::brc::State::set_last_block_record(const dev::Address &_id, const std::pair<int64_t, int64_t> value, uint32_t varlitor_time) {
+void dev::brc::State::set_last_block_record(const dev::Address &_id, std::pair<int64_t, int64_t> value, uint32_t varlitor_time) {
     auto a = account(SysBlockCreateRecordAddress);
     if(!a){
         createAccount(SysBlockCreateRecordAddress, {0});
