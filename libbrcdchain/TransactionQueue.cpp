@@ -108,7 +108,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
             auto t = cs->second.find(_transaction.nonce());
             if (t != cs->second.end())
             {
-				cwarn << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
+                LOG(m_loggerDetail) << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
 				return ImportResult::NonceRepeat;
 				/*if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
 					return ImportResult::OverbidGasPrice;

@@ -756,6 +756,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         }
         catch (RevertInstruction& _e)
         {
+            LOG(m_detailsLogger) << "RevertInstruction. " << _e.what() << " output " << _e.output().toString();
             revert();
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;

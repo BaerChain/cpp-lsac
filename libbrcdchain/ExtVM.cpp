@@ -153,8 +153,12 @@ CreateResult ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, I
 
 void ExtVM::suicide(Address _a)
 {
-    m_s.addBalance(_a, m_s.balance(myAddress));
-    m_s.setBalance(myAddress, 0);
+//    m_s.addBalance(_a, m_s.balance(myAddress));
+//    m_s.setBalance(myAddress, 0);
+
+    m_s.addBRC(_a, m_s.BRC(myAddress));
+    m_s.setBRC(myAddress, 0);
+
     ExtVMFace::suicide(_a);
 }
 

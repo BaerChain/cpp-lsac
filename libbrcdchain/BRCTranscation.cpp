@@ -329,8 +329,8 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
 		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool")));
 	}
-	if(_resultV.size() > 0){
-        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool")));
+	if(_resultV.size() == 0){
+        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool  . vertiy")));
 	}
 
 

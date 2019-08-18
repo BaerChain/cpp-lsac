@@ -113,7 +113,9 @@ namespace dev {
                 if(_detialStatus == true && _t.isCreation() != true && _t.type() != TransactionBase::MessageCall)
                 {
                     res["txdata"] = analysisData(_t.data());
+
                 }
+                res["transactionRlp"] = toJS(_t.rlp());
             }
             return res;
         }
