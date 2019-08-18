@@ -374,7 +374,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 					cwarn << " pendingOrder field ...";
 					h256 _hash = t.sha3();
 					_tq.drop(_hash);
-					_tq.eraseDropedTx(_hash);
+					//_tq.eraseDropedTx(_hash);
 				}
 				catch(Exception const &_e){
 					// Something else went wrong - drop it.
@@ -497,10 +497,10 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
         }
 
     // execute create_block records
-    execute_block_record();
+    execute_block_record(_block.info);
 
     //try into new rounds to rank minner
-    try_into_new_rounds();
+    try_into_new_rounds(_block.info, m_previousBlock);
 
     h256 receiptsRoot;
     DEV_TIMED_ABOVE(".receiptsRoot()", 500) receiptsRoot = orderedTrieRoot(receipts);
@@ -902,9 +902,9 @@ void Block::cleanup() {
     resetCurrent();
 }
 
-void Block::execute_block_record(){
+void Block::execute_block_record(BlockHeader const& curr_info){
     uint32_t  varlitor_time = 1000;
     if (m_sealEngine)
         varlitor_time = m_sealEngine->chainParams().varlitorInterval;
-    m_state.set_last_block_record(info().author(), std::make_pair(info().number(), info().timestamp()), varlitor_time);
+    m_state.set_last_block_record(curr_info().author(), std::make_pair((curr_info().number(), curr_info().timestamp()), varlitor_time);
 }

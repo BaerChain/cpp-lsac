@@ -234,10 +234,10 @@ void dev::bacd::SHDposClient::rejigSealing()
 				}
 
 				// record crete_block
-				m_working.execute_block_record();
+				m_working.execute_block_record(m_working.info());
 
 				// try into new rounds
-                m_working.try_into_new_rounds();
+                m_working.try_into_new_rounds(m_working.info(), m_working.previousBlock());
 
 				// TODO is that needed? we have "Generating seal on" below
 				m_working.commitToSeal(bc(), m_extraData);
