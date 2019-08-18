@@ -118,6 +118,10 @@ bool Session::readPacket(uint16_t _capId, PacketType _packetType, RLP const& _r)
                 assert(offset);
                 return capability->interpretCapabilityPacket(id(), _packetType - *offset, _r);
             }
+            else{
+                cnetlog << "cant handle packed  packetType : " << _packetType  << " rlp :" << _r.itemCount() << " id " << id()
+                 << " packet offset protocol " << _packetType - *offset;
+            }
         }
 
         return false;
