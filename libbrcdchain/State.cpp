@@ -748,7 +748,10 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
         if (it == order_type::buy) {
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
             _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
-            ex_order _order = {h256(1), systemAddress, u256(BUYCOOKIE), _num, _num, _nowTime, order_type::buy,
+            RLPStream _rlp(3);
+            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            h256 _trHash = dev::sha3(_rlp.out());
+            ex_order _order = {_trHash, systemAddress, u256(BUYCOOKIE), _num, _num, _nowTime, order_type::buy,
                                order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         } else if (it == order_type::sell) {

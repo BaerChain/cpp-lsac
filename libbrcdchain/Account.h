@@ -874,7 +874,17 @@ public:
 
     dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
-    void addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
+    void addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){
+        const auto &index_trx =  m_exChangeOrder.get<ex::ex_by_trx_id>();
+        auto begin = index_trx.lower_bound(_exOrder.trxid);
+        auto end = index_trx.upper_bound(_exOrder.trxid);
+        if (begin == end) {
+            m_exChangeOrder.insert(_exOrder); changed();
+        }else{
+            m_exChangeOrder.modify(m_exChangeOrder.iterator_to(*begin), _exOrder);
+        }
+        changed();
+    }
     bool removeExOrderMulti(h256 const& t) {
        const auto &index_trx =  m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto begin = index_trx.lower_bound(t);
