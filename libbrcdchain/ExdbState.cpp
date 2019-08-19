@@ -12,6 +12,10 @@ namespace dev {
         std::vector<ex::result_order> ExdbState::insert_operation(const ex::ex_order &itr, bool reset) {
 
 
+            if(itr.token_amount == 0 && itr.price == 0){
+                BOOST_THROW_EXCEPTION(order_price_num_equal_zero_error());
+            }
+
             std::vector<result_order> result;
             if(reset){
                 if(!(itr.type == order_type::buy && itr.buy_type == order_buy_type::all_price)){
@@ -397,15 +401,16 @@ namespace dev {
                 BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
             }
 
-            order o;
-            o.trxid = begin->trxid;
-            o.sender = begin->sender;
-            o.buy_type = order_buy_type::only_price;
-            o.token_type = begin->token_type;
-            o.type = begin->type;
-            o.time = begin->create_time;
-            o.price_token.first = begin->price;
-            o.price_token.second = begin->token_amount;
+            ex_order o = *begin;
+//            o.trxid = begin->trxid;
+//            o.sender = begin->sender;
+//            o.buy_type = order_buy_type::only_price;
+//            o.token_type = begin->token_type;
+//            o.type = begin->type;
+//            o.create_time = begin->create_time;
+//            o.price = begin->price;
+//            o.token_amount = begin->token_amount;
+//            o.source_amount = begin->source_amount;
 
             return {o};
         }
