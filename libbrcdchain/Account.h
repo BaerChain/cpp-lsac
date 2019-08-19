@@ -875,11 +875,45 @@ public:
     dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
     bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
+
     bool removeExOrderMulti(h256 _txid) {}
     void setSuccessOrder(std::vector<dev::brc::ex::result_order> const& _vector){ m_successExchange.clear(); m_successExchange = _vector; changed(); }
     bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
     std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
 
+    void getStreamRLPExOrder(RLPStream& s) const{
+        const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
+        auto itr = index_trx_id.begin();
+        s.appendList(m_exChangeOrder.size());
+        for(; itr != index_trx_id.end(); itr++){
+            dev::brc::ex::ex_order order = *itr;
+            s.append(order.streamRLP());
+        }
+    }
+    void initExOrder(bytes const& b){
+        dev::brc::ex::ExOrderMulti ex_multi;
+        for(auto const& v : RLP(b)){
+            dev::brc::ex::ex_order order;
+            order.populate(v.toBytes());
+            ex_multi.insert(order);
+        }
+        m_exChangeOrder.clear();
+        m_exChangeOrder = ex_multi;
+    }
+    void getStreamRLPResultOrder(RLPStream& s) const{
+        s.appendList(m_successExchange.size());
+        for(auto const& v : m_successExchange){
+            s.append(v.streamRLP());
+        }
+    }
+    void initResultOrder(bytes const& b){
+        m_successExchange.clear();
+        for(auto const& v: RLP(b)){
+            dev::brc::ex::result_order order;
+            order.populate(v.toBytes());
+            m_successExchange.emplace_back(order);
+        }
+    }
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
