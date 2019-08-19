@@ -38,7 +38,7 @@ namespace dev {
 
             } else {
                 if (itr.type == order_type::buy) {
-                    assert(itr.source_amount != 0 && itr.price == 0);
+                    assert(itr.price != 0 && itr.source_amount == 0);
 
                     auto find_itr = get_buy_itr(itr.token_type, u256(-1));
                     auto total_price = itr.price;
@@ -83,7 +83,7 @@ namespace dev {
                         BOOST_THROW_EXCEPTION(all_price_operation_error());
                     }
                 } else {   //all_price  , sell,
-                    assert(itr.source_amount == 0 && itr.price != 0);
+                    assert(itr.price == 0 && itr.source_amount != 0);
 
                     auto find_itr = get_sell_itr(itr.token_type, u256(0));
                     auto begin = find_itr.first;

@@ -452,7 +452,7 @@ public:
     void setSuccessExchange(std::vector<dev::brc::ex::result_order> const& _vector);
     std::vector<dev::brc::ex::result_order>  const& getSuccessExchange();
 
-    Ex
+  
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
