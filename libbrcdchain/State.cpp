@@ -1,5 +1,5 @@
 #include "State.h"
-
+#include "ExdbState.h"
 #include "Block.h"
 #include "BlockChain.h"
 #include "DposVote.h"
@@ -26,7 +26,7 @@ namespace fs = boost::filesystem;
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
-  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce), m_exdbState(*this)
+  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
@@ -42,8 +42,7 @@ State::State(State const &_s)
           m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
-          m_accountStartNonce(_s.m_accountStartNonce),
-          m_exdbState(*this){}
+          m_accountStartNonce(_s.m_accountStartNonce){}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -138,7 +137,6 @@ State &State::operator=(State const &_s) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
-    m_exdbState = _s->m_exdbState;
     return *this;
 }
 
@@ -662,7 +660,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
     std::set<order_type> _set;
 	bigint total_free_brc = 0;
 	bigint total_free_balance = 0;
-
+    ExdbState _exdbState(*this);
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(val);
 		if(!pen){
@@ -693,7 +691,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
     {
         try{
 
-            _result_v = m_exdbState->insert_operation(_val);
+            _result_v = _exdbState.insert_operation(_val);
         }
         catch(const boost::exception &e){
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -742,7 +740,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     std::vector<ex_order> _v;
     u256 _needBrc = 0;
     u256 _needCookie = 0;
-
+    ExdbState _exdbState(*this);
     for (auto it : _set) {
         if (it == order_type::buy) {
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
@@ -763,7 +761,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     for (auto _val : _v)
     {
         try{
-            _result_v = m_exdbState->insert_operation(_val);
+            _result_v = _exdbState.insert_operation(_val);
         }
         catch(const boost::exception &e){
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -1160,8 +1158,9 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
 
 void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
 	ctrace << "cancle pendingorder";
-	std::vector<ex::order> _resultV;
+	ex::order val;
 	std::vector<h256> _hashV;
+    ExdbState _exdbState(*this);
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen =std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
 		if(!can_pen){ 
@@ -1173,14 +1172,13 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     for(auto _val : _hashV)
     {
         try{
-            _resultV = m_exdbState->cancel_order_by_trxid(_val);
+            val = _exdbState.cancel_order_by_trxid(_val);
         }
         catch(Exception &e){
             cwarn << "cancelPendingorder Error :" << e.what();
             BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
         }
 
-        for(auto val : _resultV){
             if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
                 subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
                 addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
@@ -1189,7 +1187,6 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
                 subFBalance(val.sender, val.price_token.second);
                 addBalance(val.sender, val.price_token.second);
             }
-        }
     }
 }
 

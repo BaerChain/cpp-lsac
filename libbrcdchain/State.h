@@ -6,7 +6,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 #include "ChainParams.h"
-#include "ExdbState.h"
+
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
@@ -607,7 +607,6 @@ private:
 
     // Exdb
     ex::exchange_plugin m_exdb;
-    std::shared_ptr<ExdbState> m_exdbState;
 
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
