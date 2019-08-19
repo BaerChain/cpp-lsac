@@ -876,9 +876,13 @@ public:
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
     bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
     bool removeExOrderMulti(h256 _txid){}
-    void setSuccessOrder(dev::brc::ex::result_order const& _order){}
-    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order){return true;}
+    void setSuccessOrder(std::unordered_map<h256, dev::brc::ex::result_order> const& _order){}
+    bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){return true;}
     std::unordered_map<h256, dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
+
+
+    void getStreamRLPExOrder(RLPStream& s) const{}
+    void initExOrder(bytes const& b){}
 
 
 private:

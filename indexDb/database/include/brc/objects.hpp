@@ -9,6 +9,7 @@
 
 
 #include <chainbase/chainbase.hpp>
+#include <libdevcore/RLP.h>
 
 //using namespace chainbase;
 using namespace boost::multi_index;
@@ -59,6 +60,27 @@ namespace dev {
                     price = _price;
                 }
 
+                bytes streamRLP() const{
+                    RLPStream s(11);
+                    s << sender << acceptor << (uint8_t)type << (uint8_t) token_type <<  (uint8_t) buy_type
+                        << (u256) create_time << send_trxid << to_trxid << amount << price << old_price;
+                    return  s.out();
+                }
+                void populate(bytes const& b){
+                    RLP rlp(b);
+                    sender = rlp[0].convert<Address>(RLP::LaissezFaire);
+                    acceptor = rlp[1].convert<Address>(RLP::LaissezFaire);
+                    type = (order_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
+                    token_type = (order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
+                    buy_type = (order_buy_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
+                    create_time = (int64_t)rlp[5].convert<u256>(RLP::LaissezFaire);
+                    send_trxid = rlp[6].convert<h256>(RLP::LaissezFaire);
+                    to_trxid = rlp[7].convert<h256>(RLP::LaissezFaire);
+                    amount = rlp[8].convert<u256>(RLP::LaissezFaire);
+                    price = rlp[9].convert<u256>(RLP::LaissezFaire);
+                    old_price = rlp[10].convert<u256>(RLP::LaissezFaire);
+                }
+
                 Address             sender;
                 Address             acceptor;
                 order_type          type;
@@ -79,9 +101,26 @@ namespace dev {
                 order_buy_type buy_type;
                 order_token_type token_type;
                 order_type type;
-                u256 price;;
+                u256 price;
                 u256 token_amount;
                 Time_ms time;
+
+                bytes streamRLP() const {
+                    RLPStream s(8);
+                    s << trxid << sender << (uint8_t) buy_type << (uint8_t) token_type << (uint8_t) type << price <<token_amount << (u256) time;
+                    return s.out();
+                }
+                void populate(bytes const& b){
+                    RLP rlp(b);
+                    trxid = rlp[0].convert<h256>(RLP::LaissezFaire);
+                    sender = rlp[1].convert<Address>(RLP::LaissezFaire);
+                    buy_type = (order_buy_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
+                    token_type = (order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
+                    type = (order_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
+                    price = rlp[5].convert<u256>(RLP::LaissezFaire);
+                    token_amount = rlp[6].convert<u256>(RLP::LaissezFaire);
+                    time = (int64_t)rlp[7].convert<u256>(RLP::LaissezFaire);
+                }
             };
 
 
