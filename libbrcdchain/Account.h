@@ -909,7 +909,7 @@ public:
         }
     }
     bytes getStreamRLPResultOrder() const{
-        const auto & index_id = m_successExchange.get<dev::brc::ex::ex_by_trx_id>();
+        const auto & index_id = m_successExchange.get<dev::brc::ex::ex_by_time>();
         RLPStream s(m_successExchange.size());
         for(auto itr = index_id.begin(); itr != index_id.end()l itr++){
             dev::brc::ex::result_order order = *itr;
