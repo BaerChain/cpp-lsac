@@ -872,13 +872,13 @@ public:
     ///@return <is_update, get_total_cookies>
 
     bool addExchangeOrder(dev::brc::ex::order const& _order);
-    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order);
-    void setBuyExchangeOrder(dev::brc::ex::order const& _order);
-    void setSellExchangeOrder(dev::brc::ex::order const& _order);
-    void setSuccessOrder(dev::brc::ex::result_order const& _order);
-    bool removeExchangeOrder(h256 _txid);
-    std::map<h256, dev::brc::ex::order>& getExchange(dev::brc::ex::order_type _type);
-    std::map<h256, dev::brc::ex::result_order> const& getSuccessOrder() const;
+    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order){return true;}
+    void setBuyExchangeOrder(dev::brc::ex::order const& _order){}
+    void setSellExchangeOrder(dev::brc::ex::order const& _order){}
+    void setSuccessOrder(dev::brc::ex::result_order const& _order){}
+    bool removeExchangeOrder(h256 _txid){return true;}
+    std::map<h256, dev::brc::ex::order>& getExchange(dev::brc::ex::order_type _type){return std::map<h256, dev::brc::ex::order>();}
+    std::map<h256, dev::brc::ex::result_order> const& getSuccessOrder()const{ return std::map<h256, dev::brc::ex::result_order>();}
 
 
 
