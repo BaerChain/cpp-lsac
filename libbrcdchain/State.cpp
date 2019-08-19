@@ -83,10 +83,8 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
 }
 
 ex::exchange_plugin State::openExdb(boost::filesystem::path const &_path, WithExisting _we) {
-    if (_we == WithExisting::Kill) {
         clog(VerbosityDebug, "exdb") << "Killing state database (WithExisting::Kill).";
         fs::remove_all(_path);
-    }
     try {
         ex::exchange_plugin exdb = ex::exchange_plugin(_path);
         return exdb;
