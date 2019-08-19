@@ -886,9 +886,9 @@ public:
         m_exChangeOrder.erase(m_exChangeOrder.iterator_to(*begin));
         return true;
     }
-    void setSuccessOrder(std::vector<dev::brc::ex::result_order> const& _vector){ m_successExchange.clear(); m_successExchange = _vector; changed(); }
-    void addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
-    std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
+    void setSuccessOrder(dev::brc::ex::ExResultOrder const& _exresultOrder){ m_successExchange.clear(); m_successExchange = _exresultOrder; changed(); }
+    void addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.insert(_order); changed();}
+    dev::brc::ex::ExResultOrder const& getSuccessOrder() const { return m_successExchange;}
 
     bytes getStreamRLPExOrder() const{
         const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
@@ -992,7 +992,8 @@ private:
 
 
 //    std::unordered_map<h256, dev::brc::ex::result_order> m_successExchange;s
-    std::vector<dev::brc::ex::result_order> m_successExchange;
+//    std::vector<dev::brc::ex::result_order> m_successExchange;
+    dev::brc::ex::ExResultOrder m_successExchange;
     dev::brc::ex::ExOrderMulti m_exChangeOrder;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
