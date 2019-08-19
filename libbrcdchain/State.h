@@ -448,9 +448,10 @@ public:
     void removeExchangeOrder(Address const& _addr, h256 _trid);
     dev::brc::ex::ExOrderMulti  const& getExOrder();
     dev::brc::ex::ExOrderMulti  const& userGetExOrder(Address const& _addr);
+
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
-    void setSuccessExchange(std::vector<dev::brc::ex::result_order> const& _vector);
-    std::vector<dev::brc::ex::result_order>  const& getSuccessExchange();
+    void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
+    dev::brc::ex::ExResultOrder const& getSuccessExchange();
 
   
 private:

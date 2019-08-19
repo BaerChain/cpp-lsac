@@ -1043,7 +1043,8 @@ Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
 }
 
 Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
-    std::vector<result_order> _v = m_exdb.get_result_orders_by_news(_getSize);
+    ExdbState _exdbState(*this);
+    std::vector<result_order> _v = _exdbState.get_result_orders_by_news(_getSize);
     Json::Value _JsArray;
 
     for (auto val : _v) {
@@ -1069,7 +1070,8 @@ Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
 Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTime, int64_t _maxTime,
                                                  uint32_t _maxSize)
 {
-    std::vector<result_order> _retV = m_exdb.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
+    ExdbState _exdbState(*this);
+    std::vector<result_order> _retV = _exdbState.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
     Json::Value  _JsArray;
 
     for(auto val : _retV)
@@ -2560,12 +2562,12 @@ void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_orde
         createAccount(dev::ExdbSystemAddress, {0});
         _orderAccount = account(dev::ExdbSystemAddress);
     }
-    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
+    dev::brc::ex::ExResultOrder _oldOrder = _orderAccount->getSuccessOrder();
     _orderAccount->addSuccessExchangeOrder(_order);
-    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order> const &_vector)
+void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder)
 {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
     if (!_orderAccount)
@@ -2574,12 +2576,12 @@ void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order>
         _orderAccount = account(dev::ExdbSystemAddress);
     }
 
-    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
-    _orderAccount->setSuccessOrder(_vector);
-    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
+    dev::brc::ex::ExResultOrder _oldOrder = _orderAccount->getSuccessOrder();
+    _orderAccount->setSuccessOrder(_exresultOrder);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-std::vector<dev::brc::ex::result_order> const& dev::brc::State::getSuccessExchange()
+dev::brc::ex::ExResultOrder const& dev::brc::State::getSuccessExchange()
 {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
     if (!_SuccessAccount)
