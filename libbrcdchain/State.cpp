@@ -26,7 +26,7 @@ namespace fs = boost::filesystem;
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
-  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce), m_exdbState(m_state)
+  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce), m_exdbState(*this)
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
@@ -43,7 +43,7 @@ State::State(State const &_s)
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
           m_accountStartNonce(_s.m_accountStartNonce),
-          m_exdbState(m_state){}
+          m_exdbState(*this){}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -138,7 +138,7 @@ State &State::operator=(State const &_s) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
-    m_exdbState = _s.m_exdbState;
+    m_exdbState = _s->m_exdbState;
     return *this;
 }
 
@@ -693,7 +693,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
     {
         try{
 
-            _result_v = m_exdbState.insert_operation(_val);
+            _result_v = m_exdbState->insert_operation(_val);
         }
         catch(const boost::exception &e){
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -763,7 +763,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     for (auto _val : _v)
     {
         try{
-            _result_v = m_exdbState.insert_operation(_val);
+            _result_v = m_exdbState->insert_operation(_val);
         }
         catch(const boost::exception &e){
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -1173,7 +1173,7 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     for(auto _val : _hashV)
     {
         try{
-            _resultV = m_exdbState.cancel_order_by_trxid(_val);
+            _resultV = m_exdbState->cancel_order_by_trxid(_val);
         }
         catch(Exception &e){
             cwarn << "cancelPendingorder Error :" << e.what();

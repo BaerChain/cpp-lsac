@@ -607,7 +607,7 @@ private:
 
     // Exdb
     ex::exchange_plugin m_exdb;
-    ExdbState m_exdbState;
+    std::shared_ptr<ExdbState> m_exdbState;
 
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
