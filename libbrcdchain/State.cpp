@@ -2768,7 +2768,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << i.second.getStreamRLPResultOrder();
                     s <<i.second.getStreamRLPExOrder();
                 }
-                
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
