@@ -2470,6 +2470,57 @@ std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() cons
     return  minersanp_a->getFeeSnapshot().m_sorted_creaters;
 }
 
+
+void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
+{
+    Account *_account = account(_addr);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+    }
+    dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
+
+    _account->addExOrderMulti(_order);
+    //  TO DO
+    //m_changeLog.emplace_back()
+}
+
+void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid)
+{
+    Account *_account = account(_addr);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+    }
+    dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
+
+    _account->removeExOrderMulti(_trid);
+    //  TO DO
+    //m_changeLog.emplace_back()
+}
+
+dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder() {
+    Account *_orderAccount = account(dev::ExdbSystemAddress);
+    if (!_orderAccount)
+    {
+        createAccount(dev::ExdbSystemAddress, {0});
+        _orderAccount = account(dev::ExdbSystemAddress);
+    }
+
+    return _orderAccount->getExOrder();
+}
+
+dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const& _addr)
+{
+    Account *_account = account(_addr);
+    if (!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("userGetExOrder failed : account is not exist")));
+    }
+
+    return _account->getExOrder();
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
