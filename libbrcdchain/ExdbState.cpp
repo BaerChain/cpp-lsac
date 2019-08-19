@@ -241,30 +241,30 @@ namespace dev {
 //            return ret;
 //        }
 
-//        std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
-//            vector<result_order> ret;
-////            const auto &index = m_state.getExOrder().get<ex_by_greater_id>();
-////            auto begin = index.begin();
-////            while (begin != index.end() && size > 0) {
-////                result_order eo;
-////
-////                eo.sender = begin->sender;
-////                eo.acceptor = begin->acceptor;
-////                eo.type = begin->type;
-////                eo.token_type = begin->token_type;
-////                eo.buy_type = begin->buy_type;
-////                eo.create_time = begin->create_time;
-////                eo.send_trxid = begin->send_trxid;
-////                eo.to_trxid = begin->to_trxid;
-////                eo.amount = begin->amount;
-////                eo.price = begin->price;
-////
-////                ret.push_back(eo);
-////                begin++;
-////                size--;
-////            }
-//            return ret;
-//        }
+        std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
+            std::vector<result_order> ret;
+            const auto &index = m_state.getExOrder().get<ex_by_time>();
+            auto begin = index.begin();
+            while (begin != index.end() && size > 0) {
+                ex::result_order eo;
+
+                eo.sender = begin->sender;
+                eo.acceptor = begin->acceptor;
+                eo.type = begin->type;
+                eo.token_type = begin->token_type;
+                eo.buy_type = begin->buy_type;
+                eo.create_time = begin->create_time;
+                eo.send_trxid = begin->send_trxid;
+                eo.to_trxid = begin->to_trxid;
+                eo.amount = begin->amount;
+                eo.price = begin->price;
+
+                ret.push_back(eo);
+                begin++;
+                size--;
+            }
+            return ret;
+        }
 
 //        std::vector<result_order>
 //        ExdbState::get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time,
