@@ -216,7 +216,7 @@ Account *State::account(Address const &_addr) {
     i.first->second.initResultOrder(ret_order_b);
     /// ex_order
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
-    i.first->second.initExOrder(received_cookies);
+    i.first->second.initExOrder(ex_order_b);
 
 
     return &i.first->second;

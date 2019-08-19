@@ -262,7 +262,7 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
 
 Account read_rlp(){
 
-    std::string stateBack = "0xf8cb8080a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4708080c080808082c180c08089c881c081c081c080808ccb81c0808081c081c0c2808083c281c087c681c080c2018081c0b855f853b851f84fa0000000000000000000000000000000000000000000000000000000000000000194000000000000000000000042616572436861696e8405f5e100870526c46eeca000870526c46eeca00080010101";
+    std::string stateBack = "f8cb8080a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4708080c080808082c180c08089c881c081c081c080808ccb81c0808081c081c0c2808083c281c087c681c080c2018081c0b855f853b851f84fa0000000000000000000000000000000000000000000000000000000000000000194000000000000000000000042616572436861696e8405f5e100870526c46eeca000870526c46eeca00080010101";
     auto hex_data = fromHex(stateBack);
     RLP state(hex_data);
 
@@ -317,7 +317,7 @@ Account read_rlp(){
     i.initResultOrder(ret_order_b);
     /// ex_order
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
-    i.initExOrder(received_cookies);
+    i.initExOrder(ex_order_b);
 
 
     return i;
@@ -331,7 +331,7 @@ h256 ChainParams::calculateStateRoot(bool _force) const
     if (!stateRoot || _force)
     {
         auto cmm(genesisState);
-//        cmm[ExdbSystemAddress] = read_rlp();
+        cmm[ExdbSystemAddress] = read_rlp();
         dev::brc::commit(cmm, state);
         stateRoot = state.root();
     }
