@@ -2758,13 +2758,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.get_received_cookies().streamRLP();
 
                 {
-                    RLPStream ret_order;
-                    i.second.getStreamRLPResultOrder(ret_order);
-                    s << ret_order.out();
-
-                    RLPStream ex_order;
-                    i.second.getStreamRLPExOrder(ex_order);
-                    s << ex_order.out();
+                    s << i.second.getStreamRLPResultOrder();
+                    s <<i.second.getStreamRLPExOrder();
                 }
 
                 _state.insert(i.first, &s.out());
