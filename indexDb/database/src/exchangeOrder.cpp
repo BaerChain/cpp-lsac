@@ -38,115 +38,115 @@ namespace dev {
                     check_db();
                     auto session = db->start_undo_session(true);
                     std::vector<result_order> result;
-                    for (const auto &itr : orders) {
-                        if (itr.buy_type == order_buy_type::only_price) {
-                            if (itr.type == order_type::buy) {
-                                auto find_itr = get_buy_itr(itr.token_type, itr.price_token.first);
-                                process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first,
-                                                   itr.price_token.second,
-                                                   result,
-                                                   throw_exception);
-
-                            } else { //sell
-                                auto find_itr = get_sell_itr(itr.token_type, itr.price_token.first);
-                                process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first,
-                                                   itr.price_token.second,
-                                                   result,
-                                                   throw_exception);
-                            }
-
-                        } else {
-                            if (itr.type == order_type::buy) {
-                                assert(itr.price_token.first != 0 && itr.price_token.second == 0);
-
-                                auto find_itr = get_buy_itr(itr.token_type, u256(-1));
-                                auto total_price = itr.price_token.first;
-                                auto begin = find_itr.first;
-                                auto end = find_itr.second;
-                                if (begin != end) {
-                                    while (total_price > 0 && begin != end) {
-                                        auto begin_total_price = begin->token_amount * begin->price;
-                                        result_order ret;
-                                        if (begin_total_price <= total_price) {   //
-                                            total_price -= begin_total_price;
-                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                            result.push_back(ret);
-
-                                            db->create<order_result_object>([&](order_result_object &obj) {
-                                                obj.set_data(ret);
-                                            });
-                                            update_dynamic_result_orders();
-
-                                            const auto rm_obj = db->find(begin->id);
-                                            begin++;
-                                            db->remove(*rm_obj);
-                                            update_dynamic_orders(false);
-                                        } else if (begin_total_price > total_price) {
-                                            auto can_buy_amount = total_price / begin->price;
-                                            if (can_buy_amount == 0) {
-                                                break;
-                                            }
-                                            ret.set_data(itr, begin, can_buy_amount, begin->price);
-                                            result.push_back(ret);
-
-                                            db->create<order_result_object>([&](order_result_object &obj) {
-                                                obj.set_data(ret);
-                                            });
-                                            update_dynamic_result_orders();
-
-                                            const auto rm_obj = db->find(begin->id);
-                                            db->modify(*rm_obj, [&](order_object &obj) {
-                                                obj.token_amount -= can_buy_amount;
-                                            });
-                                            break;
-                                        }
-                                    }
-                                } else {
-                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
-                                }
-                            } else {   //all_price  , sell,
-                                assert(itr.price_token.first == 0 && itr.price_token.second != 0);
-                                auto find_itr = get_sell_itr(itr.token_type, u256(0));
-                                auto begin = find_itr.first;
-                                auto end = find_itr.second;
-                                auto total_amount = itr.price_token.second;
-                                if (begin != end) {
-                                    while (total_amount > 0 && begin != end) {
-                                        result_order ret;
-                                        if (begin->token_amount > total_amount) {
-                                            ret.set_data(itr, begin, total_amount, begin->price);
-                                            result.push_back(ret);
-                                            const auto rm_obj = db->find(begin->id);
-                                            db->modify(*rm_obj, [&](order_object &obj) {
-                                                obj.token_amount -= total_amount;
-                                            });
-                                            total_amount = 0;
-                                        } else {
-                                            total_amount -= begin->token_amount;
-                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                            result.push_back(ret);
-                                            const auto rm_obj = db->find(begin->id);
-                                            begin++;
-                                            db->remove(*rm_obj);
-                                            update_dynamic_orders(false);
-                                        }
-                                        db->create<order_result_object>([&](order_result_object &obj) {
-                                            obj.set_data(ret);
-                                        });
-                                        update_dynamic_result_orders();
-                                    }
-                                } else {
-                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
-                                }
-                            }
-
-
-                        }
-
-                    }
-                    if (!reset) {
-                        session.squash();
-                    }
+//                    for (const auto &itr : orders) {
+//                        if (itr.buy_type == order_buy_type::only_price) {
+//                            if (itr.type == order_type::buy) {
+//                                auto find_itr = get_buy_itr(itr.token_type, itr.price_token.first);
+//                                process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first,
+//                                                   itr.price_token.second,
+//                                                   result,
+//                                                   throw_exception);
+//
+//                            } else { //sell
+//                                auto find_itr = get_sell_itr(itr.token_type, itr.price_token.first);
+//                                process_only_price(find_itr.first, find_itr.second, itr, itr.price_token.first,
+//                                                   itr.price_token.second,
+//                                                   result,
+//                                                   throw_exception);
+//                            }
+//
+//                        } else {
+////                            if (itr.type == order_type::buy) {
+////                                assert(itr.price_token.first != 0 && itr.price_token.second == 0);
+////
+////                                auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+////                                auto total_price = itr.price_token.first;
+////                                auto begin = find_itr.first;
+////                                auto end = find_itr.second;
+////                                if (begin != end) {
+////                                    while (total_price > 0 && begin != end) {
+////                                        auto begin_total_price = begin->token_amount * begin->price;
+////                                        result_order ret;
+////                                        if (begin_total_price <= total_price) {   //
+////                                            total_price -= begin_total_price;
+////                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
+////                                            result.push_back(ret);
+////
+////                                            db->create<order_result_object>([&](order_result_object &obj) {
+////                                                obj.set_data(ret);
+////                                            });
+////                                            update_dynamic_result_orders();
+////
+////                                            const auto rm_obj = db->find(begin->id);
+////                                            begin++;
+////                                            db->remove(*rm_obj);
+////                                            update_dynamic_orders(false);
+////                                        } else if (begin_total_price > total_price) {
+////                                            auto can_buy_amount = total_price / begin->price;
+////                                            if (can_buy_amount == 0) {
+////                                                break;
+////                                            }
+////                                            ret.set_data(itr, begin, can_buy_amount, begin->price);
+////                                            result.push_back(ret);
+////
+////                                            db->create<order_result_object>([&](order_result_object &obj) {
+////                                                obj.set_data(ret);
+////                                            });
+////                                            update_dynamic_result_orders();
+////
+////                                            const auto rm_obj = db->find(begin->id);
+////                                            db->modify(*rm_obj, [&](order_object &obj) {
+////                                                obj.token_amount -= can_buy_amount;
+////                                            });
+////                                            break;
+////                                        }
+////                                    }
+////                                } else {
+////                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+////                                }
+////                            } else {   //all_price  , sell,
+////                                assert(itr.price_token.first == 0 && itr.price_token.second != 0);
+////                                auto find_itr = get_sell_itr(itr.token_type, u256(0));
+////                                auto begin = find_itr.first;
+////                                auto end = find_itr.second;
+////                                auto total_amount = itr.price_token.second;
+////                                if (begin != end) {
+////                                    while (total_amount > 0 && begin != end) {
+////                                        result_order ret;
+////                                        if (begin->token_amount > total_amount) {
+////                                            ret.set_data(itr, begin, total_amount, begin->price);
+////                                            result.push_back(ret);
+////                                            const auto rm_obj = db->find(begin->id);
+////                                            db->modify(*rm_obj, [&](order_object &obj) {
+////                                                obj.token_amount -= total_amount;
+////                                            });
+////                                            total_amount = 0;
+////                                        } else {
+////                                            total_amount -= begin->token_amount;
+////                                            ret.set_data(itr, begin, begin->token_amount, begin->price);
+////                                            result.push_back(ret);
+////                                            const auto rm_obj = db->find(begin->id);
+////                                            begin++;
+////                                            db->remove(*rm_obj);
+////                                            update_dynamic_orders(false);
+////                                        }
+////                                        db->create<order_result_object>([&](order_result_object &obj) {
+////                                            obj.set_data(ret);
+////                                        });
+////                                        update_dynamic_result_orders();
+////                                    }
+////                                } else {
+////                                    BOOST_THROW_EXCEPTION(all_price_operation_error());
+////                                }
+////                            }
+//
+//
+//                        }
+//
+//                    }
+//                    if (!reset) {
+//                        session.squash();
+//                    }
                     return result;
                 });
             }

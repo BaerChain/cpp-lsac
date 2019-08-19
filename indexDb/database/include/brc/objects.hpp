@@ -13,8 +13,11 @@
 //using namespace chainbase;
 using namespace boost::multi_index;
 
+
+
 namespace dev {
     namespace brc {
+
         namespace ex {
 
             typedef int64_t Time_ms;
@@ -37,6 +40,21 @@ namespace dev {
             };
 
 
+            struct ex_order {
+                h256 trxid;
+                Address sender;
+                u256 price;
+                u256 token_amount;
+                u256 source_amount;
+                Time_ms create_time;
+                order_type type;
+                order_token_type token_type;
+                order_buy_type buy_type;
+            };
+
+
+
+
             struct result_order {
                 result_order() {}
 
@@ -52,7 +70,7 @@ namespace dev {
                     type = itr1.type;
                     token_type = itr1.token_type;
                     buy_type = itr1.buy_type;
-                    create_time = itr1.time;
+                    create_time = itr1.create_time;
                     send_trxid = itr1.trxid;
                     to_trxid = itr2->trxid;
                     amount = _amount;
@@ -73,16 +91,7 @@ namespace dev {
             };
 
 
-            struct ex_order {
-                h256 trxid;
-                Address sender;
-                order_buy_type buy_type;
-                order_token_type token_type;
-                order_type type;
-                u256 price;;
-                u256 token_amount;
-                Time_ms time;
-            };
+
 
 
 
@@ -105,7 +114,7 @@ namespace dev {
                                             member<ex_order, order_type, &ex_order::type>,
                                             member<ex_order, order_token_type, &ex_order::token_type>,
                                             member<ex_order, u256, &ex_order::price>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::less<u256>, std::less<Time_ms>>
                             >,
@@ -114,14 +123,14 @@ namespace dev {
                                             member<ex_order, order_type, &ex_order::type>,
                                             member<ex_order, order_token_type, &ex_order::token_type>,
                                             member<ex_order, u256, &ex_order::price>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::greater<u256>, std::less<Time_ms>>
                             >,
                             ordered_non_unique<tag<ex_by_address>,
                                     composite_key<ex_order,
                                             member<ex_order, Address, &ex_order::sender>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<Address>, std::greater<Time_ms>>
                             >
