@@ -881,14 +881,15 @@ public:
     bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
     std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
 
-    void getStreamRLPExOrder(RLPStream& s) const{
+    bytes getStreamRLPExOrder() const{
         const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto itr = index_trx_id.begin();
-        s.appendList(m_exChangeOrder.size());
+        RLPStream s(m_exChangeOrder.size());
         for(; itr != index_trx_id.end(); itr++){
             dev::brc::ex::ex_order order = *itr;
             s.append(order.streamRLP());
         }
+        return s.out();
     }
     void initExOrder(bytes const& b){
         dev::brc::ex::ExOrderMulti ex_multi;
@@ -900,11 +901,12 @@ public:
         m_exChangeOrder.clear();
         m_exChangeOrder = ex_multi;
     }
-    void getStreamRLPResultOrder(RLPStream& s) const{
-        s.appendList(m_successExchange.size());
+    bytes getStreamRLPResultOrder() const{
+        RLPStream s(m_successExchange.size());
         for(auto const& v : m_successExchange){
             s.append(v.streamRLP());
         }
+        return s.out();
     }
     void initResultOrder(bytes const& b){
         m_successExchange.clear();
