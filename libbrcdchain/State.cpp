@@ -26,7 +26,7 @@ namespace fs = boost::filesystem;
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
     BaseState _bs)
-  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
+  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce), m_exdbState(m_state)
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
@@ -42,7 +42,8 @@ State::State(State const &_s)
           m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
-          m_accountStartNonce(_s.m_accountStartNonce) {}
+          m_accountStartNonce(_s.m_accountStartNonce),
+          m_exdbState(m_state){}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -137,6 +138,7 @@ State &State::operator=(State const &_s) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
+    m_exdbState = _s.m_exdbState;
     return *this;
 }
 
@@ -646,7 +648,7 @@ Account* dev::brc::State::getSysAccount(){
 }
 
 void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::vector<order> _v ;
+	std::vector<ex_order> _v ;
 	std::vector<result_order> _result_v;
 
 	bigint total_free_brc = 0;
@@ -666,7 +668,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
             _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
 		}
 
-		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
+		ex_order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
 						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _pair, _nowTime };
 		_v.push_back(_order);
 
@@ -678,6 +680,7 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 		}
 	}
 	try{
+
 		_result_v = m_exdb.insert_operation(_v, false, true);
 	}
 	catch(const boost::exception &e){

@@ -6,6 +6,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 #include "ChainParams.h"
+#include "ExdbState.h"
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
@@ -19,6 +20,7 @@
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <unordered_map>
+
 
 namespace dev
 {
@@ -592,6 +594,8 @@ private:
 
     // Exdb
     ex::exchange_plugin m_exdb;
+    ExdbState m_exdbState;
+
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
