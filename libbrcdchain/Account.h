@@ -7,6 +7,8 @@
 #include "libbrccore/config.h"
 
 #include <boost/filesystem/path.hpp>
+#include <indexDb/database/include/brc/objects.hpp>
+
 
 namespace dev
 {
@@ -869,6 +871,16 @@ public:
     /// 2 update m_received_cookies
     ///@return <is_update, get_total_cookies>
 
+    bool addExchangeOrder(dev::brc::ex::order const& _order);
+    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order);
+    void setBuyExchangeOrder(dev::brc::ex::order const& _order);
+    void setSellExchangeOrder(dev::brc::ex::order const& _order);
+    void setSuccessOrder(dev::brc::ex::result_order const& _order);
+    bool removeExchangeOrder(h256 _txid);
+    std::map<h256, dev::brc::ex::order>& getExchange(dev::brc::ex::order_type _type);
+    std::map<h256, dev::brc::ex::result_order> const& getSuccessOrder() const;
+
+
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -930,6 +942,12 @@ private:
     ReceivedCookies m_received_cookies;
 
     std::vector<std::pair<u256, u256>> m_BlockReward;
+
+
+    std::unordered_map<h256, dev::brc::ex::order> m_buyExchange;
+    std::unordered_map<h256, dev::brc::ex::order> m_sellExchange;
+    std::unordered_map<h256, dev::brc::ex::result_order> m_successExchange;
+
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;
 
