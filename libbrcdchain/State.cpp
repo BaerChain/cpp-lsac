@@ -212,9 +212,10 @@ Account *State::account(Address const &_addr) {
     m_unchangedCacheEntries.push_back(_addr);
 
     /// successExchange
-
+    const bytes ret_order_b = state[17].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.initResultOrder(ret_order_b);
     /// ex_order
-    const bytes received_cookies = state[18].convert<bytes>(RLP::LaissezFaire);
+    const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(received_cookies);
 
 
@@ -2478,6 +2479,57 @@ std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() cons
     return  minersanp_a->getFeeSnapshot().m_sorted_creaters;
 }
 
+
+void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
+{
+    Account *_account = account(_addr);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+    }
+    dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
+
+    _account->addExOrderMulti(_order);
+    //  TO DO
+    //m_changeLog.emplace_back()
+}
+
+void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid)
+{
+    Account *_account = account(_addr);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+    }
+    dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
+
+    _account->removeExOrderMulti(_trid);
+    //  TO DO
+    //m_changeLog.emplace_back()
+}
+
+dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder() {
+    Account *_orderAccount = account(dev::ExdbSystemAddress);
+    if (!_orderAccount)
+    {
+        createAccount(dev::ExdbSystemAddress, {0});
+        _orderAccount = account(dev::ExdbSystemAddress);
+    }
+
+    return _orderAccount->getExOrder();
+}
+
+dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const& _addr)
+{
+    Account *_account = account(_addr);
+    if (!_account)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("userGetExOrder failed : account is not exist")));
+    }
+
+    return _account->getExOrder();
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
@@ -2582,7 +2634,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(17);
+				s.appendList(19);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2647,6 +2699,16 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.block_record().streamRLP();
 
                 s << i.second.get_received_cookies().streamRLP();
+
+                {
+                    RLPStream ex_order;
+                    i.second.getStreamRLPExOrder(ex_order);
+                    s << ex_order.out();
+                    RLPStream ret_order;
+                    i.second.getStreamRLPResultOrder(ret_order);
+                    s << ret_order.out();
+                }
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
