@@ -184,18 +184,16 @@ namespace dev {
         }
 
         void ExdbState::add_exchangeOrder(const ex_order &od) {
-            static Address systemADD;
-            m_state.addExchangeOrder(systemADD, od);
+            m_state.addExchangeOrder(ExdbSystemAddress, od);
         }
 
 
         void ExdbState::remove_exchangeOrder(const dev::h256 &id) {
-            static Address systemADD;
-            m_state.removeExchangeOrder(systemADD, id);
+            m_state.removeExchangeOrder(ExdbSystemAddress, id);
         }
 
         void ExdbState::add_resultOrder(const dev::brc::result_order &od) {
-
+//            m_state.
         }
 
 //        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr) const {
