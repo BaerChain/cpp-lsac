@@ -73,48 +73,61 @@ namespace dev {
             };
 
 
+            struct ex_order {
+                h256 trxid;
+                Address sender;
+                order_buy_type buy_type;
+                order_token_type token_type;
+                order_type type;
+                u256 price;;
+                u256 token_amount;
+                Time_ms time;
+            };
 
+
+
+
+            struct ex_by_trx_id;
+            struct ex_by_price_less;
+            struct ex_by_price_greater;
+            struct ex_by_address;
 
             typedef multi_index_container<
-                    order,
+                    ex_order,
                     indexed_by<
-                            ordered_unique<tag<by_id>,
-                                    member<order, order::id_type, &order::id>
-                            >,
-                            ordered_non_unique<tag<by_trx_id>,
-                                    composite_key<order,
-                                            member<order, h256, &order::trxid>
+                            ordered_non_unique<tag<ex_by_trx_id>,
+                                    composite_key<ex_order, member<ex_order, h256, &ex_order::trxid>
                                     >,
                                     composite_key_compare<std::greater<h256>>
                             >,
-                            ordered_non_unique<tag<by_price_less>,
-                                    composite_key<order,
-                                            member<order, order_type, &order::type>,
-                                            member<order, order_token_type, &order::token_type>,
-                                            member<order, u256, &order::price>,
-                                            member<order, Time_ms, &order::create_time>
+                            ordered_non_unique<tag<ex_by_price_less>,
+                                    composite_key<ex_order,
+                                            member<ex_order, order_type, &ex_order::type>,
+                                            member<ex_order, order_token_type, &ex_order::token_type>,
+                                            member<ex_order, u256, &ex_order::price>,
+                                            member<ex_order, Time_ms, &ex_order::time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::less<u256>, std::less<Time_ms>>
                             >,
-                            ordered_non_unique<tag<by_price_greater>,
-                                    composite_key<order,
-                                            member<order, order_type, &order::type>,
-                                            member<order, order_token_type, &order::token_type>,
-                                            member<order, u256, &order::price>,
-                                            member<order, Time_ms, &order::create_time>
+                            ordered_non_unique<tag<ex_by_price_greater>,
+                                    composite_key<ex_order,
+                                            member<ex_order, order_type, &ex_order::type>,
+                                            member<ex_order, order_token_type, &ex_order::token_type>,
+                                            member<ex_order, u256, &ex_order::price>,
+                                            member<ex_order, Time_ms, &ex_order::time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::greater<u256>, std::less<Time_ms>>
                             >,
-                            ordered_non_unique<tag<by_address>,
-                                    composite_key<order,
-                                            member<order, Address, &order::sender>,
-                                            member<order, Time_ms, &order::create_time>
+                            ordered_non_unique<tag<ex_by_address>,
+                                    composite_key<ex_order,
+                                            member<ex_order, Address, &ex_order::sender>,
+                                            member<ex_order, Time_ms, &ex_order::time>
                                     >,
                                     composite_key_compare<std::less<Address>, std::greater<Time_ms>>
                             >
                     >,
-                    std::allocator<order>
-            > ExOrder;
+                    std::allocator<ex_order>
+            > ExOrderMulti;
 
 
             ////////////////////////////////////////////////////////////////////////
