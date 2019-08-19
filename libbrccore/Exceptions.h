@@ -37,6 +37,7 @@ DEV_SIMPLE_EXCEPTION(DefaultError);
 DEV_SIMPLE_EXCEPTION(VerifyPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(CancelPendingOrderFiled);
 DEV_SIMPLE_EXCEPTION(ExdbChangeFailed);
+DEV_SIMPLE_EXCEPTION(SuccessExChangeFailed);
 DEV_SIMPLE_EXCEPTION(pendingorderAllPriceFiled);
 DEV_SIMPLE_EXCEPTION(receivingincomeFiled);
 DEV_SIMPLE_EXCEPTION(getVotingCycleFailed);

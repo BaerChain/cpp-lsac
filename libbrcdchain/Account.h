@@ -875,7 +875,7 @@ public:
     dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
     bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
-    bool removeExOrderMulti(h256 _txid) {}
+    bool removeExOrderMulti(h256 const& _txid) { m_exChangeOrder }
     void setSuccessOrder(std::vector<dev::brc::ex::result_order> const& _vector){ m_successExchange.clear(); m_successExchange = _vector; changed(); }
     bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
     std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}

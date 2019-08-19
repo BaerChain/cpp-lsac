@@ -436,8 +436,11 @@ public:
 
     void addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order);
     void removeExchangeOrder(Address const& _addr, h256 _trid);
-    dev::brc::ex::ExOrderMulti const& getExOrder();
-    dev::brc::ex::ExOrderMulti const& userGetExOrder(Address const& _addr);
+    dev::brc::ex::ExOrderMulti  getExOrder() const;
+    dev::brc::ex::ExOrderMulti  userGetExOrder(Address const& _addr) const;
+    void addSuccessExchange(dev::brc::ex::result_order const& _order);
+    void setSuccessExchange(std::vector<dev::brc::ex::result_order> const& _vector);
+    std::vector<dev::brc::ex::result_order> getSuccessExchange() const;
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
