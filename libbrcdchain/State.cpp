@@ -2504,8 +2504,8 @@ void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_or
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
     _account->addExOrderMulti(_order);
-    //  TO DO
-    //m_changeLog.emplace_back()
+
+    m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid)
@@ -2524,7 +2524,7 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: cancelpendingorder error")));
     }
     //  TO DO
-    //m_changeLog.emplace_back()
+    m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
 dev::brc::ex::ExOrderMulti dev::brc::State::getExOrder() const {
@@ -2557,8 +2557,9 @@ void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_orde
         createAccount(dev::ExdbSystemAddress, {0});
         _orderAccount = account(dev::ExdbSystemAddress);
     }
-
+    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
     _orderAccount->addSuccessExchangeOrder(_order);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
 }
 
 void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order> const &_vector)
@@ -2570,7 +2571,9 @@ void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order>
         _orderAccount = account(dev::ExdbSystemAddress);
     }
 
+    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
     _orderAccount->setSuccessOrder(_vector);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
 }
 
 std::vector<dev::brc::ex::result_order> dev::brc::State::getSuccessExchange() const
