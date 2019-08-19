@@ -1,5 +1,6 @@
 #include "BRCTranscation.h"
 #include "DposVote.h"
+#include "ExdbState.h"
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <libbrccore/config.h>
@@ -158,13 +159,13 @@ void dev::brc::BRCTranscation::verifyPendingOrder(Address const& _form, ex::exch
 
 
 void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _total_cost, ex::exchange_plugin& _exdb,
-												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops) {
 
-	u256 total_brc = 0;
-	u256 total_cost = _total_cost;
-	std::vector<order> _verfys;
+    u256 total_brc = 0;
+    u256 total_cost = _total_cost;
+    std::vector<ex_order> _verfys;
 
-    for(auto const& val :_ops) {
+    for (auto const &val :_ops) {
         std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(
                 val);
         if (!pen)
@@ -203,79 +204,80 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
         }
 
         if (_type == order_type::buy) {
-            if (_buy_type == order_buy_type::only_price)
-            {
+            if (_buy_type == order_buy_type::only_price) {
                 total_brc += _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
-                if(total_brc > m_state.BRC(_form))
-                {
-                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie only_price :Address BRC < Num * Price")));
+                if (total_brc > m_state.BRC(_form)) {
+                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                            std::string("buy Cookie only_price :Address BRC < Num * Price")));
                 }
-            }else if(_buy_type == order_buy_type::all_price)
-            {
+            } else if (_buy_type == order_buy_type::all_price) {
                 total_brc += _pendingOrderPrice;
-                if(total_brc > m_state.BRC(_form))
-                {
-                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("buy Cookie all_price :Address BRC < Num * Price")));
+                if (total_brc > m_state.BRC(_form)) {
+                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                            std::string("buy Cookie all_price :Address BRC < Num * Price")));
                 }
             }
-        }else if(_type == order_type::sell)
-        {
-            if(_buy_type == order_buy_type::only_price || _buy_type == order_buy_type::all_price)
-            {
+        } else if (_type == order_type::sell) {
+            if (_buy_type == order_buy_type::only_price || _buy_type == order_buy_type::all_price) {
                 total_cost += _pendingOrderNum;
-                if(total_cost > m_state.balance(_form))
-                {
-                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("sell Cookie only_price :Address balance < Num * Price")));
+                if (total_cost > m_state.balance(_form)) {
+                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                            std::string("sell Cookie only_price :Address balance < Num * Price")));
                 }
             }
         }
 
 
-
-		if(_buy_type == order_buy_type::all_price){
-			if(_type == order_type::buy){
-				__type = order_type::sell;
-			}
-			else if(_type == order_type::sell) {
+        ExdbState _exdbState(m_state);
+        if (_buy_type == order_buy_type::all_price) {
+            if (_type == order_type::buy) {
+                __type = order_type::sell;
+            } else if (_type == order_type::sell) {
                 __type = order_type::buy;
             }
-			std::vector<exchange_order> _v = _exdb.get_order_by_type(__type, order_token_type::FUEL, 10);
+            std::vector<exchange_order> _v = _exdbState.get_order_by_type(__type, order_token_type::FUEL, 10);
 
-			if(_v.size() == 0){
-				BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("There is no order for the corresponding order pool!")));
-			}
-		}
+            if (_v.size() == 0) {
+                BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                        std::string("There is no order for the corresponding order pool!")));
+            }
+        }
 
-		if(_type == order_type::buy && _token_type == order_token_type::FUEL && _buy_type == order_buy_type::all_price){
-				std::pair<u256, u256> _pair = { _pendingOrderPrice * PRICEPRECISION, _pendingOrderNum};
-				order _order = { _pendingOrderHash, _form, (order_buy_type)_buy_type,(order_token_type)_token_type, (order_type)_type, _pair, _nowTime };
-				_verfys.push_back(_order);
-		}
-	}
+        if (_type == order_type::buy && _token_type == order_token_type::FUEL &&
+            _buy_type == order_buy_type::all_price) {
+            std::pair<u256, u256> _pair = {_pendingOrderPrice * PRICEPRECISION, _pendingOrderNum};
+            ex_order _order = {_pendingOrderHash, _form, _pendingOrderPrice * PRICEPRECISION, _pendingOrderNum,
+                               _pendingOrderNum, _nowTime, (order_type) _type, (order_token_type) _token_type,
+                               (order_buy_type) _buy_type};
+            _verfys.push_back(_order);
+        }
+    }
 
-	if(_verfys.empty())
-		return;
+    if (_verfys.empty())
+        return;
+    for (auto _val : _verfys)
+    {
+        try{
+            std::vector<result_order> _retV = _exdbState.insert_operation(_val, true);
+            u256 _cookieNum = 0;
+            for(auto it : _retV){
+                if(it.type == order_type::buy && it.token_type == order_token_type::FUEL && it.buy_type == order_buy_type::all_price){
+                    _cookieNum += it.amount;
+                }
+            }
+            if( (_cookieNum + m_state.balance(_form)) < _transcationGas){
+                BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : The exchanged cookies are not enough to pay the commission!")));
+            }
+        }
+        catch(const boost::exception& e){
+            cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice is failed!")));
+        }
+        catch(...){
+            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice unkonwn failed!")));
+        }
+    }
 
-    try{
-		std::vector<result_order> _retV = _exdb.insert_operation(_verfys, true, true);
-		u256 _cookieNum = 0;
-		for(auto it : _retV){
-			if(it.type == order_type::buy && it.token_type == order_token_type::FUEL && it.buy_type == order_buy_type::all_price){
-				_cookieNum += it.amount;
-			}
-		}
-		if( (_cookieNum + m_state.balance(_form)) < _transcationGas){
-			BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : The exchanged cookies are not enough to pay the commission!")));
-		}
-	}
-	catch(const boost::exception& e){
-        cwarn << "verifyPendingOrder Error " << boost::diagnostic_information(e);
-		BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice is failed!")));
-	}
-	catch(...){
-		BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(std::string("pendingorderFailed : buy BRC allprice unkonwn failed!")));
-		return;
-	}
 }
 
 void dev::brc::BRCTranscation::verifyCancelPendingOrder(ex::exchange_plugin& _exdb, Address _addr, h256 _hash)
