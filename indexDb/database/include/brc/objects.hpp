@@ -14,8 +14,11 @@
 //using namespace chainbase;
 using namespace boost::multi_index;
 
+
+
 namespace dev {
     namespace brc {
+
         namespace ex {
 
             typedef int64_t Time_ms;
@@ -38,6 +41,41 @@ namespace dev {
             };
 
 
+            struct ex_order {
+                h256 trxid;
+                Address sender;
+                u256 price;
+                u256 token_amount;
+                u256 source_amount;
+                Time_ms create_time;
+                order_type type;
+                order_token_type token_type;
+                order_buy_type buy_type;
+
+                bytes streamRLP() const {
+                    RLPStream s(9);
+                    s << trxid << sender << price << token_amount << source_amount
+                                <<(u256)create_time << (uint8_t)type<< (uint8_t)token_type<< (uint8_t)buy_type;
+                    return s.out();
+                }
+                void populate(bytes const& b){
+                    RLP rlp(b);
+                    trxid = rlp[0].convert<h256>(RLP::LaissezFaire);
+                    sender = rlp[1].convert<Address>(RLP::LaissezFaire);
+                    price = rlp[2].convert<u256>(RLP::LaissezFaire);
+                    token_amount = rlp[3].convert<u256>(RLP::LaissezFaire);
+                    source_amount = rlp[4].convert<u256>(RLP::LaissezFaire);
+                    create_time = (int64_t)rlp[5].convert<u256>(RLP::LaissezFaire);
+                    type = (order_type)rlp[6].convert<uint8_t>(RLP::LaissezFaire);
+                    token_type = (order_token_type)rlp[7].convert<uint8_t>(RLP::LaissezFaire);
+                    buy_type = (order_buy_type)rlp[8].convert<uint8_t>(RLP::LaissezFaire);
+
+                }
+            };
+
+
+
+
             struct result_order {
                 result_order() {}
 
@@ -53,7 +91,7 @@ namespace dev {
                     type = itr1.type;
                     token_type = itr1.token_type;
                     buy_type = itr1.buy_type;
-                    create_time = itr1.time;
+                    create_time = itr1.create_time;
                     send_trxid = itr1.trxid;
                     to_trxid = itr2->trxid;
                     amount = _amount;
@@ -95,37 +133,6 @@ namespace dev {
             };
 
 
-            struct ex_order {
-                h256 trxid;
-                Address sender;
-                order_buy_type buy_type;
-                order_token_type token_type;
-                order_type type;
-                u256 price;
-                u256 token_amount;
-                Time_ms time;
-
-                bytes streamRLP() const {
-                    RLPStream s(8);
-                    s << trxid << sender << (uint8_t) buy_type << (uint8_t) token_type << (uint8_t) type << price <<token_amount << (u256) time;
-                    return s.out();
-                }
-                void populate(bytes const& b){
-                    RLP rlp(b);
-                    trxid = rlp[0].convert<h256>(RLP::LaissezFaire);
-                    sender = rlp[1].convert<Address>(RLP::LaissezFaire);
-                    buy_type = (order_buy_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
-                    token_type = (order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
-                    type = (order_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
-                    price = rlp[5].convert<u256>(RLP::LaissezFaire);
-                    token_amount = rlp[6].convert<u256>(RLP::LaissezFaire);
-                    time = (int64_t)rlp[7].convert<u256>(RLP::LaissezFaire);
-                }
-            };
-
-
-
-
             struct ex_by_trx_id;
             struct ex_by_price_less;
             struct ex_by_price_greater;
@@ -144,7 +151,7 @@ namespace dev {
                                             member<ex_order, order_type, &ex_order::type>,
                                             member<ex_order, order_token_type, &ex_order::token_type>,
                                             member<ex_order, u256, &ex_order::price>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::less<u256>, std::less<Time_ms>>
                             >,
@@ -153,14 +160,14 @@ namespace dev {
                                             member<ex_order, order_type, &ex_order::type>,
                                             member<ex_order, order_token_type, &ex_order::token_type>,
                                             member<ex_order, u256, &ex_order::price>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<order_type>, std::less<order_token_type>, std::greater<u256>, std::less<Time_ms>>
                             >,
                             ordered_non_unique<tag<ex_by_address>,
                                     composite_key<ex_order,
                                             member<ex_order, Address, &ex_order::sender>,
-                                            member<ex_order, Time_ms, &ex_order::time>
+                                            member<ex_order, Time_ms, &ex_order::create_time>
                                     >,
                                     composite_key_compare<std::less<Address>, std::greater<Time_ms>>
                             >

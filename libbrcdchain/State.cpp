@@ -1839,6 +1839,12 @@ void State::rollback(size_t _savepoint) {
             case Change::ReceiveCookies:
                 account.set_received(change.received);
                 break;
+            case Change::UpExOrder:
+                account.setExOrderMulti(change.ex_multi);
+                break;
+            case Change::SuccessOrder:
+                account.setSuccessOrder(change.ret_orders);
+                break;
             default:
                 break;
         }
@@ -2701,12 +2707,13 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.get_received_cookies().streamRLP();
 
                 {
-                    RLPStream ex_order;
-                    i.second.getStreamRLPExOrder(ex_order);
-                    s << ex_order.out();
                     RLPStream ret_order;
                     i.second.getStreamRLPResultOrder(ret_order);
                     s << ret_order.out();
+
+                    RLPStream ex_order;
+                    i.second.getStreamRLPExOrder(ex_order);
+                    s << ex_order.out();
                 }
 
                 _state.insert(i.first, &s.out());
