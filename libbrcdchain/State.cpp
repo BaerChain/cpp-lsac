@@ -708,8 +708,13 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
                 else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
                     total_free_balance -= _result_order.amount;
             }
+            if(_result_order.acceptor == systemAddress)
+            {
+                _set.emplace(_result_order.type);
+            } else{
+                continue;
+            }
 
-            _set.emplace(_result_order.type);
         }
     }
 
