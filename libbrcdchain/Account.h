@@ -893,19 +893,16 @@ public:
     bytes getStreamRLPExOrder() const{
         const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto itr = index_trx_id.begin();
-        RLPStream s;
-        std::vector<bytes> bs;
+        RLPStream s(m_exChangeOrder.size());
         for(; itr != index_trx_id.end(); itr++){
             dev::brc::ex::ex_order order = *itr;
-            bs.push_back(order.streamRLP());
+            s.append(order.streamRLP());
         }
-        s.appendVector<bytes>(bs);
         return s.out();
     }
     void initExOrder(bytes const& b){
         dev::brc::ex::ExOrderMulti ex_multi;
-        std::vector<bytes> bs = RLP(b).toVector<bytes>();
-        for(auto const& v : bs){
+        for(auto const& v : RLP(b)){
             dev::brc::ex::ex_order order;
             order.populate(v.toBytes());
             ex_multi.insert(order);
@@ -920,15 +917,14 @@ public:
         }
         return s.out();
     }
-    void initResultOrder(bytes const& b){
+    void initResultOrder(bytes const& b) {
         m_successExchange.clear();
-        for(auto const& v: RLP(b)){
+        for (auto const &v: RLP(b)) {
             dev::brc::ex::result_order order;
             order.populate(v.toBytes());
             m_successExchange.emplace_back(order);
         }
     }
-
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

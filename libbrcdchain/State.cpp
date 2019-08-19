@@ -2763,7 +2763,6 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 }
 
                 _state.insert(i.first, &s.out());
-                cwarn << toHex(i.first) << " rlp:" << s.out() ;
             }
             ret.insert(i.first);
         }

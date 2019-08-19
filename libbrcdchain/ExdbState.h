@@ -11,6 +11,7 @@
 #include <libdevcrypto/Common.h>
 #include <libbvm/ExtVMFace.h>
 #include <libbrccore/config.h>
+#include <brc/objects.hpp>
 
 
 
@@ -30,7 +31,7 @@ namespace dev{
             /// \param reset    if true , this operation will reset, dont record.
             /// \param throw_exception  if true  throw exception when error.
             /// \return
-            std::vector<ex::result_order> insert_operation(const ex::ex_order &od);
+            std::vector<ex::result_order> insert_operation(const ex::ex_order &od, bool reset = false);
 
             ///
             /// \param os vector transactions id
@@ -64,12 +65,12 @@ namespace dev{
 //            std::vector<result_order> get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time, uint32_t max_size = 50) const;
 //
 //
-//            /// get exchange order by type (sell or buy && BRC or  FUEL)
-//            /// \param type         sell or buy
-//            /// \param token_type   BRC OR FUEL
-//            /// \param size         once search size.
-//            /// \return             complete order.
-//            std::vector<exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
+            /// get exchange order by type (sell or buy && BRC or  FUEL)
+            /// \param type         sell or buy
+            /// \param token_type   BRC OR FUEL
+            /// \param size         once search size.
+            /// \return             complete order.
+            std::vector<ex::exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
 //
 //            std::vector<order> exits_trxid(const h256  &trxid);
 

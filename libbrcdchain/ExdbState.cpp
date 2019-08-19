@@ -9,9 +9,16 @@ namespace dev {
     namespace brc {
 
 
-        std::vector<ex::result_order> ExdbState::insert_operation(const ex::ex_order &itr) {
+        std::vector<ex::result_order> ExdbState::insert_operation(const ex::ex_order &itr, bool reset) {
+
 
             std::vector<result_order> result;
+            if(reset){
+                if(!(itr.type == order_type::buy && itr.buy_type == order_buy_type::all_price)){
+                    cwarn << "reset only use all_price  && buy";
+                    exit(1);
+                }
+            }
             bool throw_exception = true;
             if (itr.buy_type == order_buy_type::only_price) {
                 if (itr.type == order_type::buy) {
@@ -46,8 +53,12 @@ namespace dev {
                                 ret.set_data(itr, begin, begin->token_amount, begin->price);
                                 result.push_back(ret);
 
-                                add_resultOrder(ret);
-                                remove_exchangeOrder(begin->trxid);
+                                if(!reset){
+                                    add_resultOrder(ret);
+                                    remove_exchangeOrder(begin->trxid);
+                                }
+
+
 
                             } else if (begin_total_price > total_price) {
                                 auto can_buy_amount = total_price / begin->price;
@@ -57,11 +68,13 @@ namespace dev {
                                 ret.set_data(itr, begin, can_buy_amount, begin->price);
                                 result.push_back(ret);
 
-                                add_resultOrder(ret);
+                                if(!reset){
+                                    add_resultOrder(ret);
+                                    auto data_update = *begin;
+                                    data_update.token_amount -= can_buy_amount;
+                                    add_exchangeOrder(data_update);
+                                }
 
-                                auto data_update = *begin;
-                                data_update.token_amount -= can_buy_amount;
-                                add_exchangeOrder(data_update);
 
                                 break;
                             }
@@ -336,10 +349,43 @@ namespace dev {
 //            return ret;
 //        }
 
-//        std::vector<exchange_order>
-//        ExdbState::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
-//            return std::vector<exchange_order>();
-//        }
+        std::vector<exchange_order>
+        ExdbState::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
+            std::vector<exchange_order> ret;
+            if (type == order_type::buy) {
+                const auto &index_greater = m_state.getExOrder().get<ex_by_price_greater>();
+                auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                                                                                            token_type,
+                                                                                            u256(-1), 0);
+                auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                                                                                            token_type,
+                                                                                            u256(0), INT64_MAX);
+                auto begin = index_greater.lower_bound(find_lower);
+                auto end = index_greater.upper_bound(find_upper);
+
+                while (begin != end && size > 0) {
+                    ret.push_back(exchange_order(*begin));
+                    begin++;
+                    size--;
+                }
+            } else {
+                const auto &index_less = m_state.getExOrder().get<ex_by_price_less>();
+                auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                                                                                            token_type,
+                                                                                            u256(0), 0);
+                auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                                                                                            token_type,
+                                                                                            u256(-1), INT64_MAX);
+                auto begin = index_less.lower_bound(find_lower);
+                auto end = index_less.upper_bound(find_upper);
+                while (begin != end && size > 0) {
+                    ret.push_back(exchange_order(*begin));
+                    begin++;
+                    size--;
+                }
+            }
+            return ret;
+        }
 //
 //        std::vector<order> ExdbState::exits_trxid(const h256 &trxid) {
 //            return std::vector<order>();
