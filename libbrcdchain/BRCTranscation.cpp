@@ -258,6 +258,7 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
     for (auto _val : _verfys)
     {
         try{
+            ExdbState _exdbState(m_state);
             std::vector<result_order> _retV = _exdbState.insert_operation(_val, true);
             u256 _cookieNum = 0;
             for(auto it : _retV){
