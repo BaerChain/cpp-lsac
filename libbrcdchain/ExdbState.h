@@ -50,19 +50,19 @@ namespace dev{
 //            /// \return
 //            std::vector<exchange_order> get_orders(uint32_t size = 50) const;
 //
-//            /// get newest result_order by size
-//            /// \param size         once get size.
-//            /// \return             vector<result_orders>.
-////            std::vector<result_order> get_result_orders_by_news(uint32_t size = 50) const;
+            /// get newest result_order by size
+            /// \param size         once get size.
+            /// \return             vector<result_orders>.
+            std::vector<result_order> get_result_orders_by_news(uint32_t size = 50) const;
 //
 //
-//            /// get result_order of address by time, size must < 50
-//            /// \param addr         which Address
-//            /// \param min_time     min time
-//            /// \param max_time     max time
-//            /// \param max_size     once get size.
-//            /// \return             result_order
-//            std::vector<result_order> get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time, uint32_t max_size = 50) const;
+            /// get result_order of address by time, size must < 50
+            /// \param addr         which Address
+            /// \param min_time     min time
+            /// \param max_time     max time
+            /// \param max_size     once get size.
+            /// \return             result_order
+            std::vector<result_order> get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time, uint32_t max_size = 50) const;
 //
 //
             /// get exchange order by type (sell or buy && BRC or  FUEL)
@@ -72,7 +72,15 @@ namespace dev{
             /// \return             complete order.
             std::vector<ex::exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
 //
-//            std::vector<order> exits_trxid(const h256  &trxid);
+
+
+            /// get exchange order by address,
+            /// \param addr   Address
+            /// \return         complete order.
+            std::vector<exchange_order> get_order_by_address(const Address &addr) const;
+
+
+            std::vector<ex_order> exits_trxid(const h256  &trxid);
 
         private:
 

@@ -179,6 +179,7 @@ namespace dev {
 
             struct ex_by_sender;
             struct ex_by_acceptor;
+            struct ex_by_time;
             typedef multi_index_container<
                     result_order,
                     indexed_by<
@@ -195,6 +196,12 @@ namespace dev {
                                             member<result_order, Time_ms, &result_order::create_time>
                                     >,
                                     composite_key_compare<std::less<Address>, std::less<Time_ms>>
+                            >,
+                            ordered_unique<tag<ex_by_time>,
+                                    composite_key<result_order,
+                                            member<result_order, Time_ms, &result_order::create_time>
+                                    >,
+                                    composite_key_compare<std::less<Time_ms>>
                             >
                     >,
                     std::allocator<result_order>

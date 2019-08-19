@@ -12,6 +12,10 @@ namespace dev {
         std::vector<ex::result_order> ExdbState::insert_operation(const ex::ex_order &itr, bool reset) {
 
 
+            if(itr.token_amount == 0 && itr.price == 0){
+                BOOST_THROW_EXCEPTION(order_price_num_equal_zero_error());
+            }
+
             std::vector<result_order> result;
             if(reset){
                 if(!(itr.type == order_type::buy && itr.buy_type == order_buy_type::all_price)){
@@ -206,24 +210,24 @@ namespace dev {
         }
 
         void ExdbState::add_resultOrder(const dev::brc::result_order &od) {
-//            m_state.
+            m_state.addSuccessExchange(od);
         }
 
-//        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr) const {
-//
-//            std::vector<exchange_order> ret;
-//
-//            const auto &index = m_state.getExOrder().get<ex_by_address>();
-//            auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
-//            auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
-//            while (lower_itr != up_itr && lower_itr != index.end()) {
-//                ret.push_back(ex::exchange_order(*lower_itr));
-//                lower_itr++;
-//            }
-//
-//            return ret;
-//
-//        }
+        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr) const {
+
+            std::vector<exchange_order> ret;
+
+            const auto &index = m_state.getExOrder().get<ex_by_address>();
+            auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
+            auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
+            while (lower_itr != up_itr && lower_itr != index.end()) {
+                ret.push_back(ex::exchange_order(*lower_itr));
+                lower_itr++;
+            }
+
+            return ret;
+
+        }
 //
 //        std::vector<exchange_order> ExdbState::get_orders(uint32_t size) const {
 //            std::vector<exchange_order> ret;
@@ -237,41 +241,43 @@ namespace dev {
 //            return ret;
 //        }
 
-//        std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
-//            vector<result_order> ret;
-////            const auto &index = m_state.getExOrder().get<ex_by_greater_id>();
-////            auto begin = index.begin();
-////            while (begin != index.end() && size > 0) {
-////                result_order eo;
-////
-////                eo.sender = begin->sender;
-////                eo.acceptor = begin->acceptor;
-////                eo.type = begin->type;
-////                eo.token_type = begin->token_type;
-////                eo.buy_type = begin->buy_type;
-////                eo.create_time = begin->create_time;
-////                eo.send_trxid = begin->send_trxid;
-////                eo.to_trxid = begin->to_trxid;
-////                eo.amount = begin->amount;
-////                eo.price = begin->price;
-////
-////                ret.push_back(eo);
-////                begin++;
-////                size--;
-////            }
-//            return ret;
-//        }
+        std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
+            std::vector<result_order> ret;
+            const auto &index = m_state.getSuccessExchange().get<ex_by_time>();
+            auto begin = index.begin();
+            while (begin != index.end() && size > 0) {
+                ex::result_order eo;
 
-//        std::vector<result_order>
-//        ExdbState::get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time,
-//                                                uint32_t max_size) const {
-//            std::vector<result_order> ret;
-//            std::vector<result_order> ret_sender;
-//            std::vector<result_order> ret_acceptor;
+                eo.sender = begin->sender;
+                eo.acceptor = begin->acceptor;
+                eo.type = begin->type;
+                eo.token_type = begin->token_type;
+                eo.buy_type = begin->buy_type;
+                eo.create_time = begin->create_time;
+                eo.send_trxid = begin->send_trxid;
+                eo.to_trxid = begin->to_trxid;
+                eo.amount = begin->amount;
+                eo.price = begin->price;
+
+                ret.push_back(eo);
+                begin++;
+                size--;
+            }
+            return ret;
+        }
+
+        std::vector<result_order>
+        ExdbState::get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time,
+                                                uint32_t max_size) const {
+            std::vector<result_order> ret;
+            std::vector<result_order> ret_sender;
+            std::vector<result_order> ret_acceptor;
+
+
 
 //            uint32_t size = max_size;
 //            {
-//                const auto &sender_index = dm_state.getExOrder().get<ex_by_sender>();
+//                const auto &sender_index = m_state.getSuccessExchange().get<ex_by_sender>();
 //                auto sender_lower_itr = sender_index.lower_bound(
 //                        boost::tuple<Address, Time_ms>(addr, min_time));
 //                auto sender_up_itr = sender_index.upper_bound(boost::tuple<Address, Time_ms>(addr, max_time));
@@ -294,7 +300,7 @@ namespace dev {
 //            }
 //
 //            {
-//                const auto &acceptor_index = m_state.getExOrder().indices().get<ex_by_acceptor>();
+//                const auto &acceptor_index = m_state.getSuccessExchange().get<ex_by_acceptor>();
 //                auto acceptor_lower_itr = acceptor_index.lower_bound(
 //                        boost::tuple<Address, Time_ms>(addr, min_time));
 //                auto acceptor_up_itr = acceptor_index.upper_bound(
@@ -346,8 +352,8 @@ namespace dev {
 //                    }
 //                }
 //            }
-//            return ret;
-//        }
+            return ret;
+        }
 
         std::vector<exchange_order>
         ExdbState::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
@@ -387,9 +393,29 @@ namespace dev {
             return ret;
         }
 //
-//        std::vector<order> ExdbState::exits_trxid(const h256 &trxid) {
-//            return std::vector<order>();
-//        }
+        std::vector<ex_order> ExdbState::exits_trxid(const h256 &t) {
+
+            const auto &index_trx = m_state.getExOrder().get<ex_by_trx_id>();
+            cdebug << "remove tx id " << toHex(t);
+            auto begin = index_trx.lower_bound(t);
+            auto end = index_trx.upper_bound(t);
+            if (begin == end) {
+                BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
+            }
+
+            ex_order o = *begin;
+//            o.trxid = begin->trxid;
+//            o.sender = begin->sender;
+//            o.buy_type = order_buy_type::only_price;
+//            o.token_type = begin->token_type;
+//            o.type = begin->type;
+//            o.create_time = begin->create_time;
+//            o.price = begin->price;
+//            o.token_amount = begin->token_amount;
+//            o.source_amount = begin->source_amount;
+
+            return {o};
+        }
 
 
     }

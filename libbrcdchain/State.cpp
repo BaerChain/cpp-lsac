@@ -1024,7 +1024,8 @@ Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
 }
 
 Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
-    std::vector<exchange_order> _v = m_exdb.get_order_by_address(_a);
+    ExdbState _exdbState(*this);
+    std::vector<exchange_order> _v = _exdbState.get_order_by_address(_a);
     Json::Value _JsArray;
 
     for (auto val : _v) {

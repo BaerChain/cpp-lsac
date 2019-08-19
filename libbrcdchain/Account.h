@@ -623,7 +623,7 @@ public:
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
-                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty();
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() && m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;
     }
 
     /// @returns the balance of this account.
@@ -911,19 +911,19 @@ public:
         return s.out();
     }
     void initExOrder(bytes const& b){
-        dev::brc::ex::ExOrderMulti ex_multi;
+        m_exChangeOrder.clear();
         for(auto const& v : RLP(b)){
             dev::brc::ex::ex_order order;
             order.populate(v.toBytes());
-            ex_multi.insert(order);
+            m_exChangeOrder.insert(order);
         }
-        m_exChangeOrder.clear();
-        m_exChangeOrder = ex_multi;
     }
     bytes getStreamRLPResultOrder() const{
+        const auto & index_id = m_successExchange.get<dev::brc::ex::ex_by_time>();
         RLPStream s(m_successExchange.size());
-        for(auto const& v : m_successExchange){
-            s.append(v.streamRLP());
+        for(auto itr = index_id.begin(); itr != index_id.end(); itr++){
+            dev::brc::ex::result_order order = *itr;
+            s.append(order.streamRLP());
         }
         return s.out();
     }
@@ -932,7 +932,7 @@ public:
         for (auto const &v: RLP(b)) {
             dev::brc::ex::result_order order;
             order.populate(v.toBytes());
-            m_successExchange.emplace_back(order);
+            m_successExchange.insert(order);
         }
     }
 private:

@@ -320,7 +320,7 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 		_HashV.push_back(can_order->m_hash);
 	}
     ExdbState _exdbState(m_state);
-	std::vector <ex::order> _resultV;
+	std::vector <ex::ex_order> _resultV;
 
     try{
         for(auto _it : _HashV)
