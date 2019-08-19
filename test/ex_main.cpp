@@ -26,77 +26,69 @@ using namespace dev::brc;
 using namespace dev;
 
 
-void create_contract(){
-    std::string test = "multiply(uint256)";
-    auto rr = dev::sha3(test);
-    std::cout << rr ;
 
-//    std::string contract_data = "0x608060405234801561001057600080fd5b506101f1806100206000396000f3"
-//                                "0060806040526004361061004c576000357c0100000000000000000000000000"
-//                                "000000000000000000000000000000900463ffffffff16806311114af1146100"
-//                                "51578063c6888fa114610133575b600080fd5b34801561005d57600080fd5b50"
-//                                "6100b8600480360381019080803590602001908201803590602001908080601f"
-//                                "0160208091040260200160405190810160405280939291908181526020018383"
-//                                "808284378201915050505050509192919290505050610174565b604051808060"
-//                                "2001828103825283818151815260200191508051906020019080838360005b83"
-//                                "8110156100f85780820151818401526020810190506100dd565b505050509050"
-//                                "90810190601f1680156101255780820380516001836020036101000a03191681"
-//                                "5260200191505b509250505060405180910390f35b34801561013f57600080fd"
-//                                "5b5061015e6004803603810190808035906020019092919050505061017e565b"
-//                                "6040518082815260200191505060405180910390f35b6060819050919050565b"
-//                                "60007f24abdb5865df5079dcc5ac590ff6f01d5c16edbc5fab4e195d9febd111"
-//                                "4503da600783026040518082815260200191505060405180910390a160078202"
-//                                "90509190505600a165627a7a72305820b7dcf3ffc23d38b70328fb0686936139"
-//                                "65fa00a36d684661ae2f53df694f1e570029";
-    std::string contract_data = "6080604052336000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506102b7806100536000396000f300608060405260043610610057576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680631ab5d260146100595780638da5cb5b1461007b578063a8d0e679146100d2575b005b610061610129565b604051808215151515815260200191505060405180910390f35b34801561008757600080fd5b50610090610245565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b3480156100de57600080fd5b50610113600480360381019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061026a565b6040518082815260200191505060405180910390f35b6000600a3073ffffffffffffffffffffffffffffffffffffffff163110151561023d573373ffffffffffffffffffffffffffffffffffffffff166108fc600a9081150290604051600060405180830381858888f19350505050158015610193573d6000803e3d6000fd5b507fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef3033600a604051808473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060405180910390a160019050610242565b600090505b90565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60008173ffffffffffffffffffffffffffffffffffffffff163190509190505600a165627a7a72305820df3521e3f831c2bb5f6e302d5fe72f022277e08f706f1b1f03c404ff942775580029";
-    std::vector<byte> vec_data;
-    for(auto c : contract_data){
-        vec_data.push_back((byte)c);
+struct  book{
+
+    int index = 0;
+    int a = 0;
+    int b = 0;
+
+
+};
+
+struct index_book{
+
+    bool operator () (const book &b1, const book &b2) const{
+        if(b1.a == b2.a){
+            return b1.b > b2.b;
+        }
+        return b1.a > b2.a;
     }
-
-    auto key = "6vsDoEvshzWJUhY5Aa8xd9WtHwNs9tjmeFq8NnJBST6t";
-    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-    auto address = keyPair.address();
-
-    dev::brc::TransactionSkeleton ts;
-    ts.creation = true;
-    ts.from = address;
-    ts.data = vec_data;
-    ts.nonce = u256(2);
-    ts.gas = u256(0x138800);
-    ts.gasPrice = u256(0x1388);
-
-    dev::brc::Transaction sign_t(ts, keyPair.secret());
-
-    auto sssss = dev::brc::toJson(sign_t);
-    cerror << "test: " << sssss << std::endl;
-    cerror << "test: " << toHexPrefixed(sign_t.rlp()) << std::endl;
-
-}
+};
 
 
 int main(){
-    // std::vector<std::string> keys = {
-    //         "6vsDoEvshzWJUhY5Aa8xd9WtHwNs9tjmeFq8NnJBST6t",
-    //         "497qUmDi8MLLbgLCfgxhf5grgh8bSp6RZ7RHBz3CJd6A",
-    //         "6FgY3kkrcbZhduNczsbqJnVfoaZq9in8RuNs7QRfEkMn",
-    //         "GhSnQcHoh8d4KtopzyhLVK1of3gwfEidbQNN4nxasSbK",
-    //         "Etn6QqUmCnivb3GgGUwVbxKh1B3pL6NbMNMhnKDsp43K",
-    //         "7hZrLjhJ7QDfgu3z8ttaP5T7Qt14K66y17aXcctoFQRx",
-    //         "2t1edVbiyNUjDw1fGBMyjpbKoBS9UWMq4Kn2eDNuVLPh",
-    //         "EPePzRCtkg4XCip7ByE4i5tWcGJKnytYUCLepTi2ez6w",
-    //         "4tAUjwA4guRhYArjiJ9JVf7QTmNLjinc3UfChccJF6tC",
-    //         "GkX7iw1z7D6S66FH1PekmqjHEVg5zYAXyxycCpnT58Sd"
-    // };
 
-    // for(auto &itr : keys){
-    //     auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(itr)));
-    //     cwarn << toHex(keyPair.address())  << "  key :"<< dev::crypto::from_base58(itr) << "  pub:" << toHex(keyPair.pub());
-    // }
+//    auto compare = [](const book &b1, const book &b2) -> bool{
+//        if(b1.a == b2.a){
+//            return b1.b > b2.b;
+//        }
+//        return b1.a > b2.a;
+//    };
+//
+//
+//    book b1{1, 1, 1};
+//    book b2{2, 1, 2};
+//    book b3{3, 2, 2};
+//    book b4{4, 2, 1};
+//    book b5{5, 3, 3};
+//    book b6{6,3, 2};
+//    book b7{7, 4, 5};
+//    book b8{8, 9, 0};
+//    book b9{9, 9, 5};
+//    book b10{10, 20, 2};
+//    book b11{11, 20, 0};
+//    book b12{12, 20, 10};
+//
+//    std::map<int, book, index_book> t1;
+//    t1[b1.index] = b1;
+//    t1[b2.index] = b2;
+//    t1[b3.index] = b3;
+//    t1[b4.index] = b4;
+//    t1[b5.index] = b5;
+//    t1[b6.index] = b6;
+//    t1[b7.index] = b7;
+//    t1[b8.index] = b8;
+//    t1[b9.index] = b9;
+//    t1[b10.index] = b10;
+//    t1[b11.index] = b11;
+//    t1[b12.index] = b12;
+//
+//    for(auto &itr : t1){
+//        std::cout << itr.second.index << "  a: " << itr.second.a  << "  b: " << itr.second.b << std::endl;
+//    }
+//
 
-
-    bytes r = fromHex("0xf3b2f10294e79fead329b69540142fabd881099c04424cc49f94d0e89b32875f5a1d68ecbfb3995263adc3439bea01843b9aca00");
-    analysisData(r);
 
 
     return 0;
