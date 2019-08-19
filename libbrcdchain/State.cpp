@@ -208,9 +208,18 @@ Account *State::account(Address const &_addr) {
 
     const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_block_record(record_b);
+
     const bytes received_cookies = state[16].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_received_cookies(received_cookies);
     m_unchangedCacheEntries.push_back(_addr);
+
+    /// successExchange
+    const bytes ret_order_b = state[17].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.initResultOrder(ret_order_b);
+    /// ex_order
+    const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
+    i.first->second.initExOrder(received_cookies);
+
 
     return &i.first->second;
 }
@@ -1840,6 +1849,12 @@ void State::rollback(size_t _savepoint) {
             case Change::ReceiveCookies:
                 account.set_received(change.received);
                 break;
+            case Change::UpExOrder:
+                account.setExOrderMulti(change.ex_multi);
+                break;
+            case Change::SuccessOrder:
+                account.setSuccessOrder(change.ret_orders);
+                break;
             default:
                 break;
         }
@@ -2673,7 +2688,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 _state.remove(i.first);
             else {
 				RLPStream s;
-				s.appendList(17);
+				s.appendList(19);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2738,6 +2753,17 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.block_record().streamRLP();
 
                 s << i.second.get_received_cookies().streamRLP();
+
+                {
+                    RLPStream ret_order;
+                    i.second.getStreamRLPResultOrder(ret_order);
+                    s << ret_order.out();
+
+                    RLPStream ex_order;
+                    i.second.getStreamRLPExOrder(ex_order);
+                    s << ex_order.out();
+                }
+
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

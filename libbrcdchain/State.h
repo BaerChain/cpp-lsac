@@ -123,7 +123,9 @@ struct Change
         SystemAddressPoll,
         LastCreateRecord,
         MinnerSnapshot,
-        ReceiveCookies
+        ReceiveCookies,
+        UpExOrder,
+        SuccessOrder
     };
 
     Kind kind;        ///< The kind of the change.
@@ -141,8 +143,8 @@ struct Change
     std::pair<u256, int64_t > create_record;
     std::vector<PollData> minners;
     ReceivedCookies received;
-
-
+    dev::brc::ex::ExOrderMulti ex_multi;
+    std::vector<dev::brc::ex::result_order> ret_orders;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -201,6 +203,14 @@ struct Change
         kind(_kind), address(_addr)
     {
         received =_received;
+    }
+    Change(Kind _kind, Address const& _addr, dev::brc::ex::ExOrderMulti const& ex_multi_old) :kind(_kind), address(_addr)
+    {
+        ex_multi = ex_multi_old;
+    }
+    Change(Kind _kind, Address const& _addr, std::vector<dev::brc::ex::result_order> const& result_orders) :kind(_kind), address(_addr)
+    {
+        ret_orders =result_orders;
     }
 };
 
