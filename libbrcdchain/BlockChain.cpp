@@ -1937,9 +1937,12 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
     Block ret(*this, _db, _exdb, BaseState::Empty);
     if (!_db.exists(r)) {
         ret.noteChain(*this);
-        dev::brc::commit(m_params.genesisState,
+        auto account1 = ret.mutableState().systemPendingorder(0);
+        auto params_Acccount(m_params.genesisState);
+        params_Acccount[ExdbSystemAddress] = account1;
+        dev::brc::commit(params_Acccount,
                          ret.mutableState().m_state, ret.mutableState().timestamp());        // bit horrible. maybe consider a better way of constructing it?
-        ret.mutableState().systemPendingorder(ret.info().timestamp());
+
         ret.mutableState().db().commit();
         // have to use this db() since it's the one that has been altered with the above commit.
         if (ret.mutableState().rootHash() != r) {

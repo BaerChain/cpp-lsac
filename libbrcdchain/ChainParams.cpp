@@ -259,6 +259,70 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
     }
 }
 
+
+Account read_rlp(){
+
+    std::string stateBack = "0xf8cb8080a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4708080c080808082c180c08089c881c081c081c080808ccb81c0808081c081c0c2808083c281c087c681c080c2018081c0b855f853b851f84fa0000000000000000000000000000000000000000000000000000000000000000194000000000000000000000042616572436861696e8405f5e100870526c46eeca000870526c46eeca00080010101";
+    auto hex_data = fromHex(stateBack);
+    RLP state(hex_data);
+
+    std::vector<PollData> _vote;
+    for(auto val : state[6].toVector<bytes>()){
+        PollData p_data;
+        p_data.populate(val);
+        _vote.push_back(p_data);
+    }
+
+    const bytes _bBlockReward = state[10].toBytes();
+    RLP _rlpBlockReward(_bBlockReward);
+    size_t num = _rlpBlockReward[0].toInt<size_t>();
+    std::vector<std::pair<u256, u256>> _blockReward;
+    for (size_t k = 1; k <= num; k++)
+    {
+        std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
+        _blockReward.push_back(_blockpair);
+    }
+
+    auto i = Account(state[0].toInt<u256>(), state[1].toInt<u256>(),
+                                                   state[2].toHash<h256>(), state[3].toHash<h256>(),
+                                                   state[4].toInt<u256>(),
+                                                   state[5].toInt<u256>(), state[7].toInt<u256>(),
+                                                   state[8].toInt<u256>(),
+                                                   state[9].toInt<u256>(),
+                                                   Account::Unchanged);
+    i.set_vote_data(_vote);
+    i.setBlockReward(_blockReward);
+
+    std::vector<std::string> tmp;
+    tmp = state[11].convert<std::vector<std::string>>(RLP::LaissezFaire);
+    i.initChangeList(tmp);
+
+    u256 _cookieNum  = state[12].toInt<u256>();
+    i.setCookieIncome(_cookieNum);
+
+    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
+    i.init_vote_snapshot(vote_sna_b);
+
+    const bytes _feeSnapshotBytes = state[14].convert<bytes>(RLP::LaissezFaire);
+    i.initCoupingSystemFee(_feeSnapshotBytes);
+
+    const bytes record_b = state[15].convert<bytes>(RLP::LaissezFaire);
+    i.init_block_record(record_b);
+
+    const bytes received_cookies = state[16].convert<bytes>(RLP::LaissezFaire);
+    i.init_received_cookies(received_cookies);
+
+    /// successExchange
+    const bytes ret_order_b = state[17].convert<bytes>(RLP::LaissezFaire);
+    i.initResultOrder(ret_order_b);
+    /// ex_order
+    const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
+    i.initExOrder(received_cookies);
+
+
+    return i;
+}
+
 h256 ChainParams::calculateStateRoot(bool _force) const
 {
     StateCacheDB db;
@@ -266,9 +330,9 @@ h256 ChainParams::calculateStateRoot(bool _force) const
     state.init();
     if (!stateRoot || _force)
     {
-        // TODO: use hash256
-        //stateRoot = hash256(toBytesMap(gs));
-        dev::brc::commit(genesisState, state);
+        auto cmm(genesisState);
+//        cmm[ExdbSystemAddress] = read_rlp();
+        dev::brc::commit(cmm, state);
         stateRoot = state.root();
     }
     return stateRoot;

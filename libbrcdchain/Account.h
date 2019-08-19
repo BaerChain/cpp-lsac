@@ -874,7 +874,7 @@ public:
 
     dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
-    bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
+    void addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
     bool removeExOrderMulti(h256 const& t) {
        const auto &index_trx =  m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto begin = index_trx.lower_bound(t);
@@ -887,7 +887,7 @@ public:
         return true;
     }
     void setSuccessOrder(std::vector<dev::brc::ex::result_order> const& _vector){ m_successExchange.clear(); m_successExchange = _vector; changed(); }
-    bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
+    void addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
     std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
 
     void getStreamRLPExOrder(RLPStream& s) const{

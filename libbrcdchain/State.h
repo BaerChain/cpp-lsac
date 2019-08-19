@@ -424,7 +424,7 @@ public:
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
 
-	void systemPendingorder(int64_t _time);
+	Account systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
 
@@ -446,11 +446,11 @@ public:
 
     void addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order);
     void removeExchangeOrder(Address const& _addr, h256 _trid);
-    dev::brc::ex::ExOrderMulti  getExOrder() const;
-    dev::brc::ex::ExOrderMulti  userGetExOrder(Address const& _addr) const;
+    dev::brc::ex::ExOrderMulti  const& getExOrder();
+    dev::brc::ex::ExOrderMulti  const& userGetExOrder(Address const& _addr);
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(std::vector<dev::brc::ex::result_order> const& _vector);
-    std::vector<dev::brc::ex::result_order> getSuccessExchange() const;
+    std::vector<dev::brc::ex::result_order>  const& getSuccessExchange();
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
