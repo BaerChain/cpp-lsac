@@ -214,7 +214,7 @@ Account *State::account(Address const &_addr) {
     i.first->second.initResultOrder(ret_order_b);
     /// ex_order
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
-    i.first->second.initExOrder(received_cookies);
+    i.first->second.initExOrder(ex_order_b);
 
 
     return &i.first->second;
@@ -2136,7 +2136,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const
 	return jv;
 }
 
-void dev::brc::State::systemPendingorder(int64_t _time)
+Account dev::brc::State::systemPendingorder(int64_t _time)
 {
     auto u256Safe = [](std::string const& s) -> u256 {
         bigint ret(s);
@@ -2145,7 +2145,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
                 ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
         return (u256)ret;
     };
-
+    ExdbState _exdbState(*this);
 	auto a = account(dev::VoteAddress);
 	std::string _num = "1450000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
@@ -2154,10 +2154,11 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 
 	try
 	{
-		m_exdb.insert_operation(_order);
+		_exdbState.insert_operation(_order);
 	}
 	catch (const boost::exception& e)
 	{
+	    cwarn << boost::diagnostic_information_what(e);
 		exit(1);
 	}
 	catch (...)
@@ -2168,6 +2169,7 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 //    m_exdb.rollback();
 //    m_exdb.commit_disk(1, true);
 //	cnote << m_exdb.check_version(false);
+    return *account(ExdbSystemAddress);
 }
 
 void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const&p_data) {
@@ -2522,7 +2524,7 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
-dev::brc::ex::ExOrderMulti dev::brc::State::getExOrder() const {
+dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder()  {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
     if (!_orderAccount)
     {
@@ -2533,7 +2535,7 @@ dev::brc::ex::ExOrderMulti dev::brc::State::getExOrder() const {
     return _orderAccount->getExOrder();
 }
 
-dev::brc::ex::ExOrderMulti dev::brc::State::userGetExOrder(Address const& _addr) const
+dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const& _addr)
 {
     Account *_account = account(_addr);
     if (!_account)
@@ -2571,7 +2573,7 @@ void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order>
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
 }
 
-std::vector<dev::brc::ex::result_order> dev::brc::State::getSuccessExchange() const
+std::vector<dev::brc::ex::result_order> const& dev::brc::State::getSuccessExchange()
 {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
     if (!_SuccessAccount)
@@ -2682,6 +2684,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
+
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
@@ -2753,13 +2756,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.get_received_cookies().streamRLP();
 
                 {
-                    RLPStream ret_order;
-                    i.second.getStreamRLPResultOrder(ret_order);
-                    s << ret_order.out();
-
-                    RLPStream ex_order;
-                    i.second.getStreamRLPExOrder(ex_order);
-                    s << ex_order.out();
+                    s << i.second.getStreamRLPResultOrder();
+                    s <<i.second.getStreamRLPExOrder();
                 }
 
                 _state.insert(i.first, &s.out());
