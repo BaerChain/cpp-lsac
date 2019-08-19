@@ -387,9 +387,28 @@ namespace dev {
             return ret;
         }
 //
-//        std::vector<order> ExdbState::exits_trxid(const h256 &trxid) {
-//            return std::vector<order>();
-//        }
+        std::vector<ex_order> ExdbState::exits_trxid(const h256 &t) {
+
+            const auto &index_trx = m_state.getExOrder().get<ex_by_trx_id>();
+            cdebug << "remove tx id " << toHex(t);
+            auto begin = index_trx.lower_bound(t);
+            auto end = index_trx.upper_bound(t);
+            if (begin == end) {
+                BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
+            }
+
+            order o;
+            o.trxid = begin->trxid;
+            o.sender = begin->sender;
+            o.buy_type = order_buy_type::only_price;
+            o.token_type = begin->token_type;
+            o.type = begin->type;
+            o.time = begin->create_time;
+            o.price_token.first = begin->price;
+            o.price_token.second = begin->token_amount;
+
+            return {o};
+        }
 
 
     }

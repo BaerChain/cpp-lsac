@@ -2760,7 +2760,10 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << i.second.getStreamRLPResultOrder();
                     s <<i.second.getStreamRLPExOrder();
                 }
+                if(i.first == ExdbSystemAddress){
+                    cwarn << "------------------" << toHex(ExdbSystemAddress) << "  "  << toHex(s.out());
 
+                }
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
