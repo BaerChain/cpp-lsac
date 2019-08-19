@@ -319,13 +319,13 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 			BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be 0")));
 		_HashV.push_back(can_order->m_hash);
 	}
-
+    ExdbState _exdbState(m_state);
 	std::vector <ex::order> _resultV;
 
     try{
         for(auto _it : _HashV)
         {
-            _resultV = _exdb.exits_trxid(_it);
+            _resultV = _exdbState.exits_trxid(_it);
         }
 	}
 	catch(const boost::exception& e){
