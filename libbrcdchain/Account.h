@@ -7,7 +7,7 @@
 #include "libbrccore/config.h"
 
 #include <boost/filesystem/path.hpp>
-#include <indexDb/database/include/brc/objects.hpp>
+#include <brc/objects.hpp>
 
 
 namespace dev
@@ -871,15 +871,14 @@ public:
     /// 2 update m_received_cookies
     ///@return <is_update, get_total_cookies>
 
-    bool addExchangeOrder(dev::brc::ex::order const& _order);
-    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order){return true;}
-    void setBuyExchangeOrder(dev::brc::ex::order const& _order){}
-    void setSellExchangeOrder(dev::brc::ex::order const& _order){}
-    void setSuccessOrder(dev::brc::ex::result_order const& _order){}
-    bool removeExchangeOrder(h256 _txid){return true;}
-    std::map<h256, dev::brc::ex::order>& getExchange(dev::brc::ex::order_type _type){return std::map<h256, dev::brc::ex::order>();}
-    std::map<h256, dev::brc::ex::result_order> const& getSuccessOrder()const{ return std::map<h256, dev::brc::ex::result_order>();}
 
+    dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
+    void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
+    bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
+    bool removeExOrderMulti(h256 _txid){}
+    void setSuccessOrder(dev::brc::ex::result_order const& _order){}
+    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order){return true;}
+    std::unordered_map<h256, dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
 
 
 private:
@@ -944,9 +943,12 @@ private:
     std::vector<std::pair<u256, u256>> m_BlockReward;
 
 
-    std::unordered_map<h256, dev::brc::ex::order> m_buyExchange;
-    std::unordered_map<h256, dev::brc::ex::order> m_sellExchange;
+//    std::unordered_map<h256, dev::brc::ex::order> m_buyExchange;
+//    std::unordered_map<h256, dev::brc::ex::order> m_sellExchange;
+
+
     std::unordered_map<h256, dev::brc::ex::result_order> m_successExchange;
+    dev::brc::ex::ExOrderMulti m_exChangeOrder;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;

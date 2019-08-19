@@ -432,6 +432,10 @@ public:
 
     void tryRecordFeeSnapshot(int64_t _blockNum);
 
+    void addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order){}
+    void removeExchangeOrder(Address const& _addr, h256 _trid){}
+    dev::brc::ex::ExOrderMulti const& getExOrder(){}
+
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

@@ -230,24 +230,6 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     changed();
 }
 
-bool Account::addExchangeOrder(dev::brc::ex::order const &_order)
-{
-    if(_order.type == dev::brc::ex::order_type::buy)
-    {
-        if(m_buyExchange.count(_order.trxid))
-        {
-            return  false;
-        }else{
-            m_buyExchange.insert(std::make_pair(_order.trxid, _order));
-        }
-    }else if(_order.type == dev::brc::ex::order_type::sell)
-    {
-        if(m_sellExchange.count(_order.trxid))
-        {
-            return false;
-        }
-    }
-}
 
 
 
