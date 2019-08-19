@@ -176,6 +176,32 @@ namespace dev {
             > ExOrderMulti;
 
 
+
+            struct ex_by_sender;
+            struct ex_by_acceptor;
+            typedef multi_index_container<
+                    result_order,
+                    indexed_by<
+                            ordered_non_unique<tag<ex_by_sender>,
+                                    composite_key<result_order,
+                                            member<result_order, Address, &result_order::sender>,
+                                            member<result_order, Time_ms, &result_order::create_time>
+                                    >,
+                                    composite_key_compare<std::less<Address>, std::less<Time_ms>>
+                            >,
+                            ordered_non_unique<tag<ex_by_acceptor>,
+                                    composite_key<result_order,
+                                            member<result_order, Address, &result_order::acceptor>,
+                                            member<result_order, Time_ms, &result_order::create_time>
+                                    >,
+                                    composite_key_compare<std::less<Address>, std::less<Time_ms>>
+                            >
+                    >,
+                    std::allocator<result_order>
+            > ExResultOrder;
+
+
+
             ////////////////////////////////////////////////////////////////////////
             //////////////////////////////  object ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////
@@ -371,6 +397,12 @@ namespace dev {
 
             struct exchange_order {
                 exchange_order(const order_object &obj)
+                        : trxid(obj.trxid), sender(obj.sender), price(obj.price), token_amount(obj.token_amount),
+                          source_amount(obj.source_amount), create_time(obj.create_time), type(obj.type),
+                          token_type(obj.token_type) {
+                }
+
+                exchange_order(const ex_order &obj)
                         : trxid(obj.trxid), sender(obj.sender), price(obj.price), token_amount(obj.token_amount),
                           source_amount(obj.source_amount), create_time(obj.create_time), type(obj.type),
                           token_type(obj.token_type) {
