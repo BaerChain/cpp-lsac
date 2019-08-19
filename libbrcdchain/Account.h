@@ -893,16 +893,19 @@ public:
     bytes getStreamRLPExOrder() const{
         const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto itr = index_trx_id.begin();
-        RLPStream s(m_exChangeOrder.size());
+        RLPStream s;
+        std::vector<bytes> bs;
         for(; itr != index_trx_id.end(); itr++){
             dev::brc::ex::ex_order order = *itr;
-            s.append(order.streamRLP());
+            bs.push_back(order.streamRLP());
         }
+        s.appendVector<bytes>(bs);
         return s.out();
     }
     void initExOrder(bytes const& b){
         dev::brc::ex::ExOrderMulti ex_multi;
-        for(auto const& v : RLP(b)){
+        std::vector<bytes> bs = RLP(b).toVector<bytes>();
+        for(auto const& v : bs){
             dev::brc::ex::ex_order order;
             order.populate(v.toBytes());
             ex_multi.insert(order);
