@@ -17,6 +17,8 @@ namespace dev
     Address const RecycelSystemAddress   { "0x000000000000000000000000007265637963656c"};
     //char [%d %x]
 
+    Address const ExdbSystemAddress             { "0x0000000000000000006578646241646472657373"};
+
     Address const SysBlockCreateRecordAddress   { "0x000000537973425265636f726441646472657373"};
     Address const SysElectorAddress             { "0x000000000000456c6563746f7241646472657373"};
     Address const SysVarlitorAddress            { "0x000000000067656e657369735661726c69746f72" };

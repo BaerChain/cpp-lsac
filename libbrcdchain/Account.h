@@ -875,10 +875,10 @@ public:
     dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
     bool addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){ m_exChangeOrder.insert(_exOrder); changed();}
-    bool removeExOrderMulti(h256 _txid){}
-    void setSuccessOrder(dev::brc::ex::result_order const& _order){}
-    bool addSuccessExchangeOrder(dev::brc::ex::order const& _order){return true;}
-    std::unordered_map<h256, dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
+    bool removeExOrderMulti(h256 _txid) {}
+    void setSuccessOrder(std::vector<dev::brc::ex::result_order> const& _vector){ m_successExchange.clear(); m_successExchange = _vector; changed(); }
+    bool addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.push_back(_order); changed();}
+    std::vector<dev::brc::ex::result_order> const& getSuccessOrder() const { return m_successExchange;}
 
 
 private:
@@ -947,7 +947,8 @@ private:
 //    std::unordered_map<h256, dev::brc::ex::order> m_sellExchange;
 
 
-    std::unordered_map<h256, dev::brc::ex::result_order> m_successExchange;
+//    std::unordered_map<h256, dev::brc::ex::result_order> m_successExchange;s
+    std::vector<dev::brc::ex::result_order> m_successExchange;
     dev::brc::ex::ExOrderMulti m_exChangeOrder;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
