@@ -21,8 +21,7 @@ namespace dev {
                                        result,
                                        throw_exception);
 
-                }
-                else { //sell
+                } else { //sell
                     auto find_itr = get_sell_itr(itr.token_type, itr.price);
                     process_only_price(find_itr.first, find_itr.second, itr, itr.price,
                                        itr.source_amount,
@@ -31,90 +30,79 @@ namespace dev {
                 }
 
             } else {
-//                if (itr.type == order_type::buy) {
-//                    assert(itr.source_amount != 0 && itr.price == 0);
-//
-//                    auto find_itr = get_buy_itr(itr.token_type, u256(-1));
-//                    auto total_price = itr.price_token.first;
-//                    auto begin = find_itr.first;
-//                    auto end = find_itr.second;
-//                    if (begin != end) {
-//                        while (total_price > 0 && begin != end) {
-//                            auto begin_total_price = begin->token_amount * begin->price;
-//                            result_order ret;
-//                            if (begin_total_price <= total_price) {   //
-//                                total_price -= begin_total_price;
-//                                ret.set_data(itr, begin, begin->token_amount, begin->price);
-//                                result.push_back(ret);
-//
-//                                db->create<order_result_object>([&](order_result_object &obj) {
-//                                    obj.set_data(ret);
-//                                });
-//                                update_dynamic_result_orders();
-//
-//                                const auto rm_obj = db->find(begin->id);
-//                                begin++;
-//                                db->remove(*rm_obj);
-//                                update_dynamic_orders(false);
-//                            } else if (begin_total_price > total_price) {
-//                                auto can_buy_amount = total_price / begin->price;
-//                                if (can_buy_amount == 0) {
-//                                    break;
-//                                }
-//                                ret.set_data(itr, begin, can_buy_amount, begin->price);
-//                                result.push_back(ret);
-//
-//                                db->create<order_result_object>([&](order_result_object &obj) {
-//                                    obj.set_data(ret);
-//                                });
-//                                update_dynamic_result_orders();
-//
-//                                const auto rm_obj = db->find(begin->id);
-//                                db->modify(*rm_obj, [&](order_object &obj) {
-//                                    obj.token_amount -= can_buy_amount;
-//                                });
-//                                break;
-//                            }
-//                        }
-//                    } else {
-//                        BOOST_THROW_EXCEPTION(all_price_operation_error());
-//                    }
-//                }
-//                else {   //all_price  , sell,
-//                    assert(itr.price_token.first == 0 && itr.price_token.second != 0);
-//                    auto find_itr = get_sell_itr(itr.token_type, u256(0));
-//                    auto begin = find_itr.first;
-//                    auto end = find_itr.second;
-//                    auto total_amount = itr.price_token.second;
-//                    if (begin != end) {
-//                        while (total_amount > 0 && begin != end) {
-//                            result_order ret;
-//                            if (begin->token_amount > total_amount) {
-//                                ret.set_data(itr, begin, total_amount, begin->price);
-//                                result.push_back(ret);
-//                                const auto rm_obj = db->find(begin->id);
-//                                db->modify(*rm_obj, [&](order_object &obj) {
-//                                    obj.token_amount -= total_amount;
-//                                });
-//                                total_amount = 0;
-//                            } else {
-//                                total_amount -= begin->token_amount;
-//                                ret.set_data(itr, begin, begin->token_amount, begin->price);
-//                                result.push_back(ret);
-//                                const auto rm_obj = db->find(begin->id);
-//                                begin++;
-//                                db->remove(*rm_obj);
-//                                update_dynamic_orders(false);
-//                            }
-//                            db->create<order_result_object>([&](order_result_object &obj) {
-//                                obj.set_data(ret);
-//                            });
-//                            update_dynamic_result_orders();
-//                        }
-//                    } else {
-//                        BOOST_THROW_EXCEPTION(all_price_operation_error());
-//                    }
-//                }
+                if (itr.type == order_type::buy) {
+                    assert(itr.source_amount != 0 && itr.price == 0);
+
+                    auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+                    auto total_price = itr.price;
+                    auto begin = find_itr.first;
+                    auto end = find_itr.second;
+                    if (begin != end) {
+                        while (total_price > 0 && begin != end) {
+                            auto begin_total_price = begin->token_amount * begin->price;
+                            result_order ret;
+                            if (begin_total_price <= total_price) {   //
+                                total_price -= begin_total_price;
+                                ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                result.push_back(ret);
+
+                                add_resultOrder(ret);
+                                remove_exchangeOrder(begin->trxid);
+
+                            } else if (begin_total_price > total_price) {
+                                auto can_buy_amount = total_price / begin->price;
+                                if (can_buy_amount == 0) {
+                                    break;
+                                }
+                                ret.set_data(itr, begin, can_buy_amount, begin->price);
+                                result.push_back(ret);
+
+                                add_resultOrder(ret);
+
+                                auto data_update = *begin;
+                                data_update.token_amount -= can_buy_amount;
+                                add_exchangeOrder(data_update);
+
+                                break;
+                            }
+                        }
+                    } else {
+                        BOOST_THROW_EXCEPTION(all_price_operation_error());
+                    }
+                } else {   //all_price  , sell,
+                    assert(itr.source_amount == 0 && itr.price != 0);
+
+                    auto find_itr = get_sell_itr(itr.token_type, u256(0));
+                    auto begin = find_itr.first;
+                    auto end = find_itr.second;
+                    auto total_amount = itr.price;
+                    if (begin != end) {
+                        while (total_amount > 0 && begin != end) {
+                            result_order ret;
+                            if (begin->token_amount > total_amount) {
+                                ret.set_data(itr, begin, total_amount, begin->price);
+                                result.push_back(ret);
+
+                                auto data_update = *begin;
+                                data_update.token_amount -= total_amount;
+                                add_exchangeOrder(data_update);
+
+                                total_amount = 0;
+                            } else {
+                                total_amount -= begin->token_amount;
+                                ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                result.push_back(ret);
+
+                                remove_exchangeOrder(begin->trxid);
+
+
+                            }
+                            add_resultOrder(ret);
+                        }
+                    } else {
+                        BOOST_THROW_EXCEPTION(all_price_operation_error());
+                    }
+                }
             }
             return result;
         }
@@ -151,10 +139,7 @@ namespace dev {
                 }
                 ret.old_price = price;
 
-//                db->create<order_result_object>([&](order_result_object &obj) {
-//                    obj.set_data(ret);
-//                });
-//                update_dynamic_result_orders();
+                add_resultOrder(ret);
 
                 result.push_back(ret);
                 if (rm) {
@@ -165,19 +150,37 @@ namespace dev {
 
             }
             //surplus token ,  record to db
-//            if (spend > 0) {
-//                db->create<order_object>([&](order_object &obj) {
-//                    obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
-//                });
-//                update_dynamic_orders(true);
-//            }
+            if (spend > 0) {
+                ex_order exod = od;
+                exod.token_amount = spend;
+                add_exchangeOrder(exod);
+            }
         }
 
 
-        ex::order ExdbState::cancel_order_by_trxid(const dev::h256 &id) {
+        ex::order ExdbState::cancel_order_by_trxid(const dev::h256 &t) {
+            const auto &index_trx = m_state.getExOrder().get<ex_by_trx_id>();
+            cdebug << "remove tx id " << toHex(t);
+            auto begin = index_trx.lower_bound(t);
+            auto end = index_trx.upper_bound(t);
+            if (begin == end) {
+                BOOST_THROW_EXCEPTION(find_order_trxid_error() << errinfo_comment(toString(t)));
+            }
+
+            order o;
+            o.trxid = begin->trxid;
+            o.sender = begin->sender;
+            o.buy_type = order_buy_type::only_price;
+            o.token_type = begin->token_type;
+            o.type = begin->type;
+            o.time = begin->create_time;
+            o.price_token.first = begin->price;
+            o.price_token.second = begin->token_amount;
 
 
-            return ex::order();
+            remove_exchangeOrder(begin->trxid);
+
+            return o;
         }
 
         void ExdbState::add_exchangeOrder(const ex_order &od) {
@@ -190,6 +193,160 @@ namespace dev {
             static Address systemADD;
             m_state.removeExchangeOrder(systemADD, id);
         }
+
+        void ExdbState::add_resultOrder(const dev::brc::result_order &od) {
+
+        }
+
+//        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr) const {
+//
+//            std::vector<exchange_order> ret;
+//
+//            const auto &index = m_state.getExOrder().get<ex_by_address>();
+//            auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
+//            auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
+//            while (lower_itr != up_itr && lower_itr != index.end()) {
+//                ret.push_back(ex::exchange_order(*lower_itr));
+//                lower_itr++;
+//            }
+//
+//            return ret;
+//
+//        }
+//
+//        std::vector<exchange_order> ExdbState::get_orders(uint32_t size) const {
+//            std::vector<exchange_order> ret;
+//            const auto &index = m_state.getExOrder().get<ex_by_price_less>();
+//            auto begin = index.begin();
+//            while (begin != index.end() && size > 0) {
+//                ret.push_back(exchange_order(*begin));
+//                begin++;
+//                size--;
+//            }
+//            return ret;
+//        }
+
+//        std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
+//            vector<result_order> ret;
+////            const auto &index = m_state.getExOrder().get<ex_by_greater_id>();
+////            auto begin = index.begin();
+////            while (begin != index.end() && size > 0) {
+////                result_order eo;
+////
+////                eo.sender = begin->sender;
+////                eo.acceptor = begin->acceptor;
+////                eo.type = begin->type;
+////                eo.token_type = begin->token_type;
+////                eo.buy_type = begin->buy_type;
+////                eo.create_time = begin->create_time;
+////                eo.send_trxid = begin->send_trxid;
+////                eo.to_trxid = begin->to_trxid;
+////                eo.amount = begin->amount;
+////                eo.price = begin->price;
+////
+////                ret.push_back(eo);
+////                begin++;
+////                size--;
+////            }
+//            return ret;
+//        }
+
+//        std::vector<result_order>
+//        ExdbState::get_result_orders_by_address(const Address &addr, int64_t min_time, int64_t max_time,
+//                                                uint32_t max_size) const {
+//            std::vector<result_order> ret;
+//            std::vector<result_order> ret_sender;
+//            std::vector<result_order> ret_acceptor;
+
+//            uint32_t size = max_size;
+//            {
+//                const auto &sender_index = dm_state.getExOrder().get<ex_by_sender>();
+//                auto sender_lower_itr = sender_index.lower_bound(
+//                        boost::tuple<Address, Time_ms>(addr, min_time));
+//                auto sender_up_itr = sender_index.upper_bound(boost::tuple<Address, Time_ms>(addr, max_time));
+//                while (sender_lower_itr != sender_up_itr && size-- > 0) {
+//                    result_order eo;
+//                    eo.sender = sender_lower_itr->sender;
+//                    eo.acceptor = sender_lower_itr->acceptor;
+//                    eo.type = sender_lower_itr->type;
+//                    eo.token_type = sender_lower_itr->token_type;
+//                    eo.buy_type = sender_lower_itr->buy_type;
+//                    eo.create_time = sender_lower_itr->create_time;
+//                    eo.send_trxid = sender_lower_itr->send_trxid;
+//                    eo.to_trxid = sender_lower_itr->to_trxid;
+//                    eo.amount = sender_lower_itr->amount;
+//                    eo.price = sender_lower_itr->price;
+//
+//                    ret_sender.push_back(eo);
+//                    sender_lower_itr++;
+//                }
+//            }
+//
+//            {
+//                const auto &acceptor_index = m_state.getExOrder().indices().get<ex_by_acceptor>();
+//                auto acceptor_lower_itr = acceptor_index.lower_bound(
+//                        boost::tuple<Address, Time_ms>(addr, min_time));
+//                auto acceptor_up_itr = acceptor_index.upper_bound(
+//                        boost::tuple<Address, Time_ms>(addr, max_time));
+//
+//                size = max_size;
+//                while (acceptor_lower_itr != acceptor_up_itr && size-- > 0) {
+//                    result_order eo;
+//                    eo.sender = acceptor_lower_itr->sender;
+//                    eo.acceptor = acceptor_lower_itr->acceptor;
+//                    eo.type = acceptor_lower_itr->type;
+//                    eo.token_type = acceptor_lower_itr->token_type;
+//                    eo.buy_type = acceptor_lower_itr->buy_type;
+//                    eo.create_time = acceptor_lower_itr->create_time;
+//                    eo.send_trxid = acceptor_lower_itr->send_trxid;
+//                    eo.to_trxid = acceptor_lower_itr->to_trxid;
+//                    eo.amount = acceptor_lower_itr->amount;
+//                    eo.price = acceptor_lower_itr->price;
+//
+//                    ret_acceptor.push_back(eo);
+//                    acceptor_lower_itr++;
+//                }
+//
+//            }
+//
+//
+//            //sort
+//            {
+//                size = 0;
+//                auto sender_itr = ret_sender.begin();
+//                auto acceptor_itr = ret_acceptor.begin();
+//                for (; size < max_size &&
+//                       (sender_itr != ret_sender.end() || acceptor_itr != ret_acceptor.end());
+//                       size++) {
+//                    if (sender_itr != ret_sender.end() && acceptor_itr != ret_acceptor.end()) {
+//                        if (sender_itr->create_time > acceptor_itr->create_time) {
+//                            ret.push_back(*sender_itr);
+//                            sender_itr++;
+//                        } else {
+//                            ret.push_back(*acceptor_itr);
+//                            acceptor_itr++;
+//                        }
+//                    } else if (sender_itr != ret_sender.end()) {
+//                        ret.push_back(*sender_itr);
+//                        sender_itr++;
+//                    } else {
+//                        ret.push_back(*acceptor_itr);
+//                        acceptor_itr++;
+//                    }
+//                }
+//            }
+//            return ret;
+//        }
+
+//        std::vector<exchange_order>
+//        ExdbState::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
+//            return std::vector<exchange_order>();
+//        }
+//
+//        std::vector<order> ExdbState::exits_trxid(const h256 &trxid) {
+//            return std::vector<order>();
+//        }
+
 
     }
 }
