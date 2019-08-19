@@ -2484,7 +2484,7 @@ void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_or
     Account *_account = account(_addr);
     if(!_account)
     {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
@@ -2498,11 +2498,16 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     Account *_account = account(_addr);
     if(!_account)
     {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
-    _account->removeExOrderMulti(_trid);
+    bool status = _account->removeExOrderMulti(_trid);
+
+    if(status == false)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: cancelpendingorder error")));
+    }
     //  TO DO
     //m_changeLog.emplace_back()
 }
