@@ -144,7 +144,7 @@ struct Change
     std::vector<PollData> minners;
     ReceivedCookies received;
     dev::brc::ex::ExOrderMulti ex_multi;
-    std::vector<dev::brc::ex::result_order> ret_orders;
+    dev::brc::ex::ExResultOrder ret_orders;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -208,7 +208,7 @@ struct Change
     {
         ex_multi = ex_multi_old;
     }
-    Change(Kind _kind, Address const& _addr, std::vector<dev::brc::ex::result_order> const& result_orders) :kind(_kind), address(_addr)
+    Change(Kind _kind, Address const& _addr, dev::brc::ex::ExResultOrder const& result_orders) :kind(_kind), address(_addr)
     {
         ret_orders =result_orders;
     }

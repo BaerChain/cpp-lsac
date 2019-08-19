@@ -901,19 +901,19 @@ public:
         return s.out();
     }
     void initExOrder(bytes const& b){
-        dev::brc::ex::ExOrderMulti ex_multi;
+        m_exChangeOrder.clear();
         for(auto const& v : RLP(b)){
             dev::brc::ex::ex_order order;
             order.populate(v.toBytes());
-            ex_multi.insert(order);
+            m_exChangeOrder.insert(order);
         }
-        m_exChangeOrder.clear();
-        m_exChangeOrder = ex_multi;
     }
     bytes getStreamRLPResultOrder() const{
+        const auto & index_id = m_successExchange.get<dev::brc::ex::ex_by_time>();
         RLPStream s(m_successExchange.size());
-        for(auto const& v : m_successExchange){
-            s.append(v.streamRLP());
+        for(auto itr = index_id.begin(); itr != index_id.end()l itr++){
+            dev::brc::ex::result_order order = *itr;
+            s.append(order.streamRLP());
         }
         return s.out();
     }
@@ -922,7 +922,7 @@ public:
         for (auto const &v: RLP(b)) {
             dev::brc::ex::result_order order;
             order.populate(v.toBytes());
-            m_successExchange.emplace_back(order);
+            m_successExchange.insert(order);
         }
     }
 private:
