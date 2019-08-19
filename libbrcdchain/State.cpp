@@ -1021,7 +1021,8 @@ Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
 }
 
 Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
-    std::vector<exchange_order> _v = m_exdb.get_order_by_address(_a);
+    ExdbState _exdbState(*this);
+    std::vector<exchange_order> _v = _exdbState.get_order_by_address(_a);
     Json::Value _JsArray;
 
     for (auto val : _v) {
@@ -2767,10 +2768,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     s << i.second.getStreamRLPResultOrder();
                     s <<i.second.getStreamRLPExOrder();
                 }
-                if(i.first == ExdbSystemAddress){
-                    cwarn << "------------------" << toHex(ExdbSystemAddress) << "  "  << toHex(s.out());
-
-                }
+                
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
