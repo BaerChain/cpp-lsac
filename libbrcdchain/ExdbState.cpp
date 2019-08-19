@@ -243,7 +243,7 @@ namespace dev {
 
         std::vector<result_order> ExdbState::get_result_orders_by_news(uint32_t size) const {
             std::vector<result_order> ret;
-            const auto &index = m_state.getExOrder().get<ex_by_time>();
+            const auto &index = m_state.getSuccessExchange().get<ex_by_time>();
             auto begin = index.begin();
             while (begin != index.end() && size > 0) {
                 ex::result_order eo;

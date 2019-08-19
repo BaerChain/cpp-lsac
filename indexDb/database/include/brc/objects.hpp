@@ -201,7 +201,7 @@ namespace dev {
                                     composite_key<result_order,
                                             member<result_order, Time_ms, &result_order::create_time>
                                     >,
-                                    composite_key_compare<std::less<Address>, std::greater<Time_ms>>
+                                    composite_key_compare<std::less<Time_ms>>
                             >
                     >,
                     std::allocator<result_order>
