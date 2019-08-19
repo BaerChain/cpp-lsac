@@ -1,5 +1,5 @@
 #include "State.h"
-
+#include "ExdbState.h"
 #include "Block.h"
 #include "BlockChain.h"
 #include "DposVote.h"
@@ -42,7 +42,7 @@ State::State(State const &_s)
           m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
-          m_accountStartNonce(_s.m_accountStartNonce) {}
+          m_accountStartNonce(_s.m_accountStartNonce){}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -655,12 +655,12 @@ Account* dev::brc::State::getSysAccount(){
 }
 
 void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::vector<order> _v ;
+	std::vector<ex_order> _v ;
 	std::vector<result_order> _result_v;
-
+    std::set<order_type> _set;
 	bigint total_free_brc = 0;
 	bigint total_free_balance = 0;
-
+    ExdbState _exdbState(*this);
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(val);
 		if(!pen){
@@ -668,15 +668,16 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 			BOOST_THROW_EXCEPTION(InvalidDynamic());
 		}
 
-		std::pair<u256, u256> _pair;
+		u256 _price = 0;
 		if(pen->m_Pendingorder_buy_type == order_buy_type::all_price && pen->m_Pendingorder_type == order_type::buy) {
-            _pair = {pen->m_Pendingorder_price * PRICEPRECISION, pen->m_Pendingorder_num};
+            _price = pen->m_Pendingorder_price * PRICEPRECISION;
         }else{
-            _pair =  {pen->m_Pendingorder_price, pen->m_Pendingorder_num};
+            _price =  pen->m_Pendingorder_price;
 		}
 
-		order _order = { _pendingOrderHash, _addr, (order_buy_type)pen->m_Pendingorder_buy_type,
-						(order_token_type)pen->m_Pendingorder_Token_type, (order_type)pen->m_Pendingorder_type, _pair, _nowTime };
+		ex_order _order = { _pendingOrderHash, _addr, _price, pen->m_Pendingorder_num, pen->m_Pendingorder_num, _nowTime,
+                            (order_type)pen->m_Pendingorder_type,(order_token_type)pen->m_Pendingorder_Token_type,
+                            (order_buy_type)pen->m_Pendingorder_buy_type};
 		_v.push_back(_order);
 
 		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
@@ -686,30 +687,34 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
 				total_free_balance += pen->m_Pendingorder_num;
 		}
 	}
-	try{
-		_result_v = m_exdb.insert_operation(_v, false, true);
-	}
-	catch(const boost::exception &e){
-		cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
-		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
-	}
+	for(auto _val : _v)
+    {
+        try{
 
-	std::set<order_type> _set;
-	for(uint32_t i = 0; i < _result_v.size(); ++i){
-		result_order _result_order = _result_v[i];
+            _result_v = _exdbState.insert_operation(_val);
+        }
+        catch(const boost::exception &e){
+            cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
+            BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+        }
 
-		pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
-							 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
+        for(uint32_t i = 0; i < _result_v.size(); ++i){
+            result_order _result_order = _result_v[i];
 
-		if(_result_order.buy_type == order_buy_type::only_price){
-		    if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
-				total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
-			else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
-				total_free_balance -= _result_order.amount;
-		}
+            pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
+                                 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
 
-		_set.emplace(_result_order.type);
-	}
+            if(_result_order.buy_type == order_buy_type::only_price){
+                if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+                    total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
+                else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
+                    total_free_balance -= _result_order.amount;
+            }
+
+            _set.emplace(_result_order.type);
+        }
+    }
+
 	if(total_free_balance < 0 || total_free_brc < 0){
 		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
 		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
@@ -729,54 +734,55 @@ void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256
     }
 }
 
-void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _nowTime)
-{
+void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _nowTime) {
     std::vector<result_order> _result_v;
     std::set<order_type> _autoSet;
-    std::vector<order> _v;
+    std::vector<ex_order> _v;
     u256 _needBrc = 0;
     u256 _needCookie = 0;
-
-    for(auto it : _set)
-    {
-        if(it == order_type::buy)
-        {
-            u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE  / 10000 * 10000 ;
+    ExdbState _exdbState(*this);
+    for (auto it : _set) {
+        if (it == order_type::buy) {
+            u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
             _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
-            std::pair<u256, u256> _pair = {u256(BUYCOOKIE), _num};
-            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::buy, _pair, _nowTime};
+            ex_order _order = {h256(1), systemAddress, u256(BUYCOOKIE), _num, _num, _nowTime, order_type::buy,
+                               order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
-        }else if(it == order_type::sell)
-        {
+        } else if (it == order_type::sell) {
             u256 _num = balance(systemAddress);
             _needCookie = _num;
             std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
-            order _order = {h256(1), systemAddress, order_buy_type::only_price, order_token_type::FUEL, order_type::sell, _pair, _nowTime};
+            ex_order _order = {h256(1), systemAddress, u256(SELLCOOKIE), _num, _num, _nowTime, order_type::sell,
+                               order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         }
     }
 
-    try{
-        _result_v = m_exdb.insert_operation(_v, false, true);
-    }
-    catch(const boost::exception &e){
-        cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
-        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
-    }
-
-    for(auto _result : _result_v)
+    for (auto _val : _v)
     {
-        pendingOrderTransfer(_result.sender, _result.acceptor, _result.amount,
-                             _result.price, _result.type, _result.token_type, _result.buy_type);
-
-        if(_result.buy_type == order_buy_type::only_price){
-            if(_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
-                _needBrc -= _result.amount * _result.old_price / PRICEPRECISION;
-            else if(_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
-                _needCookie -= _result.amount;
+        try{
+            _result_v = _exdbState.insert_operation(_val);
         }
-        _autoSet.emplace(_result.type);
+        catch(const boost::exception &e){
+            cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
+            BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+        }
+
+        for(auto _result : _result_v)
+        {
+            pendingOrderTransfer(_result.sender, _result.acceptor, _result.amount,
+                                 _result.price, _result.type, _result.token_type, _result.buy_type);
+
+            if(_result.buy_type == order_buy_type::only_price){
+                if(_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
+                    _needBrc -= _result.amount * _result.old_price / PRICEPRECISION;
+                else if(_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
+                    _needCookie -= _result.amount;
+            }
+            _autoSet.emplace(_result.type);
+        }
     }
+
     if(_needBrc < 0 || _needCookie < 0){
         cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << _needCookie << " brc:" << _needBrc;
         BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
@@ -1152,8 +1158,9 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
 
 void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
 	ctrace << "cancle pendingorder";
-	std::vector<ex::order> _resultV;
+	ex::order val;
 	std::vector<h256> _hashV;
+    ExdbState _exdbState(*this);
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen =std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
 		if(!can_pen){ 
@@ -1162,25 +1169,25 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
 		}
 		_hashV.push_back({ can_pen->m_hash });
 	}
-
-	try{ 
-		_resultV = m_exdb.cancel_order_by_trxid(_hashV, false);
-	}
-	catch(Exception &e){
-		cwarn << "cancelPendingorder Error :" << e.what();
-		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
-	}
-
-	for(auto val : _resultV){
-	    if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-				subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-				addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-		}else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
-        {
-            subFBalance(val.sender, val.price_token.second);
-            addBalance(val.sender, val.price_token.second);
+    for(auto _val : _hashV)
+    {
+        try{
+            val = _exdbState.cancel_order_by_trxid(_val);
         }
-	}
+        catch(Exception &e){
+            cwarn << "cancelPendingorder Error :" << e.what();
+            BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
+        }
+
+            if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
+                subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+                addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+            }else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
+            {
+                subFBalance(val.sender, val.price_token.second);
+                addBalance(val.sender, val.price_token.second);
+            }
+    }
 }
 
 void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
@@ -2145,13 +2152,11 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 	std::string _num = "1450000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
 	u256 systenCookie = u256Safe(_num);
-	std::pair<u256, u256> _pair = {u256Safe(std::string("100000000")), systenCookie};
-	order _order = { h256(1), dev::systemAddress, dev::brc::ex::order_buy_type::only_price, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_type::sell, _pair, _time };
-	std::vector<order> _v = { {_order} };
+	ex_order _order = { h256(1), dev::systemAddress, u256Safe(std::string("100000000")), systenCookie, systenCookie, _time,dev::brc::ex::order_type::sell, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_buy_type::only_price};
 
 	try
 	{
-		m_exdb.insert_operation(_v, false, true);
+		m_exdb.insert_operation(_order);
 	}
 	catch (const boost::exception& e)
 	{
@@ -2162,9 +2167,9 @@ void dev::brc::State::systemPendingorder(int64_t _time)
 		exit(1);
 	}
 //	m_exdb.commit(1, h256(), h256());
-    m_exdb.rollback();
-    m_exdb.commit_disk(1, true);
-	cnote << m_exdb.check_version(false);
+//    m_exdb.rollback();
+//    m_exdb.commit_disk(1, true);
+//	cnote << m_exdb.check_version(false);
 }
 
 void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const&p_data) {
@@ -2491,13 +2496,13 @@ void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_or
     Account *_account = account(_addr);
     if(!_account)
     {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
     _account->addExOrderMulti(_order);
-    //  TO DO
-    //m_changeLog.emplace_back()
+
+    m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid)
@@ -2505,16 +2510,21 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     Account *_account = account(_addr);
     if(!_account)
     {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchange failed: account is not exist")));
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
-    _account->removeExOrderMulti(_trid);
+    bool status = _account->removeExOrderMulti(_trid);
+
+    if(status == false)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: cancelpendingorder error")));
+    }
     //  TO DO
-    //m_changeLog.emplace_back()
+    m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
-dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder() {
+dev::brc::ex::ExOrderMulti dev::brc::State::getExOrder() const {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
     if (!_orderAccount)
     {
@@ -2525,7 +2535,7 @@ dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder() {
     return _orderAccount->getExOrder();
 }
 
-dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const& _addr)
+dev::brc::ex::ExOrderMulti dev::brc::State::userGetExOrder(Address const& _addr) const
 {
     Account *_account = account(_addr);
     if (!_account)
@@ -2534,6 +2544,44 @@ dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const&
     }
 
     return _account->getExOrder();
+}
+
+void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_order)
+{
+    Account *_orderAccount = account(dev::ExdbSystemAddress);
+    if (!_orderAccount)
+    {
+        createAccount(dev::ExdbSystemAddress, {0});
+        _orderAccount = account(dev::ExdbSystemAddress);
+    }
+    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
+    _orderAccount->addSuccessExchangeOrder(_order);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
+}
+
+void dev::brc::State::setSuccessExchange(std::vector<dev::brc::ex::result_order> const &_vector)
+{
+    Account *_orderAccount = account(dev::ExdbSystemAddress);
+    if (!_orderAccount)
+    {
+        createAccount(dev::ExdbSystemAddress, {0});
+        _orderAccount = account(dev::ExdbSystemAddress);
+    }
+
+    std::vector<ex::result_order> _oldMap = _orderAccount->getSuccessOrder();
+    _orderAccount->setSuccessOrder(_vector);
+    m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldMap);
+}
+
+std::vector<dev::brc::ex::result_order> dev::brc::State::getSuccessExchange() const
+{
+    Account *_SuccessAccount = account(dev::ExdbSystemAddress);
+    if (!_SuccessAccount)
+    {
+        BOOST_THROW_EXCEPTION(SuccessExChangeFailed() << errinfo_comment("getSuccessExchange failed"));
+    }
+
+    return _SuccessAccount->getSuccessOrder();
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

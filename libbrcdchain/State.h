@@ -6,6 +6,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 #include "ChainParams.h"
+
 #include <libbrccore/BlockHeader.h>
 #include <libbrccore/Exceptions.h>
 #include <libbrccore/SealEngine.h>
@@ -19,6 +20,7 @@
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <unordered_map>
+
 
 namespace dev
 {
@@ -444,8 +446,11 @@ public:
 
     void addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order);
     void removeExchangeOrder(Address const& _addr, h256 _trid);
-    dev::brc::ex::ExOrderMulti const& getExOrder();
-    dev::brc::ex::ExOrderMulti const& userGetExOrder(Address const& _addr);
+    dev::brc::ex::ExOrderMulti  getExOrder() const;
+    dev::brc::ex::ExOrderMulti  userGetExOrder(Address const& _addr) const;
+    void addSuccessExchange(dev::brc::ex::result_order const& _order);
+    void setSuccessExchange(std::vector<dev::brc::ex::result_order> const& _vector);
+    std::vector<dev::brc::ex::result_order> getSuccessExchange() const;
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
@@ -602,6 +607,7 @@ private:
 
     // Exdb
     ex::exchange_plugin m_exdb;
+
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
