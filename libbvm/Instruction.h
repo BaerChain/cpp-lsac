@@ -74,7 +74,12 @@ enum class Instruction : uint8_t
     JUMP,        ///< alter the program counter to a jumpdest
     JUMPI,       ///< conditionally alter the program counter
     PC,          ///< get the program counter
+#ifdef MSIZE        //this will error on MacOS  compile.
+#undef MSIZE
     MSIZE,       ///< get the size of active memory
+#else
+    MSIZE,       ///< get the size of active memory
+#endif
     GAS,         ///< get the amount of available gas
     JUMPDEST,    ///< set a potential jump destination
 
