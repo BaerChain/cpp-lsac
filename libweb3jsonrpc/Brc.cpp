@@ -114,7 +114,7 @@ Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumb
     try
     {
         // return toJS(client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
-        return client()->accountMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+        return client()->accountMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
     }
     catch (...)
     {

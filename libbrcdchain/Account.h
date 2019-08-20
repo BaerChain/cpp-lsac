@@ -879,9 +879,10 @@ public:
         auto begin = index_trx.lower_bound(_exOrder.trxid);
         auto end = index_trx.upper_bound(_exOrder.trxid);
         if (begin == end) {
-            m_exChangeOrder.insert(_exOrder); changed();
+            m_exChangeOrder.insert(_exOrder);
         }else{
-            m_exChangeOrder.modify(m_exChangeOrder.iterator_to(*begin), _exOrder);
+            m_exChangeOrder.erase(m_exChangeOrder.iterator_to(*begin));
+            m_exChangeOrder.insert(_exOrder);
         }
         changed();
     }
@@ -892,8 +893,8 @@ public:
         if (begin == end) {
             return false;
         }
-
         m_exChangeOrder.erase(m_exChangeOrder.iterator_to(*begin));
+        changed();
         return true;
     }
     void setSuccessOrder(dev::brc::ex::ExResultOrder const& _exresultOrder){ m_successExchange.clear(); m_successExchange = _exresultOrder; changed(); }

@@ -52,6 +52,33 @@ namespace dev {
                 order_token_type token_type;
                 order_buy_type buy_type;
 
+
+
+                ex_order(){}
+
+                ex_order(const h256 &_trxid, const Address &_sender, const u256 &_price, const u256 &_token_amount,
+                        const u256 &_source_amount, const Time_ms &_create_time, const order_type &_type,
+                        const order_token_type &_token_type, const order_buy_type &_buy_type)
+                        :trxid(_trxid),sender(_sender),price(_price),token_amount(_token_amount),
+                        source_amount(_source_amount),create_time(_create_time),type(_type)
+                        ,token_type(_token_type),buy_type(_buy_type)
+                {
+
+                }
+
+                ex_order(const ex_order &e)
+                :trxid(e.trxid)
+                ,sender(e.sender)
+                ,price(e.price)
+                ,token_amount(e.token_amount)
+                ,source_amount(e.source_amount)
+                ,create_time(e.create_time)
+                ,type(e.type)
+                ,token_type(e.token_type)
+                ,buy_type(e.buy_type)
+                {}
+
+
                 bytes streamRLP() const {
                     RLPStream s(9);
                     s << trxid << sender << price << token_amount << source_amount
@@ -70,6 +97,15 @@ namespace dev {
                     token_type = (order_token_type)rlp[7].convert<uint8_t>(RLP::LaissezFaire);
                     buy_type = (order_buy_type)rlp[8].convert<uint8_t>(RLP::LaissezFaire);
 
+                }
+
+
+                std::string format_string() const{
+                    std::ostringstream os;
+                    os << "txid " << trxid  << " sender "<< sender << " price " << price << " token_amount: "<< token_amount << " source_amount : "<< source_amount
+                         << " time : "<< create_time << " type "<< enum_to_string(type) << " token_type "<< enum_to_string(token_type) << " buy_type "<< enum_to_string(buy_type);
+
+                    return os.str();
                 }
             };
 
@@ -96,7 +132,23 @@ namespace dev {
                     to_trxid = itr2->trxid;
                     amount = _amount;
                     price = _price;
+
                 }
+
+
+                std::string format_string() const{
+                    std::ostringstream os;
+
+                    os << "result order: sneder  " << toHex(sender) << " acceptor "
+                          << toHex(acceptor) << " price: " << price
+                          << " token amount:" << amount  << " old " << old_price
+                          << "  type " << ex::enum_to_string(type) << " token_type: " << ex::enum_to_string(token_type)
+                          << " buy_type " << ex::enum_to_string(buy_type) << " txid: " << toHex(to_trxid)  << " send_trxid: " << toHex(send_trxid);
+
+                    return os.str();
+                }
+
+
 
                 bytes streamRLP() const{
                     RLPStream s(11);
@@ -141,7 +193,7 @@ namespace dev {
             typedef multi_index_container<
                     ex_order,
                     indexed_by<
-                            ordered_non_unique<tag<ex_by_trx_id>,
+                            ordered_unique<tag<ex_by_trx_id>,
                                     composite_key<ex_order, member<ex_order, h256, &ex_order::trxid>
                                     >,
                                     composite_key_compare<std::greater<h256>>
@@ -414,6 +466,21 @@ namespace dev {
                           source_amount(obj.source_amount), create_time(obj.create_time), type(obj.type),
                           token_type(obj.token_type) {
                 }
+
+
+                std::string format_string() const{
+                    std::ostringstream os;
+
+                    os << "result order: sneder  " << toHex(sender) << " price: " << price
+                       << " token amount:" << token_amount  << " source_amount " << source_amount
+                       << "  type " << ex::enum_to_string(type) << " token_type: " << ex::enum_to_string(token_type)
+                       << " buy_type " << ex::enum_to_string(order_buy_type::only_price)   << " trxid: " << toHex(trxid);
+
+                    return os.str();
+                }
+
+
+
 
                 h256 trxid;
                 Address sender;

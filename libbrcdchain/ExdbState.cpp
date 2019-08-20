@@ -23,6 +23,20 @@ namespace dev {
                     exit(1);
                 }
             }
+
+//            cwarn << "************************************************************" << itr.format_string();
+//            auto vector_orders = get_order_by_type(order_type::sell, order_token_type::FUEL, 30);
+//            auto vector_orders1 = get_order_by_type(order_type::buy, order_token_type::FUEL, 30);
+//
+//            for(auto & itr : vector_orders){
+//                cwarn << itr.format_string();
+//            }
+//
+//            for(auto & itr : vector_orders1){
+//                cwarn << itr.format_string();
+//            }
+//            cwarn << "************************************************************";
+
             bool throw_exception = true;
             if (itr.buy_type == order_buy_type::only_price) {
                 if (itr.type == order_type::buy) {
@@ -137,7 +151,9 @@ namespace dev {
             auto spend = amount;
 
             bool rm = false;
+            std::vector<h256> removeHashs;
             while (spend > 0 && begin != end) {
+                cwarn << "spend  " << spend << " begin : " << begin->format_string();
                 result_order ret;
                 if (begin->token_amount <= spend) {
                     spend -= begin->token_amount;
@@ -149,7 +165,7 @@ namespace dev {
                     update.token_amount -= spend;
 
                     //update data.
-                    add_exchangeOrder(od);
+                    add_exchangeOrder(update);
 
                     ret.set_data(od, begin, spend, begin->price);
                     spend = 0;
@@ -159,17 +175,23 @@ namespace dev {
                 add_resultOrder(ret);
 
                 result.push_back(ret);
-                if (rm) {
-                    remove_exchangeOrder(begin->trxid);
-                } else {
-                    begin++;
-                }
 
+                auto removeId = begin->trxid;
+                begin++;
+                if (rm) {
+                    removeHashs.push_back(removeId);
+                    rm = false;
+                }
+            }
+
+            for(auto &itr : removeHashs){
+                remove_exchangeOrder(itr);
             }
             //surplus token ,  record to db
             if (spend > 0) {
-                ex_order exod = od;
+                ex_order exod(od);
                 exod.token_amount = spend;
+                cwarn << "spend > 0  " << exod.format_string();
                 add_exchangeOrder(exod);
             }
         }
@@ -201,15 +223,18 @@ namespace dev {
         }
 
         void ExdbState::add_exchangeOrder(const ex_order &od) {
+            cwarn << "will  add_exchangeOrder txid " << od.format_string();
             m_state.addExchangeOrder(ExdbSystemAddress, od);
         }
 
 
         void ExdbState::remove_exchangeOrder(const dev::h256 &id) {
+            cwarn << "will remove txid " << toHex(id);
             m_state.removeExchangeOrder(ExdbSystemAddress, id);
         }
 
         void ExdbState::add_resultOrder(const dev::brc::result_order &od) {
+            cwarn << "will add_resultOrder " << od.format_string();
             m_state.addSuccessExchange(od);
         }
 

@@ -757,8 +757,13 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
         } else if (it == order_type::sell) {
             u256 _num = balance(systemAddress);
             _needCookie = _num;
+
+            RLPStream _rlp(3);
+            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            h256 _trHash = dev::sha3(_rlp.out());
+
             std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
-            ex_order _order = {h256(1), systemAddress, u256(SELLCOOKIE), _num, _num, _nowTime, order_type::sell,
+            ex_order _order = {_trHash, systemAddress, u256(SELLCOOKIE), _num, _num, _nowTime, order_type::sell,
                                order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         }
