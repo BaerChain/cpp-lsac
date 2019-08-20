@@ -223,18 +223,18 @@ namespace dev {
         }
 
         void ExdbState::add_exchangeOrder(const ex_order &od) {
-            cwarn << "will  add_exchangeOrder txid " << od.format_string();
+            cdebug << "will  add_exchangeOrder txid " << od.format_string();
             m_state.addExchangeOrder(ExdbSystemAddress, od);
         }
 
 
         void ExdbState::remove_exchangeOrder(const dev::h256 &id) {
-            cwarn << "will remove txid " << toHex(id);
+            cdebug << "will remove txid " << toHex(id);
             m_state.removeExchangeOrder(ExdbSystemAddress, id);
         }
 
         void ExdbState::add_resultOrder(const dev::brc::result_order &od) {
-            cwarn << "will add_resultOrder " << od.format_string();
+            cdebug << "will add_resultOrder " << od.format_string();
             m_state.addSuccessExchange(od);
         }
 
