@@ -153,7 +153,7 @@ namespace dev {
             bool rm = false;
             std::vector<h256> removeHashs;
             while (spend > 0 && begin != end) {
-                cwarn << "spend  " << spend << " begin : " << begin->format_string();
+                ctrace << "spend  " << spend << " begin : " << begin->format_string();
                 result_order ret;
                 if (begin->token_amount <= spend) {
                     spend -= begin->token_amount;
