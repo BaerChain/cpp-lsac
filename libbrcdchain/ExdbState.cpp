@@ -63,6 +63,7 @@ namespace dev {
                     auto begin = find_itr.first;
                     auto end = find_itr.second;
                     if (begin != end) {
+
                         while (total_price > 0 && begin != end) {
                             auto begin_total_price = begin->token_amount * begin->price;
                             result_order ret;
@@ -70,13 +71,12 @@ namespace dev {
                                 total_price -= begin_total_price;
                                 ret.set_data(itr, begin, begin->token_amount, begin->price);
                                 result.push_back(ret);
-
+                                auto remove_id = begin->trxid;
+                                begin++;
                                 if(!reset){
                                     add_resultOrder(ret);
-                                    remove_exchangeOrder(begin->trxid);
+                                    remove_exchangeOrder(remove_id);
                                 }
-
-
 
                             } else if (begin_total_price > total_price) {
                                 auto can_buy_amount = total_price / begin->price;
@@ -93,10 +93,12 @@ namespace dev {
                                     add_exchangeOrder(data_update);
                                 }
 
-
                                 break;
                             }
                         }
+
+
+
                     } else {
                         BOOST_THROW_EXCEPTION(all_price_operation_error());
                     }
@@ -114,9 +116,13 @@ namespace dev {
                                 ret.set_data(itr, begin, total_amount, begin->price);
                                 result.push_back(ret);
 
-                                auto data_update = *begin;
-                                data_update.token_amount -= total_amount;
-                                add_exchangeOrder(data_update);
+
+                                if(!reset){
+                                    auto data_update = *begin;
+                                    data_update.token_amount -= total_amount;
+                                    add_exchangeOrder(data_update);
+                                }
+
 
                                 total_amount = 0;
                             } else {
@@ -124,9 +130,11 @@ namespace dev {
                                 ret.set_data(itr, begin, begin->token_amount, begin->price);
                                 result.push_back(ret);
 
-                                remove_exchangeOrder(begin->trxid);
-
-
+                                auto remove_id = begin->trxid;
+                                begin++;
+                                if(!reset){
+                                    remove_exchangeOrder(remove_id);
+                                }
                             }
                             add_resultOrder(ret);
                         }
