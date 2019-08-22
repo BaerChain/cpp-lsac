@@ -144,6 +144,12 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
     return cp;
 }
 
+void dev::brc::ChainParams::setPrivateKey(std::string const &key_str) {
+    auto secret = Secret(dev::crypto::from_base58(key_str));
+    auto address = toAddress(toPublic(secret));
+    this->m_block_addr_keys.insert(pair<Address, Secret>(address, secret));
+}
+
 void dev::brc::ChainParams::saveBlockAddress(std::string const& _json)
 {
     try 

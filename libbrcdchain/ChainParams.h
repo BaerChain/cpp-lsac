@@ -78,6 +78,7 @@ struct ChainParams: public ChainOperationParams
         const boost::filesystem::path& _configPath = {}) const;
 
     void saveBlockAddress(std::string const& _json);
+    void setPrivateKey(std::string const& key_str);
 
     void savenodemonitorIP(std::string const& _IP) {m_nodemonitorIP = _IP;}
     std::string getnodemonitorIp() const { return m_nodemonitorIP;};

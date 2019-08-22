@@ -294,6 +294,8 @@ int main(int argc, char **argv) {
     addMininigOption("mining,m", po::value<string>()->value_name("<on/off/number>"),
                      "Enable mining; optionally for a specified number of blocks (default: off)");
     addMininigOption("extra-data", po::value<string>(), "Set extra data for the sealed blocks\n");
+    addMininigOption("private-key", po::value<string>()->value_name("<private-key for miner>"),
+                     "Set the author (mining payout) private-key to createBlock ");
 
     po::options_description clientNetworking("CLIENT NETWORKING", c_lineWidth);
     auto addNetworkingOption = clientNetworking.add_options();
@@ -743,6 +745,10 @@ int main(int argc, char **argv) {
             //cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
             return 0;
         }
+    }
+    if(vm.count("private-key")){
+        std::string key_str = vm["private-key"].as<string>();
+        chainParams.setPrivateKey(key_str);
     }
 
     if (!nodemonitorIP.empty())
