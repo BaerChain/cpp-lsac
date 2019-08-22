@@ -607,9 +607,9 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     // execute create_block records
     execute_block_record(_block.info);
     //try into new rounds to rank minner
-    try_into_new_rounds(_block.info, m_previousBlock);
+    intoNewBlockToDo(_block.info, m_previousBlock);
 
-    update_miner();
+    //update_miner();
 
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
@@ -676,6 +676,8 @@ void Block::applyRewards(vector<BlockHeader> const &_uncleBlockHeaders, u256 con
 void Block::update_miner()
 {
     Account *a = m_state.getSysAccount();
+    if (!a)
+        return;
     std::vector<std::string>& tmp = a->changeList();
     auto blockNumber = m_currentBlock.number();
     if (tmp.size() > 0){
@@ -791,9 +793,9 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     // record crete_block
     execute_block_record(info());
     // try into new rounds
-    try_into_new_rounds(info(), previousBlock());
+    intoNewBlockToDo(info(), previousBlock());
 
-    update_miner();
+    //update_miner();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =

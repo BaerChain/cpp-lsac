@@ -2432,6 +2432,15 @@ BlockRecord dev::brc::State::block_record() const {
     return  a->block_record();
 }
 
+void dev::brc::State::intoNewBlockToDo(const dev::brc::BlockHeader &curr_header,
+                                       const dev::brc::BlockHeader &previous_header) {
+    ///try into new rounds  record snapshot minner_rank and sort new
+    try_newrounds_count_vote(curr_header, previous_header);
+    /// change miner for point height
+
+
+}
+
 void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header, const dev::brc::BlockHeader &previous_header) {
     //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
@@ -2589,6 +2598,56 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
     _orderAccount->setSuccessOrder(_exresultOrder);
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
+
+
+void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, const dev::brc::BlockHeader &curr_header) {
+    /// check change time
+    Account *a = account(SysVarlitorAddress);
+    if (!a)
+        return;
+    if(a->willChangeList().size()<=0)
+        return;
+    for(auto const& str: a->willChangeList()){
+
+    }
+//    std::vector<std::string> tmp = a->willChangeList();
+//    auto blockNumber = curr_header.number();
+//    if (tmp.size() > 0){
+//        cwarn << "change miner block number is " << blockNumber << ",current will change list size:" << tmp.size();
+//        a->changeMiner(m_currentBlock.number());
+//    }
+
+    Account* old_a = account(before_addr);
+    if (!old_a){
+        // throw TODO
+    }
+    Account* new_a = account(new_addr);
+    if (!new_a){
+        createAccount(new_addr, {0});
+        new_a = account(new_addr);
+    }
+    else{
+        kill(new_addr);
+    }
+    /// account's base data
+    new_a = old_a;
+    new_a->changeMinerUpdateData(before_addr, new_addr);
+    /// loop all
+    /// system sanpshot data
+    /// other account vote data
+    // SecureTrieDB<Address, OverlayDB> m_state;
+    // std::unordered_map<Address, Account> m_cache;
+    for(auto const& v: m_state){
+        if (v.first == new_addr)
+            continue;
+        Account *temp_a = account(v.first);
+        if (!temp_a)
+            continue;
+        bool is_change = temp_a->changeMinerUpdateData(before_addr, new_addr);
+    }
+
+}
+
 
 dev::brc::ex::ExResultOrder const& dev::brc::State::getSuccessExchange()
 {

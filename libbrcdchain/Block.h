@@ -303,10 +303,9 @@ public:
 	/// this called after excuted transactions
 	void execute_block_record(BlockHeader const& curr_info);
 
-    /// try into new rounds
-    /// do: record snapshot minner_rank and sort new
-    void try_into_new_rounds(BlockHeader const& curr_info, BlockHeader const& previous_info){
-        m_state.try_newrounds_count_vote(curr_info, previous_info);
+    /// into new block todo something
+    void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info){
+        m_state.intoNewBlockToDo(curr_info, previous_info);
     }
 
 private:

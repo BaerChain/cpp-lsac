@@ -408,6 +408,7 @@ int main(int argc, char *argv[]) {
             nonce = (size_t) args_map["nonce"].as<int>();
         }
         if (args_map.count("generate-key")) {
+            for(int i=0; i<51; i++)
             generate_key(args_map["generate-key"].as<std::string>());
         }
 

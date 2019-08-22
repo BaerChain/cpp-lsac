@@ -386,6 +386,8 @@ public:
 	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
+
+    void changeMinerMigrationData(Address const& before_addr, Address const& new_addr, const dev::brc::BlockHeader &curr_header);
     
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
@@ -582,6 +584,8 @@ public:
 
     /// get the miner sanpshot
     std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
+
+    void intoNewBlockToDo(BlockHeader const& curr_header, BlockHeader const& previous_header);
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
