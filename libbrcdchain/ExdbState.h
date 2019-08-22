@@ -77,7 +77,7 @@ namespace dev{
             /// get exchange order by address,
             /// \param addr   Address
             /// \return         complete order.
-            std::vector<exchange_order> get_order_by_address(const Address &addr) const;
+            std::vector<exchange_order> get_order_by_address(const Address &addr, uint32_t size) const;
 
 
             std::vector<ex_order> exits_trxid(const h256  &trxid);

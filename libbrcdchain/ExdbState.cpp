@@ -246,14 +246,14 @@ namespace dev {
             m_state.addSuccessExchange(od);
         }
 
-        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr) const {
+        std::vector<exchange_order> ExdbState::get_order_by_address(const Address &addr, uint32_t size) const {
 
             std::vector<exchange_order> ret;
 
             const auto &index = m_state.getExOrder().get<ex_by_address>();
             auto lower_itr = index.lower_bound(boost::tuple<Address, Time_ms>(addr, INT64_MAX));
             auto up_itr = index.upper_bound(boost::tuple<Address, Time_ms>(addr, 0));
-            while (lower_itr != up_itr && lower_itr != index.end()) {
+            while (lower_itr != up_itr && lower_itr != index.end() && --size > 0) {
                 ret.push_back(ex::exchange_order(*lower_itr));
                 lower_itr++;
             }
