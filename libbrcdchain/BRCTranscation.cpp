@@ -9,8 +9,8 @@ using namespace dev::brc::ex;
 #define VOTETIME 60*1000
 #define VOTEBLOCKNUM 100
 
-#define BUYCOOKIELIMIT 10000000000000
-#define SELLCOOKIELIMIT 10000000000000
+#define BUYCOOKIELIMIT 1000000000000
+#define SELLCOOKIELIMIT 1000000000000
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
