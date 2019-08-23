@@ -53,6 +53,7 @@ string Brc::brc_blockNumber()
 
 Json::Value Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
 {
+    BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
 	try
 	{
 		return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNumber(_blockNum));
@@ -93,6 +94,7 @@ Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const
 
 Json::Value Brc::brc_getSuccessPendingOrderForAddr(string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
 {
+    BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
     if(jsToInt(_maxSize) > MAXQUERIES)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException("The number of query data cannot exceed 50"));
