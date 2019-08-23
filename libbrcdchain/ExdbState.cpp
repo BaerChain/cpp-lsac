@@ -108,7 +108,7 @@ namespace dev {
                     auto find_itr = get_sell_itr(itr.token_type, u256(0));
                     auto begin = find_itr.first;
                     auto end = find_itr.second;
-                    auto total_amount = itr.price;
+                    auto total_amount = itr.token_amount;
                     if (begin != end) {
                         while (total_amount > 0 && begin != end) {
                             result_order ret;
