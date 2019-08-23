@@ -9,7 +9,8 @@ using namespace dev::brc::ex;
 #define VOTETIME 60*1000
 #define VOTEBLOCKNUM 100
 
-
+#define BUYCOOKIELIMIT 10000000000000
+#define SELLCOOKIELIMIT 10000000000000
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
@@ -210,6 +211,11 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
                             std::string("buy Cookie only_price :Address BRC < Num * Price")));
                 }
+                if(total_brc < BUYCOOKIELIMIT)
+                {
+                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                            std::string("Limit orders to buy cookies can not be less than 100000")));
+                }
             } else if (_buy_type == order_buy_type::all_price) {
                 total_brc += _pendingOrderPrice;
                 if (total_brc > m_state.BRC(_form)) {
@@ -223,6 +229,11 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
                 if (total_cost > m_state.balance(_form)) {
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
                             std::string("sell Cookie only_price :Address balance < Num * Price")));
+                }
+                if(total_cost < SELLCOOKIELIMIT && _buy_type == order_buy_type::only_price)
+                {
+                    BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
+                            std::string("Limit sell orders can not sell less than 100,000")));
                 }
             }
         }
@@ -252,6 +263,7 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
             _verfys.push_back(_order);
         }
     }
+
 
     if (_verfys.empty())
         return;

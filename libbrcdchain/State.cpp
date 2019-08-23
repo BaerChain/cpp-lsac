@@ -747,7 +747,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     ExdbState _exdbState(*this);
     for (auto it : _set) {
         if (it == order_type::buy) {
-            if(BRC(systemAddress) < u256(std::string("1000000000000")))
+            if(BRC(systemAddress) < u256(std::string("10000000000000")))
             {
                 return;
             }
@@ -760,7 +760,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
                                order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         } else if (it == order_type::sell) {
-            if(balance(systemAddress) < u256(std::string("1000000000000")))
+            if(balance(systemAddress) < u256(std::string("10000000000000")))
             {
                 return;
             }
