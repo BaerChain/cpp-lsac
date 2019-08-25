@@ -9,8 +9,8 @@ using namespace dev::brc::ex;
 #define VOTETIME 60*1000
 #define VOTEBLOCKNUM 100
 
-#define COOKIELIMIT 1000000000000
-
+#define SELLCOOKIELIMIT 1000000000000
+#define BUYCOOKIELIMIT 1000000000000
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
@@ -90,10 +90,10 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
                             std::string("buy Cookie only_price :Address BRC < Num * Price")));
                 }
-                if(_pendingOrderNum < COOKIELIMIT)
+                if(total_brc < BUYCOOKIELIMIT)
                 {
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
-                            std::string("Limit orders to buy cookies can not be less than 10000")));
+                            std::string("Limit orders to buy cookies can not be less than 10000 BRC")));
                 }
             } else if (_buy_type == order_buy_type::all_price) {
                 total_brc += _pendingOrderPrice;
@@ -109,10 +109,10 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
                             std::string("sell Cookie only_price :Address balance < Num * Price")));
                 }
-                if(total_cost < COOKIELIMIT && _buy_type == order_buy_type::only_price)
+                if(total_cost < SELLCOOKIELIMIT && _buy_type == order_buy_type::only_price)
                 {
                     BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
-                            std::string("Limit sell orders can not sell less than 10000")));
+                            std::string("Limit sell orders can not sell less than 10000 COOKIE")));
                 }
             }
         }
