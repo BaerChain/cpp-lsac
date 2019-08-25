@@ -609,8 +609,6 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
     //try into new rounds to rank minner
     intoNewBlockToDo(_block.info, m_previousBlock);
 
-    //update_miner();
-
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use BRCSchedule
@@ -673,18 +671,6 @@ void Block::applyRewards(vector<BlockHeader> const &_uncleBlockHeaders, u256 con
     m_state.addBalance(m_currentBlock.author(), r);*/
 }
 
-void Block::update_miner()
-{
-    Account *a = m_state.getSysAccount();
-    if (!a)
-        return;
-    std::vector<std::string>& tmp = a->changeList();
-    auto blockNumber = m_currentBlock.number();
-    if (tmp.size() > 0){
-        cwarn << "change miner block number is " << blockNumber << ",current will change list size:" << tmp.size();
-        a->changeMiner(m_currentBlock.number());
-    }
-}
 
 void Block::performIrregularModifications() {
     u256 const &daoHardfork = m_sealEngine->chainParams().daoHardforkBlock;
@@ -795,7 +781,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     // try into new rounds
     intoNewBlockToDo(info(), previousBlock());
 
-    //update_miner();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =

@@ -378,6 +378,10 @@ void Executive::initialize(Transaction const& _transaction)
                         if(m_t.sender() != _changeMiner_op.m_before){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
                         }
+                        // check block height
+                        if (m_envInfo.number() <= _changeMiner_op.m_blockNumber){
+
+                        }
                         // check sign
                         if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature, false)){
                             BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
@@ -452,7 +456,7 @@ void Executive::initialize(Transaction const& _transaction)
 			if(totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue )
 			{
 				m_excepted = TransactionException::NotEnoughCash;
-				std::string ex_info = "not enough cookie to execute tarnsaction will cost:" + toString(totalCost);
+				std::string ex_info = "not enough require cookie to execute tarnsaction will cost:" + toString(totalCost);
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;

@@ -643,6 +643,9 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
 void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
 	std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_ops[0]);
     Account *a = account(SysVarlitorAddress);
+    if(!a){
+
+    }
     a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
         
 	
@@ -1867,6 +1870,10 @@ void State::rollback(size_t _savepoint) {
             case Change::SuccessOrder:
                 account.setSuccessOrder(change.ret_orders);
                 break;
+            case Change::ChangeMiner:
+                account.kill();
+                account.copyByAccount(change.old_account);
+                break;
             default:
                 break;
         }
@@ -2437,7 +2444,7 @@ void dev::brc::State::intoNewBlockToDo(const dev::brc::BlockHeader &curr_header,
     ///try into new rounds  record snapshot minner_rank and sort new
     try_newrounds_count_vote(curr_header, previous_header);
     /// change miner for point height
-
+    //tryChangeMiner(curr_header);
 
 }
 
@@ -2599,27 +2606,36 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-
-void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, const dev::brc::BlockHeader &curr_header) {
-    /// check change time
+void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header) {
     Account *a = account(SysVarlitorAddress);
     if (!a)
         return;
     if(a->willChangeList().size()<=0)
         return;
     for(auto const& str: a->willChangeList()){
-
+        char before[128] = "";
+        char after[128] = "";
+        unsigned number = 0;
+        sscanf(str.c_str(), "%[^:]:%[^:]:%u", before, after, &number);
+        Address _before(before);
+        Address _after(after);
+        if(curr_header.number() >= (int64_t)number){
+            cwarn << "blockNumber is " << curr_header.number() << ",change miner from " << before << " to " << after;
+            Account old_account;
+            old_account.copyByAccount(*a);
+            a->removeChangeList(str);
+            a->changeMinerUpdateData(_before, _after);
+            m_changeLog.emplace_back(Change::ChangeMiner, SysVarlitorAddress, old_account);
+            changeMinerMigrationData(_before, _after);
+        }
     }
-//    std::vector<std::string> tmp = a->willChangeList();
-//    auto blockNumber = curr_header.number();
-//    if (tmp.size() > 0){
-//        cwarn << "change miner block number is " << blockNumber << ",current will change list size:" << tmp.size();
-//        a->changeMiner(m_currentBlock.number());
-//    }
+}
 
+void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr) {
     Account* old_a = account(before_addr);
     if (!old_a){
-        // throw TODO
+        // throw
+        BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment(std::string("changeMiner: not have this author:"+ dev::toString(before_addr))));
     }
     Account* new_a = account(new_addr);
     if (!new_a){
@@ -2630,22 +2646,25 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
         kill(new_addr);
     }
     /// account's base data
-    new_a = old_a;
+    new_a->copyByAccount(*old_a);
     new_a->changeMinerUpdateData(before_addr, new_addr);
     /// loop all
     /// system sanpshot data
     /// other account vote data
-    // SecureTrieDB<Address, OverlayDB> m_state;
-    // std::unordered_map<Address, Account> m_cache;
     for(auto const& v: m_state){
-        if (v.first == new_addr)
+        /// new_addr not to change_data and the SysVarlitorAddress is already changed
+        if (v.first == new_addr || v.first == SysVarlitorAddress)
             continue;
         Account *temp_a = account(v.first);
         if (!temp_a)
             continue;
+        Account old_account;
+        old_account.copyByAccount(*temp_a);
+        cwarn << "will update change data:"<< v.first << " old_addr:"<< before_addr << " new:"<< new_addr;
         bool is_change = temp_a->changeMinerUpdateData(before_addr, new_addr);
+        if(is_change)
+            m_changeLog.emplace_back(Change::ChangeMiner, v.first, old_account);
     }
-
 }
 
 

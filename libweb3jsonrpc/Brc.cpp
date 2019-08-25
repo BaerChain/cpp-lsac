@@ -976,6 +976,12 @@ string dev::rpc::exceptionToErrorMessage()
 	catch (ChangeMinerFailed const &e){
         ret = "Replace witness operations cannot be batch operated.";
 	}
+    catch (InvalidAutor const&ex)
+    {
+        ret = "";
+        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";

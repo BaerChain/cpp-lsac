@@ -9,6 +9,8 @@
 #include <boost/filesystem/path.hpp>
 #include <brc/objects.hpp>
 
+#include <libdevcore/Log.h>
+
 
 namespace dev
 {
@@ -583,15 +585,21 @@ public:
         m_codeHash(_codeHash) {
      assert(_contractRoot);
  }
-
-    Account(Account const& ac):
-            m_isAlive(ac.m_isAlive),  m_isUnchanged(ac.Unchanged),
-            m_hasNewCode(ac.m_hasNewCode),  m_nonce(ac.m_nonce),
-            m_balance(ac.m_balance),  m_storageRoot(ac.m_storageRoot),
-            m_codeHash(ac.m_codeHash),  m_ballot(ac.m_ballot),
-            m_poll(ac.m_poll),  m_BRC(ac.m_BRC),
-            m_FBRC(ac.m_FBRC),  m_FBalance(ac.m_FBalance),
-            m_CooikeIncomeNum(ac.m_CooikeIncomeNum), m_codeCache(ac.m_codeCache){
+    void copyByAccount(Account const& ac){
+        m_isAlive = ac.m_isAlive;
+        m_isUnchanged = ac.m_isUnchanged;
+        m_hasNewCode = ac.m_hasNewCode;
+        m_nonce = ac.m_nonce;
+        m_balance = ac.m_balance;
+        m_storageRoot = ac.m_storageRoot;
+        m_codeHash = ac.m_codeHash;
+        m_ballot = ac.m_ballot;
+        m_poll = ac.m_poll;
+        m_BRC = ac.m_BRC;
+        m_FBRC = ac.m_FBRC;
+        m_FBalance = ac.m_FBalance;
+        m_CooikeIncomeNum = ac.m_CooikeIncomeNum;
+        m_codeCache = ac.m_codeCache;
         m_willChangeList = ac.m_willChangeList;
         m_vote_data = ac.m_vote_data;
         m_vote_sapshot = ac.m_vote_sapshot;
@@ -603,7 +611,6 @@ public:
         m_storageOverlay = ac.m_storageOverlay;
         m_storageOriginal = ac.m_storageOriginal;
         m_block_records = ac.m_block_records;
-        std::cout << " init new account by old account............" << std::endl;
     }
 
     bool changeMinerUpdateData(Address const& old_addr, Address const& new_addr){
@@ -612,6 +619,7 @@ public:
             if(p.m_addr == old_addr){
                 p.m_addr = new_addr;
                 is_change = true;
+                cwarn << "      change m_vote_data changed:" << p.m_addr;
             }
         }
         /// m_vote_sapshot
@@ -622,6 +630,7 @@ public:
                 s.second.erase(ret);
                 s.second[new_addr] = temp;
                 is_change = true;
+                cwarn << "      change m_voteDataHistory changed: rounds:"<< s.first <<"  :" << s.second[new_addr];
             }
         }
         /// m_couplingSystemFee
@@ -631,6 +640,7 @@ public:
                     if(d.m_addr == old_addr){
                         d.m_addr = new_addr;
                         is_change = true;
+                        cwarn << "      change m_sorted_creaters changed: rounds:"<< v.first <<"  :" << d.m_addr;
                     }
                 }
             }
@@ -641,6 +651,7 @@ public:
                    v.second.erase(ret);
                    v.second[new_addr] = _pair;
                    is_change = true;
+                   cwarn << "      change  SystemFee.m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
                }
            }
         }
@@ -652,6 +663,7 @@ public:
                 v.second.erase(ret);
                 v.second[new_addr] = _pair;
                 is_change = true;
+                cwarn << "      change  m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
             }
         }
         /// m_block_records
@@ -661,6 +673,7 @@ public:
             m_block_records.m_last_time.erase(ret);
             m_block_records.m_last_time[new_addr] = temp;
             is_change = true;
+            cwarn << "      change m_block_records changed :" <<  m_block_records.m_last_time[new_addr];
         }
         if (is_change){
             changed();
@@ -722,8 +735,15 @@ public:
     u256 const& FBRC() const { return m_FBRC; }
 
     u256 const& FBalance() const { return m_FBalance; }
+
     std::vector<std::string>const& willChangeList() const { return m_willChangeList; }
-    std::vector<std::string>& changeList() { return m_willChangeList; }
+    void removeChangeList(std::string const& _change){
+        auto ret = find(m_willChangeList.begin(), m_willChangeList.end(), _change);
+        if(ret != m_willChangeList.end()){
+            m_willChangeList.erase(ret);
+            changed();
+        }
+    }
 
     /// Increments the balance of this account by the given amount.
     void addBalance(u256 _value)

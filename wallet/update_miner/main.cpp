@@ -177,7 +177,7 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
     ts.gas = gas;
     ts.gasPrice = gasPrice;
     ts.data = rlp.out();
-    ts.chainId = 0;
+    ts.chainId = 1;
 
     brc::Transaction sign_t(ts, _keypair.secret());
 

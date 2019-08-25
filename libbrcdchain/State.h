@@ -125,7 +125,8 @@ struct Change
         MinnerSnapshot,
         ReceiveCookies,
         UpExOrder,
-        SuccessOrder
+        SuccessOrder,
+        ChangeMiner
     };
 
     Kind kind;        ///< The kind of the change.
@@ -145,6 +146,7 @@ struct Change
     ReceivedCookies received;
     dev::brc::ex::ExOrderMulti ex_multi;
     dev::brc::ex::ExResultOrder ret_orders;
+    Account old_account;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -211,6 +213,11 @@ struct Change
     Change(Kind _kind, Address const& _addr, dev::brc::ex::ExResultOrder const& result_orders) :kind(_kind), address(_addr)
     {
         ret_orders =result_orders;
+    }
+    Change(Kind _kind, Address const& _addr, Account const& _account) :kind(_kind), address(_addr)
+    {
+        old_account.kill();
+        old_account.copyByAccount(_account);
     }
 };
 
@@ -386,8 +393,6 @@ public:
 	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
-
-    void changeMinerMigrationData(Address const& before_addr, Address const& new_addr, const dev::brc::BlockHeader &curr_header);
     
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
@@ -454,7 +459,6 @@ public:
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
-
   
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
@@ -464,6 +468,10 @@ private:
     void add_vote(Address const& _id, PollData const& p_data);
     void sub_vote(Address const& _id, PollData const& p_data);
     const PollData poll_data(Address const& _addr, Address const& _recv_addr) const;
+
+    ///interface about change
+    void tryChangeMiner(BlockHeader const &curr_header);
+    void changeMinerMigrationData(Address const& before_addr, Address const& new_addr);
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);
