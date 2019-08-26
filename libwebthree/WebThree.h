@@ -160,6 +160,8 @@ public:
     /// Start the network subsystem.
     void startNetwork() override { m_net.start(); }
 
+    void setNetworkSkipSameIp(bool skip)  { m_net.setSkipSameIp(skip); }
+
     /// Stop the network subsystem.
     void stopNetwork() override { m_net.stop(); }
 

@@ -22,6 +22,7 @@ namespace fs = boost::filesystem;
 
 #define BRCNUM 1000
 #define COOKIENUM 100000000000
+#define LIMITE_NUMBER 50
 
 
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
@@ -749,6 +750,10 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     ExdbState _exdbState(*this);
     for (auto it : _set) {
         if (it == order_type::buy) {
+            if(BRC(systemAddress) < u256(std::string("10000000000000")))
+            {
+                return;
+            }
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
             _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
             RLPStream _rlp(3);
@@ -758,6 +763,10 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
                                order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         } else if (it == order_type::sell) {
+            if(balance(systemAddress) < u256(std::string("10000000000000")))
+            {
+                return;
+            }
             u256 _num = balance(systemAddress);
             _needCookie = _num;
 
@@ -1007,10 +1016,12 @@ Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum)
 
 }
 
-Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize) {
+Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
+    uint32_t _maxSize = (uint32_t)_gsize;
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
     std::vector<exchange_order> _v = _exdbState.get_order_by_type(
-            (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) getSize);
+            (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) _maxSize);
 
     Json::Value _JsArray;
     for (auto val : _v) {
@@ -1031,9 +1042,10 @@ Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token
     return _JsArray;
 }
 
-Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
+Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _maxSize) {
     ExdbState _exdbState(*this);
-    std::vector<exchange_order> _v = _exdbState.get_order_by_address(_a);
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
+    std::vector<exchange_order> _v = _exdbState.get_order_by_address(_a, _maxSize);
     Json::Value _JsArray;
 
     for (auto val : _v) {
@@ -1054,9 +1066,10 @@ Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize) {
     return _JsArray;
 }
 
-Json::Value State::successPendingOrderMsg(uint32_t _getSize) {
+Json::Value State::successPendingOrderMsg(uint32_t _maxSize) {
     ExdbState _exdbState(*this);
-    std::vector<result_order> _v = _exdbState.get_result_orders_by_news(_getSize);
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
+    std::vector<result_order> _v = _exdbState.get_result_orders_by_news(_maxSize);
     Json::Value _JsArray;
 
     for (auto val : _v) {
@@ -1083,6 +1096,7 @@ Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTi
                                                  uint32_t _maxSize)
 {
     ExdbState _exdbState(*this);
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
     std::vector<result_order> _retV = _exdbState.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
     Json::Value  _JsArray;
 
