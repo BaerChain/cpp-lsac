@@ -1197,8 +1197,8 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
     int max_count = m_params.config_blocks;
     while(from_block.info.stateRoot() != to.info.stateRoot()  && --max_count > 0){
         if(overdb.exists(from_block.info.stateRoot())){
-//            cwarn << "will remove state root " << from_block.info.stateRoot();
-            overdb.kill(from_block.info.stateRoot());
+            cwarn << "will remove state root " << from_block.info.stateRoot();
+//            overdb.kill(from_block.info.stateRoot());
         }
         else{
             cerror << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";
