@@ -854,7 +854,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     //check node down
 
     Block s(*this, _db, _exdb);
-    s.populateFromChain(*this, _block.info.parentHash());
+    s.populateFromChain(*this, info().parentHash());
     State &state_db = s.mutableState();
     auto exe_miners = state_db.vote_data(SysVarlitorAddress);
     auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
@@ -1195,24 +1195,37 @@ bool BlockChain::rollback_from_database(const dev::brc::VerifiedBlockRef &from, 
 
     VerifiedBlockRef from_block = from;
     int max_count = m_params.config_blocks;
-    while(from_block.info.stateRoot() != to.info.stateRoot()  && --max_count > 0){
-        if(overdb.exists(from_block.info.stateRoot())){
-            cwarn << "will remove state root " << from_block.info.stateRoot();
+//    while(from_block.info.stateRoot() != to.info.stateRoot()  && --max_count > 0){
+//        if(overdb.exists(from_block.info.stateRoot())){
+//            cwarn << "will remove state root " << from_block.info.stateRoot();
+////            overdb.kill(from_block.info.stateRoot());
+//        }
+//        else{
+//            cerror << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";
+//            return false;
+//        }
+//        for(const auto &itr : blocks){
+//            if(itr.info.hash() == from_block.info.parentHash()){
+//                from_block = itr;
+//                break;
+//            }
+//        }
+//    }
+
+    for(auto &itr : blocks){
+        if(overdb.exists(itr.info.stateRoot())){
+            cwarn << "will remove state root " << toHex(from_block.info.stateRoot());
 //            overdb.kill(from_block.info.stateRoot());
         }
         else{
             cerror << "cant find from state root : " << from_block.info.stateRoot() << " number: " << from_block.info.number() << "  to: " << to.info.stateRoot() << " ("<< to.info.stateRoot() <<")";
             return false;
         }
-        for(const auto &itr : blocks){
-            if(itr.info.hash() == from_block.info.parentHash()){
-                from_block = itr;
-                break;
-            }
-        }
+        --max_count;
     }
+
     if(max_count <= 0){
-        cerror << "delete state error. maybe rebuild.";
+        cerror << "delete state error. maybe rebuild." << max_count;
     }
     _exdb.rollback_until(to.info.hash(), to.info.stateRoot());
     return true;
