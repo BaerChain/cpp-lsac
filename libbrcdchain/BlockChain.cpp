@@ -853,50 +853,39 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 
     //check node down
 
-        Block s(*this, _db, _exdb);
-        s.populateFromChain(*this, _block.info.parentHash());
-        State &state_db = s.mutableState();
-        auto exe_miners = state_db.vote_data(SysVarlitorAddress);
-        auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
+    Block s(*this, _db, _exdb);
+    s.populateFromChain(*this, _block.info.parentHash());
+    State &state_db = s.mutableState();
+    auto exe_miners = state_db.vote_data(SysVarlitorAddress);
+    auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
 
-//        std::vector<PollData> exe_miners;
-//        std::vector<PollData> standby_miners;
-//        auto account_map = m_params.genesisState;
-//        if(account_map.count(SysVarlitorAddress)){
-//            exe_miners = account_map[SysVarlitorAddress].vote_data();
-//        }
-//        if(account_map.count(SysCanlitorAddress)){
-//            standby_miners = account_map[SysCanlitorAddress].vote_data();
-//        }
-        assert(exe_miners.size() != 0);
-        assert(standby_miners.size() != 0);
 
-//        Block s(0);
-//        State &state_db = s.mutableState();
+    assert(exe_miners.size() != 0);
+    assert(standby_miners.size() != 0);
 
-        ///verify the miner Legitimacy
-        if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
-            int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
-            if (_block.info.author() != exe_miners[offset].m_addr){
-                // throw
-                cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
+    ///verify the miner Legitimacy
+    if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+        int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
+        if (_block.info.author() != exe_miners[offset].m_addr){
+            // throw
+            cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
+            BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
-        else{
-            if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
-                // throw
-                cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
-                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-            }
-            ///verify the standby Legitimacy
+    }
+    else{
+        if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
+            // throw
+            cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
+            BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+        }
+        ///verify the standby Legitimacy
 //            Verify verify_creater;
 //            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
 //               // throw
 //                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
 //                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
 //            }
-        }
+    }
 
 
 
@@ -954,15 +943,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         else if(_block.info.number() == info().number()){
             //this switch chain on one SysVarlitor dont create one block.
             if(_block.info.parentHash() == info().parentHash()){
-                cwarn << " check miner online , will switch chain.11111111111111111";
-//                Block s(*this, _db, _exdb);
-//                s.populateFromChain(*this, currentHash());
-//
-//                State &state_db = s.mutableState();
-//                auto exe_miners = state_db.vote_data(SysVarlitorAddress);           //21
-//                auto standby_miners = state_db.vote_data(SysCanlitorAddress);       //30
-//                assert(exe_miners.size() != 0);
-//                assert(standby_miners.size() != 0);
                 cwarn << " check miner online , will switch chain. before";
                 if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
                     cwarn << " check miner online , will switch chain.22222222222";

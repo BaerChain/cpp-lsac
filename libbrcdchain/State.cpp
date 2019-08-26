@@ -2602,27 +2602,6 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
     if(!change_ret.first)
         return;
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
-
-    //    Account *a = account(SysVarlitorAddress);
-//    if (!a)
-//        return;
-//    if(a->willChangeList().size()<=0)
-//        return;
-//    for(auto const& str: a->willChangeList()){
-//        char before[128] = "";
-//        char after[128] = "";
-//        unsigned number = 0;
-//        sscanf(str.c_str(), "%[^:]:%[^:]:%u", before, after, &number);
-//        Address _before(before);
-//        Address _after(after);
-//        if(curr_header.number() >= (int64_t)number){
-//            cwarn << "blockNumber is " << curr_header.number() << ",change miner from " << before << " to " << after;
-//            cwarn << " befor uese time : "<< utcTimeMilliSec() - curr_header.timestamp();
-//            a->removeChangeList(str);
-//            a->changeMinerUpdateData(_before, _after);
-//            changeMinerMigrationData(_before, _after, params);
-//        }
-//    }
 }
 
 void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {
