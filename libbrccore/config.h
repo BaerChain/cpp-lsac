@@ -29,7 +29,14 @@ namespace dev
             MainNetwork = 1,
         };
 
-        //extern std::string const c_genesisInfoMainNetwork;
+        struct ChangeMiner{
+            std::string before_addr;
+            std::string new_addr;
+            int64_t height;
+            ChangeMiner(){}
+            ChangeMiner(std::string const& b, std::string const& n, int64_t h):
+                before_addr(b), new_addr(n), height(h){}
+        };
 
 
         class config
@@ -61,6 +68,9 @@ namespace dev
                 static std::string const& genesis_info(ChainNetWork chain_type);
 
                 static u256 getvoteRound(u256 _numberofrounds);
+
+                static std::pair<bool, ChangeMiner> getChainMiner(int64_t height);
+
         private:
             config(){}
             //~config(){}

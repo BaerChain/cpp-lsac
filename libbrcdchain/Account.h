@@ -613,14 +613,11 @@ public:
         m_block_records = ac.m_block_records;
     }
 
-    bool changeMinerUpdateData(Address const& old_addr, Address const& new_addr){
-        bool is_change = false;
-        for(auto & p: m_vote_data){
-            if(p.m_addr == old_addr){
-                p.m_addr = new_addr;
-                is_change = true;
-                cwarn << "      change m_vote_data changed:" << p.m_addr;
-            }
+    void changeMinerUpdateData(Address const& old_addr, Address const& new_addr){
+        auto vote_ret = std::find(m_vote_data.begin(), m_vote_data.end(), old_addr);
+        if (vote_ret != m_vote_data.end()){
+            vote_ret->m_addr = new_addr;
+            changed();
         }
         /// m_vote_sapshot
         for(auto &s : m_vote_sapshot.m_voteDataHistory){
@@ -629,8 +626,8 @@ public:
                 u256 temp = ret->second;
                 s.second.erase(ret);
                 s.second[new_addr] = temp;
-                is_change = true;
-                cwarn << "      change m_voteDataHistory changed: rounds:"<< s.first <<"  :" << s.second[new_addr];
+                changed();
+                //cwarn << "      change m_voteDataHistory changed: rounds:"<< s.first <<"  :" << s.second[new_addr];
             }
         }
         /// m_couplingSystemFee
@@ -639,8 +636,8 @@ public:
                 for(auto & d : v.second){
                     if(d.m_addr == old_addr){
                         d.m_addr = new_addr;
-                        is_change = true;
-                        cwarn << "      change m_sorted_creaters changed: rounds:"<< v.first <<"  :" << d.m_addr;
+                        changed();
+                        //cwarn << "      change m_sorted_creaters changed: rounds:"<< v.first <<"  :" << d.m_addr;
                     }
                 }
             }
@@ -650,8 +647,8 @@ public:
                    std::pair<u256,u256> _pair = ret->second;
                    v.second.erase(ret);
                    v.second[new_addr] = _pair;
-                   is_change = true;
-                   cwarn << "      change  SystemFee.m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
+                   changed();
+                   //cwarn << "      change  SystemFee.m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
                }
            }
         }
@@ -662,8 +659,8 @@ public:
                 std::pair<u256,u256> _pair = ret->second;
                 v.second.erase(ret);
                 v.second[new_addr] = _pair;
-                is_change = true;
-                cwarn << "      change  m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
+                changed();
+                //cwarn << "      change  m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
             }
         }
         /// m_block_records
@@ -672,13 +669,9 @@ public:
             int64_t temp =0;
             m_block_records.m_last_time.erase(ret);
             m_block_records.m_last_time[new_addr] = temp;
-            is_change = true;
-            cwarn << "      change m_block_records changed :" <<  m_block_records.m_last_time[new_addr];
-        }
-        if (is_change){
             changed();
+            //cwarn << "      change m_block_records changed :" <<  m_block_records.m_last_time[new_addr];
         }
-        return is_change;
     }
 
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns

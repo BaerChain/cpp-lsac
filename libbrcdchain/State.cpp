@@ -2439,15 +2439,6 @@ BlockRecord dev::brc::State::block_record() const {
     return  a->block_record();
 }
 
-void dev::brc::State::intoNewBlockToDo(const dev::brc::BlockHeader &curr_header,
-                                       const dev::brc::BlockHeader &previous_header) {
-    ///try into new rounds  record snapshot minner_rank and sort new
-    try_newrounds_count_vote(curr_header, previous_header);
-    /// change miner for point height
-    //tryChangeMiner(curr_header);
-
-}
-
 void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header, const dev::brc::BlockHeader &previous_header) {
     //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
@@ -2606,32 +2597,34 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header) {
-    Account *a = account(SysVarlitorAddress);
-    if (!a)
+void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const& params) {
+//    Account *a = account(SysVarlitorAddress);
+//    if (!a)
+//        return;
+//    if(a->willChangeList().size()<=0)
+//        return;
+//    for(auto const& str: a->willChangeList()){
+//        char before[128] = "";
+//        char after[128] = "";
+//        unsigned number = 0;
+//        sscanf(str.c_str(), "%[^:]:%[^:]:%u", before, after, &number);
+//        Address _before(before);
+//        Address _after(after);
+//        if(curr_header.number() >= (int64_t)number){
+//            cwarn << "blockNumber is " << curr_header.number() << ",change miner from " << before << " to " << after;
+//            cwarn << " befor uese time : "<< utcTimeMilliSec() - curr_header.timestamp();
+//            a->removeChangeList(str);
+//            a->changeMinerUpdateData(_before, _after);
+//            changeMinerMigrationData(_before, _after, params);
+//        }
+//    }
+    auto change_ret = config::getChainMiner(curr_header.number());
+    if(!change_ret.first)
         return;
-    if(a->willChangeList().size()<=0)
-        return;
-    for(auto const& str: a->willChangeList()){
-        char before[128] = "";
-        char after[128] = "";
-        unsigned number = 0;
-        sscanf(str.c_str(), "%[^:]:%[^:]:%u", before, after, &number);
-        Address _before(before);
-        Address _after(after);
-        if(curr_header.number() >= (int64_t)number){
-            cwarn << "blockNumber is " << curr_header.number() << ",change miner from " << before << " to " << after;
-            Account old_account;
-            old_account.copyByAccount(*a);
-            a->removeChangeList(str);
-            a->changeMinerUpdateData(_before, _after);
-            m_changeLog.emplace_back(Change::ChangeMiner, SysVarlitorAddress, old_account);
-            changeMinerMigrationData(_before, _after);
-        }
-    }
+    changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
 }
 
-void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr) {
+void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {
     Account* old_a = account(before_addr);
     if (!old_a){
         // throw
@@ -2648,23 +2641,21 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
     /// account's base data
     new_a->copyByAccount(*old_a);
     new_a->changeMinerUpdateData(before_addr, new_addr);
+    old_a->kill();
     /// loop all
     /// system sanpshot data
-    /// other account vote data
-    for(auto const& v: m_state){
-        /// new_addr not to change_data and the SysVarlitorAddress is already changed
-        if (v.first == new_addr || v.first == SysVarlitorAddress)
-            continue;
+    /// other account vote data in genesis
+    int64_t  time1 = utcTimeMilliSec();
+    cwarn << " start time:" << time1;
+    int num =0;
+    for(auto const& v: params.genesisState){
         Account *temp_a = account(v.first);
         if (!temp_a)
             continue;
-        Account old_account;
-        old_account.copyByAccount(*temp_a);
-        cwarn << "will update change data:"<< v.first << " old_addr:"<< before_addr << " new:"<< new_addr;
-        bool is_change = temp_a->changeMinerUpdateData(before_addr, new_addr);
-        if(is_change)
-            m_changeLog.emplace_back(Change::ChangeMiner, v.first, old_account);
+        //cwarn << "will update change data:"<< v.first << " old_addr:"<< before_addr << " new:"<< new_addr;
+        temp_a->changeMinerUpdateData(before_addr, new_addr);
     }
+    cwarn << "use time:" << utcTimeMilliSec() - time1 << "  num:"<< num;
 }
 
 

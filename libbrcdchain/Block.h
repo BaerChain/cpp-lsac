@@ -304,8 +304,11 @@ public:
 	void execute_block_record(BlockHeader const& curr_info);
 
     /// into new block todo something
-    void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info){
-        m_state.intoNewBlockToDo(curr_info, previous_info);
+    void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params){
+        ///try into new rounds  record snapshot minner_rank and sort new
+        m_state.try_newrounds_count_vote(curr_info, previous_info);
+        /// change miner for point height
+        m_state.tryChangeMiner(curr_info, params);
     }
 
 private:

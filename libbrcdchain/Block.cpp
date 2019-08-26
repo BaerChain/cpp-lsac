@@ -606,8 +606,8 @@ u256 Block::enact(VerifiedBlockRef const &_block, BlockChain const &_bc) {
 
     // execute create_block records
     execute_block_record(_block.info);
-    //try into new rounds to rank minner
-    intoNewBlockToDo(_block.info, m_previousBlock);
+    //new block will todo
+    intoNewBlockToDo(_block.info, m_previousBlock, _bc.chainParams());
 
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
@@ -779,7 +779,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     // record crete_block
     execute_block_record(info());
     // try into new rounds
-    intoNewBlockToDo(info(), previousBlock());
+    intoNewBlockToDo(info(), previousBlock(), _bc.chainParams());
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.

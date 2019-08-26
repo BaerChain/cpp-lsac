@@ -470,8 +470,7 @@ private:
     const PollData poll_data(Address const& _addr, Address const& _recv_addr) const;
 
     ///interface about change
-    void tryChangeMiner(BlockHeader const &curr_header);
-    void changeMinerMigrationData(Address const& before_addr, Address const& new_addr);
+    void changeMinerMigrationData(Address const& before_addr, Address const& new_addr, ChainParams const& params);
 
 public:
     void transferBallotBuy(Address const& _from, u256 const& _value);
@@ -589,11 +588,11 @@ public:
 
     /// try into new rounds if into: will statistical_poll and sort varlitor
     void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
+    /// change miner
+    void tryChangeMiner(BlockHeader const &curr_header, ChainParams const& params);
 
     /// get the miner sanpshot
     std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
-
-    void intoNewBlockToDo(BlockHeader const& curr_header, BlockHeader const& previous_header);
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
