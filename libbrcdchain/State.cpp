@@ -2598,7 +2598,12 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
 }
 
 void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const& params) {
-//    Account *a = account(SysVarlitorAddress);
+    auto change_ret = config::getChainMiner(curr_header.number());
+    if(!change_ret.first)
+        return;
+    changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
+
+    //    Account *a = account(SysVarlitorAddress);
 //    if (!a)
 //        return;
 //    if(a->willChangeList().size()<=0)
@@ -2618,10 +2623,6 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
 //            changeMinerMigrationData(_before, _after, params);
 //        }
 //    }
-    auto change_ret = config::getChainMiner(curr_header.number());
-    if(!change_ret.first)
-        return;
-    changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
 }
 
 void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {
@@ -2645,17 +2646,15 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
     /// loop all
     /// system sanpshot data
     /// other account vote data in genesis
-    int64_t  time1 = utcTimeMilliSec();
-    cwarn << " start time:" << time1;
-    int num =0;
     for(auto const& v: params.genesisState){
+        if (!v.second.isChangeMinerUpdateData(before_addr, new_addr))
+            continue;
         Account *temp_a = account(v.first);
         if (!temp_a)
             continue;
         //cwarn << "will update change data:"<< v.first << " old_addr:"<< before_addr << " new:"<< new_addr;
         temp_a->changeMinerUpdateData(before_addr, new_addr);
     }
-    cwarn << "use time:" << utcTimeMilliSec() - time1 << "  num:"<< num;
 }
 
 

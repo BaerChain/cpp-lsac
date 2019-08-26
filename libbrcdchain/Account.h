@@ -625,20 +625,16 @@ public:
             if (ret != s.second.end()){
                 u256 temp = ret->second;
                 s.second.erase(ret);
-                s.second[new_addr] = temp;
+                s.second[new_addr] = ret->second;
                 changed();
-                //cwarn << "      change m_voteDataHistory changed: rounds:"<< s.first <<"  :" << s.second[new_addr];
             }
         }
         /// m_couplingSystemFee
         {
             for(auto &v : m_couplingSystemFee.m_sorted_creaters){
-                for(auto & d : v.second){
-                    if(d.m_addr == old_addr){
-                        d.m_addr = new_addr;
-                        changed();
-                        //cwarn << "      change m_sorted_creaters changed: rounds:"<< v.first <<"  :" << d.m_addr;
-                    }
+                auto ret =std::find(v.second.begin(), v.second.end(), old_addr);
+                if (ret != v.second.end()){
+                    ret->m_addr = new_addr;
                 }
             }
            for(auto &v : m_couplingSystemFee.m_received_cookies){
@@ -648,7 +644,6 @@ public:
                    v.second.erase(ret);
                    v.second[new_addr] = _pair;
                    changed();
-                   //cwarn << "      change  SystemFee.m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
                }
            }
         }
@@ -660,7 +655,6 @@ public:
                 v.second.erase(ret);
                 v.second[new_addr] = _pair;
                 changed();
-                //cwarn << "      change  m_received_cookies changed: rounds:"<< v.first <<"  :" << v.second[new_addr];
             }
         }
         /// m_block_records
@@ -670,8 +664,44 @@ public:
             m_block_records.m_last_time.erase(ret);
             m_block_records.m_last_time[new_addr] = temp;
             changed();
-            //cwarn << "      change m_block_records changed :" <<  m_block_records.m_last_time[new_addr];
         }
+    }
+
+    bool isChangeMinerUpdateData(Address const& old_addr, Address const& new_addr) const{
+        if (std::find(m_vote_data.begin(), m_vote_data.end(), old_addr) != m_vote_data.end()){
+            return true;
+        }
+        /// m_vote_sapshot
+        for(auto &s : m_vote_sapshot.m_voteDataHistory){
+            if (s.second.find(old_addr) != s.second.end()){
+                return true;
+            }
+        }
+        /// m_couplingSystemFee
+        {
+            for(auto &v : m_couplingSystemFee.m_sorted_creaters){
+                if(std::find(v.second.begin(), v.second.end(), old_addr) !=  v.second.end()){
+                    return true;
+                }
+            }
+            for(auto &v : m_couplingSystemFee.m_received_cookies){
+                if(v.second.find(old_addr) != v.second.end()){
+                    return true;
+                }
+            }
+        }
+        /// m_received_cookies
+        for(auto &v : m_received_cookies.m_received_cookies){
+            if(v.second.find(old_addr) != v.second.end()){
+                return true;
+            }
+        }
+        /// m_block_records
+        if (m_block_records.m_last_time.find(old_addr) != m_block_records.m_last_time.end()){
+            return true;
+        }
+
+        return false;
     }
 
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
