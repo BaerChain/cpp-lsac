@@ -1536,10 +1536,8 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     auto received_sanp = a->getFeeSnapshot();
     auto system_sanp = systemAccount->getFeeSnapshot();
     VoteSnapshot vote_sanp = a->vote_snashot();
-
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     CouplingSystemfee fee_temp = a->getFeeSnapshot();
-
     /// calculate now vote_log and summary_income
     std::vector<PollData> now_miner;
     u256 now_total_poll = 0;
@@ -1564,7 +1562,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
         u256 round_cookies = 0;
         u256 round_brcs = 0;
         u256 _totalPoll = 0;
-        std::pair<u256, u256> summary;
+        std::pair<u256, u256> summary= {0, 0};
         std::vector<PollData> check_creater;
         do{
             if (!vote_sanp.m_voteDataHistory.count(i-1)){
@@ -1589,40 +1587,53 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 old_summary = std::make_pair(0,0);
                 continue;
             }
+            if (_totalPoll == 0)
+                continue;
             //vote log for other
             std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
             /// loop all
             for(auto const& val: check_creater){
                 if(val.m_poll == 0 || _totalPoll ==0)
                     continue;
+                if (_addr != val.m_addr && !vote_log.count(val.m_addr)){
+                    continue;
+                }
                 // val = PollData
                 u256 node_summary_cookies =  summary.second / _totalPoll * val.m_poll;
                 u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
                 u256 _income_cookies =0;
                 u256 _income_brcs = 0;
-                std::pair<u256, u256> _old_get; //<brc, cookies>
+                std::pair<u256, u256> _old_get ={0,0}; //<brc, cookies>
 
                 if (received_sanp.m_received_cookies.count(i) && received_sanp.m_received_cookies[i].count(val.m_addr)){
                     _old_get = received_sanp.m_received_cookies[i][val.m_addr];
                 }
-                if(_old_get.second >= node_summary_cookies && _old_get.first >= node_summary_brcs){
-                    break;
+                if(_old_get.second > node_summary_cookies || _old_get.first > node_summary_brcs){
+                    continue;
+                }
+                if (_old_get.second == node_summary_cookies && _old_get.first == node_summary_brcs){
+                    continue;
                 }
                 if (_addr== val.m_addr){
                     // super
                     _income_brcs += node_summary_brcs - (node_summary_brcs / 2 / val.m_poll *val.m_poll);
                     _income_cookies += node_summary_cookies - (node_summary_cookies / 2 / val.m_poll *val.m_poll);
+                    is_update = true;
                 }
                 if (vote_log.count(val.m_addr)){
                     // vote node
                     _income_brcs += node_summary_brcs / 2 / val.m_poll * vote_log[val.m_addr];
                     _income_cookies += node_summary_cookies / 2 / val.m_poll * vote_log[val.m_addr];
+                    is_update = true;
                 }
+
                 fee_temp.up_received_cookies_brcs(i, val.m_addr, std::make_pair(_income_brcs, _income_cookies), summary);
-                round_brcs += (_income_brcs - _old_get.first);
-                round_cookies += (_income_cookies - _old_get.second);
+
+                if(_income_brcs > _old_get.first)
+                    round_brcs += (_income_brcs - _old_get.first);
+                if (_income_cookies > _old_get.second)
+                    round_cookies += (_income_cookies - _old_get.second);
                 old_summary = std::make_pair(0,0);
-                is_update = true;
             }
         }while (false);
         /// add received
@@ -2643,6 +2654,23 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
     new_a->copyByAccount(*old_a);
     new_a->changeMinerUpdateData(before_addr, new_addr);
     old_a->kill();
+
+    /// system Accounts
+    std::vector<Address> sys_accounts;
+    sys_accounts.emplace_back(systemAddress);
+    sys_accounts.emplace_back(PdSystemAddress);
+    sys_accounts.emplace_back(SysBlockCreateRecordAddress);
+    sys_accounts.emplace_back(SysElectorAddress);
+    sys_accounts.emplace_back(SysVarlitorAddress);
+    sys_accounts.emplace_back(SysCanlitorAddress);
+    sys_accounts.emplace_back(SysMinerSnapshotAddress);
+    for(auto const& v : sys_accounts){
+        if (auto sys_a = account(v)){
+            if (sys_a->isChangeMinerUpdateData(before_addr, new_addr)){
+                sys_a->changeMinerUpdateData(before_addr, new_addr);
+            }
+        }
+    }
     /// loop all
     /// system sanpshot data
     /// other account vote data in genesis
