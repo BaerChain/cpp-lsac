@@ -1554,6 +1554,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     u256 now_total_brcs = systemAccount->BRC();
     //auto old_sunmmary = received_sanp.m_total_summary();
     std::pair<u256, u256> old_summary = received_sanp.m_total_summary;
+    cwarn << " old_summary:" << old_summary;
     bool is_now_rounds = false;
     int start_round = received_sanp.m_numofrounds != 0 ? (int)received_sanp.m_numofrounds : 1;
     /// loop any not received rounds . to now rounds
@@ -1577,6 +1578,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
             if(is_now_rounds){
                _totalPoll = now_total_poll;
                summary = std::make_pair(now_total_brcs, now_total_cookies);
+               cwarn << "summary:"<<summary;
                check_creater = now_miner;
             } else {
                 _totalPoll = system_sanp.get_total_poll(i, config::minner_rank_num());
@@ -1593,7 +1595,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
             std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
             /// loop all
             for(auto const& val: check_creater){
-                if(val.m_poll == 0 || _totalPoll ==0)
+                if(val.m_poll == 0)
                     continue;
                 if (_addr != val.m_addr && !vote_log.count(val.m_addr)){
                     continue;
@@ -1608,31 +1610,30 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                 if (received_sanp.m_received_cookies.count(i) && received_sanp.m_received_cookies[i].count(val.m_addr)){
                     _old_get = received_sanp.m_received_cookies[i][val.m_addr];
                 }
-                if(_old_get.second > node_summary_cookies || _old_get.first > node_summary_brcs){
-                    continue;
-                }
-                if (_old_get.second == node_summary_cookies && _old_get.first == node_summary_brcs){
+                if(_old_get.second >= node_summary_cookies && _old_get.first >= node_summary_brcs){
                     continue;
                 }
                 if (_addr== val.m_addr){
                     // super
                     _income_brcs += node_summary_brcs - (node_summary_brcs / 2 / val.m_poll *val.m_poll);
                     _income_cookies += node_summary_cookies - (node_summary_cookies / 2 / val.m_poll *val.m_poll);
-                    is_update = true;
                 }
                 if (vote_log.count(val.m_addr)){
                     // vote node
                     _income_brcs += node_summary_brcs / 2 / val.m_poll * vote_log[val.m_addr];
                     _income_cookies += node_summary_cookies / 2 / val.m_poll * vote_log[val.m_addr];
-                    is_update = true;
                 }
 
                 fee_temp.up_received_cookies_brcs(i, val.m_addr, std::make_pair(_income_brcs, _income_cookies), summary);
 
-                if(_income_brcs > _old_get.first)
+                if(_income_brcs > _old_get.first) {
                     round_brcs += (_income_brcs - _old_get.first);
-                if (_income_cookies > _old_get.second)
+                    is_update = true;
+                }
+                if (_income_cookies > _old_get.second) {
                     round_cookies += (_income_cookies - _old_get.second);
+                    is_update = true;
+                }
                 old_summary = std::make_pair(0,0);
             }
         }while (false);
@@ -2613,27 +2614,6 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
     if(!change_ret.first)
         return;
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
-
-    //    Account *a = account(SysVarlitorAddress);
-//    if (!a)
-//        return;
-//    if(a->willChangeList().size()<=0)
-//        return;
-//    for(auto const& str: a->willChangeList()){
-//        char before[128] = "";
-//        char after[128] = "";
-//        unsigned number = 0;
-//        sscanf(str.c_str(), "%[^:]:%[^:]:%u", before, after, &number);
-//        Address _before(before);
-//        Address _after(after);
-//        if(curr_header.number() >= (int64_t)number){
-//            cwarn << "blockNumber is " << curr_header.number() << ",change miner from " << before << " to " << after;
-//            cwarn << " befor uese time : "<< utcTimeMilliSec() - curr_header.timestamp();
-//            a->removeChangeList(str);
-//            a->changeMinerUpdateData(_before, _after);
-//            changeMinerMigrationData(_before, _after, params);
-//        }
-//    }
 }
 
 void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {
@@ -2672,7 +2652,6 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
         }
     }
     /// loop all
-    /// system sanpshot data
     /// other account vote data in genesis
     for(auto const& v: params.genesisState){
         if (!v.second.isChangeMinerUpdateData(before_addr, new_addr))
@@ -2680,7 +2659,6 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
         Account *temp_a = account(v.first);
         if (!temp_a)
             continue;
-        //cwarn << "will update change data:"<< v.first << " old_addr:"<< before_addr << " new:"<< new_addr;
         temp_a->changeMinerUpdateData(before_addr, new_addr);
     }
 }
