@@ -1554,7 +1554,6 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     u256 now_total_brcs = systemAccount->BRC();
     //auto old_sunmmary = received_sanp.m_total_summary();
     std::pair<u256, u256> old_summary = received_sanp.m_total_summary;
-    cwarn << " old_summary:" << old_summary;
     bool is_now_rounds = false;
     int start_round = received_sanp.m_numofrounds != 0 ? (int)received_sanp.m_numofrounds : 1;
     /// loop any not received rounds . to now rounds
@@ -1578,7 +1577,6 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
             if(is_now_rounds){
                _totalPoll = now_total_poll;
                summary = std::make_pair(now_total_brcs, now_total_cookies);
-               cwarn << "summary:"<<summary;
                check_creater = now_miner;
             } else {
                 _totalPoll = system_sanp.get_total_poll(i, config::minner_rank_num());
