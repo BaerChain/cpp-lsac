@@ -56,7 +56,7 @@ Json::Value Brc::brc_getSuccessPendingOrder(string const& _getSize, string const
     BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
 	try
 	{
-		return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNumber(_blockNum));
+		return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNum(_blockNum));
 	}
 	catch (...)
 	{
@@ -70,7 +70,7 @@ Json::Value Brc::brc_getPendingOrderPoolForAddr(
 	try
 	{
         return client()->pendingOrderPoolForAddrMessage(
-            jsToAddress(_address), jsToInt(_getSize), jsToBlockNumber(_blockNum));
+            jsToAddress(_address), jsToInt(_getSize), jsToBlockNum(_blockNum));
 	}
 	catch (...)
 	{
@@ -81,10 +81,14 @@ Json::Value Brc::brc_getPendingOrderPoolForAddr(
 Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
     string const& _getSize, string const& _blockNumber)
 {
+    if(jsToU256(_getSize) <= 0 || jsToOrderEnum(_order_type) == 0)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown rpc parameter")));
+    }
     try
     {
         return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
-            jsToOrderEnum(_order_token_type), jsToU256(_getSize), jsToBlockNumber(_blockNumber));
+            1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
     }
     catch (...)
     {
@@ -102,7 +106,7 @@ Json::Value Brc::brc_getSuccessPendingOrderForAddr(string const& _address, strin
 
     try {
         return client()->successPendingOrderForAddrMessage(jsToAddress(_address), jsToint64(_minTime),
-                jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNumber(_blockNum));
+                jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNum(_blockNum));
     }catch(...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
@@ -131,7 +135,11 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
         }
-        return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNumber(_blockNumber));
+        if(jsToInt(_pageNum) < 0 || jsToInt(_listNum) < 0)
+        {
+            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Incoming parameters cannot be negative")));
+        }
+        return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNum(_blockNumber));
     }
     catch(...)
     {
@@ -143,7 +151,7 @@ Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string 
 {
     try {
 
-        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
     }
     catch(...)
     {
@@ -155,7 +163,7 @@ Json::Value Brc::brc_getQueryBlockReward(string const& _address, std::string con
 {
 
     try {
-        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
     }
     catch(...)
     {
@@ -167,7 +175,7 @@ string Brc::brc_getBallot(string const& _address, string const& _blockNumber)
 {
     try
     {
-        return toJS(client()->ballotAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        return toJS(client()->ballotAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -181,7 +189,7 @@ string Brc::brc_getStorageAt(
     try
     {
         return toJS(toCompactBigEndian(client()->stateAt(jsToAddress(_address), jsToU256(_position),
-                                           jsToBlockNumber(_blockNumber)),
+                                                         jsToBlockNum(_blockNumber)),
             32));
     }
     catch (...)
@@ -195,7 +203,7 @@ string Brc::brc_getStorageRoot(string const& _address, string const& _blockNumbe
     try
     {
         return toString(
-            client()->stateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+            client()->stateRootAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -226,7 +234,7 @@ string Brc::brc_getTransactionCount(string const& _address, string const& _block
 {
     try
     {
-        return toJS(client()->countAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        return toJS(client()->countAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -302,7 +310,7 @@ string Brc::brc_getCode(string const& _address, string const& _blockNumber)
 {
     try
     {
-        return toJS(client()->codeAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        return toJS(client()->codeAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -364,7 +372,7 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-            jsToBlockNumber(_blockNumber), FudgeFactor::Lenient);
+                                            jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
         return toJS(er.output);
     }
     catch (...)
@@ -522,7 +530,10 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
         h256 bh = jsToFixed<32>(_blockHash);
         unsigned ti = jsToInt(_transactionIndex);
         if (!client()->isKnownTransaction(bh, ti))
-            return Json::Value(Json::nullValue);
+        {
+            //return Json::Value(Json::nullValue);
+            BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+        }
 
         return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
     }
@@ -559,11 +570,17 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
     {
         BlockNumber bn = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(bn))
-            return Json::Value(Json::nullValue);
+        {
+            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown block height")));
+        }
+            //return Json::Value(Json::nullValue);
         h256 bh = client()->hashFromNumber(bn);
         unsigned ti = jsToInt(_transactionIndex);
         if (!client()->isKnownTransaction(bh, ti))
-            return Json::Value(Json::nullValue);
+        {
+            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown trading index")));
+        }
+            //return Json::Value(Json::nullValue);
 
         return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
@@ -833,7 +850,7 @@ Json::Value dev::rpc::Brc::brc_getObtainVote(const std::string& _address, const 
 {
 	try
 	{
-		return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+		return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
 	}
 	catch(...)
 	{
@@ -846,7 +863,7 @@ Json::Value dev::rpc::Brc::brc_getVoted(const std::string& _address, const std::
 {
 	try
 	{
-		return client()->votedMessage(jsToAddress(_address), jsToBlockNumber(_blockNumber));
+		return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
 	}
 	catch(...)
 	{
@@ -859,7 +876,7 @@ Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
 {
 	try
 	{
-		return client()->electorMessage(jsToBlockNumber(_blockNumber));
+		return client()->electorMessage(jsToBlockNum(_blockNumber));
 	}
 	catch(...)
 	{
