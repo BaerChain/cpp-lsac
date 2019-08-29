@@ -26,7 +26,7 @@
 #include <libbrchashseal/Brchash.h>
 #include <libdevcrypto/LibSnark.h>
 #include <libbrccore/config.h>
-
+#include <libbrccore/testnetConfig.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/Brc.h>
 #include <libweb3jsonrpc/ModularServer.h>
@@ -232,6 +232,7 @@ int main(int argc, char **argv) {
     bool listenSet = false;
     bool chainConfigIsSet = false;
     bool chainAccountJsonIsSet = false;
+    bool chainTestNet = false;
     fs::path configPath;
     string configJSON;
 
@@ -246,6 +247,7 @@ int main(int argc, char **argv) {
     addClientOption("ropsten", "Use the Ropsten testnet");
     addClientOption("private", po::value<string>()->value_name("<name>"), "Use a private chain");
     addClientOption("test", "Testing mode; disable PoW and provide test rpc interface");
+    addClientOption("isTestNet,T", "Use testNet or MainNet");
     addClientOption("config", po::value<string>()->value_name("<file>"),
                     "Configure specialised blockchain using given JSON information\n");
     addClientOption("accountJson", po::value<string>()->value_name("<file>"),
@@ -512,6 +514,12 @@ int main(int argc, char **argv) {
         setDataDir(vm["data-dir"].as<string>());
     if (vm.count("ipcpath"))
         setIpcPath(vm["ipcpath"].as<string>());
+
+    if(vm.count("isTestNet"))
+    {
+        chainTestNet = true;
+    }
+
     if (vm.count("config")) {
         try {
             configPath = vm["config"].as<string>();
@@ -734,10 +742,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!chainConfigIsSet){
-        // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
-    }
+
+
+
 
 
     if (!accountJSON.empty())
@@ -755,6 +762,28 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
+
+
+
+    if (chainTestNet == true)
+    {
+        std::cout << "testnet" << std::endl;
+        chainParams = ChainParams(testnetConfig::getTestnetGenesis(), {});
+        chainParams.saveBlockAddress(testnetConfig::getTestnetConfig());
+        chainParams.extraData = sha3(std::string("test1")).asBytes();
+        chainParams.difficulty = chainParams.minimumDifficulty;
+        chainParams.gasLimit = u256(1) << 32;
+    }else{
+        if (!chainConfigIsSet){
+            // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
+            chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
+        }
+        if(!chainAccountJsonIsSet)
+        {
+            chainParams.saveBlockAddress(config::mainNetConfig());
+        }
+    }
+
     if(vm.count("private-key")){
         std::string key_str = vm["private-key"].as<string>();
         chainParams.setPrivateKey(key_str);

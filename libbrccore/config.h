@@ -66,6 +66,7 @@ namespace dev
                 static  uint32_t max_message_num();
 
                 static std::string const& genesis_info(ChainNetWork chain_type);
+                static std::string const& mainNetConfig();
 
                 static u256 getvoteRound(u256 _numberofrounds);
 
