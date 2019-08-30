@@ -2380,7 +2380,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
             remainder_ballance = a->balance()% _snapshotTotalPoll;
         }
 
-        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress));
+        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress), u256(_blockNum));
 
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
