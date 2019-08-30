@@ -71,6 +71,8 @@ namespace dev
 
                 static std::pair<bool, ChangeMiner> getChainMiner(int64_t height);
 
+                static bool isChangeVote(int64_t _height);
+
         private:
             config(){}
             //~config(){}

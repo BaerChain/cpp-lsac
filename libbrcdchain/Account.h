@@ -743,7 +743,7 @@ public:
     /// @returns true if the nonce, balance and code is zero / empty. Code is considered empty
     /// during creation phase.
     bool isEmpty() const {
-        return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 &&
+        return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && poll() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                 m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() && m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;

@@ -12,6 +12,7 @@
 #include <libdevcore/TrieHash.h>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
+#include <libbrccore/changeVote.h>
 
 using namespace std;
 using namespace dev;
@@ -2612,6 +2613,25 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
     if(!change_ret.first)
         return;
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
+}
+
+void dev::brc::State::changeVoteData(BlockHeader const& _header)
+{
+    if(config::isChangeVote(_header.number()))
+    {
+        Account *a = account(PdSystemAddress);
+
+        CFEE_LOG << a->getFeeSnapshot() ;
+        std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeVote();
+        for(auto it : _changeVote)
+        {
+            Account *_a = account(Address(std::get<0>(it)));
+            Account *_pollA = account(Address(std::get<1>(it)));
+            _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
+            _pollA->addPoll(u256(std::get<2>(it)));
+        }
+    }
+    return;
 }
 
 void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {

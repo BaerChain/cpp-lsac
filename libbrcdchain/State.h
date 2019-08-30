@@ -594,6 +594,8 @@ public:
     /// get the miner sanpshot
     std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
 
+    void changeVoteData(BlockHeader const& _header);
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
