@@ -2370,7 +2370,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
 
         std::vector<PollData> _pollDataV = vote_data(SysVarlitorAddress);
         u256 _snapshotTotalPoll = 0;
-        for (uint32_t i = 0; i < 7 && i < _pollDataV.size(); i++) {
+        for (uint32_t i = 0; i < config::minner_rank_num() && i < _pollDataV.size(); i++) {
             _snapshotTotalPoll += _pollDataV[i].m_poll;
         }
 

@@ -209,7 +209,7 @@ std::pair<bool, u256> Account::get_no_record_snapshot(u256 _rounds, Votingstage 
 
 
 
-void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vector<PollData>const& p_datas)
+void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vector<PollData>const& p_datas, dev::u256 const& _block_num)
 {
     if (_rounds <= m_couplingSystemFee.m_rounds)
         return;
@@ -223,8 +223,12 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     std::vector<PollData> snapshot_data;
     uint32_t  index = config::minner_rank_num() +1;
     for(auto const& val: p_datas){
-        if (--index)
+        if ( _block_num < config::isChangeVote(int64_t(_block_num))) {
+            if (--index)
+                snapshot_data.emplace_back(val);
+        } else{
             snapshot_data.emplace_back(val);
+        }
     }
     m_couplingSystemFee.m_sorted_creaters[_rounds - 1] = snapshot_data;
     changed();
