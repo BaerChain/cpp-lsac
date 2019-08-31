@@ -2609,6 +2609,8 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
 }
 
 void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const& params) {
+    if(params.chainID != 11)
+        return;
     auto change_ret = config::getChainMiner(curr_header.number());
     if(!change_ret.first)
         return;
