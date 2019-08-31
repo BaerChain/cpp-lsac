@@ -2380,7 +2380,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
             remainder_ballance = a->balance()% _snapshotTotalPoll;
         }
 
-        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress), u256(_blockNum));
+        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress), _blockNum);
 
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
@@ -2617,7 +2617,7 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
 
 void dev::brc::State::changeVoteData(BlockHeader const& _header)
 {
-    if(config::isChangeVote(_header.number()))
+    if (config::changeVoteHeight() == _header.number())
     {
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeVote();
         for(auto it : _changeVote)
