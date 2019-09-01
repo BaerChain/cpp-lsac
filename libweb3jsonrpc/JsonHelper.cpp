@@ -207,7 +207,7 @@ namespace dev {
             res["gas"] = toJS(_t.gas());
             res["gasPrice"] = toJS(_t.gasPrice());
             res["value"] = toJS(_t.value());
-            res["data"] = toJS(_t.data(), 32);
+            res["data"] = toJS(_t.data(), _t.data().size());
             res["nonce"] = toJS(_t.nonce());
             res["hash"] = toJS(_t.sha3(WithSignature));
             res["sighash"] = toJS(_t.sha3(WithoutSignature));
@@ -226,7 +226,6 @@ namespace dev {
 
         Json::Value toJson(dev::brc::LocalisedTransaction const &_t, bool _detialStatus, SealEngineFace* _face) {
             Json::Value res;
-            std::cout << "123:" << _detialStatus << endl;
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
                 res["input"] = toJS(_t.data());

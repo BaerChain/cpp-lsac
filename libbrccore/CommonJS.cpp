@@ -1,6 +1,7 @@
 #include "CommonJS.h"
 #include <sstream>
 #include <string>
+
 namespace dev
 {
 std::string prettyU256(u256 _n, bool _abridged)
@@ -38,19 +39,30 @@ namespace brc
 
 BlockNumber jsToBlockNumber(std::string const& _js)
 {
+    std::cout << "123" << std::endl;
     return LatestBlock;
 }
 
 BlockNumber jsToBlockNum(std::string const& _js)
 {
     if (_js == "latest")
+    {
         return LatestBlock;
-    else if (_js == "earliest")
+    }else if (_js == "earliest")
+    {
         return 0;
-    else if (_js == "pending")
+    }else if (_js == "pending")
+    {
         return PendingBlock;
-    else
-        return (unsigned)jsToInt(_js);     
+    }else
+    {
+        int i = jsToInt(_js);
+        if(i <= 0)
+        {
+            throw std::string("error");
+        }
+        return (unsigned)i;
+    }
 }
 
 uint8_t jsToOrderEnum(std::string const& _js)
@@ -63,17 +75,13 @@ uint8_t jsToOrderEnum(std::string const& _js)
     {
         return 2;
     }
-    else if (_js == "BRC")
-    {
-        return 0;
-    }
     else if (_js == "FUEL")
     {
         return 1;
     }
     else
     {
-        return (unsigned)jsToInt(_js);
+        return 0;
     }
 }
 
