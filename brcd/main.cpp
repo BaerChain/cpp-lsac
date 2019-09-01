@@ -238,6 +238,7 @@ int main(int argc, char **argv) {
 	fs::path accountPath;
     string accountJSON;
     string nodemonitorIP;
+    bool skip_same_ip = true;
 
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
@@ -324,6 +325,8 @@ int main(int argc, char **argv) {
                         "Only connect to other hosts with this network id");
 	addNetworkingOption("node-key", po::value<string>()->value_name("<node_key>"),
 						"Set own node-key and node_id to connect other (default: none and random create new)");
+    addNetworkingOption("skip-same-ip", po::value<bool>()->value_name("<skip-same-ip>")->default_value(true),
+                        "skip same ip connect )");
 #if BRC_MINIUPNPC
     addNetworkingOption(
         "upnp", po::value<string>()->value_name("<on/off>"), "Use UPnP for NAT (default: on)");
@@ -615,6 +618,12 @@ int main(int argc, char **argv) {
     if (vm.count("port")) {
         remotePort = vm["port"].as<short>();
     }
+
+    if (vm.count("skip-same-ip")) {
+        skip_same_ip = vm["skip-same-ip"].as<bool>();
+    }
+
+
     if (vm.count("import")) {
         mode = OperationMode::Import;
         filename = vm["import"].as<string>();
@@ -1053,6 +1062,10 @@ int main(int argc, char **argv) {
     } else
         cout << "Networking disabled. To start, use netstart or pass --bootstrap or a remote host.\n";
 
+
+
+    web3.setNetworkSkipSameIp(skip_same_ip);
+
     unique_ptr<rpc::SessionManager> sessionManager;
     unique_ptr<SimpleAccountHolder> accountHolder;
     unique_ptr<ModularServer<>> jsonrpcIpcServer;
@@ -1094,8 +1107,8 @@ int main(int argc, char **argv) {
         int jsonRPCURL = 1;
         using FullServer = ModularServer<
                 rpc::BrcFace,
-                rpc::NetFace, rpc::Web3Face, /*rpc::PersonalFace,
-                rpc::AdminBrcFace, rpc::AdminNetFace,*/
+                rpc::NetFace, rpc::Web3Face,// rpc::PersonalFace,
+//                rpc::AdminBrcFace, rpc::AdminNetFace,
                 rpc::DebugFace, rpc::TestFace
         >;
 
@@ -1107,7 +1120,7 @@ int main(int argc, char **argv) {
         if (jsonRPCURL >= 0) {
             //no need to maintain admin and leveldb interfaces for rpc
             jsonrpcHttpServer = new FullServer( brcFace, new rpc::Net(web3),
-                    new rpc::Web3(web3.clientVersion()),// new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
+                    new rpc::Web3(web3.clientVersion()),//new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
 //                    new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
 //                    new rpc::AdminNet(web3, *sessionManager.get()),
                     new rpc::Debug(*web3.brcdChain()),
@@ -1130,8 +1143,8 @@ int main(int argc, char **argv) {
     if (ipc) {
         using FullServer = ModularServer<
                 rpc::BrcFace,
-                rpc::NetFace, rpc::Web3Face, /*rpc::PersonalFace,*/
-                /*rpc::AdminBrcFace, rpc::AdminNetFace,*/
+                rpc::NetFace, rpc::Web3Face, //rpc::PersonalFace,
+//                rpc::AdminBrcFace, rpc::AdminNetFace,
                 rpc::DebugFace, rpc::TestFace
         >;
 
@@ -1145,9 +1158,9 @@ int main(int argc, char **argv) {
 
         jsonrpcIpcServer.reset(new FullServer(
                 brcFace, new rpc::Net(web3),
-                new rpc::Web3(web3.clientVersion()), /*new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),*/
-                //new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
-               // new rpc::AdminNet(web3, *sessionManager.get()),
+                new rpc::Web3(web3.clientVersion()), //new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
+//                new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
+//                new rpc::AdminNet(web3, *sessionManager.get()),
                 new rpc::Debug(*web3.brcdChain()),
                 testBrc
         ));

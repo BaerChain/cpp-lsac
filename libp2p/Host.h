@@ -238,6 +238,8 @@ public:
     bytes Networkrlp() const { return m_restoreNetwork;}
 
     std::unordered_map<NodeID, std::weak_ptr<SessionFace>> nodeSessionFace() { return m_sessions;}
+
+    void setSkipSameIp(bool skip){ m_skip_same_ip = skip;}
 protected:
     void onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e);
 
@@ -338,6 +340,8 @@ private:
     /// Peers we try to connect regardless of p2p network.
     std::set<NodeID> m_requiredPeers;
     mutable Mutex x_requiredPeers;
+
+    bool                                    m_skip_same_ip = true;
 
     /// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
     /// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.

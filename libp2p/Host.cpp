@@ -448,11 +448,28 @@ void Host::runAcceptor()
                 return;
             }
 
+            auto endPoint = socket->remoteEndpoint();
+            if(!m_skip_same_ip ){
+                bool find = false;
+                LOG(m_logger) << "connect ------ ip : "  << endPoint.address().to_string() << " port " << endPoint.port() << "  conn size " << m_connecting.size();
+
+                for(auto &itr : peerSessionInfo()){
+                    if(itr.host ==  endPoint.address().to_string()){
+                        socket->close();
+                        LOG(m_logger) << "connect same ip.  ip : "  << endPoint.address().to_string() << " port " << endPoint.port();
+                        if (ec.value() < 1)
+                            runAcceptor();
+                    }
+                }
+            }
+
+
             bool success = false;
             try
             {
                 // incoming connection; we don't yet know nodeid
                 auto handshake = make_shared<RLPXHandshake>(this, socket);
+
                 m_connecting.push_back(handshake);
                 handshake->start();
                 success = true;
@@ -682,7 +699,9 @@ void Host::run(boost::system::error_code const&)
 
     // cleanup zombies
     DEV_GUARDED(x_connecting)
-        m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.expired(); });
+        m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){
+            return h.expired();
+        });
     DEV_GUARDED(x_timers)
     m_timers.remove_if([](std::unique_ptr<boost::asio::deadline_timer> const& t) {
         return t->expires_from_now().total_milliseconds() < 0;
