@@ -26,10 +26,9 @@ namespace fs = boost::filesystem;
 #define LIMITE_NUMBER 50
 
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, ex::exchange_plugin const& _exdb,
-    BaseState _bs)
-  : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
-{
+State::State(u256 const &_accountStartNonce, OverlayDB const &_db, ex::exchange_plugin const &_exdb,
+             BaseState _bs)
+        : m_db(_db), m_exdb(_exdb), m_state(&m_db), m_accountStartNonce(_accountStartNonce) {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -44,7 +43,7 @@ State::State(State const &_s)
           m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
-          m_accountStartNonce(_s.m_accountStartNonce){}
+          m_accountStartNonce(_s.m_accountStartNonce) {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -85,8 +84,8 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
 }
 
 ex::exchange_plugin State::openExdb(boost::filesystem::path const &_path, WithExisting _we) {
-        clog(VerbosityDebug, "exdb") << "Killing state database (WithExisting::Kill).";
-        fs::remove_all(_path);
+    clog(VerbosityDebug, "exdb") << "Killing state database (WithExisting::Kill).";
+    fs::remove_all(_path);
     try {
         ex::exchange_plugin exdb = ex::exchange_plugin(_path);
         return exdb;
@@ -102,7 +101,7 @@ void State::populateFrom(AccountMap const &_map) {
     Account a;
     if (it != m_cache.end())
         a = it->second;
-	cerror << "State::populateFrom ";
+    cerror << "State::populateFrom ";
     brc::commit(_map, m_state, timestamp());
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
@@ -164,21 +163,20 @@ Account *State::account(Address const &_addr) {
     RLP state(stateBack);
 
     std::vector<PollData> _vote;
-    for(auto val : state[6].toVector<bytes>()){
+    for (auto val : state[6].toVector<bytes>()) {
         PollData p_data;
         p_data.populate(val);
         _vote.push_back(p_data);
     }
 
-	const bytes _bBlockReward = state[10].toBytes();
-	RLP _rlpBlockReward(_bBlockReward);
-	size_t num = _rlpBlockReward[0].toInt<size_t>();
-	std::vector<std::pair<u256, u256>> _blockReward;
-	for (size_t k = 1; k <= num; k++)
-	{
-		std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
+    const bytes _bBlockReward = state[10].toBytes();
+    RLP _rlpBlockReward(_bBlockReward);
+    size_t num = _rlpBlockReward[0].toInt<size_t>();
+    std::vector<std::pair<u256, u256>> _blockReward;
+    for (size_t k = 1; k <= num; k++) {
+        std::pair<u256, u256> _blockpair = _rlpBlockReward[k].toPair<u256, u256>();
         _blockReward.push_back(_blockpair);
-	}
+    }
 
     auto i = m_cache.emplace(std::piecewise_construct, std::forward_as_tuple(_addr),
                              std::forward_as_tuple(state[0].toInt<u256>(), state[1].toInt<u256>(),
@@ -187,18 +185,18 @@ Account *State::account(Address const &_addr) {
                                                    state[5].toInt<u256>(), state[7].toInt<u256>(),
                                                    state[8].toInt<u256>(),
                                                    state[9].toInt<u256>(),
-								 Account::Unchanged));
+                                                   Account::Unchanged));
     i.first->second.set_vote_data(_vote);
-	i.first->second.setBlockReward(_blockReward);
+    i.first->second.setBlockReward(_blockReward);
 
-	std::vector<std::string> tmp;
-	tmp = state[11].convert<std::vector<std::string>>(RLP::LaissezFaire);
-	i.first->second.initChangeList(tmp);
+    std::vector<std::string> tmp;
+    tmp = state[11].convert<std::vector<std::string>>(RLP::LaissezFaire);
+    i.first->second.initChangeList(tmp);
 
-	u256 _cookieNum  = state[12].toInt<u256>();
-	i.first->second.setCookieIncome(_cookieNum);
+    u256 _cookieNum = state[12].toInt<u256>();
+    i.first->second.setCookieIncome(_cookieNum);
 
-    const bytes  vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
+    const bytes vote_sna_b = state[13].convert<bytes>(RLP::LaissezFaire);
     i.first->second.init_vote_snapshot(vote_sna_b);
 
     const bytes _feeSnapshotBytes = state[14].convert<bytes>(RLP::LaissezFaire);
@@ -471,7 +469,7 @@ void State::subBRC(Address const &_addr, u256 const &_value) {
         return;
 
     Account *a = account(_addr);
-    if (!a || a->BRC() < _value){
+    if (!a || a->BRC() < _value) {
         cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->BRC();
         // TODO: I expect this never happens.
         BOOST_THROW_EXCEPTION(NotEnoughCash());
@@ -517,7 +515,7 @@ void State::subFBRC(Address const &_addr, u256 const &_value) {
         return;
 
     Account *a = account(_addr);
-    if (!a || a->FBRC() < _value){
+    if (!a || a->FBRC() < _value) {
         // TODO: I expect this never happens.
         cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->FBRC();
         BOOST_THROW_EXCEPTION(NotEnoughCash());
@@ -568,21 +566,20 @@ void State::subFBalance(Address const &_addr, u256 const &_value) {
 
 
 //交易挂单接口
-void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         h256 _pendingOrderHash, ex::order_type _pendingOrderType,
+                         ex::order_token_type _pendingOrderTokenType,
                          ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime) {
     // add
     //freezeAmount(_addr, _pendingOrderNum, _pendingOrderPrice, _pendingOrderType,
-      //           _pendingOrderTokenType, _pendingOrderBuyType);
+    //           _pendingOrderTokenType, _pendingOrderBuyType);
 
-	u256 _totalSum;
-	if (_pendingOrderBuyType == order_buy_type::only_price)
-	{
-		_totalSum = _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
-	}
-	else {
-		_totalSum = _pendingOrderPrice;
-	}
+    u256 _totalSum;
+    if (_pendingOrderBuyType == order_buy_type::only_price) {
+        _totalSum = _pendingOrderNum * _pendingOrderPrice / PRICEPRECISION;
+    } else {
+        _totalSum = _pendingOrderPrice;
+    }
 
     std::pair<u256, u256> _pair = {_pendingOrderPrice, _pendingOrderNum};
     order _order = {_pendingOrderHash, _addr, (order_buy_type) _pendingOrderBuyType,
@@ -611,138 +608,132 @@ void State::pendingOrder(Address const& _addr, u256 _pendingOrderNum, u256 _pend
         CombinationTotalAmount += _result_order.amount * _result_order.price / PRICEPRECISION;
     }
 
-	if (_pendingOrderBuyType == order_buy_type::only_price)
-	{
-		if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC)
-        {
-            if(CombinationNum < _pendingOrderNum) {
+    if (_pendingOrderBuyType == order_buy_type::only_price) {
+        if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC) {
+            if (CombinationNum < _pendingOrderNum) {
                 subBRC(_addr, _totalSum - CombinationTotalAmount);
                 addFBRC(_addr, _totalSum - CombinationTotalAmount);
             }
-		}
-		else if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::FUEL)
-		{
-            if(CombinationNum < _pendingOrderNum)
-            {
+        } else if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::FUEL) {
+            if (CombinationNum < _pendingOrderNum) {
                 subBalance(_addr, _totalSum - CombinationTotalAmount);
                 addFBalance(_addr, _totalSum - CombinationTotalAmount);
             }
 
-		}
-		else if (_pendingOrderType == order_type::sell && _pendingOrderTokenType == order_token_type::BRC)
-		{
-			subBRC(_addr, _pendingOrderNum - CombinationNum);
-			addFBRC(_addr, _pendingOrderNum - CombinationNum);
-		}
-		else if (_pendingOrderType == order_type::sell && _pendingOrderTokenType == order_token_type::FUEL)
-		{
-			subBalance(_addr, _pendingOrderNum - CombinationNum);
-			addFBalance(_addr, _pendingOrderNum - CombinationNum);
-		}
-	}
+        } else if (_pendingOrderType == order_type::sell && _pendingOrderTokenType == order_token_type::BRC) {
+            subBRC(_addr, _pendingOrderNum - CombinationNum);
+            addFBRC(_addr, _pendingOrderNum - CombinationNum);
+        } else if (_pendingOrderType == order_type::sell && _pendingOrderTokenType == order_token_type::FUEL) {
+            subBalance(_addr, _pendingOrderNum - CombinationNum);
+            addFBalance(_addr, _pendingOrderNum - CombinationNum);
+        }
+    }
 }
 
-void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_ops[0]);
+void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+    std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(
+            _ops[0]);
     Account *a = account(SysVarlitorAddress);
-    if(!a){
+    if (!a) {
 
     }
     a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
-        
-	
+
+
 }
 
-Account* dev::brc::State::getSysAccount(){
+Account *dev::brc::State::getSysAccount() {
     return account(SysVarlitorAddress);
 }
 
-void dev::brc::State::pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	std::vector<ex_order> _v ;
-	std::vector<result_order> _result_v;
+void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
+                                    std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+    std::vector<ex_order> _v;
+    std::vector<result_order> _result_v;
     std::set<order_type> _set;
-	bigint total_free_brc = 0;
-	bigint total_free_balance = 0;
+    bigint total_free_brc = 0;
+    bigint total_free_balance = 0;
     ExdbState _exdbState(*this);
-	for(auto const& val : _ops){
-		std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(val);
-		if(!pen){
-			cerror << "pendingOrders  dynamic type field!";
-			BOOST_THROW_EXCEPTION(InvalidDynamic());
-		}
+    for (auto const &val : _ops) {
+        std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(
+                val);
+        if (!pen) {
+            cerror << "pendingOrders  dynamic type field!";
+            BOOST_THROW_EXCEPTION(InvalidDynamic());
+        }
 
-		u256 _price = 0;
-		if(pen->m_Pendingorder_buy_type == order_buy_type::all_price && pen->m_Pendingorder_type == order_type::buy) {
+        u256 _price = 0;
+        if (pen->m_Pendingorder_buy_type == order_buy_type::all_price && pen->m_Pendingorder_type == order_type::buy) {
             _price = pen->m_Pendingorder_price * PRICEPRECISION;
-        }else{
-            _price =  pen->m_Pendingorder_price;
-		}
+        } else {
+            _price = pen->m_Pendingorder_price;
+        }
 
-		ex_order _order = { _pendingOrderHash, _addr, _price, pen->m_Pendingorder_num, pen->m_Pendingorder_num, _nowTime,
-                            (order_type)pen->m_Pendingorder_type,(order_token_type)pen->m_Pendingorder_Token_type,
-                            (order_buy_type)pen->m_Pendingorder_buy_type};
-		_v.push_back(_order);
+        ex_order _order = {_pendingOrderHash, _addr, _price, pen->m_Pendingorder_num, pen->m_Pendingorder_num, _nowTime,
+                           (order_type) pen->m_Pendingorder_type, (order_token_type) pen->m_Pendingorder_Token_type,
+                           (order_buy_type) pen->m_Pendingorder_buy_type};
+        _v.push_back(_order);
 
-		if(pen->m_Pendingorder_buy_type == order_buy_type::only_price){
-		    if(pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+        if (pen->m_Pendingorder_buy_type == order_buy_type::only_price) {
+            if (pen->m_Pendingorder_type == order_type::buy && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
                 total_free_brc += pen->m_Pendingorder_num * pen->m_Pendingorder_price / PRICEPRECISION;
-			else if(pen->m_Pendingorder_type == order_type::sell && pen->m_Pendingorder_Token_type == order_token_type::FUEL)
-				total_free_balance += pen->m_Pendingorder_num;
-		}
-	}
-	for(auto _val : _v)
-    {
-        try{
+            else if (pen->m_Pendingorder_type == order_type::sell &&
+                     pen->m_Pendingorder_Token_type == order_token_type::FUEL)
+                total_free_balance += pen->m_Pendingorder_num;
+        }
+    }
+    for (auto _val : _v) {
+        try {
 
             _result_v = _exdbState.insert_operation(_val);
         }
-        catch(const boost::exception &e){
+        catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
             BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
         }
 
-        for(uint32_t i = 0; i < _result_v.size(); ++i){
+        for (uint32_t i = 0; i < _result_v.size(); ++i) {
             result_order _result_order = _result_v[i];
 
             pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
-                                 _result_order.price, _result_order.type, _result_order.token_type, _result_order.buy_type);
+                                 _result_order.price, _result_order.type, _result_order.token_type,
+                                 _result_order.buy_type);
 
-            if(_result_order.buy_type == order_buy_type::only_price){
-                if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
+            if (_result_order.buy_type == order_buy_type::only_price) {
+                if (_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
                     total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
-                else if(_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
+                else if (_result_order.type == order_type::sell && _result_order.token_type == order_token_type::FUEL)
                     total_free_balance -= _result_order.amount;
             }
-            if(_result_order.acceptor == systemAddress)
-            {
+            if (_result_order.acceptor == systemAddress) {
                 _set.emplace(_result_order.type);
-            } else{
+            } else {
                 continue;
             }
 
         }
     }
 
-	if(total_free_balance < 0 || total_free_brc < 0){
-		cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:" << total_free_brc;
-		BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
-	}
-	if(total_free_balance > 0){
-		subBalance(_addr, (u256)total_free_balance);
-		addFBalance(_addr, (u256)total_free_balance);
-	}
-	if(total_free_brc){
-		subBRC(_addr, (u256)total_free_brc);
-		addFBRC(_addr, (u256)total_free_brc);
-	}
+    if (total_free_balance < 0 || total_free_brc < 0) {
+        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << total_free_balance << " brc:"
+               << total_free_brc;
+        BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
+    }
+    if (total_free_balance > 0) {
+        subBalance(_addr, (u256) total_free_balance);
+        addFBalance(_addr, (u256) total_free_balance);
+    }
+    if (total_free_brc) {
+        subBRC(_addr, (u256) total_free_brc);
+        addFBRC(_addr, (u256) total_free_brc);
+    }
 
-	if(_set.size() > 0)
-    {
-	    systemAutoPendingOrder(_set, _nowTime);
+    if (_set.size() > 0) {
+        systemAutoPendingOrder(_set, _nowTime);
     }
 }
 
-void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _nowTime) {
+void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
     std::vector<result_order> _result_v;
     std::set<order_type> _autoSet;
     std::vector<ex_order> _v;
@@ -751,8 +742,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
     ExdbState _exdbState(*this);
     for (auto it : _set) {
         if (it == order_type::buy) {
-            if(BRC(systemAddress) < u256(std::string("10000000000000")))
-            {
+            if (BRC(systemAddress) < u256(std::string("10000000000000"))) {
                 return;
             }
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
@@ -764,8 +754,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
                                order_token_type::FUEL, order_buy_type::only_price};
             _v.push_back(_order);
         } else if (it == order_type::sell) {
-            if(balance(systemAddress) < u256(std::string("10000000000000")))
-            {
+            if (balance(systemAddress) < u256(std::string("10000000000000"))) {
                 return;
             }
             u256 _num = balance(systemAddress);
@@ -782,65 +771,62 @@ void State::systemAutoPendingOrder(std::set<order_type> const& _set, int64_t _no
         }
     }
 
-    for (auto _val : _v)
-    {
-        try{
+    for (auto _val : _v) {
+        try {
             _result_v = _exdbState.insert_operation(_val);
         }
-        catch(const boost::exception &e){
+        catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
             BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
         }
 
-        for(auto _result : _result_v)
-        {
+        for (auto _result : _result_v) {
             pendingOrderTransfer(_result.sender, _result.acceptor, _result.amount,
                                  _result.price, _result.type, _result.token_type, _result.buy_type);
 
-            if(_result.buy_type == order_buy_type::only_price){
-                if(_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
+            if (_result.buy_type == order_buy_type::only_price) {
+                if (_result.type == order_type::buy && _result.token_type == order_token_type::FUEL)
                     _needBrc -= _result.amount * _result.old_price / PRICEPRECISION;
-                else if(_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
+                else if (_result.type == order_type::sell && _result.token_type == order_token_type::FUEL)
                     _needCookie -= _result.amount;
             }
             _autoSet.emplace(_result.type);
         }
     }
 
-    if(_needBrc < 0 || _needCookie < 0){
-        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << _needCookie << " brc:" << _needBrc;
+    if (_needBrc < 0 || _needCookie < 0) {
+        cerror << " this pindingOrder's free_balance or free_brc is error... balance:" << _needCookie << " brc:"
+               << _needBrc;
         BOOST_THROW_EXCEPTION(pendingorderAllPriceFiled());
     }
-    if(_needCookie > 0){
+    if (_needCookie > 0) {
         subBalance(systemAddress, _needCookie);
         addFBalance(systemAddress, _needCookie);
     }
-    if(_needBrc){
+    if (_needBrc) {
         subBRC(systemAddress, _needBrc);
         addFBRC(systemAddress, _needBrc);
     }
-    if(_autoSet.size() > 0)
-    {
+    if (_autoSet.size() > 0) {
         systemAutoPendingOrder(_autoSet, _nowTime);
     }
 }
 
-void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 _toPendingOrderNum,
-                                 u256 _toPendingOrderPrice, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 _toPendingOrderNum,
+                                 u256 _toPendingOrderPrice, ex::order_type _pendingOrderType,
+                                 ex::order_token_type _pendingOrderTokenType,
                                  ex::order_buy_type _pendingOrderBuyTypes) {
 
     u256 _fromFee = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
     u256 _toFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
 
     if (_pendingOrderType == order_type::buy &&
-               _pendingOrderTokenType == order_token_type::FUEL &&
-            (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        if(_from != dev::systemAddress)
-        {
+        _pendingOrderTokenType == order_token_type::FUEL &&
+        (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
+        if (_from != dev::systemAddress) {
             _fromFee = _toPendingOrderNum / MATCHINGFEERATIO;
         }
-        if(_to != dev::systemAddress)
-        {
+        if (_to != dev::systemAddress) {
             _toFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
         }
         subBRC(_from, _toPendingOrderPrice * _toPendingOrderNum / PRICEPRECISION);
@@ -853,25 +839,24 @@ void State::pendingOrderTransfer(Address const& _from, Address const& _to, u256 
                _pendingOrderTokenType == order_token_type::FUEL &&
                (_pendingOrderBuyTypes == order_buy_type::only_price ||
                 _pendingOrderBuyTypes == order_buy_type::all_price)) {
-        if(_from != dev::systemAddress)
-        {
+        if (_from != dev::systemAddress) {
             _fromFee = (_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
         }
-        if(_to != dev::systemAddress)
-        {
+        if (_to != dev::systemAddress) {
             _toFee = _toPendingOrderNum / MATCHINGFEERATIO;
         }
-		subBalance(_from, _toPendingOrderNum);
-		addBalance(_to, _toPendingOrderNum - _toFee);
-		subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION);
-		addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _fromFee);
+        subBalance(_from, _toPendingOrderNum);
+        addBalance(_to, _toPendingOrderNum - _toFee);
+        subFBRC(_to, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION);
+        addBRC(_from, _toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION - _fromFee);
         addBRC(dev::PdSystemAddress, _fromFee);
         addBalance(dev::PdSystemAddress, _toFee);
     }
 }
 
-void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
-                         ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType, ex::order_buy_type _pendingOrderBuyType) {
+void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pendingOrderPrice,
+                         ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
+                         ex::order_buy_type _pendingOrderBuyType) {
     if (_pendingOrderType == order_type::buy && _pendingOrderTokenType == order_token_type::BRC &&
         _pendingOrderBuyType == order_buy_type::only_price) {
         subBRC(_addr, _pendingOrderNum * _pendingOrderPrice);
@@ -881,7 +866,7 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
                _pendingOrderBuyType == order_buy_type::all_price) {
         subBRC(_addr, _pendingOrderPrice);
         addFBRC(_addr, _pendingOrderPrice);
-    } else if (_pendingOrderType == order_type::buy && 
+    } else if (_pendingOrderType == order_type::buy &&
                _pendingOrderTokenType == order_token_type::FUEL &&
                _pendingOrderBuyType == order_buy_type::only_price) {
         subBalance(_addr, _pendingOrderNum * _pendingOrderPrice);
@@ -906,9 +891,9 @@ void State::freezeAmount(Address const& _addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
-Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockNum) {
+Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockNum) {
     try_new_vote_snapshot(_address, _blockNum);
-    std::pair<u256 , u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t)_blockNum, false);
+    std::pair<u256, u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
     Json::Value res;
     Json::Value ret;
     ret["BRC"] = toJS(_pair.first);
@@ -917,7 +902,7 @@ Json::Value State::queryExchangeReward(Address const& _address, unsigned _blockN
     return res;
 }
 
-Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum) {
+Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum) {
     try_new_vote_snapshot(_address, _blockNum);
     auto a = account(_address);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
@@ -928,43 +913,38 @@ Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum)
     u256 _cookieFee = 0;
     u256 _isMainNodeFee = 0;
     u256 _voteNodeFee = 0;
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(_numberofrounds - 1);
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
+            _numberofrounds - 1);
 
 
     // If you receive the account, you will receive the income from the block node account.
 
     //Receive an account to receive voting dividends
-    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
+    for (; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++) {
         std::map<Address, std::pair<u256, u256>> _totalMap;
         std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_voteDataIt->first);
         auto _pollNum = _pollDataIt->second;
-        if(_pollNum > 0)
-        {
+        if (_pollNum > 0) {
             u256 _pollFee = 0;
-            if(_pollDataIt->first + 1 < _pair.first)
-            {
-                if(_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1))
-                {
+            if (_pollDataIt->first + 1 < _pair.first) {
+                if (_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1)) {
                     _pollFee = _votesnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1)->second;
                 }
-            }else{
+            } else {
                 _pollFee = a->CookieIncome();
             }
             _isMainNodeFee = _pollFee - (_pollFee / 2 / _pollNum * _pollNum);
             CFEE_LOG << "_pollFee:" << _pollFee;
             CFEE_LOG << "_isMainNodeFee:" << _isMainNodeFee;
-            if(!_totalMap.count(_address))
-            {
-                _totalMap[_address] = std::pair<u256, u256>(_pollFee ,_isMainNodeFee);
-            }else{
+            if (!_totalMap.count(_address)) {
+                _totalMap[_address] = std::pair<u256, u256>(_pollFee, _isMainNodeFee);
+            } else {
                 std::pair<u256, u256> _pair = _totalMap[_address];
                 _pair.second += _isMainNodeFee;
                 _totalMap[_address] = _pair;
             }
         }
-        for(auto _voteIt : _voteDataIt->second)
-        {
+        for (auto _voteIt : _voteDataIt->second) {
             auto _pollAddr = account(_voteIt.first);
             try_new_vote_snapshot(_voteIt.first, _blockNum);
             VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
@@ -974,52 +954,47 @@ Json::Value State::queryBlcokReward(Address const& _address, unsigned _blockNum)
             u256 _receivedNum = 0;
             u256 _pollFeeIncome = 0;
             u256 _numTotalFee = 0;
-            if(_pollNum > 0)
-            {
-                if(_voteDataIt->first + 1 < _pair.first)
-                {
-                    if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
-                    {
+            if (_pollNum > 0) {
+                if (_voteDataIt->first + 1 < _pair.first) {
+                    if (_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1)) {
                         _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
                     }
-                }else{
+                } else {
                     _pollCookieFee = _pollAddr->CookieIncome();
                 }
                 _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
-                if(!_totalMap.count(_voteIt.first))
-                {
-                    _totalMap[_voteIt.first] = std::pair<u256, u256>(_pollFeeIncome ,_pollFeeIncome);
-                }else{
+                if (!_totalMap.count(_voteIt.first)) {
+                    _totalMap[_voteIt.first] = std::pair<u256, u256>(_pollFeeIncome, _pollFeeIncome);
+                } else {
                     std::pair<u256, u256> _pair = _totalMap[_voteIt.first];
                     _pair.second += _pollFeeIncome;
                     _totalMap[_voteIt.first] = _pair;
                 }
             }
         }
-        for(auto _totalIt : _totalMap)
-        {
+        for (auto _totalIt : _totalMap) {
             u256 _receivedNum = 0;
-            if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
-            {
-                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
-                if(_addrReceivedCookie.count(_totalIt.first))
-                {
+            if (_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1)) {
+                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie = _receivedCookies.m_received_cookies[
+                        _voteDataIt->first + 1];
+                if (_addrReceivedCookie.count(_totalIt.first)) {
                     _receivedNum += _addrReceivedCookie.find(_totalIt.first)->second.second;
                 }
             }
             _cookieFee += _totalIt.second.second - _receivedNum;
-            a->addSetreceivedCookie(_voteDataIt->first + 1, _totalIt.first, std::pair<u256, u256>(_totalIt.second.first, _totalIt.second.second));
+            a->addSetreceivedCookie(_voteDataIt->first + 1, _totalIt.first,
+                                    std::pair<u256, u256>(_totalIt.second.first, _totalIt.second.second));
         }
     }
     Json::Value _retVal;
     _retVal["CookieFeeIncome"] = toJS(_cookieFee);
-    return  _retVal;
+    return _retVal;
 
 }
 
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
-    uint32_t _maxSize = (uint32_t)_gsize;
+    uint32_t _maxSize = (uint32_t) _gsize;
     _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
     std::vector<exchange_order> _v = _exdbState.get_order_by_type(
             (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) _maxSize);
@@ -1053,7 +1028,7 @@ Json::Value State::pendingOrderPoolForAddrMsg(Address _a, uint32_t _maxSize) {
         Json::Value _value;
         _value["Address"] = toJS(val.sender);
         _value["Hash"] = toJS(val.trxid);
-		_value["price"] = std::string(val.price);
+        _value["price"] = std::string(val.price);
         _value["token_amount"] = std::string(val.token_amount);
         _value["source_amount"] = std::string(val.source_amount);
         _value["create_time"] = toJS(val.create_time);
@@ -1080,7 +1055,7 @@ Json::Value State::successPendingOrderMsg(uint32_t _maxSize) {
         _value["Hash"] = toJS(val.send_trxid);
         _value["AcceptorHash"] = toJS(val.to_trxid);
         _value["price"] = std::string(val.price);
-		_value["amount"] = std::string(val.amount);
+        _value["amount"] = std::string(val.amount);
         _value["create_time"] = toJS(val.create_time);
         std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(val.type, val.token_type,
                                                                                       val.buy_type);
@@ -1094,15 +1069,13 @@ Json::Value State::successPendingOrderMsg(uint32_t _maxSize) {
 }
 
 Json::Value State::successPendingOrderForAddrMsg(dev::Address _a, int64_t _minTime, int64_t _maxTime,
-                                                 uint32_t _maxSize)
-{
+                                                 uint32_t _maxSize) {
     ExdbState _exdbState(*this);
     _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
     std::vector<result_order> _retV = _exdbState.get_result_orders_by_address(_a, _minTime, _maxTime, _maxSize);
-    Json::Value  _JsArray;
+    Json::Value _JsArray;
 
-    for(auto val : _retV)
-    {
+    for (auto val : _retV) {
         Json::Value _value;
         _value["Address"] = toJS(val.sender);
         _value["Acceptor"] = toJS(val.acceptor);
@@ -1179,104 +1152,93 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 
     for (auto val : _resultV) {
-		if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-				subFBalance(val.sender, val.price_token.second * val.price_token.first);
-				addBalance(val.sender, val.price_token.second * val.price_token.first);
-        } else if ( val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
-                subFBalance(val.sender, val.price_token.second);
-                addBalance(val.sender, val.price_token.second);
+        if (val.type == order_type::buy && val.token_type == order_token_type::FUEL) {
+            subFBalance(val.sender, val.price_token.second * val.price_token.first);
+            addBalance(val.sender, val.price_token.second * val.price_token.first);
+        } else if (val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
+            subFBalance(val.sender, val.price_token.second);
+            addBalance(val.sender, val.price_token.second);
         }
     }
 }
 
-void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-	ctrace << "cancle pendingorder";
-	ex::order val;
-	std::vector<h256> _hashV;
+void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+    ctrace << "cancle pendingorder";
+    ex::order val;
+    std::vector<h256> _hashV;
     ExdbState _exdbState(*this);
-	for(auto const& val : _ops){
-		std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen =std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
-		if(!can_pen){ 
-			cerror << "cancelPendingOrders  dynamic type field!";
-			BOOST_THROW_EXCEPTION(InvalidDynamic());
-		}
-		_hashV.push_back({ can_pen->m_hash });
-	}
-    for(auto _val : _hashV)
-    {
-        try{
+    for (auto const &val : _ops) {
+        std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen = std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(
+                val);
+        if (!can_pen) {
+            cerror << "cancelPendingOrders  dynamic type field!";
+            BOOST_THROW_EXCEPTION(InvalidDynamic());
+        }
+        _hashV.push_back({can_pen->m_hash});
+    }
+    for (auto _val : _hashV) {
+        try {
             val = _exdbState.cancel_order_by_trxid(_val);
         }
-        catch(Exception &e){
+        catch (Exception &e) {
             cwarn << "cancelPendingorder Error :" << e.what();
             BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
         }
 
-            if(val.type == order_type::buy && val.token_type == order_token_type::FUEL){
-                subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-                addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-            }else if(val.type == order_type::sell && val.token_type == order_token_type::FUEL)
-            {
-                subFBalance(val.sender, val.price_token.second);
-                addBalance(val.sender, val.price_token.second);
-            }
+        if (val.type == order_type::buy && val.token_type == order_token_type::FUEL) {
+            subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+            addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+        } else if (val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
+            subFBalance(val.sender, val.price_token.second);
+            addBalance(val.sender, val.price_token.second);
+        }
     }
 }
 
-void State::addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum)
-{
-    std::pair< u256, u256> _pair = { _blockNum, _rewardNum};
-	if (auto a = account(_addr))
-	{
-		a->addBlockRewardRecoding(_pair);
-	}else{
+void State::addBlockReward(Address const &_addr, u256 _blockNum, u256 _rewardNum) {
+    std::pair<u256, u256> _pair = {_blockNum, _rewardNum};
+    if (auto a = account(_addr)) {
+        a->addBlockRewardRecoding(_pair);
+    } else {
         createAccount(_addr, {requireAccountStartNonce(), 0});
         auto _a = account(_addr);
         _a->addBlockRewardRecoding(_pair);
     }
-    
-    if(_rewardNum)
-    {
-       m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
+
+    if (_rewardNum) {
+        m_changeLog.emplace_back(_addr, std::make_pair(_blockNum, _rewardNum));
     }
 }
 
 
-
-void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
-{
-    if(auto a = account(_addr))
-    {
+void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
+    if (auto a = account(_addr)) {
         a->addCooikeIncome(_value);
-    }else{
+    } else {
         BOOST_THROW_EXCEPTION(InvalidAddressAddr());
     }
 
-    if(_value)
-    {
+    if (_value) {
         m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
     }
 
 }
 
-void State::subCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
-{
-    if(_value == 0)
-    {
+void State::subCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
+    if (_value == 0) {
         return;
     }
 
     auto a = account(_addr);
-    if(!a || a->CookieIncome())
-    {
-        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist or account CookieIncome is too low ")));
+    if (!a || a->CookieIncome()) {
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(
+                std::string("Account does not exist or account CookieIncome is too low ")));
     }
 
     addCooikeIncomeNum(_addr, 0 - _value);
 }
 
-void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value)
-{
+void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
     Account *a = account(_addr);
     u256 original = a ? a->CookieIncome() : 0;
 
@@ -1284,33 +1246,30 @@ void State::setCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     addCooikeIncomeNum(_addr, _value - original);
 }
 
-std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr, uint32_t _snapshotNum)
-{
-    if(auto a = account(_addr))
-    {
+std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr, uint32_t _snapshotNum) {
+    if (auto a = account(_addr)) {
         return a->findSnapshotSummary(_snapshotNum);
-    }else{
+    } else {
         return std::unordered_map<Address, u256>();
     }
 }
 
-void State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum)
-{
+void
+State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<transationTool::operation>> const &_ops,
+                       int64_t _blockNum) {
     try_new_vote_snapshot(_addr, _blockNum);
-    for(auto _it : _ops)
-    {
-        std::shared_ptr<transationTool::receivingincome_operation> _op =  std::dynamic_pointer_cast<transationTool::receivingincome_operation>(_it);
-        if(!_op)
-        {
-            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome_operation is error")));
+    for (auto _it : _ops) {
+        std::shared_ptr<transationTool::receivingincome_operation> _op = std::dynamic_pointer_cast<transationTool::receivingincome_operation>(
+                _it);
+        if (!_op) {
+            BOOST_THROW_EXCEPTION(
+                    receivingincomeFiled() << errinfo_comment(std::string("receivingincome_operation is error")));
         }
 
-        ReceivingType _receType = (ReceivingType)_op->m_receivingType;
-        if(_receType == ReceivingType::RBlockFeeIncome)
-        {
+        ReceivingType _receType = (ReceivingType) _op->m_receivingType;
+        if (_receType == ReceivingType::RBlockFeeIncome) {
             receivingBlockFeeIncome(_addr, _blockNum);
-        }else if(_receType == ReceivingType::RPdFeeIncome)
-        {
+        } else if (_receType == ReceivingType::RPdFeeIncome) {
             anytime_receivingPdFeeIncome(_addr, _blockNum);
         }
     }
@@ -1326,41 +1285,36 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
     u256 _cookieFee = 0;
     u256 _isMainNodeFee = 0;
     u256 _voteNodeFee = 0;
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(_numberofrounds - 1);
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
+            _numberofrounds - 1);
     //CFEE_LOG << "BEFEOR :" << _receivedCookies;
 
     // If you receive the account, you will receive the income from the block node account.
 
     //Receive an account to receive voting dividends
-    for(; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
+    for (; _voteDataIt != _votesnapshot.m_voteDataHistory.end(); _voteDataIt++) {
         std::map<Address, std::pair<u256, u256>> _totalMap;
         std::map<u256, u256>::const_iterator _pollDataIt = _votesnapshot.m_pollNumHistory.find(_voteDataIt->first);
         auto _pollNum = _pollDataIt->second;
-        if(_pollNum > 0)
-        {
+        if (_pollNum > 0) {
             u256 _pollFee = 0;
-            if(_pollDataIt->first + 1 < _pair.first)
-            {
-                if(_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1))
-                {
+            if (_pollDataIt->first + 1 < _pair.first) {
+                if (_votesnapshot.m_blockSummaryHistory.count(_pollDataIt->first + 1)) {
                     _pollFee = _votesnapshot.m_blockSummaryHistory.find(_pollDataIt->first + 1)->second;
                 }
-            }else{
+            } else {
                 _pollFee = a->CookieIncome();
             }
             _isMainNodeFee = _pollFee - (_pollFee / 2 / _pollNum * _pollNum);
-            if(!_totalMap.count(_addr))
-            {
-                _totalMap[_addr] = std::pair<u256, u256>(_pollFee ,_isMainNodeFee);
-            }else{
+            if (!_totalMap.count(_addr)) {
+                _totalMap[_addr] = std::pair<u256, u256>(_pollFee, _isMainNodeFee);
+            } else {
                 std::pair<u256, u256> _pair = _totalMap[_addr];
                 _pair.second += _isMainNodeFee;
                 _totalMap[_addr] = _pair;
             }
         }
-        for(auto _voteIt : _voteDataIt->second)
-        {
+        for (auto _voteIt : _voteDataIt->second) {
             auto _pollAddr = account(_voteIt.first);
             try_new_vote_snapshot(_voteIt.first, _blockNum);
             VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
@@ -1370,41 +1324,36 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
             u256 _receivedNum = 0;
             u256 _pollFeeIncome = 0;
             u256 _numTotalFee = 0;
-            if(_pollNum > 0)
-            {
-                if(_voteDataIt->first + 1 < _pair.first)
-                {
-                    if(_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1))
-                    {
+            if (_pollNum > 0) {
+                if (_voteDataIt->first + 1 < _pair.first) {
+                    if (_pollVoteSnapshot.m_blockSummaryHistory.count(_voteDataIt->first + 1)) {
                         _pollCookieFee = _pollVoteSnapshot.m_blockSummaryHistory.find(_voteDataIt->first + 1)->second;
                     }
-                }else{
+                } else {
                     _pollCookieFee = _pollAddr->CookieIncome();
                 }
                 _pollFeeIncome = _pollCookieFee / 2 / _pollNum * _voteIt.second;
-                if(!_totalMap.count(_voteIt.first))
-                {
-                    _totalMap[_voteIt.first] = std::pair<u256, u256>(_pollFeeIncome ,_pollFeeIncome);
-                }else{
+                if (!_totalMap.count(_voteIt.first)) {
+                    _totalMap[_voteIt.first] = std::pair<u256, u256>(_pollFeeIncome, _pollFeeIncome);
+                } else {
                     std::pair<u256, u256> _pair = _totalMap[_voteIt.first];
                     _pair.second += _pollFeeIncome;
                     _totalMap[_voteIt.first] = _pair;
                 }
             }
         }
-        for(auto _totalIt : _totalMap)
-        {
+        for (auto _totalIt : _totalMap) {
             u256 _receivedNum = 0;
-            if(_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1))
-            {
-                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie =_receivedCookies.m_received_cookies[_voteDataIt->first + 1];
-                if(_addrReceivedCookie.count(_totalIt.first))
-                {
+            if (_receivedCookies.m_received_cookies.count(_voteDataIt->first + 1)) {
+                std::map<Address, std::pair<u256, u256>> _addrReceivedCookie = _receivedCookies.m_received_cookies[
+                        _voteDataIt->first + 1];
+                if (_addrReceivedCookie.count(_totalIt.first)) {
                     _receivedNum += _addrReceivedCookie.find(_totalIt.first)->second.second;
                 }
             }
             _cookieFee += _totalIt.second.second - _receivedNum;
-            a->addSetreceivedCookie(_voteDataIt->first + 1, _totalIt.first, std::pair<u256, u256>(_totalIt.second.first, _totalIt.second.second));
+            a->addSetreceivedCookie(_voteDataIt->first + 1, _totalIt.first,
+                                    std::pair<u256, u256>(_totalIt.second.first, _totalIt.second.second));
         }
     }
     //CFEE_LOG << "_cookieFee" << _cookieFee;
@@ -1471,8 +1420,7 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
 //        a->set_numberofrounds(rounds);
 //}
 
-void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
-{
+void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
     std::pair<u256, Votingstage> _pair = config::getVotingCycle(_blockNum);
     u256 rounds = _pair.first > 0 ? _pair.first - 1 : 0;
 
@@ -1482,15 +1430,16 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
     u256 _numofRounds = a->getFeeNumofRounds();
     VoteSnapshot _voteSnapshot = a->vote_snashot();
     CouplingSystemfee _couplingSystemfee = systemAccount->getFeeSnapshot();
-    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(_numofRounds + 1);
+    std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _voteSnapshot.m_voteDataHistory.find(
+            _numofRounds + 1);
     u256 _BrcIncome = 0;
     u256 _CookieIncome = 0;
-    for(; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++)
-    {
-        std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(_voteDataIt->first);
-        std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(_voteDataIt->first + 1);
-        if(_amountIt == _couplingSystemfee.m_Feesnapshot.end())
-        {
+    for (; _voteDataIt != _voteSnapshot.m_voteDataHistory.end(); _voteDataIt++) {
+        std::map<u256, std::vector<PollData>>::const_iterator _it = _couplingSystemfee.m_sorted_creaters.find(
+                _voteDataIt->first);
+        std::map<u256, std::pair<u256, u256>>::const_iterator _amountIt = _couplingSystemfee.m_Feesnapshot.find(
+                _voteDataIt->first + 1);
+        if (_amountIt == _couplingSystemfee.m_Feesnapshot.end()) {
             break;
         }
         std::vector<PollData> _PollDataV = _it->second;
@@ -1500,28 +1449,23 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
         u256 _totalCookieFee = _amountIt->second.second;
         bool _isSuperNode = false;
         u256 _superNodePoll = 0;
-        for(uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++)
-        {
+        for (uint32_t i = 0; i < 7 && i < _PollDataV.size(); i++) {
             _totalPoll += _PollDataV[i].m_poll;
-            if(_addr == _PollDataV[i].m_addr)
-            {
+            if (_addr == _PollDataV[i].m_addr) {
                 _isSuperNode = true;
                 _superNodePoll = _PollDataV[i].m_poll;
             }
             _superNodeAddrMap[_PollDataV[i].m_addr] = _PollDataV[i].m_poll;
         }
 
-        if(_isSuperNode == true)
-        {
+        if (_isSuperNode == true) {
             u256 _Brc = _totalBrcFee / _totalPoll * _superNodePoll;
             u256 _Cookie = _totalCookieFee / _totalPoll * _superNodePoll;
             _BrcIncome += _Brc - (_Brc / 2 / _superNodePoll * _superNodePoll);
-            _CookieIncome += _Cookie - (_Cookie / 2 /  _superNodePoll * _superNodePoll);
+            _CookieIncome += _Cookie - (_Cookie / 2 / _superNodePoll * _superNodePoll);
         }
-        for(auto const& _voteAddressIt : _voteDataIt->second)
-        {
-            if(_superNodeAddrMap.count(_voteAddressIt.first))
-            {
+        for (auto const &_voteAddressIt : _voteDataIt->second) {
+            if (_superNodeAddrMap.count(_voteAddressIt.first)) {
                 std::map<Address, u256>::const_iterator _addrPollIt = _superNodeAddrMap.find(_voteAddressIt.first);
                 u256 _currentNodeBrc = _totalBrcFee / _totalPoll * _addrPollIt->second;
                 u256 _currentNodeCookie = _totalCookieFee / _totalPoll * _addrPollIt->second;
@@ -1532,20 +1476,20 @@ void State::receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum)
     }
     addBalance(_addr, _CookieIncome);
     addBRC(_addr, _BrcIncome);
-    if(rounds)
-    {
+    if (rounds) {
         a->set_numberofrounds(rounds);
     }
 
 }
 
-std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum, bool _is_update /*true*/){
+std::pair<u256, u256>
+State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum, bool _is_update /*true*/) {
     u256 total_income_cookies = 0;
     u256 total_income_brcs = 0;
-    bool  is_update = false;
-    auto a =  account(_addr);
+    bool is_update = false;
+    auto a = account(_addr);
     auto systemAccount = account(dev::PdSystemAddress);
-    if(!a || !systemAccount){
+    if (!a || !systemAccount) {
         BOOST_THROW_EXCEPTION(UnknownAccount() << errinfo_comment(std::string("can't get Account in received fee")));
     }
     auto received_sanp = a->getFeeSnapshot();
@@ -1556,9 +1500,9 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     /// calculate now vote_log and summary_income
     std::vector<PollData> now_miner;
     u256 now_total_poll = 0;
-    uint32_t  num = config::minner_rank_num();
-    for(auto const& val: vote_data(SysVarlitorAddress)){
-        if (num){
+    uint32_t num = config::minner_rank_num();
+    for (auto const &val: vote_data(SysVarlitorAddress)) {
+        if (num) {
             now_miner.emplace_back(val);
             now_total_poll += val.m_poll;
             --num;
@@ -1570,76 +1514,78 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     //auto old_sunmmary = received_sanp.m_total_summary();
     std::pair<u256, u256> old_summary = received_sanp.m_total_summary;
     bool is_now_rounds = false;
-    int start_round = received_sanp.m_numofrounds != 0 ? (int)received_sanp.m_numofrounds : 1;
+    int start_round = received_sanp.m_numofrounds != 0 ? (int) received_sanp.m_numofrounds : 1;
     /// loop any not received rounds . to now rounds
-    for(int i=start_round; i<= _pair.first; i++) {
+    for (int i = start_round; i <= _pair.first; i++) {
         is_now_rounds = (i == _pair.first);
         u256 round_cookies = 0;
         u256 round_brcs = 0;
         u256 _totalPoll = 0;
-        std::pair<u256, u256> summary= {0, 0};
+        std::pair<u256, u256> summary = {0, 0};
         std::vector<PollData> check_creater;
-        do{
-            if (!vote_sanp.m_voteDataHistory.count(i-1)){
+        do {
+            if (!vote_sanp.m_voteDataHistory.count(i - 1)) {
                 break;
             }
-            if (!system_sanp.m_Feesnapshot.count(i) && !is_now_rounds){
+            if (!system_sanp.m_Feesnapshot.count(i) && !is_now_rounds) {
                 break;
             }
-            if (!system_sanp.m_sorted_creaters.count(i-1) && !is_now_rounds){
+            if (!system_sanp.m_sorted_creaters.count(i - 1) && !is_now_rounds) {
                 break;
             }
-            if(is_now_rounds){
-               _totalPoll = now_total_poll;
-               summary = std::make_pair(now_total_brcs, now_total_cookies);
-               check_creater = now_miner;
+            if (is_now_rounds) {
+                _totalPoll = now_total_poll;
+                summary = std::make_pair(now_total_brcs, now_total_cookies);
+                check_creater = now_miner;
             } else {
                 _totalPoll = system_sanp.get_total_poll(i, config::minner_rank_num());
                 summary = system_sanp.m_Feesnapshot[i];
                 check_creater = system_sanp.m_sorted_creaters[i];
             }
-            if(summary.first == old_summary.first && summary.second == old_summary.second){
-                old_summary = std::make_pair(0,0);
+            if (summary.first == old_summary.first && summary.second == old_summary.second) {
+                old_summary = std::make_pair(0, 0);
                 continue;
             }
             if (_totalPoll == 0)
                 continue;
             //vote log for other
-            std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i-1];
+            std::map<Address, u256> vote_log = vote_sanp.m_voteDataHistory[i - 1];
             /// loop all
-            for(auto const& val: check_creater){
-                if(val.m_poll == 0)
+            for (auto const &val: check_creater) {
+                if (val.m_poll == 0)
                     continue;
-                if (_addr != val.m_addr && !vote_log.count(val.m_addr)){
+                if (_addr != val.m_addr && !vote_log.count(val.m_addr)) {
                     continue;
                 }
                 // val = PollData
-                u256 node_summary_cookies =  summary.second / _totalPoll * val.m_poll;
-                u256 node_summary_brcs =  summary.first / _totalPoll * val.m_poll;
-                u256 _income_cookies =0;
+                u256 node_summary_cookies = summary.second / _totalPoll * val.m_poll;
+                u256 node_summary_brcs = summary.first / _totalPoll * val.m_poll;
+                u256 _income_cookies = 0;
                 u256 _income_brcs = 0;
-                std::pair<u256, u256> _old_get ={0,0}; //<brc, cookies>
+                std::pair<u256, u256> _old_get = {0, 0}; //<brc, cookies>
 
-                if (received_sanp.m_received_cookies.count(i) && received_sanp.m_received_cookies[i].count(val.m_addr)){
+                if (received_sanp.m_received_cookies.count(i) &&
+                    received_sanp.m_received_cookies[i].count(val.m_addr)) {
                     _old_get = received_sanp.m_received_cookies[i][val.m_addr];
                 }
-                if(_old_get.second >= node_summary_cookies && _old_get.first >= node_summary_brcs){
+                if (_old_get.second >= node_summary_cookies && _old_get.first >= node_summary_brcs) {
                     continue;
                 }
-                if (_addr== val.m_addr){
+                if (_addr == val.m_addr) {
                     // super
-                    _income_brcs += node_summary_brcs - (node_summary_brcs / 2 / val.m_poll *val.m_poll);
-                    _income_cookies += node_summary_cookies - (node_summary_cookies / 2 / val.m_poll *val.m_poll);
+                    _income_brcs += node_summary_brcs - (node_summary_brcs / 2 / val.m_poll * val.m_poll);
+                    _income_cookies += node_summary_cookies - (node_summary_cookies / 2 / val.m_poll * val.m_poll);
                 }
-                if (vote_log.count(val.m_addr)){
+                if (vote_log.count(val.m_addr)) {
                     // vote node
                     _income_brcs += node_summary_brcs / 2 / val.m_poll * vote_log[val.m_addr];
                     _income_cookies += node_summary_cookies / 2 / val.m_poll * vote_log[val.m_addr];
                 }
 
-                fee_temp.up_received_cookies_brcs(i, val.m_addr, std::make_pair(_income_brcs, _income_cookies), summary);
+                fee_temp.up_received_cookies_brcs(i, val.m_addr, std::make_pair(_income_brcs, _income_cookies),
+                                                  summary);
 
-                if(_income_brcs > _old_get.first) {
+                if (_income_brcs > _old_get.first) {
                     round_brcs += (_income_brcs - _old_get.first);
                     is_update = true;
                 }
@@ -1647,14 +1593,14 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
                     round_cookies += (_income_cookies - _old_get.second);
                     is_update = true;
                 }
-                old_summary = std::make_pair(0,0);
+                old_summary = std::make_pair(0, 0);
             }
-        }while (false);
+        } while (false);
         /// add received
         total_income_cookies += round_cookies;
         total_income_brcs += round_brcs;
     }
-    if(is_update && _is_update) {
+    if (is_update && _is_update) {
         fee_temp.m_numofrounds = _pair.first;
         m_changeLog.emplace_back(dev::PdSystemAddress, a->getFeeSnapshot());
         a->setCouplingSystemFeeSnapshot(fee_temp);
@@ -1664,8 +1610,7 @@ std::pair<u256, u256> State::anytime_receivingPdFeeIncome(const dev::Address &_a
     return std::make_pair(total_income_brcs, total_income_cookies);
 }
 
-void State::createContract(Address const& _address)
-{
+void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
 
@@ -1782,7 +1727,7 @@ bytes const &State::code(Address const &_addr) const {
 
 void State::setCode(Address const &_address, bytes &&_code) {
     m_changeLog.emplace_back(_address, code(_address));
-    if(!m_cache.count(_address))
+    if (!m_cache.count(_address))
         return;
     m_cache[_address].setCode(std::move(_code));
 }
@@ -1820,8 +1765,9 @@ void State::rollback(size_t _savepoint) {
         auto &change = m_changeLog.back();
         auto &account = m_cache[change.address];
         cdebug << BrcYellow "rollback: "
-                  << " change.kind" << (size_t) change.kind << " change.value:" << change.value << " address " << change.address
-                  << BrcReset << std::endl;
+               << " change.kind" << (size_t) change.kind << " change.value:" << change.value << " address "
+               << change.address
+               << BrcReset << std::endl;
         // Public State API cannot be used here because it will add another
         // change log entry.
         switch (change.kind) {
@@ -1938,8 +1884,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
     }
 
     TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
-            TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
-            TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
+                                       TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
+                                       TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
     return make_pair(res, receipt);
 }
 
@@ -2001,63 +1947,61 @@ void dev::brc::State::subPoll(Address const &_addr, u256 const &_value) {
     addPoll(_addr, 0 - _value);
 }
 
-void dev::brc::State::execute_vote(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation> > const & _ops, EnvInfo const& info){
+void dev::brc::State::execute_vote(Address const &_addr,
+                                   std::vector<std::shared_ptr<transationTool::operation> > const &_ops,
+                                   EnvInfo const &info) {
 
-    u256 block_num = (u256)info.number();
-	for(auto const& val : _ops){
-		std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(val);
-		if(!_p){
-			cerror << "execute vote dynamic type field!";
-			BOOST_THROW_EXCEPTION(InvalidDynamic());
-		}
-		VoteType _type = (VoteType)_p->m_vote_type;
-		if(_type == VoteType::EBuyVote) {
-		    try_new_vote_snapshot(_addr, block_num);
-            transferBallotBuy(_addr, _p->m_vote_numbers);
+    u256 block_num = (u256) info.number();
+    for (auto const &val : _ops) {
+        std::shared_ptr<transationTool::vote_operation> _p = std::dynamic_pointer_cast<transationTool::vote_operation>(
+                val);
+        if (!_p) {
+            cerror << "execute vote dynamic type field!";
+            BOOST_THROW_EXCEPTION(InvalidDynamic());
         }
-		else if(_type == VoteType::ESellVote) {
+        VoteType _type = (VoteType) _p->m_vote_type;
+        if (_type == VoteType::EBuyVote) {
+            try_new_vote_snapshot(_addr, block_num);
+            transferBallotBuy(_addr, _p->m_vote_numbers);
+        } else if (_type == VoteType::ESellVote) {
             try_new_vote_snapshot(_addr, block_num);
             transferBallotSell(_addr, _p->m_vote_numbers);
-        }
-		else if(_type == VoteType::ELoginCandidate) {
+        } else if (_type == VoteType::ELoginCandidate) {
             try_new_vote_snapshot(_addr, block_num);
             addSysVoteDate(SysElectorAddress, _addr);
-        }
-		else if(_type == VoteType::ELogoutCandidate) {
+        } else if (_type == VoteType::ELogoutCandidate) {
             try_new_vote_snapshot(_addr, block_num);
             subSysVoteDate(SysElectorAddress, _addr);
-        }
-		else if(_type == VoteType::EDelegate) {
+        } else if (_type == VoteType::EDelegate) {
             try_new_vote_snapshot(_addr, block_num);
             try_new_vote_snapshot(_p->m_to, block_num);
-            add_vote(_addr, {_p->m_to, (u256)_p->m_vote_numbers, info.timestamp()});
-        }
-		else if(_type == EUnDelegate) {
+            add_vote(_addr, {_p->m_to, (u256) _p->m_vote_numbers, info.timestamp()});
+        } else if (_type == EUnDelegate) {
             try_new_vote_snapshot(_addr, block_num);
             try_new_vote_snapshot(_p->m_to, block_num);
-            sub_vote(_addr, {_p->m_to, (u256)_p->m_vote_numbers, info.timestamp()});
+            sub_vote(_addr, {_p->m_to, (u256) _p->m_vote_numbers, info.timestamp()});
         }
-	}
+    }
 }
 
 Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
     Json::Value jv;
     if (auto a = account(_addr)) {
         jv["Address"] = toJS(_addr);
-		jv["balance"] = toJS(a->balance());
-		jv["FBalance"] = toJS(a->FBalance());
-		jv["BRC"] = toJS(a->BRC());
-		jv["FBRC"] = toJS(a->FBRC());
-		jv["vote"] = toJS(a->voteAll());
-		jv["ballot"] = toJS(a->ballot());
+        jv["balance"] = toJS(a->balance());
+        jv["FBalance"] = toJS(a->FBalance());
+        jv["BRC"] = toJS(a->BRC());
+        jv["FBRC"] = toJS(a->FBRC());
+        jv["vote"] = toJS(a->voteAll());
+        jv["ballot"] = toJS(a->ballot());
         jv["poll"] = toJS(a->poll());
-		jv["nonce"] = toJS(a->nonce());
-		jv["cookieinsummury"] = toJS(a->CookieIncome());
+        jv["nonce"] = toJS(a->nonce());
+        jv["cookieinsummury"] = toJS(a->CookieIncome());
 
-		Json::Value _array;
-        uint32_t  num =0;
+        Json::Value _array;
+        uint32_t num = 0;
         for (auto val : a->vote_data()) {
-            if(num++ > config::max_message_num())   // limit message num
+            if (num++ > config::max_message_num())   // limit message num
                 break;
             Json::Value _v;
             _v["Address"] = toJS(val.m_addr);
@@ -2075,42 +2019,35 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
 
 
 // Return to the block reward record in the form of paging
-Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum)
-{
-    try{
+Json::Value
+dev::brc::State::blockRewardMessage(Address const &_addr, uint32_t const &_pageNum, uint32_t const &_listNum) {
+    try {
         Json::Value jv;
-        if(auto a = account(_addr))
-        {
-            if(a->blockReward().size() > 0)
-            {
+        if (auto a = account(_addr)) {
+            if (a->blockReward().size() > 0) {
                 std::vector<std::pair<u256, u256>> _Vector = a->blockReward();
                 uint32_t _retList = 0;
-                if(_pageNum * _listNum > _Vector.size())
-                {
+                if (_pageNum * _listNum > _Vector.size()) {
                     _retList = _Vector.size();
-                }else{
+                } else {
                     _retList = _pageNum * _listNum;
                 }
-                if(_pageNum == 0 || _listNum == 0)
-                {
+                if (_pageNum == 0 || _listNum == 0) {
                     return jv;
                 }
-                if((_pageNum - 1) * _listNum > _Vector.size())
-                {
+                if ((_pageNum - 1) * _listNum > _Vector.size()) {
                     return jv;
                 }
 
-                std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum-1)* _listNum));
-            
-                if(_pageNum == 1)
-                {
-                    std::copy(_Vector.begin(), _Vector.begin()+_retList, res.begin());
-                }else{
-                    std::copy(_Vector.begin() + (_pageNum-1)*_listNum, _Vector.begin()+_retList, res.begin());
+                std::vector<std::pair<u256, u256>> res(_retList - ((_pageNum - 1) * _listNum));
+
+                if (_pageNum == 1) {
+                    std::copy(_Vector.begin(), _Vector.begin() + _retList, res.begin());
+                } else {
+                    std::copy(_Vector.begin() + (_pageNum - 1) * _listNum, _Vector.begin() + _retList, res.begin());
                 }
-                Json::Value _rewardArray; 
-                for(auto it : res)
-                {
+                Json::Value _rewardArray;
+                for (auto it : res) {
                     Json::Value _vReward;
                     _vReward["blockNum"] = toJS(it.first);
                     _vReward["rewardNum"] = toJS(it.second);
@@ -2120,100 +2057,87 @@ Json::Value dev::brc::State::blockRewardMessage(Address const& _addr, uint32_t c
             }
         }
         return jv;
-    }catch(...)
-    {
+    } catch (...) {
         throw;
     }
-    
+
 }
 
-Json::Value dev::brc::State::votedMessage(Address const& _addr) const
-{
-	Json::Value jv;
-	if(auto a = account(_addr))
-	{
-		Json::Value _arry;
-		int _num = 0;
-        uint32_t  num =0;
-        for(auto val : a->vote_data())
-		{
-            if(num++ > config::max_message_num())   // limit message num
+Json::Value dev::brc::State::votedMessage(Address const &_addr) const {
+    Json::Value jv;
+    if (auto a = account(_addr)) {
+        Json::Value _arry;
+        int _num = 0;
+        uint32_t num = 0;
+        for (auto val : a->vote_data()) {
+            if (num++ > config::max_message_num())   // limit message num
                 break;
-			Json::Value _v;
-			_v["address"] = toJS(val.m_addr);
-			_v["voted_num"] = toJS(val.m_poll);
-			_arry.append(_v);
-			_num += (int)val.m_poll;
-		}
-		jv["vote"] = _arry;
-		jv["total_voted_num"] = toJS(_num);
-	}
-	return jv;
+            Json::Value _v;
+            _v["address"] = toJS(val.m_addr);
+            _v["voted_num"] = toJS(val.m_poll);
+            _arry.append(_v);
+            _num += (int) val.m_poll;
+        }
+        jv["vote"] = _arry;
+        jv["total_voted_num"] = toJS(_num);
+    }
+    return jv;
 }
 
-Json::Value dev::brc::State::electorMessage(Address _addr) const
-{
-	Json::Value jv;
-	Json::Value _arry;
+Json::Value dev::brc::State::electorMessage(Address _addr) const {
+    Json::Value jv;
+    Json::Value _arry;
     const std::vector<PollData> _data = vote_data(SysElectorAddress);
-	if(_addr == ZeroAddress)
-	{
-	    int num=0;
-		for(auto val : _data)
-		{
-            if(num++ > config::max_message_num())   // limit message num
+    if (_addr == ZeroAddress) {
+        int num = 0;
+        for (auto val : _data) {
+            if (num++ > config::max_message_num())   // limit message num
                 break;
-			Json::Value _v;
-			_v["address"] = toJS(val.m_addr);
-			_v["vote_num"] = toJS(val.m_poll);
-			_arry.append(_v);
-		}
-		jv["electors"] = _arry;
-	}
-	else
-	{
-		jv["addrsss"] = toJS(_addr);
-		auto ret = std::find(_data.begin(), _data.end(), _addr);
-		auto a = account(_addr);
-		if(ret != _data.end() && a)
-		{
-			jv["obtain_vote"] = toJS(a->poll());
-		}
-		else
-			jv["ret"] = "not is the eletor";
-	}
-	return jv;
+            Json::Value _v;
+            _v["address"] = toJS(val.m_addr);
+            _v["vote_num"] = toJS(val.m_poll);
+            _arry.append(_v);
+        }
+        jv["electors"] = _arry;
+    } else {
+        jv["addrsss"] = toJS(_addr);
+        auto ret = std::find(_data.begin(), _data.end(), _addr);
+        auto a = account(_addr);
+        if (ret != _data.end() && a) {
+            jv["obtain_vote"] = toJS(a->poll());
+        } else
+            jv["ret"] = "not is the eletor";
+    }
+    return jv;
 }
 
-Account dev::brc::State::systemPendingorder(int64_t _time)
-{
-    auto u256Safe = [](std::string const& s) -> u256 {
+Account dev::brc::State::systemPendingorder(int64_t _time) {
+    auto u256Safe = [](std::string const &s) -> u256 {
         bigint ret(s);
         if (ret >= bigint(1) << 256)
             BOOST_THROW_EXCEPTION(
-                ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
-        return (u256)ret;
+                    ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
+        return (u256) ret;
     };
     ExdbState _exdbState(*this);
-	auto a = account(dev::VoteAddress);
-	std::string _num = "1450000000000000";
+    auto a = account(dev::VoteAddress);
+    std::string _num = "1450000000000000";
     cwarn << "genesis pendingorder Num :" << _num;
-	u256 systenCookie = u256Safe(_num);
-	ex_order _order = { h256(1), dev::systemAddress, u256Safe(std::string("100000000")), systenCookie, systenCookie, _time,dev::brc::ex::order_type::sell, dev::brc::ex::order_token_type::FUEL, dev::brc::ex::order_buy_type::only_price};
+    u256 systenCookie = u256Safe(_num);
+    ex_order _order = {h256(1), dev::systemAddress, u256Safe(std::string("100000000")), systenCookie, systenCookie,
+                       _time, dev::brc::ex::order_type::sell, dev::brc::ex::order_token_type::FUEL,
+                       dev::brc::ex::order_buy_type::only_price};
 
-	try
-	{
-		_exdbState.insert_operation(_order);
-	}
-	catch (const boost::exception& e)
-	{
-	    cwarn << boost::diagnostic_information_what(e);
-		exit(1);
-	}
-	catch (...)
-	{
-		exit(1);
-	}
+    try {
+        _exdbState.insert_operation(_order);
+    }
+    catch (const boost::exception &e) {
+        cwarn << boost::diagnostic_information_what(e);
+        exit(1);
+    }
+    catch (...) {
+        exit(1);
+    }
 //	m_exdb.commit(1, h256(), h256());
 //    m_exdb.rollback();
 //    m_exdb.commit_disk(1, true);
@@ -2221,14 +2145,14 @@ Account dev::brc::State::systemPendingorder(int64_t _time)
     return *account(ExdbSystemAddress);
 }
 
-void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const&p_data) {
-    Address  _recivedAddr = p_data.m_addr;
+void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const &p_data) {
+    Address _recivedAddr = p_data.m_addr;
     u256 _value = p_data.m_poll;
     Account *a = account(_id);
     Account *rec_a = account(_recivedAddr);
     Account *sys_a = account(SysElectorAddress);
-    u256  _poll = 0;
-    PollData poll_data ;
+    u256 _poll = 0;
+    PollData poll_data;
     if (a && rec_a && sys_a) {
         if (a->ballot() < _value)
             BOOST_THROW_EXCEPTION(NotEnoughBallot() << errinfo_interface("State::addvote()"));
@@ -2243,21 +2167,21 @@ void dev::brc::State::add_vote(const dev::Address &_id, dev::brc::PollData const
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::addvote()"));
 
     if (_value) {
-        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, 0-_value));
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, 0 - _value));
         m_changeLog.emplace_back(Change::SystemAddressPoll, _id, poll_data);
         m_changeLog.emplace_back(Change::Ballot, _id, 0 - _value);
         m_changeLog.emplace_back(Change::Poll, _recivedAddr, _value);
     }
 }
 
-void dev::brc::State::sub_vote(const dev::Address &_id, dev::brc::PollData const&p_data) {
-    Address  _recivedAddr = p_data.m_addr;
+void dev::brc::State::sub_vote(const dev::Address &_id, dev::brc::PollData const &p_data) {
+    Address _recivedAddr = p_data.m_addr;
     u256 _value = p_data.m_poll;
     Account *rec_a = account(_recivedAddr);
     Account *a = account(_id);
     Account *sys_a = account(SysElectorAddress);
     u256 _poll;
-    PollData poll_data ;
+    PollData poll_data;
 
     if (a && rec_a && sys_a) {
         // 验证投票将记录
@@ -2273,32 +2197,32 @@ void dev::brc::State::sub_vote(const dev::Address &_id, dev::brc::PollData const
         rec_a->addPoll(0 - _value);
         a->addVote(std::make_pair(_recivedAddr, 0 - _value));
         a->addBallot(_value);
-        sys_a->set_system_poll({_recivedAddr, rec_a->poll(), poll_data.m_time > 0 ? poll_data.m_time: p_data.m_time});
+        sys_a->set_system_poll({_recivedAddr, rec_a->poll(), poll_data.m_time > 0 ? poll_data.m_time : p_data.m_time});
     } else {
         cerror << "address error!";
         BOOST_THROW_EXCEPTION(InvalidAddressAddr() << errinfo_interface("State::subVote()"));
     }
 
     if (_value) {
-        m_changeLog.emplace_back(Change::Vote,_id, std::make_pair(_recivedAddr, 0 - _value));
-        m_changeLog.emplace_back(Change::SystemAddressPoll,_id, poll_data );
+        m_changeLog.emplace_back(Change::Vote, _id, std::make_pair(_recivedAddr, 0 - _value));
+        m_changeLog.emplace_back(Change::SystemAddressPoll, _id, poll_data);
         m_changeLog.emplace_back(Change::Ballot, _id, _value);
         m_changeLog.emplace_back(Change::Poll, _recivedAddr, 0 - _value);
     }
 }
 
 const std::vector<PollData> dev::brc::State::vote_data(const dev::Address &_addr) const {
-    if(auto a = account(_addr)){
-        return  a->vote_data();
+    if (auto a = account(_addr)) {
+        return a->vote_data();
     }
     return std::vector<PollData>();
 }
 
-const PollData dev::brc::State::poll_data(const dev::Address &_addr, const dev::Address &_recv_addr) const{
-    if(auto a = account(_addr)){
-        return  a->poll_data(_recv_addr);
+const PollData dev::brc::State::poll_data(const dev::Address &_addr, const dev::Address &_recv_addr) const {
+    if (auto a = account(_addr)) {
+        return a->poll_data(_recv_addr);
     }
-    return  PollData();
+    return PollData();
 }
 
 void dev::brc::State::addSysVoteDate(Address const &_sysAddress, Address const &_id) {
@@ -2327,25 +2251,25 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
 }
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
-    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t)_block_num);
+    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t) _block_num);
     if (_pair.second == Votingstage::ERRORSTAGE)
-        return ;
-    auto  a = account(_addr);
-    if(!a){
+        return;
+    auto a = account(_addr);
+    if (!a) {
         createAccount(_addr, {0});
         a = account(_addr);
     }
-    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256)_pair.first, _pair.second);
-    if (!ret_pair.first){
-        return ;
+    std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
+    if (!ret_pair.first) {
+        return;
     }
     VoteSnapshot _vote_sna = a->vote_snashot();
     /// try new snapshot
     a->try_new_snapshot(ret_pair.second);
 
     /// clear genesis_vote_data and genesis_rounds poll
-    if(_vote_sna.m_latest_round == 0){
-        std::vector<PollData> poll_data= a->vote_data();
+    if (_vote_sna.m_latest_round == 0) {
+        std::vector<PollData> poll_data = a->vote_data();
         a->clear_vote_data();
         subPoll(_addr, a->poll());
         m_changeLog.emplace_back(Change::MinnerSnapshot, _addr, poll_data);
@@ -2357,17 +2281,15 @@ void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256
     setCookieIncomeNum(_addr, 0);
 }
 
-void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
-{
+void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum) {
     std::pair<uint32_t, Votingstage> _pair = config::getVotingCycle(_blockNum);
     auto a = account(dev::PdSystemAddress);
-    if(!a)
-    {
+    if (!a) {
         createAccount(dev::PdSystemAddress, {0});
         a = account(dev::PdSystemAddress);
     }
     u256 _rounds = a->getSnapshotRounds();
-    if(_pair.first > _rounds ) {
+    if (_pair.first > _rounds) {
         CouplingSystemfee _fee = a->getFeeSnapshot();
 
         auto ret_fee = a->getFeeSnapshot().m_sorted_creaters.find(_rounds);
@@ -2388,13 +2310,13 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum)
             _snapshotTotalPoll += _pollDataV[i].m_poll;
         }
 
-        if (_snapshotTotalPoll != 0)
-        {
-            remainder_brc = a->BRC()% _snapshotTotalPoll;
-            remainder_ballance = a->balance()% _snapshotTotalPoll;
+        if (_snapshotTotalPoll != 0) {
+            remainder_brc = a->BRC() % _snapshotTotalPoll;
+            remainder_ballance = a->balance() % _snapshotTotalPoll;
         }
 
-        a->tryRecordSnapshot(_pair.first, a->BRC()- remainder_brc, a->balance() - remainder_ballance, vote_data(SysVarlitorAddress), _blockNum);
+        a->tryRecordSnapshot(_pair.first, a->BRC() - remainder_brc, a->balance() - remainder_ballance,
+                             vote_data(SysVarlitorAddress), _blockNum);
 
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
@@ -2412,42 +2334,43 @@ void dev::brc::State::transferBallotBuy(Address const &_from, u256 const &_value
 void dev::brc::State::transferBallotSell(Address const &_from, u256 const &_value) {
     subBallot(_from, _value);
     addBRC(_from, _value * BALLOTPRICE);
-    subBRC(dev::systemAddress, _value * BALLOTPRICE );
+    subBRC(dev::systemAddress, _value * BALLOTPRICE);
 }
 
-int64_t dev::brc::State::last_block_record(Address const& _id) const{
+int64_t dev::brc::State::last_block_record(Address const &_id) const {
     auto a = account(SysBlockCreateRecordAddress);
-    if(!a){
+    if (!a) {
         return 0;
     }
     return a->last_records(_id);
 
 }
 
-void dev::brc::State::set_last_block_record(const dev::Address &_id, std::pair<int64_t, int64_t> value, uint32_t varlitor_time) {
+void dev::brc::State::set_last_block_record(const dev::Address &_id, std::pair<int64_t, int64_t> value,
+                                            uint32_t varlitor_time) {
     auto a = account(SysBlockCreateRecordAddress);
-    if(!a){
+    if (!a) {
         createAccount(SysBlockCreateRecordAddress, {0});
         a = account(SysBlockCreateRecordAddress);
     }
     int64_t _time = a->last_records(_id);
     a->set_create_record(std::make_pair(_id, value.second));
 
-    if(value.first == 1){
+    if (value.first == 1) {
         // if the first block will record all super_minner
         // bese for _id's offset to set other-time
-        if(auto varlitor_a = account(SysVarlitorAddress)){
+        if (auto varlitor_a = account(SysVarlitorAddress)) {
             // find offset
             int offset = 0;
-            for(auto const& val: varlitor_a->vote_data()){
-                if(val.m_addr == _id)
+            for (auto const &val: varlitor_a->vote_data()) {
+                if (val.m_addr == _id)
                     break;
                 ++offset;
             }
-            int index =0;
-            for(auto const& val: varlitor_a->vote_data()){
-                if (val.m_addr != _id){
-                    int64_t  _time= value.second +  (index-offset) * (int)varlitor_time;
+            int index = 0;
+            for (auto const &val: varlitor_a->vote_data()) {
+                if (val.m_addr != _id) {
+                    int64_t _time = value.second + (index - offset) * (int) varlitor_time;
                     a->set_create_record(std::make_pair(val.m_addr, _time));
                 }
                 ++index;
@@ -2458,13 +2381,14 @@ void dev::brc::State::set_last_block_record(const dev::Address &_id, std::pair<i
 }
 
 BlockRecord dev::brc::State::block_record() const {
-    auto  a= account(SysBlockCreateRecordAddress);
+    auto a = account(SysBlockCreateRecordAddress);
     if (!a)
         return BlockRecord();
-    return  a->block_record();
+    return a->block_record();
 }
 
-void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header, const dev::brc::BlockHeader &previous_header) {
+void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header,
+                                               const dev::brc::BlockHeader &previous_header) {
     //testlog << "curr:"<< curr_header.number() << "  pre:"<< previous_header.number();
     std::pair<uint32_t, Votingstage> previous_pair = dev::brc::config::getVotingCycle(previous_header.number());
     std::pair<uint32_t, Votingstage> curr_pair = dev::brc::config::getVotingCycle(curr_header.number());
@@ -2480,7 +2404,7 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     if (!a)
         return;
     auto varlitor_a = account(SysVarlitorAddress);
-    if (!varlitor_a){
+    if (!varlitor_a) {
         createAccount(SysVarlitorAddress, {0});
         varlitor_a = account(SysVarlitorAddress);
     }
@@ -2498,11 +2422,11 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     std::vector<PollData> varlitors;
     std::vector<PollData> standbys;
 
-    for(auto const& val: p_data){
-        if (var_num){
+    for (auto const &val: p_data) {
+        if (var_num) {
             varlitors.emplace_back(val);
-            var_num --;
-        } else if (standby_num){
+            var_num--;
+        } else if (standby_num) {
             standbys.emplace_back(val);
             standby_num--;
         }
@@ -2512,7 +2436,7 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
 
     ///add sanpshot about miner and standby
     auto minersanp_a = account(SysMinerSnapshotAddress);
-    if (!minersanp_a){
+    if (!minersanp_a) {
         createAccount(SysMinerSnapshotAddress, {0});
         minersanp_a = account(SysMinerSnapshotAddress);
     }
@@ -2531,21 +2455,20 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     }
 }
 
-std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() const{
+std::map<u256, std::vector<PollData>> dev::brc::State::get_miner_snapshot() const {
     auto minersanp_a = account(SysMinerSnapshotAddress);
-    if (!minersanp_a){
+    if (!minersanp_a) {
         return std::map<u256, std::vector<PollData>>();
     }
-    return  minersanp_a->getFeeSnapshot().m_sorted_creaters;
+    return minersanp_a->getFeeSnapshot().m_sorted_creaters;
 }
 
 
-void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
-{
+void dev::brc::State::addExchangeOrder(Address const &_addr, dev::brc::ex::ex_order const &_order) {
     Account *_account = account(_addr);
-    if(!_account)
-    {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    if (!_account) {
+        BOOST_THROW_EXCEPTION(
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
@@ -2554,29 +2477,27 @@ void dev::brc::State::addExchangeOrder(Address const& _addr, dev::brc::ex::ex_or
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
-void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid)
-{
+void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid) {
     Account *_account = account(_addr);
-    if(!_account)
-    {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: account is not exist")));
+    if (!_account) {
+        BOOST_THROW_EXCEPTION(
+                ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: account is not exist")));
     }
     dev::brc::ex::ExOrderMulti _oldMulti = _account->getExOrder();
 
     bool status = _account->removeExOrderMulti(_trid);
 
-    if(status == false)
-    {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("removeExchangeOrder failed: cancelpendingorder error")));
+    if (status == false) {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
+                std::string("removeExchangeOrder failed: cancelpendingorder error")));
     }
     //  TO DO
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
 
-dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder()  {
+dev::brc::ex::ExOrderMulti const &dev::brc::State::getExOrder() {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
-    if (!_orderAccount)
-    {
+    if (!_orderAccount) {
         createAccount(dev::ExdbSystemAddress, {0});
         _orderAccount = account(dev::ExdbSystemAddress);
     }
@@ -2584,22 +2505,19 @@ dev::brc::ex::ExOrderMulti const& dev::brc::State::getExOrder()  {
     return _orderAccount->getExOrder();
 }
 
-dev::brc::ex::ExOrderMulti const& dev::brc::State::userGetExOrder(Address const& _addr)
-{
+dev::brc::ex::ExOrderMulti const &dev::brc::State::userGetExOrder(Address const &_addr) {
     Account *_account = account(_addr);
-    if (!_account)
-    {
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("userGetExOrder failed : account is not exist")));
+    if (!_account) {
+        BOOST_THROW_EXCEPTION(
+                ExdbChangeFailed() << errinfo_comment(std::string("userGetExOrder failed : account is not exist")));
     }
 
     return _account->getExOrder();
 }
 
-void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_order)
-{
+void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_order) {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
-    if (!_orderAccount)
-    {
+    if (!_orderAccount) {
         createAccount(dev::ExdbSystemAddress, {0});
         _orderAccount = account(dev::ExdbSystemAddress);
     }
@@ -2608,11 +2526,9 @@ void dev::brc::State::addSuccessExchange(dev::brc::ex::result_order const &_orde
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder)
-{
+void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const &_exresultOrder) {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
-    if (!_orderAccount)
-    {
+    if (!_orderAccount) {
         createAccount(dev::ExdbSystemAddress, {0});
         _orderAccount = account(dev::ExdbSystemAddress);
     }
@@ -2622,22 +2538,19 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const& _exr
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const& params) {
-    if(params.chainID != 11)
+void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const &params) {
+    if (params.chainID != 11)
         return;
     auto change_ret = config::getChainMiner(curr_header.number());
-    if(!change_ret.first)
+    if (!change_ret.first)
         return;
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
 }
 
-void dev::brc::State::changeVoteData(BlockHeader const& _header)
-{
-    if (config::changeVoteHeight() == _header.number())
-    {
+void dev::brc::State::changeVoteData(BlockHeader const &_header) {
+    if (config::changeVoteHeight() == _header.number()) {
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeVote();
-        for(auto it : _changeVote)
-        {
+        for (auto it : _changeVote) {
             Account *_a = account(Address(std::get<0>(it)));
             Account *_pollA = account(Address(std::get<1>(it)));
             _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
@@ -2649,26 +2562,23 @@ void dev::brc::State::changeVoteData(BlockHeader const& _header)
         std::vector<PollData> _sysVar = sysVar->vote_data();
         Account *sysCan = account(SysCanlitorAddress);
         std::vector<PollData> _sysCan = sysCan->vote_data();
-        for(auto &sysVarIt : _sysVar)
-        {
+        for (auto &sysVarIt : _sysVar) {
             Account *pa = account(sysVarIt.m_addr);
 //            CFEE_LOG << pa->poll();
             sysVarIt.m_poll = pa->poll();
-            sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(),0});
+            sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
         }
 
-        for(auto &sysCanIt : _sysCan)
-        {
+        for (auto &sysCanIt : _sysCan) {
             Account *pa = account(sysCanIt.m_addr);
 //            CFEE_LOG << pa->poll();
             sysCanIt.m_poll = pa->poll();
-            sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(),0});
+            sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
         }
 
         Account *_pdSystem = account(PdSystemAddress);
         CouplingSystemfee _pdfee = _pdSystem->getFeeSnapshot();
-        for(auto &_pdit : _pdfee.m_sorted_creaters)
-        {
+        for (auto &_pdit : _pdfee.m_sorted_creaters) {
             std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
             _pdit.second = _poll;
         }
@@ -2678,8 +2588,7 @@ void dev::brc::State::changeVoteData(BlockHeader const& _header)
 
         Account *_minerSystem = account(SysMinerSnapshotAddress);
         CouplingSystemfee _minerfee = _minerSystem->getFeeSnapshot();
-        for(auto &_minerit : _minerfee.m_sorted_creaters)
-        {
+        for (auto &_minerit : _minerfee.m_sorted_creaters) {
             std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
             std::vector<PollData> _cpoll = vote_data(SysCanlitorAddress);
             _poll.insert(_poll.end(), _cpoll.begin(), _cpoll.end());
@@ -2692,18 +2601,19 @@ void dev::brc::State::changeVoteData(BlockHeader const& _header)
     return;
 }
 
-void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr, ChainParams const& params) {
-    Account* old_a = account(before_addr);
-    if (!old_a){
+void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr,
+                                               ChainParams const &params) {
+    Account *old_a = account(before_addr);
+    if (!old_a) {
         // throw
-        BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment(std::string("changeMiner: not have this author:"+ dev::toString(before_addr))));
+        BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment(
+                std::string("changeMiner: not have this author:" + dev::toString(before_addr))));
     }
-    Account* new_a = account(new_addr);
-    if (!new_a){
+    Account *new_a = account(new_addr);
+    if (!new_a) {
         createAccount(new_addr, {0});
         new_a = account(new_addr);
-    }
-    else{
+    } else {
         kill(new_addr);
     }
     /// account's base data
@@ -2720,16 +2630,16 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
     sys_accounts.emplace_back(SysVarlitorAddress);
     sys_accounts.emplace_back(SysCanlitorAddress);
     sys_accounts.emplace_back(SysMinerSnapshotAddress);
-    for(auto const& v : sys_accounts){
-        if (auto sys_a = account(v)){
-            if (sys_a->isChangeMinerUpdateData(before_addr, new_addr)){
+    for (auto const &v : sys_accounts) {
+        if (auto sys_a = account(v)) {
+            if (sys_a->isChangeMinerUpdateData(before_addr, new_addr)) {
                 sys_a->changeMinerUpdateData(before_addr, new_addr);
             }
         }
     }
     /// loop all
     /// other account vote data in genesis
-    for(auto const& v: params.genesisState){
+    for (auto const &v: params.genesisState) {
         if (!v.second.isChangeMinerUpdateData(before_addr, new_addr))
             continue;
         Account *temp_a = account(v.first);
@@ -2740,11 +2650,9 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 }
 
 
-dev::brc::ex::ExResultOrder const& dev::brc::State::getSuccessExchange()
-{
+dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
-    if (!_SuccessAccount)
-    {
+    if (!_SuccessAccount) {
         BOOST_THROW_EXCEPTION(SuccessExChangeFailed() << errinfo_comment("getSuccessExchange failed"));
     }
 
@@ -2847,7 +2755,8 @@ State &dev::brc::createIntermediateState(
 }
 
 template<class DB>
-AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, uint64_t _time /*= FORKSIGNSTIME*/) {
+AddressHash
+dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, uint64_t _time /*= FORKSIGNSTIME*/) {
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -2855,8 +2764,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
             if (!i.second.isAlive())
                 _state.remove(i.first);
             else {
-				RLPStream s;
-				s.appendList(19);
+                RLPStream s;
+                s.appendList(19);
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2884,7 +2793,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                 s << i.second.poll();
                 {
                     std::vector<bytes> bs;
-                    for(auto const& val: i.second.vote_data()){
+                    for (auto const &val: i.second.vote_data()) {
                         RLPStream _s;
                         val.streamRLP(_s);
                         bs.push_back(_s.out());
@@ -2899,9 +2808,8 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     size_t _num = i.second.blockReward().size();
                     _rlp.appendList(_num + 1);
                     _rlp << _num;
-                    for (auto it : i.second.blockReward())
-                    {
-                    	_rlp.append<u256, u256>(std::make_pair(it.first, it.second));
+                    for (auto it : i.second.blockReward()) {
+                        _rlp.append<u256, u256>(std::make_pair(it.first, it.second));
                     }
                     s << _rlp.out();
                 }
@@ -2924,7 +2832,7 @@ AddressHash dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 
                 {
                     s << i.second.getStreamRLPResultOrder();
-                    s <<i.second.getStreamRLPExOrder();
+                    s << i.second.getStreamRLPExOrder();
                 }
 
                 _state.insert(i.first, &s.out());
