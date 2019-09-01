@@ -309,7 +309,10 @@ public:
         m_state.try_newrounds_count_vote(curr_info, previous_info);
         /// change miner for point height
         m_state.tryChangeMiner(curr_info, params);
-        m_state.changeVoteData(curr_info);
+        if(params.chainID == 11)
+        {
+            m_state.changeVoteData(curr_info);
+        }
     }
 
 private:
