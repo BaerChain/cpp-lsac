@@ -294,16 +294,16 @@ namespace dev {
             }
 
             bool exchange_plugin::commit_disk(int64_t version, bool first_commit) {
-                db->with_write_lock([&]() {
-                    if (first_commit) {
-                        const auto &obj = db->get<dynamic_object>();
-                        db->modify(obj, [&](dynamic_object &obj) {
-                            obj.version = version;
-                        });
-                    }
-                    db->commit(version);
-                    db->flush();
-                });
+//                db->with_write_lock([&]() {
+//                    if (first_commit) {
+//                        const auto &obj = db->get<dynamic_object>();
+//                        db->modify(obj, [&](dynamic_object &obj) {
+//                            obj.version = version;
+//                        });
+//                    }
+//                    db->commit(version);
+//                    db->flush();
+//                });
                 return true;
             }
 

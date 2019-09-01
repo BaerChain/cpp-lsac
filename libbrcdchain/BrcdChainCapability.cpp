@@ -44,6 +44,8 @@ string toString(Asking _a)
         return "WarpManifest";
     case Asking::WarpData:
         return "WarpData";
+     case Asking::UpdateStatus:
+            return "UpdateStatus";
     }
     return "?";
 }
@@ -718,6 +720,7 @@ void BrcdChainCapability::onTransactionImported(
 
 void BrcdChainCapability::onConnect(NodeID const& _peerID, u256 const& _peerCapabilityVersion)
 {
+    LOG(m_logger) << "on connect " << _peerID << " version : " << _peerCapabilityVersion;
     m_host->addNote(_peerID, "manners", m_host->isRude(_peerID, name()) ? "RUDE" : "nice");
 
     BrcdChainPeer peer{m_host, _peerID, _peerCapabilityVersion};
@@ -932,6 +935,33 @@ bool BrcdChainCapability::interpretCapabilityPacket(
             }
             break;
         }
+        case GetLatestStatus:
+        {
+            RLPStream s;
+            m_host->prep(_peerID, name(), s, UpdateStatus, 6)
+                    << c_protocolVersion << m_networkId << m_chain.details().totalDifficulty << m_chain.currentHash()
+                    << m_chain.genesisHash() << m_chain.details().number;
+            m_host->sealAndSend(_peerID, s);
+            break;
+        }
+        case UpdateStatus:{
+
+            auto const peerProtocolVersion = _r[0].toInt<unsigned>();
+            auto const networkId = _r[1].toInt<u256>();
+            auto const totalDifficulty = _r[2].toInt<u256>();
+            auto const latestHash = _r[3].toHash<h256>();
+            auto const genesisHash = _r[4].toHash<h256>();
+            auto const height = _r[5].toInt<u256>();
+
+            LOG(m_logger) << "update status Status: " << peerProtocolVersion << " / " << networkId << " / "
+                          << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash << " height : " << height;
+
+            peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash, height);
+            setIdle(_peerID);
+            m_peerObserver->onPeerStatus(peer);
+            LOG(m_logger) << " continue sync blocks.";
+            break;
+        };
         default:
             return false;
         }
@@ -957,8 +987,11 @@ void BrcdChainCapability::setIdle(NodeID const& _peerID)
 void BrcdChainCapability::setAsking(NodeID const& _peerID, Asking _a)
 {
     auto itPeerStatus = m_peers.find(_peerID);
-    if (itPeerStatus == m_peers.end())
+    if (itPeerStatus == m_peers.end()){
+        LOG(m_logger) << "cant find peer " << _peerID;
         return;
+    }
+
 
     auto& peerStatus = itPeerStatus->second;
 

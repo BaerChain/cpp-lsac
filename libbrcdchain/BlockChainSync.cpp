@@ -222,7 +222,10 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 {
     if (m_host.peer(_peerID).isConversing())
     {
-        LOG(m_loggerDetail) << "Can't sync with this peer - outstanding asks.";
+        LOG(m_loggerDetail) << "Can't sync with this peer - outstanding asks."
+                            << " ask state " << int32_t(m_host.peer(_peerID).asking())
+                            << " lastest hash  " << (m_host.peer(_peerID).latestHash())
+                            << " id " << _peerID;
         return;
     }
 
@@ -241,11 +244,23 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
         return;
     }
 
+    bool ignore_sync = false;
+    if(height != 0 ){
+        auto latest_block = host().chain().info().timestamp();
+        if(peer_block_number > height){
+            int64_t time_offset = (peer_block_number - height) * host().chain().chainParams().blockInterval;
+            if(latest_block + time_offset > utcTimeMilliSec()){
+                ignore_sync = true;
+                LOG(m_loggerDetail) << "ignore sync "  << _peerID << " self height " << height  << " peer height " << peer_block_number
+                                                         << "  last import h: " << last_block_num;
+            }
+        }
+    }
 
-    if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks){
+    if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks && !ignore_sync){
         if(m_state == SyncState::Idle || m_state == SyncState::NotSynced){
             LOG(m_loggerInfo) << "Starting full sync from " << _peerID << " self height " << height  << " peer height " << peer_block_number
-            << "  last import h: " << last_block_num;
+                              << "  last import h: " << last_block_num;
             m_state = SyncState::Blocks;
         }
         peer.requestBlockHeaders(peer.latestHash(), 1, 0, false);
@@ -445,7 +460,7 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
     clearPeerDownload(_peerID);
     if (m_state != SyncState::Blocks && m_state != SyncState::Waiting)
     {
-        LOG(m_logger) << "Ignoring unexpected blocks";
+        LOG(m_logger) << "Ignoring unexpected blocks " << (int32_t)m_state.load();
         return;
     }
     if (m_state == SyncState::Waiting)

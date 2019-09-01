@@ -31,6 +31,8 @@ string toString(Asking _a)
         return "WarpManifest";
     case Asking::WarpData:
         return "WarpData";
+    case Asking::UpdateStatus:
+        return "UpdateStatus";
     }
     return "?";
 }
@@ -74,6 +76,15 @@ void BrcdChainPeer::requestStatus(
     m_host->prep(m_id, c_brcCapability, s, StatusPacket, 6)
         << c_protocolVersion << _hostNetworkId << _chainTotalDifficulty << _chainCurrentHash
         << _chainGenesisHash << height;
+    m_host->sealAndSend(m_id, s);
+}
+
+void BrcdChainPeer::requestLatestStatus(){
+
+    RLPStream s;
+    setAsking(Asking::UpdateStatus);
+    LOG(m_logger) << "requestLatestStatus  " << ::toString(m_asking) << "  m_id: " << m_id;
+    m_host->prep(m_id, c_brcCapability, s, GetLatestStatus, 0);
     m_host->sealAndSend(m_id, s);
 }
 

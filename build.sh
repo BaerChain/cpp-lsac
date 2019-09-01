@@ -1,2 +1,2 @@
 #!/bin/bash
-make -j4 brcd
+make -j8 brcd

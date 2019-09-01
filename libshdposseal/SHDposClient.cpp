@@ -322,16 +322,16 @@ void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
 {
     //about SH-dpos net_host CapabilityHostFace 接口
 	cdebug << "capabilityHost :: SHDposHostCapability";
-	auto brcCapability = make_shared<SHDposHostcapality>(_host.capabilityHost(),
-							_netWorkId,
-							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
-								dpos()->onDposMsg(_nodeid, _id, _r);
-							},
-							[this](NodeID const& _nodeid, u256 const& _peerCapabilityVersion){
-								dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
-							});
-	_host.registerCapability(brcCapability);
-	dpos()->initNet(brcCapability);
+//	auto brcCapability = make_shared<SHDposHostcapality>(_host.capabilityHost(),
+//							_netWorkId,
+//							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
+//								dpos()->onDposMsg(_nodeid, _id, _r);
+//							},
+//							[this](NodeID const& _nodeid, u256 const& _peerCapabilityVersion){
+//								dpos()->requestStatus(_nodeid, _peerCapabilityVersion);
+//							});
+//	_host.registerCapability(brcCapability);
+//	dpos()->initNet(brcCapability);
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
 	m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
