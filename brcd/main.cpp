@@ -196,6 +196,7 @@ int main(int argc, char **argv) {
     unsigned short remotePort = dev::p2p::c_defaultIPPort;
 
 	unsigned int http_port = 8081;
+	unsigned int http_threads = 4;
 
     unsigned peers = 11;
     unsigned peerStretch = 7;
@@ -315,6 +316,8 @@ int main(int argc, char **argv) {
                         "Listen on the given IP for incoming connections (default: 0.0.0.0)");
     addNetworkingOption("listen", po::value<unsigned short>()->value_name("<port>"),
                         "Listen on the given port for incoming connections (default: 30303)");
+    addNetworkingOption("http_threads", po::value<unsigned short>()->value_name("<threads>"),
+                       "http on the given threads for start (default: 4)");
 	addNetworkingOption("http_port", po::value<unsigned short>()->value_name("<port>"),
 						"http on the given port for incoming connections (default: 30303)");
     addNetworkingOption("remote,r", po::value<string>()->value_name("<host>(:<port>)"),
@@ -599,7 +602,12 @@ int main(int argc, char **argv) {
 	{
         http_port = vm["http_port"].as<unsigned short>();
 	}
-    if (vm.count("listen")) {
+
+   	if(vm.count("http_threads"))
+	{
+             http_threads = vm["http_threads"].as<unsigned short>();
+        }
+       	if (vm.count("listen")) {
         listenPort = vm["listen"].as<unsigned short>();
         listenSet = true;
     }
@@ -1126,7 +1134,7 @@ int main(int argc, char **argv) {
                     new rpc::Debug(*web3.brcdChain()),
                     nullptr
             );
-            auto httpConnector = new SafeHttpServer(listenIP, (int)http_port, "", "", 4);
+            auto httpConnector = new SafeHttpServer(listenIP, (int)http_port, "", "", (int)http_threads);
             httpConnector->setAllowedOrigin("");
             jsonrpcHttpServer->addConnector(httpConnector);
             jsonrpcHttpServer->StartListening();
