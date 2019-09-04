@@ -78,7 +78,8 @@ namespace dev
                 deployContract = 5,
                 executeContract = 6,
                 changeMiner = 7,
-                receivingincome = 8
+                receivingincome = 8,
+                transferAutoEx = 9
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -292,6 +293,29 @@ namespace dev
                 OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_receivingType)(m_from))
 
                 OPERATION_SERIALIZE((m_type)(m_receivingType)(m_from))
+
+            };
+
+            struct transferAutoEx_operation : public operation
+            {
+                op_type m_type;
+                uint8_t m_autoExType;
+                u256 m_autoExNum;
+                u256 m_transferNum;
+                Address m_from;
+                Address m_to;
+                transferAutoEx_operation(){}
+                transferAutoEx_operation(op_type _type, uint8_t _autoExType, u256 _autoExNum, u256 _transferNum, Address _from, Address _to) :
+                m_type(_type),
+                m_autoExType(_autoExType),
+                m_autoExNum(_autoExNum),
+                m_transferNum(_transferNum),
+                m_from(_from),
+                m_to(_to){}
+
+                OPERATION_UNSERIALIZE(transferAutoEx_operation, (m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
+
+                OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
             };
 

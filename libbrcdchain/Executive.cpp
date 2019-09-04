@@ -471,6 +471,8 @@ void Executive::initialize(Transaction const& _transaction)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
                     m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
+
 			}
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
@@ -608,6 +610,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             case transationTool::op_type::receivingincome:{
                 m_s.receivingIncome(m_t.sender(), m_batch_params._operation ,m_envInfo.number());
                 break;
+            }
+            case transationTool::op_type::transferAutoEx:
+            {
+
             }
             default:
                 //TODO: unkown null.
