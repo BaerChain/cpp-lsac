@@ -685,80 +685,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
     }
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
-    std::vector<std::list<VerifiedBlockRef>> copy_data;
-
-    DEV_READ_GUARDED(x_cached_blocks)
-    for(auto &itr : m_cached_blocks){
-        ///every list, max size  <= m_params.config_blocks
-        if(itr.size() > m_params.config_blocks){
-            itr.pop_front();
-        }
-
-        //this chain must in main chain,
-        if(m_blocksDB->exists(toSlice(itr.front().info.hash()))){
-            ///pop config_blocks.
-            while(itr.size() > 0
-            && info().number() > m_params.config_blocks
-            && info().number() - itr.front().info.number() >= m_params.config_blocks ){
-//                cwarn << "pop " << itr.front().info.number();
-                itr.pop_front();
-            }
-            ///again check this chain in main chain.
-            if(itr.size() > 0 && m_blocksDB->exists(toSlice(itr.front().info.hash()))){
-                copy_data.push_back(itr);
-            }
-            else{
-                cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
-            }
-        }
-        else{
-            cwarn << "remove " << itr.front().info.number() << "  h: " << itr.front().info.hash();
-        }
-    }
-
-
-    m_cached_blocks.clear();
-    m_cached_blocks = copy_data;
-
-    //remove unused hash and bytes.
-    std::vector<h256> remove_hash;
-    for(auto &itr : m_cached_bytes){
-        bool find = false;
-        for(auto &list : m_cached_blocks){
-            for(auto &b : list){
-                if(itr.first == b.info.hash()){
-                    find = true;
-                }
-            }
-        }
-        if(!find){
-            remove_hash.push_back(itr.first);
-        }
-    }
-
-    for(auto &itr : remove_hash){
-        m_cached_bytes.erase(itr);
-    }
-
-    auto print_route = [](const std::vector<std::list<VerifiedBlockRef>> &data) {
-        for (auto itr : data) {
-            std::ostringstream os;
-            os << "size : " << itr.size() << "  ";
-            for (auto detail : itr) {
-                os << "n: " << std::to_string(detail.info.number()) << " h: " << detail.info.hash().abridged() << " p: "
-                   << detail.info.parentHash().abridged() << " |";
-            }
-            cwarn << os.str();
-        }
-    };
-
-    if(m_cached_blocks.size() > 2){
-        cwarn << "config ...............";
-        print_route(m_cached_blocks);
-    }
-    if(info().number() > m_params.config_blocks){
-        _exdb.commit_disk(info().number() - m_params.config_blocks + 1);
-    }
+    LOG(m_logger) << "write complete end";
     return  ret;
 }
 
@@ -824,6 +751,7 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
 }
 
 
+
 bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_block, const dev::OverlayDB &_db,
                                             dev::brc::ex::exchange_plugin &_exdb) {
     //block is too old.
@@ -836,7 +764,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 
     if (info().number() == 0 || m_cached_blocks.size() == 0) {
         DEV_WRITE_GUARDED(x_cached_blocks)
-        m_cached_blocks.push_back({_block});
+            m_cached_blocks.push_back({_block});
         return true;
     }
 
@@ -887,261 +815,261 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 //            }
     }
 
-
+    return true;
 
 //    cwarn << "insert -----------------";
 //    print_route(m_cached_blocks);
-    bool find = false;
-    {
-        for (auto &itr : m_cached_blocks) {
-            for (auto &detail : itr) {
+//    bool find = false;
+//    {
+//        for (auto &itr : m_cached_blocks) {
+//            for (auto &detail : itr) {
+//
+//                if (_block.info.parentHash() == detail.info.hash()) {
+//                    find = true;
+//                    //in this branch, this block is end. only insert.
+//                    if (detail.info.hash() == itr.back().info.hash()) {
+//                        itr.push_back(_block);
+//                    } else {
+//                        ///copy
+//                        std::list<VerifiedBlockRef> copy_data;
+//                        for (auto cp = itr.begin(); cp != itr.end(); cp++) {
+//                            copy_data.push_back(*cp);
+//                            m_cached_bytes[cp->info.hash()] = cp->block.toBytes();
+//                            if (cp->info.hash() == detail.info.hash()) {
+//                                break;
+//                            }
+//                        }
+//                        copy_data.push_back(_block);
+//                        m_cached_blocks.push_back(copy_data);
+//                        cwarn << "insert block: " << _block.info.hash() << " number: " << _block.info.number();
+//                    }
+//                    m_cached_bytes[_block.info.hash()] = _block.block.toBytes();
+//                    break;
+//                }
+//            }
+//            if (find) {
+//                break;
+//            }
+//        }
+//    }
 
-                if (_block.info.parentHash() == detail.info.hash()) {
-                    find = true;
-                    //in this branch, this block is end. only insert.
-                    if (detail.info.hash() == itr.back().info.hash()) {
-                        itr.push_back(_block);
-                    } else {
-                        ///copy
-                        std::list<VerifiedBlockRef> copy_data;
-                        for (auto cp = itr.begin(); cp != itr.end(); cp++) {
-                            copy_data.push_back(*cp);
-                            m_cached_bytes[cp->info.hash()] = cp->block.toBytes();
-                            if (cp->info.hash() == detail.info.hash()) {
-                                break;
-                            }
-                        }
-                        copy_data.push_back(_block);
-                        m_cached_blocks.push_back(copy_data);
-                        cwarn << "insert block: " << _block.info.hash() << " number: " << _block.info.number();
-                    }
-                    m_cached_bytes[_block.info.hash()] = _block.block.toBytes();
-                    break;
-                }
-            }
-            if (find) {
-                break;
-            }
-        }
-    }
-
-    if (!find) {
-        cwarn << "cant find parent hash." << _block.info.number()  << " hash : " << _block.info.hash() <<
-                " author" << _block.info.author() << " parent_hash:"<< _block.info.parentHash();
-        return false;
-    }
+//    if (!find) {
+//        cwarn << "cant find parent hash." << _block.info.number()  << " hash : " << _block.info.hash() <<
+//                " author" << _block.info.author() << " parent_hash:"<< _block.info.parentHash();
+//        return false;
+//    }
 
     //this block is true, dont switch chain.
-    if (_block.info.parentHash() == info().hash()) {
-        return true;
-    } else {
-        ///dont switch chain, only insert this block to m_cached_blocks
-        if (_block.info.number() < info().number()) {
-            cwarn << "only insert , can't switch chain.";
-            return false;
-        }
-        else if(_block.info.number() == info().number()){
-            //this switch chain on one SysVarlitor dont create one block.
-            if(_block.info.parentHash() == info().parentHash()){
-                cwarn << " check miner online , will switch chain. before";
-                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
-                    cwarn << " check miner online , will switch chain.22222222222";
-                }
-                else if( standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
-                         && exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
-                    //switch....
-                    //rollback one.
-                    cwarn << " check miner online , will switch chain. xxxxxx";
-                    VerifiedBlockRef current_block;
-                    VerifiedBlockRef parent_block;
-
-                    auto current_hash = info().hash();
-                    auto parent_hash = info().parentHash();
-
-                    for(auto itr : m_cached_blocks){
-                        for(auto detail : itr){
-                            if(detail.info.hash() == current_hash){
-                                current_block = detail;
-                            }
-                            if(detail.info.hash() == parent_hash){
-                                parent_block = detail;
-                            }
-                        }
-                    }
-
-                    remove_blocks_from_database({parent_block}, _db, _exdb);
-                    rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
-                    cwarn << " check miner online , will switch chain.aaaaaa";
-                    return true;
-                }
-                else if(standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
-                        && standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
-                    //chose  front miner
-                    cwarn << " check miner online , will switch chain.333333333333333";
-                    bool need_switch = false;
-                    if(info().hash() != _block.info.hash()) {
-                        for (auto const &val: standby_miners) {
-                            if (val.m_addr == info().author()) {
-                                break;
-                            }
-                            if (val.m_addr == _block.info.author()) {
-                                need_switch = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (need_switch){
-                        cwarn << " check highter , will switch chain. xxxxxx";
-                        VerifiedBlockRef current_block;
-                        VerifiedBlockRef parent_block;
-
-                        auto current_hash = info().hash();
-                        auto parent_hash = info().parentHash();
-
-                        for(auto itr : m_cached_blocks){
-                            for(auto detail : itr){
-                                if(detail.info.hash() == current_hash){
-                                    current_block = detail;
-                                }
-                                if(detail.info.hash() == parent_hash){
-                                    parent_block = detail;
-                                }
-                            }
-                        }
-
-                        remove_blocks_from_database({parent_block}, _db, _exdb);
-                        rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
-                        cwarn << " check highter standby , will switch chain.bbbbbbbbbbbbbb";
-                        return true;
-                    }
-                }
-                else{
-                    cwarn << " check miner online , will switch chain.444444444444";
-                    std::ostringstream os;
-                    os << "exe_miners : ";
-                    for(auto itr : exe_miners){
-                        os << " [address " << toHex(itr.m_addr) << " ]";
-                    }
-                    os << "\n standby_miners: ";
-                    for(auto itr : standby_miners){
-                        os << " [address " << toHex(itr.m_addr) << " ]";
-                    }
-                    cwarn << os.str();
-                }
-
-            }
-            return false;
-        }
-        else if (_block.info.number() == info().number() + 1) {
-            /// this condition , chain must switch.
-            /*  step 1, we will remove last chain  from same block's hash.
-             *  step 2, delete executive blocks state and rollback exdb state until same block's hash. then execute new blocks.
-             *  step 3,, execute newest block for switch new state.
-             * */
-            cwarn << "will switch chain, delete state.";
-            auto current_hash = info().hash();
-            auto insert_hash = _block.info.hash();
-
-            std::list<VerifiedBlockRef> source_block_list;      // source blocks, will switch insert_hash(_block).
-            std::list<VerifiedBlockRef> dest_block_list;        //  switch from source_block_list to  dest_block_list.
-
-
-            for (const auto &itr : m_cached_blocks) {
-                for (const auto &detail : itr) {
-                    if (current_hash == detail.info.hash() && source_block_list.size() == 0) {
-                        for (const auto &cp : itr) {
-                            source_block_list.push_back(cp);
-                        }
-                    }
-                    if (insert_hash == detail.info.hash() && dest_block_list.size() == 0) {
-                        for (const auto &cp : itr) {
-                            dest_block_list.push_back(cp);
-                        }
-                    }
-
-                }
-            }
-            if (source_block_list.size() == 0 || dest_block_list.size() == 0) {
-                cerror << "cant find data....., will exit.";
-                exit(-1);
-            }
-
-            bool find_common_hash = false;
-            h256 common_hash = Invalid256;
-            VerifiedBlockRef common_block;
-            for (const auto &itr : source_block_list) {
-                for (const auto &to : dest_block_list) {
-                    if (to.info.hash() == itr.info.hash()) {
-                        find_common_hash = true;
-                        common_hash = to.info.hash();
-                        common_block = to;
-                        break;
-                    }
-                }
-            }
-
-            if (!find_common_hash || common_hash == Invalid256) {
-                cwarn << "cant find comment hash ...";
-                //maybe, this is impossible considtion.
-                return false;
-            } else {
-                cwarn << "find common hash : " << toHex(common_hash);
-            }
-            //remove is executed blocks.
-            while (source_block_list.front().info.hash() != common_hash && source_block_list.size()) {
-                source_block_list.pop_front();
-            }
-
-            while (dest_block_list.front().info.hash() != common_hash && dest_block_list.size()) {
-                dest_block_list.pop_front();
-            }
-
-            source_block_list.pop_front();
-            dest_block_list.pop_front();
-
-//            cwarn << "-------------------------------11";
-//            print_route({source_block_list});
-//            print_route({dest_block_list});
-//            cwarn << "-------------------------------11";
-            //find state_root , and then remove them.
-            remove_blocks_from_database(source_block_list, _db, _exdb);
-            rollback_from_database(source_block_list.back(), common_block, source_block_list, _db, _exdb);
-            m_lastBlockHash = common_hash;
-            m_lastBlockNumber = common_block.info.number();
-            cwarn << "current state number: " << info().number() << " state root: " << info().stateRoot() << " hash: " << info().hash();
-            //switch chain, executive
-            auto execute_size = dest_block_list.size() - 1;
-            /// try to execute block on new chain.
-            if(execute_size > 0){
-                for(auto itr : dest_block_list){
-                    execute_size--;
-                    try {
-                        {
-                            if(!m_cached_bytes.count(itr.info.hash())){
-                                cwarn << "cant find block " << itr.info.hash() << " number: " << itr.info.number();
-                                exit(2);
-                            }
-                            itr.block = bytesConstRef(&m_cached_bytes[itr.info.hash()]);
-                            execute_block(itr, _db, _exdb);
-                        }
-                    }catch (...){
-                        cerror << "fork exception :  rollback database error.";
-                    }
-                    if(execute_size == 0){
-                        break;
-                    }
-                }
-            }
-            else{
-                cerror << "dest_block_list size error  .... please check, its important.";
-            }
-            return true;
-        } else {
-            //TODO
-            cerror << "unkown block ,  this block number too height..";
-
-        }
-    }
+//    if (_block.info.parentHash() == info().hash()) {
+//        return true;
+//    } else {
+//        ///dont switch chain, only insert this block to m_cached_blocks
+//        if (_block.info.number() < info().number()) {
+//            cwarn << "only insert , can't switch chain.";
+//            return false;
+//        }
+//        else if(_block.info.number() == info().number()){
+//            //this switch chain on one SysVarlitor dont create one block.
+//            if(_block.info.parentHash() == info().parentHash()){
+//                cwarn << " check miner online , will switch chain. before";
+//                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
+//                    cwarn << " check miner online , will switch chain.22222222222";
+//                }
+//                else if( standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
+//                         && exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+//                    //switch....
+//                    //rollback one.
+//                    cwarn << " check miner online , will switch chain. xxxxxx";
+//                    VerifiedBlockRef current_block;
+//                    VerifiedBlockRef parent_block;
+//
+//                    auto current_hash = info().hash();
+//                    auto parent_hash = info().parentHash();
+//
+//                    for(auto itr : m_cached_blocks){
+//                        for(auto detail : itr){
+//                            if(detail.info.hash() == current_hash){
+//                                current_block = detail;
+//                            }
+//                            if(detail.info.hash() == parent_hash){
+//                                parent_block = detail;
+//                            }
+//                        }
+//                    }
+//
+//                    remove_blocks_from_database({parent_block}, _db, _exdb);
+//                    rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
+//                    cwarn << " check miner online , will switch chain.aaaaaa";
+//                    return true;
+//                }
+//                else if(standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
+//                        && standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+//                    //chose  front miner
+//                    cwarn << " check miner online , will switch chain.333333333333333";
+//                    bool need_switch = false;
+//                    if(info().hash() != _block.info.hash()) {
+//                        for (auto const &val: standby_miners) {
+//                            if (val.m_addr == info().author()) {
+//                                break;
+//                            }
+//                            if (val.m_addr == _block.info.author()) {
+//                                need_switch = true;
+//                                break;
+//                            }
+//                        }
+//                    }
+//                    if (need_switch){
+//                        cwarn << " check highter , will switch chain. xxxxxx";
+//                        VerifiedBlockRef current_block;
+//                        VerifiedBlockRef parent_block;
+//
+//                        auto current_hash = info().hash();
+//                        auto parent_hash = info().parentHash();
+//
+//                        for(auto itr : m_cached_blocks){
+//                            for(auto detail : itr){
+//                                if(detail.info.hash() == current_hash){
+//                                    current_block = detail;
+//                                }
+//                                if(detail.info.hash() == parent_hash){
+//                                    parent_block = detail;
+//                                }
+//                            }
+//                        }
+//
+//                        remove_blocks_from_database({parent_block}, _db, _exdb);
+//                        rollback_from_database(current_block, parent_block, {parent_block, current_block}, _db, _exdb);
+//                        cwarn << " check highter standby , will switch chain.bbbbbbbbbbbbbb";
+//                        return true;
+//                    }
+//                }
+//                else{
+//                    cwarn << " check miner online , will switch chain.444444444444";
+//                    std::ostringstream os;
+//                    os << "exe_miners : ";
+//                    for(auto itr : exe_miners){
+//                        os << " [address " << toHex(itr.m_addr) << " ]";
+//                    }
+//                    os << "\n standby_miners: ";
+//                    for(auto itr : standby_miners){
+//                        os << " [address " << toHex(itr.m_addr) << " ]";
+//                    }
+//                    cwarn << os.str();
+//                }
+//
+//            }
+//            return false;
+//        }
+//        else if (_block.info.number() == info().number() + 1) {
+//            /// this condition , chain must switch.
+//            /*  step 1, we will remove last chain  from same block's hash.
+//             *  step 2, delete executive blocks state and rollback exdb state until same block's hash. then execute new blocks.
+//             *  step 3,, execute newest block for switch new state.
+//             * */
+//            cwarn << "will switch chain, delete state.";
+//            auto current_hash = info().hash();
+//            auto insert_hash = _block.info.hash();
+//
+//            std::list<VerifiedBlockRef> source_block_list;      // source blocks, will switch insert_hash(_block).
+//            std::list<VerifiedBlockRef> dest_block_list;        //  switch from source_block_list to  dest_block_list.
+//
+//
+//            for (const auto &itr : m_cached_blocks) {
+//                for (const auto &detail : itr) {
+//                    if (current_hash == detail.info.hash() && source_block_list.size() == 0) {
+//                        for (const auto &cp : itr) {
+//                            source_block_list.push_back(cp);
+//                        }
+//                    }
+//                    if (insert_hash == detail.info.hash() && dest_block_list.size() == 0) {
+//                        for (const auto &cp : itr) {
+//                            dest_block_list.push_back(cp);
+//                        }
+//                    }
+//
+//                }
+//            }
+//            if (source_block_list.size() == 0 || dest_block_list.size() == 0) {
+//                cerror << "cant find data....., will exit.";
+//                exit(-1);
+//            }
+//
+//            bool find_common_hash = false;
+//            h256 common_hash = Invalid256;
+//            VerifiedBlockRef common_block;
+//            for (const auto &itr : source_block_list) {
+//                for (const auto &to : dest_block_list) {
+//                    if (to.info.hash() == itr.info.hash()) {
+//                        find_common_hash = true;
+//                        common_hash = to.info.hash();
+//                        common_block = to;
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            if (!find_common_hash || common_hash == Invalid256) {
+//                cwarn << "cant find comment hash ...";
+//                //maybe, this is impossible considtion.
+//                return false;
+//            } else {
+//                cwarn << "find common hash : " << toHex(common_hash);
+//            }
+//            //remove is executed blocks.
+//            while (source_block_list.front().info.hash() != common_hash && source_block_list.size()) {
+//                source_block_list.pop_front();
+//            }
+//
+//            while (dest_block_list.front().info.hash() != common_hash && dest_block_list.size()) {
+//                dest_block_list.pop_front();
+//            }
+//
+//            source_block_list.pop_front();
+//            dest_block_list.pop_front();
+//
+////            cwarn << "-------------------------------11";
+////            print_route({source_block_list});
+////            print_route({dest_block_list});
+////            cwarn << "-------------------------------11";
+//            //find state_root , and then remove them.
+//            remove_blocks_from_database(source_block_list, _db, _exdb);
+//            rollback_from_database(source_block_list.back(), common_block, source_block_list, _db, _exdb);
+//            m_lastBlockHash = common_hash;
+//            m_lastBlockNumber = common_block.info.number();
+//            cwarn << "current state number: " << info().number() << " state root: " << info().stateRoot() << " hash: " << info().hash();
+//            //switch chain, executive
+//            auto execute_size = dest_block_list.size() - 1;
+//            /// try to execute block on new chain.
+//            if(execute_size > 0){
+//                for(auto itr : dest_block_list){
+//                    execute_size--;
+//                    try {
+//                        {
+//                            if(!m_cached_bytes.count(itr.info.hash())){
+//                                cwarn << "cant find block " << itr.info.hash() << " number: " << itr.info.number();
+//                                exit(2);
+//                            }
+//                            itr.block = bytesConstRef(&m_cached_bytes[itr.info.hash()]);
+//                            execute_block(itr, _db, _exdb);
+//                        }
+//                    }catch (...){
+//                        cerror << "fork exception :  rollback database error.";
+//                    }
+//                    if(execute_size == 0){
+//                        break;
+//                    }
+//                }
+//            }
+//            else{
+//                cerror << "dest_block_list size error  .... please check, its important.";
+//            }
+//            return true;
+//        } else {
+//            //TODO
+//            cerror << "unkown block ,  this block number too height..";
+//
+//        }
+//    }
 
 
 
@@ -2017,7 +1945,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 
         if(r[1].itemCount() > c_maxSyncTransactions)
 		{
-			BOOST_THROW_EXCEPTION(TooMuchTransaction() 
+			BOOST_THROW_EXCEPTION(TooMuchTransaction()
 								  << errinfo_transactionIndex(r[1].itemCount())
 								  << errinfo_block(_block.toBytes()));
 		}
@@ -2035,7 +1963,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 			std::vector<Transaction> ret_t;
 			Task<bytes, Transaction> task_t(th_num);
 
-            try 
+            try
 			{
 			    task_t.go_task(v_trxb, ret_t, [&_ir](bytes const& b){
 				    return  Transaction(b, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None);
@@ -2085,7 +2013,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
 				++i;
 			}
 		}
-		
+
 	}
     res.block = bytesConstRef(_block);
     return res;

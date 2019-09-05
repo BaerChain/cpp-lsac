@@ -749,7 +749,7 @@ void Client::doWork(bool _doWait)
 
 void Client::tick()
 {
-    if (chrono::system_clock::now() - m_lastTick > chrono::seconds(1))
+    if (chrono::system_clock::now() - m_lastTick > chrono::microseconds(50))
     {
         m_report.ticks++;
         checkWatchGarbage();
@@ -765,7 +765,7 @@ void Client::tick()
 
 void Client::checkWatchGarbage()
 {
-    if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
+    if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(1))
     {
         // watches garbage collection
         vector<unsigned> toUninstall;
