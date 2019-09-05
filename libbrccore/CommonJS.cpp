@@ -1,7 +1,7 @@
 #include "CommonJS.h"
 #include <sstream>
 #include <string>
-
+#include <libbrccore/Exceptions.h>
 namespace dev
 {
 std::string prettyU256(u256 _n, bool _abridged)
@@ -59,7 +59,7 @@ BlockNumber jsToBlockNum(std::string const& _js)
         int i = jsToInt(_js);
         if(i <= 0)
         {
-            throw std::string("error");
+            CHECK_RPC_THROW_INFO("_blockNumber must: latest, earliest, pending or larger -1.")
         }
         return (unsigned)i;
     }
