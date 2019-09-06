@@ -40,6 +40,7 @@ DEV_SIMPLE_EXCEPTION(ExdbChangeFailed);
 DEV_SIMPLE_EXCEPTION(SuccessExChangeFailed);
 DEV_SIMPLE_EXCEPTION(pendingorderAllPriceFiled);
 DEV_SIMPLE_EXCEPTION(receivingincomeFiled);
+DEV_SIMPLE_EXCEPTION(transferAutoExFailed);
 DEV_SIMPLE_EXCEPTION(getVotingCycleFailed);
 DEV_SIMPLE_EXCEPTION(GasPriceTooLow);
 DEV_SIMPLE_EXCEPTION(BlockGasLimitReached);

@@ -434,6 +434,12 @@ void Executive::initialize(Transaction const& _transaction)
 
                 }
                 break;
+				case transationTool::transferAutoEx:
+                {
+                    transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
+                }
+                break;
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
@@ -472,6 +478,7 @@ void Executive::initialize(Transaction const& _transaction)
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
                     m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
 			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
+			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_envInfo.timestamp());
 
 			}
 			catch(VerifyVoteField &ex){
@@ -613,7 +620,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::transferAutoEx:
             {
-
+                m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice());
+                break;
             }
             default:
                 //TODO: unkown null.

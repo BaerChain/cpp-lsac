@@ -100,6 +100,13 @@ namespace dev
                 timestamp = 1
             };
 
+            enum transferAutoExType : uint8_t
+            {
+                NullType = 0,
+                Balancededuction = 1,
+                Transferdeduction = 2
+            };
+
             struct operation
             {
                 virtual ~operation() {}
@@ -299,13 +306,13 @@ namespace dev
             struct transferAutoEx_operation : public operation
             {
                 op_type m_type;
-                uint8_t m_autoExType;
+                transferAutoExType m_autoExType;
                 u256 m_autoExNum;
                 u256 m_transferNum;
                 Address m_from;
                 Address m_to;
                 transferAutoEx_operation(){}
-                transferAutoEx_operation(op_type _type, uint8_t _autoExType, u256 _autoExNum, u256 _transferNum, Address _from, Address _to) :
+                transferAutoEx_operation(op_type _type, transferAutoExType _autoExType, u256 _autoExNum, u256 _transferNum, Address _from, Address _to) :
                 m_type(_type),
                 m_autoExType(_autoExType),
                 m_autoExNum(_autoExNum),
