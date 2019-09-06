@@ -788,8 +788,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
 
 
-    assert(exe_miners.size() != 0);
-    assert(standby_miners.size() != 0);
+    //assert(exe_miners.size() != 0);
+    //assert(standby_miners.size() != 0);
 
     ///verify the miner Legitimacy
     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){

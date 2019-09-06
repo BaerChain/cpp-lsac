@@ -305,8 +305,8 @@ namespace dev
 
             struct transferAutoEx_operation : public operation
             {
-                op_type m_type;
-                transferAutoExType m_autoExType;
+                uint8_t m_type;
+                uint8_t m_autoExType;
                 u256 m_autoExNum;
                 u256 m_transferNum;
                 Address m_from;

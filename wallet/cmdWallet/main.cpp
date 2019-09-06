@@ -148,16 +148,22 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
     try {
         js::mValue val;
+                                std::cout << "123123" << std::endl;
         js::read_string_or_throw(contentsString(path.string()), val);
+                                std::cout << "123123" << std::endl;
         js::mObject obj = val.get_obj();
-
+                              std::cout << "123123" << std::endl;
         std::vector<trx_source> trx_datas;
         //获取数据
         if (obj.count("source")) {
             auto array = obj["source"].get_array();
+
+                                          std::cout << "123123" << std::endl;
             for (auto &data : array) {
 				trx_source tx;
+                                              std::cout << "123123" << std::endl;
                 auto d_obj = data.get_obj();
+                                std::cout << "123123" << std::endl;
                 tx.from = Address(d_obj[DATA_KEY_FROM].get_str());
                 tx.to = Address(d_obj[DATA_KEY_TO].get_str());
                 tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
@@ -165,9 +171,11 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
 				tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
 				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));   // must same with genesis chainId
+                                std::cout << "123123" << std::endl;
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
                     auto type = op_obj["type"].get_int();
+                    std::cout << "123123" << std::endl;
                     switch (type) {
                         case vote: {
                             auto new_op = new vote_operation((op_type) type,
@@ -242,6 +250,19 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
 						}
+                        case transferAutoEx:{
+                            std::cout << "123123" << std::endl;
+                            auto transferAutoEx_op = new transferAutoEx_operation( (op_type) type,
+                                        transationTool::transferAutoExType(op_obj["m_autoExType"].get_int()),
+                                        u256(op_obj["m_autoExNum"].get_str()),
+                                        u256(op_obj["m_transferNum"].get_str()),
+                                        Address(op_obj["m_from"].get_str()),
+                                        Address(op_obj["m_to"].get_str())
+                            );
+                             std::cout << "123123" << std::endl;
+                            tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
+                            break;
+                        }
 					}
                 }
                 trx_datas.push_back(tx);
@@ -250,7 +271,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
             std::cout << "not find source.\n";
             exit(1);
         }
-
+        std::cout << "123" << std::endl;
         //获取私钥
 
         std::map<Address, Secret> keys;
@@ -295,8 +316,8 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
                 brc::Transaction sign_t(ts, keys[t.from]);
 
-//                auto sssss = dev::brc::toJson(sign_t);
-//                cerror << "test: " << sssss << std::endl;
+                auto sssss = dev::brc::toJson(sign_t);
+                cerror << "test: " << sssss << std::endl;
                 if (_is_send) {
                     sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
                 }
@@ -400,7 +421,9 @@ int main(int argc, char *argv[]) {
             _ip = args_map["send"].as<std::string>();
         }
         if (args_map.count("json")) {
+            std::cout << "123" << std::endl;
             json_path = args_map["json"].as<bfs1::path>();
+            std::cout << "123" << std::endl;
             sign_trx_from_json(json_path, _is_send, _ip);
             return 0;
         }

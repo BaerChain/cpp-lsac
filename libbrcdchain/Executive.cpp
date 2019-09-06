@@ -448,7 +448,7 @@ void Executive::initialize(Transaction const& _transaction)
                     break;
                 }
 
-				if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost){
+				if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost && _type != transationTool::transferAutoEx){
 					LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
 						<< " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
 						<< m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
@@ -466,7 +466,7 @@ void Executive::initialize(Transaction const& _transaction)
 				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;
-			//
+			//_type
 
 			try{
 				if(m_batch_params._type == transationTool::op_type::vote)
