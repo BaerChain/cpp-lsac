@@ -393,6 +393,10 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
         {
             BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Initiating transaction address is inconsistent with operation address")));
         }
+        if(_autoExop->m_autoExNum % 10000 > 0)
+        {
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Pending order accuracy cannot be greater than 4 digits accuracy")));
+        }
         if(_autoExop->m_autoExType == transationTool::transferAutoExType::Balancededuction)
         {
             if(_autoExop->m_transferNum + _autoExop->m_autoExNum > m_state.BRC(_from))

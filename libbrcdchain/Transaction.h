@@ -91,7 +91,8 @@ namespace dev
                     {deployContract, 0},
                     {executeContract, 0},
                     {changeMiner, 0},
-                    {receivingincome, 0}
+                    {receivingincome, 0},
+                    {transferAutoEx, 20000}
             };
 
             enum dividendcycle : uint8_t
