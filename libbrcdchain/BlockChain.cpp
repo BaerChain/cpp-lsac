@@ -1662,34 +1662,33 @@ void BlockChain::garbageCollect(bool _force) {
             cnote << "will clear old data...";
             int64_t curr_num = info().number();
             int64_t height = 100;
-            std::set<h256> will_clear;
+            std::set<h256> blocks_clear;
+            std::set<h256> details_clear;
+            std::set<h256> receipts_clear;
 
             for(auto const& b : m_blocks){
                 if (curr_num - height > info(b.first).number()){
-                    will_clear.insert(b.first);
+                    blocks_clear.insert(b.first);
                 }
             }
-            for(auto const& h: will_clear){
-                m_blocks.erase(h);
-            }
-
-            will_clear.clear();
             for(auto const& b : m_details){
                 if (curr_num - height > info(b.first).number()){
-                    will_clear.insert(b.first);
+                    details_clear.insert(b.first);
                 }
             }
-            for(auto const& h: will_clear){
-                m_details.erase(h);
-            }
-
-            will_clear.clear();
             for(auto const& b : m_receipts){
                 if (curr_num - height > info(b.first).number()){
-                    will_clear.insert(b.first);
+                    receipts_clear.insert(b.first);
                 }
             }
-            for(auto const& h: will_clear){
+
+            for(auto const& h: blocks_clear){
+                m_blocks.erase(h);
+            }
+            for(auto const& h: details_clear){
+                m_details.erase(h);
+            }
+            for(auto const& h: receipts_clear){
                 m_receipts.erase(h);
             }
 
