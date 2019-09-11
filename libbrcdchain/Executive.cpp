@@ -236,7 +236,7 @@ void Executive::initialize(Transaction const& _transaction)
             m_excepted = TransactionException::InvalidSignature;
             throw;
         }
-        if (m_t.nonce() < nonceReq)
+        if (m_t.nonce() != nonceReq)
         {
             cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                               << nonceReq << " Got " << m_t.nonce();
