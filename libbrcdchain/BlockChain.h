@@ -326,6 +326,8 @@ public:
 
 	unsigned int getMaxSealTransaction() const { return c_maxSyncTransactions; }
 
+	void debugContainsSize();
+
 private:
 
 

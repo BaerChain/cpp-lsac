@@ -764,6 +764,7 @@ void Client::tick()
         m_debugTick =chrono::system_clock::now();
         m_bq.debugContainerSize();
         m_tq.debugContainerSize();
+        m_bc.debugContainsSize();
     }
 }
 

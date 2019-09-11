@@ -2039,3 +2039,15 @@ unsigned BlockChain::chainStartBlockNumber() const {
     auto const value = m_extrasDB->lookup(c_sliceChainStart);
     return value.empty() ? 0 : number(h256(value, h256::FromBinary));
 }
+
+void BlockChain::debugContainsSize(){
+    cout << "BlockChain m_blocks:"<< m_blocks.size();
+    cout << "BlockChain m_details:"<< m_details.size();
+    cout << "BlockChain m_logBlooms:"<< m_logBlooms.size();
+    cout << "BlockChain m_receipts:"<< m_receipts.size();
+    cout << "BlockChain m_transactionAddresses:"<< m_transactionAddresses.size();
+    cout << "BlockChain m_blockHashes:"<< m_blockHashes.size();
+    cout << "BlockChain m_blocksBlooms:"<< m_blocksBlooms.size();
+    cout << "BlockChain m_cached_blocks:"<< m_cached_blocks.size();
+    cout << "BlockChain m_cached_bytes:"<< m_cached_bytes.size();
+}
