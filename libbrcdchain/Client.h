@@ -363,6 +363,8 @@ protected:
                                                  ///< the DB
     Signal<bytes const&> m_onBlockSealed;        ///< Called if we have sealed a new block
 
+    mutable std::chrono::system_clock::time_point m_debugTick = std::chrono::system_clock::now();
+
     Logger m_logger{createLogger(VerbosityInfo, "client")};
     Logger m_loggerDetail{createLogger(VerbosityDebug, "client")};
 };

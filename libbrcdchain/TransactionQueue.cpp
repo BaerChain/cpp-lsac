@@ -335,6 +335,16 @@ void TransactionQueue::clear()
     m_futureSize = 0;
 }
 
+void TransactionQueue::debugContainerSize(){
+    cnote << "TransactionQueue ContainerSize:";
+    cnote << "TransactionQueue m_known:" << m_known.size();
+    cnote << "TransactionQueue m_current:" << m_current.size();
+    cnote << "TransactionQueue _dropped:" << m_dropped.size();
+    cnote << "TransactionQueue m_currentByAddressAndNonce:" << m_currentByAddressAndNonce.size();
+    cnote << "TransactionQueue m_currentByHash:" << m_currentByHash.size();
+    cnote << "TransactionQueue m_future:" << m_future.size();
+}
+
 void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
 {
     bool queued = false;

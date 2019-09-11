@@ -62,6 +62,20 @@ void BlockQueue::clear()
     m_drainingDifficulty = 0;
 }
 
+void BlockQueue::debugContainerSize(){
+    cnote << "BlockQueue ContainerSize:";
+    cnote << "BlockQueue m_readySet:" << m_readySet.size();
+    cnote << "BlockQueue m_drainingSet:" << m_drainingSet.size();
+    cnote << "BlockQueue m_verified:" << m_verified.size();
+    cnote << "BlockQueue m_unverified:" << m_unverified.size();
+    cnote << "BlockQueue m_verifying:" << m_verifying.size();
+    cnote << "BlockQueue m_readySet:" << m_readySet.size();
+    cnote << "BlockQueue m_unknownSet:" << m_unknownSet.size();
+    cnote << "BlockQueue m_unknown:" << m_unknown.size();
+    cnote << "BlockQueue m_future:" << m_future.size();
+    cnote << "BlockQueue m_futureSet:" << m_futureSet.size();
+}
+
 void BlockQueue::verifierBody()
 {
     while (!m_deleting)

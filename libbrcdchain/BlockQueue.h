@@ -244,6 +244,8 @@ public:
     /// Clear everything.
     void clear();
 
+    void debugContainerSize();
+
     /// Stop all activity, leaves the class in limbo, waiting for destruction
     void stop();
 
