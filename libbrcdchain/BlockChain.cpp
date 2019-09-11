@@ -1603,58 +1603,6 @@ void BlockChain::updateStats() const {
 void BlockChain::garbageCollect(bool _force) {
     updateStats();
 
-    if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
-        m_lastStats.memTotal() < c_maxCacheSize)
-        return;
-    if (m_lastStats.memTotal() < c_minCacheSize)
-        return;
-
-    m_lastCollection = chrono::system_clock::now();
-
-    Guard l(x_cacheUsage);
-    for (CacheID const &id: m_cacheUsage.back()) {
-        m_inUse.erase(id);
-        // kill i from cache.
-        switch (id.second) {
-            case (unsigned) -1: {
-                WriteGuard l(x_blocks);
-                m_blocks.erase(id.first);
-                break;
-            }
-            case ExtraDetails: {
-                WriteGuard l(x_details);
-                m_details.erase(id.first);
-                break;
-            }
-            case ExtraBlockHash: {
-                // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the second noteUsed() in BlockChain.h, which is a no-op.
-                assert(false);
-                break;
-            }
-            case ExtraReceipts: {
-                WriteGuard l(x_receipts);
-                m_receipts.erase(id.first);
-                break;
-            }
-            case ExtraLogBlooms: {
-                WriteGuard l(x_logBlooms);
-                m_logBlooms.erase(id.first);
-                break;
-            }
-            case ExtraTransactionAddress: {
-                WriteGuard l(x_transactionAddresses);
-                m_transactionAddresses.erase(id.first);
-                break;
-            }
-            case ExtraBlocksBlooms: {
-                WriteGuard l(x_blocksBlooms);
-                m_blocksBlooms.erase(id.first);
-                break;
-            }
-        }
-    }
-    m_cacheUsage.pop_back();
-    m_cacheUsage.push_front(std::unordered_set<CacheID>{});
     {
         ///tick to erase old data
         ///m_blocks  m_details m_receipts
@@ -1695,6 +1643,65 @@ void BlockChain::garbageCollect(bool _force) {
             m_tickClearOld = std::chrono::system_clock::now();
         }
     }
+
+    if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
+        m_lastStats.memTotal() < c_maxCacheSize)
+        return;
+    if (m_lastStats.memTotal() < c_minCacheSize)
+        return;
+
+    m_lastCollection = chrono::system_clock::now();
+
+    Guard l(x_cacheUsage);
+    for (CacheID const &id: m_cacheUsage.back()) {
+        m_inUse.erase(id);
+        // kill i from cache.
+        switch (id.second) {
+            case (unsigned) -1: {
+                WriteGuard l(x_blocks);
+                if(m_blocks.count(id.first))
+                    m_blocks.erase(id.first);
+                break;
+            }
+            case ExtraDetails: {
+                WriteGuard l(x_details);
+                if(m_details.count(id.first))
+                    m_details.erase(id.first);
+                break;
+            }
+            case ExtraBlockHash: {
+                // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the second noteUsed() in BlockChain.h, which is a no-op.
+                assert(false);
+                break;
+            }
+            case ExtraReceipts: {
+                WriteGuard l(x_receipts);
+                if(m_receipts.count(id.first))
+                    m_receipts.erase(id.first);
+                break;
+            }
+            case ExtraLogBlooms: {
+                WriteGuard l(x_logBlooms);
+                if(m_logBlooms.count(id.first))
+                    m_logBlooms.erase(id.first);
+                break;
+            }
+            case ExtraTransactionAddress: {
+                WriteGuard l(x_transactionAddresses);
+                if(m_transactionAddresses.count(id.first))
+                    m_transactionAddresses.erase(id.first);
+                break;
+            }
+            case ExtraBlocksBlooms: {
+                WriteGuard l(x_blocksBlooms);
+                if(m_blocksBlooms.count(id.first))
+                    m_blocksBlooms.erase(id.first);
+                break;
+            }
+        }
+    }
+    m_cacheUsage.pop_back();
+    m_cacheUsage.push_front(std::unordered_set<CacheID>{});
 }
 
 void BlockChain::checkConsistency() {
