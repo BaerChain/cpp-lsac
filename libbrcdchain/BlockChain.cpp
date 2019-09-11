@@ -1655,6 +1655,47 @@ void BlockChain::garbageCollect(bool _force) {
     }
     m_cacheUsage.pop_back();
     m_cacheUsage.push_front(std::unordered_set<CacheID>{});
+    {
+        ///tick to erase old data
+        ///m_blocks  m_details m_receipts
+        if (m_tickClearOld - std::chrono::system_clock::now() >= chrono::seconds(20) ){
+            cnote << "will clear old data...";
+            int64_t curr_num = info().number();
+            int64_t height = 100;
+            std::set<h256> will_clear;
+
+            for(auto const& b : m_blocks){
+                if (curr_num - height > info(b.first).number()){
+                    will_clear.insert(b.first);
+                }
+            }
+            for(auto const& h: will_clear){
+                m_blocks.erase(h);
+            }
+
+            will_clear.clear();
+            for(auto const& b : m_details){
+                if (curr_num - height > info(b.first).number()){
+                    will_clear.insert(b.first);
+                }
+            }
+            for(auto const& h: will_clear){
+                m_details.erase(h);
+            }
+
+            will_clear.clear();
+            for(auto const& b : m_receipts){
+                if (curr_num - height > info(b.first).number()){
+                    will_clear.insert(b.first);
+                }
+            }
+            for(auto const& h: will_clear){
+                m_receipts.erase(h);
+            }
+
+            m_tickClearOld = std::chrono::system_clock::now();
+        }
+    }
 }
 
 void BlockChain::checkConsistency() {

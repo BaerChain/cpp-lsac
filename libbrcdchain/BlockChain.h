@@ -467,6 +467,8 @@ private:
 
 	static const unsigned c_maxSyncTransactions = 1000;
 
+    std::chrono::system_clock::time_point m_tickClearOld = std::chrono::system_clock::now();
+
     mutable Logger m_logger{createLogger(VerbosityDebug, "chain")};
     mutable Logger m_loggerDetail{createLogger(VerbosityTrace, "chain")};
 	mutable Logger m_loggerError { createLogger(VerbosityError, "chain") };

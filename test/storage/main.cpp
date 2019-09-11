@@ -12,6 +12,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <fstream>
+#include <libbrcdchain/BlockDetails.h>
 
 
 using namespace dev;
@@ -175,9 +176,12 @@ void test_fill(){
 }
 
 int main(int arg, char * argv[]){
-    OverlayDB db;
-    initSecureTrieDB("root", db);
-    test1000message("root");
+//    OverlayDB db;
+//    initSecureTrieDB("root", db);
+//    test1000message("root");
+    cout << sizeof(BlockHeader) << endl;
+    cout << sizeof(dev::brc::BlockDetails) <<endl;
+    cout << sizeof(dev::brc::BlockLogBlooms)<<endl;
     return  0;
 }
 
