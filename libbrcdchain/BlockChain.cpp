@@ -2050,4 +2050,5 @@ void BlockChain::debugContainsSize(){
     cnote << "BlockChain m_blocksBlooms:"<< m_blocksBlooms.size();
     cnote << "BlockChain m_cached_blocks:"<< m_cached_blocks.size();
     cnote << "BlockChain m_cached_bytes:"<< m_cached_bytes.size();
+    cnote << "m_cacheUsage m_cached_bytes" << m_cached_bytes.size();
 }
