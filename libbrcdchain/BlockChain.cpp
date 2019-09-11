@@ -2041,13 +2041,13 @@ unsigned BlockChain::chainStartBlockNumber() const {
 }
 
 void BlockChain::debugContainsSize(){
-    cout << "BlockChain m_blocks:"<< m_blocks.size();
-    cout << "BlockChain m_details:"<< m_details.size();
-    cout << "BlockChain m_logBlooms:"<< m_logBlooms.size();
-    cout << "BlockChain m_receipts:"<< m_receipts.size();
-    cout << "BlockChain m_transactionAddresses:"<< m_transactionAddresses.size();
-    cout << "BlockChain m_blockHashes:"<< m_blockHashes.size();
-    cout << "BlockChain m_blocksBlooms:"<< m_blocksBlooms.size();
-    cout << "BlockChain m_cached_blocks:"<< m_cached_blocks.size();
-    cout << "BlockChain m_cached_bytes:"<< m_cached_bytes.size();
+    cnote << "BlockChain m_blocks:"<< m_blocks.size();
+    cnote << "BlockChain m_details:"<< m_details.size();
+    cnote << "BlockChain m_logBlooms:"<< m_logBlooms.size();
+    cnote << "BlockChain m_receipts:"<< m_receipts.size();
+    cnote << "BlockChain m_transactionAddresses:"<< m_transactionAddresses.size();
+    cnote << "BlockChain m_blockHashes:"<< m_blockHashes.size();
+    cnote << "BlockChain m_blocksBlooms:"<< m_blocksBlooms.size();
+    cnote << "BlockChain m_cached_blocks:"<< m_cached_blocks.size();
+    cnote << "BlockChain m_cached_bytes:"<< m_cached_bytes.size();
 }

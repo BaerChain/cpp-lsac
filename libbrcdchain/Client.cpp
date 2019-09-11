@@ -762,8 +762,8 @@ void Client::tick()
     }
     if (chrono::system_clock::now() - m_debugTick > chrono::seconds(10)){
         m_debugTick =chrono::system_clock::now();
-        m_bq.debugContainerSize();
-        m_tq.debugContainerSize();
+        //m_bq.debugContainerSize();
+        //m_tq.debugContainerSize();
         m_bc.debugContainsSize();
     }
 }
