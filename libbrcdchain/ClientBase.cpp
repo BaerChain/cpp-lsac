@@ -175,6 +175,66 @@ Json::Value dev::brc::ClientBase::electorMessage(BlockNumber _block) const
 	return blockByNumber(_block).mutableState().electorMessage(ZeroAddress);
 }
 
+Json::Value dev::brc::ClientBase::emtimateGasUsed(const Json::Value& _json, BlockNumber _blockNum)
+{
+    if (!_json.isObject() || _json.empty())
+    {
+        throw;
+    }
+
+    Address _from;
+    Address _to;
+    u256 _value = 0;
+    bytes _data;
+
+    if(!_json["from"].empty())
+    {
+        _from = Address(_json["from"].asString());
+    }else{
+        throw;
+    }
+
+    if(!_json["to"].empty())
+    {
+        _to = Address(_json["to"].asString());
+    }else{
+        throw;
+    }
+
+    if(!_json["value"].empty())
+    {
+        _value = jsToU256(_json["value"].asString());
+    }else{
+        throw;
+    }
+
+    if(!_json["data"].empty())
+    {
+        _data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+    }else{
+        throw;
+    }
+
+    u256 _baseGas = (u256)Transaction::baseGasRequired(!_from, &_data, BRCSchedule());
+    RLP _r(_data);
+    std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
+    transationTool::op_type _beginType = transationTool::op_type::null;
+    std::set<transationTool::op_type> _set;
+    for(auto const& _val : _bytesV)
+    {
+        transationTool::op_type _type = transationTool::operation::get_type(_val);
+        if(!_set.count(_type) && _set.size() == 0)
+        {
+            _set.insert(_type);
+            _baseGas += transationTool::c_add_value[_type];
+        }
+    }
+
+    Json::Value _ret;
+    _ret["emtimateGasUsed"] = toJS(_baseGas);
+    return _ret;
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {
