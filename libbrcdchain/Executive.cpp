@@ -237,7 +237,7 @@ void Executive::initialize(Transaction const& _transaction)
             throw;
         }
 
-        if(m_envInfo.number() <= 1734000){
+        if(m_envInfo.number() <= 1740000){
             if (m_t.nonce() < nonceReq)
             {
                 cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
