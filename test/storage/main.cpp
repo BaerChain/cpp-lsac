@@ -11,6 +11,7 @@
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
+#include <fstream>
 
 
 using namespace dev;
@@ -122,9 +123,40 @@ void initSecureTrieDB(std::string root, OverlayDB& db){
     auto ret = m_state[u256(hex_vote)];
     std::cout << "\n root ret:"<< poputate(ret) << endl;
 
-    insert10message(m_state);
+    //insert10message(m_state);
     m_state.db()->commit();
+    //m_state.close();
 
+}
+
+std::map<Address , u256> createAddress(int num){
+    std::fstream fs;
+    fs.open("test_address.txt", ios::in );
+    if (!fs){
+        fs.open("test_address.txt", ios::out);
+    }
+    std::map<Address , u256> ads;
+    for (int i =0; i < 1000; i++){
+        auto key_pair = KeyPair::create();
+        auto sec = key_pair.secret();
+        ads[key_pair.address()] = i+1;
+        fs << dev::toString(key_pair.address()) << "  "<< dev::toString(i+1);
+    }
+    return  ads;
+}
+
+
+void test1000message(string const& root){
+    auto  db = State::openDB(boost::filesystem::path("./testStoreDb"), dev::sha3(root), WithExisting::Trust);
+    SecureTrieDB<h256, OverlayDB> m_state(&db);
+    //std::cout << poputate(stateDb[fromAddress(a.first)]) << endl;
+    std::map<Address , u256> ads = createAddress(1000);
+    cout << "start insert..."<<endl;
+    int64_t time1 = utcTimeMilliSec();
+    for(auto const& a :ads){
+        m_state.insert(fromAddress(a.first), rlp(createValue(a.first, a.second)));
+    }
+    cout << "insert use time:"<< utcTimeMilliSec() - time1 <<endl;
 }
 
 void test_fill(){
@@ -145,6 +177,7 @@ void test_fill(){
 int main(int arg, char * argv[]){
     OverlayDB db;
     initSecureTrieDB("root", db);
+    test1000message("root");
     return  0;
 }
 
