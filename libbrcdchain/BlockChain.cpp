@@ -1630,23 +1630,18 @@ void BlockChain::garbageCollect(bool _force) {
                     receipts_clear.insert(b.first);
                 }
             }
-            for(auto const& b : m_blocksBlooms){
-                if (curr_num - height > info(b.first).number()){
-                    blooms_clear.insert(b.first);
-                }
-            }
 
+            WriteGuard l_block(x_blocks);
             for(auto const& h: blocks_clear){
                 m_blocks.erase(h);
             }
+            WriteGuard l_details(x_details);
             for(auto const& h: details_clear){
                 m_details.erase(h);
             }
+            WriteGuard l_recept(x_receipts);
             for(auto const& h: receipts_clear){
                 m_receipts.erase(h);
-            }
-            for(auto const& h: blooms_clear){
-                m_blocksBlooms.erase(h);
             }
 
             m_tickClearOld = std::chrono::system_clock::now();
