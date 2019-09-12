@@ -610,7 +610,7 @@ public:
     virtual bool brc_notePassword(const std::string& param1) = 0;
     virtual Json::Value brc_syncing() = 0;
     virtual std::string brc_estimateGas(const Json::Value& param1) = 0;
-    virtual Json::Value brc_estimateGas(const Json::Value& param1) = 0;
+    virtual Json::Value brc_estimateGasUsed(const Json::Value& param1) = 0;
     virtual std::string brc_chainId() = 0;
 				virtual Json::Value brc_getObtainVote(const std::string& param1, const std::string& param2) = 0;
 				virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;

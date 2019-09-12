@@ -884,15 +884,15 @@ Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
 	}
 }
 
-Json::Value dev::rpc::Brc::brc_estimateGasUsed(const std::string &_json)
+Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
 {
     try
     {
-        return client()->emtimateGasUsed(_json);
+        return client()->estimateGasUsed(_json, PendingBlock);
     }
     catch(...)
     {
-        BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This is not a correct Json"));
+        BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This is not a correct Json")));
     }
     
 }
