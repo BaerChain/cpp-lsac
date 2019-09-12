@@ -1256,9 +1256,9 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         // Most of the time these two will be equal - only when we're doing a chain revert will they not be
         if (common != last)
             DEV_READ_GUARDED(x_lastBlockHash)clearCachesDuringChainReversion(number(common) + 1);
-//        {
-//            DEV_READ_GUARDED(x_lastBlockHash)clearCachesDuringChainReversion(number(last));
-//        }
+        {
+            DEV_READ_GUARDED(x_lastBlockHash)clearCachesDuringChainReversion(number(last));
+        }
         // Go through ret backwards (i.e. from new head to common) until hash != last.parent and
         // update m_transactionAddresses, m_blockHashes
         for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i) {
@@ -1432,6 +1432,7 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end) {
     // model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
 
     // algorithm doesn't have the best memoisation coherence, but eh well...
+    m_blocksBlooms.clear();
     unsigned beginDirty = _begin;
     unsigned endDirty = _end;
     for (unsigned level = 0; level < c_bloomIndexLevels; level++, beginDirty /= c_bloomIndexSize, endDirty =
