@@ -1606,7 +1606,7 @@ void BlockChain::garbageCollect(bool _force) {
     {
         ///tick to erase old data
         ///m_blocks  m_details m_receipts
-        if (m_tickClearOld - std::chrono::system_clock::now() >= chrono::seconds(20) ){
+        if ( std::chrono::system_clock::now() - m_tickClearOld >= chrono::seconds(20) ){
             cnote << "will clear old data...";
             int64_t curr_num = info().number();
             int64_t height = 100;
