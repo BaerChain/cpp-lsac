@@ -1613,6 +1613,7 @@ void BlockChain::garbageCollect(bool _force) {
             std::set<h256> blocks_clear;
             std::set<h256> details_clear;
             std::set<h256> receipts_clear;
+            std::set<h256> blooms_clear;
 
             for(auto const& b : m_blocks){
                 if (curr_num - height > info(b.first).number()){
@@ -1629,6 +1630,11 @@ void BlockChain::garbageCollect(bool _force) {
                     receipts_clear.insert(b.first);
                 }
             }
+            for(auto const& b : m_blocksBlooms){
+                if (curr_num - height > info(b.first).number()){
+                    blooms_clear.insert(b.first);
+                }
+            }
 
             for(auto const& h: blocks_clear){
                 m_blocks.erase(h);
@@ -1638,6 +1644,9 @@ void BlockChain::garbageCollect(bool _force) {
             }
             for(auto const& h: receipts_clear){
                 m_receipts.erase(h);
+            }
+            for(auto const& h: blooms_clear){
+                m_blocksBlooms.erase(h);
             }
 
             m_tickClearOld = std::chrono::system_clock::now();
