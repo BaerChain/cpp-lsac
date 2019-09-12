@@ -596,6 +596,10 @@ public:
 
     void changeVoteData(BlockHeader const& _header);
 
+    void logState() {
+        cerror << "m_cache size:" << m_cache.size();
+        cerror << "m_unchangedCacheEntries size:" << m_unchangedCacheEntries.size();
+    };
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
