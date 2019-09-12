@@ -1432,7 +1432,7 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end) {
     // model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
 
     // algorithm doesn't have the best memoisation coherence, but eh well...
-    m_blocksBlooms.clear();
+    //m_blocksBlooms.clear();
     unsigned beginDirty = _begin;
     unsigned endDirty = _end;
     for (unsigned level = 0; level < c_bloomIndexLevels; level++, beginDirty /= c_bloomIndexSize, endDirty =
