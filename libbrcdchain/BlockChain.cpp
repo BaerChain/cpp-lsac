@@ -1605,60 +1605,60 @@ void BlockChain::updateStats() const {
 void BlockChain::garbageCollect(bool _force) {
     updateStats();
 
-//    {
-//        ///tick to erase old data
-//        ///m_blocks  m_details m_receipts
-//        if ( std::chrono::system_clock::now() - m_tickClearOld >= chrono::seconds(20) ){
-//            cnote << "will clear old data...";
-//            int64_t curr_num = info().number();
-//            int64_t height = 100;
-//            std::set<h256> blocks_clear;
-//            std::set<h256> details_clear;
-//            std::set<h256> receipts_clear;
-//            std::set<h256> blooms_clear;
-//            std::set<int64_t > block_nums;
-//
-//            for(auto const& b : m_blocks){
-//                if (curr_num - height > info(b.first).number()){
-//                    blocks_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_details){
-//                if (curr_num - height > info(b.first).number()){
-//                    details_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_receipts){
-//                if (curr_num - height > info(b.first).number()){
-//                    receipts_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_blockHashes){
-//                if (curr_num - height > info(b.second.value).number()){
-//                    block_nums.insert(b.first);
-//                }
-//            }
-//
-//            WriteGuard l_block(x_blocks);
-//            for(auto const& h: blocks_clear){
-//                m_blocks.erase(h);
-//            }
-//            WriteGuard l_details(x_details);
-//            for(auto const& h: details_clear){
-//                m_details.erase(h);
-//            }
-//            WriteGuard l_recept(x_receipts);
-//            for(auto const& h: receipts_clear){
-//                m_receipts.erase(h);
-//            }
-//            WriteGuard l_blockHashs(x_blockHashes);
-//            for(auto const& h: block_nums){
-//                m_blockHashes.erase(h);
-//            }
-//
-//            m_tickClearOld = std::chrono::system_clock::now();
-//        }
-//    }
+    {
+        ///tick to erase old data
+        ///m_blocks  m_details m_receipts
+        if ( std::chrono::system_clock::now() - m_tickClearOld >= chrono::seconds(20) ){
+            cnote << "will clear old data...";
+            int64_t curr_num = info().number();
+            int64_t height = 100;
+            std::set<h256> blocks_clear;
+            std::set<h256> details_clear;
+            std::set<h256> receipts_clear;
+            std::set<h256> blooms_clear;
+            std::set<int64_t > block_nums;
+
+            for(auto const& b : m_blocks){
+                if (curr_num - height > info(b.first).number()){
+                    blocks_clear.insert(b.first);
+                }
+            }
+            for(auto const& b : m_details){
+                if (curr_num - height > info(b.first).number()){
+                    details_clear.insert(b.first);
+                }
+            }
+            for(auto const& b : m_receipts){
+                if (curr_num - height > info(b.first).number()){
+                    receipts_clear.insert(b.first);
+                }
+            }
+            for(auto const& b : m_blockHashes){
+                if (curr_num - height > info(b.second.value).number()){
+                    block_nums.insert(b.first);
+                }
+            }
+
+            WriteGuard l_block(x_blocks);
+            for(auto const& h: blocks_clear){
+                m_blocks.erase(h);
+            }
+            WriteGuard l_details(x_details);
+            for(auto const& h: details_clear){
+                m_details.erase(h);
+            }
+            WriteGuard l_recept(x_receipts);
+            for(auto const& h: receipts_clear){
+                m_receipts.erase(h);
+            }
+            WriteGuard l_blockHashs(x_blockHashes);
+            for(auto const& h: block_nums){
+                m_blockHashes.erase(h);
+            }
+
+            m_tickClearOld = std::chrono::system_clock::now();
+        }
+    }
 
     if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
         m_lastStats.memTotal() < c_maxCacheSize)
