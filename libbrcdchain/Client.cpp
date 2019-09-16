@@ -389,6 +389,8 @@ void Client::syncBlockQueue()
         auto last_tx = bc().transactions(last_hash);
 
         auto late = utcTimeMilliSec() - last.timestamp();
+        Block b(bc(), m_stateDB, m_StateExDB );
+        b.mutableState().logState();
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 
