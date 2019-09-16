@@ -1634,7 +1634,7 @@ void BlockChain::garbageCollect(bool _force) {
                 }
             }
             for(auto const& b : m_blockHashes){
-                if (curr_num - height > info(b.second).number()){
+                if (curr_num - height > info(b.second.value).number()){
                     block_nums.insert(b.first);
                 }
             }
