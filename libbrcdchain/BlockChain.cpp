@@ -1616,7 +1616,7 @@ void BlockChain::garbageCollect(bool _force) {
             std::set<h256> details_clear;
             std::set<h256> receipts_clear;
             std::set<h256> blooms_clear;
-            std:;set<h256> block_hashs;
+            std:;set<int64_t > block_nums;
 
             for(auto const& b : m_blocks){
                 if (curr_num - height > info(b.first).number()){
@@ -1634,8 +1634,8 @@ void BlockChain::garbageCollect(bool _force) {
                 }
             }
             for(auto const& b : m_blockHashes){
-                if (curr_num - height > info(b.first).number()){
-                    block_hashs.insert(b.first);
+                if (curr_num - height > info(b.second).number()){
+                    block_nums.insert(b.first);
                 }
             }
 
@@ -1652,7 +1652,7 @@ void BlockChain::garbageCollect(bool _force) {
                 m_receipts.erase(h);
             }
             WriteGuard l_blockHashs(x_blockHashes);
-            for(auto const& h: block_hashs){
+            for(auto const& h: block_nums){
                 m_blockHashes.erase(h);
             }
 
