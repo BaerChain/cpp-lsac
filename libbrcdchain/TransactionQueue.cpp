@@ -343,6 +343,7 @@ void TransactionQueue::debugContainerSize(){
     cnote << "TransactionQueue m_currentByAddressAndNonce:" << m_currentByAddressAndNonce.size();
     cnote << "TransactionQueue m_currentByHash:" << m_currentByHash.size();
     cnote << "TransactionQueue m_future:" << m_future.size();
+    cnote << "TransactionQueue m_unverified:" << m_unverified.size();
 }
 
 void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)

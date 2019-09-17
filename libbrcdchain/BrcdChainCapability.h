@@ -176,6 +176,7 @@ private:
 
     std::shared_ptr<BlockChainSync> m_sync;
     std::atomic<time_t> m_lastTick = { 0 };
+    std::atomic<time_t> m_lastTickDebug = { 0 };
 
     std::unique_ptr<BrcdChainHostDataFace> m_hostData;
     std::unique_ptr<BrcdChainPeerObserverFace> m_peerObserver;

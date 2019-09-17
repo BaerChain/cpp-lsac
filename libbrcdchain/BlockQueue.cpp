@@ -67,13 +67,15 @@ void BlockQueue::debugContainerSize(){
     cnote << "BlockQueue m_readySet:" << m_readySet.size();
     cnote << "BlockQueue m_drainingSet:" << m_drainingSet.size();
     cnote << "BlockQueue m_verified:" << m_verified.size();
-    cnote << "BlockQueue m_unverified:" << m_unverified.size();
-    cnote << "BlockQueue m_verifying:" << m_verifying.size();
-    cnote << "BlockQueue m_readySet:" << m_readySet.size();
     cnote << "BlockQueue m_unknownSet:" << m_unknownSet.size();
     cnote << "BlockQueue m_unknown:" << m_unknown.size();
+    cnote << "BlockQueue m_knownBad:" << m_knownBad.size();
+    cnote << "BlockQueue m_unverified:" << m_unverified.size();
+    cnote << "BlockQueue m_verifying:" << m_verifying.size();
     cnote << "BlockQueue m_future:" << m_future.size();
     cnote << "BlockQueue m_futureSet:" << m_futureSet.size();
+    cnote << "BlockQueue m_verified_send:" << m_verified_send.size();
+    cnote << "BlockQueue m_verifeid_sended:" << m_verifeid_sended.size();
 }
 
 void BlockQueue::verifierBody()

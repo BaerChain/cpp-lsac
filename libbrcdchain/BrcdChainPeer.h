@@ -77,6 +77,14 @@ public:
 
     void set_last_request_times(uint32_t r ) { m_last_request_times = r;}
     uint32_t get_last_request_times() const { return m_last_request_times;}
+
+    void debugSize() const{
+        cnote << "peer ...";
+        cnote << "m_knownBlocks:" << m_knownBlocks.size();
+        cnote << "m_knownTransactions:" << m_knownTransactions.size();
+    }
+
+
 private:
     // Request of type _packetType with _hashes as input parameters
     void requestByHashes(h256s const& _hashes, Asking _asking, SubprotocolPacketType _packetType);

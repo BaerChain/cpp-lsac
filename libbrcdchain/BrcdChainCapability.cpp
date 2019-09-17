@@ -472,6 +472,21 @@ void BrcdChainCapability::doBackgroundWork()
                 }
             }
         }
+        if( now - m_lastTickDebug > 20){
+            m_sync->debugSize();
+            m_tq.debugContainerSize();
+            m_chain.debugContainsSize();
+            m_db.debugSize();
+            m_bq.debugContainerSize();
+            for (auto const& peer : m_peers)
+            {
+                peer.second.debugSize();
+            }
+            cnote << "capality...";
+            cnote << "m_transactionsSent" << m_transactionsSent.size();
+
+            m_lastTickDebug = now;
+        }
 
     }
     catch (const std::exception &e){

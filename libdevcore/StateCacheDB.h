@@ -37,6 +37,12 @@ public:
 
     h256Hash keys() const;
 
+    void debugSize() const{
+        cnote << " OverlayDb...";
+        cnote << " m_main:"<< m_main.size();
+        cnote << " m_aux:"<< m_aux.size();
+    }
+
 protected:
 #if DEV_GUARDED_DB
     mutable SharedMutex x_this;

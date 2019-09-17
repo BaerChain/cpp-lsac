@@ -66,6 +66,16 @@ public:
 
     static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
 
+    void debugSize(){
+        cnote<< "BlockChainSync...";
+        cnote<< "m_daoChallengedPeers :" << m_daoChallengedPeers.size();
+        cnote<< "m_downloadingHeaders :" << m_downloadingHeaders.size();
+        cnote<< "m_headers :" << m_headers.size();
+        cnote<< "m_bodies :" << m_bodies.size();
+        cnote<< "m_headerSyncPeers :" << m_headerSyncPeers.size();
+        cnote<< "m_bodySyncPeers :" << m_bodySyncPeers.size();
+    }
+
 private:
     /// Resume downloading after witing state
     void continueSync(NodeID id = NodeID());

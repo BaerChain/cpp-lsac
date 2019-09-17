@@ -2102,7 +2102,7 @@ unsigned BlockChain::chainStartBlockNumber() const {
     return value.empty() ? 0 : number(h256(value, h256::FromBinary));
 }
 
-void BlockChain::debugContainsSize(){
+void BlockChain::debugContainsSize() const{
     cnote << "BlockChain m_blocks:"<< m_blocks.size();
     cnote << "BlockChain m_details:"<< m_details.size();
     cnote << "BlockChain m_logBlooms:"<< m_logBlooms.size();
@@ -2113,4 +2113,6 @@ void BlockChain::debugContainsSize(){
     cnote << "BlockChain m_cached_blocks:"<< m_cached_blocks.size();
     cnote << "BlockChain m_cached_bytes:"<< m_cached_bytes.size();
     cnote << "m_cacheUsage m_cached_bytes" << m_cached_bytes.size();
+    cnote << "m_cacheUsage m_cacheUsage" << m_cacheUsage.size();
+    cnote << "m_cacheUsage m_inUse" << m_inUse.size();
 }
