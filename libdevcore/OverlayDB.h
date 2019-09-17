@@ -33,7 +33,7 @@ public:
     void commit();
 	void rollback();
 
-	void dubugSize(){
+	void dubugSize() const{
 	    std::cout<<"m_aux.size:" << m_aux.size() << std::endl;
 	    std::cout<<"m_main.size:" << m_main.size() << std::endl;
 	}
