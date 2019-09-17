@@ -743,7 +743,7 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
         addBlockInfo(ex, _block.info, _block.block.toBytes());
         throw;
     }
-
+    _db.dubugSize();
     // All ok - insert into DB
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);

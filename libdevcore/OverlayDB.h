@@ -33,6 +33,11 @@ public:
     void commit();
 	void rollback();
 
+	void dubugSize(){
+	    std::cout<<"m_aux.size:" << m_aux.size() << std::endl;
+	    std::cout<<"m_main.size:" << m_main.size() << std::endl;
+	}
+
 	std::string lookup(h256 const& _h) const;
 	bool exists(h256 const& _h) const;
 	void kill(h256 const& _h);
