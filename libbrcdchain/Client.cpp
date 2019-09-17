@@ -380,7 +380,7 @@ void Client::syncBlockQueue()
     Timer t;
 
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
-
+    m_stateDB.dubugSize();
     double elapsed = t.elapsed();
 	if(count)
 	{
