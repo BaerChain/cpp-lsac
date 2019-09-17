@@ -76,6 +76,7 @@ void OverlayDB::commit()
         DEV_WRITE_GUARDED(x_this)
 #endif
         {
+            std::cout << "will clear cash data.... overlaydb..."<<std::endl;
             m_aux.clear();
             m_main.clear();
         }
