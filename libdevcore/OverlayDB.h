@@ -34,8 +34,8 @@ public:
 	void rollback();
 
 	void dubugSize() const{
-	    std::cout<<"m_aux.size:" << m_aux.size() << std::endl;
-	    std::cout<<"m_main.size:" << m_main.size() << std::endl;
+	    cnote<<"m_aux.size:" << m_aux.size() ;
+        cnote<<"m_main.size:" << m_main.size();
 	}
 
 	std::string lookup(h256 const& _h) const;
