@@ -14,7 +14,7 @@ namespace dev {
         namespace ex {
 
             exchange_plugin::exchange_plugin(const boost::filesystem::path &data_dir)
-                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024 * 1024 * 30ULL)),
+                    : db(new database(data_dir, chainbase::database::read_write, 1024 * 1024ULL)),
                       _new_session(false) {
 
                 db->add_index<order_object_index>();
@@ -454,63 +454,63 @@ namespace dev {
             void exchange_plugin::process_only_price(BEGIN &begin, END &end, const order &od, const u256 &price,
                                                      const u256 &amount,
                                                      std::vector<result_order> &result, bool throw_exception) {
-                if (begin == end) {
-                    db->create<order_object>([&](order_object &obj) {
-                        obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
-                    });
-
-                    update_dynamic_orders(true);
-                    return;
-                }
-                auto spend = amount;
-
-                bool rm = false;
-                while (spend > 0 && begin != end) {
-                    result_order ret;
-                    if (begin->token_amount <= spend) {
-                        spend -= begin->token_amount;
-                        ret.set_data(od, begin, begin->token_amount, begin->price);
-                        rm = true;
-
-                    } else {
-                        db->modify(*begin, [&](order_object &obj) {
-                            obj.token_amount -= spend;
-                        });
-                        ret.set_data(od, begin, spend, begin->price);
-                        spend = 0;
-                    }
-                    ret.old_price = price;
-
-                    db->create<order_result_object>([&](order_result_object &obj) {
-                        obj.set_data(ret);
-                    });
-                    update_dynamic_result_orders();
-
-                    result.push_back(ret);
-                    if (rm) {
-                        const auto rm_obj = db->find(begin->id);
-                        if (rm_obj != nullptr) {
-                            begin++;
-                            db->remove(*rm_obj);
-                            update_dynamic_orders(false);
-                        } else {
-                            if (throw_exception) {
-                                BOOST_THROW_EXCEPTION(remove_object_error());
-                            }
-                        }
-                        rm = false;
-                    } else {
-                        begin++;
-                    }
-
-                }
-                //surplus token ,  record to db
-                if (spend > 0) {
-                    db->create<order_object>([&](order_object &obj) {
-                        obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
-                    });
-                    update_dynamic_orders(true);
-                }
+//                if (begin == end) {
+////                    db->create<order_object>([&](order_object &obj) {
+////                        obj.set_data(od, std::pair<u256, u256>(price, amount), amount);
+////                    });
+////
+////                    update_dynamic_orders(true);
+//                    return;
+//                }
+//                auto spend = amount;
+//
+//                bool rm = false;
+//                while (spend > 0 && begin != end) {
+//                    result_order ret;
+//                    if (begin->token_amount <= spend) {
+//                        spend -= begin->token_amount;
+//                        ret.set_data(od, begin, begin->token_amount, begin->price);
+//                        rm = true;
+//
+//                    } else {
+//                        db->modify(*begin, [&](order_object &obj) {
+//                            obj.token_amount -= spend;
+//                        });
+//                        ret.set_data(od, begin, spend, begin->price);
+//                        spend = 0;
+//                    }
+//                    ret.old_price = price;
+//
+//                    db->create<order_result_object>([&](order_result_object &obj) {
+//                        obj.set_data(ret);
+//                    });
+//                    update_dynamic_result_orders();
+//
+//                    result.push_back(ret);
+//                    if (rm) {
+//                        const auto rm_obj = db->find(begin->id);
+//                        if (rm_obj != nullptr) {
+//                            begin++;
+//                            db->remove(*rm_obj);
+//                            update_dynamic_orders(false);
+//                        } else {
+//                            if (throw_exception) {
+//                                BOOST_THROW_EXCEPTION(remove_object_error());
+//                            }
+//                        }
+//                        rm = false;
+//                    } else {
+//                        begin++;
+//                    }
+//
+//                }
+//                //surplus token ,  record to db
+//                if (spend > 0) {
+//                    db->create<order_object>([&](order_object &obj) {
+//                        obj.set_data(od, std::pair<u256, u256>(price, amount), spend);
+//                    });
+//                    update_dynamic_orders(true);
+//                }
             }
 
 

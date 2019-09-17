@@ -400,6 +400,9 @@ void Client::syncBlockQueue()
 		}
 	}
 
+
+
+
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
@@ -764,6 +767,14 @@ void Client::tick()
         }
 
     }
+
+    if (chrono::system_clock::now() - m_debugMem > chrono::seconds(10)){
+        m_debugMem = chrono::system_clock::now();
+        m_bc.debugMemery();
+        m_bq.debugMemery();
+        m_tq.debugMemery();
+    }
+
 }
 
 void Client::checkWatchGarbage()
