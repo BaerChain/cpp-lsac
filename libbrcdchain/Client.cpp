@@ -380,7 +380,6 @@ void Client::syncBlockQueue()
     Timer t;
 
 	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_StateExDB, m_syncAmount);
-    m_stateDB.dubugSize();
     double elapsed = t.elapsed();
 	if(count)
 	{
@@ -390,7 +389,7 @@ void Client::syncBlockQueue()
 
         auto late = utcTimeMilliSec() - last.timestamp();
         Block b(bc(), m_stateDB, m_StateExDB );
-        b.mutableState().logState();
+        //b.mutableState().logState();
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 
@@ -762,12 +761,12 @@ void Client::tick()
             activityReport();
         }
     }
-    if (chrono::system_clock::now() - m_debugTick > chrono::seconds(10)){
-        m_debugTick =chrono::system_clock::now();
-        //m_bq.debugContainerSize();
-        //m_tq.debugContainerSize();
-        m_bc.debugContainsSize();
-    }
+//    if (chrono::system_clock::now() - m_debugTick > chrono::seconds(10)){
+//        m_debugTick =chrono::system_clock::now();
+//        //m_bq.debugContainerSize();
+//        //m_tq.debugContainerSize();
+//        //m_bc.debugContainsSize();
+//    }
 }
 
 void Client::checkWatchGarbage()

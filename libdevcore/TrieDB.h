@@ -81,7 +81,6 @@ public:
     void remove(bytesConstRef _key);
     bool contains(bytes const& _key) const { return contains(&_key); }
     bool contains(bytesConstRef _key) const { return !at(_key).empty(); }
-
     class iterator
     {
     public:
