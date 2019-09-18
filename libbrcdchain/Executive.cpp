@@ -203,7 +203,7 @@ void Executive::accrueSubState(SubState& _parentContext)
         _parentContext += m_ext->sub;
 }
 
-void Executive::initialize(Transaction const& _transaction)
+void Executive::initialize(Transaction const& _transaction, transationTool::initializeEnum _enum)
 {
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
@@ -237,28 +237,42 @@ void Executive::initialize(Transaction const& _transaction)
             throw;
         }
 
-        if(m_envInfo.number() <= 1740000){
-            if (m_t.nonce() < nonceReq)
+        // if(m_envInfo.number() <= 1740000){
+            if(_enum == transationTool::initializeEnum::rpcinitialize)
             {
-                cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                if (m_t.nonce() < nonceReq)
+                {
+                    cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                        << nonceReq << " Got " << m_t.nonce();
-                m_excepted = TransactionException::InvalidNonce;
-                BOOST_THROW_EXCEPTION(
+                    m_excepted = TransactionException::InvalidNonce;
+                    BOOST_THROW_EXCEPTION(
                         InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
                                        << errinfo_comment(std::string("the sender Nonce error")));
-            }
-        }
-        else{
-            if (m_t.nonce() != nonceReq)
-            {
-                cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
-                       << nonceReq << " Got " << m_t.nonce();
-                m_excepted = TransactionException::InvalidNonce;
-                BOOST_THROW_EXCEPTION(
-                        InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
+                }
+            }else{
+                if (m_t.nonce() != nonceReq)
+                    {
+                        cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                        << nonceReq << " Got " << m_t.nonce();
+                        m_excepted = TransactionException::InvalidNonce;
+                        BOOST_THROW_EXCEPTION(
+                            InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
                                        << errinfo_comment(std::string("the sender Nonce error")));
+                }
             }
-        }
+            
+        // }
+        // else{
+        //     if (m_t.nonce() != nonceReq)
+        //     {
+        //         cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+        //                << nonceReq << " Got " << m_t.nonce();
+        //         m_excepted = TransactionException::InvalidNonce;
+        //         BOOST_THROW_EXCEPTION(
+        //                 InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
+        //                                << errinfo_comment(std::string("the sender Nonce error")));
+        //     }
+        // }
 
 
         //check gasPrice the must bigger c_min_price

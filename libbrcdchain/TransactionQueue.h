@@ -106,6 +106,12 @@ public:
     /// Register a handler that will be called once asynchronous verification is comeplte an transaction has been imported
     template <class T> Handler<h256 const&> onReplaced(T const& _t) { return m_onReplaced.add(_t); }
 
+    void logTxQueue() {        
+        cerror << "m_currentByHash size == " << m_currentByHash.size();
+        cerror << "m_currentByAddressAndNonce size == " << m_currentByAddressAndNonce.size();
+        cerror << "m_future size == " << m_future.size();
+        cerror << "m_current size == " << m_current.size();
+        }
 private:
 
     /// Verified and imported transaction
