@@ -1658,11 +1658,10 @@ void BlockChain::garbageCollect(bool _force) {
 //            m_tickClearOld = std::chrono::system_clock::now();
 //        }
     }
-
+    cnote << "m_lastStats.memTotal: "<<m_lastStats.memTotal();
     if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
         m_lastStats.memTotal() < c_maxCacheSize)
         return;
-    cnote << "m_lastStats.memTotal: "<<m_lastStats.memTotal();
     if (m_lastStats.memTotal() < c_minCacheSize)
         return;
 
