@@ -12,7 +12,7 @@ namespace db
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-auto g_kind = DatabaseKind::RocksDB;
+auto g_kind = DatabaseKind::LevelDB;
 fs::path g_dbPath;
 
 /// A helper type to build the table of DB implementations.
