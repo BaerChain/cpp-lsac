@@ -131,16 +131,13 @@ namespace {
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(60);
 
 /// Length of death row (total time in cache is multiple of this and collection duration).
-//static const unsigned c_collectionQueueSize = 20;
-static const unsigned c_collectionQueueSize = 10;
+static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-//static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
-static const unsigned c_maxCacheSize = 1024 * 1024 * 10;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
-//tatic const unsigned c_minCacheSize = 1024 * 1024 * 32;
-static const unsigned c_minCacheSize = 1024 * 1024 * 5;
+static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
 BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, int64_t _rebuild_num) :
@@ -1602,61 +1599,6 @@ void BlockChain::updateStats() const {
 
 void BlockChain::garbageCollect(bool _force) {
     updateStats();
-
-    {
-        ///tick to erase old data
-        ///m_blocks  m_details m_receipts
-//        if ( std::chrono::system_clock::now() - m_tickClearOld >= chrono::seconds(20) ){
-//            cnote << "will clear old data...";
-//            int64_t curr_num = info().number();
-//            int64_t height = 100;
-//            std::set<h256> blocks_clear;
-//            std::set<h256> details_clear;
-//            std::set<h256> receipts_clear;
-//            std::set<h256> blooms_clear;
-//            std::set<int64_t > block_nums;
-//
-//            for(auto const& b : m_blocks){
-//                if (curr_num - height > info(b.first).number()){
-//                    blocks_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_details){
-//                if (curr_num - height > info(b.first).number()){
-//                    details_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_receipts){
-//                if (curr_num - height > info(b.first).number()){
-//                    receipts_clear.insert(b.first);
-//                }
-//            }
-//            for(auto const& b : m_blockHashes){
-//                if (curr_num - height > info(b.second.value).number()){
-//                    block_nums.insert(b.first);
-//                }
-//            }
-//
-//            WriteGuard l_block(x_blocks);
-//            for(auto const& h: blocks_clear){
-//                m_blocks.erase(h);
-//            }
-//            WriteGuard l_details(x_details);
-//            for(auto const& h: details_clear){
-//                m_details.erase(h);
-//            }
-//            WriteGuard l_recept(x_receipts);
-//            for(auto const& h: receipts_clear){
-//                m_receipts.erase(h);
-//            }
-//            WriteGuard l_blockHashs(x_blockHashes);
-//            for(auto const& h: block_nums){
-//                m_blockHashes.erase(h);
-//            }
-//
-//            m_tickClearOld = std::chrono::system_clock::now();
-//        }
-    }
     cnote << "m_lastStats.memTotal: "<<m_lastStats.memTotal();
     if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
         m_lastStats.memTotal() < c_maxCacheSize)
