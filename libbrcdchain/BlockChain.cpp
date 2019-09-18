@@ -1665,7 +1665,7 @@ void BlockChain::garbageCollect(bool _force) {
         return;
 
     m_lastCollection = chrono::system_clock::now();
-
+    cnote << "the mem is big and will clear....";
     Guard l(x_cacheUsage);
     for (CacheID const &id: m_cacheUsage.back()) {
         m_inUse.erase(id);
