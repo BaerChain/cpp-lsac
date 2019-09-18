@@ -131,13 +131,16 @@ namespace {
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(60);
 
 /// Length of death row (total time in cache is multiple of this and collection duration).
-static const unsigned c_collectionQueueSize = 20;
+//static const unsigned c_collectionQueueSize = 20;
+static const unsigned c_collectionQueueSize = 10;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+//static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 10;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 32;
+//tatic const unsigned c_minCacheSize = 1024 * 1024 * 32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 5;
 
 
 BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, int64_t _rebuild_num) :
@@ -1255,9 +1258,6 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         // Most of the time these two will be equal - only when we're doing a chain revert will they not be
         if (common != last)
             DEV_READ_GUARDED(x_lastBlockHash)clearCachesDuringChainReversion(number(common) + 1);
-        {
-            DEV_READ_GUARDED(x_lastBlockHash)clearCachesDuringChainReversion(number(last));
-        }
         // Go through ret backwards (i.e. from new head to common) until hash != last.parent and
         // update m_transactionAddresses, m_blockHashes
         for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i) {
@@ -1431,7 +1431,6 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end) {
     // model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
 
     // algorithm doesn't have the best memoisation coherence, but eh well...
-    m_blocksBlooms.clear();
     unsigned beginDirty = _begin;
     unsigned endDirty = _end;
     for (unsigned level = 0; level < c_bloomIndexLevels; level++, beginDirty /= c_bloomIndexSize, endDirty =
