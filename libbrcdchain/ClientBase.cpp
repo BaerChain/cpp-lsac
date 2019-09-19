@@ -186,6 +186,8 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     Address _to;
     u256 _value = 0;
     bytes _data;
+    u256 _gas = c_maxGasEstimate;
+    u256 gasPrice = 5;
 
     if(!_json["from"].empty())
     {
@@ -214,33 +216,46 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     }else{
         BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the data field!"));
     }
-    u256 _baseGas = (u256)Transaction::baseGasRequired(!_from, &_data, BRCSchedule());
-    try{
-        RLP _r(_data);
-        std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
-        transationTool::op_type _beginType = transationTool::op_type::null;
-        std::set<transationTool::op_type> _set;
 
-        for(auto const& _val : _bytesV)
-        { 
-            transationTool::op_type _type = transationTool::operation::get_type(_val);
-            if(_type == NULL)
-            {
-                break;
-            }
-            if(!_set.count(_type) && _set.size() == 0)
-            {
-                _set.insert(_type);
-                _baseGas += transationTool::c_add_value[_type];
-            }else if(_set.size() != 0 && !_set.count(_type))
-            {
-                continue;
-            }
-        }
-    }catch(...)
+    u256 _nonce = blockByNumber(_blockNum).transactionsFrom(_from);
+
+    Transaction t;
+    if (_to)
+        t = Transaction(_value, gasPrice, _gas, _to, _data, _nonce);
+    else
+        t = Transaction(_value, gasPrice, _gas, _data, _nonce);
+
+    u256 _baseGas = t.baseGasRequired(BRCSchedule());
+    if(t.isVoteTranction())
     {
-        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
+        try{
+            RLP _r(_data);
+            std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
+            transationTool::op_type _beginType = transationTool::op_type::null;
+            std::set<transationTool::op_type> _set;
+    
+            for(auto const& _val : _bytesV)
+            { 
+                transationTool::op_type _type = transationTool::operation::get_type(_val);
+                if(_type == transationTool::op_type::null)
+                {
+                    break;
+                }
+                if(!_set.count(_type) && _set.size() == 0)
+                {
+                    _set.insert(_type);
+                    _baseGas += transationTool::c_add_value[_type];
+                }else if(_set.size() != 0 && !_set.count(_type))
+                {
+                    continue;
+                }
+            }
+        }catch(...)
+        {
+            BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
+        }
     }
+    
     Json::Value _ret;
     _ret["estimateGasUsed"] = toJS(_baseGas);
     return _ret;
