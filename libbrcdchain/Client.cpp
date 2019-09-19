@@ -101,6 +101,9 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     });  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced([=](h256 const&) { m_needStateReset = true; });
     m_bqReady = m_bq.onReady([=]() {
+        if(auto h = m_host.lock()){
+            h->noteNewTransactions();
+        }
         this->onBlockQueueReady();
     });  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
     m_bq.setOnBad([=](Exception& ex) { this->onBadBlock(ex); });
@@ -966,8 +969,8 @@ h256 Client::importTransaction(Transaction const& _t)
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
 	// Tell network about the new transactions.
-	if(auto h = m_host.lock())
-		h->noteNewTransactions();
+//	if(auto h = m_host.lock())
+//		h->noteNewTransactions();
     return _t.sha3();
 }
 

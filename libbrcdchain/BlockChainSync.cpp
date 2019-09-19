@@ -622,7 +622,7 @@ void BlockChainSync::onPeerBlockBodies(NodeID const& _peerID, RLP const& _r)
         auto iter = m_headerIdToNumber.find(id);
         if (iter == m_headerIdToNumber.end() || !haveItem(m_headers, iter->second))
         {
-            LOG(m_loggerDetail) << "Ignored unknown block body";
+            LOG(m_loggerDetail) << "Ignored unknown block body ";
             continue;
         }
         unsigned blockNumber = iter->second;
@@ -631,8 +631,20 @@ void BlockChainSync::onPeerBlockBodies(NodeID const& _peerID, RLP const& _r)
             LOG(m_logger) << "Skipping already downloaded block body " << blockNumber;
             continue;
         }
-        m_headerIdToNumber.erase(id);
-        mergeInto(m_bodies, blockNumber, body.data().toBytes());
+        if(transactionRoot == h256("0x7bc20b682a1d5429565dc9905c91bfb448315f86ae7a0521f9c14454e5051ac9")){
+            mergeInto(m_bodies, 1724393, body.data().toBytes());
+            mergeInto(m_bodies, 1724394, body.data().toBytes());
+
+        }
+        else if(transactionRoot == h256("0x2903e7c8157afb51fdc41588c797ac76bae6b7aa39dccda1d53faea409aadadb")){
+            mergeInto(m_bodies, 1735114, body.data().toBytes());
+            mergeInto(m_bodies, 1735115, body.data().toBytes());
+
+        }else{
+            m_headerIdToNumber.erase(id);
+            mergeInto(m_bodies, blockNumber, body.data().toBytes());
+        }
+
     }
     collectBlocks();
     continueSync();
