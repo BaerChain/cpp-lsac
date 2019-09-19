@@ -239,7 +239,7 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
                 transationTool::op_type _type = transationTool::operation::get_type(_val);
                 if(_type == transationTool::op_type::null)
                 {
-                    break;
+                    BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
                 }
                 if(!_set.count(_type) && _set.size() == 0)
                 {

@@ -829,7 +829,7 @@ bool Executive::finalize()
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
         m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
-       // CFEE_LOG << "GAS:" << m_totalGas - m_needRefundGas;
+        cerror << "GAS:" << m_totalGas - m_needRefundGas;
     }
 
     // Suicides...
