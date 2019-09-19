@@ -2,6 +2,7 @@
 #include "BlockChain.h"
 #include "Executive.h"
 #include "State.h"
+#include <libbrccore/Exceptions.h>
 #include <algorithm>
 
 using namespace std;
@@ -179,9 +180,8 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
 {
     if (!_json.isObject() || _json.empty())
     {
-        throw;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("param is not Json!"));
     }
-
     Address _from;
     Address _to;
     u256 _value = 0;
@@ -191,48 +191,56 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     {
         _from = Address(_json["from"].asString());
     }else{
-        throw;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the from field!"));
     }
 
     if(!_json["to"].empty())
     {
         _to = Address(_json["to"].asString());
     }else{
-        throw;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the to field!"));
     }
 
     if(!_json["value"].empty())
     {
         _value = jsToU256(_json["value"].asString());
     }else{
-        throw;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the value field!"));
     }
 
     if(!_json["data"].empty())
     {
         _data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
     }else{
-        throw;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the data field!"));
     }
-
     u256 _baseGas = (u256)Transaction::baseGasRequired(!_from, &_data, BRCSchedule());
-    RLP _r(_data);
-    std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
-    transationTool::op_type _beginType = transationTool::op_type::null;
-    std::set<transationTool::op_type> _set;
-    for(auto const& _val : _bytesV)
-    { 
-        transationTool::op_type _type = transationTool::operation::get_type(_val);
-        if(!_set.count(_type) && _set.size() == 0)
-        {
-            _set.insert(_type);
-            _baseGas += transationTool::c_add_value[_type];
-        }else if(_set.size() != 0 && !_set.count(_type))
-        {
-            throw;
-        }
-    }
+    try{
+        RLP _r(_data);
+        std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
+        transationTool::op_type _beginType = transationTool::op_type::null;
+        std::set<transationTool::op_type> _set;
 
+        for(auto const& _val : _bytesV)
+        { 
+            transationTool::op_type _type = transationTool::operation::get_type(_val);
+            if(_type == NULL)
+            {
+                break;
+            }
+            if(!_set.count(_type) && _set.size() == 0)
+            {
+                _set.insert(_type);
+                _baseGas += transationTool::c_add_value[_type];
+            }else if(_set.size() != 0 && !_set.count(_type))
+            {
+                continue;
+            }
+        }
+    }catch(...)
+    {
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
+    }
     Json::Value _ret;
     _ret["estimateGasUsed"] = toJS(_baseGas);
     return _ret;
