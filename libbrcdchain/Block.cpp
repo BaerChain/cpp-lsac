@@ -341,12 +341,12 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 						LOG(m_logger) << t.sha3() << " Dropping old transaction (nonce too low)";
 						_tq.drop(t.sha3());
 					}
-					else if(got > req + _tq.waiting(t.sender())){
-						// too new
-						LOG(m_logger)
-							<< t.sha3() << " Dropping new transaction (too many nonces ahead)";
-						_tq.drop(t.sha3());
-					}
+					// else if(got > req + _tq.waiting(t.sender())){
+					// 	// too new
+					// 	//LOG(m_logger)
+					// 	cerror	<< t.sha3() << " Dropping new transaction (too many nonces ahead)";
+					// 	_tq.drop(t.sha3());
+					// }
 					else
 						_tq.setFuture(t.sha3());
 				}

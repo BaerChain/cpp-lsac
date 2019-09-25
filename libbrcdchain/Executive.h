@@ -129,7 +129,7 @@ public:
     {
         initialize(Transaction(_transaction, CheckTransaction::None));
     }
-    void initialize(Transaction const& _transaction);
+    void initialize(Transaction const& _transaction, transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
     /// Finalise a transaction previously set up with initialize().
     /// @warning Only valid after initialize() and execute(), and possibly go().
     /// @returns true if the outermost execution halted normally, false if exceptionally halted.

@@ -105,7 +105,6 @@ public:
 
     /// Register a handler that will be called once asynchronous verification is comeplte an transaction has been imported
     template <class T> Handler<h256 const&> onReplaced(T const& _t) { return m_onReplaced.add(_t); }
-
 private:
 
     /// Verified and imported transaction
