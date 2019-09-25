@@ -405,7 +405,6 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
     if(_num > 0){
 		m_total_seal_time += utcTimeMilliSec() - _time;
 	}
-    _tq.logTxQueue();
     return ret;
 }
 
