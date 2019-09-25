@@ -277,8 +277,16 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
 void BlockChainSync::continueSync(NodeID id)
 {
+
     host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
+        auto &peer = m_host.peer(_peerID);
+        if((int)peer.block_number() < m_lastImportedBlock){
+            peer.requestLatestStatus();
+        }
+        else{
             syncPeer(_peerID, false);
+        }
+
         return true;
     });
 }
@@ -577,7 +585,7 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
                 m_headerIdToNumber[headerId] = blockNumber;
         }
     }
-    collectBlocks();
+    collectBlocks(_peerID);
     continueSync();
 }
 
@@ -646,11 +654,11 @@ void BlockChainSync::onPeerBlockBodies(NodeID const& _peerID, RLP const& _r)
         }
 
     }
-    collectBlocks();
+    collectBlocks(_peerID);
     continueSync();
 }
 
-void BlockChainSync::collectBlocks()
+void BlockChainSync::collectBlocks(NodeID const& _peerID)
 {
     if (!m_haveCommonHeader || m_headers.empty() || m_bodies.empty())
         return;
@@ -728,6 +736,7 @@ void BlockChainSync::collectBlocks()
     {
         sync_force = true;
         clog(VerbosityWarning, "sync") << "Too many unknown blocks, restarting sync";
+        syncPeer(_peerID, true);
         restartSync();
 
         return;
@@ -783,7 +792,8 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     peer.markBlockAsKnown(h);
     CLATE_LOG << " from id : " << _peerID << " time:" << utcTimeMilliSec() << " get block time " << (utcTimeMilliSec() - info.timestamp()) << " ms " << " height " << info.number() ;
     unsigned blockNumber = static_cast<unsigned>(info.number());
-    if (blockNumber > (m_lastImportedBlock + 1))
+    static bool force_sync = false;
+    if (blockNumber > (m_lastImportedBlock + 1) || (!force_sync && blockNumber == 50))
     {
         LOG(m_loggerDetail) << "Received unknown new block";
         // Update the hash of highest known block of the peer.
@@ -817,6 +827,8 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
             }
             completeSync();
         }
+        peer.setBlockNumber(m_lastImportedBlock);
+
         break;
     case ImportResult::FutureTimeKnown:
         //TODO: Rating dependent on how far in future it is.
