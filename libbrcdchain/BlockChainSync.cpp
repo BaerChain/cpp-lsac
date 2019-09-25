@@ -280,7 +280,7 @@ void BlockChainSync::continueSync(NodeID id)
 
     host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
         auto &peer = m_host.peer(_peerID);
-        if((int)peer.block_number() < m_lastImportedBlock){
+        if((int)peer.block_number() <= m_lastImportedBlock){
             peer.requestLatestStatus();
         }
         else{
