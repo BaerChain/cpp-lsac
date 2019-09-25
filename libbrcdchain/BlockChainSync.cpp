@@ -723,10 +723,13 @@ void BlockChainSync::collectBlocks()
 
     logImported(success, future, got, unknown);
 
-    if (host().bq().unknownFull())
+    static bool sync_force = false;
+    if (host().bq().unknownFull() || (!sync_force && m_lastImportedBlock >= 50))
     {
+        sync_force = true;
         clog(VerbosityWarning, "sync") << "Too many unknown blocks, restarting sync";
         restartSync();
+
         return;
     }
 
