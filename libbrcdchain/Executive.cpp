@@ -237,7 +237,19 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             throw;
         }
 
-        // if(m_envInfo.number() <= 1740000){
+        if((m_envInfo.number() <= 1740000 && m_envInfo.header().chain_id() == 0xb)
+            || (m_envInfo.number() <= 1200157 && m_envInfo.header().chain_id() == 0x1))
+        ){
+             if (m_t.nonce() < nonceReq)
+            {
+                cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                       << nonceReq << " Got " << m_t.nonce();
+                m_excepted = TransactionException::InvalidNonce;
+                BOOST_THROW_EXCEPTION(
+                        InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
+                                       << errinfo_comment(std::string("the sender Nonce error")));
+            }
+        }else{
             if(_enum == transationTool::initializeEnum::rpcinitialize)
             {
                 if (m_t.nonce() < nonceReq)
@@ -260,6 +272,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                        << errinfo_comment(std::string("the sender Nonce error")));
                 }
             }
+        }
+            
             
         // }
         // else{
