@@ -289,8 +289,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 		u256 total_brc = 0;
         if (!m_t.isVoteTranction())
         {
-			bigint totalCost = gasCost;
-            if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
+			bigint totalCost = gasCost ;
+
+            if ( m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value() || m_t.gas() < m_baseGasRequired)
             {
                 LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
 					              << totalCost << "  m_t.gas() = " << m_t.gas()
