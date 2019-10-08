@@ -37,6 +37,8 @@ string (REGEX REPLACE "[\n\t\r]" "" GIT_VERSION  ${GIT_VERSION})
 
 add_library(brcd-buildinfo buildinfo.c buildinfo.h)
 
+message(STATUS "build with git version : ${GIT_VERSION}")
+
 target_compile_definitions(brcd-buildinfo PUBLIC
         -DGIT_VERSION="${GIT_VERSION}"
         -DSYSTEM_NAME="${CMAKE_SYSTEM_NAME}"

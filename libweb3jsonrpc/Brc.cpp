@@ -884,6 +884,23 @@ Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
 	}
 }
 
+Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
+{
+    try
+    {
+        return client()->estimateGasUsed(_json, PendingBlock);
+    }
+    catch(EstimateGasUsed const& _e)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(std::string(*boost::get_error_info<errinfo_comment >(_e))));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+    
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;

@@ -2,6 +2,12 @@
 
 #include <libdevcore/Exceptions.h>
 #include "Common.h"
+#include <jsonrpccpp/common/exception.h>
+
+
+#define CHECK_RPC_ASSERT_PARAM(ARGS)   if(!(ARGS)) {  BOOST_THROW_EXCEPTION(jsonrpc::JsonRpcException(std::string(#ARGS)));}
+#define CHECK_RPC_THROW_INFO(STR)   { BOOST_THROW_EXCEPTION(jsonrpc::JsonRpcException(std::string(STR))); }
+
 
 namespace dev
 {
@@ -111,5 +117,9 @@ DEV_SIMPLE_EXCEPTION(UnknownAccount);
 DEV_SIMPLE_EXCEPTION(PeerDisconnected);
 
 DEV_SIMPLE_EXCEPTION(BadDynamicCast);
+
+DEV_SIMPLE_EXCEPTION(RrpInvalidParams);
+
+DEV_SIMPLE_EXCEPTION(EstimateGasUsed);
 }
 }

@@ -99,6 +99,12 @@ namespace dev
                 timestamp = 1
             };
 
+            enum initializeEnum : uint8_t
+            {
+                rpcinitialize = 0,
+                executeinitialize = 1
+            };
+
             struct operation
             {
                 virtual ~operation() {}

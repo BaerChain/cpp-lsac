@@ -967,7 +967,7 @@ h256 Client::importTransaction(Transaction const& _t)
     // we'll catch the exception at the RPC level.
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
-    e.initialize(_t);
+    e.initialize(_t,transationTool::initializeEnum::rpcinitialize);
     ImportResult res = m_tq.import(_t.rlp());
     switch (res)
     {

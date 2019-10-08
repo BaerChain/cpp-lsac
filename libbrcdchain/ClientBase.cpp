@@ -2,6 +2,7 @@
 #include "BlockChain.h"
 #include "Executive.h"
 #include "State.h"
+#include <libbrccore/Exceptions.h>
 #include <algorithm>
 
 using namespace std;
@@ -173,6 +174,91 @@ Json::Value dev::brc::ClientBase::votedMessage(Address _a, BlockNumber _block) c
 Json::Value dev::brc::ClientBase::electorMessage(BlockNumber _block) const
 {
 	return blockByNumber(_block).mutableState().electorMessage(ZeroAddress);
+}
+
+Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, BlockNumber _blockNum)
+{
+    if (!_json.isObject() || _json.empty())
+    {
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("param is not Json!"));
+    }
+    Address _from;
+    Address _to;
+    u256 _value = 0;
+    bytes _data;
+    u256 _gas = c_maxGasEstimate;
+    u256 gasPrice = 5;
+
+    if(!_json["from"].empty())
+    {
+        _from = Address(_json["from"].asString());
+    }else{
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the from field!"));
+    }
+
+    if(!_json["to"].empty())
+    {
+        _to = Address(_json["to"].asString());
+    }else{
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the to field!"));
+    }
+
+    if(!_json["value"].empty())
+    {
+        _value = jsToU256(_json["value"].asString());
+    }else{
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the value field!"));
+    }
+
+    if(!_json["data"].empty())
+    {
+        _data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+    }else{
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("Json is missing the data field!"));
+    }
+
+    u256 _nonce = blockByNumber(_blockNum).transactionsFrom(_from);
+
+    Transaction t;
+    if (_to)
+        t = Transaction(_value, gasPrice, _gas, _to, _data, _nonce);
+    else
+        t = Transaction(_value, gasPrice, _gas, _data, _nonce);
+
+    u256 _baseGas = t.baseGasRequired(BRCSchedule());
+    if(t.isVoteTranction())
+    {
+        try{
+            RLP _r(_data);
+            std::vector<bytes> _bytesV = _r.toVector<bytes>(); 
+            transationTool::op_type _beginType = transationTool::op_type::null;
+            std::set<transationTool::op_type> _set;
+    
+            for(auto const& _val : _bytesV)
+            { 
+                transationTool::op_type _type = transationTool::operation::get_type(_val);
+                if(_type == transationTool::op_type::null)
+                {
+                    BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
+                }
+                if(!_set.count(_type) && _set.size() == 0)
+                {
+                    _set.insert(_type);
+                    _baseGas += transationTool::c_add_value[_type];
+                }else if(_set.size() != 0 && !_set.count(_type))
+                {
+                    continue;
+                }
+            }
+        }catch(...)
+        {
+            BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment("The data field is not a correct transaction serialization!"));
+        }
+    }
+    
+    Json::Value _ret;
+    _ret["estimateGasUsed"] = toJS(_baseGas);
+    return _ret;
 }
 
 // TODO: remove try/catch, allow exceptions
