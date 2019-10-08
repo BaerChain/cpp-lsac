@@ -770,10 +770,10 @@ void Client::tick()
 
     if (chrono::system_clock::now() - m_debugMem > chrono::seconds(10)){
         m_debugMem = chrono::system_clock::now();
-        m_bc.debugMemery();
-        m_bq.debugMemery();
-        m_tq.debugMemery();
-        auto h = m_host.lock();
+//        m_bc.debugMemery();
+//        m_bq.debugMemery();
+//        m_tq.debugMemery();
+//        auto h = m_host.lock();
 //        if(h){
 //            h->debugMemery();
 //        }
