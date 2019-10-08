@@ -46,6 +46,7 @@ public:
     virtual void doBackgroundWork() = 0;
     virtual std::chrono::milliseconds backgroundWorkInterval() const = 0;
 
+
 };
 
 }  // namespace p2p

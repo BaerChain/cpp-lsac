@@ -65,6 +65,7 @@ public:
     SyncStatus status() const;
 
     static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
+    void debugMemery();
 
 private:
     /// Resume downloading after witing state

@@ -773,6 +773,13 @@ void Client::tick()
         m_bc.debugMemery();
         m_bq.debugMemery();
         m_tq.debugMemery();
+        auto h = m_host.lock();
+        if(h){
+            h->debugMemery();
+        }
+        else{
+            CMEM_LOG << "cant get host.";
+        }
     }
 
 }

@@ -979,3 +979,16 @@ bool BlockChainSync::invariants() const
         BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Body download map mismatch"));
     return true;
 }
+
+void BlockChainSync::debugMemery() {
+    CMEM_LOG << "<< BlockChainSync start >> ";
+    CMEM_LOG << "m_daoChallengedPeers size : " << m_daoChallengedPeers.size();
+    CMEM_LOG << "m_knownNewHashes size : " << m_knownNewHashes.size();
+    CMEM_LOG << "m_downloadingHeaders size : " << m_downloadingHeaders.size();
+    CMEM_LOG << "m_headers size : " << m_headers.size();
+    CMEM_LOG << "m_bodies size : " << m_bodies.size();
+    CMEM_LOG << "m_headerSyncPeers size : " << m_headerSyncPeers.size();
+    CMEM_LOG << "m_bodySyncPeers size : " << m_bodySyncPeers.size();
+    CMEM_LOG << "m_headerIdToNumber size : " << m_headerIdToNumber.size();
+    CMEM_LOG << "<< BlockChainSync end >> ";
+}
