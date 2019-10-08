@@ -552,6 +552,9 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 cwarn << "bad block: " << ex.what();
                 badBlocks.push_back(block.verified.info.hash());
             }
+            catch( const std::exception &e){
+                cwarn << "std exception : " << e.what();
+            }
             catch (...){
                 cerror << "unkown exception..";
             }
