@@ -30,9 +30,11 @@ class NodeMonitor
 {
 public:
     NodeMonitor(bytes _networkrlp, std::string _ip);
+    NodeMonitor(){}
     ~NodeMonitor(){}
     void run();
     
+    void setMonitorParams(bytes _networkrlp, std::string _ip);
     bool checkIP();
     void getKeypair();
     void getClientVersion();
