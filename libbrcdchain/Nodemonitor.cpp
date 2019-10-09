@@ -84,6 +84,20 @@ NodeMonitor::NodeMonitor(bytes _networkrlp, std::string _ip):
     }
 }
 
+void NodeMonitor::setMonitorParams(bytes _networkrlp, std::string _ip)
+{
+    m_networkrlp = _networkrlp;
+    m_ip = _ip;
+    cnote << "ip:" << m_ip;
+    getClientVersion();
+    getKeypair();
+    if(!_ip.empty())
+    {
+        std::thread t(&NodeMonitor::run, this);
+        t.detach();
+    }
+}
+
 bool NodeMonitor::checkIP()
 {
     vector<string> _v = split(m_ip, ".:");

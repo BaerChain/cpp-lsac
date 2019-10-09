@@ -35,7 +35,7 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,int64_t _rebuild_num,
     TransactionQueue::Limits const& _l)
   : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l, _rebuild_num),
-	m_nodemonitor(_host.Networkrlp(), _params.getnodemonitorIp()),
+	//m_nodemonitor(_host.Networkrlp(), _params.getnodemonitorIp()),
 	m_p2pHost(_host)
 {
     // will throw if we're not an dpos seal engine.
@@ -43,7 +43,11 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
     m_params = _params;
     init(_host, _networkID);
     LOG(m_logger)<< "init the dposClient check state : number: " << bc().info().number() << " hash: " << bc().info().hash();
-
+	if(!_params.getnodemonitorIp().empty())
+	{
+		m_isSendNodeStatus = true;
+		m_nodemonitor.setMonitorParams(_host.Networkrlp(), _params.getnodemonitorIp());
+	}
 
 
 }
@@ -85,7 +89,10 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
 		{
 			syncBlockQueue();
-			sendDataToNodeMonitor();
+			if(m_isSendNodeStatus)
+			{
+				sendDataToNodeMonitor();
+			}
 		}
 
 
