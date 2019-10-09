@@ -46,6 +46,7 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
 				false);
 	if(!_params.getnodemonitorIp().empty())
 	{
+		m_isSendNodeStatus = true;
 		m_nodemonitor.setMonitorParams(_host.Networkrlp(), _params.getnodemonitorIp());
 	}
 
@@ -89,7 +90,10 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
 		{
 			syncBlockQueue();
-			sendDataToNodeMonitor();
+			if(m_isSendNodeStatus)
+			{
+				sendDataToNodeMonitor();
+			}
 		}
 
 

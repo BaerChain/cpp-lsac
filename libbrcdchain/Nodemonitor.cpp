@@ -142,10 +142,6 @@ void NodeMonitor::getClientVersion()
 
 void NodeMonitor::setData(monitorData _data)
 {
-    if(m_ip.empty())
-    {
-        return;
-    }
     m_mutex.lock();
     // if(m_ipStats == false)
     // {
