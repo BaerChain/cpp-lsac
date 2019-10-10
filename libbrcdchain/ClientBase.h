@@ -52,7 +52,7 @@ public:
     /// @param _maxGas An upper bound value for estimation, if not provided default value of c_maxGasEstimate will be used.
     /// @param _callback Optional callback function for progress reporting
     std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback) override;
-
+    Json::Value estimateGasUsed(const Json::Value& _json, BlockNumber _blockNum) override;
     using Interface::balanceAt;
     using Interface::ballotAt;
     using Interface::countAt;

@@ -24,4 +24,4 @@ po::options_description createLoggingProgramOptions(unsigned _lineLength, Loggin
     return optionsDescr;
 }
 
-}  // namespace dev
+}  // namespace devcccc

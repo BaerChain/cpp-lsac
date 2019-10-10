@@ -538,3 +538,21 @@ std::ostream& dev::brc::operator<< (std::ostream& os, QueueStatus const& obj)
    os << static_cast<std::underlying_type<QueueStatus>::type>(obj);
    return os;
 }
+
+void BlockQueue::debugMemery() {
+    CMEM_LOG << "begin -----BlockQueue------";
+    CMEM_LOG << "m_drainingSet : " << m_drainingSet.size();
+    CMEM_LOG << "m_readySet : " << m_readySet.size();
+    CMEM_LOG << "m_unknownSet : " << m_unknownSet.size();
+    CMEM_LOG << "m_unknown : " << m_unknown.size();
+    CMEM_LOG << "m_knownBad : " << m_knownBad.size();
+    CMEM_LOG << "m_future : " << m_future.size();
+    CMEM_LOG << "m_futureSet : " << m_futureSet.size();
+    CMEM_LOG << "m_verified : " << m_verified.size();
+    CMEM_LOG << "m_verifying : " << m_verifying.size();
+    CMEM_LOG << "m_unverified : " << m_unverified.size();
+    CMEM_LOG << "m_verifiers : " << m_verifiers.size();
+    CMEM_LOG << "m_verified_send : " << m_verified_send.size();
+    CMEM_LOG << "m_verifeid_sended : " << m_verifeid_sended.size();
+    CMEM_LOG << "end -----BlockQueue------";
+}

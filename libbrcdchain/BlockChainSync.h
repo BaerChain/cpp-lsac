@@ -65,6 +65,7 @@ public:
     SyncStatus status() const;
 
     static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
+    void debugMemery();
 
 private:
     /// Resume downloading after witing state
@@ -81,7 +82,7 @@ private:
     void requestBlocks(NodeID const& _peerID);
     void clearPeerDownload(NodeID const& _peerID);
     void clearPeerDownload();
-    void collectBlocks();
+    void collectBlocks(NodeID const& _peerID);
     bool requestDaoForkBlockHeader(NodeID const& _peerID);
     bool verifyDaoChallengeResponse(RLP const& _r);
     void logImported(unsigned _success, unsigned _future, unsigned _got, unsigned _unknown);

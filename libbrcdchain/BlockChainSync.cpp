@@ -277,8 +277,16 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
 void BlockChainSync::continueSync(NodeID id)
 {
+
     host().capabilityHost().foreachPeer(m_host.name(), [this, id](NodeID const& _peerID) {
+        auto &peer = m_host.peer(_peerID);
+        if((int)peer.block_number() < m_lastImportedBlock){
+            peer.requestLatestStatus();
+        }
+        else{
             syncPeer(_peerID, false);
+        }
+
         return true;
     });
 }
@@ -577,7 +585,7 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
                 m_headerIdToNumber[headerId] = blockNumber;
         }
     }
-    collectBlocks();
+    collectBlocks(_peerID);
     continueSync();
 }
 
@@ -622,7 +630,7 @@ void BlockChainSync::onPeerBlockBodies(NodeID const& _peerID, RLP const& _r)
         auto iter = m_headerIdToNumber.find(id);
         if (iter == m_headerIdToNumber.end() || !haveItem(m_headers, iter->second))
         {
-            LOG(m_loggerDetail) << "Ignored unknown block body";
+            LOG(m_loggerDetail) << "Ignored unknown block body ";
             continue;
         }
         unsigned blockNumber = iter->second;
@@ -631,14 +639,26 @@ void BlockChainSync::onPeerBlockBodies(NodeID const& _peerID, RLP const& _r)
             LOG(m_logger) << "Skipping already downloaded block body " << blockNumber;
             continue;
         }
-        m_headerIdToNumber.erase(id);
-        mergeInto(m_bodies, blockNumber, body.data().toBytes());
+        if(transactionRoot == h256("0x7bc20b682a1d5429565dc9905c91bfb448315f86ae7a0521f9c14454e5051ac9")){
+            mergeInto(m_bodies, 1724393, body.data().toBytes());
+            mergeInto(m_bodies, 1724394, body.data().toBytes());
+
+        }
+        else if(transactionRoot == h256("0x2903e7c8157afb51fdc41588c797ac76bae6b7aa39dccda1d53faea409aadadb")){
+            mergeInto(m_bodies, 1735114, body.data().toBytes());
+            mergeInto(m_bodies, 1735115, body.data().toBytes());
+
+        }else{
+            m_headerIdToNumber.erase(id);
+            mergeInto(m_bodies, blockNumber, body.data().toBytes());
+        }
+
     }
-    collectBlocks();
+    collectBlocks(_peerID);
     continueSync();
 }
 
-void BlockChainSync::collectBlocks()
+void BlockChainSync::collectBlocks(NodeID const& _peerID)
 {
     if (!m_haveCommonHeader || m_headers.empty() || m_bodies.empty())
         return;
@@ -711,10 +731,12 @@ void BlockChainSync::collectBlocks()
 
     logImported(success, future, got, unknown);
 
-    if (host().bq().unknownFull())
+    if (host().bq().unknownFull() )
     {
         clog(VerbosityWarning, "sync") << "Too many unknown blocks, restarting sync";
+        syncPeer(_peerID, true);
         restartSync();
+
         return;
     }
 
@@ -802,6 +824,8 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
             }
             completeSync();
         }
+        peer.setBlockNumber(m_lastImportedBlock);
+
         break;
     case ImportResult::FutureTimeKnown:
         //TODO: Rating dependent on how far in future it is.
@@ -966,4 +990,17 @@ bool BlockChainSync::invariants() const
     if (m_bodySyncPeers.empty() != m_downloadingBodies.empty() && m_downloadingBodies.size() <= m_headerIdToNumber.size())
         BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Body download map mismatch"));
     return true;
+}
+
+void BlockChainSync::debugMemery() {
+    CMEM_LOG << "<< BlockChainSync start >> ";
+    CMEM_LOG << "m_daoChallengedPeers size : " << m_daoChallengedPeers.size();
+    CMEM_LOG << "m_knownNewHashes size : " << m_knownNewHashes.size();
+    CMEM_LOG << "m_downloadingHeaders size : " << m_downloadingHeaders.size();
+    CMEM_LOG << "m_headers size : " << m_headers.size();
+    CMEM_LOG << "m_bodies size : " << m_bodies.size();
+    CMEM_LOG << "m_headerSyncPeers size : " << m_headerSyncPeers.size();
+    CMEM_LOG << "m_bodySyncPeers size : " << m_bodySyncPeers.size();
+    CMEM_LOG << "m_headerIdToNumber size : " << m_headerIdToNumber.size();
+    CMEM_LOG << "<< BlockChainSync end >> ";
 }

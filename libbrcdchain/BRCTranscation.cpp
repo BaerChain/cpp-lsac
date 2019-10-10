@@ -446,7 +446,7 @@ bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteD
 {
     bool _status = false;
     for(auto _voteDataIt : _voteData)
-    {
+    { 
         for(uint32_t i = 0; i < 7 && i < _pollData.size(); i++)
         {
             if(_voteDataIt.first == _pollData[i].m_addr)

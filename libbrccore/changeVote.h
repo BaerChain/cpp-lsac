@@ -6,7 +6,7 @@
 namespace dev {
     namespace brc {
 
-        std::vector<std::tuple<std::string,std::string, std::string>> _changeVoteVector = {
+        std::vector<std::tuple<std::string, std::string, std::string>> _changeVoteVector = {
                 {"0x0000f0f93082b7308d4e947ad4829701090c24a7","0x0c49741d907aa2ec579c454c4e2ba58c756e6829","2150000"},
                 {"0x0000f0f93082b7308d4e947ad4829701090c24a7","0xf76529f84d8ff60ba90c8a3cbd43792f76cddb00","2467880"},
                 {"0x0009bbf8effe6e037178c82372f8114e59dbd035","0x6ad984cc22f0fbed8cfc5b41ea6855ac704bd59e","26660"},

@@ -55,6 +55,7 @@
 { "name": "brc_notePassword", "params": [""], "order": [], "returns": true},
 { "name": "brc_syncing", "params": [], "order": [], "returns": {}},
 { "name": "brc_estimateGas", "params": [{}], "order": [], "returns": ""},
+{ "name": "brc_emtimateGasUsed", "params":[{}], "order":[],"returns":""},
 { "name": "brc_chainId", "params": [], "order": [], "returns": ""}
 ]
 

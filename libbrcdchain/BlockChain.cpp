@@ -86,6 +86,38 @@ db::Slice dev::brc::toSlice(uint64_t _n, unsigned _sub) {
 #endif
 }
 
+size_t dev::brc::testGetMemery1(const bytes &v){
+    return v.size();
+}
+
+
+size_t dev::brc::testGetMemery1(const BlockDetails &v){
+    return sizeof(v.number) + sizeof(v.totalDifficulty) + sizeof(v.parent) + v.children.size() * sizeof(dev::h256);
+}
+
+size_t dev::brc::testGetMemery1(const BlockLogBlooms &v){
+    return v.size;
+}
+
+size_t dev::brc::testGetMemery1(const BlockReceipts &v){
+    return v.size;
+}
+
+size_t dev::brc::testGetMemery1(const BlockHash &v){
+    return v.size;
+}
+
+size_t dev::brc::testGetMemery1(const TransactionAddress &v){
+    return v.size;
+}
+
+
+size_t dev::brc::testGetMemery1(const BlocksBlooms &v){
+    return v.size;
+}
+
+
+
 namespace {
 
     class LastBlockHashes : public LastBlockHashesFace {
@@ -519,6 +551,9 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 // Can't continue - chain  bad.
                 cwarn << "bad block: " << ex.what();
                 badBlocks.push_back(block.verified.info.hash());
+            }
+            catch( const std::exception &e){
+                cwarn << "std exception : " << e.what();
             }
             catch (...){
                 cerror << "unkown exception..";
@@ -2038,4 +2073,30 @@ void BlockChain::setChainStartBlockNumber(unsigned _number) {
 unsigned BlockChain::chainStartBlockNumber() const {
     auto const value = m_extrasDB->lookup(c_sliceChainStart);
     return value.empty() ? 0 : number(h256(value, h256::FromBinary));
+}
+
+void BlockChain::debugMemery() {
+
+    CMEM_LOG << "begin -----BlockChain------";
+    DEV_READ_GUARDED(x_blocks)
+    CMEM_LOG << "m_blocks : " << m_blocks.size() << " mem: " << testGetMemery(m_blocks);
+    DEV_READ_GUARDED(x_details)
+    CMEM_LOG << "m_details : " << m_details.size() << " mem: " << testGetMemery(m_details);
+    DEV_READ_GUARDED(x_logBlooms)
+    CMEM_LOG << "m_logBlooms : " << m_logBlooms.size() << " mem: " << testGetMemery(m_logBlooms);
+    DEV_READ_GUARDED(x_receipts)
+    CMEM_LOG << "m_receipts : " << m_receipts.size() << " mem: " << testGetMemery(m_receipts);
+    DEV_READ_GUARDED(x_transactionAddresses)
+    CMEM_LOG << "m_transactionAddresses : " << m_transactionAddresses.size();
+    DEV_READ_GUARDED(x_blockHashes)
+    CMEM_LOG << "m_blockHashes : " << m_blockHashes.size() << " mem: " << testGetMemery(m_blockHashes);
+    DEV_READ_GUARDED(x_blocksBlooms)
+    CMEM_LOG << "m_blocksBlooms : " << m_blocksBlooms.size() << " mem: " << testGetMemery(m_blocksBlooms);;
+    DEV_READ_GUARDED(x_cached_blocks)
+    CMEM_LOG << "m_cached_blocks : " << m_cached_blocks.size();
+    DEV_READ_GUARDED(x_cached_bytes)
+    CMEM_LOG << "m_cached_bytes : " << m_cached_bytes.size();
+    Guard l(x_cacheUsage);
+    CMEM_LOG << "m_cacheUsage : " << m_cacheUsage.size();
+    CMEM_LOG << "end -----BlockChain------";
 }

@@ -105,8 +105,9 @@ public:
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
         BlockNumber _blockNumber,
         GasEstimationCallback const& _callback = GasEstimationCallback()) = 0;
-
     // [STATE-QUERY API]
+
+    virtual Json::Value estimateGasUsed(Json::Value const& _json, BlockNumber _blockNum) = 0;
 
     int getDefault() const { return m_default; }
     void setDefault(BlockNumber _block) { m_default = _block; }

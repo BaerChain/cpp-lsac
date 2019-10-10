@@ -195,7 +195,8 @@ int main(int argc, char **argv) {
     string remoteHost;
     unsigned short remotePort = dev::p2p::c_defaultIPPort;
 
-	unsigned int http_port = 8081;
+    unsigned int http_port = 8081;
+    unsigned int http_threads = 4;
 
     unsigned peers = 11;
     unsigned peerStretch = 7;
@@ -227,7 +228,7 @@ int main(int argc, char **argv) {
 
     strings passwordsToNote;
     Secrets toImport;
-	MinerCLI miner(MinerCLI::OperationMode::None);
+    MinerCLI miner(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
     bool chainConfigIsSet = false;
@@ -235,7 +236,7 @@ int main(int argc, char **argv) {
     fs::path configPath;
     string configJSON;
 
-	fs::path accountPath;
+    fs::path accountPath;
     string accountJSON;
     string nodemonitorIP;
     bool skip_same_ip = true;
@@ -249,9 +250,9 @@ int main(int argc, char **argv) {
     addClientOption("config", po::value<string>()->value_name("<file>"),
                     "Configure specialised blockchain using given JSON information\n");
     addClientOption("accountJson", po::value<string>()->value_name("<file>"),
-        "AccountJson specialised blockchain using given JSON information\n");
-    addClientOption("nodemonitor,n",po::value<string>(),
-        "Set the data processing server ip to open the node push \n");
+                    "AccountJson specialised blockchain using given JSON information\n");
+    addClientOption("nodemonitor,n", po::value<string>(),
+                    "Set the data processing server ip to open the node push \n");
     addClientOption("mode,o", po::value<string>()->value_name("<full/peer>"),
                     "Start a full node or a peer node (default: full)\n");
     addClientOption("ipc", "Enable IPC server (default: on)");
@@ -262,7 +263,8 @@ int main(int argc, char **argv) {
                     "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
                     "start-up)");
     addClientOption("kill,K", "Kill the blockchain first");
-    addClientOption("rebuild,R", po::value<int64_t >()->value_name("<number>"), "Rebuild the blockchain from the existing database");
+    addClientOption("rebuild,R", po::value<int64_t>()->value_name("<number>"),
+                    "Rebuild the blockchain from the existing database");
     addClientOption("rescue", "Attempt to rescue a corrupt database\n");
     addClientOption("import-presale", po::value<string>()->value_name("<file>"),
                     "Import a pre-sale key; you'll need to specify the password to this key");
@@ -315,16 +317,18 @@ int main(int argc, char **argv) {
                         "Listen on the given IP for incoming connections (default: 0.0.0.0)");
     addNetworkingOption("listen", po::value<unsigned short>()->value_name("<port>"),
                         "Listen on the given port for incoming connections (default: 30303)");
-	addNetworkingOption("http_port", po::value<unsigned short>()->value_name("<port>"),
-						"http on the given port for incoming connections (default: 30303)");
+    addNetworkingOption("http_threads", po::value<unsigned short>()->value_name("<threads>"),
+                        "http on the given threads for start (default: 4)");
+    addNetworkingOption("http_port", po::value<unsigned short>()->value_name("<port>"),
+                        "http on the given port for incoming connections (default: 30303)");
     addNetworkingOption("remote,r", po::value<string>()->value_name("<host>(:<port>)"),
                         "Connect to the given remote host (default: none)");
     addNetworkingOption("port", po::value<short>()->value_name("<port>"),
                         "Connect to the given remote port (default: 30303)");
     addNetworkingOption("network-id", po::value<unsigned>()->value_name("<n>"),
                         "Only connect to other hosts with this network id");
-	addNetworkingOption("node-key", po::value<string>()->value_name("<node_key>"),
-						"Set own node-key and node_id to connect other (default: none and random create new)");
+    addNetworkingOption("node-key", po::value<string>()->value_name("<node_key>"),
+                        "Set own node-key and node_id to connect other (default: none and random create new)");
     addNetworkingOption("skip-same-ip", po::value<bool>()->value_name("<skip-same-ip>")->default_value(true),
                         "skip same ip connect )");
 #if BRC_MINIUPNPC
@@ -528,20 +532,16 @@ int main(int argc, char **argv) {
         }
     }
 
-	if (vm.count("accountJson"))
-    {
-        try
-        {
+    if (vm.count("accountJson")) {
+        try {
             accountPath = vm["accountJson"].as<string>();
             accountJSON = contentsString(accountPath.string());
-            if (accountJSON.empty())
-            {
+            if (accountJSON.empty()) {
                 cerr << "accountJson file not found or empty (" << accountPath.string() << ")\n";
                 //return -1;
             }
         }
-        catch (...)
-        {
+        catch (...) {
             cerr << "Bad --accountJson option: " << vm["accountJson"].as<string>() << "\n";
             return -1;
         }
@@ -583,22 +583,24 @@ int main(int argc, char **argv) {
             return -1;
         }
     }
-    if (vm.count("nodemonitor"))
-    {
+    if (vm.count("nodemonitor")) {
         nodemonitorIP = vm["nodemonitor"].as<string>();
         std::cout << "ip = " << nodemonitorIP << std::endl;
     }
     if (vm.count("listen-ip")) {
         listenIP = vm["listen-ip"].as<string>();
         listenSet = true;
-    }else{
+    } else {
         listenIP = "0.0.0.0";
     }
 
-	if(vm.count("http_port"))
-	{
+    if (vm.count("http_port")) {
         http_port = vm["http_port"].as<unsigned short>();
-	}
+    }
+
+    if (vm.count("http_threads")) {
+        http_threads = vm["http_threads"].as<unsigned short>();
+    }
     if (vm.count("listen")) {
         listenPort = vm["listen"].as<unsigned short>();
         listenSet = true;
@@ -691,16 +693,16 @@ int main(int argc, char **argv) {
             return -1;
         }
 
-    int64_t _rebuild_num =0;
+    int64_t _rebuild_num = 0;
     if (vm.count("kill"))
         withExisting = WithExisting::Kill;
     if (vm.count("rebuild")) {
         withExisting = WithExisting::Verify;
-        _rebuild_num = vm["rebuild"].as<int64_t >();
+        _rebuild_num = vm["rebuild"].as<int64_t>();
     }
     if (vm.count("rescue"))
         withExisting = WithExisting::Rescue;
-    
+
     if ((vm.count("import-secret"))) {
         Secret s(fromHex(vm["import-secret"].as<string>()));
         toImport.emplace_back(s);
@@ -734,34 +736,31 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!chainConfigIsSet){
+    if (!chainConfigIsSet) {
         // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),{}); //genesisStateRoot(brc::Network::MainNetwork));
+        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),
+                                  {}); //genesisStateRoot(brc::Network::MainNetwork));
     }
 
 
-    if (!accountJSON.empty())
-    {
-        try
-        {
+    if (!accountJSON.empty()) {
+        try {
             chainParams.saveBlockAddress(accountJSON);
             //ctrace << "saveBlockAddress success!";
             chainAccountJsonIsSet = true;
         }
-        catch (...)
-        {
+        catch (...) {
             cerr << "provided accountJson is not well formatted\n";
             //cerr << "sample: \n" << genesisInfo(brc::Network::MainNetworkTest) << "\n";
             return 0;
         }
     }
-    if(vm.count("private-key")){
+    if (vm.count("private-key")) {
         std::string key_str = vm["private-key"].as<string>();
         chainParams.setPrivateKey(key_str);
     }
 
-    if (!nodemonitorIP.empty())
-    {
+    if (!nodemonitorIP.empty()) {
         chainParams.savenodemonitorIP(nodemonitorIP);
     }
 
@@ -774,44 +773,36 @@ int main(int argc, char **argv) {
     }
 
 
-
-
     if (loggingOptions.verbosity > 0)
         cout << BrcGrayBold "brcd, a C++ BrcdChain client" BrcReset << "\n";
 
-	fs::path configFile = getDataDir() / fs::path("config.rlp");
-	bytes b = contents(configFile);
-	if(b.size())
-	{
-		try
-		{
-			RLP config(b);
-			author = config[1].toHash<Address>();
-		}
-		catch(...) { }
-	}
+    fs::path configFile = getDataDir() / fs::path("config.rlp");
+    bytes b = contents(configFile);
+    if (b.size()) {
+        try {
+            RLP config(b);
+            author = config[1].toHash<Address>();
+        }
+        catch (...) {}
+    }
 
-	if(vm.count("address"))
-		try
-	{
-		author = vm["address"].as<Address>();
-	}
-	catch(BadHexCharacter &)
-	{
-		cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-		return -1;
-	}
-	catch(...)
-	{
-		cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
-		return -1;
-	}
+    if (vm.count("address"))
+        try {
+            author = vm["address"].as<Address>();
+        }
+        catch (BadHexCharacter &) {
+            cerr << "Bad hex in " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+            return -1;
+        }
+        catch (...) {
+            cerr << "Bad " << "--address" << " option: " << vm["address"].as<string>() << "\n";
+            return -1;
+        }
 
-	if(argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account"))
-	{
-		AccountManager accountm;
-		return !accountm.execute(argc, argv);
-	}
+    if (argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account")) {
+        AccountManager accountm;
+        return !accountm.execute(argc, argv);
+    }
 
     miner.execute();
 
@@ -865,11 +856,11 @@ int main(int argc, char **argv) {
 
     auto nodesState = contents(getDataDir() / fs::path("network.rlp"));
     auto caps = set<string>{"brc"};
-    if(vm.count("node-key")){
-		//Secret _k = Secret(vm["node-key"].as<string>());
-		auto node_key = dev::Secret(dev::crypto::from_base58(vm["node-key"].as<string>()));
-		WebThreeDirect::replace_node(nodesState, node_key);
-	}
+    if (vm.count("node-key")) {
+        //Secret _k = Secret(vm["node-key"].as<string>());
+        auto node_key = dev::Secret(dev::crypto::from_base58(vm["node-key"].as<string>()));
+        WebThreeDirect::replace_node(nodesState, node_key);
+    }
 
     if (testingMode)
         chainParams.allowFutureBlocks = true;
@@ -1058,10 +1049,9 @@ int main(int argc, char **argv) {
 
     if (bootstrap || !remoteHost.empty() || enableDiscovery || listenSet || !preferredNodes.empty()) {
         web3.startNetwork();
-        cout << "Node ID: " << web3.enode() << " listenPort:" << listenPort <<"\n";
+        cout << "Node ID: " << web3.enode() << " listenPort:" << listenPort << "\n";
     } else
         cout << "Networking disabled. To start, use netstart or pass --bootstrap or a remote host.\n";
-
 
 
     web3.setNetworkSkipSameIp(skip_same_ip);
@@ -1119,14 +1109,15 @@ int main(int argc, char **argv) {
 
         if (jsonRPCURL >= 0) {
             //no need to maintain admin and leveldb interfaces for rpc
-            jsonrpcHttpServer = new FullServer( brcFace, new rpc::Net(web3),
-                    new rpc::Web3(web3.clientVersion()),//new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
+            jsonrpcHttpServer = new FullServer(brcFace, new rpc::Net(web3),
+                                               new rpc::Web3(
+                                                       web3.clientVersion()),//new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
 //                    new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
 //                    new rpc::AdminNet(web3, *sessionManager.get()),
-                    new rpc::Debug(*web3.brcdChain()),
-                    nullptr
+                                               new rpc::Debug(*web3.brcdChain()),
+                                               nullptr
             );
-            auto httpConnector = new SafeHttpServer(listenIP, (int)http_port, "", "", 4);
+            auto httpConnector = new SafeHttpServer(listenIP, (int) http_port, "", "", (int) http_threads);
             httpConnector->setAllowedOrigin("");
             jsonrpcHttpServer->addConnector(httpConnector);
             jsonrpcHttpServer->StartListening();
@@ -1182,16 +1173,14 @@ int main(int argc, char **argv) {
         else
             web3.addNode(p.first, p.second.first);
 
-	if(bootstrap && privateChain.empty())
-	{
-		for(auto const &i : Host::pocHosts()) {
+    if (bootstrap && privateChain.empty()) {
+        for (auto const &i : Host::pocHosts()) {
             cnote << " try connnect:" << i.first << " " << i.second;
             web3.requirePeer(i.first, i.second);
         }
-	}
+    }
 
-    for(auto const&i : chainParams.getConnectPeers())
-    {
+    for (auto const &i : chainParams.getConnectPeers()) {
         web3.requirePeer(i.first, i.second);
         cnote << " connnect:" << i.first << " " << i.second;
     }

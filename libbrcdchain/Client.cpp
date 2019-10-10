@@ -101,6 +101,9 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     });  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced([=](h256 const&) { m_needStateReset = true; });
     m_bqReady = m_bq.onReady([=]() {
+        if(auto h = m_host.lock()){
+            h->noteNewTransactions();
+        }
         this->onBlockQueueReady();
     });  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
     m_bq.setOnBad([=](Exception& ex) { this->onBadBlock(ex); });
@@ -396,6 +399,9 @@ void Client::syncBlockQueue()
 			<< "  author: " << last.author() << " late: " << late << "ms size: " << ir.goodTranactions.size();
 		}
 	}
+
+
+
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
@@ -761,6 +767,21 @@ void Client::tick()
         }
 
     }
+
+    if (chrono::system_clock::now() - m_debugMem > chrono::seconds(10)){
+        m_debugMem = chrono::system_clock::now();
+//        m_bc.debugMemery();
+//        m_bq.debugMemery();
+//        m_tq.debugMemery();
+//        auto h = m_host.lock();
+//        if(h){
+//            h->debugMemery();
+//        }
+//        else{
+//            CMEM_LOG << "cant get host.";
+//        }
+    }
+
 }
 
 void Client::checkWatchGarbage()
@@ -946,7 +967,7 @@ h256 Client::importTransaction(Transaction const& _t)
     // we'll catch the exception at the RPC level.
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
-    e.initialize(_t);
+    e.initialize(_t,transationTool::initializeEnum::rpcinitialize);
     ImportResult res = m_tq.import(_t.rlp());
     switch (res)
     {
@@ -966,8 +987,8 @@ h256 Client::importTransaction(Transaction const& _t)
             BOOST_THROW_EXCEPTION(UnknownTransactionValidationError());
     }
 	// Tell network about the new transactions.
-	if(auto h = m_host.lock())
-		h->noteNewTransactions();
+//	if(auto h = m_host.lock())
+//		h->noteNewTransactions();
     return _t.sha3();
 }
 

@@ -130,6 +130,8 @@ public:
     virtual void doBackgroundWork() override;
 
     std::chrono::milliseconds backgroundWorkInterval()  const override { return std::chrono::milliseconds{10};}
+
+    void debugMemery();
 private:
     static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 
