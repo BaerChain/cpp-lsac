@@ -118,7 +118,7 @@ Json::Value string_to_json(const std::string &source) {
 u256 get_address_nonce(const Address &add, const std::string &ip){
     try {
         std::string _result;
-        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"-1\"],\"id\":1}";
+        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"latest\"],\"id\":1}";
         jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(ip);
         _httpClient.SendRPCMessage(send_msg, _result);
         auto value = string_to_json(_result)["result"];
@@ -408,7 +408,6 @@ int main(int argc, char *argv[]) {
             nonce = (size_t) args_map["nonce"].as<int>();
         }
         if (args_map.count("generate-key")) {
-            for(int i=0; i<51; i++)
             generate_key(args_map["generate-key"].as<std::string>());
         }
 
