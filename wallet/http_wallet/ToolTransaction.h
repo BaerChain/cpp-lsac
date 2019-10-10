@@ -52,6 +52,8 @@ namespace wallet{
 
         static std::string sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port);
 
+        static std::string connectNode(std::string const& _ip_port);
+
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
