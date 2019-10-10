@@ -746,7 +746,8 @@ public:
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && poll() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
-                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() && m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_site == 0;
     }
 
     /// @returns the balance of this account.
@@ -1067,6 +1068,21 @@ public:
         }
     }
 
+    void setSite(u256 val){
+        m_site = val;
+        changed();
+    }
+
+    void setCreaterAddress(Address const& addr){
+        m_createrAddress= addr;
+        changed();
+    }
+
+    void changeMiner(std::pair<Address, Address> const& _pair){
+        m_mappingAddress = _pair;
+        changed();
+    }
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -1134,6 +1150,15 @@ private:
 
     /// Varlitor's create_block records
     BlockRecord m_block_records;
+
+    /// site with creater block
+    u256  m_site =0;
+    /// mapping address about createrAddress
+    Address m_createrAddress = Address();
+    /// mapping Address <original_address, next_address> for change Miner
+    std::pair<Address, Address> m_mappingAddress;
+
+
 
 };
 

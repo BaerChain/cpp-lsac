@@ -313,6 +313,9 @@ public:
         {
             m_state.changeVoteData(curr_info);
         }
+
+        // init sysAddress about new changeMiner
+        m_state.tryInitSysAddressWithNewChangeMiner(curr_info);
     }
 
 private:
