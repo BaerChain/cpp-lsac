@@ -254,6 +254,17 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
 						}
+                        case transferAutoEx:{
+                            auto transferAutoEx_op = new transferAutoEx_operation( (op_type) type,
+                                                                                   transationTool::transferAutoExType(op_obj["m_autoExType"].get_int()),
+                                                                                   u256(op_obj["m_autoExNum"].get_str()),
+                                                                                   u256(op_obj["m_transferNum"].get_str()),
+                                                                                   Address(op_obj["m_from"].get_str()),
+                                                                                   Address(op_obj["m_to"].get_str())
+                            );
+                            tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
+                            break;
+                        }
 					}
                 }
                 trx_datas.push_back(tx);
