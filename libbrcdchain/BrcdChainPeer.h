@@ -30,6 +30,7 @@ public:
 
     u256 totalDifficulty() const { return m_totalDifficulty; }
 
+    void setBlockNumber(const u256 &h) { m_height = h;}
     u256 block_number() const { return m_height;}
 
     time_t lastAsk() const { return m_lastAsk; }

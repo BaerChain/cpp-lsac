@@ -56,14 +56,16 @@ int main(int argc, char *argv[]) {
 
         if (w_server.StartListening()) {
             cout << "Server started successfully ...Listening:" << port<< endl;
-            getchar();
-            //w_server.StopListening();
+            if (!_url.empty()){
+                cout << "try connect host:"<< _url<<endl;
+                w_server.test_connect_node();
+            }
         } else {
             cout << "Error starting Server" << endl;
         }
         while (true)
         {
-            usleep(500);
+            usleep(1000000);
         }
 
     }
@@ -73,6 +75,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     catch (...) {
-
+        std::cout << " Unknow Exception";
+        exit(1);
     }
 }

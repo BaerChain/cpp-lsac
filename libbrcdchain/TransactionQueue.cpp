@@ -140,13 +140,12 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
         LOG(m_loggerDetail) << "Queued vaguely legit-looking transaction " << _h;
-
+        
         while (m_current.size() > m_limit)
         {
             LOG(m_loggerDetail) << "Dropping out of bounds transaction " << _h;
             remove_WITH_LOCK(m_current.rbegin()->transaction.sha3());
         }
-
         m_onReady();
     }
     catch (Exception const& _e)
@@ -393,4 +392,16 @@ void dev::brc::TransactionQueue::eraseDropedTx(h256 const& _txHash)
 	if(ret == m_dropped.end())
 		return;
 	m_dropped.erase(ret);
+}
+
+
+void dev::brc::TransactionQueue::debugMemery() {
+    CMEM_LOG << "begin -----TransactionQueue------";
+    CMEM_LOG << "m_currentByHash : " << m_currentByHash.size();
+    CMEM_LOG << "m_currentByAddressAndNonce : " << m_currentByAddressAndNonce.size();
+    CMEM_LOG << "m_future : " << m_future.size();
+    CMEM_LOG << "m_verifiers : " << m_verifiers.size();
+    CMEM_LOG << "m_unverified : " << m_unverified.size();
+    CMEM_LOG << "m_known : " << m_known.size();
+    CMEM_LOG << "end -----TransactionQueue------";
 }

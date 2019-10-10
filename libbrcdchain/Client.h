@@ -345,6 +345,7 @@ protected:
     mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
                                             ///< When did we last both doing GC on the watches?
     mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
+    mutable std::chrono::system_clock::time_point m_debugMem = std::chrono::system_clock::now();
                                             ///< When did we last tick()?
 
     unsigned m_syncAmount = 50;             ///< Number of blocks to sync in each go.

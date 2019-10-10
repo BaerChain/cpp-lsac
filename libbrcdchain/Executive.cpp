@@ -203,7 +203,7 @@ void Executive::accrueSubState(SubState& _parentContext)
         _parentContext += m_ext->sub;
 }
 
-void Executive::initialize(Transaction const& _transaction)
+void Executive::initialize(Transaction const& _transaction, transationTool::initializeEnum _enum)
 {
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(m_sealEngine.brcSchedule(m_envInfo.number()));
@@ -237,8 +237,11 @@ void Executive::initialize(Transaction const& _transaction)
             throw;
         }
 
-        if(m_envInfo.number() <= 1740000 && m_envInfo.header().chain_id() == 0xb){
-            if (m_t.nonce() < nonceReq)
+
+        if((m_envInfo.number() <= 1740000 && m_envInfo.header().chain_id() == 0xb)
+            || (m_envInfo.number() <= 1200157 && m_envInfo.header().chain_id() == 0x1))
+        {
+             if (m_t.nonce() < nonceReq)
             {
                 cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                        << nonceReq << " Got " << m_t.nonce();
@@ -247,17 +250,30 @@ void Executive::initialize(Transaction const& _transaction)
                         InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
                                        << errinfo_comment(std::string("the sender Nonce error")));
             }
-        }
-        else{
-            if (m_t.nonce() != nonceReq)
+        }else{
+            if(_enum == transationTool::initializeEnum::rpcinitialize)
             {
-                cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                if (m_t.nonce() < nonceReq)
+                {
+                    cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                        << nonceReq << " Got " << m_t.nonce();
-                m_excepted = TransactionException::InvalidNonce;
-                BOOST_THROW_EXCEPTION(
+                    m_excepted = TransactionException::InvalidNonce;
+                    BOOST_THROW_EXCEPTION(
                         InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
                                        << errinfo_comment(std::string("the sender Nonce error")));
+                }
+            }else{
+                if (m_t.nonce() != nonceReq)
+                    {
+                        cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                        << nonceReq << " Got " << m_t.nonce();
+                        m_excepted = TransactionException::InvalidNonce;
+                        BOOST_THROW_EXCEPTION(
+                            InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce())
+                                       << errinfo_comment(std::string("the sender Nonce error")));
+                }
             }
+
         }
 
 
@@ -273,8 +289,9 @@ void Executive::initialize(Transaction const& _transaction)
 		u256 total_brc = 0;
         if (!m_t.isVoteTranction())
         {
-			bigint totalCost = gasCost;
-            if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value())
+			bigint totalCost = gasCost ;
+
+            if ( m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value() || m_t.gas() < m_baseGasRequired)
             {
                 LOG(m_execLogger) << "Not enough brc: Require > " << "totalCost " << " = "
 					              << totalCost << "  m_t.gas() = " << m_t.gas()
@@ -323,7 +340,7 @@ void Executive::initialize(Transaction const& _transaction)
 				}*/
                 if (_type != transationTool::brcTranscation && _ops.size() > 1) {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                            "Replace witness operations cannot be batch operated"));
+                            "Only transfer transactions can be batch operated"));
                 }
 
                 if (_type == transationTool::brcTranscation && _ops.size() > 50)
@@ -450,6 +467,12 @@ void Executive::initialize(Transaction const& _transaction)
 
                 }
                 break;
+				case transationTool::transferAutoEx:
+                {
+                    transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
+                }
+                break;
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
@@ -458,7 +481,7 @@ void Executive::initialize(Transaction const& _transaction)
                     break;
                 }
 
-				if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost){
+				if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost && _type != transationTool::transferAutoEx){
 					LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
 						<< " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
 						<< m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
@@ -487,6 +510,9 @@ void Executive::initialize(Transaction const& _transaction)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
                     m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
+			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo.timestamp());
+
 			}
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
@@ -623,6 +649,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::receivingincome:{
                 m_s.receivingIncome(m_t.sender(), m_batch_params._operation ,m_envInfo.number());
+                break;
+            }
+            case transationTool::op_type::transferAutoEx:
+            {
+                m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
                 break;
             }
             default:
@@ -845,7 +876,6 @@ bool Executive::finalize()
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
         m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
         m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
-        cerror << "GAS:" << m_totalGas - m_needRefundGas;
     }
 
     // Suicides...
