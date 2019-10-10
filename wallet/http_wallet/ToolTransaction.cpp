@@ -171,7 +171,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
              std::cout << "the json format error. ";
              std::cout << e.what()<<std::endl;
              //_pair.second = e.what();
-             _pair.second = "the data_json is error";
+             _pair.second = "the data_json Field type error";
              return _pair;
          }
          catch (...){
