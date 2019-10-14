@@ -630,16 +630,137 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
-void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+    cnote << "into verfrity changeMiner...";
+    // TODO verify height
+
+    if (_ops.empty()){
+        cerror << "changeMiner  operation is empty!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("changeMiner operation is empty"));
+    }
     std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(
             _ops[0]);
-    Account *a = account(SysVarlitorAddress);
-    if (!a) {
-
+    if(!pen){
+        cerror << "changeMiner  dynamic type field!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("Error Dynamic about changeMiner operation"));
     }
-    a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+    if(_from != pen->m_before){
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
+    }
+    if(pen->m_after == pen->m_before){
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("replace miner can not same"));
+    }
+
+    Account *befor_miner = account(_from);
+    if (!befor_miner){
+        cerror << "changeMiner  InvalidAddress for beforeAddress!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("not has the Acconut_miner :" + dev::toString(_from)));
+    }
+    Account *a = account(SysVarlitorAddress);
+    Account *a_can = account(SysCanlitorAddress);
+    if (!a || !a_can) {
+        cerror << "changeMiner  InvalidSysAddress for SysVarlitorAddress!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("can not find sysAddress"));
+    }
+
+    auto miner = a->vote_data();
+    auto canMiner = a_can->vote_data();
+    if (std::find(miner.begin(), miner.end(), _from) == miner.end()){
+        if (std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
+            cerror << "changeMiner from_address not is miner : "<< _from;
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" not is miner"));
+        }
+    }
+
+    auto mapping_addr = befor_miner->mappingAddress();
+    bool is_change = mapping_addr.second == Address() || mapping_addr.second == _from;
+    if (!is_change){
+        cerror << "changeMiner  can not to change :!"<< pen->m_before;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("the sender has error mapping_address"));
+    }
 
 
+}
+
+void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+    if (_ops.empty()){
+        cerror << "changeMiner  operation is empty!";
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+    std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(
+            _ops[0]);
+    if(!pen){
+        cerror << "changeMiner  dynamic type field!";
+        BOOST_THROW_EXCEPTION(InvalidDynamic());
+    }
+
+    Account *befor_miner = account(pen->m_before);
+    if (!befor_miner){
+        cerror << "changeMiner  InvalidAddress for beforeAddress!";
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+    }
+    Account *a = account(SysVarlitorAddress);
+    Account *a_can = account(SysCanlitorAddress);
+    if (!a || !a_can) {
+        cerror << "changeMiner  InvalidSysAddress for SysVarlitorAddress!";
+        BOOST_THROW_EXCEPTION(InvalidMinner());
+    }
+    //a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+    int ret =0;
+    auto miner = a->vote_data();
+    auto canMiner = a_can->vote_data();
+    if (std::find(miner.begin(), miner.end(), pen->m_before) != miner.end()){
+        ret = 1;
+    }
+    else if (std::find(canMiner.begin(), canMiner.end(), pen->m_before) != canMiner.end()){
+        ret = 2;
+    }
+
+    if (0==ret){
+        cerror << "changeMiner  before not is miner!";
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+
+    auto mapping_addr = befor_miner->mappingAddress();
+    bool is_change = mapping_addr.second == Address() || mapping_addr.second == pen->m_before;
+    if (!is_change){
+        cerror << "changeMiner  can not to change :!"<< pen->m_before;
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+
+    Account* a_new = account(pen->m_after);
+    if (!a_new){
+       createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
+        a_new = account(pen->m_after);
+    }
+
+    //change sys data
+    Address change_addr = ret == 1 ? SysVarlitorAddress : SysCanlitorAddress;
+    Account *change_account = ret == 1 ? a : a_can;
+    std::vector<PollData> miners = change_account->vote_data();
+    std::vector<PollData> miners_log = miners;
+
+    auto find_ret = std::find(miners.begin(), miners.end(), pen->m_before);
+    find_ret->m_addr = pen->m_after;
+    change_account->set_vote_data(miners);
+
+    //change miner data
+    Address before_addr = pen->m_before;
+    if (mapping_addr.first != Address() && mapping_addr.first != pen->m_before){
+        auto  start_a = account(mapping_addr.first);
+        if (!start_a){
+            createAccount(mapping_addr.first, {requireAccountStartNonce(), 0, 0});
+            a_new = account(mapping_addr.first);
+        }
+        before_addr = mapping_addr.first;
+        start_a->setChangeMiner({mapping_addr.first, pen->m_after});
+        // TODO log
+    }
+    a_new->setChangeMiner({before_addr, pen->m_after});
+    befor_miner->setChangeMiner({before_addr, pen->m_after});
+
+    //TODO add roll back log
+    m_changeLog.emplace_back(Change::MinnerSnapshot, change_addr, miners_log);
 }
 
 Account *dev::brc::State::getSysAccount() {
@@ -1212,14 +1333,35 @@ void State::addBlockReward(Address const &_addr, u256 _blockNum, u256 _rewardNum
 
 
 void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
-    if (auto a = account(_addr)) {
-        a->addCooikeIncome(_value);
+    Address add_address = _addr;
+    if (auto a = account(_addr)){
+        auto mapping_addr= a->mappingAddress();
+        if(mapping_addr.first != Address()){
+            if (mapping_addr.second != _addr){
+                cerror << " the after address is error first:"<<mapping_addr.first << " second:"<< mapping_addr.second;
+                BOOST_THROW_EXCEPTION(InvalidMappingAddress());
+            }
+            if (mapping_addr.first != _addr){
+                if (auto a_before = account(mapping_addr.first)){
+                    if (a_before->mappingAddress().second != _addr){
+                        cerror << " the before address is error first:"<<a_before->mappingAddress().first << " second:"<< a_before->mappingAddress().second;
+                        BOOST_THROW_EXCEPTION(InvalidMappingAddress());
+                    }
+                    add_address = mapping_addr.first;
+                } else{
+                    BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+                }
+            }
+        }
+        //a->addCooikeIncome(_value);
     } else {
         BOOST_THROW_EXCEPTION(InvalidAddressAddr());
     }
-
+    cnote << "#########income addr:"<< add_address;
+    auto exc_a = account(add_address);
+    exc_a->addCooikeIncome(_value);
     if (_value) {
-        m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
+        m_changeLog.emplace_back(Change::CooikeIncomeNum, add_address, _value);
     }
 
 }

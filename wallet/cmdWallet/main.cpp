@@ -297,6 +297,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
 //                auto sssss = dev::brc::toJson(sign_t);
 //                cerror << "test: " << sssss << std::endl;
+                std::cout << toHexPrefixed(sign_t.rlp())<<std::endl;
                 if (_is_send) {
                     sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
                 }

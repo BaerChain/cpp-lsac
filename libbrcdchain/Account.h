@@ -1078,9 +1078,12 @@ public:
         changed();
     }
 
-    void changeMiner(std::pair<Address, Address> const& _pair){
+    void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
         changed();
+    }
+    std::pair<Address, Address>const& mappingAddress(){
+        return m_mappingAddress;
     }
 
 private:
@@ -1151,14 +1154,13 @@ private:
     /// Varlitor's create_block records
     BlockRecord m_block_records;
 
+    /// mapping Address <original_address, next_address> for change Miner
+    std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+
     /// site with creater block
     u256  m_site =0;
     /// mapping address about createrAddress
     Address m_createrAddress = Address();
-    /// mapping Address <original_address, next_address> for change Miner
-    std::pair<Address, Address> m_mappingAddress;
-
-
 
 };
 

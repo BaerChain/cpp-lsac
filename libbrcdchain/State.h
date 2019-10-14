@@ -76,6 +76,7 @@ DEV_SIMPLE_EXCEPTION(InvalidAddressAddVote);
 DEV_SIMPLE_EXCEPTION(NotEnoughVoteLog);
 DEV_SIMPLE_EXCEPTION(InvalidSysAddress);
 DEV_SIMPLE_EXCEPTION(InvalidDynamic);
+DEV_SIMPLE_EXCEPTION(InvalidMappingAddress);
 
 class SealEngineFace;
 class Executive;
@@ -393,6 +394,7 @@ public:
 	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
+    void verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
