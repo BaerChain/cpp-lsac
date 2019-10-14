@@ -5,7 +5,7 @@
 #include "WalletServer.h"
 #include "ToolTransaction.h"
 
-wallet::WalletServer::WalletServer(HttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
+wallet::WalletServer::WalletServer(dev::SafeHttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
 //    this->bindAndAddMethod(Procedure("testhello", PARAMS_BY_NAME, JSON_STRING,
 //                                     "test", JSON_STRING, NULL),
 //                           &WalletServer::testhello);
@@ -34,6 +34,8 @@ void wallet::WalletServer::sign_transaction(const Json::Value &request, Json::Va
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             respone["isSend"] = false;
+            std::cout << "sign transaction:"<< respone["hash"]<<std::endl;
+            std::cout << "rlp:"<< respone["rlp"]<<std::endl;
         }
         else{
             respone["error"] = _pair.second;
@@ -74,18 +76,18 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
             }
             else{
                 respone["isSend"] = false;
-                respone["sendRet"] = "send error , check the send_url";
+                respone["sendRet"] = "send error , check the jsonData";
             }
         }
         else{
-            std::cout << "error: not has url"<<std::endl;
+            std::cout << "error: not has url to send"<<std::endl;
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             respone["isSend"] = false;
         }
     }
     catch (...){
-        respone["error"] = "send field check the send_url";
+        respone["error"] = "send field check the send_url or network";
     }
 
 
@@ -127,4 +129,26 @@ void wallet::WalletServer::new_address(const Json::Value & request, Json::Value 
         respone["error"] = "invalid format";
     }
 
+}
+
+bool wallet::WalletServer::test_connect_node() {
+    if (m_send_url.empty()){
+        std::cout<< "Warning the send url is empty!"<<std::endl;
+    }
+    try {
+        std::string _str=ToolTransaction::connectNode( m_send_url);
+        Json::Reader reader;
+        Json::Value value;
+        if (reader.parse(_str, value)) {            // json字符串转为json对象
+            if(value.isMember("result")) {
+                std::cout << "connect host:"<< m_send_url<< " is ok!" << std::endl;
+                return true;
+            }
+        }
+    }
+    catch (...){
+    }
+    std::cout << "Warning can not connect host:"<< m_send_url<<std::endl;
+    std::cout << "can not to use method: sign_transaction_send"<<std::endl;
+    return false;
 }

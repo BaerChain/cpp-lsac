@@ -118,7 +118,7 @@ Json::Value string_to_json(const std::string &source) {
 u256 get_address_nonce(const Address &add, const std::string &ip){
     try {
         std::string _result;
-        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"-1\"],\"id\":1}";
+        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"latest\"],\"id\":1}";
         jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(ip);
         _httpClient.SendRPCMessage(send_msg, _result);
         auto value = string_to_json(_result)["result"];
@@ -139,6 +139,7 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 //    cerror << "send message " << send_msg << std::endl;
 
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(_ip_port);
+    _httpClient.SetTimeout(1500);
     _httpClient.SendRPCMessage(send_msg, _result);
 
     cwarn << _result;
@@ -148,13 +149,24 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
     try {
         js::mValue val;
-        js::read_string_or_throw(contentsString(path.string()), val);
-        js::mObject obj = val.get_obj();
+        js::mObject obj;
+        try {
+            js::read_string_or_throw(contentsString(path.string()), val);
+            obj = val.get_obj();
+        }
+        catch (...){
+            std::cout << "Error the Json format error !"<<std::endl;
+            exit(1);
+        }
 
         std::vector<trx_source> trx_datas;
         //获取数据
         if (obj.count("source")) {
             auto array = obj["source"].get_array();
+            if(array.empty()){
+                std::cout << "Error the source is null !"<<std::endl;
+                exit(1);
+            }
             for (auto &data : array) {
 				trx_source tx;
                 auto d_obj = data.get_obj();
@@ -247,7 +259,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                 trx_datas.push_back(tx);
             }
         } else {
-            std::cout << "not find source.\n";
+            std::cout << "Error not find source.\n";
             exit(1);
         }
 
@@ -255,13 +267,31 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
         std::map<Address, Secret> keys;
         if (obj.count("keys")) {
-            for (auto &obj : obj["keys"].get_array()) {
-                auto key = obj.get_str();
-                auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                keys[keyPair.address()] = keyPair.secret();
+            js::mArray key_array;
+            try {
+                key_array = obj["keys"].get_array();
+                if (key_array.empty()){
+                    std::cout << "Error the keys is null !"<<std::endl;
+                    exit(1);
+                }
+            }
+            catch (...){
+                std::cout <<"Error the keys  not is array"<< std::endl;
+                exit(1);
+            }
+            try {
+                for (auto &obj : key_array) {
+                    auto key = obj.get_str();
+                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+                    keys[keyPair.address()] = keyPair.secret();
+                }
+            }
+            catch (...){
+                std::cout << "Error Secret key format error!"<<std::endl;
+                exit(1);
             }
         } else {
-            std::cout << "not find key.....\n";
+            std::cout << "Error not find key.....\n";
             exit(1);
         }
 
@@ -297,11 +327,18 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
 //                auto sssss = dev::brc::toJson(sign_t);
 //                cerror << "test: " << sssss << std::endl;
+//                std::cout << "rlp: " << toHexPrefixed(sign_t.rlp()) <<std::endl;
                 if (_is_send) {
-                    sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
+                    try {
+                        sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
+                    }
+                    catch (...){
+                        std::cout << "Error can not to send:"<<_ip<<std::endl;
+                        exit(1);
+                    }
                 }
             } else {
-                std::cout << "please input address: " << t.from << " private key.";
+                std::cout << "please input address: " << t.from << " private key."<<std::endl;
                 exit(1);
             }
         }
@@ -311,6 +348,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
     }
     catch (const std::exception &e) {
         std::cout << "exception : " << e.what() << std::endl;
+        std::cout << "Error the data_json Field type error !"<<std::endl;
     }
     catch (const boost::exception &e) {
         std::cout << "xxxxxxx " << std::endl;
@@ -408,7 +446,6 @@ int main(int argc, char *argv[]) {
             nonce = (size_t) args_map["nonce"].as<int>();
         }
         if (args_map.count("generate-key")) {
-            for(int i=0; i<51; i++)
             generate_key(args_map["generate-key"].as<std::string>());
         }
 
