@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
         bpo::options_description description("command line ");
         description.add_options()
                 ("help,h", "show help message.")
-                ("port,p", bpo::value<int>(), "http listen port.")
+                ("ip", bpo::value<std::string>(), "http listen ip default: 127.0.0.1")
+                ("port,p", bpo::value<int>(), "http listen port default: 8088")
                 ("send,s", bpo::value<std::string>(),"get the http ip and port, use this option will auto to send rawTransation to http host...");
 
         bpo::variables_map args_map;
@@ -37,25 +38,29 @@ int main(int argc, char *argv[]) {
         bpo::store(parsed, args_map);
 
         int port =8088;
+        std::string ip = "127.0.0.1";
         std::string _url ="";
 
         if (args_map.count("help")) {
             std::cout << description << std::endl;
             return 0;
         }
+        if (args_map.count("ip")){
+            ip = args_map["ip"].as<std::string>();
+        }
         if (args_map.count("port")) {
            port = args_map["port"].as<int>();
         }
-
         if (args_map.count("send")) {
             _url = args_map["send"].as<std::string>();
+        }else{
+            std::cout<< "Warning: not has host to send , Only sign transaction"<<std::endl;
         }
-
-        SafeHttpServer server("127.0.0.1", port, "", "");
+        SafeHttpServer server(ip, port, "", "");
         wallet::WalletServer w_server(server, _url);
 
         if (w_server.StartListening()) {
-            cout << "Server started successfully ...Listening: 127.0.0.1:" << port<< endl;
+            cout << "Server started successfully ...Listening: "<< ip << ":"<< port<< endl;
             if (!_url.empty()){
                 cout << "try connect host:"<< _url<<endl;
                 w_server.test_connect_node();
@@ -71,11 +76,15 @@ int main(int argc, char *argv[]) {
     }
 
     catch (jsonrpc::JsonRpcException &e){
-        std::cout<< e.what() << std::endl;
+        std::cout<<"Error:"<< e.what() << std::endl;
+        exit(1);
+    }
+    catch (std::exception &e) {
+        std::cout <<"Error:"<< e.what()<< std::endl ;
         exit(1);
     }
     catch (...) {
-        std::cout << " Unknow Exception";
+        std::cout << " Unknow Exception"<< std::endl;
         exit(1);
     }
 }

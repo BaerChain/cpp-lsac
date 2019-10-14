@@ -80,7 +80,7 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
             }
         }
         else{
-            std::cout << "error: not has url"<<std::endl;
+            std::cout << "error: not has url to send"<<std::endl;
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             respone["isSend"] = false;
