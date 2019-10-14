@@ -51,11 +51,11 @@ int main(int argc, char *argv[]) {
             _url = args_map["send"].as<std::string>();
         }
 
-        HttpServer server(port);
+        SafeHttpServer server("127.0.0.1", port, "", "");
         wallet::WalletServer w_server(server, _url);
 
         if (w_server.StartListening()) {
-            cout << "Server started successfully ...Listening:" << port<< endl;
+            cout << "Server started successfully ...Listening: 127.0.0.1:" << port<< endl;
             if (!_url.empty()){
                 cout << "try connect host:"<< _url<<endl;
                 w_server.test_connect_node();

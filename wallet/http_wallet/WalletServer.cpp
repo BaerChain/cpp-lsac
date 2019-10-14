@@ -5,7 +5,7 @@
 #include "WalletServer.h"
 #include "ToolTransaction.h"
 
-wallet::WalletServer::WalletServer(HttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
+wallet::WalletServer::WalletServer(dev::SafeHttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
 //    this->bindAndAddMethod(Procedure("testhello", PARAMS_BY_NAME, JSON_STRING,
 //                                     "test", JSON_STRING, NULL),
 //                           &WalletServer::testhello);
