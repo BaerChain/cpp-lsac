@@ -743,7 +743,6 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     auto find_ret = std::find(miners.begin(), miners.end(), pen->m_before);
     find_ret->m_addr = pen->m_after;
     change_account->set_vote_data(miners);
-
     //change miner data
     Address before_addr = pen->m_before;
     if (mapping_addr.first != Address() && mapping_addr.first != pen->m_before){
@@ -752,15 +751,20 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
             createAccount(mapping_addr.first, {requireAccountStartNonce(), 0, 0});
             a_new = account(mapping_addr.first);
         }
+        // log
+        m_changeLog.emplace_back(Change::ChangeMiner, mapping_addr.first, start_a->mappingAddress());
+
         before_addr = mapping_addr.first;
         start_a->setChangeMiner({mapping_addr.first, pen->m_after});
-        // TODO log
     }
+    //log
+    m_changeLog.emplace_back(Change::ChangeMiner, pen->m_before, befor_miner->mappingAddress());
+    m_changeLog.emplace_back(Change::ChangeMiner, pen->m_after, a_new->mappingAddress());
+    //data
     a_new->setChangeMiner({before_addr, pen->m_after});
     befor_miner->setChangeMiner({before_addr, pen->m_after});
 
-    //TODO add roll back log
-    m_changeLog.emplace_back(Change::MinnerSnapshot, change_addr, miners_log);
+    m_changeLog.emplace_back(Change::ChangeMiner, change_addr, miners_log);
 }
 
 Account *dev::brc::State::getSysAccount() {

@@ -148,6 +148,7 @@ struct Change
     dev::brc::ex::ExOrderMulti ex_multi;
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
+    std::pair<Address, Address> mapping;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -219,6 +220,10 @@ struct Change
     {
         old_account.kill();
         old_account.copyByAccount(_account);
+    }
+    Change(Kind _kind, Address const& _addr, std::pair<Address, Address>const& _map) :kind(_kind), address(_addr)
+    {
+        mapping =_map;
     }
 };
 
