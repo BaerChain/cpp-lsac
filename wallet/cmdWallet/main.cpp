@@ -293,8 +293,14 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
             try {
                 for (auto &obj : key_array) {
                     auto key = obj.get_str();
-                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                    keys[keyPair.address()] = keyPair.secret();
+                    if(key.size() == 66 || key.size() == 64) {
+                        auto keyPair = dev::KeyPair(dev::Secret(key));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
+                    else {
+                        auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
                 }
             }
             catch (...){
