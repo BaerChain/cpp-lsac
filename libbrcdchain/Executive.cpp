@@ -300,7 +300,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
 				std::string ex_info = "not enough BRC or Cookie to execute tarnsaction will cost:"+ toString(totalCost);
-				BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
+				BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
                                                       << errinfo_comment(ex_info));
             }
         }
@@ -487,7 +487,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 						<< m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
 					m_excepted = TransactionException::NotEnoughCash;
 					std::string ex_info = "not enough Cookie to execute tarnsaction will cost:" + toString(totalCost);
-					BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))<< errinfo_comment(ex_info));
+					BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))<< errinfo_comment(ex_info));
 				}
             }
 
@@ -496,7 +496,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 			{
 				m_excepted = TransactionException::NotEnoughCash;
 				std::string ex_info = "not enough require cookie to execute tarnsaction will cost:" + toString(totalCost);
-				BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(ex_info));
+				BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
 			}
 		    m_totalGas =(u256) totalCost;
 			//

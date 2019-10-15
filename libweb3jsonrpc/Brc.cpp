@@ -1022,6 +1022,13 @@ string dev::rpc::exceptionToErrorMessage()
         if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
             ret += std::string(*_error);
     }
+    catch (ExecutiveFailed const& _e)
+    {
+        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        {
+            ret += std::string(*_error);
+        }
+    }
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";
