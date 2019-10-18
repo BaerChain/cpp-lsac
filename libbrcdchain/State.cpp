@@ -2572,8 +2572,6 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum) {
         }
 
         auto vote_datas = vote_data(SysVarlitorAddress);
-        auto standby_data = vote_data(SysCanlitorAddress);
-        vote_datas.insert(vote_datas.end(), standby_data.begin(), standby_data.end());
         /// fork code about changeMiner
         if (config::changeVoteHeight() < _blockNum) {
             for (auto &d: vote_datas) {
