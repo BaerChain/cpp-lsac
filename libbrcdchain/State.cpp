@@ -219,7 +219,7 @@ Account *State::account(Address const &_addr) {
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(ex_order_b);
 
-    if(config::newChangeHeight() < m_block_number){
+    if(m_block_number >= config::newChangeHeight()){
         if(state.itemCount() > 19) {
             const bytes _b = state[19].convert<bytes>(RLP::LaissezFaire);
             i.first->second.populateChangeMiner(_b);
@@ -643,7 +643,7 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
     cnote << "into verfrity changeMiner...";
     // TODO: verify height
-    if(config::newChangeHeight() >= _envinfo.number()){
+    if(config::newChangeHeight() > _envinfo.number()){
         cwarn << "this height:"<< _envinfo.number() << "can not to changeMiner";
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("changeMiner height error"));
     }
@@ -1049,7 +1049,7 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
     trySnapshotWithMinerMapping(_address, _blockNum);
     std::pair<u256, u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
     // new changeMiner fork
-    if(config::newChangeHeight() > _blockNum){
+    if(_blockNum >= config::newChangeHeight()){
         auto miner_mapping = minerMapping(_address);
         if(miner_mapping.first != Address() && miner_mapping.first != _address){
             auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
@@ -1069,7 +1069,7 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
     trySnapshotWithMinerMapping(_address, _blockNum);
     u256 _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
     // new changeMiner fork
-    if(config::newChangeHeight() > _blockNum){
+    if(_blockNum >= config::newChangeHeight()){
         auto miner_mapping = minerMapping(_address);
         if(miner_mapping.first != Address() && miner_mapping.first != _address){
             auto ret = rpcqueryBlcokReward(miner_mapping.first, (int64_t) _blockNum);
@@ -1466,7 +1466,7 @@ State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<tr
 
         ReceivingType _receType = (ReceivingType) _op->m_receivingType;
         // TODO frok code
-        if(config::newChangeHeight() > _blockNum) {
+        if(_blockNum < config::newChangeHeight()) {
             if (_receType == ReceivingType::RBlockFeeIncome) {
                 receivingBlockFeeIncome(_addr, _blockNum);
             } else if (_receType == ReceivingType::RPdFeeIncome) {
@@ -2494,7 +2494,7 @@ void dev::brc::State::trySnapshotWithMinerMapping(const dev::Address &_addr, dev
         return;
 
     // TODO frok code
-    if(config::newChangeHeight() > _block_num) {
+    if(_block_num >= config::newChangeHeight()) {
         auto miner_mapping = minerMapping(_addr);
         if (miner_mapping.first != Address() && miner_mapping.first != _addr && miner_mapping.second == _addr) {
             cnote << " try create sanpshot mapping first";
@@ -2689,7 +2689,7 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     std::vector<PollData> varlitors;
     std::vector<PollData> standbys;
 
-    if(config::newChangeHeight() < curr_header.number()) {
+    if(curr_header.number() >= config::newChangeHeight()) {
         /// fork code about newChangeMiner
         for (auto &val: p_data) {
             auto mapping_addr = minerMapping(val.m_addr);
@@ -3068,7 +3068,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if (_block_number > config::newChangeHeight()) {
+                if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
                 else{
@@ -3146,7 +3146,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
 
                 {
                     /// fork about newChangeMiner
-                    if(_block_number > config::newChangeHeight()){
+                    if(_block_number >= config::newChangeHeight()){
                         s << i.second.getRLPStreamChangeMiner();
                         //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }

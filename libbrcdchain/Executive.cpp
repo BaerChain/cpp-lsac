@@ -874,9 +874,9 @@ bool Executive::finalize()
 
         // updata about author mapping_address
         // TODO fork code
-        if (config::newChangeHeight() < m_envInfo.number()) {
+        if (m_envInfo.number() >= config::newChangeHeight()) {
             auto miner_mapping = m_s.minerMapping(m_envInfo.author());
-            Address up_addr = miner_mapping.first != Address() ? m_envInfo.author() : miner_mapping.first;
+            Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
             m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
             m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
         }

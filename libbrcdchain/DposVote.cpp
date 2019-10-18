@@ -57,7 +57,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
 			}
             ///fork code about newchangeminer
             // check after changeMiner about the mapping
-            if(config::newChangeHeight() < _envinfo.number()) {
+            if(_envinfo.number() >= config::newChangeHeight()) {
                 auto miner_mapping = m_state.minerMapping(_from);
                 if (!(miner_mapping.first == Address() || miner_mapping.first == _from)) {
                     BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(

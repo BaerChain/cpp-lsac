@@ -215,7 +215,7 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
         dev::brc::EnvInfo const& _envinfo,
         dev::brc::DposVote const& _vote)
         {
-    if(_envinfo.number() <= config::newChangeHeight()){
+    if(_envinfo.number() < config::newChangeHeight()){
         verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
     }
     else{
