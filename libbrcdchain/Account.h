@@ -704,6 +704,27 @@ public:
         return false;
     }
 
+    bytes getRLPStreamChangeMiner() const{
+        RLPStream rlp;
+        if( m_mappingAddress.first == Address()){
+            rlp.appendList(1);
+            rlp << "";
+        }
+        else{
+            rlp.appendList(2);
+            rlp << m_mappingAddress.first;
+            rlp << m_mappingAddress.second;
+        }
+        return rlp.out();
+    }
+    void populateChangeMiner(bytes const& b){
+        RLP rlp(b);
+        if(rlp.itemCount() == 2){
+            m_mappingAddress.first = rlp[0].convert<Address>(RLP::LaissezFaire);
+            m_mappingAddress.second = rlp[1].convert<Address>(RLP::LaissezFaire);
+        }
+    }
+
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
     void kill()
@@ -1082,7 +1103,7 @@ public:
         m_mappingAddress = _pair;
         changed();
     }
-    std::pair<Address, Address>const& mappingAddress(){
+    std::pair<Address, Address>const& mappingAddress() const{
         return m_mappingAddress;
     }
 

@@ -209,6 +209,38 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 	}
 }
 
+void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address const& _from,
+        std::vector<std::shared_ptr<transationTool::operation>> const& _ops,
+        dev::brc::transationTool::dividendcycle _type,
+        dev::brc::EnvInfo const& _envinfo,
+        dev::brc::DposVote const& _vote)
+        {
+    if(_envinfo.number() <= config::newChangeHeight()){
+        verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+    }
+    else{
+        auto miner_mapping = m_state.minerMapping(_from);
+        if (!(miner_mapping.first == Address() || miner_mapping.second == _from)) {
+            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
+            BOOST_THROW_EXCEPTION(
+                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping can not to receive")));
+        }
+        if(miner_mapping.first == Address()){
+            verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+        }
+        else if (miner_mapping.second != _from){
+            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
+            BOOST_THROW_EXCEPTION(
+                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping.second not match from")));
+        }
+        else if (miner_mapping.first != _from){
+            verifyreceivingincome(miner_mapping.first, _ops, _type, _envinfo, _vote);
+        }
+    }
+    cnote << "verify receive ok";
+}
+
+
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
     for(auto const& _it : _ops)
@@ -230,6 +262,7 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, 
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome type is null")));
         }
     }
+    cnote << "verify receive ok";
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,

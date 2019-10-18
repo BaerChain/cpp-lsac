@@ -315,7 +315,7 @@ public:
         }
 
         // init sysAddress about new changeMiner
-        m_state.tryInitSysAddressWithNewChangeMiner(curr_info);
+        //m_state.tryInitSysAddressWithNewChangeMiner(curr_info);
     }
 
 private:

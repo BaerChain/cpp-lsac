@@ -243,7 +243,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         {
              if (m_t.nonce() < nonceReq)
             {
-                cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                cwarn << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                        << nonceReq << " Got " << m_t.nonce();
                 m_excepted = TransactionException::InvalidNonce;
                 BOOST_THROW_EXCEPTION(
@@ -255,7 +255,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             {
                 if (m_t.nonce() < nonceReq)
                 {
-                    cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                    cwarn << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                        << nonceReq << " Got " << m_t.nonce();
                     m_excepted = TransactionException::InvalidNonce;
                     BOOST_THROW_EXCEPTION(
@@ -265,7 +265,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             }else{
                 if (m_t.nonce() != nonceReq)
                     {
-                        cdebug << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
+                        cwarn << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Require "
                         << nonceReq << " Got " << m_t.nonce();
                         m_excepted = TransactionException::InvalidNonce;
                         BOOST_THROW_EXCEPTION(
@@ -507,7 +507,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                    //m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                    m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
                 else if(m_batch_params._type == transationTool::op_type::changeMiner)
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
 			}
@@ -870,8 +871,19 @@ bool Executive::finalize()
     {
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
-        m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-        m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
+
+        // updata about author mapping_address
+        // TODO fork code
+        if (config::newChangeHeight() < m_envInfo.number()) {
+            auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+            Address up_addr = miner_mapping.first != Address() ? m_envInfo.author() : miner_mapping.first;
+            m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+            m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
+        }
+        else{
+            m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+            m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
+        }
     }
 
     // Suicides...
