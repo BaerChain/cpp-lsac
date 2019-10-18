@@ -223,6 +223,8 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     std::vector<PollData> snapshot_data;
     uint32_t  index = config::minner_rank_num() +1;
     for(auto const& val: p_datas){
+        if (find(snapshot_data.begin(), snapshot_data.end(), val.m_addr) != snapshot_data.end())
+            continue;
         if (config::getVotingCycle(_block_num).first <= 2){
             if (--index)
                 snapshot_data.emplace_back(val);
