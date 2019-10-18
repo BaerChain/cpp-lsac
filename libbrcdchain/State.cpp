@@ -1413,7 +1413,6 @@ void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     } else {
         BOOST_THROW_EXCEPTION(InvalidAddressAddr());
     }
-    cnote << "#########income addr:"<< add_address;
     auto exc_a = account(add_address);
     exc_a->addCooikeIncome(_value);
     if (_value) {
