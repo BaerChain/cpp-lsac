@@ -768,7 +768,14 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     find_ret->m_addr = pen->m_after;
     change_account->set_vote_data(miners);
 
-    //change miner data  A  B  C
+    //change miner data  A  B  C  D
+    /*
+     *                      1. A: <0,0>
+							2. A -> B :A:<a, b>  B: <a,b>
+							3. B -> C :A:<a, c>  B: <0,0>  C:<a,c>
+							4. C -> D :A:<a, d>  C: <0,0>  D:<a,d>
+							5. D -> A :A:<0, 0>  D: <0,0>
+     * */
     Address before_addr = pen->m_before;
 
     if (mapping_addr.first != Address() && mapping_addr.first != pen->m_before){
@@ -788,6 +795,9 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     m_changeLog.emplace_back(Change::NewChangeMiner, pen->m_after, a_new->mappingAddress());
     //data
     a_new->setChangeMiner({before_addr, pen->m_after});
+    if(before_addr == pen->m_after ){
+        a_new->setChangeMiner({Address(), Address()});
+    }
     if (mapping_addr.first != before_addr && mapping_addr.first != Address()) {
         befor_miner->setChangeMiner({Address(), Address()});
     }else{
@@ -2835,7 +2845,7 @@ void dev::brc::State::tryInitSysAddressWithNewChangeMiner(const dev::brc::BlockH
     for(int i=1; i<= CreaterSysAddresses.size(); i++){
         createAccount(CreaterSysAddresses[i-1], {requireAccountStartNonce(), 0});
         auto a = account(CreaterSysAddresses[i-1]);
-        a->setSite(u256(i));
+        //a->setSite(u256(i));
     }
     return;
 }

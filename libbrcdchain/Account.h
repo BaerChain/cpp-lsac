@@ -768,7 +768,7 @@ public:
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                 m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
-                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_site == 0;
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 ;
     }
 
     /// @returns the balance of this account.
@@ -1089,11 +1089,6 @@ public:
         }
     }
 
-    void setSite(u256 val){
-        m_site = val;
-        changed();
-    }
-
     void setCreaterAddress(Address const& addr){
         m_createrAddress= addr;
         changed();
@@ -1178,8 +1173,6 @@ private:
     /// mapping Address <original_address, next_address> for change Miner
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 
-    /// site with creater block
-    u256  m_site =0;
     /// mapping address about createrAddress
     Address m_createrAddress = Address();
 

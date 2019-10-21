@@ -225,16 +225,37 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
             BOOST_THROW_EXCEPTION(
                     receivingincomeFiled() << errinfo_comment(std::string("miner_mapping can not to receive")));
         }
-        if(miner_mapping.first == Address()){
+//        if (miner_mapping.second != _from && miner_mapping.second != Address()){
+//            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
+//            BOOST_THROW_EXCEPTION(
+//                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping.second not match from")));
+//        }
+        std::string try_ret = "";
+        bool  is_ok = false;
+        try {
             verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+            is_ok = true;
         }
-        else if (miner_mapping.second != _from){
-            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
-            BOOST_THROW_EXCEPTION(
-                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping.second not match from")));
+        catch (receivingincomeFiled const& _r)
+        {
+            if(auto *_error = boost::get_error_info<errinfo_comment>(_r))
+                try_ret = "from address:"+std::string(*_error);
         }
-        else if (miner_mapping.first != _from){
-            verifyreceivingincome(miner_mapping.first, _ops, _type, _envinfo, _vote);
+
+        if (miner_mapping.first != _from && miner_mapping.first !=Address()){
+            try {
+                verifyreceivingincome(miner_mapping.first, _ops, _type, _envinfo, _vote);
+                is_ok = true;
+            }
+            catch (receivingincomeFiled const& _r){
+                if(auto *_error = boost::get_error_info<errinfo_comment>(_r))
+                    try_ret += "\n mapping address:" +std::string(*_error);
+            }
+        }
+
+        if (!is_ok){
+            cwarn << " verify recivied field !";
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(try_ret));
         }
     }
     cnote << "verify receive ok";
