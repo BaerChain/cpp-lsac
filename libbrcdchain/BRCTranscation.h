@@ -50,6 +50,7 @@ namespace dev {
             void verifyBlockFeeincome(Address const& _from, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyPdFeeincome(Address const& _from, int64_t _blockNum, DposVote const& _vote);
             bool findAddress(std::map<Address, u256> const& _voteData, std::vector<PollData> const& _pollData);
+            bool isMainNode(dev::Address const& _addr, std::vector<PollData> const& _pollData);
             bool isMainNode(std::map<Address, u256> const& _voteData , std::vector<PollData> const& _pollData);
             bool isMainNode(std::vector<PollData> const& _voteData, std::vector<PollData> const& _pollData);
 

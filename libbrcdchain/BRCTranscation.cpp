@@ -306,7 +306,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
         std::vector<PollData> _dataV = a->vote_data();
         bool _status = false;
         std::vector<PollData> _mainNodeAddr = sysAccount->vote_data();
-        if(isMainNode(_dataV, _mainNodeAddr))
+        if(isMainNode(_dataV, _mainNodeAddr) || isMainNode(_from, _mainNodeAddr))
         {
             _status = true;
         }
@@ -322,13 +322,13 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
             if(_minerSnap.count(_voteIt->first))
             {
                 std::vector<PollData> _mainNodeV = _minerSnap[_voteIt->first];
-                if(isMainNode(_voteIt->second, _mainNodeV))
+                if(isMainNode(_voteIt->second, _mainNodeV) || isMainNode(_from, _mainNodeV))
                 {
                     _status = true;
                 }
             }else{
                 std::vector<PollData> _nowMiner = m_state.vote_data(SysVarlitorAddress);
-                if(isMainNode(_voteIt->second, _nowMiner))
+                if(isMainNode(_voteIt->second, _nowMiner) || isMainNode(_from, _nowMiner))
                 {
                     _status = true;
                 }
@@ -431,6 +431,20 @@ bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteD
     }
     return  _status;
 }
+
+bool dev::brc::BRCTranscation::isMainNode(dev::Address const& _addr, std::vector<PollData> const& _pollData)
+{
+    bool _status = false;
+    for(uint32_t i = 0; i < _pollData.size(); i++)
+    {
+        if(_addr == _pollData[i].m_addr)
+        {
+            _status = true;
+        }
+    }
+    return _status;
+}
+
 
 bool dev::brc::BRCTranscation::isMainNode(const std::map<Address, u256> &_voteData,  const std::vector<dev::brc::PollData> &_pollData)
 {
