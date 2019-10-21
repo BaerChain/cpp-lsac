@@ -126,13 +126,17 @@ struct Change
         ReceiveCookies,
         UpExOrder,
         SuccessOrder,
-        ChangeMiner
+        ChangeMiner,
+        StorageByteRoot,
+        StorageByte
     };
 
     Kind kind;        ///< The kind of the change.
     Address address;  ///< Changed account address.
     u256 value;       ///< Change value, e.g. balance, storage and nonce.
-    u256 key;         ///< Storage key. Last because used only in one case.
+    u256 key;                   ///< Storage key. Last because used only in one case.
+    h256 byteKey;
+    bytes byteValue;
     bytes oldCode;    ///< Code overwritten by CREATE, empty except in case of address collision.
     std::pair<Address, u256> vote;         // 投票事件
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
@@ -158,6 +162,11 @@ struct Change
     /// Helper constructor especially for storage change log.
     Change(Address const& _addr, u256 const& _key, u256 const& _value)
       : kind(Storage), address(_addr), value(_value), key(_key)
+    {}
+
+    // Storagebyte change log
+    Change(Address const& _addr, h256 const& _key, bytes const& _value)
+        :kind(StorageByte), address(_addr), byteValue(_value), byteKey(_key)
     {}
 
     /// Helper constructor for nonce change log.
@@ -349,6 +358,11 @@ public:
     {
         subBRC(_FromAddr, _value);
         addBRC(_ToAddr, _value);
+        RLPStream rlp(2);
+        rlp << _ToAddr << _value;
+        cerror << rlp.out();
+        h256 _hash = sha3(_FromAddr);
+        setStorageBytes(_FromAddr, _hash, rlp.out());
     }
 	void execute_transfer_BRCs(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops)
 	{
@@ -508,6 +522,14 @@ public:
 
     /// Clear the storage root hash of an account to the hash of the empty trie.
     void clearStorage(Address const& _contract);
+    
+    bytes storageBytes(Address const& _addr, h256 const& _key) const;
+
+    void setStorageBytes(Address const& _addr, h256 const& _key, bytes const& _value);
+
+    bytes originalStorageBytesValue(Address const& _addr, h256 const& _key);
+
+    void clearStorageByte(Address const& _addr);
 
     /// Create a contract at the given address (with unset code and unchanged balance).
     void createContract(Address const& _address);

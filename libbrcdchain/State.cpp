@@ -216,7 +216,9 @@ Account *State::account(Address const &_addr) {
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(ex_order_b);
 
-
+    const h256 storageByteRoot = state[19].toHash<h256>();
+    i.first->second.setStorageBytesRoot(storageByteRoot);
+    
     return &i.first->second;
 }
 
@@ -1653,6 +1655,55 @@ u256 State::originalStorageValue(Address const &_contract, u256 const &_key) con
         return 0;
 }
 
+bytes State::storageBytes(Address const& _addr, h256 const& _key) const
+{
+    if(Account const *a = account(_addr))
+    {
+        return a->storageByteValue(_key, m_db);
+    }else{
+        return bytes();
+    }
+}
+
+void State::setStorageBytes(Address const& _addr, h256 const& _key, bytes const& _value)
+{
+    if(Account *a = account(_addr))
+    {
+        a->setStorageByte(_key, _value);
+    }else{
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist")));
+    }
+    m_changeLog.emplace_back(_addr, _key, storageBytes(_addr, _key));
+}
+
+bytes State::originalStorageBytesValue(Address const& _addr, h256 const& _key)
+{
+    if (Account const *a = account(_addr))
+    {
+        return a->originalStorageByteValue(_key, m_db);
+    }
+    else
+    {
+        return bytes();
+    }
+}
+
+void State::clearStorageByte(Address const& _addr)
+{
+    if(Account *a = account(_addr))
+    {
+        if(a->baseByteRoot() == EmptyTrie)
+        {
+            return;
+        }else{
+            m_changeLog.emplace_back(Change::StorageByteRoot, _addr, a->baseByteRoot());
+            a->clearStorageByte();
+        }
+    }else{
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist")));
+    }
+}
+
 void State::clearStorage(Address const &_contract) {
     h256 const &oldHash{m_cache[_contract].baseRoot()};
     if (oldHash == EmptyTrie)
@@ -1845,6 +1896,12 @@ void State::rollback(size_t _savepoint) {
                 account.kill();
                 account.copyByAccount(change.old_account);
                 break;
+            case Change::StorageByte:
+                account.setStorageByte(change.byteKey, change.byteValue);
+                break;
+            case Change::StorageByteRoot:
+                account.setStorageBytesRoot(change.value);
+                break;
             default:
                 break;
         }
@@ -2009,11 +2066,14 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-//
+
+
+        cerror << a->storageByteValue(sha3(_addr), m_db);
 //        Json::Value record;
 //        record["time"] = toJS(a->last_records(_addr));
 //        jv["last_block_created"] = record;
     }
+
     return jv;
 }
 
@@ -2765,7 +2825,8 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                s.appendList(19);
+                //s.appendList(19);  //old state field
+                s.appendList(20);  // add new state field
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2833,6 +2894,28 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 {
                     s << i.second.getStreamRLPResultOrder();
                     s << i.second.getStreamRLPExOrder();
+                }
+                
+                //Add a new state field
+                {
+                    if(i.second.storageByteOverlay().empty())
+                    {
+                        assert(i.second.baseByteRoot());
+                        s << i.second.baseByteRoot();
+                    }else{
+                        SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+                        for(auto const& val : i.second.storageByteOverlay())
+                        {
+                            if(!val.second.empty())
+                            {
+                                storageByteDB.insert(val.first, val.second);
+                            }else{
+                                storageByteDB.remove(val.first);
+                            }
+                        }
+                        assert(storageByteDB.root());
+                        s << storageByteDB.root();
+                    }
                 }
 
                 _state.insert(i.first, &s.out());

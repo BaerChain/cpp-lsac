@@ -35,6 +35,20 @@ u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
     return value;
 }
 
+bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) const
+{
+    auto it = m_storageOverlayBytes.find(_key);
+    if(it != m_storageOverlayBytes.end())
+    {
+        return it->second;
+    }
+    SecureTrieDB<h256, OverlayDB> const memdb(const_cast<OverlayDB*>(&_db), m_storageByteRoot);
+    std::string const value = memdb.at(_key);
+    RLP _storage(value);
+    m_storageOverlayBytes[_key] = _storage.data().toBytes();
+    return _storage.data().toBytes();
+}
+
 void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 {
     auto  ret = std::find(m_vote_data.begin(), m_vote_data.end(), _votePair.first);

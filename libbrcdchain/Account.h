@@ -727,6 +727,9 @@ public:
         m_received_cookies.clear();
         m_exChangeOrder.clear();
         m_successExchange.clear();
+        m_storageOverlayBytesOriginal.clear();
+        m_storageOverlayBytes.clear();
+        m_storageByteRoot = EmptyTrie;
         changed();
     }
 
@@ -874,6 +877,49 @@ public:
         m_storageOverlay.clear();
         m_storageOriginal.clear();
         m_storageRoot = _root;
+        changed();
+    }
+
+    h256 const& baseByteRoot() const
+    {
+        assert(m_storageByteRoot);
+        return m_storageByteRoot;
+    }
+
+    bytes storageByteValue(h256 const& _key, OverlayDB const& _db) const
+    {
+        auto mit = m_storageOverlayBytes.find(_key);
+        if(mit != m_storageOverlayBytes.end())
+        {
+            return mit->second;
+        }
+
+        return originalStorageByteValue(_key, _db);
+    }
+
+    bytes originalStorageByteValue(h256 const& _key, OverlayDB const& _db) const;
+
+    std::unordered_map<h256, bytes> const& storageByteOverlay() const { return m_storageOverlayBytes; }
+
+    void setStorageByte(h256 const& _key, bytes const& _value)
+    {   
+        m_storageOverlayBytes[_key] = _value;
+        changed();
+    }
+
+    void clearStorageByte()
+    {
+        m_storageOverlayBytes.clear();
+        m_storageOverlayBytesOriginal.clear();
+        m_storageByteRoot = EmptyTrie;
+        changed();
+    }
+
+    void setStorageBytesRoot(h256 const& _root)
+    {
+        m_storageOverlayBytes.clear();
+        m_storageOverlayBytesOriginal.clear();
+        m_storageByteRoot = _root;
         changed();
     }
 
@@ -1088,6 +1134,7 @@ private:
     /// m_storageOverlay is overlaid on this and takes precedence for all values set.
     h256 m_storageRoot = EmptyTrie;
 
+    h256 m_storageByteRoot = EmptyTrie;
     /** If c_contractConceptionCodeHash then we're in the limbo where we're running the
      * initialisation code. We expect a setCode() at some point later. If EmptySHA3, then m_code,
      * which should be empty, is valid. If anything else, then m_code is valid iff it's not empty,
@@ -1122,6 +1169,8 @@ private:
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     mutable std::unordered_map<u256, u256> m_storageOverlay;
 
+    mutable std::unordered_map<h256, bytes> m_storageOverlayBytes;
+    mutable std::unordered_map<h256, bytes> m_storageOverlayBytesOriginal;
     /// The cache of unmodifed storage items
     mutable std::unordered_map<u256, u256> m_storageOriginal;
 
