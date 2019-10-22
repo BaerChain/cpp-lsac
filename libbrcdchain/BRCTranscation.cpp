@@ -384,8 +384,14 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
 }
 
 void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
-                                                    const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, int64_t const& _timeStamp)
+                                                    const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, dev::brc::EnvInfo const& _envinfo)
 {
+    int64_t const& _timeStamp = _envinfo.timestamp();
+    if((_envinfo.number() < 4072941 && _envinfo.header().chain_id() == 0x1)
+        || (_envinfo.number() < 99999999 && _envinfo.header().chain_id() == 0xb))
+    {
+        BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Transfer automatic exchange fee function has not yet reached the opening time")));
+    }
     for(auto const& _opIt : _op)
     {
         std::shared_ptr<transationTool::transferAutoEx_operation> _autoExop =  std::dynamic_pointer_cast<transationTool::transferAutoEx_operation>(_opIt);
