@@ -805,11 +805,17 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     }
     cnote << "end a_new:" << pen->m_after<<" : " << a_new->mappingAddress();
 
-    if (mapping_addr.first != before_addr && mapping_addr.first != Address()) {
+    befor_miner->setChangeMiner({before_addr, pen->m_after});
+    if (befor_miner->mappingAddress().second != pen->m_before && befor_miner->mappingAddress().first != pen->m_before){
         befor_miner->setChangeMiner({Address(), Address()});
-    }else{
-        befor_miner->setChangeMiner({before_addr, pen->m_after});
     }
+
+//    mapping_addr = befor_miner->mappingAddress();
+//    if (mapping_addr.first != before_addr && mapping_addr.first != Address()) {
+//        befor_miner->setChangeMiner({Address(), Address()});
+//    }else{
+//        befor_miner->setChangeMiner({before_addr, pen->m_after});
+//    }
     cnote << "end befor_miner:" << pen->m_before<<" : " << befor_miner->mappingAddress();
 
     m_changeLog.emplace_back(Change::NewChangeMiner, change_addr, miners_log);
