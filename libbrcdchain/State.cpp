@@ -1057,16 +1057,30 @@ void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 
 Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockNum) {
     trySnapshotWithMinerMapping(_address, _blockNum);
-    std::pair<u256, u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
-    // new changeMiner fork
-    if(_blockNum >= config::newChangeHeight()){
-        auto miner_mapping = minerMapping(_address);
-        if(miner_mapping.first != Address() && miner_mapping.first != _address){
-            auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
-            _pair.first += ret.first;
-            _pair.second += ret.second;
-        }
+    std::pair<u256, u256> _pair ={0,0};
+
+    if (_blockNum < config::newChangeHeight()){
+        _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
     }
+    /// new changeMiner fork
+    if(_blockNum >= config::newChangeHeight()){
+        do{
+            auto miner_mapping = minerMapping(_address);
+            if (miner_mapping.first != Address() && miner_mapping.first == _address &&
+                miner_mapping.second != _address) {
+                cwarn << "the minner address is changed by other:" << miner_mapping.second;
+                break;
+            }
+            _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
+            if (miner_mapping.first != Address() && miner_mapping.first != _address) {
+                auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
+                _pair.first += ret.first;
+                _pair.second += ret.second;
+            }
+        }
+        while (false);
+    }
+
     Json::Value res;
     Json::Value ret;
     ret["BRC"] = toJS(_pair.first);
@@ -1077,16 +1091,30 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
 
 Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum) {
     trySnapshotWithMinerMapping(_address, _blockNum);
-    u256 _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
-    // new changeMiner fork
-    if(_blockNum >= config::newChangeHeight()){
-        auto miner_mapping = minerMapping(_address);
-        if(miner_mapping.first != Address() && miner_mapping.first != _address){
-            auto ret = rpcqueryBlcokReward(miner_mapping.first, (int64_t) _blockNum);
-            if (ret >0)
-                _cookieFee += ret;
-        }
+    u256 _cookieFee =0;
+
+    if (_blockNum < config::newChangeHeight()){
+        _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
     }
+    /// new changeMiner fork
+    if(_blockNum >= config::newChangeHeight()){
+        do{
+            auto miner_mapping = minerMapping(_address);
+            if (miner_mapping.first != Address() && miner_mapping.first == _address &&
+                miner_mapping.second != _address) {
+                cwarn << "the minner address is changed by other:" << miner_mapping.second;
+                break;
+            }
+            _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
+            if (miner_mapping.first != Address() && miner_mapping.first != _address) {
+                auto ret = rpcqueryBlcokReward(miner_mapping.first, (int64_t) _blockNum);
+                if (ret >0)
+                    _cookieFee += ret;
+            }
+        }
+        while (false);
+    }
+
     Json::Value _retVal;
     _retVal["CookieFeeIncome"] = toJS(_cookieFee);
     return _retVal;
@@ -1408,37 +1436,6 @@ void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     if (_value) {
         m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
     }
-
-    //    Address add_address = _addr;
-//    if (auto a = account(_addr)){
-//        auto mapping_addr= a->mappingAddress();
-//        if(mapping_addr.first != Address()){
-//            if (mapping_addr.second != _addr){
-//                cerror << " the after address is error first:"<<mapping_addr.first << " second:"<< mapping_addr.second;
-//                BOOST_THROW_EXCEPTION(InvalidMappingAddress());
-//            }
-//            if (mapping_addr.first != _addr){
-//                if (auto a_before = account(mapping_addr.first)){
-//                    if (a_before->mappingAddress().second != _addr){
-//                        cerror << " the before address is error first:"<<a_before->mappingAddress().first << " second:"<< a_before->mappingAddress().second;
-//                        BOOST_THROW_EXCEPTION(InvalidMappingAddress());
-//                    }
-//                    add_address = mapping_addr.first;
-//                } else{
-//                    BOOST_THROW_EXCEPTION(InvalidAddressAddr());
-//                }
-//            }
-//        }
-//        //a->addCooikeIncome(_value);
-//    } else {
-//        BOOST_THROW_EXCEPTION(InvalidAddressAddr());
-//    }
-//    auto exc_a = account(add_address);
-//    exc_a->addCooikeIncome(_value);
-//    if (_value) {
-//        m_changeLog.emplace_back(Change::CooikeIncomeNum, add_address, _value);
-//    }
-
 }
 
 void State::subCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {

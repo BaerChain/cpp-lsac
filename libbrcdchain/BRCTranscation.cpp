@@ -217,19 +217,16 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
         {
     if(_envinfo.number() < config::newChangeHeight()){
         verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+        return;
     }
-    else{
+    if (_envinfo.number() >= config::newChangeHeight()){
         auto miner_mapping = m_state.minerMapping(_from);
         if (!(miner_mapping.first == Address() || miner_mapping.second == _from)) {
             cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
             BOOST_THROW_EXCEPTION(
                     receivingincomeFiled() << errinfo_comment(std::string("miner_mapping can not to receive")));
         }
-//        if (miner_mapping.second != _from && miner_mapping.second != Address()){
-//            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
-//            BOOST_THROW_EXCEPTION(
-//                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping.second not match from")));
-//        }
+
         std::string try_ret = "";
         bool  is_ok = false;
         try {
