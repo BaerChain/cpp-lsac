@@ -293,8 +293,14 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
             try {
                 for (auto &obj : key_array) {
                     auto key = obj.get_str();
-                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                    keys[keyPair.address()] = keyPair.secret();
+                    if(key.size() == 66 || key.size() == 64) {
+                        auto keyPair = dev::KeyPair(dev::Secret(key));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
+                    else {
+                        auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
                 }
             }
             catch (...){
@@ -410,6 +416,22 @@ void generate_key(const std::string &seed){
 
 }
 
+void format_private(const std::string &key){
+    if(key.substr(0, 2) == "0x"){
+        KeyPair pair(Secret(fromHex(key)));
+        std::cout << "address : " << pair.address() << std::endl;
+        std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
+        std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
+        std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+    }
+    else{
+        auto pair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+        std::cout << "address : " << pair.address() << std::endl;
+        std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
+        std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
+        std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+    }
+}
 
 int main(int argc, char *argv[]) {
 
@@ -423,6 +445,7 @@ int main(int argc, char *argv[]) {
                 ("create,c", "create simple \"data.json\" to file on current path.")
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
                 ("sha3", bpo::value<std::string>(), "caculate string sha3.")
+                ("pri-tf", bpo::value<std::string>(), "private-key format.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -463,7 +486,16 @@ int main(int argc, char *argv[]) {
         if(args_map.count("sha3")){
             auto ret = sha3(args_map["sha3"].as<std::string>());
             cwarn << ret;
+            return  0;
         }
+
+
+        if(args_map.count("pri-tf")){
+            format_private(args_map["pri-tf"].as<std::string>());
+            return  0;
+        }
+
+
     }catch (const std::exception &e){
         cwarn << e.what();
     }catch (const boost::exception &e){

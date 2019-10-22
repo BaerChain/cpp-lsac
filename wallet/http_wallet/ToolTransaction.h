@@ -15,6 +15,7 @@
 #include <libdevcore/SHA3.h>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libbrcdchain/Transaction.h>
+#include <libdevcore/Log.h>
 
 using namespace std;
 using namespace dev;
@@ -57,6 +58,7 @@ namespace wallet{
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
+        //static Logger logInfo {createLogger(VerbosityInfo, "signTransaction")};
     };
 }
 
