@@ -24,7 +24,6 @@ namespace dbt = dev::brc::transationTool;
 
 
 int main(int argc, char *argv[]) {
-
     try {
         bpo::options_description description("command line ");
         description.add_options()
@@ -54,19 +53,19 @@ int main(int argc, char *argv[]) {
         if (args_map.count("send")) {
             _url = args_map["send"].as<std::string>();
         }else{
-            std::cout<< "Warning: not has host to send , Only sign transaction"<<std::endl;
+            cwarn<< "Warning: not has host to send , Only sign transaction";
         }
         SafeHttpServer server(ip, port, "", "");
         wallet::WalletServer w_server(server, _url);
 
         if (w_server.StartListening()) {
-            cout << "Server started successfully ...Listening: "<< ip << ":"<< port<< endl;
+            cnote << "Server started successfully ...Listening: "<< ip << ":"<< port;
             if (!_url.empty()){
-                cout << "try connect host:"<< _url<<endl;
+                cnote << "try connect host:"<< _url;
                 w_server.test_connect_node();
             }
         } else {
-            cout << "Error starting Server" << endl;
+            cerror << "Error starting Server" ;
         }
         while (true)
         {
@@ -76,15 +75,15 @@ int main(int argc, char *argv[]) {
     }
 
     catch (jsonrpc::JsonRpcException &e){
-        std::cout<<"Error:"<< e.what() << std::endl;
+        cerror<<"Error:"<< e.what();
         exit(1);
     }
     catch (std::exception &e) {
-        std::cout <<"Error:"<< e.what()<< std::endl ;
+        cerror <<"Error:"<< e.what() ;
         exit(1);
     }
     catch (...) {
-        std::cout << " Unknow Exception"<< std::endl;
+        cerror << " Unknow Exception";
         exit(1);
     }
 }

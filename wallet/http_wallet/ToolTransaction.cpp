@@ -68,7 +68,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
          try{
             auto array = obj["source"].get_array();
             if (array.empty()){
-                std::cout << "error the source is null !"<<std::endl;
+                cerror << "error the source is null !";
                 _pair.second = "the source is null";
                 return _pair;
             }
@@ -178,10 +178,16 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                 }
                 trx_datas.push_back(tx);
             }
+
+            Json::Reader reader ;
+            Json::Value val;
+            if(reader.parse(json_str, val)){
+                cnote << "Analysis of the json_data success... json_data: \n"<<val["source"].toStyledString();
+            }
          }
          catch (std::exception& e){
-             std::cout << "the json format error. ";
-             std::cout << e.what()<<std::endl;
+             cerror << "the json format error. ";
+             cerror << e.what();
              //_pair.second = e.what();
              _pair.second = "the data_json Field type error";
              return _pair;
@@ -192,7 +198,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
          }
 
      } else {
-            std::cout << "not find source.\n";
+         cerror << "not find source.\n";
             _pair.second = "json_data is error not has key:source";
          return _pair;
      }
@@ -228,7 +234,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         }
 
     } else {
-        std::cout << "not find key.....\n";
+        cerror << "not find key.....\n";
         _pair.second = "json_data is error not has key:keys";
         return _pair;
     }
@@ -265,11 +271,10 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             _pair.first = true;
             transaction_hash =toHexPrefixed(sign_t.sha3());
         } else {
-            std::cout << "please input address: " << t.from << " private key."<<std::endl;
+            cerror << "please input address: " << t.from << " private key.";
             _pair.second = "not find the addrss:"+ dev::toString(t.from) +" key...";
         }
     }
-
     return _pair;
 }
 

@@ -8,9 +8,11 @@
 #include <jsonrpccpp/server.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <libweb3jsonrpc/SafeHttpServer.h>
+#include <libdevcore/Log.h>
 
 using namespace jsonrpc;
 using namespace std;
+using namespace dev;
 
 namespace wallet{
 
@@ -31,7 +33,6 @@ public:
 
 private:
     std::string m_send_url;
-
 };
 
 }
