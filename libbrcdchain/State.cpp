@@ -1399,35 +1399,45 @@ void State::addBlockReward(Address const &_addr, u256 _blockNum, u256 _rewardNum
 
 
 void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
-    Address add_address = _addr;
-    if (auto a = account(_addr)){
-        auto mapping_addr= a->mappingAddress();
-        if(mapping_addr.first != Address()){
-            if (mapping_addr.second != _addr){
-                cerror << " the after address is error first:"<<mapping_addr.first << " second:"<< mapping_addr.second;
-                BOOST_THROW_EXCEPTION(InvalidMappingAddress());
-            }
-            if (mapping_addr.first != _addr){
-                if (auto a_before = account(mapping_addr.first)){
-                    if (a_before->mappingAddress().second != _addr){
-                        cerror << " the before address is error first:"<<a_before->mappingAddress().first << " second:"<< a_before->mappingAddress().second;
-                        BOOST_THROW_EXCEPTION(InvalidMappingAddress());
-                    }
-                    add_address = mapping_addr.first;
-                } else{
-                    BOOST_THROW_EXCEPTION(InvalidAddressAddr());
-                }
-            }
-        }
-        //a->addCooikeIncome(_value);
+    if (auto a = account(_addr)) {
+        a->addCooikeIncome(_value);
     } else {
         BOOST_THROW_EXCEPTION(InvalidAddressAddr());
     }
-    auto exc_a = account(add_address);
-    exc_a->addCooikeIncome(_value);
+
     if (_value) {
-        m_changeLog.emplace_back(Change::CooikeIncomeNum, add_address, _value);
+        m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
     }
+
+    //    Address add_address = _addr;
+//    if (auto a = account(_addr)){
+//        auto mapping_addr= a->mappingAddress();
+//        if(mapping_addr.first != Address()){
+//            if (mapping_addr.second != _addr){
+//                cerror << " the after address is error first:"<<mapping_addr.first << " second:"<< mapping_addr.second;
+//                BOOST_THROW_EXCEPTION(InvalidMappingAddress());
+//            }
+//            if (mapping_addr.first != _addr){
+//                if (auto a_before = account(mapping_addr.first)){
+//                    if (a_before->mappingAddress().second != _addr){
+//                        cerror << " the before address is error first:"<<a_before->mappingAddress().first << " second:"<< a_before->mappingAddress().second;
+//                        BOOST_THROW_EXCEPTION(InvalidMappingAddress());
+//                    }
+//                    add_address = mapping_addr.first;
+//                } else{
+//                    BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+//                }
+//            }
+//        }
+//        //a->addCooikeIncome(_value);
+//    } else {
+//        BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+//    }
+//    auto exc_a = account(add_address);
+//    exc_a->addCooikeIncome(_value);
+//    if (_value) {
+//        m_changeLog.emplace_back(Change::CooikeIncomeNum, add_address, _value);
+//    }
 
 }
 
