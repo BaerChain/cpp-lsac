@@ -698,11 +698,10 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
         createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
         a_new = account(pen->m_after);
     }
-    if(a_new->mappingAddress().first != Address()){
+    if(a_new->mappingAddress().first != Address() && a_new->mappingAddress().second != _from){
         cwarn << " the maping after_addr has alreay mapping_addr :"<< a_new->mappingAddress().first;
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the maping after_addr has alreay mapping_addr"));
     }
-
 
 }
 
@@ -753,12 +752,13 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
         BOOST_THROW_EXCEPTION(InvalidFunction());
     }
 
+    cnote << "start befor:" << pen->m_before<<":" << mapping_addr;
     Account* a_new = account(pen->m_after);
     if (!a_new){
        createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
         a_new = account(pen->m_after);
     }
-
+    cnote << "start a_new:" <<pen->m_after<<" : " << a_new->mappingAddress();
     //change sys data
     Address change_addr = ret == 1 ? SysVarlitorAddress : SysCanlitorAddress;
     Account *change_account = ret == 1 ? a : a_can;
@@ -767,6 +767,8 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     auto find_ret = std::find(miners.begin(), miners.end(), pen->m_before);
     find_ret->m_addr = pen->m_after;
     change_account->set_vote_data(miners);
+    // TODO
+    ///rockback log
 
     //change miner data  A  B  C  D
     /*
@@ -784,11 +786,14 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
             createAccount(mapping_addr.first, {requireAccountStartNonce(), 0, 0});
             start_a = account(mapping_addr.first);
         }
+        cnote << "start start_a:" << mapping_addr.first<<" : " << start_a->mappingAddress();
         // log
         m_changeLog.emplace_back(Change::ChangeMiner, mapping_addr.first, start_a->mappingAddress());
 
         before_addr = mapping_addr.first;
         start_a->setChangeMiner({mapping_addr.first, pen->m_after});
+
+        cnote << "start start_a:" << mapping_addr.first<<" : " << start_a->mappingAddress();
     }
     //log
     m_changeLog.emplace_back(Change::NewChangeMiner, pen->m_before, befor_miner->mappingAddress());
@@ -798,12 +803,17 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     if(before_addr == pen->m_after ){
         a_new->setChangeMiner({Address(), Address()});
     }
+    cnote << "end a_new:" << pen->m_after<<" : " << a_new->mappingAddress();
+
     if (mapping_addr.first != before_addr && mapping_addr.first != Address()) {
         befor_miner->setChangeMiner({Address(), Address()});
     }else{
         befor_miner->setChangeMiner({before_addr, pen->m_after});
     }
+    cnote << "end befor_miner:" << pen->m_before<<" : " << befor_miner->mappingAddress();
+
     m_changeLog.emplace_back(Change::NewChangeMiner, change_addr, miners_log);
+
 }
 
 Account *dev::brc::State::getSysAccount() {
@@ -2521,7 +2531,6 @@ void dev::brc::State::trySnapshotWithMinerMapping(const dev::Address &_addr, dev
 }
 
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
-    cnote << " try create snapshot";
     std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t) _block_num);
     if (_pair.second == Votingstage::ERRORSTAGE)
         return;
