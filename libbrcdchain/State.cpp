@@ -644,7 +644,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
     cnote << "into verfrity changeMiner...";
     // TODO: verify height
     if(config::newChangeHeight() > _envinfo.number()){
-        cwarn << "this height:"<< _envinfo.number() << "can not to changeMiner";
+        cwarn << "this height:"<< _envinfo.number() << "  can not to changeMiner";
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("changeMiner height error"));
     }
 
@@ -1088,10 +1088,13 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
                 break;
             }
             _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
+            cnote << miner_mapping << " addr:" << _address;
+            cnote << _pair << " addr:" << _address;
             if (miner_mapping.first != Address() && miner_mapping.first != _address) {
                 auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
                 _pair.first += ret.first;
                 _pair.second += ret.second;
+                cnote << _pair << " addr:" << miner_mapping.first;
             }
         }
         while (false);
@@ -1763,8 +1766,16 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
     uint32_t num = config::minner_rank_num();
     for (auto const &val: vote_data(SysVarlitorAddress)) {
         if (num) {
-            now_miner.emplace_back(val);
-            now_total_poll += val.m_poll;
+            PollData add_data = val;
+            if(_blockNum >= config::newChangeHeight()){
+                if (auto miner = account(val.m_addr)){
+                    if (miner->mappingAddress().first != Address() && miner->mappingAddress().second == val.m_addr){
+                        add_data.m_addr = miner->mappingAddress().first;
+                    }
+                }
+            }
+            now_miner.emplace_back(add_data);
+            now_total_poll += add_data.m_poll;
             --num;
         }
     }
