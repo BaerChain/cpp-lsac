@@ -1811,7 +1811,14 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
             } else {
                 _totalPoll = system_sanp.get_total_poll(i, config::minner_rank_num());
                 summary = system_sanp.m_Feesnapshot[i];
-                check_creater = system_sanp.m_sorted_creaters[i];
+                if(_blockNum >= config::newChangeHeight()){
+                    for(int j =0; j< config::minner_rank_num() && j < system_sanp.m_sorted_creaters[i].size(); j++){
+                        check_creater.emplace_back(system_sanp.m_sorted_creaters[i][j]);
+                    }
+                }
+                else{
+                    check_creater = system_sanp.m_sorted_creaters[i];
+                }
             }
             if (summary.first == old_summary.first && summary.second == old_summary.second) {
                 old_summary = std::make_pair(0, 0);
@@ -2615,7 +2622,7 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum) {
 
         auto vote_datas = vote_data(SysVarlitorAddress);
         /// fork code about changeMiner
-        if (config::changeVoteHeight() < _blockNum) {
+        if (_blockNum >= config::newChangeHeight()) {
             for (auto &d: vote_datas) {
                 auto miner_mapping = minerMapping(d.m_addr);
                 if (miner_mapping.first != Address()) {
