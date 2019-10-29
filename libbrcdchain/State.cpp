@@ -679,11 +679,15 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
 
     auto miner = a->vote_data();
     auto canMiner = a_can->vote_data();
-    if (std::find(miner.begin(), miner.end(), _from) == miner.end()){
-        if (std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
-            cerror << "changeMiner from_address not is miner : "<< _from;
-            BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" not is miner"));
-        }
+    if (std::find(miner.begin(), miner.end(), _from) == miner.end() &&
+            std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
+        cerror << "changeMiner from_address not is miner : "<< _from;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" not is miner"));
+    }
+    if (std::find(miner.begin(), miner.end(), pen->m_after) != miner.end() ||
+            std::find(canMiner.begin(), canMiner.end(), pen->m_after) != canMiner.end()){
+        cerror << "changeMiner after_address already is miner : "<< _from;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" already is miner"));
     }
 
     auto mapping_addr = befor_miner->mappingAddress();
@@ -1088,13 +1092,10 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
                 break;
             }
             _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
-            cnote << miner_mapping << " addr:" << _address;
-            cnote << _pair << " addr:" << _address;
             if (miner_mapping.first != Address() && miner_mapping.first != _address) {
                 auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
                 _pair.first += ret.first;
                 _pair.second += ret.second;
-                cnote << _pair << " addr:" << miner_mapping.first;
             }
         }
         while (false);
@@ -1125,7 +1126,7 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
                 break;
             }
             _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
-            if (miner_mapping.first != Address() && miner_mapping.first != _address) {
+            if (miner_mapping.first != Address() && miner_mapping.first != _address && miner_mapping.second == _address) {
                 auto ret = rpcqueryBlcokReward(miner_mapping.first, (int64_t) _blockNum);
                 if (ret >0)
                     _cookieFee += ret;
