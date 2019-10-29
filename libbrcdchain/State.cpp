@@ -641,7 +641,6 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 }
 
 void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
-    cnote << "into verfrity changeMiner...";
     // TODO: verify height
     if(config::newChangeHeight() > _envinfo.number()){
         cwarn << "this height:"<< _envinfo.number() << "  can not to changeMiner";
@@ -756,13 +755,11 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
         BOOST_THROW_EXCEPTION(InvalidFunction());
     }
 
-    cnote << "start befor:" << pen->m_before<<":" << mapping_addr;
     Account* a_new = account(pen->m_after);
     if (!a_new){
        createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
         a_new = account(pen->m_after);
     }
-    cnote << "start a_new:" <<pen->m_after<<" : " << a_new->mappingAddress();
     //change sys data
     Address change_addr = ret == 1 ? SysVarlitorAddress : SysCanlitorAddress;
     Account *change_account = ret == 1 ? a : a_can;
@@ -773,7 +770,6 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     change_account->set_vote_data(miners);
     // TODO
     ///rockback log
-
     //change miner data  A  B  C  D
     /*
      *                      1. A: <0,0>
@@ -790,14 +786,12 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
             createAccount(mapping_addr.first, {requireAccountStartNonce(), 0, 0});
             start_a = account(mapping_addr.first);
         }
-        cnote << "start start_a:" << mapping_addr.first<<" : " << start_a->mappingAddress();
         // log
-        m_changeLog.emplace_back(Change::ChangeMiner, mapping_addr.first, start_a->mappingAddress());
+        m_changeLog.emplace_back(Change::NewChangeMiner, mapping_addr.first, start_a->mappingAddress());
 
         before_addr = mapping_addr.first;
         start_a->setChangeMiner({mapping_addr.first, pen->m_after});
 
-        cnote << "start start_a:" << mapping_addr.first<<" : " << start_a->mappingAddress();
     }
     //log
     m_changeLog.emplace_back(Change::NewChangeMiner, pen->m_before, befor_miner->mappingAddress());
@@ -807,22 +801,12 @@ void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::op
     if(before_addr == pen->m_after ){
         a_new->setChangeMiner({Address(), Address()});
     }
-    cnote << "end a_new:" << pen->m_after<<" : " << a_new->mappingAddress();
 
     befor_miner->setChangeMiner({before_addr, pen->m_after});
     if (befor_miner->mappingAddress().second != pen->m_before && befor_miner->mappingAddress().first != pen->m_before){
         befor_miner->setChangeMiner({Address(), Address()});
     }
-
-//    mapping_addr = befor_miner->mappingAddress();
-//    if (mapping_addr.first != before_addr && mapping_addr.first != Address()) {
-//        befor_miner->setChangeMiner({Address(), Address()});
-//    }else{
-//        befor_miner->setChangeMiner({before_addr, pen->m_after});
-//    }
-    cnote << "end befor_miner:" << pen->m_before<<" : " << befor_miner->mappingAddress();
-
-    m_changeLog.emplace_back(Change::NewChangeMiner, change_addr, miners_log);
+    m_changeLog.emplace_back(Change::MinnerSnapshot, change_addr, miners_log);
 
 }
 
