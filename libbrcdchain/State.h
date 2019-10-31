@@ -614,10 +614,6 @@ public:
 
     void changeVoteData(BlockHeader const& _header);
 
-    /// init createrSysAddresses
-    /// this about the new changeMiner init Address
-    void tryInitSysAddressWithNewChangeMiner(BlockHeader const &curr_header);
-
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();

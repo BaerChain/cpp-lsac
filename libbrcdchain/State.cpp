@@ -2858,22 +2858,6 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const &_exr
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
-void dev::brc::State::tryInitSysAddressWithNewChangeMiner(const dev::brc::BlockHeader &curr_header){
-    //TODO
-    // check chainId
-
-    // check height
-    if (curr_header.number() != config::initSysAddressHeight()){
-        return;
-    }
-    // init sysAddress
-    for(int i=1; i<= CreaterSysAddresses.size(); i++){
-        createAccount(CreaterSysAddresses[i-1], {requireAccountStartNonce(), 0});
-        auto a = account(CreaterSysAddresses[i-1]);
-        //a->setSite(u256(i));
-    }
-    return;
-}
 
 void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const &params) {
     if (params.chainID != 11)

@@ -1089,11 +1089,6 @@ public:
         }
     }
 
-    void setCreaterAddress(Address const& addr){
-        m_createrAddress= addr;
-        changed();
-    }
-
     void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
         changed();
@@ -1172,9 +1167,6 @@ private:
 
     /// mapping Address <original_address, next_address> for change Miner
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
-
-    /// mapping address about createrAddress
-    Address m_createrAddress = Address();
 
 };
 
