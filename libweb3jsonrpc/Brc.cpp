@@ -964,6 +964,10 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "receivingincome failed :" + std::string(*boost::get_error_info<errinfo_comment >(_r));
     }
+    catch (transferAutoExFailed const& _t)
+    {
+        ret = "transferAutoEx failed: " + std::string(*boost::get_error_info<errinfo_comment>(_t));
+    }
     catch (getVotingCycleFailed const _g)
     {
         ret = std::string(*boost::get_error_info<errinfo_comment >(_g));
@@ -1019,6 +1023,13 @@ string dev::rpc::exceptionToErrorMessage()
         ret = "";
         if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
             ret += std::string(*_error);
+    }
+    catch (ExecutiveFailed const& _e)
+    {
+        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        {
+            ret += std::string(*_error);
+        }
     }
 	catch (...)
 	{

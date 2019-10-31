@@ -1111,3 +1111,11 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
     }
 	m_bq.clearVerifiedBlocks();
 }
+
+void BrcdChainCapability::debugMemery() {
+    CMEM_LOG << "============== BrcdChainCapability start ==============";
+    CMEM_LOG << "m_transactionsSent size: " << m_transactionsSent.size() * sizeof(h256);
+    CMEM_LOG << "m_peers size: " << m_peers.size() ;
+    m_sync->debugMemery();
+    CMEM_LOG << "============== BrcdChainCapability end ==============";
+}

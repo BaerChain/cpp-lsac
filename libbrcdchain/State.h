@@ -385,8 +385,8 @@ public:
         h256 _pendingOrderHash, ex::order_type _pendingOrderType, ex::order_token_type _pendingOrderTokenType,
         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);
 
-	void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-
+	//void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, u256 &_exCookieNum = u256(0), u256 &_exBRCNum = u256(0));
+    std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     void cancelPendingOrder(h256 _pendingOrderHash);
 	void cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
@@ -401,7 +401,7 @@ public:
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
     void verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-    
+
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
 	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
@@ -473,8 +473,8 @@ public:
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
 
+    void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
     std::pair<Address, Address> minerMapping(Address const& addr);
-  
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

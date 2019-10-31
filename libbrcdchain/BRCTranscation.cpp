@@ -434,6 +434,71 @@ void dev::brc::BRCTranscation::verifyPdFeeincome(dev::Address const& _from, int6
     }
 }
 
+void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
+                                                    const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, dev::brc::EnvInfo const& _envinfo)
+{
+    int64_t const& _timeStamp = _envinfo.timestamp();
+    if((_envinfo.number() < 4072941 && _envinfo.header().chain_id() == 0x1)
+        || (_envinfo.number() < 99999999 && _envinfo.header().chain_id() == 0xb))
+    {
+        BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Transfer automatic exchange fee function has not yet reached the opening time")));
+    }
+    for(auto const& _opIt : _op)
+    {
+        std::shared_ptr<transationTool::transferAutoEx_operation> _autoExop =  std::dynamic_pointer_cast<transationTool::transferAutoEx_operation>(_opIt);
+        if(_autoExop->m_from != _from)
+        {
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Initiating transaction address is inconsistent with operation address")));
+        }
+        if(_autoExop->m_autoExNum % 10000 > 0)
+        {
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Pending order accuracy cannot be greater than 4 digits accuracy")));
+        }
+        if(_autoExop->m_autoExType == transationTool::transferAutoExType::Balancededuction)
+        {
+            if(_autoExop->m_transferNum + _autoExop->m_autoExNum > m_state.BRC(_from))
+            {
+                BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("The number of accounts BRC is not enough to complete the transaction")));
+            }
+        }else if(_autoExop->m_autoExType == transationTool::transferAutoExType::Transferdeduction)
+        {
+            if(_autoExop->m_autoExNum > _autoExop->m_transferNum)
+            {
+                BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("The number of automatic redemptions is greater than the number of transfers")));
+            }
+            if(_autoExop->m_transferNum > m_state.BRC(_from))
+            {
+                BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("The number of transfer BRC is greater than the account balance")));
+            }
+        }else{
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Automatically redeem unknown exceptions")));
+        }
+        
+        std::vector<ex::result_order> _result;
+        try
+        {
+            ExdbState _exdbState(m_state);
+            ex::ex_order _order = { _trxid, _from, _autoExop->m_autoExNum * PRICEPRECISION, u256(0), u256(0), _timeStamp, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price};
+            _result =  _exdbState.insert_operation(_order);
+        }
+        catch(const std::exception& e)
+        {
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("allprice buy Cookie error!")));
+        }
+
+        u256 _cookie = 0;
+        for(auto _val : _result)
+        {
+            _cookie += _val.amount;
+        }        
+
+        if(_cookie < _baseGas)
+        {
+            BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Automatically redeemed cookies are insufficient to pay for the fuel cost of the transaction")));
+        }
+    }
+}
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;

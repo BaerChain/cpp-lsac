@@ -61,6 +61,35 @@ using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
 
+
+size_t testGetMemery1(const bytes &v);
+size_t testGetMemery1(const BlockDetails &v);
+size_t testGetMemery1(const BlockLogBlooms &v);
+size_t testGetMemery1(const BlockReceipts &v);
+size_t testGetMemery1(const BlockHash &v);
+size_t testGetMemery1(const TransactionAddress &v);
+size_t testGetMemery1(const BlocksBlooms &v);
+
+
+
+template <typename KEY, typename VALUE>
+size_t testGetMemery(const std::unordered_map<KEY, VALUE> &test){
+    size_t size = 0;
+    for(auto &itr : test){
+        size += sizeof(itr.first);
+        size += testGetMemery1(itr.second);
+    }
+    return size;
+}
+
+
+
+
+
+
+
+
+
 enum {
     ExtraDetails = 0,
     ExtraBlockHash,
@@ -326,8 +355,8 @@ public:
 
 	unsigned int getMaxSealTransaction() const { return c_maxSyncTransactions; }
 
+	void debugMemery();
 private:
-
 
     /// @brief  insert new block, then update cache . consider this block can be executed  or switch main chain on config blocks.
     /// \param _block   push block

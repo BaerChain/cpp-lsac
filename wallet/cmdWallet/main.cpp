@@ -139,6 +139,7 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 //    cerror << "send message " << send_msg << std::endl;
 
     jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(_ip_port);
+    _httpClient.SetTimeout(1500);
     _httpClient.SendRPCMessage(send_msg, _result);
 
     cwarn << _result;
@@ -148,13 +149,24 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
     try {
         js::mValue val;
-        js::read_string_or_throw(contentsString(path.string()), val);
-        js::mObject obj = val.get_obj();
+        js::mObject obj;
+        try {
+            js::read_string_or_throw(contentsString(path.string()), val);
+            obj = val.get_obj();
+        }
+        catch (...){
+            std::cout << "Error the Json format error !"<<std::endl;
+            exit(1);
+        }
 
         std::vector<trx_source> trx_datas;
         //获取数据
         if (obj.count("source")) {
             auto array = obj["source"].get_array();
+            if(array.empty()){
+                std::cout << "Error the source is null !"<<std::endl;
+                exit(1);
+            }
             for (auto &data : array) {
 				trx_source tx;
                 auto d_obj = data.get_obj();
@@ -242,12 +254,23 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
 						}
+                        case transferAutoEx:{
+                            auto transferAutoEx_op = new transferAutoEx_operation( (op_type) type,
+                                                                                   transationTool::transferAutoExType(op_obj["m_autoExType"].get_int()),
+                                                                                   u256(op_obj["m_autoExNum"].get_str()),
+                                                                                   u256(op_obj["m_transferNum"].get_str()),
+                                                                                   Address(op_obj["m_from"].get_str()),
+                                                                                   Address(op_obj["m_to"].get_str())
+                            );
+                            tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
+                            break;
+                        }
 					}
                 }
                 trx_datas.push_back(tx);
             }
         } else {
-            std::cout << "not find source.\n";
+            std::cout << "Error not find source.\n";
             exit(1);
         }
 
@@ -255,13 +278,37 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
         std::map<Address, Secret> keys;
         if (obj.count("keys")) {
-            for (auto &obj : obj["keys"].get_array()) {
-                auto key = obj.get_str();
-                auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                keys[keyPair.address()] = keyPair.secret();
+            js::mArray key_array;
+            try {
+                key_array = obj["keys"].get_array();
+                if (key_array.empty()){
+                    std::cout << "Error the keys is null !"<<std::endl;
+                    exit(1);
+                }
+            }
+            catch (...){
+                std::cout <<"Error the keys  not is array"<< std::endl;
+                exit(1);
+            }
+            try {
+                for (auto &obj : key_array) {
+                    auto key = obj.get_str();
+                    if(key.size() == 66 || key.size() == 64) {
+                        auto keyPair = dev::KeyPair(dev::Secret(key));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
+                    else {
+                        auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+                        keys[keyPair.address()] = keyPair.secret();
+                    }
+                }
+            }
+            catch (...){
+                std::cout << "Error Secret key format error!"<<std::endl;
+                exit(1);
             }
         } else {
-            std::cout << "not find key.....\n";
+            std::cout << "Error not find key.....\n";
             exit(1);
         }
 
@@ -297,12 +344,19 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
 
 //                auto sssss = dev::brc::toJson(sign_t);
 //                cerror << "test: " << sssss << std::endl;
+//                std::cout << "rlp: " << toHexPrefixed(sign_t.rlp()) <<std::endl;
                 std::cout << toHexPrefixed(sign_t.rlp())<<std::endl;
                 if (_is_send) {
-                    sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
+                    try {
+                        sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
+                    }
+                    catch (...){
+                        std::cout << "Error can not to send:"<<_ip<<std::endl;
+                        exit(1);
+                    }
                 }
             } else {
-                std::cout << "please input address: " << t.from << " private key.";
+                std::cout << "please input address: " << t.from << " private key."<<std::endl;
                 exit(1);
             }
         }
@@ -312,6 +366,7 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
     }
     catch (const std::exception &e) {
         std::cout << "exception : " << e.what() << std::endl;
+        std::cout << "Error the data_json Field type error !"<<std::endl;
     }
     catch (const boost::exception &e) {
         std::cout << "xxxxxxx " << std::endl;
@@ -362,6 +417,22 @@ void generate_key(const std::string &seed){
 
 }
 
+void format_private(const std::string &key){
+    if(key.substr(0, 2) == "0x"){
+        KeyPair pair(Secret(fromHex(key)));
+        std::cout << "address : " << pair.address() << std::endl;
+        std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
+        std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
+        std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+    }
+    else{
+        auto pair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+        std::cout << "address : " << pair.address() << std::endl;
+        std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
+        std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
+        std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+    }
+}
 
 int main(int argc, char *argv[]) {
 
@@ -375,6 +446,7 @@ int main(int argc, char *argv[]) {
                 ("create,c", "create simple \"data.json\" to file on current path.")
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
                 ("sha3", bpo::value<std::string>(), "caculate string sha3.")
+                ("pri-tf", bpo::value<std::string>(), "private-key format.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -409,14 +481,22 @@ int main(int argc, char *argv[]) {
             nonce = (size_t) args_map["nonce"].as<int>();
         }
         if (args_map.count("generate-key")) {
-            for(int i=0; i<51; i++)
             generate_key(args_map["generate-key"].as<std::string>());
         }
 
         if(args_map.count("sha3")){
             auto ret = sha3(args_map["sha3"].as<std::string>());
             cwarn << ret;
+            return  0;
         }
+
+
+        if(args_map.count("pri-tf")){
+            format_private(args_map["pri-tf"].as<std::string>());
+            return  0;
+        }
+
+
     }catch (const std::exception &e){
         cwarn << e.what();
     }catch (const boost::exception &e){

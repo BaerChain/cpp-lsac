@@ -311,6 +311,17 @@ namespace dev {
                         res["from"] = toJS(_op.m_from);
                         _JsArray.append(res);
                     }
+                    if(_type == dev::brc::transationTool::transferAutoEx) {
+                        Json::Value res;
+                        dev::brc::transationTool::transferAutoEx_operation _op = dev::brc::transationTool::transferAutoEx_operation(val);
+                        res["type"] = toJS(_type);
+                        res["autoExType"] = toJS(_op.m_autoExType);
+                        res["autoExNum"] = toJS(_op.m_autoExNum);
+                        res["transferNum"] = toJS(_op.m_transferNum);
+                        res["from"] = toJS(_op.m_from);
+                        res["to"] = toJS(_op.m_to);
+                        _JsArray.append(res);
+                    }
                 }
                 return _JsArray;
             }             
