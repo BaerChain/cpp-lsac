@@ -9,49 +9,32 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include <libdevcore/Common.h>
 
 #define TODO_FUNC { std::cout << "to do " << __LINE__ << __FILE__ << std::endl; assert(false); exit(1);}
 
 namespace dev {
 
-    namespace brc{
+    namespace brc {
         typedef std::string NodeKey;
 
         typedef std::string DataKey;
-        typedef std::string DataPackage;
+        typedef bytes DataPackage;
 
 
         struct databaseDelegate {
             virtual DataPackage getData(const DataKey &nk) = 0;
 
             virtual void setData(const DataKey &nk, const DataPackage &dp) = 0;
+
+            virtual void deleteKey(const DataKey &nk) = 0;
         };
 
 
         struct packedDataInterface {
-            virtual void decode(const DataPackage &data) = 0;
+            virtual void decode(const bytes &data) = 0;
 
-            virtual DataPackage encode() = 0;
-
-
-            std::vector<std::string> split(std::string strtem,char a)
-            {
-                std::vector<std::string> strvec;
-
-                std::string::size_type pos1, pos2;
-                pos2 = strtem.find(a);
-                pos1 = 0;
-                while (std::string::npos != pos2)
-                {
-                    strvec.push_back(strtem.substr(pos1, pos2 - pos1));
-
-                    pos1 = pos2 + 1;
-                    pos2 = strtem.find(a, pos1);
-                }
-                strvec.push_back(strtem.substr(pos1));
-                return strvec;
-            }
-
+            virtual bytes encode() = 0;
         };
 
 
@@ -116,33 +99,37 @@ namespace dev {
                 typedef VALUE value_type;
                 typedef std::pair<key_type, value_type> kv_pair;
 
+//                static_assert(std::is_same<key_type, size_t >::value
+//                            || std::is_same<key_type, u160>::value
+//                            || std::is_same<key_type, std::string>::value
+//                            || std::is_same<key_type, dev::u256>::value
+//                            , "key must size_t, u160, string or u256.");
+
+
                 NodeKey mSelfKey;
                 NodeKey mParentKey;
-                NodeKey mNextKey;
+//                NodeKey mNextKey;
                 std::vector<kv_pair> mValues;
                 Compare mCompare;
 
                 leaf() {}
 
-                std::string encode() {
-                    std::string ret;
-                    ret += mSelfKey + "#";
-                    ret += mParentKey + "#";
-                    for(auto &itr : mValues){
-                        ret += "," + std::to_string(itr.first) + "!" + itr.second;
-                    }
-                    return ret;
+                bytes encode() {
+                    dev::RLPStream rlp(3);
+                    rlp << mSelfKey;
+                    rlp << mParentKey;
+                    rlp << mValues;
+                    return rlp.out();
                 }
 
-                void decode(const DataPackage &data) {
-                    auto values = split(data, '#');
-                    mSelfKey = values[0];
-                    mParentKey = values[1];
-                    auto vv = split(values[2], ',');
-                    for(auto &itr : vv){
-                        auto kv = split(itr, ',');
-                        mValues.push_back(kv_pair{std::atol(kv[0].c_str()), kv[1]});
+                void decode(const bytes &data) {
+                    RLP rlp(data);
+                    if (rlp.itemCount() == 3) {
+                        mSelfKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
+                        mParentKey = rlp[1].convert<NodeKey>(RLP::LaissezFaire);
+                        mValues = rlp[2].convert<std::vector<kv_pair>>(RLP::LaissezFaire);
                     }
+
                 }
 
                 find_ret_type getIndex(const kv_pair &kv) {
@@ -167,7 +154,7 @@ namespace dev {
                 }
 
                 bool isNull() {
-                    return mSelfKey.empty() && mParentKey.empty() && mNextKey.empty() && !mValues.size();
+                    return mSelfKey.empty() && mParentKey.empty() && !mValues.size();
                 }
 
                 bool removeValue(const key_type &key) {
@@ -196,29 +183,30 @@ namespace dev {
                 std::vector<NodeKey> mChildrenNodes;     //children keys.
                 Compare mCompare;
 
-                std::string encode() {
-                    std::string ret;
-                    ret += mSelfKey + "#";
-                    ret += mParentKey + "#";
-                    for(auto &itr : mKeys){
-                        ret += "," + std::to_string(itr);
-                    }
-                    ret += "#";
-                    for(auto &itr : mChildrenNodes){
-                        ret += "," + itr;
-                    }
-                    return ret;
+                bytes encode() {
+                    dev::RLPStream rlp(4);
+                    rlp << mSelfKey;
+                    rlp << mParentKey;
+                    rlp << mKeys;
+                    rlp << mChildrenNodes;
+
+                    return rlp.out();
                 }
 
-                void decode(const DataPackage &data) {
-                    auto values = split(data, '#');
-                    mSelfKey = values[0];
-                    mParentKey = values[1];
-                    auto vv = split(values[2], ',');
-                    for(auto &itr : vv){
-                        mKeys.push_back(std::atol(itr.c_str()));
+                void decode(const bytes &data) {
+                    RLP rlp(data);
+                    try {
+                        if (rlp.itemCount() == 4) {
+                            mSelfKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
+                            mParentKey = rlp[1].convert<NodeKey>(RLP::LaissezFaire);
+                            mKeys = rlp[2].convert<std::vector<key_type>>(RLP::LaissezFaire);
+                            mChildrenNodes = rlp[3].convert<std::vector<NodeKey>>(RLP::LaissezFaire);
+                        }
+                    } catch (const std::exception &e) {
+                        cwarn << "exception tree : " << e.what() << std::endl;
                     }
-                    mChildrenNodes = split(values[3], ',');
+
+
                 }
 
 
@@ -261,13 +249,11 @@ namespace dev {
                     return index;
                 }
 
-                void removeKeyValue(const size_t &indexKey, const size_t &indexValue){
-                    assert(indexKey  < mKeys.size() && indexValue < mChildrenNodes.size());
+                void removeKeyValue(const size_t &indexKey, const size_t &indexValue) {
+                    assert(indexKey < mKeys.size() && indexValue < mChildrenNodes.size());
                     mKeys.erase(mKeys.begin() + indexKey);
                     mChildrenNodes.erase(mChildrenNodes.begin() + indexValue);
                 }
-
-
 
 
             };
@@ -282,8 +268,8 @@ namespace dev {
 
             typedef KEY key_type;
             typedef VALUE value_type;
-            typedef internal::node<KEY, LENGTH, Compare> node_type;
-            typedef internal::leaf<KEY, VALUE, LENGTH, Compare> leaf_type;
+            typedef internal::node<key_type, LENGTH, Compare> node_type;
+            typedef internal::leaf<key_type, VALUE, LENGTH, Compare> leaf_type;
             typedef std::pair<bool, node_type> node_result;
             typedef std::pair<bool, leaf_type> leaf_result;
 
@@ -306,18 +292,36 @@ namespace dev {
             }
 
 
-
-            void setRootKey(const NodeKey &nd){
-                rootKey = nd;
+            void setRootKey(const bytes &nd) {
+                RLP rlp(nd);
+                rootKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
             }
 
             void debug() {
                 std::string out;
                 _debug(rootKey, 0, out);
-                std::cout << "*******************root key : " << rootKey << " *******************begin "<< std::endl;
+                std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
                 std::cout << out << std::endl;
-                std::cout << "*******************root key : " << rootKey << " *******************end "<< std::endl;
+                std::cout << "*******************root key : " << rootKey << " *******************end " << std::endl;
             }
+
+            void update() {
+                if (mDelegate) {
+                    for (auto &itr : mNodes) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
+                        }
+                    }
+                    for (auto &itr : mLeafs) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
+                        }
+                    }
+                    RLPStream rlp(1);
+                    rlp << rootKey;
+                    mDelegate->setData("rootKey", rlp.out());
+                }
+            };
 
 
         private:
@@ -331,7 +335,7 @@ namespace dev {
                             ret += "\t";
                         }
                         ret += "key self: " + node.second.mSelfKey + "<p:" + node.second.mParentKey + ">" + " = ";
-                        for(auto &itr : node.second.mKeys){
+                        for (auto &itr : node.second.mKeys) {
                             ret += "," + std::to_string(itr);
                         }
                         ret += "\n";
@@ -391,17 +395,6 @@ namespace dev {
                 }
 
                 checkFormat(insertKey);
-
-                if(mDelegate){
-                    for(auto &itr : mNodes){
-                        mDelegate->setData(itr.first, itr.second.encode());
-                    }
-                    for(auto &itr : mLeafs){
-                        mDelegate->setData(itr.first, itr.second.encode());
-                    }
-
-                    mDelegate->setData("rootKey", rootKey);
-                }
 
 
                 return insert_ret;
@@ -468,7 +461,7 @@ namespace dev {
                                     break;
                                 }
                                 case NodeLeaf::leaf : {
-                                    getData(pb, mNodes).second.mParentKey = nodeLeft.mSelfKey;
+                                    getData(pb, mLeafs).second.mParentKey = nodeLeft.mSelfKey;
                                     break;
                                 }
                                 default: {
@@ -506,7 +499,8 @@ namespace dev {
                         auto &parentNode = getData(nd.mParentKey, mNodes).second;
                         parentNode.insertKey(nd.mKeys[mid_pos], nodeLeft.mSelfKey);
                         nodeLeft.mParentKey = parentNode.mSelfKey;
-                        assert(parentNode.mSelfKey == nodeLeft.mParentKey && nodeLeft.mParentKey == nodeLeft.mParentKey);
+                        assert(parentNode.mSelfKey == nodeLeft.mParentKey &&
+                               nodeLeft.mParentKey == nodeLeft.mParentKey);
                         return parentNode.mSelfKey;
                     }
                 } else if (nd.mKeys.size() < LENGTH / 2) {
@@ -664,9 +658,9 @@ namespace dev {
                     rootKey = from.mSelfKey;
                     return false;
                 } else {
-                    size_t  indexTo = getIndexInParent(to.mSelfKey);
+                    size_t indexTo = getIndexInParent(to.mSelfKey);
 
-                    if(indexFrom > indexTo){
+                    if (indexFrom > indexTo) {
                         //catch key from parent.
                         to.insertKey(parent.mKeys[indexTo], from.mChildrenNodes.front());
 
@@ -676,7 +670,7 @@ namespace dev {
                         modifyParentByNodeKey(to.mChildrenNodes.front(), to.mSelfKey);
 
                         //merge value from to.
-                        for(size_t i = 0; i < from.mKeys.size(); i++){
+                        for (size_t i = 0; i < from.mKeys.size(); i++) {
                             to.insertKey(from.mKeys[i + 1], from.mChildrenNodes[i + 1]);
                             modifyParentByNodeKey(from.mChildrenNodes[i], to.mSelfKey);
                         }
@@ -685,7 +679,7 @@ namespace dev {
                         //remove from.
                         deleteData(mNodes, from.mSelfKey);
 
-                    }else if(indexTo > indexFrom){
+                    } else if (indexTo > indexFrom) {
                         //copy keys and values.
 //                    to.insertKey(parent.mKeys[indexFrom], from.mChildrenNodes.back());
                         to.mKeys.insert(to.mKeys.begin(), parent.mKeys[indexFrom]);
@@ -696,14 +690,14 @@ namespace dev {
 //                    to.mChildrenNodes.insert(to.mChildrenNodes.begin(), from.mChildrenNodes.front());
 
                         modifyParentByNodeKey(from.mChildrenNodes.back(), to.mSelfKey);
-                        for(size_t i = 0; i < from.mKeys.size(); i++){
+                        for (size_t i = 0; i < from.mKeys.size(); i++) {
                             to.mKeys.insert(to.mKeys.begin(), from.mKeys[i]);
                             to.mChildrenNodes.insert(to.mChildrenNodes.begin(), from.mChildrenNodes[i]);
                             modifyParentByNodeKey(from.mChildrenNodes[i], to.mSelfKey);
                         }
                         parent.removeKeyValue(indexFrom, indexFrom);
                         deleteData(mNodes, from.mSelfKey);
-                    }else{
+                    } else {
                         return false;
                     }
 
@@ -761,10 +755,12 @@ namespace dev {
                                     moveAllValueTo(nd, leftLeaf);
                                 }
                             } else {
-                                if (getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second.mValues.size() > LENGTH / 2) {
+                                if (getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second.mValues.size() >
+                                    LENGTH / 2) {
                                     ///from right.
                                     moveValueFromTo(getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second, nd);
-                                } else if (getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second.mValues.size() > LENGTH / 2) {
+                                } else if (getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second.mValues.size() >
+                                           LENGTH / 2) {
                                     ///from left
                                     moveValueFromTo(getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second, nd);
                                 } else {
@@ -795,10 +791,12 @@ namespace dev {
                                     moveAllValueTo(nd, leftLeaf);
                                 }
                             } else {
-                                if (getData(parent.mChildrenNodes[indexOf + 1], mNodes).second.mKeys.size() > LENGTH / 2) {
+                                if (getData(parent.mChildrenNodes[indexOf + 1], mNodes).second.mKeys.size() >
+                                    LENGTH / 2) {
                                     ///from right.
                                     moveValueFromTo(getData(parent.mChildrenNodes[indexOf + 1], mNodes).second, nd);
-                                } else if (getData(parent.mChildrenNodes[indexOf - 1], mNodes).second.mKeys.size() > LENGTH / 2) {
+                                } else if (getData(parent.mChildrenNodes[indexOf - 1], mNodes).second.mKeys.size() >
+                                           LENGTH / 2) {
                                     ///from left
                                     moveValueFromTo(nd, getData(parent.mChildrenNodes[indexOf - 1], mNodes).second);
                                 } else {
@@ -900,14 +898,15 @@ namespace dev {
                     if (data.size()) {
                         T t;
                         t.decode(data);
-//                    assert(db.count(nk));
+                        if (t.isNull()) {
+                            return {false, db[NodeKey()]};
+                        }
                         db[nk] = t;
                         return {true, db[nk]};
                     }
                 }
                 return {false, db[NodeKey()]};
             }
-
 
 
             template<typename T>
@@ -930,16 +929,11 @@ namespace dev {
             std::shared_ptr<databaseDelegate> mDelegate;
 
 
-
-
-
             std::map<NodeKey, node_type> mNodes;
             std::map<NodeKey, leaf_type> mLeafs;
 
         };
     }
-
-
 
 
 }
