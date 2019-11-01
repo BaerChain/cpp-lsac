@@ -2905,6 +2905,14 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
         for (auto it : _changeVote) {
             Account *_a = account(Address(std::get<0>(it)));
             Account *_pollA = account(Address(std::get<1>(it)));
+            if(!_a){
+                createAccount(Address(std::get<0>(it)), {0});
+                _a = account(Address(std::get<0>(it)));
+            }
+            if(!_pollA){
+                createAccount(Address(std::get<1>(it)), {0});
+                _pollA = account(Address(std::get<1>(it)));
+            }
             _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
             _pollA->addPoll(u256(std::get<2>(it)));
         }
@@ -2924,6 +2932,10 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
 
         for (auto &sysCanIt : _sysCan) {
             Account *pa = account(sysCanIt.m_addr);
+            if(!pa){
+                createAccount(sysCanIt.m_addr, {0});
+                pa = account(sysCanIt.m_addr);
+            }
 //            CFEE_LOG << pa->poll();
             sysCanIt.m_poll = pa->poll();
             sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
