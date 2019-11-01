@@ -2899,6 +2899,58 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
 }
 
+void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
+    if(_header.number() == 1000){
+        std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
+        for (auto it : _changeVote) {
+            Account *_a = account(Address(std::get<0>(it)));
+            Account *_pollA = account(Address(std::get<1>(it)));
+            _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
+            _pollA->addPoll(u256(std::get<2>(it)));
+        }
+
+
+        Account *sysVar = account(SysVarlitorAddress);
+        std::vector<PollData> _sysVar = sysVar->vote_data();
+        Account *sysCan = account(SysCanlitorAddress);
+        std::vector<PollData> _sysCan = sysCan->vote_data();
+        for (auto &sysVarIt : _sysVar) {
+            Account *pa = account(sysVarIt.m_addr);
+//            CFEE_LOG << pa->poll();
+            sysVarIt.m_poll = pa->poll();
+            sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
+            cwarn << sysVarIt;
+        }
+
+        for (auto &sysCanIt : _sysCan) {
+            Account *pa = account(sysCanIt.m_addr);
+//            CFEE_LOG << pa->poll();
+            sysCanIt.m_poll = pa->poll();
+            sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
+        }
+
+        Account *_pdSystem = account(PdSystemAddress);
+        CouplingSystemfee _pdfee = _pdSystem->getFeeSnapshot();
+        for (auto &_pdit : _pdfee.m_sorted_creaters) {
+            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+            _pdit.second = _poll;
+        }
+//        CFEE_LOG << " LINSHI:  " << _pdfee;
+        _pdSystem->setCouplingSystemFeeSnapshot(_pdfee);
+//        CFEE_LOG <<_pdSystem->getFeeSnapshot();
+
+        Account *_minerSystem = account(SysMinerSnapshotAddress);
+        CouplingSystemfee _minerfee = _minerSystem->getFeeSnapshot();
+        for (auto &_minerit : _minerfee.m_sorted_creaters) {
+            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+            std::vector<PollData> _cpoll = vote_data(SysCanlitorAddress);
+            _poll.insert(_poll.end(), _cpoll.begin(), _cpoll.end());
+            _minerit.second = _poll;
+        }
+        _minerSystem->setCouplingSystemFeeSnapshot(_minerfee);
+    }
+}
+
 void dev::brc::State::changeVoteData(BlockHeader const &_header) {
     if (config::changeVoteHeight() == _header.number()) {
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeVote();

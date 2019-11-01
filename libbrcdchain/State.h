@@ -614,6 +614,9 @@ public:
 
     void changeVoteData(BlockHeader const& _header);
 
+    // test for changeMiner with test_net_data
+    void changeMinerAddVote(BlockHeader const& _header);
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
