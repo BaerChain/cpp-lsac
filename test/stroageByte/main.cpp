@@ -61,15 +61,15 @@ int main()
     // std::cout << "root1 = " << root1 << std::endl;
     // statedb.commit();
 
-
-    SecureTrieDB<h256, OverlayDB> stroageDB1(const_cast<OverlayDB*>(&statedb), root1);
-
-    for (auto it = stroageDB1.hashedBegin(); it != stroageDB1.hashedEnd(); ++it)
-    {
-        // h256 const hashedKey((*it).first);
-        // u256 const key = h256(it.key());
-        // u256 const value = RLP((*it).second).toInt<u256>();
-    }
+//
+//    SecureTrieDB<h256, OverlayDB> stroageDB1(const_cast<OverlayDB*>(&statedb), root1);
+//
+//    for (auto it = stroageDB1.hashedBegin(); it != stroageDB1.hashedEnd(); ++it)
+//    {
+//        // h256 const hashedKey((*it).first);
+//        // u256 const key = h256(it.key());
+//        // u256 const value = RLP((*it).second).toInt<u256>();
+//    }
 
 
     // string _res = stroageDB1.at(_hash);
