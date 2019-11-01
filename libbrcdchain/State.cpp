@@ -2900,7 +2900,7 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
 }
 
 void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
-    if(_header.number() == 4756440){
+    if(_header.number() == 4756444){
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
         for (auto it : _changeVote) {
             Account *_a = account(Address(std::get<0>(it)));

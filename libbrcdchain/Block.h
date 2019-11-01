@@ -315,7 +315,7 @@ public:
         }
 
         if(params.chainID == 1){
-
+            m_state.changeMinerAddVote(curr_info);
         }
     }
 
