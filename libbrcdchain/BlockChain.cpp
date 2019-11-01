@@ -814,10 +814,15 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         }
     };
 
-    //check node down
+    /*
+     * curr_height = info().number()
+     * get_height = _block.info.number()
+     * if verify get_block_height must get block( get_height -1 )
+     * */
 
+    //check node down
     Block s(*this, _db, _exdb);
-    s.populateFromChain(*this, info().parentHash());
+    s.populateFromChain(*this, numberHash(_block.info.number() -1));
     State &state_db = s.mutableState();
     auto exe_miners = state_db.vote_data(SysVarlitorAddress);
     auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
