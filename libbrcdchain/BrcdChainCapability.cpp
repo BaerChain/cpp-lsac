@@ -946,20 +946,25 @@ bool BrcdChainCapability::interpretCapabilityPacket(
         }
         case UpdateStatus:{
 
-            auto const peerProtocolVersion = _r[0].toInt<unsigned>();
-            auto const networkId = _r[1].toInt<u256>();
-            auto const totalDifficulty = _r[2].toInt<u256>();
-            auto const latestHash = _r[3].toHash<h256>();
-            auto const genesisHash = _r[4].toHash<h256>();
-            auto const height = _r[5].toInt<u256>();
+            if(peer.asking() != Asking::UpdateStatus){
+                LOG(m_loggerImpolite) << "Peer giving us UpdateStatus when we didn't ask for them.";
+            }
+            else{
+                auto const peerProtocolVersion = _r[0].toInt<unsigned>();
+                auto const networkId = _r[1].toInt<u256>();
+                auto const totalDifficulty = _r[2].toInt<u256>();
+                auto const latestHash = _r[3].toHash<h256>();
+                auto const genesisHash = _r[4].toHash<h256>();
+                auto const height = _r[5].toInt<u256>();
+                LOG(m_logger) << "update status Status: " << peerProtocolVersion << " / " << networkId << " / "
+                              << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash << " height : " << height;
 
-            LOG(m_logger) << "update status Status: " << peerProtocolVersion << " / " << networkId << " / "
-                          << genesisHash << ", TD: " << totalDifficulty << " = " << latestHash << " height : " << height;
+                peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash, height);
+                setIdle(_peerID);
+                m_peerObserver->onPeerStatus(peer);
+                LOG(m_logger) << " continue sync blocks.";
+            }
 
-            peer.setStatus(peerProtocolVersion, networkId, totalDifficulty, latestHash, genesisHash, height);
-            setIdle(_peerID);
-            m_peerObserver->onPeerStatus(peer);
-            LOG(m_logger) << " continue sync blocks.";
             break;
         };
         default:
@@ -1105,4 +1110,12 @@ void dev::brc::BrcdChainCapability::sendNewBlock()
         cwarn << "time:" << utcTimeMilliSec() << " send block " << (utcTimeMilliSec() - _h.timestamp()) << " height " << _h.number();
     }
 	m_bq.clearVerifiedBlocks();
+}
+
+void BrcdChainCapability::debugMemery() {
+    CMEM_LOG << "============== BrcdChainCapability start ==============";
+    CMEM_LOG << "m_transactionsSent size: " << m_transactionsSent.size() * sizeof(h256);
+    CMEM_LOG << "m_peers size: " << m_peers.size() ;
+    m_sync->debugMemery();
+    CMEM_LOG << "============== BrcdChainCapability end ==============";
 }

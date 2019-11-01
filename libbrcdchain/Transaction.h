@@ -78,7 +78,8 @@ namespace dev
                 deployContract = 5,
                 executeContract = 6,
                 changeMiner = 7,
-                receivingincome = 8
+                receivingincome = 8,
+                transferAutoEx = 9
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -90,16 +91,24 @@ namespace dev
                     {deployContract, 0},
                     {executeContract, 0},
                     {changeMiner, 0},
-                    {receivingincome, 0}
+                    {receivingincome, 0},
+                    {transferAutoEx, 20000}
             };
 
-            enum dividendcycle : uint8_t
+            enum class dividendcycle : uint8_t
             {
                 blocknum = 0,
                 timestamp = 1
             };
 
-            enum initializeEnum : uint8_t
+            enum  transferAutoExType : uint8_t {
+                NullType = 0,
+                Balancededuction = 1,
+                Transferdeduction = 2
+            };
+
+
+            enum  initializeEnum : uint8_t
             {
                 rpcinitialize = 0,
                 executeinitialize = 1
@@ -298,6 +307,29 @@ namespace dev
                 OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_receivingType)(m_from))
 
                 OPERATION_SERIALIZE((m_type)(m_receivingType)(m_from))
+
+            };
+
+            struct transferAutoEx_operation : public operation
+            {
+                uint8_t m_type;
+                uint8_t m_autoExType;
+                u256 m_autoExNum;
+                u256 m_transferNum;
+                Address m_from;
+                Address m_to;
+                transferAutoEx_operation(){}
+                transferAutoEx_operation(op_type _type, transferAutoExType _autoExType, u256 _autoExNum, u256 _transferNum, Address _from, Address _to) :
+                m_type(_type),
+                m_autoExType((uint8_t)_autoExType),
+                m_autoExNum(_autoExNum),
+                m_transferNum(_transferNum),
+                m_from(_from),
+                m_to(_to){}
+
+                OPERATION_UNSERIALIZE(transferAutoEx_operation, (m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
+
+                OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
             };
 

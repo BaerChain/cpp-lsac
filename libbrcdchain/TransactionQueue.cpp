@@ -393,3 +393,15 @@ void dev::brc::TransactionQueue::eraseDropedTx(h256 const& _txHash)
 		return;
 	m_dropped.erase(ret);
 }
+
+
+void dev::brc::TransactionQueue::debugMemery() {
+    CMEM_LOG << "begin -----TransactionQueue------";
+    CMEM_LOG << "m_currentByHash : " << m_currentByHash.size();
+    CMEM_LOG << "m_currentByAddressAndNonce : " << m_currentByAddressAndNonce.size();
+    CMEM_LOG << "m_future : " << m_future.size();
+    CMEM_LOG << "m_verifiers : " << m_verifiers.size();
+    CMEM_LOG << "m_unverified : " << m_unverified.size();
+    CMEM_LOG << "m_known : " << m_known.size();
+    CMEM_LOG << "end -----TransactionQueue------";
+}

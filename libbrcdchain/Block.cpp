@@ -388,7 +388,8 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 					cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
 				}
 				catch(...){
-					cwarn << "unkown exception .";
+				    _tq.drop(t.sha3());
+					cwarn << "unkown exception ...";
 				}
 			}
 			_num = goodTxs;

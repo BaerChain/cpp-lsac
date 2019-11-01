@@ -112,27 +112,27 @@ namespace dev {
 
 
                 inline std::string check_version(bool p) const{
-                    const auto &obj = get_dynamic_object();
-//#ifndef NDEBUG
-#if 0
-                    std::string ret = " version : " + std::to_string(obj.version)
-                                    + " block hash: " + toHex(obj.block_hash)
-                                    + " state root: " + toHex(obj.root_hash)
-                                    + " orders: " + std::to_string(obj.orders)
-                                    + " ret_orders:" + std::to_string(obj.result_orders)
-                             ;
-#else
-                    std::string ret = " version : " + std::to_string(obj.version)
-                                    + " block hash: " + (obj.block_hash.abridged())
-                                    + " state root: " + (obj.root_hash.abridged())
-                                    + " orders: " + std::to_string(obj.orders)
-                                    + " ret_orders:" + std::to_string(obj.result_orders)
-                             ;
-#endif
-                    if(p){
-                        cwarn << ret;
-                    }
-                    return ret;
+//                    const auto &obj = get_dynamic_object();
+////#ifndef NDEBUG
+//#if 0
+//                    std::string ret = " version : " + std::to_string(obj.version)
+//                                    + " block hash: " + toHex(obj.block_hash)
+//                                    + " state root: " + toHex(obj.root_hash)
+//                                    + " orders: " + std::to_string(obj.orders)
+//                                    + " ret_orders:" + std::to_string(obj.result_orders)
+//                             ;
+//#else
+//                    std::string ret = " version : " + std::to_string(obj.version)
+//                                    + " block hash: " + (obj.block_hash.abridged())
+//                                    + " state root: " + (obj.root_hash.abridged())
+//                                    + " orders: " + std::to_string(obj.orders)
+//                                    + " ret_orders:" + std::to_string(obj.result_orders)
+//                             ;
+//#endif
+//                    if(p){
+//                        cwarn << ret;
+//                    }
+                    return "";
                 };
             private:
 

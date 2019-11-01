@@ -7,15 +7,18 @@
 #include <iostream>
 #include <jsonrpccpp/server.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
+#include <libweb3jsonrpc/SafeHttpServer.h>
+#include <libdevcore/Log.h>
 
 using namespace jsonrpc;
 using namespace std;
+using namespace dev;
 
 namespace wallet{
 
 class WalletServer : public jsonrpc::AbstractServer<WalletServer> {
 public:
-    WalletServer(HttpServer &server, std::string _send_url = "");
+    WalletServer(dev::SafeHttpServer &server, std::string _send_url = "");
     void testhello(const Json::Value& request, Json::Value & respone);
     /// transaction sign and send to chain return send_ret
     void sign_transaction_send(const Json::Value& request, Json::Value & respone);
@@ -26,9 +29,10 @@ public:
     /// new address by
     void new_address(const  Json::Value & request, Json::Value & respone);
 
+    bool test_connect_node();
+
 private:
     std::string m_send_url;
-
 };
 
 }

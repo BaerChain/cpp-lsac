@@ -5,7 +5,7 @@
 #include "WalletServer.h"
 #include "ToolTransaction.h"
 
-wallet::WalletServer::WalletServer(HttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
+wallet::WalletServer::WalletServer(dev::SafeHttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
 //    this->bindAndAddMethod(Procedure("testhello", PARAMS_BY_NAME, JSON_STRING,
 //                                     "test", JSON_STRING, NULL),
 //                           &WalletServer::testhello);
@@ -28,18 +28,22 @@ void wallet::WalletServer::sign_transaction(const Json::Value &request, Json::Va
     try {
         std::string json_str = request["param"].toStyledString();
         std::string _hash;
+        cnote << "get message:" << " sign_transaction :";
         std::pair<bool, std::string> _pair = ToolTransaction::sign_trx_from_json(json_str, _hash);
 
         if (_pair.first){
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             respone["isSend"] = false;
+            cnote << "sign transaction:"<< respone["hash"] << "rlp:"<< respone["rlp"];
         }
         else{
+            cerror << "error : sign field:"<< _pair.second;
             respone["error"] = _pair.second;
         }
     }
     catch (...){
+        cnote << "error : jsonrpccpp params error!";
         respone["error"] = "jsonrpccpp params error!";
     }
 
@@ -51,48 +55,54 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
     std::string _hash;
     try {
         std::string json_str = request["param"].toStyledString();
+        cnote << "get message: "<< " sign_transaction_send :";
         _pair = ToolTransaction::sign_trx_from_json(json_str, _hash);
     }
     catch (...){
+        cnote << "error : jsonrpccpp params error!";
         respone["error"] = "jsonrpccpp params error!";
         return;
     }
     try {
         if (!_pair.first){
-            std::cout << "sing false"<<std::endl;
+            cerror << "error sing false :"<< _pair.second;
             respone["error"] = _pair.second;
         }
         else if (!m_send_url.empty()){
-            std::cout << "to send:" << m_send_url<<" rlp:"<< _pair.second<< std::endl;
+            cnote << "will to send:" << m_send_url<<" rlp:"<< _pair.second;
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             std::string _str=ToolTransaction::sendRawTransation(_pair.second, m_send_url);
             Json::Reader reader;
             Json::Value value;
             if (reader.parse(_str, value)) {            // json字符串转为json对象
+                cnote << "send success..." << _str;
                 respone["sendRet"] = value;
             }
             else{
+                cerror << " send field: check the jsonData";
                 respone["isSend"] = false;
-                respone["sendRet"] = "send error , check the send_url";
+                respone["sendRet"] = "send error , check the jsonData";
             }
         }
         else{
-            std::cout << "error: not has url"<<std::endl;
+            cnote << "sign data:" << _pair.second;
+            cerror << "error: not has url to send";
             respone["rlp"] = _pair.second;
             respone["hash"] = _hash;
             respone["isSend"] = false;
         }
     }
     catch (...){
-        respone["error"] = "send field check the send_url";
+        cerror << "send field check the send_url or network";
+        respone["error"] = "send field check the send_url or network";
     }
 
 
 }
 
 void wallet::WalletServer::testhello(const Json::Value &request, Json::Value &respone){
-    std::cout<< "test:"<< request["test"].asString()<<  std::endl;
+    cnote<< "test:"<< request["test"].asString();
     respone = "test..." + request["test"].asString();
 }
 
@@ -127,4 +137,26 @@ void wallet::WalletServer::new_address(const Json::Value & request, Json::Value 
         respone["error"] = "invalid format";
     }
 
+}
+
+bool wallet::WalletServer::test_connect_node() {
+    if (m_send_url.empty()){
+        cnote<< "Warning the send url is empty!";
+    }
+    try {
+        std::string _str=ToolTransaction::connectNode( m_send_url);
+        Json::Reader reader;
+        Json::Value value;
+        if (reader.parse(_str, value)) {            // json字符串转为json对象
+            if(value.isMember("result")) {
+                cnote << "connect host:"<< m_send_url<< " is ok!";
+                return true;
+            }
+        }
+    }
+    catch (...){
+    }
+    cnote << "Warning can not connect host:"<< m_send_url;
+    cnote << "can not to use method: sign_transaction_send";
+    return false;
 }
