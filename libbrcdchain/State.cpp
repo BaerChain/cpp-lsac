@@ -2932,7 +2932,7 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
 
             }
 
-            VoteSnapshot a_snashot_A = _a->vote_snashot();
+            VoteSnapshot a_snashot_A = _pollA->vote_snashot();
             if (a_snashot_A.m_voteDataHistory.empty()) {
                 _pollA->addPoll(u256(std::get<2>(it)));
 
