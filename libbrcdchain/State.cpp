@@ -2903,7 +2903,7 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
 void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
     if(_header.number() == 4756444){
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
-        for (auto it : _changeVote) {
+        for (auto const& it : _changeVote) {
             Account *_a = account(Address(std::get<0>(it)));
             Account *_pollA = account(Address(std::get<1>(it)));
             if(!_a){
@@ -2915,13 +2915,12 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
                 _pollA = account(Address(std::get<1>(it)));
             }
 
-            std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle( _header.number());
-            std::pair<bool, u256> ret_pair = _a->get_no_record_snapshot((u256) _pair.first, _pair.second);
-            if (ret_pair.first) {
+            VoteSnapshot a_snashot = _a->vote_snashot();
+            if (a_snashot.m_voteDataHistory.empty()) {
                 _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
 
             } else{
-                VoteSnapshot a_snashot = _a->vote_snashot();
+                //VoteSnapshot a_snashot = _a->vote_snashot();
                 for (auto & d : a_snashot.m_voteDataHistory){
                     if(d.second.count(Address(std::get<1>(it)))){
                         d.second[Address(std::get<1>(it))] += u256(std::get<2>(it));
@@ -2933,19 +2932,18 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
 
             }
 
-            std::pair<bool, u256> ret_pair_A = _pollA->get_no_record_snapshot((u256) _pair.first, _pair.second);
-            if (ret_pair_A.first) {
+            VoteSnapshot a_snashot_A = _a->vote_snashot();
+            if (a_snashot_A.m_voteDataHistory.empty()) {
                 _pollA->addPoll(u256(std::get<2>(it)));
 
             } else{
-                VoteSnapshot a_snashot = _a->vote_snashot();
-                if(a_snashot.m_pollNumHistory.count(1)){
-                    a_snashot.m_pollNumHistory[1] += u256(std::get<2>(it));
+                if(a_snashot_A.m_pollNumHistory.count(1)){
+                    a_snashot_A.m_pollNumHistory[1] += u256(std::get<2>(it));
                 }
                 else {
-                    a_snashot.m_pollNumHistory[1] = u256(std::get<2>(it));
+                    a_snashot_A.m_pollNumHistory[1] = u256(std::get<2>(it));
                 }
-                _pollA->set_vote_snapshot(a_snashot);
+                _pollA->set_vote_snapshot(a_snashot_A);
             }
 
         }
@@ -2958,9 +2956,16 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
         for (auto &sysVarIt : _sysVar) {
             Account *pa = account(sysVarIt.m_addr);
 //            CFEE_LOG << pa->poll();
-            sysVarIt.m_poll = pa->poll();
-            sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
-            cwarn << sysVarIt;
+            auto  snapshot = pa->vote_snashot();
+            if(snapshot.m_pollNumHistory.empty()) {
+                sysVarIt.m_poll = pa->poll();
+                sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
+                cwarn <<sysVarIt.m_addr<<":" << pa->poll();
+            }
+            else {
+                sysVar->set_system_poll({sysVarIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+                cwarn <<sysVarIt.m_addr<<":" << snapshot.m_pollNumHistory[1];
+            }
         }
 
         for (auto &sysCanIt : _sysCan) {
@@ -2970,8 +2975,16 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
                 pa = account(sysCanIt.m_addr);
             }
 //            CFEE_LOG << pa->poll();
-            sysCanIt.m_poll = pa->poll();
-            sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
+            auto  snapshot = pa->vote_snashot();
+            if(snapshot.m_pollNumHistory.empty()) {
+                sysCanIt.m_poll = pa->poll();
+                sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
+                cwarn <<sysCanIt.m_addr<<":" << pa->poll();
+            } else{
+                sysVar->set_system_poll({sysCanIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+                cwarn <<sysCanIt.m_addr<<":" << snapshot.m_pollNumHistory[1];
+
+            }
         }
 
         Account *_pdSystem = account(PdSystemAddress);
