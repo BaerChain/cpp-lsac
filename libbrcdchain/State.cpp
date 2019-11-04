@@ -1148,6 +1148,7 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     u256 _voteNodeFee = 0;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
             _numberofrounds - 1);
+    cwarn << "22222222222:::.........:"<< _votesnapshot;
 
 
     // If you receive the account, you will receive the income from the block node account.
@@ -2913,8 +2914,40 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
                 createAccount(Address(std::get<1>(it)), {0});
                 _pollA = account(Address(std::get<1>(it)));
             }
-            _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
-            _pollA->addPoll(u256(std::get<2>(it)));
+
+            std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle( _header.number());
+            std::pair<bool, u256> ret_pair = _a->get_no_record_snapshot((u256) _pair.first, _pair.second);
+            if (ret_pair.first) {
+                _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
+
+            } else{
+                VoteSnapshot a_snashot = _a->vote_snashot();
+                for (auto & d : a_snashot.m_voteDataHistory){
+                    if(d.second.count(Address(std::get<1>(it)))){
+                        d.second[Address(std::get<1>(it))] += u256(std::get<2>(it));
+                    } else{
+                        d.second[Address(std::get<1>(it))] = u256(std::get<2>(it));
+                    }
+                }
+                _a->set_vote_snapshot(a_snashot);
+
+            }
+
+            std::pair<bool, u256> ret_pair_A = _pollA->get_no_record_snapshot((u256) _pair.first, _pair.second);
+            if (ret_pair_A.first) {
+                _pollA->addPoll(u256(std::get<2>(it)));
+
+            } else{
+                VoteSnapshot a_snashot = _a->vote_snashot();
+                if(a_snashot.m_pollNumHistory.count(1)){
+                    a_snashot.m_pollNumHistory[1] += u256(std::get<2>(it));
+                }
+                else {
+                    a_snashot.m_pollNumHistory[1] = u256(std::get<2>(it));
+                }
+                _pollA->set_vote_snapshot(a_snashot);
+            }
+
         }
 
 
