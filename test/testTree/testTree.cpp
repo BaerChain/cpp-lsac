@@ -35,11 +35,6 @@ struct virtualDb : public dev::brc::databaseDelegate {
             leveldb::ReadOptions wo;
             std::string ret;
             auto status = m_db->Get(wo, nk, &ret);
-//            if (status.IsNotFound()){
-//                std::cout << "cant find key " << nk << std::endl;
-//                assert(false);
-//                exit(1);
-//            }
             auto return_r = dev::brc::DataPackage(ret.c_str(), ret.c_str() + ret.size());
             return return_r;
         }
@@ -49,8 +44,6 @@ struct virtualDb : public dev::brc::databaseDelegate {
 
     virtual void setData(const dev::brc::DataKey &nk, const dev::brc::DataPackage &dp) {
         if (m_db) {
-//            std::cout << "write " << nk  << " value " << dp.data() << std::endl;
-//            cwarn << "write " << nk  << " value " << dp;
             if (!dp.size()) {
                 assert(false);
             }
@@ -258,7 +251,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
         }
 
 
-       
+
     }
 
 
