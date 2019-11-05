@@ -26,12 +26,12 @@ namespace bbfs = boost::filesystem;
 
 struct virtualDb : public dev::brc::databaseDelegate {
 
-    virtualDb(leveldb::DB *db):m_db(db){
+    virtualDb(leveldb::DB *db) : m_db(db) {
 
     }
 
     virtual dev::brc::DataPackage getData(const dev::brc::DataKey &nk) {
-        if(m_db){
+        if (m_db) {
             leveldb::ReadOptions wo;
             std::string ret;
             auto status = m_db->Get(wo, nk, &ret);
@@ -48,10 +48,10 @@ struct virtualDb : public dev::brc::databaseDelegate {
     }
 
     virtual void setData(const dev::brc::DataKey &nk, const dev::brc::DataPackage &dp) {
-        if(m_db){
+        if (m_db) {
 //            std::cout << "write " << nk  << " value " << dp.data() << std::endl;
 //            cwarn << "write " << nk  << " value " << dp;
-            if(!dp.size()){
+            if (!dp.size()) {
                 assert(false);
             }
             leveldb::WriteOptions wo;
@@ -61,7 +61,7 @@ struct virtualDb : public dev::brc::databaseDelegate {
     }
 
     virtual void deleteKey(const dev::brc::DataKey &nk) {
-        if(m_db){
+        if (m_db) {
             leveldb::WriteOptions wo;
             m_db->Delete(wo, nk);
         }
@@ -71,13 +71,80 @@ private:
     leveldb::DB *m_db;
 };
 
+
+struct books {
+    uint32_t hot = 0;
+    uint32_t id = 0;
+
+    void decode(const dev::RLP &rlp) {
+        if (rlp.isList()) {
+            assert(rlp.itemCount() == 2);
+            hot = rlp[0].toInt<uint32_t>();
+            id = rlp[1].toInt<uint32_t>();
+        }
+
+    }
+
+    void encode(dev::RLPStream &rlp) const{
+        rlp.appendList(2);
+        rlp.append(hot);
+        rlp.append(id);
+    }
+
+    bool operator<(const books &b2) const {
+        if (hot < b2.hot) {
+            return true;
+        } else if (hot == b2.hot) {
+            if (id < b2.id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    std::string to_string() const {
+        return "[ " + std::to_string(hot) + "-" + std::to_string(id) + "]";
+    }
+
+
+};
+
+struct detailbook {
+    std::string name;
+    std::string from;
+
+    void decode(const dev::RLP &rlp) {
+        assert(rlp.itemCount() == 2);
+        name = rlp[0].toString();
+        from = rlp[1].toString();
+    }
+
+    void encode(dev::RLPStream &rlp) const{
+        rlp.appendList(2);
+        rlp.append(name);
+        rlp.append(from);
+
+    }
+
+    std::string to_string() {
+        return "[ " + (name) + "-" + (from) + "]";
+    }
+
+};
+
+HAS_MEMBER(books);
+
+HAS_MEMBER(detailbook);
+
+
 BOOST_AUTO_TEST_SUITE(testTree)
 
     BOOST_AUTO_TEST_CASE(tree_test1) {
         try {
 
 
-            dev::brc::bplusTree<size_t, std::string, 4> bp;
+            dev::brc::bplusTree<unsigned, std::string, 4> bp;
             size_t end = 128;
             for (size_t i = 0; i < end; i++) {
                 bp.insert(i, std::to_string(i));
@@ -101,12 +168,12 @@ BOOST_AUTO_TEST_SUITE(testTree)
             op.max_open_files = 256;
 
 
-            auto db = static_cast<leveldb::DB*>(nullptr);
+            auto db = static_cast<leveldb::DB *>(nullptr);
             auto ret = leveldb::DB::Open(op, "tdb", &db);
             std::cout << "open db : " << ret.ok() << std::endl;
 
             {
-                std::shared_ptr<virtualDb>  vdb(new virtualDb(db));
+                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
 
                 dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
 
@@ -121,19 +188,15 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
 
             {
-                std::shared_ptr<virtualDb>  vdb(new virtualDb(db));
+                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
                 dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
                 auto rootKey = vdb->getData("rootKey");
-                if(rootKey.size()){
+                if (rootKey.size()) {
                     bp.setRootKey(rootKey);
                 }
                 bp.debug();
                 bp.update();
             }
-
-
-
-
 
         } catch (const std::exception &e) {
 
@@ -142,6 +205,60 @@ BOOST_AUTO_TEST_SUITE(testTree)
         } catch (...) {
 
         }
+    }
+
+    BOOST_AUTO_TEST_CASE(tree_code3) {
+
+        try {
+            leveldb::Options op;
+            op.create_if_missing = true;
+            op.max_open_files = 256;
+
+
+            auto db = static_cast<leveldb::DB *>(nullptr);
+            auto ret = leveldb::DB::Open(op, "tdb", &db);
+            std::cout << "open db : " << ret.ok() << std::endl;
+
+            {
+                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
+
+                dev::brc::bplusTree<books, detailbook, 4> bp(vdb);
+
+                size_t end = 32;
+                for (size_t i = 0; i < end; i++) {
+                    books b;
+                    b.hot = i;
+                    b.id = i;
+                    detailbook db;
+                    db.name = std::to_string(i);
+                    db.from = std::to_string(i);
+                    bp.insert(b, db);
+                }
+                bp.debug();
+                bp.update();
+            }
+
+
+            {
+                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
+                dev::brc::bplusTree<books, detailbook, 4> bp(vdb);
+                auto rootKey = vdb->getData("rootKey");
+                if (rootKey.size()) {
+                    bp.setRootKey(rootKey);
+                }
+                bp.debug();
+                bp.update();
+            }
+
+        } catch (const std::exception &e) {
+            std::cout << "std e " << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+        } catch (...) {
+            std::cout << "std e xxx" << std::endl;
+        }
+
+
+       
     }
 
 

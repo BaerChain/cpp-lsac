@@ -13,6 +13,17 @@
 
 #define TODO_FUNC { std::cout << "to do " << __LINE__ << __FILE__ << std::endl; assert(false); exit(1);}
 
+#define HAS_MEMBER(member)\
+template<typename T, typename... Args>struct has_member_##member\
+{\
+private:\
+    template<typename U> static auto Check(int) -> decltype(std::declval<U>().member(std::declval<Args>()...), std::true_type()); \
+    template<typename U> static auto Check(...) -> decltype(std::false_type()); \
+public:\
+static const bool value = std::is_same<decltype(Check<T>(0)), std::true_type>::value; \
+}; \
+
+
 namespace dev {
 
     namespace brc {
@@ -32,10 +43,20 @@ namespace dev {
 
 
         struct packedDataInterface {
-            virtual void decode(const bytes &data) = 0;
+            virtual void decode(const RLP &rlp) = 0;
 
             virtual bytes encode() = 0;
         };
+
+        HAS_MEMBER(getData);
+
+        HAS_MEMBER(setData);
+
+        HAS_MEMBER(deleteKey);
+
+        HAS_MEMBER(decode);
+
+        HAS_MEMBER(encode);
 
 
         namespace internal {
@@ -92,23 +113,64 @@ namespace dev {
             }
 
 
+            template<typename T>
+            struct call_decode {
+                 T call(const RLP &rlp){
+                     T t;
+                     t.decode(rlp);
+                     return t;
+                 };
+            };
+
+            template <>
+            struct call_decode<uint32_t> {
+                uint32_t call(const RLP &rlp){
+                    return rlp.toInt<uint32_t>(0);
+                };
+            };
+
+            template <>
+            struct call_decode<std::string> {
+                std::string call(const RLP &rlp){
+                    return rlp.toString();
+                };
+            };
+
+
+            template<typename T>
+            struct call_encode{
+                void call(const T &t, dev::RLPStream &rlp){
+                    t.encode(rlp);
+                }
+            };
+
+            template <>
+            struct call_encode<uint32_t>{
+                void call(const uint32_t &t, dev::RLPStream &rlp){
+                    rlp.append(t);
+                }
+            };
+
+            template <>
+            struct call_encode<std::string>{
+                void call(const std::string &t, dev::RLPStream &rlp){
+                    rlp.append(t);
+                }
+            };
+
+
+
+
             template<typename KEY, typename VALUE, size_t L = 1024, typename Compare = std::less<KEY>>
-            struct leaf : public packedDataInterface {
+            struct leaf  {
 
                 typedef KEY key_type;
                 typedef VALUE value_type;
                 typedef std::pair<key_type, value_type> kv_pair;
 
-//                static_assert(std::is_same<key_type, size_t >::value
-//                            || std::is_same<key_type, u160>::value
-//                            || std::is_same<key_type, std::string>::value
-//                            || std::is_same<key_type, dev::u256>::value
-//                            , "key must size_t, u160, string or u256.");
-
 
                 NodeKey mSelfKey;
                 NodeKey mParentKey;
-//                NodeKey mNextKey;
                 std::vector<kv_pair> mValues;
                 Compare mCompare;
 
@@ -118,7 +180,13 @@ namespace dev {
                     dev::RLPStream rlp(3);
                     rlp << mSelfKey;
                     rlp << mParentKey;
-                    rlp << mValues;
+                    rlp.appendList(mValues.size());
+                    for (auto &itr : mValues) {
+                        rlp.appendList(2);
+                        call_encode<key_type>().call(itr.first, rlp);
+                        call_encode<value_type>().call(itr.second, rlp);
+
+                    }
                     return rlp.out();
                 }
 
@@ -127,7 +195,12 @@ namespace dev {
                     if (rlp.itemCount() == 3) {
                         mSelfKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
                         mParentKey = rlp[1].convert<NodeKey>(RLP::LaissezFaire);
-                        mValues = rlp[2].convert<std::vector<kv_pair>>(RLP::LaissezFaire);
+                        mValues.reserve(rlp[2].itemCount());
+                        for (const auto &itr : rlp[2]) {
+                            auto k = call_decode<key_type>().call(itr[0]);
+                            auto v = call_decode<value_type>().call(itr[1]);
+                            mValues.push_back(kv_pair(k, v));
+                        }
                     }
 
                 }
@@ -172,7 +245,7 @@ namespace dev {
 
 
             template<typename KEY, size_t L = 1024, typename Compare = std::less<KEY>>
-            struct node : public packedDataInterface {
+            struct node  {
 
                 typedef KEY key_type;
 
@@ -187,7 +260,11 @@ namespace dev {
                     dev::RLPStream rlp(4);
                     rlp << mSelfKey;
                     rlp << mParentKey;
-                    rlp << mKeys;
+                    rlp.appendList(mKeys.size());
+                    for (auto const &i: mKeys) {
+                        call_encode<key_type>().call(i, rlp);
+                    }
+
                     rlp << mChildrenNodes;
 
                     return rlp.out();
@@ -199,7 +276,11 @@ namespace dev {
                         if (rlp.itemCount() == 4) {
                             mSelfKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
                             mParentKey = rlp[1].convert<NodeKey>(RLP::LaissezFaire);
-                            mKeys = rlp[2].convert<std::vector<key_type>>(RLP::LaissezFaire);
+                            mKeys.reserve(rlp[2].itemCount());
+                            for (const auto &itr : rlp[2]) {
+                                auto v = call_decode<key_type>().call(itr);
+                                mKeys.push_back(v);
+                            }
                             mChildrenNodes = rlp[3].convert<std::vector<NodeKey>>(RLP::LaissezFaire);
                         }
                     } catch (const std::exception &e) {
@@ -261,6 +342,20 @@ namespace dev {
 
         }
 
+        template<typename T>
+        struct string_debug {
+            std::string to_string(const T &t) {
+                return t.to_string();
+            }
+        };
+
+        template<>
+        struct string_debug<uint32_t> {
+            std::string to_string(const uint32_t &t) {
+                return std::to_string(t);
+            }
+        };
+
 
         template<typename KEY, typename VALUE, size_t LENGTH = 1024, typename Compare = std::less<KEY>>
         struct bplusTree {
@@ -273,11 +368,29 @@ namespace dev {
             typedef std::pair<bool, node_type> node_result;
             typedef std::pair<bool, leaf_type> leaf_result;
 
+
+//            static_assert(
+//                    std::is_same<key_type, std::string>::value ||
+//                    std::is_same<key_type, unsigned>::value ||
+//                    std::is_same<key_type, dev::u256>::value
+////                    || (has_member_encode<key_type>::value && has_member_decode<key_type>::value)
+//                    ,"key must std::string , u256 or has member endcode and decode"
+//            );
+
+//            static_assert(
+//                    std::is_same<value_type, std::string>::value ||
+//                    std::is_same<key_type, unsigned>::value ||
+//                    std::is_same<value_type, dev::u256>::value
+////                    ||  (has_member_encode<value_type>::value && has_member_decode<value_type>::value)
+//                    ,"value must std::string , u256 or has member endcode and decode"
+//            );
+
             enum class NodeLeaf {
                 node = 0,
                 leaf = 1,
                 null
             };
+
 
             bplusTree(std::shared_ptr<databaseDelegate> dl = nullptr) {
                 mDelegate = dl;
@@ -336,7 +449,7 @@ namespace dev {
                         }
                         ret += "key self: " + node.second.mSelfKey + "<p:" + node.second.mParentKey + ">" + " = ";
                         for (auto &itr : node.second.mKeys) {
-                            ret += "," + std::to_string(itr);
+                            ret += "," + string_debug<KEY>().to_string(itr);
                         }
                         ret += "\n";
                         for (auto &itr : node.second.mChildrenNodes) {
@@ -350,12 +463,12 @@ namespace dev {
                         }
                         ret += "key self: " + leaf.second.mSelfKey + "<p:" + leaf.second.mParentKey + ">" + " = ";
                         for (auto &itr : leaf.second.mValues) {
-                            ret += "," + std::to_string(itr.first);
+                            ret += "," + string_debug<key_type>().to_string(itr.first);;
                         }
                         ret += "\n";
                     }
                 } else {
-//                assert(false);
+                    assert(false);
                 }
             }
 
@@ -681,13 +794,8 @@ namespace dev {
 
                     } else if (indexTo > indexFrom) {
                         //copy keys and values.
-//                    to.insertKey(parent.mKeys[indexFrom], from.mChildrenNodes.back());
                         to.mKeys.insert(to.mKeys.begin(), parent.mKeys[indexFrom]);
                         to.mChildrenNodes.insert(to.mChildrenNodes.begin(), from.mChildrenNodes.back());
-
-
-//                    to.mKeys.insert(to.mKeys.begin(), parent.mKeys[indexTo]);
-//                    to.mChildrenNodes.insert(to.mChildrenNodes.begin(), from.mChildrenNodes.front());
 
                         modifyParentByNodeKey(from.mChildrenNodes.back(), to.mSelfKey);
                         for (size_t i = 0; i < from.mKeys.size(); i++) {

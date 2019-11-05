@@ -692,6 +692,7 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
         try {
 
             _result_v = _exdbState.insert_operation(_val);
+
         }
         catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
