@@ -656,6 +656,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
                 break;
             }
+            case transationTool::op_type::testBplus:
+            {
+
+            }
             default:
                 //TODO: unkown null.
                 assert(1);

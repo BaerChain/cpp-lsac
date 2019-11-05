@@ -475,6 +475,9 @@ public:
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
     
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
+
+    void testBplus(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

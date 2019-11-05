@@ -2741,6 +2741,24 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 }
 
 
+void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops)
+{
+    for(auto it : _ops)
+    {
+        std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
+        if(_op->testType == transationTool::testBplusType::BplusAdd)
+        {
+
+        }else if(_op->testType == transationTool::testBplusType::BplusChange)
+        {
+
+        }else if(_op->testType == transationTool::testBplusType::BplusDelete)
+        {
+
+        }
+    }
+}
+
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
     if (!_SuccessAccount) {
