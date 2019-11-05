@@ -11,6 +11,7 @@
 
 #include <libdevcore/Log.h>
 
+#include <libbrcdchain/bplusTree.h>
 
 namespace dev
 {
@@ -39,6 +40,29 @@ namespace brc
  */
 
 /// vote data
+
+
+struct testBplus : public databaseDelegate
+{
+    virtual DataPackage getData(DataKey const &_key)
+    {
+
+    }
+
+    virtual void setData(DataKey const& _key, DataPackage const& _value)
+    {
+
+    }
+
+    virtual void deleteData(DataKey const& _key)
+    {
+
+    }
+
+
+};
+
+
 struct PollData{
     Address     m_addr;
     u256        m_poll = 0;

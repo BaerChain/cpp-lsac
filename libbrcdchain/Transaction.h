@@ -79,7 +79,8 @@ namespace dev
                 executeContract = 6,
                 changeMiner = 7,
                 receivingincome = 8,
-                transferAutoEx = 9
+                transferAutoEx = 9,
+                testBplus = 10
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -331,6 +332,33 @@ namespace dev
 
                 OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
+            };
+
+            enum class testBplusType : uint8_t
+            {
+                null = 0,
+                BplusAdd,
+                BplusChange,
+                BplusDelete
+            };
+            struct testBplus_operation : public operation
+            {
+                uint8_t m_type;
+                testBplusType  testType;
+                Address testAddr;
+                std::string testKey;
+                std::string testValue;
+
+                testBplus_operation(){}
+                testBplus_operation(uint8_t _type, testBplusType _testtype, Address _testAddr, std::string _testKey, std::string _testValue):
+                m_type(_type),
+                testType(_testtype),
+                testAddr(_testAddr),
+                testKey(_testKey),
+                testValue(_testValue){}
+
+                OPERATION_UNSERIALIZE(testBplus_operation, (m_type)(testType)(testAddr)(testKey)(testValue))
+                OPERATION_SERIALIZE((m_type)((uint8_t)testType)(testAddr)(testKey)(testValue))
             };
 
         }  // namespace transationTool
