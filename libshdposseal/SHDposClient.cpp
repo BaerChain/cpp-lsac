@@ -389,5 +389,8 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 
 bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const{
     Verify verify_standby;
-    return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
+    //return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
+    bool ret = verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
+    cnote << " ...verify standby:"<< ret;
+    return ret;
 }

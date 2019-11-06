@@ -8,7 +8,8 @@ using namespace dev::brc;
 
 bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, const dev::Address &standby_addr,
                             size_t varlitorInterval_time) const {
-    return false;
+    //return false;
+    cnote << " into verify standby ...";
     std::map<Address, int64_t > records = state.block_record().m_last_time;
     std::vector<Address > minners;
     for(auto const& val: state.vote_data(SysVarlitorAddress)){
@@ -48,7 +49,7 @@ bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, co
     }
 
     beyond_num = beyond_num - config::minimum_cycle();
-    testlog << " beyond_num:" << beyond_num;
+    cnote << " beyond_num:" << beyond_num;
 
     // find the last_standby_addr for super_minner
     int64_t last_time =0;
@@ -65,7 +66,7 @@ bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, co
             }
         }
     }
-    testlog << "last_time:" << last_time << " last_standby_addr:"<<last_standby_addr << " beyond_standby_num:"<<beyond_standby_num;
+    cnote << "last_time:" << last_time << " last_standby_addr:"<<last_standby_addr << " beyond_standby_num:"<<beyond_standby_num;
 
     bool is_loop_last_standby = false;
     for(auto const& val: can_addr){
