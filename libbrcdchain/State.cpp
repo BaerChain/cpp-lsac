@@ -1148,8 +1148,6 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     u256 _voteNodeFee = 0;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
             _numberofrounds - 1);
-    cwarn << "22222222222:::.........:"<< _votesnapshot;
-
 
     // If you receive the account, you will receive the income from the block node account.
 
@@ -2564,7 +2562,6 @@ void dev::brc::State::trySnapshotWithMinerMapping(const dev::Address &_addr, dev
     if(_block_num >= config::newChangeHeight()) {
         auto miner_mapping = minerMapping(_addr);
         if (miner_mapping.first != Address() && miner_mapping.first != _addr && miner_mapping.second == _addr) {
-            cnote << " try create sanpshot mapping first";
             try_new_vote_snapshot(miner_mapping.first, _block_num);
         }
     }
@@ -2960,11 +2957,9 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
             if(snapshot.m_pollNumHistory.empty()) {
                 sysVarIt.m_poll = pa->poll();
                 sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
-                cwarn <<sysVarIt.m_addr<<":" << pa->poll();
             }
             else {
                 sysVar->set_system_poll({sysVarIt.m_addr, snapshot.m_pollNumHistory[1], 0});
-                cwarn <<sysVarIt.m_addr<<":" << snapshot.m_pollNumHistory[1];
             }
         }
 
@@ -2979,11 +2974,8 @@ void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
             if(snapshot.m_pollNumHistory.empty()) {
                 sysCanIt.m_poll = pa->poll();
                 sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
-                cwarn <<sysCanIt.m_addr<<":" << pa->poll();
             } else{
                 sysVar->set_system_poll({sysCanIt.m_addr, snapshot.m_pollNumHistory[1], 0});
-                cwarn <<sysCanIt.m_addr<<":" << snapshot.m_pollNumHistory[1];
-
             }
         }
 
