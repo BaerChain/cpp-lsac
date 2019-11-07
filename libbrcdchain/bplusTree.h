@@ -394,6 +394,12 @@ namespace dev {
 
             bplusTree(std::shared_ptr<databaseDelegate> dl = nullptr) {
                 mDelegate = dl;
+                if(mDelegate){
+                    auto rootKey = mDelegate->getData("rootKey");
+                    if (rootKey.size()) {
+                        setRootKey(rootKey);
+                    }
+                }
             }
 
             bool insert(const key_type &key, const value_type &value) {
@@ -405,10 +411,7 @@ namespace dev {
             }
 
 
-            void setRootKey(const bytes &nd) {
-                RLP rlp(nd);
-                rootKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
-            }
+
 
             void debug() {
                 std::string out;
@@ -438,6 +441,11 @@ namespace dev {
 
 
         private:
+
+            void setRootKey(const bytes &nd) {
+                RLP rlp(nd);
+                rootKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
+            }
 
             void _debug(const NodeKey &nd, size_t depth, std::string &ret) {
                 auto type = getType(nd);

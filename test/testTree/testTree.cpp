@@ -35,11 +35,6 @@ struct virtualDb : public dev::brc::databaseDelegate {
             leveldb::ReadOptions wo;
             std::string ret;
             auto status = m_db->Get(wo, nk, &ret);
-//            if (status.IsNotFound()){
-//                std::cout << "cant find key " << nk << std::endl;
-//                assert(false);
-//                exit(1);
-//            }
             auto return_r = dev::brc::DataPackage(ret.c_str(), ret.c_str() + ret.size());
             return return_r;
         }
@@ -49,8 +44,6 @@ struct virtualDb : public dev::brc::databaseDelegate {
 
     virtual void setData(const dev::brc::DataKey &nk, const dev::brc::DataPackage &dp) {
         if (m_db) {
-//            std::cout << "write " << nk  << " value " << dp.data() << std::endl;
-//            cwarn << "write " << nk  << " value " << dp;
             if (!dp.size()) {
                 assert(false);
             }
@@ -172,28 +165,25 @@ BOOST_AUTO_TEST_SUITE(testTree)
             auto ret = leveldb::DB::Open(op, "tdb", &db);
             std::cout << "open db : " << ret.ok() << std::endl;
 
+//            {
+//                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
+//
+//                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
+//
+//                size_t end = 32;
+//                for (size_t i = 0; i < end; i++) {
+//                    bp.insert(i, std::to_string(i));
+//                }
+//
+//                bp.debug();
+//                bp.update();
+//            }
+
+
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-
                 dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
 
-                size_t end = 32;
-                for (size_t i = 0; i < end; i++) {
-                    bp.insert(i, std::to_string(i));
-                }
-
-                bp.debug();
-                bp.update();
-            }
-
-
-            {
-                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
-                auto rootKey = vdb->getData("rootKey");
-                if (rootKey.size()) {
-                    bp.setRootKey(rootKey);
-                }
                 bp.debug();
                 bp.update();
             }
@@ -242,10 +232,6 @@ BOOST_AUTO_TEST_SUITE(testTree)
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
                 dev::brc::bplusTree<books, detailbook, 4> bp(vdb);
-                auto rootKey = vdb->getData("rootKey");
-                if (rootKey.size()) {
-                    bp.setRootKey(rootKey);
-                }
                 bp.debug();
                 bp.update();
             }
@@ -258,7 +244,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
         }
 
 
-       
+
     }
 
 
