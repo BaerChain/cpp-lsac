@@ -1,5 +1,5 @@
 
-add_executable(testTree testTree.cpp )
+add_executable(testTree testTree.cpp treeTest.cpp)
 target_link_libraries( testTree  ${Boost_LIBRARIES} brc_db devcore devcrypto brcdchain)
 target_include_directories(testTree
         PUBLIC
