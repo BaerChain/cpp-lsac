@@ -165,28 +165,25 @@ BOOST_AUTO_TEST_SUITE(testTree)
             auto ret = leveldb::DB::Open(op, "tdb", &db);
             std::cout << "open db : " << ret.ok() << std::endl;
 
+//            {
+//                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
+//
+//                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
+//
+//                size_t end = 32;
+//                for (size_t i = 0; i < end; i++) {
+//                    bp.insert(i, std::to_string(i));
+//                }
+//
+//                bp.debug();
+//                bp.update();
+//            }
+
+
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-
                 dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
 
-                size_t end = 32;
-                for (size_t i = 0; i < end; i++) {
-                    bp.insert(i, std::to_string(i));
-                }
-
-                bp.debug();
-                bp.update();
-            }
-
-
-            {
-                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
-                auto rootKey = vdb->getData("rootKey");
-                if (rootKey.size()) {
-                    bp.setRootKey(rootKey);
-                }
                 bp.debug();
                 bp.update();
             }
@@ -235,10 +232,6 @@ BOOST_AUTO_TEST_SUITE(testTree)
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
                 dev::brc::bplusTree<books, detailbook, 4> bp(vdb);
-                auto rootKey = vdb->getData("rootKey");
-                if (rootKey.size()) {
-                    bp.setRootKey(rootKey);
-                }
                 bp.debug();
                 bp.update();
             }
