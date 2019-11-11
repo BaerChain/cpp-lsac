@@ -713,11 +713,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         BOOST_THROW_EXCEPTION(UnknownParent() << errinfo_hash256(_block.info.parentHash()));
     }
 
-    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
-
-    if (!can_exe) {
-        return ImportRoute();
-    }
+//    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
+//
+//    if (!can_exe) {
+//        return ImportRoute();
+//    }
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
     LOG(m_logger) << "write complete end";
@@ -779,6 +779,12 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
         throw;
     }
 
+    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
+
+    if (!can_exe) {
+        return ImportRoute();
+    }
+
     // All ok - insert into DB
     bytes const receipts = br.rlp();
     return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
@@ -817,15 +823,21 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     //check node down
 
     Block s(*this, _db, _exdb);
-    s.populateFromChain(*this, info().parentHash());
+    if(_block.info.number() >= config::replaceMinerHeight()){
+        try {
+            s.populateFromChain(*this, numberHash(_block.info.number() - 1));
+        }
+        catch (...){
+            cerror << " can not find block:"<< _block.info.number() - 1;
+            return false;
+        }
+    }
+    else{
+        s.populateFromChain(*this, info().parentHash());
+    }
     State &state_db = s.mutableState();
     auto exe_miners = state_db.vote_data(SysVarlitorAddress);
     auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
-
-
-    //assert(exe_miners.size() != 0);
-    //assert(standby_miners.size() != 0);
-
     ///verify the miner Legitimacy
     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
         int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
@@ -842,12 +854,75 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
         ///verify the standby Legitimacy
-//            Verify verify_creater;
-//            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
-//               // throw
-//                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
-//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
-//            }
+            Verify verify_creater;
+            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+               // throw
+                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+            }
+    }
+    /// fork about replace_miner
+    /// after verify miner
+    /// will switch the fork ,
+    /**
+     * 1 super_miner
+     * 2 the top standby_miner
+     * 3 the after standby_miner
+     * */
+    if(_block.info.number() >= config::replaceMinerHeight()){
+        if (_block.info.parentHash() == info().hash()) {
+            // not switch
+            return true;
+        } else {
+            ///dont switch chain, only insert this block to m_cached_blocks
+            if (_block.info.number() < info().number()) {
+                cwarn << "only insert , can't switch chain.";
+                return false;
+            }
+            else if(_block.info.number() == info().number()){
+                /// new block height = curr_info_height
+                /// will swith height
+                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
+                    return false;
+                }
+                bool  is_switch = false;
+                do{
+                    if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+                        is_switch = true;
+                        break;
+                    }
+                    for(auto const& val : standby_miners){
+                        if(val.m_addr == _block.info.author()){
+                            is_switch = true;
+                            break;
+                        }
+                        if(val.m_addr == info().author()){
+                            break;
+                        }
+                    }
+                }while (false);
+
+                if(!is_switch){
+                    return false;
+                } else{
+                    // need to switch
+                    cnote << " will switch height: " << _block.info.number() << "  rollback to height:"<< _block.info.number()-1 <<
+                          "  old_hash:"<< info().hash() << " new_hash:" << _block.info.hash();
+                    cnote << " old_author:"<< info().author() << " new_author:"<< _block.info.author();
+                    rewind(_block.info.number()-1);
+                    return true;
+                }
+
+            } else if(_block.info.number() == info().number() +1){
+                // new height is bigger 1 and the hash is diffrent
+                // the height is ok but the hash is diffrent
+                cwarn << "unkonw block the parant_hash is error";
+                return false;
+            } else{
+                cwarn << "unkonw block height:"<<_block.info.number() << " current_height:"<<info().number() << "can not insert";
+                return false;
+            }
+        }
     }
 
     return true;
@@ -937,8 +1012,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 //                    cwarn << " check miner online , will switch chain.aaaaaa";
 //                    return true;
 //                }
-//                else if(standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), info().author())
-//                        && standby_miners.end() != std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())){
+//                else if(standby_miners.end() != std::find(())
+//                        && standby_miners.end() != std::find(standby_miners.begin(), ststandby_miners.begin(), standby_miners.end(), info().authorandby_miners.end(), _block.info.author())){
 //                    //chose  front miner
 //                    cwarn << " check miner online , will switch chain.333333333333333";
 //                    bool need_switch = false;

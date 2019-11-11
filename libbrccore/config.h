@@ -73,6 +73,8 @@ namespace dev
 
                 static int64_t changeVoteHeight();
 
+                static int64_t replaceMinerHeight();
+
         private:
             config(){}
             //~config(){}

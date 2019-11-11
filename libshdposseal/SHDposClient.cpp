@@ -391,6 +391,6 @@ bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Addr
     Verify verify_standby;
     //return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
     bool ret = verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
-    cnote << " ...verify standby:"<< ret;
+    //cnote << " ...verify standby:"<< ret;
     return ret;
 }
