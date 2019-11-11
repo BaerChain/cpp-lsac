@@ -80,6 +80,9 @@ DEV_SIMPLE_EXCEPTION(InvalidDynamic);
 class SealEngineFace;
 class Executive;
 
+
+
+
 /// An atomic state changelog entry.
 struct Change
 {

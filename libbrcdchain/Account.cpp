@@ -49,6 +49,15 @@ bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) 
     return _storage.data().toBytes();
 }
 
+void Account::deleteStorageBytes(const dev::h256 &_key, const dev::OverlayDB &_db)
+{
+    m_storageOverlayBytes.erase(_key);
+    m_storageOverlayBytesOriginal.erase(_key);
+    SecureTrieDB<h256, OverlayDB> memdb(_db, m_storageByteRoot);
+    memdb.remove(_key);
+    changed();
+}
+
 void dev::brc::Account::addVote(std::pair<Address, u256> _votePair)
 {
     auto  ret = std::find(m_vote_data.begin(), m_vote_data.end(), _votePair.first);
@@ -480,4 +489,33 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 
     return ret;
 }
+
+
+void Account::testBplusAdd(const dev::brc::DataKey &_key, const dev::brc::DataPackage &_value)
+{
+    if(!testbplus.get())
+    {
+        testbplus = std::make_shared<testBplus>(this, nullptr);
+    }
+    //TODO:  1.Implement sort   2.testbpuls.setData(key value);
+}
+
+void Account::testBplusGet(const dev::brc::DataKey &_key, const dev::OverlayDB &_db)
+{
+    if(!testbplus.get())
+    {
+        testbplus = std::make_shared<testBplus>(this, _db);
+    }
+    //TODO  testbpuls.getData(key)
+}
+
+void Account::testBplusDelete(const dev::brc::DataKey &_key, dev::OverlayDB &_db)
+{
+    if(!testbplus.get())
+    {
+        testbplus = std::make_shared<testBplus>(this, _db);
+    }
+    //TODO  testbplus.deleteData
+}
+
 

@@ -12,6 +12,7 @@
 #include <libdevcore/Log.h>
 
 #include <libbrcdchain/bplusTree.h>
+#include <libdevcore/OverlayDB.h>
 
 namespace dev
 {
@@ -38,31 +39,8 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
-
+struct testBplus;
 /// vote data
-
-
-struct testBplus : public databaseDelegate
-{
-    virtual DataPackage getData(DataKey const &_key)
-    {
-
-    }
-
-    virtual void setData(DataKey const& _key, DataPackage const& _value)
-    {
-
-    }
-
-    virtual void deleteData(DataKey const& _key)
-    {
-
-    }
-
-
-};
-
-
 struct PollData{
     Address     m_addr;
     u256        m_poll = 0;
@@ -547,16 +525,14 @@ struct BlockRecord{
     }
 };
 
-class Account
-{
+class  Account {
 public:
     /// Changedness of account to create.
-    enum Changedness
-    {
+    enum Changedness {
         /// Account starts as though it has been changed.
-        Changed,
+                Changed,
         /// Account starts as though it has not been changed.
-        Unchanged
+                Unchanged
     };
 
     /// Construct a dead Account.
@@ -565,51 +541,48 @@ public:
     /// Construct an alive Account, with given endowment, for either a normal (non-contract) account
     /// or for a contract account in the conception phase, where the code is not yet known.
     Account(u256 _nonce, u256 _balance, Changedness _c = Changed)
-      : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance)
-    {}
+            : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance) {}
 
     Account(u256 _ballot, Changedness _c = Changed)
-      : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(0), m_ballot(_ballot)
-    {}
+            : m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(0), m_ballot(_ballot) {}
 
-	Account(u256 _nonce, u256 _balance, u256 _BRC, u256 _fbalance = 0, Changedness _c = Changed)
-      : m_isAlive(true),
-        m_isUnchanged(_c == Unchanged),
-        m_nonce(_nonce),
-        m_balance(_balance),
-        m_BRC(_BRC),
-		m_FBalance(_fbalance)
-    {}
+    Account(u256 _nonce, u256 _balance, u256 _BRC, u256 _fbalance = 0, Changedness _c = Changed)
+            : m_isAlive(true),
+              m_isUnchanged(_c == Unchanged),
+              m_nonce(_nonce),
+              m_balance(_balance),
+              m_BRC(_BRC),
+              m_FBalance(_fbalance) {}
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 _ballot,
-        u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c)
-      : m_isAlive(true),
-        m_isUnchanged(_c == Unchanged),
-        m_nonce(_nonce),
-        m_balance(_balance),
-        m_storageRoot(_contractRoot),
-		m_codeHash(_codeHash), 
-        m_ballot(_ballot), 
-        m_poll(_poll),
-        m_BRC(_BRC),
-        m_FBRC(_FBRC),
-        m_FBalance(_FBalance)
-    {
+            u256 _poll, u256 _BRC, u256 _FBRC, u256 _FBalance, Changedness _c)
+            : m_isAlive(true),
+              m_isUnchanged(_c == Unchanged),
+              m_nonce(_nonce),
+              m_balance(_balance),
+              m_storageRoot(_contractRoot),
+              m_codeHash(_codeHash),
+              m_ballot(_ballot),
+              m_poll(_poll),
+              m_BRC(_BRC),
+              m_FBRC(_FBRC),
+              m_FBalance(_FBalance) {
         assert(_contractRoot);
     }
 
- Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, Changedness _c)
-		:
-		m_isAlive(true),
-        m_isUnchanged(_c == Unchanged),
-        m_nonce(_nonce),
-        m_balance(_balance),
-        m_storageRoot(_contractRoot),
-        m_codeHash(_codeHash) {
-     assert(_contractRoot);
- }
-    void copyByAccount(Account const& ac){
+    Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, Changedness _c)
+            :
+            m_isAlive(true),
+            m_isUnchanged(_c == Unchanged),
+            m_nonce(_nonce),
+            m_balance(_balance),
+            m_storageRoot(_contractRoot),
+            m_codeHash(_codeHash) {
+        assert(_contractRoot);
+    }
+
+    void copyByAccount(Account const &ac) {
         m_isAlive = ac.m_isAlive;
         m_isUnchanged = ac.m_isUnchanged;
         m_hasNewCode = ac.m_hasNewCode;
@@ -637,16 +610,16 @@ public:
         m_block_records = ac.m_block_records;
     }
 
-    void changeMinerUpdateData(Address const& old_addr, Address const& new_addr){
+    void changeMinerUpdateData(Address const &old_addr, Address const &new_addr) {
         auto vote_ret = std::find(m_vote_data.begin(), m_vote_data.end(), old_addr);
-        if (vote_ret != m_vote_data.end()){
+        if (vote_ret != m_vote_data.end()) {
             vote_ret->m_addr = new_addr;
             changed();
         }
         /// m_vote_sapshot
-        for(auto &s : m_vote_sapshot.m_voteDataHistory){
+        for (auto &s : m_vote_sapshot.m_voteDataHistory) {
             auto ret = s.second.find(old_addr);
-            if (ret != s.second.end()){
+            if (ret != s.second.end()) {
                 u256 temp = ret->second;
                 s.second.erase(ret);
                 s.second[new_addr] = ret->second;
@@ -655,27 +628,27 @@ public:
         }
         /// m_couplingSystemFee
         {
-            for(auto &v : m_couplingSystemFee.m_sorted_creaters){
-                auto ret =std::find(v.second.begin(), v.second.end(), old_addr);
-                if (ret != v.second.end()){
+            for (auto &v : m_couplingSystemFee.m_sorted_creaters) {
+                auto ret = std::find(v.second.begin(), v.second.end(), old_addr);
+                if (ret != v.second.end()) {
                     ret->m_addr = new_addr;
                 }
             }
-           for(auto &v : m_couplingSystemFee.m_received_cookies){
-               auto ret = v.second.find(old_addr);
-               if(ret != v.second.end()){
-                   std::pair<u256,u256> _pair = ret->second;
-                   v.second.erase(ret);
-                   v.second[new_addr] = _pair;
-                   changed();
-               }
-           }
+            for (auto &v : m_couplingSystemFee.m_received_cookies) {
+                auto ret = v.second.find(old_addr);
+                if (ret != v.second.end()) {
+                    std::pair<u256, u256> _pair = ret->second;
+                    v.second.erase(ret);
+                    v.second[new_addr] = _pair;
+                    changed();
+                }
+            }
         }
         /// m_received_cookies
-        for(auto &v : m_received_cookies.m_received_cookies){
+        for (auto &v : m_received_cookies.m_received_cookies) {
             auto ret = v.second.find(old_addr);
-            if(ret != v.second.end()){
-                std::pair<u256,u256> _pair = ret->second;
+            if (ret != v.second.end()) {
+                std::pair<u256, u256> _pair = ret->second;
                 v.second.erase(ret);
                 v.second[new_addr] = _pair;
                 changed();
@@ -683,45 +656,45 @@ public:
         }
         /// m_block_records
         auto ret = m_block_records.m_last_time.find(old_addr);
-        if (ret != m_block_records.m_last_time.end()){
-            int64_t temp =0;
+        if (ret != m_block_records.m_last_time.end()) {
+            int64_t temp = 0;
             m_block_records.m_last_time.erase(ret);
             m_block_records.m_last_time[new_addr] = temp;
             changed();
         }
     }
 
-    bool isChangeMinerUpdateData(Address const& old_addr, Address const& new_addr) const{
-        if (std::find(m_vote_data.begin(), m_vote_data.end(), old_addr) != m_vote_data.end()){
+    bool isChangeMinerUpdateData(Address const &old_addr, Address const &new_addr) const {
+        if (std::find(m_vote_data.begin(), m_vote_data.end(), old_addr) != m_vote_data.end()) {
             return true;
         }
         /// m_vote_sapshot
-        for(auto &s : m_vote_sapshot.m_voteDataHistory){
-            if (s.second.find(old_addr) != s.second.end()){
+        for (auto &s : m_vote_sapshot.m_voteDataHistory) {
+            if (s.second.find(old_addr) != s.second.end()) {
                 return true;
             }
         }
         /// m_couplingSystemFee
         {
-            for(auto &v : m_couplingSystemFee.m_sorted_creaters){
-                if(std::find(v.second.begin(), v.second.end(), old_addr) !=  v.second.end()){
+            for (auto &v : m_couplingSystemFee.m_sorted_creaters) {
+                if (std::find(v.second.begin(), v.second.end(), old_addr) != v.second.end()) {
                     return true;
                 }
             }
-            for(auto &v : m_couplingSystemFee.m_received_cookies){
-                if(v.second.find(old_addr) != v.second.end()){
+            for (auto &v : m_couplingSystemFee.m_received_cookies) {
+                if (v.second.find(old_addr) != v.second.end()) {
                     return true;
                 }
             }
         }
         /// m_received_cookies
-        for(auto &v : m_received_cookies.m_received_cookies){
-            if(v.second.find(old_addr) != v.second.end()){
+        for (auto &v : m_received_cookies.m_received_cookies) {
+            if (v.second.find(old_addr) != v.second.end()) {
                 return true;
             }
         }
         /// m_block_records
-        if (m_block_records.m_last_time.find(old_addr) != m_block_records.m_last_time.end()){
+        if (m_block_records.m_last_time.find(old_addr) != m_block_records.m_last_time.end()) {
             return true;
         }
 
@@ -730,8 +703,7 @@ public:
 
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
-    void kill()
-    {
+    void kill() {
         m_isAlive = false;
         m_storageOverlay.clear();
         m_storageOriginal.clear();
@@ -745,7 +717,7 @@ public:
         m_poll = 0;
         m_ballot = 0;
         m_willChangeList.clear();
-		m_BlockReward.clear();
+        m_BlockReward.clear();
         m_couplingSystemFee.clear();
         m_vote_sapshot.clear();
         m_received_cookies.clear();
@@ -771,82 +743,86 @@ public:
     /// during creation phase.
     bool isEmpty() const {
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && poll() == 0 &&
-                FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
-                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
-                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() && m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;
+               FBalance() == 0 && FBRC() == 0 && CookieIncome() == 0 && m_vote_data.empty() &&
+               m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
+               m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
+               m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;
     }
 
     /// @returns the balance of this account.
-    u256 const& balance() const { return m_balance; }
+    u256 const &balance() const { return m_balance; }
 
 
-    u256 const& BRC() const { return m_BRC; }
+    u256 const &BRC() const { return m_BRC; }
 
-    u256 const& FBRC() const { return m_FBRC; }
+    u256 const &FBRC() const { return m_FBRC; }
 
-    u256 const& FBalance() const { return m_FBalance; }
+    u256 const &FBalance() const { return m_FBalance; }
 
-    std::vector<std::string>const& willChangeList() const { return m_willChangeList; }
-    void removeChangeList(std::string const& _change){
+    std::vector<std::string> const &willChangeList() const { return m_willChangeList; }
+
+    void removeChangeList(std::string const &_change) {
         auto ret = find(m_willChangeList.begin(), m_willChangeList.end(), _change);
-        if(ret != m_willChangeList.end()){
+        if (ret != m_willChangeList.end()) {
             m_willChangeList.erase(ret);
             changed();
         }
     }
 
     /// Increments the balance of this account by the given amount.
-    void addBalance(u256 _value)
-    {
+    void addBalance(u256 _value) {
         m_balance += _value;
         changed();
     }
 
     // add BRC
-    void addBRC(u256 _value)
-    {
+    void addBRC(u256 _value) {
         m_BRC += _value;
         changed();
     }
 
 
-	//add FBRC
-    void addFBRC(u256 _value)
-	{
-		m_FBRC += _value;
+    //add FBRC
+    void addFBRC(u256 _value) {
+        m_FBRC += _value;
         changed();
-	}
+    }
 
     // add FCookie
-    void addFBalance(u256 _value)
-	{
-		m_FBalance += _value;
+    void addFBalance(u256 _value) {
+        m_FBalance += _value;
         changed();
-	}
+    }
 
 
     // Acounts own ballot
-    u256 const& ballot() const { return m_ballot; }
-    void addBallot(u256 _value) { m_ballot += _value; changed(); }
+    u256 const &ballot() const { return m_ballot; }
+
+    void addBallot(u256 _value) {
+        m_ballot += _value;
+        changed();
+    }
 
     // Acounts have poll by other
-    u256 const& poll() const { return m_poll; }
-    void addPoll(u256 _value) { m_poll += _value; changed(); }
+    u256 const &poll() const { return m_poll; }
+
+    void addPoll(u256 _value) {
+        m_poll += _value;
+        changed();
+    }
 
     /// @returns the nonce of the account.
     u256 nonce() const { return m_nonce; }
 
     /// Increment the nonce of the account by one.
-    void incNonce()
-    {
+    void incNonce() {
         ++m_nonce;
         changed();
     }
 
     /// Set nonce to a new value. This is used when reverting changes made to
     /// the account.
-    void setNonce(u256 const& _nonce)
-    {
+    void setNonce(u256 const &_nonce) {
         m_nonce = _nonce;
         changed();
     }
@@ -854,16 +830,14 @@ public:
     /// @returns the root of the trie (whose nodes are stored in the state db externally to this
     /// class) which encodes the base-state of the account's storage (upon which the storage is
     /// overlaid).
-    h256 baseRoot() const
-    {
+    h256 baseRoot() const {
         assert(m_storageRoot);
         return m_storageRoot;
     }
 
     /// @returns account's storage value corresponding to the @_key
     /// taking into account overlayed modifications
-    u256 storageValue(u256 const& _key, OverlayDB const& _db) const
-    {
+    u256 storageValue(u256 const &_key, OverlayDB const &_db) const {
         auto mit = m_storageOverlay.find(_key);
         if (mit != m_storageOverlay.end())
             return mit->second;
@@ -873,22 +847,20 @@ public:
 
     /// @returns account's original storage value corresponding to the @_key
     /// not taking into account overlayed modifications
-    u256 originalStorageValue(u256 const& _key, OverlayDB const& _db) const;
+    u256 originalStorageValue(u256 const &_key, OverlayDB const &_db) const;
 
     /// @returns the storage overlay as a simple hash map.
-    std::unordered_map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
+    std::unordered_map<u256, u256> const &storageOverlay() const { return m_storageOverlay; }
 
     /// Set a key/value pair in the account's storage. This actually goes into the overlay, for
     /// committing to the trie later.
-    void setStorage(u256 _p, u256 _v)
-    {
+    void setStorage(u256 _p, u256 _v) {
         m_storageOverlay[_p] = _v;
         changed();
     }
 
     /// Empty the storage.  Used when a contract is overwritten.
-    void clearStorage()
-    {
+    void clearStorage() {
         m_storageOverlay.clear();
         m_storageOriginal.clear();
         m_storageRoot = EmptyTrie;
@@ -896,56 +868,51 @@ public:
     }
 
     /// Set the storage root.  Used when clearStorage() is reverted.
-    void setStorageRoot(h256 const& _root)
-    {
+    void setStorageRoot(h256 const &_root) {
         m_storageOverlay.clear();
         m_storageOriginal.clear();
         m_storageRoot = _root;
         changed();
     }
 
-    h256 const& baseByteRoot() const
-    {
+    h256 const &baseByteRoot() const {
         assert(m_storageByteRoot);
         return m_storageByteRoot;
     }
 
-    bytes storageByteValue(h256 const& _key, OverlayDB const& _db) const
-    {
+    bytes storageByteValue(h256 const &_key, OverlayDB const &_db) const {
         auto mit = m_storageOverlayBytes.find(_key);
-        if(mit != m_storageOverlayBytes.end())
-        {
+        if (mit != m_storageOverlayBytes.end()) {
             return mit->second;
         }
 
         return originalStorageByteValue(_key, _db);
     }
 
-    bytes originalStorageByteValue(h256 const& _key, OverlayDB const& _db) const;
+    bytes originalStorageByteValue(h256 const &_key, OverlayDB const &_db) const;
 
-    std::unordered_map<h256, bytes> const& storageByteOverlay() const { return m_storageOverlayBytes; }
+    std::unordered_map<h256, bytes> const &storageByteOverlay() const { return m_storageOverlayBytes; }
 
-    void setStorageByte(h256 const& _key, bytes const& _value)
-    {   
+    void setStorageByte(h256 const &_key, bytes const &_value) {
         m_storageOverlayBytes[_key] = _value;
         changed();
     }
 
-    void clearStorageByte()
-    {
+    void clearStorageByte() {
         m_storageOverlayBytes.clear();
         m_storageOverlayBytesOriginal.clear();
         m_storageByteRoot = EmptyTrie;
         changed();
     }
 
-    void setStorageBytesRoot(h256 const& _root)
-    {
+    void setStorageBytesRoot(h256 const &_root) {
         m_storageOverlayBytes.clear();
         m_storageOverlayBytesOriginal.clear();
         m_storageByteRoot = _root;
         changed();
     }
+
+    void deleteStorageBytes(h256 const &_key, OverlayDB const &_db);
 
     /// @returns the hash of the account's code.
     h256 codeHash() const { return m_codeHash; }
@@ -953,58 +920,80 @@ public:
     bool hasNewCode() const { return m_hasNewCode; }
 
     /// Sets the code of the account. Used by "create" messages.
-    void setCode(bytes&& _code);
+    void setCode(bytes &&_code);
 
     /// Specify to the object what the actual code is for the account. @a _code must have a SHA3
     /// equal to codeHash().
-    void noteCode(bytesConstRef _code)
-    {
+    void noteCode(bytesConstRef _code) {
         assert(sha3(_code) == m_codeHash);
         m_codeCache = _code.toBytes();
     }
 
     /// @returns the account's code.
-    bytes const& code() const { return m_codeCache; }
+    bytes const &code() const { return m_codeCache; }
 
     bool insertMiner(Address before, Address after, unsigned blockNumber);
+
     bool changeMiner(unsigned blockNumber);
+
     bool changeVoteData(Address before, Address after);
 
     // VoteDate 投票数据
-    u256 voteAll()const { u256 vote_num = 0; for(auto const&val : m_vote_data) vote_num += val.m_poll; return vote_num; }
-    void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
-    void clear_vote_data() { m_vote_data.clear();}
+    u256 voteAll() const {
+        u256 vote_num = 0;
+        for (auto const &val : m_vote_data) vote_num += val.m_poll;
+        return vote_num;
+    }
+
+    void set_vote_data(std::vector<PollData> const &_vote) {
+        m_vote_data.clear();
+        m_vote_data.assign(_vote.begin(), _vote.end());
+    }
+
+    void clear_vote_data() { m_vote_data.clear(); }
 
     /// this interface only for normalAddress
     void addVote(std::pair<Address, u256> _votePair);
-    void manageSysVote(Address const& _otherAddr, bool _isLogin, u256 _tickets, int64_t _time =0);
+
+    void manageSysVote(Address const &_otherAddr, bool _isLogin, u256 _tickets, int64_t _time = 0);
 
     /// this interface only for systemAddress
-    void set_system_poll(PollData const& _p);
-    std::vector<PollData> const& vote_data() const { return  m_vote_data; }
-    PollData poll_data(Address const& _addr) const;
+    void set_system_poll(PollData const &_p);
+
+    std::vector<PollData> const &vote_data() const { return m_vote_data; }
+
+    PollData poll_data(Address const &_addr) const;
+
     /// for vote_data sort only for sysAddress
-    void sort_vote_data(){ PollData::sort_greater(m_vote_data); }
+    void sort_vote_data() { PollData::sort_greater(m_vote_data); }
 
-	void addBlockRewardRecoding(std::pair<u256, u256> _pair);
+    void addBlockRewardRecoding(std::pair<u256, u256> _pair);
 
-    void initChangeList(std::vector<std::string> _changeList) {m_willChangeList = _changeList;  changed();}
+    void initChangeList(std::vector<std::string> _changeList) {
+        m_willChangeList = _changeList;
+        changed();
+    }
 
-	void setBlockReward(std::vector<std::pair<u256, u256>> const& _blockReward) { m_BlockReward.clear(); m_BlockReward = _blockReward; changed();}
-	std::vector<std::pair<u256, u256>> const& blockReward() const { return m_BlockReward; }
+    void setBlockReward(std::vector<std::pair<u256, u256>> const &_blockReward) {
+        m_BlockReward.clear();
+        m_BlockReward = _blockReward;
+        changed();
+    }
 
-	std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
+    std::vector<std::pair<u256, u256>> const &blockReward() const { return m_BlockReward; }
+
+    std::unordered_map<Address, u256> findSnapshotSummary(uint32_t _snapshotNum);
 
     u256 findSnapshotSummaryForAddr(uint32_t _snapshotNum, Address _addr);
 
-    u256 const& CookieIncome() const {return m_CooikeIncomeNum;}
-    void setCookieIncome(u256 const& _value)
-    {
+    u256 const &CookieIncome() const { return m_CooikeIncomeNum; }
+
+    void setCookieIncome(u256 const &_value) {
         m_CooikeIncomeNum = _value;
         changed();
     }
-    void addCooikeIncome(u256 _value)
-    {
+
+    void addCooikeIncome(u256 _value) {
         m_CooikeIncomeNum += _value;
         changed();
     }
@@ -1013,8 +1002,9 @@ public:
     void changed() { m_isUnchanged = false; }
 
     //interface about sanpshot
-    void init_vote_snapshot(bytes const& _b){ m_vote_sapshot.populate(_b); }
-    VoteSnapshot const& vote_snashot() const { return  m_vote_sapshot; }
+    void init_vote_snapshot(bytes const &_b) { m_vote_sapshot.populate(_b); }
+
+    VoteSnapshot const &vote_snashot() const { return m_vote_sapshot; }
 
     ///@return <true, rounds> if the snapshot need rocord new snapshot
     /// rounds: the last rounds need to snapshot
@@ -1026,68 +1016,104 @@ public:
     ///@retrue VoteSnapshot_data temp for verify
     VoteSnapshot try_new_temp_snapshot(u256 _rounds);
 
-    void set_numberofrounds(u256 _val){
+    void set_numberofrounds(u256 _val) {
         m_vote_sapshot.numberofrounds = _val;
         changed();
     }
-    void set_vote_snapshot(VoteSnapshot const& _vote_sna){
+
+    void set_vote_snapshot(VoteSnapshot const &_vote_sna) {
         m_vote_sapshot = _vote_sna;
         changed();
     }
 
     ///interface for Varlitor's create_block records
-    void set_create_record(std::pair<Address , int64_t > const& value){
+    void set_create_record(std::pair<Address, int64_t> const &value) {
         m_block_records.set_last_block(value);
         changed();
     }
-    int64_t last_records(Address const& _id) const{
+
+    int64_t last_records(Address const &_id) const {
         auto ret = m_block_records.m_last_time.find(_id);
-        if(ret != m_block_records.m_last_time.end()){
+        if (ret != m_block_records.m_last_time.end()) {
             return ret->second;
         }
-        return  0;
+        return 0;
     }
-    BlockRecord const& block_record() const { return  m_block_records;}
-    void init_block_record(bytes const& _b){ m_block_records.populate(_b);}
+
+    BlockRecord const &block_record() const { return m_block_records; }
+
+    void init_block_record(bytes const &_b) { m_block_records.populate(_b); }
 
 
-    CouplingSystemfee const& getFeeSnapshot() const {return m_couplingSystemFee; }
-    void initCoupingSystemFee(bytes const& _b){m_couplingSystemFee.unstreamRLP(_b);}
-    void tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData>const& p_datas, int64_t _block_num);
-    u256 getSnapshotRounds(){ return m_couplingSystemFee.m_rounds;}
-    u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
-    void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;changed();}
+    CouplingSystemfee const &getFeeSnapshot() const { return m_couplingSystemFee; }
+
+    void initCoupingSystemFee(bytes const &_b) { m_couplingSystemFee.unstreamRLP(_b); }
+
+    void
+    tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData> const &p_datas, int64_t _block_num);
+
+    u256 getSnapshotRounds() { return m_couplingSystemFee.m_rounds; }
+
+    u256 getFeeNumofRounds() { return m_couplingSystemFee.m_numofrounds; }
+
+    void setCouplingSystemFeeSnapshot(CouplingSystemfee const &_fee) {
+        m_couplingSystemFee = _fee;
+        changed();
+    }
+
     std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
-    void add_new_rounds_miner_sapshot(u256 _round, std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data;}
+
+    void add_new_rounds_miner_sapshot(u256 _round,
+                                      std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data; }
 
 
     ///interface about received_cookies
-    void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received;}
-    ReceivedCookies const& get_received_cookies() const { return  m_received_cookies;}
-    void init_received_cookies(bytes const& _b) { m_received_cookies.populate(_b);}
-    void addSetreceivedCookie(u256 _round, Address const& _addr, std::pair<u256, u256> _pair){ m_received_cookies.up_received_cookies(_round, _addr, _pair); changed();}
-    void updateNumofround(u256 _rounds){ m_received_cookies.updataNumberofRound(_rounds); changed();}
+    void set_received(ReceivedCookies const &_received) {
+        m_received_cookies.clear();
+        m_received_cookies = _received;
+    }
+
+    ReceivedCookies const &get_received_cookies() const { return m_received_cookies; }
+
+    void init_received_cookies(bytes const &_b) { m_received_cookies.populate(_b); }
+
+    void addSetreceivedCookie(u256 _round, Address const &_addr, std::pair<u256, u256> _pair) {
+        m_received_cookies.up_received_cookies(_round, _addr, _pair);
+        changed();
+    }
+
+    void updateNumofround(u256 _rounds) {
+        m_received_cookies.updataNumberofRound(_rounds);
+        changed();
+    }
     /// 1 calculate old_rounds and now_rounds is before not has calculated
     /// 2 update m_received_cookies
     ///@return <is_update, get_total_cookies>
 
 
-    dev::brc::ex::ExOrderMulti const& getExOrder(){return m_exChangeOrder;}
-    void setExOrderMulti(dev::brc::ex::ExOrderMulti const& _order){ m_exChangeOrder.clear(); m_exChangeOrder = _order; changed();}
-    void addExOrderMulti(dev::brc::ex::ex_order const& _exOrder){
-        const auto &index_trx =  m_exChangeOrder.get<ex::ex_by_trx_id>();
+    dev::brc::ex::ExOrderMulti const &getExOrder() { return m_exChangeOrder; }
+
+    void setExOrderMulti(dev::brc::ex::ExOrderMulti const &_order) {
+        m_exChangeOrder.clear();
+        m_exChangeOrder = _order;
+        changed();
+    }
+
+    void addExOrderMulti(dev::brc::ex::ex_order const &_exOrder) {
+        const auto &index_trx = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto begin = index_trx.lower_bound(_exOrder.trxid);
         auto end = index_trx.upper_bound(_exOrder.trxid);
         if (begin == end) {
             m_exChangeOrder.insert(_exOrder);
-        }else{
+        } else {
             m_exChangeOrder.erase(m_exChangeOrder.iterator_to(*begin));
             m_exChangeOrder.insert(_exOrder);
         }
         changed();
     }
-    bool removeExOrderMulti(h256 const& t) {
-       const auto &index_trx =  m_exChangeOrder.get<ex::ex_by_trx_id>();
+
+    bool removeExOrderMulti(h256 const &t) {
+        const auto &index_trx = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto begin = index_trx.lower_bound(t);
         auto end = index_trx.upper_bound(t);
         if (begin == end) {
@@ -1097,38 +1123,51 @@ public:
         changed();
         return true;
     }
-    void setSuccessOrder(dev::brc::ex::ExResultOrder const& _exresultOrder){ m_successExchange.clear(); m_successExchange = _exresultOrder; changed(); }
-    void addSuccessExchangeOrder(dev::brc::ex::result_order const& _order){m_successExchange.insert(_order); changed();}
-    dev::brc::ex::ExResultOrder const& getSuccessOrder() const { return m_successExchange;}
 
-    bytes getStreamRLPExOrder() const{
+    void setSuccessOrder(dev::brc::ex::ExResultOrder const &_exresultOrder) {
+        m_successExchange.clear();
+        m_successExchange = _exresultOrder;
+        changed();
+    }
+
+    void addSuccessExchangeOrder(dev::brc::ex::result_order const &_order) {
+        m_successExchange.insert(_order);
+        changed();
+    }
+
+    dev::brc::ex::ExResultOrder const &getSuccessOrder() const { return m_successExchange; }
+
+    bytes getStreamRLPExOrder() const {
         const auto &index_trx_id = m_exChangeOrder.get<ex::ex_by_trx_id>();
         auto itr = index_trx_id.begin();
         RLPStream s(m_exChangeOrder.size());
-        for(; itr != index_trx_id.end(); itr++){
+        for (; itr != index_trx_id.end(); itr++) {
             dev::brc::ex::ex_order order = *itr;
             s.append(order.streamRLP());
         }
         return s.out();
     }
-    void initExOrder(bytes const& b){
+
+    void initExOrder(bytes const &b) {
         m_exChangeOrder.clear();
-        for(auto const& v : RLP(b)){
+        for (auto const &v : RLP(b)) {
             dev::brc::ex::ex_order order;
             order.populate(v.toBytes());
             m_exChangeOrder.insert(order);
         }
     }
-    bytes getStreamRLPResultOrder() const{
-        const auto & index_id = m_successExchange.get<dev::brc::ex::ex_by_time>();
+
+    bytes getStreamRLPResultOrder() const {
+        const auto &index_id = m_successExchange.get<dev::brc::ex::ex_by_time>();
         RLPStream s(m_successExchange.size());
-        for(auto itr = index_id.begin(); itr != index_id.end(); itr++){
+        for (auto itr = index_id.begin(); itr != index_id.end(); itr++) {
             dev::brc::ex::result_order order = *itr;
             s.append(order.streamRLP());
         }
         return s.out();
     }
-    void initResultOrder(bytes const& b) {
+
+    void initResultOrder(bytes const &b) {
         m_successExchange.clear();
         for (auto const &v: RLP(b)) {
             dev::brc::ex::result_order order;
@@ -1136,6 +1175,11 @@ public:
             m_successExchange.insert(order);
         }
     }
+
+    //test code
+    void testBplusAdd(DataKey const& _key, DataPackage const& _value);
+    void testBplusGet(DataKey const& _key, OverlayDB const& _db);
+    void testBplusDelete(DataKey const& _key, OverlayDB &_db);
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1208,7 +1252,36 @@ private:
     /// Varlitor's create_block records
     BlockRecord m_block_records;
 
+    //test code
+    std::shared_ptr<testBplus> testbplus;
 };
+
+struct testBplus : public databaseDelegate
+{
+    testBplus(Account *_a, OverlayDB& _db) :
+        m_account(_a),
+        m_db(_db){}
+
+    virtual DataPackage getData(DataKey const &_key)
+    {
+        m_account->storageByteValue(dev::sha3(_key), m_db);
+    }
+
+    virtual void setData(DataKey const& _key, DataPackage const& _value)
+    {
+        m_account->setStorageByte(dev::sha3(_key), _value);
+    }
+
+    virtual void deleteData(DataKey const& _key)
+    {
+        m_account->deleteStorageBytes(dev::sha3(_key), m_db);
+    }
+
+private:
+    Account *m_account;
+    OverlayDB m_db;
+};
+
 
 class AccountMask
 {
