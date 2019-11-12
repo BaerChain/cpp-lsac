@@ -620,12 +620,16 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
     auto detailsFrom = m_chain.details(m_latestBlockSent);
     auto detailsTo = m_chain.details(_currentHash);
 //    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
+    cwarn <<" into send new block";
     {
         if (diff(detailsFrom.number, detailsTo.number) < 20)
         {
             // don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
             CLATE_LOG << "Sending a new block (current is " << _currentHash << ", was "
                            << m_latestBlockSent << ")"  << " height " << detailsTo.number;
+
+            cwarn  << "Sending a new block (current is " << _currentHash << ", was "
+                      << m_latestBlockSent << ")"  << " height " << detailsTo.number;
 
             h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 

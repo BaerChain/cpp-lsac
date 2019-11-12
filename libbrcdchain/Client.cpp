@@ -477,7 +477,8 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
     for (auto const& h: _blocks)
         LOG(m_loggerDetail) << "Live block: " << h;
 
-    if (auto h = m_host.lock()){
+    if (auto h = m_host.lock())
+        cwarn << " tell will send new block...";
         h->noteNewBlocks();
     }
 
