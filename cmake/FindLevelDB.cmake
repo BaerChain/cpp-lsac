@@ -76,6 +76,6 @@ add_library(leveldb SHARED IMPORTED)
 set_target_properties(
 	leveldb
         PROPERTIES
-        IMPORTED_LOCATION "${LEVELDB_LIBRARIES}"
+        IMPORTED_LOCATION "${LEVELDB_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${LEVELDB_INCLUDE_DIRS}"
 )
