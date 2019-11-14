@@ -216,7 +216,9 @@ Account *State::account(Address const &_addr) {
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(ex_order_b);
 
-
+    const h256 storageByteRoot = state[19].toHash<h256>();
+    i.first->second.setStorageBytesRoot(storageByteRoot);
+    
     return &i.first->second;
 }
 
@@ -646,13 +648,17 @@ Account *dev::brc::State::getSysAccount() {
     return account(SysVarlitorAddress);
 }
 
-void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
+//void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
+std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
                                     std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
     std::vector<ex_order> _v;
     std::vector<result_order> _result_v;
     std::set<order_type> _set;
     bigint total_free_brc = 0;
     bigint total_free_balance = 0;
+    std::pair<u256, u256> _exNumPair;
+    u256 _exCookieNum = 0;
+    u256 _exBRCNum = 0;
     ExdbState _exdbState(*this);
     for (auto const &val : _ops) {
         std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(
@@ -686,6 +692,7 @@ void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256
         try {
 
             _result_v = _exdbState.insert_operation(_val);
+
         }
         catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -698,7 +705,11 @@ void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256
             pendingOrderTransfer(_result_order.sender, _result_order.acceptor, _result_order.amount,
                                  _result_order.price, _result_order.type, _result_order.token_type,
                                  _result_order.buy_type);
-
+            if(_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL && _result_order.buy_type == order_buy_type::all_price)
+            {
+                _exCookieNum += _result_order.amount - _result_order.amount / MATCHINGFEERATIO;
+                _exBRCNum += _result_order.amount * _result_order.price / PRICEPRECISION;
+            }
             if (_result_order.buy_type == order_buy_type::only_price) {
                 if (_result_order.type == order_type::buy && _result_order.token_type == order_token_type::FUEL)
                     total_free_brc -= _result_order.amount * _result_order.old_price / PRICEPRECISION;
@@ -731,6 +742,9 @@ void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256
     if (_set.size() > 0) {
         systemAutoPendingOrder(_set, _nowTime);
     }
+
+    _exNumPair = std::make_pair(_exCookieNum, _exBRCNum);
+    return _exNumPair;
 }
 
 void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
@@ -1610,6 +1624,26 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
     return std::make_pair(total_income_brcs, total_income_cookies);
 }
 
+void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas)
+{
+    for(auto const& val : _ops)
+    {
+        std::shared_ptr<transationTool::transferAutoEx_operation> _op = std::dynamic_pointer_cast<transationTool::transferAutoEx_operation>(val);
+        std::shared_ptr<transationTool::pendingorder_opearaion> const& _pdop = std::make_shared<transationTool::pendingorder_opearaion>((transationTool::op_type)3, _op->m_from, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price, u256(0), _op->m_autoExNum);
+        std::vector<std::shared_ptr<transationTool::operation>> _pdops;
+        _pdops.push_back(_pdop);
+        std::pair<u256, u256> _exNumPair = pendingOrders(_op->m_from, _timeStamp, _trxid, _pdops);  // first: exCookieNum  second:exBRCNum
+        if(_op->m_autoExType == transationTool::transferAutoExType::Balancededuction)
+        {
+            transferBRC(_op->m_from, _op->m_to, _op->m_transferNum);
+        }else if(_op->m_autoExType == transationTool::transferAutoExType::Transferdeduction)
+        {
+            transferBRC(_op->m_from, _op->m_to, _op->m_transferNum - _exNumPair.second);
+            transferBalance(_op->m_from, _op->m_to, _exNumPair.first - _baseGas);
+        }
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
@@ -1651,6 +1685,55 @@ u256 State::originalStorageValue(Address const &_contract, u256 const &_key) con
         return a->originalStorageValue(_key, m_db);
     else
         return 0;
+}
+
+bytes State::storageBytes(Address const& _addr, h256 const& _key) const
+{
+    if(Account const *a = account(_addr))
+    {
+        return a->storageByteValue(_key, m_db);
+    }else{
+        return bytes();
+    }
+}
+
+void State::setStorageBytes(Address const& _addr, h256 const& _key, bytes const& _value)
+{
+    if(Account *a = account(_addr))
+    {
+        a->setStorageByte(_key, _value);
+    }else{
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist")));
+    }
+    m_changeLog.emplace_back(_addr, _key, storageBytes(_addr, _key));
+}
+
+bytes State::originalStorageBytesValue(Address const& _addr, h256 const& _key)
+{
+    if (Account const *a = account(_addr))
+    {
+        return a->originalStorageByteValue(_key, m_db);
+    }
+    else
+    {
+        return bytes();
+    }
+}
+
+void State::clearStorageByte(Address const& _addr)
+{
+    if(Account *a = account(_addr))
+    {
+        if(a->baseByteRoot() == EmptyTrie)
+        {
+            return;
+        }else{
+            m_changeLog.emplace_back(Change::StorageByteRoot, _addr, a->baseByteRoot());
+            a->clearStorageByte();
+        }
+    }else{
+        BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist")));
+    }
 }
 
 void State::clearStorage(Address const &_contract) {
@@ -1845,6 +1928,12 @@ void State::rollback(size_t _savepoint) {
                 account.kill();
                 account.copyByAccount(change.old_account);
                 break;
+            case Change::StorageByte:
+                account.setStorageByte(change.byteKey, change.byteValue);
+                break;
+            case Change::StorageByteRoot:
+                account.setStorageBytesRoot(change.value);
+                break;
             default:
                 break;
         }
@@ -2009,11 +2098,14 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-//
+
+
+        cerror << a->storageByteValue(sha3(_addr), m_db);
 //        Json::Value record;
 //        record["time"] = toJS(a->last_records(_addr));
 //        jv["last_block_created"] = record;
     }
+
     return jv;
 }
 
@@ -2650,6 +2742,24 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 }
 
 
+void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops)
+{
+    for(auto it : _ops)
+    {
+        std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
+        if(_op->testType == transationTool::testBplusType::BplusAdd)
+        {
+
+        }else if(_op->testType == transationTool::testBplusType::BplusChange)
+        {
+
+        }else if(_op->testType == transationTool::testBplusType::BplusDelete)
+        {
+
+        }
+    }
+}
+
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
     if (!_SuccessAccount) {
@@ -2765,7 +2875,8 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                s.appendList(19);
+                //s.appendList(19);  //old state field
+                s.appendList(20);  // add new state field
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2833,6 +2944,28 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 {
                     s << i.second.getStreamRLPResultOrder();
                     s << i.second.getStreamRLPExOrder();
+                }
+                
+                //Add a new state field
+                {
+                    if(i.second.storageByteOverlay().empty())
+                    {
+                        assert(i.second.baseByteRoot());
+                        s << i.second.baseByteRoot();
+                    }else{
+                        SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+                        for(auto const& val : i.second.storageByteOverlay())
+                        {
+                            if(!val.second.empty())
+                            {
+                                storageByteDB.insert(val.first, val.second);
+                            }else{
+                                storageByteDB.remove(val.first);
+                            }
+                        }
+                        assert(storageByteDB.root());
+                        s << storageByteDB.root();
+                    }
                 }
 
                 _state.insert(i.first, &s.out());

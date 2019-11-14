@@ -109,6 +109,12 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_FeeLogger,
                                              (boost::log::keywords::severity = VerbosityInfo)(boost::log::keywords::channel = "fee"))
 #define CFEE_LOG LOG(dev::g_FeeLogger::get())
 
+
+BOOST_LOG_INLINE_GLOBAL_LOGGER_CTOR_ARGS(g_MemLogger,
+         boost::log::sources::severity_channel_logger_mt<>,
+         (boost::log::keywords::severity = VerbosityWarning)(boost::log::keywords::channel = "mem"))
+#define CMEM_LOG LOG(dev::g_MemLogger::get())
+
 struct LoggingOptions
 {
     int verbosity = VerbosityInfo;

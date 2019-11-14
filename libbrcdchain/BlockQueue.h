@@ -282,7 +282,13 @@ public:
 	void insertSendedHash(h256 _hash) { m_verifeid_sended.insert(_hash); }
 	bool inSended(h256 _hash) const { return m_verifeid_sended.find(_hash) != m_verifeid_sended.end(); }
 
+	void debugMemery();
 private:
+
+
+
+
+
     struct UnverifiedBlock
     {
         h256 hash;
