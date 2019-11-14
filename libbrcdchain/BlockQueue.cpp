@@ -128,9 +128,6 @@ void BlockQueue::verifierBody()
         }
         if (ready)
             m_onReady();
-        else{
-            cwarn << "verify block field , can not to sync block and send new_block";
-        }
     }
 }
 

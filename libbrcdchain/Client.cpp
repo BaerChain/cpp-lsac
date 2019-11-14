@@ -97,13 +97,13 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
     m_tqReady = m_tq.onReady([=]() {
+        // Tell network about the new transactions.
+        if(auto h = m_host.lock())
+            h->noteNewTransactions();
         this->onTransactionQueueReady();
     });  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced([=](h256 const&) { m_needStateReset = true; });
     m_bqReady = m_bq.onReady([=]() {
-        if(auto h = m_host.lock()){
-            h->noteNewTransactions();
-        }
         this->onBlockQueueReady();
     });  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
     m_bq.setOnBad([=](Exception& ex) { this->onBadBlock(ex); });
@@ -396,21 +396,17 @@ void Client::syncBlockQueue()
 		{
 
 			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms #" << bc().number()
-			<< "  author: " << last.author() << " late: " << late << "ms size: " << ir.goodTranactions.size();
+			<< "  author: " << last.author() <<" hash:"<<last.hash()<< " late: " << late << "ms size: " << ir.goodTranactions.size();
 		}
 	}
 
-
-
-
-    if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
+	if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty()){
         return;
     }
-
     onChainChanged(ir);
 }
 
@@ -478,7 +474,7 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
         LOG(m_loggerDetail) << "Live block: " << h;
 
     if (auto h = m_host.lock()){
-        cwarn << " tell will send new block...";
+        //cwarn << " tell will send new block...";
         h->noteNewBlocks();
     }
 
@@ -565,10 +561,13 @@ void Client::onChainChanged(ImportRoute const& _ir)
         m_tq.dropGood(t);
 		m_postSeal.add_sealed_transaction(t.sha3());
     }
-    onNewBlocks(_ir.liveBlocks, changeds);
-	if(!isMajorSyncing()){
-		resyncStateFromChain();
-	}
+
+    if(!_ir.liveBlocks.empty())
+        onNewBlocks(_ir.liveBlocks, changeds);
+
+    if(!isMajorSyncing()){
+        resyncStateFromChain();
+    }
     noteChanged(changeds);
 //	m_onChainChanged(_ir.deadBlocks, _ir.liveBlocks);
 }

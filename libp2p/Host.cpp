@@ -828,11 +828,19 @@ void Host::scheduleCapabilityWorkLoop(CapabilityFace& _cap, shared_ptr<ba::stead
         if (_timer->expires_at() == c_steadyClockMin || _ec == boost::asio::error::operation_aborted)
         {
             LOG(m_logger) << "Timer was probably cancelled for capability: " ;//<< _cap.descriptor();
+            cerror << "Timer was probably cancelled for capability: " ;//<< _cap.descriptor();
+
+            //_cap.doBackgroundWork();
+            //scheduleCapabilityWorkLoop(_cap, move(_timer));
             return;
         }
         else if (_ec)
         {
             LOG(m_logger) << "Timer error detected for capability: ";// << _cap.descriptor();
+            cerror << "Timer error detected for capability: ";//
+
+            //_cap.doBackgroundWork();
+            //scheduleCapabilityWorkLoop(_cap, move(_timer));
             return;
         }
 

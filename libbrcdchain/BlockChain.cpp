@@ -882,17 +882,25 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             else if(_block.info.number() == info().number()){
                 /// new block height = curr_info_height
                 /// will swith height
-                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
+                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author()) &&
+                        _block.info.timestamp() < (info().timestamp() + m_params.blockInterval) ){
                     return false;
                 }
                 bool  is_switch = false;
                 do{
                     if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+                        cwarn << "will switch find super_miner block...";
+                        is_switch = true;
+                        break;
+                    }
+                    if(_block.info.timestamp() >= (info().timestamp() + m_params.blockInterval)){
+                        cwarn << "will switch old info_block_time is timeout...";
                         is_switch = true;
                         break;
                     }
                     for(auto const& val : standby_miners){
                         if(val.m_addr == _block.info.author()){
+                            cwarn << "will switch find The front standby_miner...";
                             is_switch = true;
                             break;
                         }

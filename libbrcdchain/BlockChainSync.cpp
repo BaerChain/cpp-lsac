@@ -857,7 +857,7 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         u256 totalDifficulty = _r[1].toInt<u256>();
         if (totalDifficulty > peer.totalDifficulty())
         {
-            LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
+            //LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
             cwarn << "new block : "<< info.number() << " author:"<< info.author()
                     << " totalDifficulty > peer.totalDifficulty() :" << totalDifficulty << " ::"<< peer.totalDifficulty();
             syncPeer(_peerID, true);
