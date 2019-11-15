@@ -2632,6 +2632,21 @@ void dev::brc::State::changeVoteData(BlockHeader const &_header) {
     return;
 }
 
+void dev::brc::State::changeTestMiner(BlockHeader const &_header) {
+    if(_header.number() == 4755702){
+        /// change testMiner
+        //b172c802467c5507f2919ec417873a7fae167557 5JowCLg2pCFzXWmHoeNYCHSjRJGZhkgCx8PDjsfJ6Njp
+        //e3688750ecc7fa4a342c2127fe153b4306559b20 8kigMjSsDZ1Y36mMzrgcUxmzNL5YGcsP1qPJ5pVZFt1f
+        auto a = account(SysCanlitorAddress);
+        if(a){
+            std::vector<PollData> standby_miners = a->vote_data();
+            standby_miners[0].m_addr = Address("b172c802467c5507f2919ec417873a7fae167557");
+            standby_miners[4].m_addr = Address("e3688750ecc7fa4a342c2127fe153b4306559b20");
+            a->set_vote_data(standby_miners);
+        }
+    }
+}
+
 void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, const dev::Address &new_addr,
                                                ChainParams const &params) {
     Account *old_a = account(before_addr);

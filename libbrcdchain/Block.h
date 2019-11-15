@@ -313,6 +313,12 @@ public:
         {
             m_state.changeVoteData(curr_info);
         }
+        {
+            /// fork about test replace_miner in test_data
+            if (params.chainID == 1) {
+                m_state.changeTestMiner(curr_info);
+            }
+        }
     }
 
 private:

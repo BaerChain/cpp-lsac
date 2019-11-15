@@ -597,6 +597,8 @@ public:
 
     void changeVoteData(BlockHeader const& _header);
 
+    void changeTestMiner(BlockHeader const& _header);
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
