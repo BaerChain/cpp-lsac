@@ -115,6 +115,59 @@ namespace dev
                 executeinitialize = 1
             };
 
+
+            //test code  begin
+            struct testSort
+            {
+                int32_t time;
+
+                bool operator<(testSort const& _t) const
+                {
+                    if(time < _t.time)
+                    {
+                        return true;
+                    }
+                    return false;
+                }
+
+                void decode(RLP const& rlp)
+                {
+                    if(rlp.isList())
+                    {
+                        time = rlp[0].toInt<int32_t>();
+                    }
+                }
+                
+                void encode(RLPStream &rlp) const
+                {
+                    rlp.appendList(1);
+                    rlp.append(time);
+                }
+            };
+
+            struct testDetails
+            {
+                std::string firstData;
+                std::string secondData;
+
+                void decode(RLP const& rlp)
+                {
+                    if(rlp.isList())
+                    {
+                        firstData = rlp[0].toString();
+                        secondData = rlp[1].toString();
+                    }
+                }
+
+                void encode(RLPStream& rlp) const
+                {
+                    rlp.appendList(2);
+                    rlp.append(firstData);
+                    rlp.append(secondData);
+                }
+            };
+            //test code end
+
             struct operation
             {
                 virtual ~operation() {}

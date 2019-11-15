@@ -912,7 +912,7 @@ public:
         changed();
     }
 
-    void deleteStorageBytes(h256 const &_key, OverlayDB const &_db);
+    void deleteStorageBytes(h256 const &_key, OverlayDB const& _db);
 
     /// @returns the hash of the account's code.
     h256 codeHash() const { return m_codeHash; }
@@ -1177,9 +1177,12 @@ public:
     }
 
     //test code
-    void testBplusAdd(DataKey const& _key, DataPackage const& _value);
+    void testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time, OverlayDB const& _db);
     void testBplusGet(DataKey const& _key, OverlayDB const& _db);
-    void testBplusDelete(DataKey const& _key, OverlayDB &_db);
+    void testBplusDelete(std::string const& _key, OverlayDB const& _db);
+    std::vector<h256> getNeedDelete(){
+        return m_needDelete;
+    }
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1254,17 +1257,18 @@ private:
 
     //test code
     std::shared_ptr<testBplus> testbplus;
+    std::vector<h256> m_needDelete;
 };
 
 struct testBplus : public databaseDelegate
 {
-    testBplus(Account *_a, OverlayDB& _db) :
+    testBplus(Account *_a, OverlayDB const& _db) :
         m_account(_a),
         m_db(_db){}
 
     virtual DataPackage getData(DataKey const &_key)
     {
-        m_account->storageByteValue(dev::sha3(_key), m_db);
+        return m_account->storageByteValue(dev::sha3(_key), m_db);
     }
 
     virtual void setData(DataKey const& _key, DataPackage const& _value)
@@ -1272,7 +1276,7 @@ struct testBplus : public databaseDelegate
         m_account->setStorageByte(dev::sha3(_key), _value);
     }
 
-    virtual void deleteData(DataKey const& _key)
+    virtual void deleteKey(DataKey const& _key)
     {
         m_account->deleteStorageBytes(dev::sha3(_key), m_db);
     }
