@@ -6,6 +6,8 @@
 #include <libbrccore/ChainOperationParams.h>
 #include <libbrccore/Precompiled.h>
 #include <libdevcore/Log.h>
+#include <libbrcdchain/Transaction.h>
+
 
 using namespace std;
 using namespace dev;
@@ -37,8 +39,8 @@ u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
 
 bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) const
 {
-    auto it = m_storageOverlayBytes.find(_key);
-    if(it != m_storageOverlayBytes.end())
+    auto it = m_storageOverlayBytesOriginal.find(_key);
+    if(it != m_storageOverlayBytesOriginal.end())
     {
         return it->second;
     }
@@ -49,12 +51,23 @@ bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) 
     return _storage.data().toBytes();
 }
 
-void Account::deleteStorageBytes(const dev::h256 &_key, const dev::OverlayDB &_db)
-{
-    m_storageOverlayBytes.erase(_key);
-    m_storageOverlayBytesOriginal.erase(_key);
-    SecureTrieDB<h256, OverlayDB> memdb(_db, m_storageByteRoot);
-    memdb.remove(_key);
+void Account::deleteStorageBytes(const dev::h256 &_key, dev::OverlayDB const& _db)
+{   
+    if(storageByteValue(_key, _db).empty())
+    {
+        return;
+    }
+    auto originalIt = m_storageOverlayBytesOriginal.find(_key);
+    if(originalIt != m_storageOverlayBytesOriginal.end())
+    {
+        m_storageOverlayBytesOriginal.erase(originalIt);
+    }
+    auto it = m_storageOverlayBytes.find(_key);
+    if(it != m_storageOverlayBytes.end())
+    {
+        m_storageOverlayBytes.erase(it);
+    }
+    m_needDelete.push_back(_key);
     changed();
 }
 
@@ -491,12 +504,23 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 }
 
 
-void Account::testBplusAdd(const dev::brc::DataKey &_key, const dev::brc::DataPackage &_value)
+void Account::testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time,dev::OverlayDB const& _db)
 {
     if(!testbplus.get())
     {
-        testbplus = std::make_shared<testBplus>(this, nullptr);
+        testbplus = std::make_shared<testBplus>(this, _db);
     }
+    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree;
+
+    dev::brc::transationTool::testSort _testSort;
+    dev::brc::transationTool::testDetails _testDetails;
+    _testSort.time = _time;
+    _testDetails.firstData = _key;
+    _testDetails.secondData = _value;
+
+    _bplustree.insert(_testSort, _testDetails);
+    _bplustree.update();
+
     //TODO:  1.Implement sort   2.testbpuls.setData(key value);
 }
 
@@ -509,12 +533,14 @@ void Account::testBplusGet(const dev::brc::DataKey &_key, const dev::OverlayDB &
     //TODO  testbpuls.getData(key)
 }
 
-void Account::testBplusDelete(const dev::brc::DataKey &_key, dev::OverlayDB &_db)
+void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db)
 {
     if(!testbplus.get())
     {
         testbplus = std::make_shared<testBplus>(this, _db);
     }
+    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree;
+    
     //TODO  testbplus.deleteData
 }
 
