@@ -540,7 +540,7 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 continue;
             }
             catch (dev::brc::InvalidMinner const&){
-                cwarn << "the Miner cant't to Seal Block in this tinme_point";
+                cwarn << "the Miner cant't to Seal Block in this time_point";
                 badBlocks.push_back(block.verified.info.hash());
             }
             catch (Exception &ex) {
@@ -888,25 +888,26 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 }
                 bool  is_switch = false;
                 do{
-                    if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
-                        cwarn << "will switch find super_miner block...";
-                        is_switch = true;
-                        break;
-                    }
-                    if(_block.info.timestamp() >= (info().timestamp() + m_params.blockInterval)){
-                        cwarn << "will switch old info_block_time is timeout...";
-                        is_switch = true;
-                        break;
-                    }
-                    for(auto const& val : standby_miners){
-                        if(val.m_addr == _block.info.author()){
-                            cwarn << "will switch find The front standby_miner...";
+                    if(_block.info.timestamp() < (info().timestamp() + m_params.blockInterval)){
+                        if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+                            cwarn << "will switch find super_miner block...";
                             is_switch = true;
                             break;
                         }
-                        if(val.m_addr == info().author()){
-                            break;
+                        for(auto const& val : standby_miners){
+                            if(val.m_addr == _block.info.author()){
+                                cwarn << "will switch find The front standby_miner...";
+                                is_switch = true;
+                                break;
+                            }
+                            if(val.m_addr == info().author()){
+                                break;
+                            }
                         }
+                    } else{
+                        cwarn << "will switch old info_block_time is timeout...";
+                        is_switch = true;
+                        break;
                     }
                 }while (false);
 
