@@ -71,3 +71,11 @@ mark_as_advanced (LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)
 
 message(STATUS "Found level db include: ${LEVELDB_INCLUDE_DIRS}")
 message(STATUS "Found level db libraries: ${LEVELDB_LIBRARIES} ${LEVELDB_LIBRARY}")
+
+add_library(leveldb SHARED IMPORTED)
+set_target_properties(
+	leveldb
+        PROPERTIES
+        IMPORTED_LOCATION "${LEVELDB_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LEVELDB_INCLUDE_DIRS}"
+)
