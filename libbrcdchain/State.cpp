@@ -2760,7 +2760,6 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
              _account->testBplusDelete(_op->testKey, m_db, _time, _op->testId);
         }
     }
-    m_changeLog.emplace_back(dev::TestbplusAddress, _key, storageBytes(_addr, _key));
 }
 
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
