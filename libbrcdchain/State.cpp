@@ -2750,15 +2750,17 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
-             _account->testBplusAdd(_op->testKey, _op->testValue, _time, m_db);
+             _account->testBplusAdd(_op->testKey, _op->testValue, _time, _op->testId, m_db);
+
         }else if(_op->testType == transationTool::testBplusType::BplusChange)
         {
-            
+            _account->testBplusAdd(_op->testKey, _op->testValue, _time, _op->testId, m_db);
         }else if(_op->testType == transationTool::testBplusType::BplusDelete)
         {
-            // _account->testBplusDelete();
+             _account->testBplusDelete(_op->testKey, m_db, _time, _op->testId);
         }
     }
+    m_changeLog.emplace_back(dev::TestbplusAddress, _key, storageBytes(_addr, _key));
 }
 
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
@@ -2949,7 +2951,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 
                 //Add a new state field
                 {
-                    if(i.second.storageByteOverlay().empty())
+                    if(i.second.storageByteOverlay().empty() && i.second.getNeedDelete().empty())
                     {
                         assert(i.second.baseByteRoot());
                         s << i.second.baseByteRoot();
@@ -2963,6 +2965,10 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                             }else{
                                 storageByteDB.remove(val.first);
                             }
+                        }
+                        for(auto const& keyVal : i.second.getNeedDelete())
+                        {
+                            storageByteDB.remove(keyVal);
                         }
                         assert(storageByteDB.root());
                         s << storageByteDB.root();

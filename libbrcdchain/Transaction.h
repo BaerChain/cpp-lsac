@@ -120,12 +120,19 @@ namespace dev
             struct testSort
             {
                 int32_t time;
+                int32_t _sort;
 
                 bool operator<(testSort const& _t) const
                 {
                     if(time < _t.time)
                     {
                         return true;
+                    }else if(time == _t.time)
+                    {
+                        if(_sort < _t._sort)
+                        {
+                            return true;
+                        }
                     }
                     return false;
                 }
@@ -398,20 +405,22 @@ namespace dev
             {
                 uint8_t m_type;
                 testBplusType  testType;
+                uint32_t testId;
                 Address testAddr;
                 std::string testKey;
                 std::string testValue;
 
                 testBplus_operation(){}
-                testBplus_operation(uint8_t _type, testBplusType _testtype, Address _testAddr, std::string _testKey, std::string _testValue):
+                testBplus_operation(uint8_t _type, testBplusType _testtype, uint32_t _id,Address _testAddr, std::string _testKey, std::string _testValue):
                 m_type(_type),
                 testType(_testtype),
+                testId(_id),
                 testAddr(_testAddr),
                 testKey(_testKey),
                 testValue(_testValue){}
 
-                OPERATION_UNSERIALIZE(testBplus_operation, (m_type)(testType)(testAddr)(testKey)(testValue))
-                OPERATION_SERIALIZE((m_type)((uint8_t)testType)(testAddr)(testKey)(testValue))
+                OPERATION_UNSERIALIZE(testBplus_operation, (m_type)(testType)(testId)(testAddr)(testKey)(testValue))
+                OPERATION_SERIALIZE((m_type)((uint8_t)testType)(testId)(testAddr)(testKey)(testValue))
             };
 
         }  // namespace transationTool

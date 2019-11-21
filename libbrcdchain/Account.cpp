@@ -504,13 +504,13 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 }
 
 
-void Account::testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time,dev::OverlayDB const& _db)
+void Account::testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time, uint32_t const& _id, dev::OverlayDB const& _db)
 {
     if(!testbplus.get())
     {
         testbplus = std::make_shared<testBplus>(this, _db);
     }
-    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree;
+    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
 
     dev::brc::transationTool::testSort _testSort;
     dev::brc::transationTool::testDetails _testDetails;
@@ -520,8 +520,6 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
 
     _bplustree.insert(_testSort, _testDetails);
     _bplustree.update();
-
-    //TODO:  1.Implement sort   2.testbpuls.setData(key value);
 }
 
 void Account::testBplusGet(const dev::brc::DataKey &_key, const dev::OverlayDB &_db)
@@ -533,14 +531,22 @@ void Account::testBplusGet(const dev::brc::DataKey &_key, const dev::OverlayDB &
     //TODO  testbpuls.getData(key)
 }
 
-void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db)
+void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db, int32_t const& _time, uint32_t const& _id)
 {
     if(!testbplus.get())
     {
         testbplus = std::make_shared<testBplus>(this, _db);
     }
-    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree;
+    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
+
+    dev::brc::transationTool::testSort _testsort;
+    _testsort.time = _time;
+    _testsort._sort = _id;
+
+    _bplustree.remove(_testsort);
+    _bplustree.update();
     
+
     //TODO  testbplus.deleteData
 }
 
