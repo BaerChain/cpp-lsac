@@ -504,7 +504,7 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
 }
 
 
-void Account::testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time, uint32_t const& _id, dev::OverlayDB const& _db)
+void Account::testBplusAdd(std::string const& _key, std::string const& _value, int64_t const& _blockNum, uint32_t const& _id, dev::OverlayDB const& _db)
 {
     if(!testbplus.get())
     {
@@ -514,7 +514,8 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
 
     dev::brc::transationTool::testSort _testSort;
     dev::brc::transationTool::testDetails _testDetails;
-    _testSort.time = _time;
+    _testSort.time = _blockNum;
+    _testSort._sort = _id;
     _testDetails.firstData = _key;
     _testDetails.secondData = _value;
 
@@ -522,16 +523,22 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
     _bplustree.update();
 }
 
-void Account::testBplusGet(const dev::brc::DataKey &_key, const dev::OverlayDB &_db)
+void Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const dev::OverlayDB &_db)
 {
     if(!testbplus.get())
     {
         testbplus = std::make_shared<testBplus>(this, _db);
     }
+    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
+
+    dev::brc::transationTool::testSort _testSort;
+    _testSort._blockNum = _blockNum;
+    _testSort._sort = _id;
+
     //TODO  testbpuls.getData(key)
 }
 
-void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db, int32_t const& _time, uint32_t const& _id)
+void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db, int64_t const& _blockNum, uint32_t const& _id)
 {
     if(!testbplus.get())
     {
@@ -540,7 +547,7 @@ void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db
     bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
 
     dev::brc::transationTool::testSort _testsort;
-    _testsort.time = _time;
+    _testsort.time = _blockNum;
     _testsort._sort = _id;
 
     _bplustree.remove(_testsort);

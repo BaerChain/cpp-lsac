@@ -439,24 +439,6 @@ namespace dev {
                 }
             };
 
-            /*
-                @bool  true, find,  false not find.
-            */
-            std::pair<bool, value_type> getValue(const KEY &key){
-                std::pair<key_type, value_type> find;
-                find.first = key;
-                auto ret = findInsertPos(find.first, find.second);
-                if (ret.first) {
-                    return std::pair<bool, value_type>(false, find.second);;
-                }
-                auto index = findKeyIndex(key, ret.second, Compare());
-                if(!index.first){
-                    return std::pair<bool, value_type>(false, find.second); 
-                }
-                return std::pair<bool, value_type>(true, ret.second[index]);
-            }
-
-
 
         private:
 

@@ -119,17 +119,17 @@ namespace dev
             //test code  begin
             struct testSort
             {
-                int32_t time;
+                int64_t _blockNum;
                 int32_t _sort;
 
                 bool operator<(testSort const& _t) const
                 {
-                    if(time < _t.time)
+                    if(_blockNum < _t._blockNum)
                     {
                         return true;
-                    }else if(time == _t.time)
+                    }else if(_blockNum == _t._blockNum)
                     {
-                        if(_sort < _t._sort)
+                        if(_blockNum < _t._blockNum)
                         {
                             return true;
                         }
@@ -141,14 +141,16 @@ namespace dev
                 {
                     if(rlp.isList())
                     {
-                        time = rlp[0].toInt<int32_t>();
+                        _blockNum = rlp[0].toInt<int64_t>();
+                        _sort = rlp[1].toInt<int32_t>();
                     }
                 }
                 
                 void encode(RLPStream &rlp) const
                 {
                     rlp.appendList(1);
-                    rlp.append(time);
+                    rlp.append(_blockNum);
+                    rlp.append(_sort);
                 }
             };
 

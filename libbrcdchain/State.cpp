@@ -2742,7 +2742,7 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 }
 
 
-void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int32_t const& _time)
+void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int64_t const& _blockNum)
 {
     Account *_account = account(dev::TestbplusAddress);
     for(auto it : _ops)
@@ -2750,14 +2750,14 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
-             _account->testBplusAdd(_op->testKey, _op->testValue, _time, _op->testId, m_db);
+             _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
 
         }else if(_op->testType == transationTool::testBplusType::BplusChange)
         {
-            _account->testBplusAdd(_op->testKey, _op->testValue, _time, _op->testId, m_db);
+            _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
         }else if(_op->testType == transationTool::testBplusType::BplusDelete)
         {
-             _account->testBplusDelete(_op->testKey, m_db, _time, _op->testId);
+             _account->testBplusDelete(_op->testKey, m_db, _blockNum, _op->testId);
         }
     }
 }
