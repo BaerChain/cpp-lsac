@@ -13,7 +13,7 @@
 
 #include <libbrcdchain/bplusTree.h>
 #include <libdevcore/OverlayDB.h>
-
+#include <libbrcdchain/Transaction.h>
 namespace dev
 {
 class OverlayDB;
@@ -1177,9 +1177,9 @@ public:
     }
 
     //test code
-    void testBplusAdd(std::string const& _key, std::string const& _value, int32_t const& _time, uint32_t const& _id, OverlayDB const& _db);
-    void testBplusGet(DataKey const& _key, OverlayDB const& _db);
-    void testBplusDelete(std::string const& _key, OverlayDB const& _db, int32_t const& _time, uint32_t const& _id);
+    void testBplusAdd(std::string const& _key, std::string const& _value, int64_t const& _blockNum, uint32_t const& _id, OverlayDB const& _db);
+    dev::brc::transationTool::testDetails testBplusGet(int64_t const& _blockNum, uint32_t const& _id, OverlayDB const& _db);
+    void testBplusDelete(std::string const& _key, OverlayDB const& _db, int64_t const& _blockNum, uint32_t const& _id);
     std::vector<h256> getNeedDelete() const{
         return m_needDelete;
     }

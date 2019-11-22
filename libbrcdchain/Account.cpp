@@ -514,7 +514,7 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
 
     dev::brc::transationTool::testSort _testSort;
     dev::brc::transationTool::testDetails _testDetails;
-    _testSort.time = _blockNum;
+    _testSort._blockNum = _blockNum;
     _testSort._sort = _id;
     _testDetails.firstData = _key;
     _testDetails.secondData = _value;
@@ -523,7 +523,7 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
     _bplustree.update();
 }
 
-void Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const dev::OverlayDB &_db)
+dev::brc::transationTool::testDetails Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const dev::OverlayDB &_db)
 {
     if(!testbplus.get())
     {
@@ -535,6 +535,13 @@ void Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const 
     _testSort._blockNum = _blockNum;
     _testSort._sort = _id;
 
+    std::pair<bool, dev::brc::transationTool::testDetails> _retPair = _bplustree.getValue(_testSort);
+    if(_retPair.first)
+    {
+        return _retPair.second;
+    }else{
+        return dev::brc::transationTool::testDetails();
+    }
     //TODO  testbpuls.getData(key)
 }
 
@@ -547,7 +554,7 @@ void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db
     bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
 
     dev::brc::transationTool::testSort _testsort;
-    _testsort.time = _blockNum;
+    _testsort._blockNum = _blockNum;
     _testsort._sort = _id;
 
     _bplustree.remove(_testsort);

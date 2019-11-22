@@ -449,11 +449,12 @@ namespace dev {
                 if (ret.first) {
                     return std::pair<bool, value_type>(false, find.second);;
                 }
-                auto index = findKeyIndex(key, ret.second, Compare());
+                // auto index = findKeyIndex(key, ret.second, Compare());
+                auto index = ret.second.getIndex(find);
                 if(!index.first){
                     return std::pair<bool, value_type>(false, find.second); 
                 }
-                return std::pair<bool, value_type>(true, ret.second[index]);
+                return std::pair<bool, value_type>(true, ret.second.mValues[index.second]);
             }
 
 
