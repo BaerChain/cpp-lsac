@@ -888,7 +888,12 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 }
                 bool  is_switch = false;
                 do{
-                    if(_block.info.timestamp() < (info().timestamp() + m_params.blockInterval)){
+                    if(_block.info.timestamp() >= (info().timestamp() + m_params.blockInterval)){
+                        cwarn << "will switch old info_block_time is timeout...";
+                        is_switch = true;
+                        break;
+                    }
+                    else{
                         if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
                             cwarn << "will switch find super_miner block...";
                             is_switch = true;
@@ -904,10 +909,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                                 break;
                             }
                         }
-                    } else{
-                        cwarn << "will switch old info_block_time is timeout...";
-                        is_switch = true;
-                        break;
                     }
                 }while (false);
 
