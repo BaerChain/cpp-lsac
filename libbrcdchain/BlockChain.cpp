@@ -713,11 +713,11 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         BOOST_THROW_EXCEPTION(UnknownParent() << errinfo_hash256(_block.info.parentHash()));
     }
 
-//    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
-//
-//    if (!can_exe) {
-//        return ImportRoute();
-//    }
+    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
+
+    if (!can_exe) {
+        return ImportRoute();
+    }
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
     LOG(m_logger) << "write complete end";
@@ -777,12 +777,6 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
     catch (Exception &ex) {
         addBlockInfo(ex, _block.info, _block.block.toBytes());
         throw;
-    }
-
-    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
-
-    if (!can_exe) {
-        return ImportRoute();
     }
 
     // All ok - insert into DB
