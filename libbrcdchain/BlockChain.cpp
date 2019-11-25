@@ -882,10 +882,6 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
             else if(_block.info.number() == info().number()){
                 /// new block height = curr_info_height
                 /// will swith height
-                if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author()) &&
-                        _block.info.timestamp() < (info().timestamp() + m_params.blockInterval) ){
-                    return false;
-                }
                 bool  is_switch = false;
                 do{
                     if(_block.info.timestamp() == info().timestamp()){
