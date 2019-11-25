@@ -10,9 +10,9 @@ set(CMAKE_CXX_STANDARD 14)
 
 
 
-
+add_definitions(-DBOOST_LOG_DYN_LINK)
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    add_definitions(-DBOOST_LOG_DYN_LINK)
+    # add_definitions(-DBOOST_LOG_DYN_LINK)
 #    SET(BUILD_SHARED_LIBRARIES OFF)
 #    SET(CMAKE_EXE_LINKER_FLAGS "-static")
     SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
