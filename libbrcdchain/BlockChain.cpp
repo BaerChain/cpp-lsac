@@ -836,7 +836,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
         int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
         if (_block.info.author() != exe_miners[offset].m_addr){
-            // throw
+            // throwas bytes; must be
             cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
@@ -879,6 +879,9 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
                 bool  is_switch = false;
                 do{
                     if(_block.info.timestamp() == info().timestamp()){
+                        if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())){
+                            break;
+                        }
                         if(exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
                             cwarn << "will switch find super_miner block...";
                             is_switch = true;
