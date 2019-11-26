@@ -915,6 +915,7 @@ bool Client::submitSealed(bytes const& _header)
         BlockHeader _h = BlockHeader(newBlock);
 	}
     // OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postSeal that contains all trie changes.
+    cwarn << "rlp:::"<< newBlock;
     return m_bq.import(&newBlock, true) == ImportResult::Success;
 }
 
