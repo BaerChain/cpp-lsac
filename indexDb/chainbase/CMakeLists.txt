@@ -6,16 +6,16 @@ cmake_minimum_required( VERSION 2.8.12 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 
-SET(BOOST_COMPONENTS)
-LIST(APPEND BOOST_COMPONENTS thread
-                             date_time
-                             filesystem
-                             system
-                             chrono
-                             unit_test_framework
-                             locale)
+# SET(BOOST_COMPONENTS)
+# LIST(APPEND BOOST_COMPONENTS thread
+#                              date_time
+#                              filesystem
+#                              system
+#                              chrono
+#                              unit_test_framework
+#                              locale)
 
-SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+# SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
@@ -23,7 +23,7 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 
-FIND_PACKAGE(Boost 1.57 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+# FIND_PACKAGE(Boost 1.57 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 
 SET(PLATFORM_LIBRARIES)
 
