@@ -1,5 +1,9 @@
 #define BOOST_TEST_MODULE chainbase test
-#define BOOST_TEST_DYN_LINK
+
+#ifndef __APPLE__
+    #define BOOST_TEST_DYN_LINK
+#endif 
+
 #include <boost/test/unit_test.hpp>
 #include <chainbase/chainbase.hpp>
 
