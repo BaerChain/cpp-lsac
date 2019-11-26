@@ -10,14 +10,21 @@ set(CMAKE_CXX_STANDARD 14)
 
 
 
-add_definitions(-DBOOST_LOG_DYN_LINK)
+
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    # add_definitions(-DBOOST_LOG_DYN_LINK)
-#    SET(BUILD_SHARED_LIBRARIES OFF)
-#    SET(CMAKE_EXE_LINKER_FLAGS "-static")
+    add_definitions(-DBOOST_LOG_DYN_LINK)
     SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
     #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 endif()
+
+
+if( APPLE )
+    # add_definitions(-DBOOST_LOG_DYN_LINK)
+    set(BOOST_LOG_DYN_LINK ON)
+    set(Boost_USE_STATIC_LIBS ON)
+    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -stdlib=libc++  -Wno-conversion" )
+endif(APPLE)
+
 
 ##add cmake file directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -25,6 +32,7 @@ message(STATUS "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME} ${APPLE}")
 
 
 find_package(Boost 1.65.1 REQUIRED COMPONENTS
+        unit_test_framework
         thread
         date_time
         system
@@ -32,15 +40,16 @@ find_package(Boost 1.65.1 REQUIRED COMPONENTS
         program_options
         chrono
         context
-        log
+        log_setup
         locale
+        log
         )
 
 option(BUILD_TEST "build test , ON or OFF" ON)
 
 
 message(STATUS "BUILD_TEST ${BUILD_TEST}")
-include(cmake/FindGMP.cmake)
+
 find_package(Jsoncpp  REQUIRED)
 find_package(MHD REQUIRED)
 find_package(Threads)
