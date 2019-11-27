@@ -3,6 +3,8 @@
 #include "BlockChainSync.h"
 #include "BlockQueue.h"
 #include "TransactionQueue.h"
+#include "Block.h"
+#include "Executive.h"
 #include <libdevcore/Common.h>
 #include <libbrccore/Exceptions.h>
 #include <libp2p/Host.h>
@@ -68,12 +70,30 @@ public:
         }
     }
 
-    void onPeerTransactions(NodeID const& _peerID, RLP const& _r) override
+    void onPeerTransactions(NodeID const& _peerID, RLP const& _r, BlockChain const& _blockChain, OverlayDB const& _db, ex::exchange_plugin const& _exdb) override
     {
+        dev::brc::Block _currentBlock = Block(_blockChain, _db, _exdb);
+        Executive e(_currentBlock, _blockChain);
+        std::vector<bytesConstRef> _data;
+        for(unsigned i = 0; i < _r.itemCount(); i++)
+        {
+            try{
+                e.initialize(Transaction(_r[i].data(), CheckTransaction::None),transationTool::initializeEnum::rpcinitialize);
+                _data.push_back(_r[i].data());
+            }catch(...)
+            {
+                continue;
+            }
+        }
+
+
         if(!m_sync->isSyncing()){
             unsigned itemCount = _r.itemCount();
             LOG(m_logger) << "Transactions (" << dec << itemCount << " entries)";
-            m_tq.enqueue(_r, _peerID);
+            if(_data.size())
+            {
+                m_tq.enqueue(_data, _peerID);
+            }
         }
     }
 
@@ -375,11 +395,12 @@ private:
 }
 
 BrcdChainCapability::BrcdChainCapability(shared_ptr<p2p::CapabilityHostFace> _host,
-    BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq,
+    BlockChain const& _ch, OverlayDB const& _db, ex::exchange_plugin const& _exdb,TransactionQueue& _tq, BlockQueue& _bq,
     u256 _networkId)
   : m_host(move(_host)),
     m_chain(_ch),
     m_db(_db),
+    m_exdb(_exdb),
     m_tq(_tq),
     m_bq(_bq),
     m_networkId(_networkId),
@@ -766,7 +787,7 @@ bool BrcdChainCapability::interpretCapabilityPacket(
         }
         case TransactionsPacket:
         {
-            m_peerObserver->onPeerTransactions(_peerID, _r);
+            m_peerObserver->onPeerTransactions(_peerID, _r, chain(), m_db, m_exdb);
             break;
         }
         case GetBlockHeadersPacket:
