@@ -385,6 +385,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
 						    << ex.what();
 						m_excepted = TransactionException::BrcTranscationField;
+                        cerror << "error is " << *boost::get_error_info<errinfo_comment>(ex);
+                        cerror << "number is " << m_envInfo.number();
 						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));

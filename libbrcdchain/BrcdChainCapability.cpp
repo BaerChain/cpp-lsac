@@ -73,6 +73,7 @@ public:
     void onPeerTransactions(NodeID const& _peerID, RLP const& _r, BlockChain const& _blockChain, OverlayDB const& _db, ex::exchange_plugin const& _exdb) override
     {
         dev::brc::Block _currentBlock = Block(_blockChain, _db, _exdb);
+        _currentBlock.populateFromChain(_blockChain, _blockChain.currentHash());
         Executive e(_currentBlock, _blockChain);
         std::vector<bytesConstRef> _data;
         for(unsigned i = 0; i < _r.itemCount(); i++)

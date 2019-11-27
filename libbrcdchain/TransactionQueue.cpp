@@ -62,6 +62,7 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
     if (_transaction.hasZeroSignature())
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
+    cerror << "TransactionQueue::import";
     h256 h = _transaction.sha3(WithSignature);
     ImportResult ret;
     {
@@ -71,6 +72,7 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
             return ir;
 
         {
+                cerror << "TransactionQueue::import";
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
             UpgradeGuard ul(l);
             ret = manageImport_WITH_LOCK(h, _transaction);
@@ -111,16 +113,17 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
             auto t = cs->second.find(_transaction.nonce());
             if (t != cs->second.end())
             {
-                LOG(m_loggerDetail) << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
-				return ImportResult::NonceRepeat;
-				/*if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
+                // LOG(m_loggerDetail) << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
+				// return ImportResult::NonceRepeat;
+                cerror << "Nonce = " << _transaction.nonce() << "   queuenonce is " << t->first;
+				if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
 					return ImportResult::OverbidGasPrice;
 				else
 				{
 					h256 dropped = (*t->second).transaction.sha3();
 					remove_WITH_LOCK(dropped);
 					m_onReplaced(dropped);
-				}*/
+				}
             }
         }
         auto fs = m_future.find(_transaction.from());
