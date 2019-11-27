@@ -33,6 +33,7 @@ TransactionQueue::~TransactionQueue()
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
 {
+    cerror << "TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)";
     try
     {
         Transaction t = Transaction(_transactionRLP, CheckTransaction::Everything);
@@ -57,6 +58,7 @@ ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 
 ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped _ik)
 {
+    cerror << "TransactionQueue::import";
     if (_transaction.hasZeroSignature())
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
@@ -97,6 +99,7 @@ h256Hash TransactionQueue::knownTransactions() const
 
 ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction)
 {
+    cerror << "manageImport_WITH_LOCK";
     try
     {
         assert(_h == _transaction.sha3());
@@ -188,6 +191,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
         cwarn << "Transaction hash" << _p.first << "already in current?!";
         return;
     }
+    cerror << "insert????????";
     Transaction const& t = _p.second;
     // Insert into current
     auto inserted = m_currentByAddressAndNonce[t.from()].insert(std::make_pair(t.nonce(), PriorityQueue::iterator()));
@@ -336,6 +340,7 @@ void TransactionQueue::clear()
 
 void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
 {
+    cerror << "TransactionQueue::enqueue";
     bool queued = false;
     {
         Guard l(x_queue);
@@ -356,8 +361,33 @@ void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
         m_queueReady.notify_all();
 }
 
+void TransactionQueue::enqueue(std::vector<bytesConstRef> const& _dataV, h512 const& _nodeId)
+{
+    bool queued = false;
+    {
+        Guard l(x_queue);
+        for(int i = 0; i < _dataV.size(); i++)
+        {
+            if(m_unverified.size() >= c_maxVerificationQueueSize)
+            {
+                LOG(m_logger) << "Transaction verification queue is full. Dropping "
+                              << _dataV.size() - i << " transactions";
+                break;
+            }
+            m_unverified.emplace_back(UnverifiedTransaction(_dataV[i], _nodeId));
+            queued = true;
+        }
+    }
+
+    if(queued)
+    {
+        m_queueReady.notify_all();
+    }
+}
+
 void TransactionQueue::verifierBody()
 {
+    cerror << "TransactionQueue::verifierBody";
     while (!m_aborting)
     {
         UnverifiedTransaction work;

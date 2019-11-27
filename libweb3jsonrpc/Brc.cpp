@@ -901,6 +901,15 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
+Json::Value dev::rpc::Brc::brc_getGasPrice()
+{
+    try{
+        return client()->getGasPrice();
+    }catch(...){
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;

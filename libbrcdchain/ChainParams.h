@@ -81,11 +81,16 @@ struct ChainParams: public ChainOperationParams
     void setPrivateKey(std::string const& key_str);
 
     void savenodemonitorIP(std::string const& _IP) {m_nodemonitorIP = _IP;}
-    std::string getnodemonitorIp() const { return m_nodemonitorIP;};
+    std::string getnodemonitorIp() const { return m_nodemonitorIP;}
 
     std::unordered_map <Public, std::string> getConnectPeers() const;
 	std::map<Address, Public> getPeersMessage() const;
 	u256 getTimestamp() {return timestamp;}
+
+    void setGasPrice(u256 const& _gasPrice){
+        m_minGasPrice = _gasPrice;
+    }
+    u256 getGasPrice() const { return m_minGasPrice;}
 
 private:
     void populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state);

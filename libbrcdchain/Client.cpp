@@ -123,7 +123,7 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     if (_snapshotDownloadPath.empty())
     {
         auto brcCapability = make_shared<BrcdChainCapability>(
-            _extNet.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _networkId);
+            _extNet.capabilityHost(), bc(), m_stateDB, m_StateExDB, m_tq, m_bq, _networkId);
         _extNet.registerCapability(brcCapability);
         m_host = brcCapability;
     }
@@ -146,6 +146,7 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
 
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
+    cerror << "Client::queueBlock";
     if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000)
         this_thread::sleep_for(std::chrono::milliseconds(500));
     return m_bq.import(&_block, _isSafe);
@@ -965,6 +966,7 @@ h256 Client::importTransaction(Transaction const& _t)
     // (e.g. transaction signature, account balance) using the state of
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
+    cerror << "importTransaction";
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
     e.initialize(_t,transationTool::initializeEnum::rpcinitialize);
@@ -997,7 +999,7 @@ h256  Client::importBlock(const dev::bytesConstRef &data) {
     h256 h = BlockHeader::headerHashFromBlock(data);
     cwarn << "hash : " << toHex(header.hash()) << " parent hash: " << toHex(header.parentHash());
     cwarn << "state root : " << toHex(header.stateRoot());
-
+    cerror << "Client::importBlock";
     ImportResult ret = m_bq.import(data);
     switch (ret)
     {
