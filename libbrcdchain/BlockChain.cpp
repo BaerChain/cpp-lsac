@@ -1084,6 +1084,8 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 /// is true the block will best
 bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb) {
     Block s(*this, _db, _exdb);
+    if(info().number()==0)
+        return true;
     if (_block.info.number() >= config::replaceMinerHeight()) {
         try {
             s.populateFromChain(*this, numberHash(_block.info.number() - 1));
