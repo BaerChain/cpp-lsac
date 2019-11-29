@@ -743,7 +743,7 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
     }
 
     bool is_best = verifyReplaceMiner(_block, _db, _exdb);
-    //cwarn << " block is best.......:"<< is_best;
+    //cwarn << " block:"<<_block.info.number()<< " is best.......:"<< is_best;
 
     checkBlockTimestamp(_block.info);
     // Verify parent-critical parts
