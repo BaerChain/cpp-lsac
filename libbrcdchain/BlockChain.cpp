@@ -1103,7 +1103,7 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
         if (_block.info.author() != exe_miners[offset].m_addr) {
             // throw  bytes; must be
-            cwarn << " the author:" << _block.info.author() << " can't to Seal in this time_point";
+            //cwarn << " the author:" << _block.info.author() << " can't to Seal in this time_point";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
     } else {
@@ -1117,7 +1117,7 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         if (!verify_creater.verify_standby(state_db, _block.info.timestamp(), _block.info.author(),
                                            m_params.varlitorInterval)) {
             // throw
-            cwarn << " the standby author:" << _block.info.author() << " can't to Seal in this time_point";
+            //cwarn << " the standby author:" << _block.info.author() << " can't to Seal in this time_point";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
     }
@@ -1133,12 +1133,12 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
     if (_block.info.number() >= config::replaceMinerHeight()) {
         if (_block.info.parentHash() == info().hash()) {
             // not switch
-            cwarn << " _block.info.parentHash() == info().hash() chain is ok....";
+            //cwarn << " _block.info.parentHash() == info().hash() chain is ok....";
             return true;
         } else {
             ///dont switch chain, only insert this block to m_cached_blocks
             if (_block.info.number() < info().number()) {
-                cwarn << "only insert , can't switch chain.";
+                //cwarn << "only insert , can't switch chain.";
                 return false;
             } else if (_block.info.number() == info().number()) {
                 /// new block height = curr_info_height
@@ -1146,19 +1146,19 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
                 bool is_best = false;
                 do {
                     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())) {
-                        cwarn<<"_block.info.number() == info().number() && _block.info.timestamp() == info().timestamp() , info is super ";
+                        //cwarn<<"_block.info.number() == info().number() && _block.info.timestamp() == info().timestamp() , info is super ";
                         break;
                     }
                     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())) {
                         cwarn << "will switch find super_miner block...";
-                        cwarn << "number==  time== block is super";
+                        //cwarn << "number==  time== block is super";
                         is_best = true;
                         break;
                     }
                     for (auto const &val : standby_miners) {
                         if (val.m_addr == _block.info.author()) {
                             cwarn << "will switch find The front standby_miner...";
-                            cwarn << "number==  time== block is front standby_miner";
+                            //cwarn << "number==  time== block is front standby_miner";
                             is_best = true;
                             break;
                         }
@@ -1171,11 +1171,11 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
                 return is_best;
             }
             else if(_block.info.number() == info().number() +1){
-                cwarn << "block_number == infor_number + 1...";
+                //cwarn << "block_number == infor_number + 1...";
                 return true;
             }
             else{
-                cwarn << "block_number == infor_number + n...";
+                //cwarn << "block_number == infor_number + n...";
                 return false;
             }
         }
