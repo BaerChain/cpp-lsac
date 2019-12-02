@@ -365,6 +365,12 @@ private:
     /// \return         if true , this block can execute.
     bool update_cache_fork_database(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb);
 
+    /// \param _block
+    /// \param _db
+    /// \param _exdb
+    /// \return     if true,  the chain will switch this block
+    bool verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb);
+
 	/// @brief remove   blocks from m_blocksDB and m_extrasDB.
 	/// \param blocks   need delete blocks information.
 	/// \param _db
@@ -391,7 +397,8 @@ private:
     /// Finalise everything and close the database.
     void close();
 
-    ImportRoute insertBlockAndExtras(VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger);
+    ImportRoute insertBlockAndExtras(VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty,
+                ImportPerformanceLogger& _performanceLogger, bool _isBest = true);
     void checkBlockIsNew(VerifiedBlockRef const& _block) const;
     void checkBlockTimestamp(BlockHeader const& _header) const;
 

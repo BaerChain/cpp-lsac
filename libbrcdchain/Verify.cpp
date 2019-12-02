@@ -27,7 +27,7 @@ bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, co
         if (beyond_num <= config::minimum_cycle())
             return false;
     } else{
-        cwarn << "not has minner:"<< minners[offset]<< " block records";
+        //cwarn << "not has minner:"<< minners[offset]<< " block records";
         return false;
     }
 
@@ -37,7 +37,7 @@ bool dev::brc::Verify::verify_standby(State const& state, int64_t block_time, co
 
     auto ret_own = std::find(standby_addrs.begin(), standby_addrs.end(), standby_addr);
     if (ret_own == standby_addrs.end()) {
-        cwarn << "can't find standby:"<<standby_addr;
+        //cwarn << "can't find standby:"<<standby_addr;
         return false;
     }
 

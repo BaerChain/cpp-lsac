@@ -315,7 +315,9 @@ public:
         }
         {
             /// fork about test replace_miner in test_data
-            if (params.chainID == 1) {
+            /// test_net:1
+            /// official_net : 11
+            if (params.chainID == 2) {
                 m_state.changeTestMiner(curr_info);
             }
         }
