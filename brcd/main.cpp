@@ -1098,7 +1098,7 @@ int main(int argc, char **argv) {
         using FullServer = ModularServer<
                 rpc::BrcFace,
                 rpc::NetFace, rpc::Web3Face,// rpc::PersonalFace,
-                rpc::AdminBrcFace, rpc::AdminNetFace,
+                //rpc::AdminBrcFace, rpc::AdminNetFace,
                 rpc::DebugFace, rpc::TestFace
         >;
 
@@ -1112,8 +1112,8 @@ int main(int argc, char **argv) {
             jsonrpcHttpServer = new FullServer(brcFace, new rpc::Net(web3),
                                                new rpc::Web3(
                                                        web3.clientVersion()),//new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
-                    new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
-                    new rpc::AdminNet(web3, *sessionManager.get()),
+                    //new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
+                    //new rpc::AdminNet(web3, *sessionManager.get()),
                                                new rpc::Debug(*web3.brcdChain()),
                                                nullptr
             );

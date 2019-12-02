@@ -780,8 +780,8 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
         addBlockInfo(ex, _block.info, _block.block.toBytes());
         throw;
     }
-    std::vector<PollData> super_miner;
-    std::vector<PollData> standby_miner;
+//    std::vector<PollData> super_miner;
+//    std::vector<PollData> standby_miner;
 
     // All ok - insert into DB
     bytes const receipts = br.rlp();
@@ -1129,13 +1129,11 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
     /// will switch the fork ,
     /**
      * 1 super_miner
-     * 2 the top standby_miner
-     * 3 the after standby_miner
+     * 2 the after standby_miner
      * */
     if (_block.info.number() >= config::replaceMinerHeight()) {
         if (_block.info.parentHash() == info().hash()) {
             // not switch
-            //cwarn << " _block.info.parentHash() == info().hash() chain is ok....";
             return true;
         } else {
             ///dont switch chain, only insert this block to m_cached_blocks
@@ -1148,24 +1146,20 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
                 bool is_best = false;
                 do {
                     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), info().author())) {
-                        //cwarn<<"_block.info.number() == info().number() && _block.info.timestamp() == info().timestamp() , info is super ";
                         break;
                     }
                     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())) {
                         cwarn << "will switch find super_miner block...";
-                        //cwarn << "number==  time== block is super";
                         is_best = true;
                         break;
                     }
                     for (auto const &val : standby_miners) {
                         if (val.m_addr == _block.info.author()) {
                             cwarn << "will switch find The front standby_miner...";
-                            //cwarn << "number==  time== block is front standby_miner";
                             is_best = true;
                             break;
                         }
                         if (val.m_addr == info().author()) {
-                            cwarn << "number==  time== info is front standby_miner";
                             break;
                         }
                     }
@@ -1173,11 +1167,9 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
                 return is_best;
             }
             else if(_block.info.number() == info().number() +1){
-                //cwarn << "block_number == infor_number + 1...";
                 return true;
             }
             else{
-                //cwarn << "block_number == infor_number + n...";
                 return false;
             }
         }
