@@ -313,14 +313,6 @@ public:
         {
             m_state.changeVoteData(curr_info);
         }
-        {
-            /// fork about test replace_miner in test_data
-            /// test_net:1
-            /// official_net : 11
-            if (params.chainID == 2) {
-                m_state.changeTestMiner(curr_info);
-            }
-        }
     }
 
 private:
