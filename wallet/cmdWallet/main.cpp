@@ -265,6 +265,21 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
                             tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
                             break;
                         }
+
+                        case testBplus:{
+                            //testBplus_operation(uint8_t _type, testBplusType _testtype, uint32_t _id,
+                            //                    Address _testAddr, std::string _testKey, std::string _testValue):
+                            auto testBtree = new testBplus_operation(
+                                        uint8_t (type),
+                                        testBplusType (op_obj["bTreeType"].get_int()),
+                                        uint32_t (op_obj["id"].get_int()),
+                                        Address(op_obj["m_from"].get_str()),
+                                        std::string(op_obj["key"].get_str()),
+                                        std::string(op_obj["value"].get_str())
+                                    );
+                            tx.ops.emplace_back(std::shared_ptr<testBplus_operation>(testBtree));
+                            break;
+                        }
 					}
                 }
                 trx_datas.push_back(tx);
