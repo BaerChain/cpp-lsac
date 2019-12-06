@@ -2770,6 +2770,17 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
     }
 }
 
+Json::Value dev::brc::State::testBplusGet(uint32_t const& _id, int64_t const& _blockNum)
+{
+    Account *_a = account(dev::TestbplusAddress);
+    dev::brc::transationTool::testDetails _testDetails = _a->testBplusGet(_blockNum, _id, m_db);
+
+    Json::Value _ret;
+    _ret["firstData"] = _testDetails.firstData;
+    _ret["secondData"] = _testDetails.secondData;
+    return _ret;
+}
+
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);
     if (!_SuccessAccount) {

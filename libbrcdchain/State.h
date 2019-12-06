@@ -489,6 +489,7 @@ public:
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
 
     void testBplus(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t const& _time);
+    Json::Value testBplusGet(uint32_t const& _id, int64_t const& _blockNum);
 
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
