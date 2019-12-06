@@ -159,7 +159,7 @@ Json::Value dev::brc::ClientBase::queryBlockRewardMessage(Address _a, BlockNumbe
     return _b.mutableState().queryBlcokReward(_a, _b.info().number());
 }
 
-Json::Value dev::brc::ClientBase::testBplusGet(int key, BlockNumber) const{
+Json::Value dev::brc::ClientBase::testBplusGet(int key, BlockNumber _block) const{
     Block _b = blockByNumber(_block);
     return _b.mutableState().testBplusGet(key, _b.info().number());
 }
