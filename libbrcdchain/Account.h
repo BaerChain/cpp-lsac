@@ -898,6 +898,12 @@ public:
         changed();
     }
 
+    void setBytetoStorage(std::unordered_map<h256, bytes> const& _map)
+    {
+        m_storageOverlayBytes = _map;
+        changed();
+    }
+
     void clearStorageByte() {
         m_storageOverlayBytes.clear();
         m_storageOverlayBytesOriginal.clear();
@@ -913,6 +919,12 @@ public:
     }
 
     void deleteStorageBytes(h256 const &_key, OverlayDB const& _db);
+    void setDeleteStorageByte(std::vector<h256> const& _v)
+    {
+        m_needDelete = _v;
+        changed();
+    } 
+    std::vector<h256> const& getDeleteByte() const { return m_needDelete;}
 
     /// @returns the hash of the account's code.
     h256 codeHash() const { return m_codeHash; }

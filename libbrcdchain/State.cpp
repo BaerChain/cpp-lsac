@@ -1701,11 +1701,12 @@ void State::setStorageBytes(Address const& _addr, h256 const& _key, bytes const&
 {
     if(Account *a = account(_addr))
     {
+        std::unordered_map<h256, bytes> _oldmap = a->storageByteOverlay();
         a->setStorageByte(_key, _value);
+        m_changeLog.emplace_back(_addr,_oldmap);
     }else{
         BOOST_THROW_EXCEPTION(NotEnoughCash() << errinfo_comment(std::string("Account does not exist")));
     }
-    m_changeLog.emplace_back(_addr, _key, storageBytes(_addr, _key));
 }
 
 bytes State::originalStorageBytesValue(Address const& _addr, h256 const& _key)
@@ -1929,10 +1930,13 @@ void State::rollback(size_t _savepoint) {
                 account.copyByAccount(change.old_account);
                 break;
             case Change::StorageByte:
-                account.setStorageByte(change.byteKey, change.byteValue);
+                account.setBytetoStorage(change.storageByte);
                 break;
             case Change::StorageByteRoot:
                 account.setStorageBytesRoot(change.value);
+                break;
+            case Change::DeleteStorgaeByte:
+                account.setDeleteStorageByte(change.deleteStorageByte);
                 break;
             default:
                 break;
@@ -2748,16 +2752,20 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
+        std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
+        std::vector<h256> _oldv = _account->getDeleteByte();
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
              _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
-
+             m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
         }else if(_op->testType == transationTool::testBplusType::BplusChange)
         {
             _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
+             m_changeLog.emplace_back(dev::TestbplusAddress,_oldmap);
         }else if(_op->testType == transationTool::testBplusType::BplusDelete)
         {
              _account->testBplusDelete(_op->testKey, m_db, _blockNum, _op->testId);
+             m_changeLog.emplace_back(dev::TestbplusAddress,_oldv);
         }
     }
 }

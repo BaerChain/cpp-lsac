@@ -131,15 +131,16 @@ struct Change
         SuccessOrder,
         ChangeMiner,
         StorageByteRoot,
-        StorageByte
+        StorageByte,
+        DeleteStorgaeByte
     };
 
     Kind kind;        ///< The kind of the change.
     Address address;  ///< Changed account address.
     u256 value;       ///< Change value, e.g. balance, storage and nonce.
     u256 key;                   ///< Storage key. Last because used only in one case.
-    h256 byteKey;
-    bytes byteValue;
+    std::unordered_map<h256, bytes> storageByte;
+    std::vector<h256> deleteStorageByte;
     bytes oldCode;    ///< Code overwritten by CREATE, empty except in case of address collision.
     std::pair<Address, u256> vote;         // 投票事件
     std::pair<Address, bool> sysVotedate;  // 成为/撤销竞选人事件
@@ -168,9 +169,17 @@ struct Change
     {}
 
     // Storagebyte change log
-    Change(Address const& _addr, h256 const& _key, bytes const& _value)
-        :kind(StorageByte), address(_addr), byteValue(_value), byteKey(_key)
-    {}
+    Change(Address const& _addr, std::unordered_map<h256, bytes> const& _map)
+        :kind(StorageByte), address(_addr)
+    {
+        storageByte = _map;
+    }
+
+    Change(Address const& _addr, std::vector<h256> const& _v)
+        :kind(DeleteStorgaeByte), address(_addr)
+    {
+        deleteStorageByte = _v;
+    }
 
     /// Helper constructor for nonce change log.
     Change(Address const& _addr, u256 const& _value) : kind(Nonce), address(_addr), value(_value) {}
