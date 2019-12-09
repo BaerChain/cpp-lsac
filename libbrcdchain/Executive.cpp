@@ -473,6 +473,12 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
                 }
                 break;
+                case transationTool::testBplus:
+                {
+                    transationTool::testBplus_operation _test_op = transationTool::testBplus_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::testBplus_operation>(_test_op));
+                    break;
+                }
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(

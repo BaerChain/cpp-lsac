@@ -2756,6 +2756,7 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
         std::vector<h256> _oldv = _account->getDeleteByte();
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
+            cerror << "testadd";
              _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
              m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
         }else if(_op->testType == transationTool::testBplusType::BplusChange)
@@ -2774,7 +2775,7 @@ Json::Value dev::brc::State::testBplusGet(uint32_t const& _id, int64_t const& _b
 {
     Account *_a = account(dev::TestbplusAddress);
     dev::brc::transationTool::testDetails _testDetails = _a->testBplusGet(_blockNum, _id, m_db);
-
+    
     Json::Value _ret;
     _ret["firstData"] = _testDetails.firstData;
     _ret["secondData"] = _testDetails.secondData;
