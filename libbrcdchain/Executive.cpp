@@ -664,6 +664,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::testBplus:
             {
+                cerror << "test";
                 m_s.testBplus(m_batch_params._operation, m_envInfo.number());
                 break;
             }

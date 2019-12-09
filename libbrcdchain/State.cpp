@@ -2103,8 +2103,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
         }
         jv["vote"] = _array;
 
-
-        cerror << a->storageByteValue(sha3(_addr), m_db);
 //        Json::Value record;
 //        record["time"] = toJS(a->last_records(_addr));
 //        jv["last_block_created"] = record;
@@ -2748,12 +2746,16 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 
 void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int64_t const& _blockNum)
 {
+    cerror << "test";
     Account *_account = account(dev::TestbplusAddress);
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
+        cerror << "test";
         std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
+        cerror << "test";
         std::vector<h256> _oldv = _account->getDeleteByte();
+        cerror << "test";
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
             cerror << "testadd";

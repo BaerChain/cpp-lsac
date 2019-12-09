@@ -396,9 +396,9 @@ namespace dev
 
             };
 
-            enum class testBplusType : uint8_t
+            enum testBplusType : uint8_t
             {
-                null = 0,
+                Null = 0,
                 BplusAdd,
                 BplusChange,
                 BplusDelete
@@ -406,7 +406,7 @@ namespace dev
             struct testBplus_operation : public operation
             {
                 uint8_t m_type;
-                testBplusType  testType;
+                uint8_t  testType;
                 uint32_t testId;
                 Address testAddr;
                 std::string testKey;
@@ -415,14 +415,14 @@ namespace dev
                 testBplus_operation(){}
                 testBplus_operation(uint8_t _type, testBplusType _testtype, uint32_t _id,Address _testAddr, std::string _testKey, std::string _testValue):
                 m_type(_type),
-                testType(_testtype),
+                testType((uint8_t)_testtype),
                 testId(_id),
                 testAddr(_testAddr),
                 testKey(_testKey),
                 testValue(_testValue){}
 
                 OPERATION_UNSERIALIZE(testBplus_operation, (m_type)(testType)(testId)(testAddr)(testKey)(testValue))
-                OPERATION_SERIALIZE((m_type)((uint8_t)testType)(testId)(testAddr)(testKey)(testValue))
+                OPERATION_SERIALIZE((m_type)(testType)(testId)(testAddr)(testKey)(testValue))
             };
 
         }  // namespace transationTool
