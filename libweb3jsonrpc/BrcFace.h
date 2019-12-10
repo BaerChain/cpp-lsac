@@ -250,7 +250,7 @@ public:
 		this->bindAndAddMethod(jsonrpc::Procedure("brc_getElector", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getElectorI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_estimateGasUsed",jsonrpc::PARAMS_BY_POSITION,jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL), &dev::rpc::BrcFace::brc_estimateGasUsedI); 
 
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_OrderMessage",jsonrpc::PARAMS_BY_POSITION,jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_INTEGER, "param2", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_orderMessageI);
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_orderMessage",jsonrpc::PARAMS_BY_POSITION,jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_INTEGER, "param2", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_orderMessageI);
 
     }
 
