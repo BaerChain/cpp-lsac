@@ -24,7 +24,7 @@ namespace dev
     Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
 
     //test code 
-    Address const TestbplusAddress              {"0x00000000062706c75737465737441646472657373"};
+    Address const TestbplusAddress              { "0x0000000062706c75737465737441646472657373"};
 
 }  // namespace dev
 
