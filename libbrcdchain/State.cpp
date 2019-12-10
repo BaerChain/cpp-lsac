@@ -2994,6 +2994,10 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                             storageByteDB.remove(keyVal);
                         }
                         assert(storageByteDB.root());
+                        if(i.first == dev::TestbplusAddress)
+                        {
+                            cerror << "root:" << toJS(storageByteDB.root());
+                        }
                         s << storageByteDB.root();
                     }
                 }
