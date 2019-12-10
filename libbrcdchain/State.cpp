@@ -2748,6 +2748,11 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
 {
     cerror << "test";
     Account *_account = account(dev::TestbplusAddress);
+    if(_account == NULL)
+    {
+        createAccount(dev::TestbplusAddress, {0});
+        _account = account(dev::TestbplusAddress);
+    }
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
