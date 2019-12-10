@@ -2746,7 +2746,6 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 
 void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int64_t const& _blockNum)
 {
-    cerror << "test";
     Account *_account = account(dev::TestbplusAddress);
     if(_account == NULL)
     {
@@ -2760,7 +2759,6 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
         std::vector<h256> _oldv = _account->getDeleteByte();
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
-            cerror << "testadd";
              _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
              m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
         }else if(_op->testType == transationTool::testBplusType::BplusChange)
@@ -2778,8 +2776,12 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
 Json::Value dev::brc::State::testBplusGet(uint32_t const& _id, int64_t const& _blockNum)
 {
     Account *_a = account(dev::TestbplusAddress);
+    if(!_a)
+    {
+        cerror << "error";
+        return Json::Value();
+    }
     dev::brc::transationTool::testDetails _testDetails = _a->testBplusGet(_blockNum, _id, m_db);
-    
     Json::Value _ret;
     _ret["firstData"] = _testDetails.firstData;
     _ret["secondData"] = _testDetails.secondData;
@@ -2994,10 +2996,6 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                             storageByteDB.remove(keyVal);
                         }
                         assert(storageByteDB.root());
-                        if(i.first == dev::TestbplusAddress)
-                        {
-                            cerror << "root:" << toJS(storageByteDB.root());
-                        }
                         s << storageByteDB.root();
                     }
                 }

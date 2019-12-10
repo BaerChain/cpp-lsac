@@ -746,7 +746,7 @@ public:
                FBalance() == 0 && FBRC() == 0 && CookieIncome() == 0 && m_vote_data.empty() &&
                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
-               m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageByteRoot == EmptyTrie;
+               m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageOverlayBytes.empty();
     }
 
     /// @returns the balance of this account.
@@ -881,11 +881,13 @@ public:
     }
 
     bytes storageByteValue(h256 const &_key, OverlayDB const &_db) const {
+        cerror << "getData";
         auto mit = m_storageOverlayBytes.find(_key);
+             cerror << "getData";
         if (mit != m_storageOverlayBytes.end()) {
             return mit->second;
         }
-
+        cerror << "getData";
         return originalStorageByteValue(_key, _db);
     }
 
@@ -895,7 +897,6 @@ public:
 
     void setStorageByte(h256 const &_key, bytes const &_value) {
         m_storageOverlayBytes[_key] = _value;
-        cerror << "setStorageByte";
         changed();
     }
 
