@@ -2756,11 +2756,8 @@ void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
-        cerror << "test";
         std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
-        cerror << "test";
         std::vector<h256> _oldv = _account->getDeleteByte();
-        cerror << "test";
         if(_op->testType == transationTool::testBplusType::BplusAdd)
         {   
             cerror << "testadd";
