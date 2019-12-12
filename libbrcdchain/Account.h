@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieCommon.h>
 #include <libbrccore/Common.h>
@@ -881,6 +882,7 @@ public:
     }
 
     bytes storageByteValue(h256 const &_key, OverlayDB const &_db) const {
+        cerror << "getData key :" << toJS(_key);
         cerror << "getData";
         auto mit = m_storageOverlayBytes.find(_key);
              cerror << "getData";
@@ -896,6 +898,7 @@ public:
     std::unordered_map<h256, bytes> const &storageByteOverlay() const { return m_storageOverlayBytes; }
 
     void setStorageByte(h256 const &_key, bytes const &_value) {
+        cerror << "setData key : " << toJS(_key) << "  setData Value :" << _value;
         m_storageOverlayBytes[_key] = _value;
         changed();
     }

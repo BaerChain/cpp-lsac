@@ -747,6 +747,13 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     return _exNumPair;
 }
 
+
+std::pair<u256 ,u256> dev::brc::State::newPendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
+                                    std::vector<std::shared_ptr<transationTool::operation>> const &_ops)
+{
+    
+}
+
 void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
     std::vector<result_order> _result_v;
     std::set<order_type> _autoSet;
@@ -2782,6 +2789,7 @@ Json::Value dev::brc::State::testBplusGet(uint32_t const& _id, int64_t const& _b
         return Json::Value();
     }
     dev::brc::transationTool::testDetails _testDetails = _a->testBplusGet(_blockNum, _id, m_db);
+    cerror << "testDetail : " << _testDetails;
     Json::Value _ret;
     _ret["firstData"] = _testDetails.firstData;
     _ret["secondData"] = _testDetails.secondData;

@@ -148,7 +148,7 @@ namespace dev
                 
                 void encode(RLPStream &rlp) const
                 {
-                    rlp.appendList(1);
+                    rlp.appendList(2);
                     rlp.append(_blockNum);
                     rlp.append(_sort);
                 }
@@ -158,7 +158,6 @@ namespace dev
             {
                 std::string firstData;
                 std::string secondData;
-
                 void decode(RLP const& rlp)
                 {
                     if(rlp.isList())
@@ -175,6 +174,11 @@ namespace dev
                     rlp.append(secondData);
                 }
             };
+            inline std::ostream & operator << (std::ostream& out, const testDetails& t)
+            {
+                out << "firstData : " << t.firstData << " secondData: " << t.secondData;
+                return out;
+            }
             //test code end
 
             struct operation

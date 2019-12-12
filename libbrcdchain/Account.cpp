@@ -40,21 +40,18 @@ u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
 bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) const
 {
     auto it = m_storageOverlayBytesOriginal.find(_key);
-         cerror << "originalStorageByteValue";
     if(it != m_storageOverlayBytesOriginal.end())
     {
         return it->second;
     }
-         cerror << "originalStorageByteValue";
     SecureTrieDB<h256, OverlayDB> const memdb(const_cast<OverlayDB*>(&_db), m_storageByteRoot);
-     cerror << "originalStorageByteValue";
-    std::string const value = memdb.at(_key);
-     cerror << "originalStorageByteValue";
-    RLP _storage(value);
-     cerror << "originalStorageByteValue";
-    m_storageOverlayBytes[_key] = _storage.data().toBytes();
-     cerror << "originalStorageByteValue";
-    return _storage.data().toBytes();
+    cerror << "m_stroageroot: " << m_storageByteRoot;
+    std::string const payload = memdb.at(_key);
+    cerror << "payload : " << payload << " size :" << payload.size();
+    auto const value = payload.size() ? RLP(payload).data().toBytes() : bytes();
+    cerror << "value : "  << value;
+    m_storageOverlayBytes[_key] = value;
+    return value;
 }
 
 void Account::deleteStorageBytes(const dev::h256 &_key, dev::OverlayDB const& _db)
@@ -530,26 +527,19 @@ void Account::testBplusAdd(std::string const& _key, std::string const& _value, i
 
 dev::brc::transationTool::testDetails Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const dev::OverlayDB &_db)
 {
-    cerror << "123123";
     if(!testbplus.get())
     {
         testbplus = std::make_shared<testBplus>(this, _db);
     }
-       cerror << "123123";
     bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
-   cerror << "123123";
     dev::brc::transationTool::testSort _testSort;
     _testSort._blockNum = _blockNum;
     _testSort._sort = _id;
-    cerror << "123123" << _blockNum << "  " << _id;
     std::pair<bool, dev::brc::transationTool::testDetails> _retPair = _bplustree.getValue(_testSort);
-    cerror << "123123";
     if(_retPair.first)
     {
-           cerror << "123123";
         return _retPair.second;
     }else{
-           cerror << "123123";
         return dev::brc::transationTool::testDetails();
     }
     //TODO  testbpuls.getData(key)
