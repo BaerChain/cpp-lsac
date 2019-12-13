@@ -248,4 +248,34 @@ BOOST_AUTO_TEST_SUITE(testTree)
     }
 
 
+    BOOST_AUTO_TEST_CASE(tree_iter) {
+        try {
+
+
+            dev::brc::bplusTree<unsigned, std::string, 4> bp;
+            size_t end = 128;
+            for (size_t i = 0; i < end; i++) {
+                bp.insert(i, std::to_string(i));
+            }
+            bp.debug();
+            
+            auto itr = bp.begin();
+            while (itr != bp.end())
+            {
+                std::cout << "key " << (*itr).first << "  value: " << (*itr).second << std::endl;
+                itr++;
+            }
+            
+
+
+        } catch (const std::exception &e) {
+            std::cout << "exception " << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+
+        } catch (...) {
+
+        }
+    }
+
+
 BOOST_AUTO_TEST_SUITE_END()

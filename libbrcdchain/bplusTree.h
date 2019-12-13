@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2019-12-12 17:38:27
+ * @LastEditTime: 2019-12-13 10:21:14
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
+ */
 //
 // Created by friday on 2019/10/24.
 //
@@ -392,6 +400,65 @@ namespace dev {
             };
 
 
+            struct iterator :  public std::iterator<
+                        std::input_iterator_tag,   // iterator_category
+                        value_type,                      // value_type
+                        value_type,                      // difference_type
+                        const value_type*,               // pointer
+                        value_type&                      // reference
+                                      >{
+
+                iterator(bplusTree &bp):mbp(bp),indexOfLeaf(0){
+                    mLeafKey = bp.getHeadLeaf();
+                }
+
+                iterator(bplusTree &bp, NodeKey key, size_t of):mbp(bp), mLeafKey(key),indexOfLeaf(of){
+                   
+                }
+
+                iterator& operator++() {  
+                    auto node = mbp.getData(mLeafKey, mbp.mLeafs);
+                    if(indexOfLeaf + 1 < node.second.mValues.size()){
+                        indexOfLeaf++;
+                    }
+                    else{
+                        mLeafKey = mbp.getNextLeaf(mLeafKey);
+                        indexOfLeaf = 0;
+                    }
+                    return *this;
+                }
+                iterator operator++(int) {
+                    operator++();
+                    return *this;
+                }
+                bool operator==(iterator other) const {return mLeafKey == other.mLeafKey && indexOfLeaf == other.indexOfLeaf;}
+                bool operator!=(iterator other) const {return !(*this == other);}
+                typename leaf_type::kv_pair& operator*() const {
+                    auto node = mbp.getData(mLeafKey, mbp.mLeafs);
+                    assert(node.first);
+                    return node.second.mValues[indexOfLeaf];
+                }
+
+            private:
+                NodeKey mLeafKey;
+                size_t  indexOfLeaf;
+                bplusTree &mbp;
+            };
+
+
+
+            iterator begin() { return iterator(*this);}
+            iterator end() { 
+                iterator it(*this, NodeKey(), 0);
+                return it;
+            }
+            iterator lower_bound(const key_type &kv) const { 
+                return iterator(*this);
+            }
+
+
+
+
             bplusTree(std::shared_ptr<databaseDelegate> dl = nullptr) {
                 mDelegate = dl;
                 if(mDelegate){
@@ -466,6 +533,74 @@ namespace dev {
                 rootKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
             }
 
+            
+               
+            /**
+             * @name: 
+             * @brief: get min leaf key.
+             * @param  null
+             * @return: NodeKey
+             */            
+            NodeKey getHeadLeaf(){
+                NodeKey findKey = rootKey;
+
+                while(true){
+                    auto type = getType(findKey);
+                    if(type.first) {
+                        if (type.second == NodeLeaf::node) {
+                            auto node = getData(findKey, mNodes);
+                            assert(node.first && node.second.mChildrenNodes.size() > 0);
+                            findKey =  node.second.mChildrenNodes[0];
+                            continue;
+                        } else if (type.second == NodeLeaf::leaf) {
+                            return findKey;
+                        }
+                    }
+                }
+                return NodeKey();
+            }
+
+            NodeKey getNextLeaf(const NodeKey &nk){
+            
+                NodeKey findKey = nk;
+                auto node = getData(findKey, mLeafs);
+                assert(node.first);
+                NodeKey parentK = node.second.mParentKey;
+                bool go_up = true;
+                while(true){
+                    auto type = getType(parentK);
+                    assert(type.first);
+                    if(type.first) {
+                        if (type.second == NodeLeaf::node) {
+                            auto node = getData(parentK, mNodes);
+                            if(findKey != NodeKey()){ // find pos to up , 
+                                size_t indexOf = node.second.getKeyIndex(findKey);
+                                if(indexOf + 1 == node.second.mChildrenNodes.size()){
+                                    if(parentK == rootKey){
+                                        return NodeKey();
+                                    }
+                                    findKey = parentK;
+                                    parentK = node.second.mParentKey;
+                                } 
+                                else{
+                                    assert(node.second.mKeys.size() > 0);
+                                    parentK =  node.second.mChildrenNodes[indexOf + 1];
+                                    findKey = NodeKey();
+                                }
+                            }
+                            else{       //find key to down.
+                                 parentK =  node.second.mChildrenNodes[0];
+                            }
+                        } else if (type.second == NodeLeaf::leaf) {
+                            findKey = parentK;
+                            return findKey;
+                        }
+                    }
+                }
+                return NodeKey();
+            }
+
+              
             void _debug(const NodeKey &nd, size_t depth, std::string &ret) {
                 auto type = getType(nd);
                 if (type.first) {
