@@ -49,19 +49,25 @@ namespace dev{
 
         struct exchangeValue
         {
+            h256 m_orderId;
             Address m_from;
             u256 m_pendingorderNum = 0;
+            u256 m_pendingordertokenNum = 0;
             u256 m_pendingorderPrice = 0;
+            int64_t m_createTime;
             ex::order_type m_pendingorderType = ex::order_type::null_type;
             ex::order_token_type m_pendingorderTokenType = ex::order_token_type::BRC;
             ex::order_buy_type m_pendingorderBuyType = ex::order_buy_type::all_price;
 
             void encode(RLPStream &_rlp) const
             {   
-                _rlp.appendList(6);
+                _rlp.appendList(9);
+                _rlp.append(m_orderId);
                 _rlp.append(m_from);
                 _rlp.append(m_pendingorderNum);
+                _rlp.append(m_pendingordertokenNum);
                 _rlp.append(m_pendingorderPrice);
+                _rlp.append(m_createTime);
                 _rlp.append((uint8_t)m_pendingorderType);
                 _rlp.append((uint8_t)m_pendingorderTokenType);
                 _rlp.append((uint8_t)m_pendingorderBuyType); 
@@ -71,12 +77,15 @@ namespace dev{
             {
                 if(_rlp.isList())
                 {
-                    m_from = _rlp[0].convert<Address>(RLP::LaissezFaire);
-                    m_pendingorderNum = _rlp[1].convert<u256>(RLP::LaissezFaire);
-                    m_pendingorderPrice = _rlp[2].convert<u256>(RLP::LaissezFaire);
-                    m_pendingorderType = (ex::order_type)_rlp[3].convert<uint8_t>(RLP::LaissezFaire);
-                    m_pendingorderTokenType = (ex::order_token_type)_rlp[4].convert<uint8_t>(RLP::LaissezFaire);
-                    m_pendingorderBuyType = (ex::order_buy_type)_rlp[5].convert<uint8_t>(RLP::LaissezFaire);
+                    m_orderId = _rlp[0].convert<h256>(RLP::LaissezFaire);
+                    m_from = _rlp[1].convert<Address>(RLP::LaissezFaire);
+                    m_pendingorderNum = _rlp[2].convert<u256>(RLP::LaissezFaire);
+                    m_pendingordertokenNum = _rlp[3].convert<u256>(RLP::LaissezFaire);
+                    m_pendingorderPrice = _rlp[4].convert<u256>(RLP::LaissezFaire);
+                    m_createTime = _rlp[5].convert<int64_t>(RLP::LaissezFaire);
+                    m_pendingorderType = (ex::order_type)_rlp[6].convert<uint8_t>(RLP::LaissezFaire);
+                    m_pendingorderTokenType = (ex::order_token_type)_rlp[7].convert<uint8_t>(RLP::LaissezFaire);
+                    m_pendingorderBuyType = (ex::order_buy_type)_rlp[8].convert<uint8_t>(RLP::LaissezFaire);
                 }
             }
         };
