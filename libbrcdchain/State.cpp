@@ -43,7 +43,9 @@ State::State(State const &_s)
           m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
-          m_accountStartNonce(_s.m_accountStartNonce) {}
+          m_accountStartNonce(_s.m_accountStartNonce),
+          m_block_number(_s.m_block_number)
+          {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
@@ -102,7 +104,7 @@ void State::populateFrom(AccountMap const &_map) {
     if (it != m_cache.end())
         a = it->second;
     cerror << "State::populateFrom ";
-    brc::commit(_map, m_state, timestamp());
+    brc::commit(_map, m_state, blockNumber());
     commit(State::CommitBehaviour::KeepEmptyAccounts);
 }
 
@@ -136,6 +138,7 @@ State &State::operator=(State const &_s) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
+    m_block_number = _s.m_block_number;
     return *this;
 }
 
@@ -216,6 +219,13 @@ Account *State::account(Address const &_addr) {
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(ex_order_b);
 
+    if(m_block_number >= config::newChangeHeight()){
+        if(state.itemCount() > 19) {
+            const bytes _b = state[19].convert<bytes>(RLP::LaissezFaire);
+            i.first->second.populateChangeMiner(_b);
+        }
+    }
+
 
     return &i.first->second;
 }
@@ -242,7 +252,7 @@ void State::clearCacheIfTooLarge() const {
 void State::commit(CommitBehaviour _commitBehaviour) {
     if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
-    m_touched += dev::brc::commit(m_cache, m_state, timestamp());
+    m_touched += dev::brc::commit(m_cache, m_state, blockNumber());
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -630,15 +640,173 @@ void State::pendingOrder(Address const &_addr, u256 _pendingOrderNum, u256 _pend
     }
 }
 
-void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops){
+    // TODO: verify height
+    if(config::newChangeHeight() > _envinfo.number()){
+        cwarn << "this height:"<< _envinfo.number() << "  can not to changeMiner";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("changeMiner height error"));
+    }
+
+    if (_ops.empty()){
+        cerror << "changeMiner  operation is empty!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("changeMiner operation is empty"));
+    }
     std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(
             _ops[0]);
+    if(!pen){
+        cerror << "changeMiner  dynamic type field!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("Error Dynamic about changeMiner operation"));
+    }
+    if(_from != pen->m_before){
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
+    }
+    if(pen->m_after == pen->m_before){
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("replace miner can not same"));
+    }
+
+    Account *befor_miner = account(_from);
+    if (!befor_miner){
+        cerror << "changeMiner  InvalidAddress for beforeAddress!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("not has the Acconut_miner :" + dev::toString(_from)));
+    }
     Account *a = account(SysVarlitorAddress);
-    if (!a) {
+    Account *a_can = account(SysCanlitorAddress);
+    if (!a || !a_can) {
+        cerror << "changeMiner  InvalidSysAddress for SysVarlitorAddress!";
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("can not find sysAddress"));
+    }
+
+    auto miner = a->vote_data();
+    auto canMiner = a_can->vote_data();
+    if (std::find(miner.begin(), miner.end(), _from) == miner.end() &&
+            std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
+        cerror << "changeMiner from_address not is miner : "<< _from;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" not is miner"));
+    }
+    if (std::find(miner.begin(), miner.end(), pen->m_after) != miner.end() ||
+            std::find(canMiner.begin(), canMiner.end(), pen->m_after) != canMiner.end()){
+        cerror << "changeMiner after_address already is miner : "<< _from;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" already is miner"));
+    }
+
+    auto mapping_addr = befor_miner->mappingAddress();
+    bool is_change = mapping_addr.second == Address() || mapping_addr.second == _from;
+    if (!is_change){
+        cerror << "changeMiner  can not to change :!"<< pen->m_before;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("the sender has error mapping_address"));
+    }
+
+    Account* a_new = account(pen->m_after);
+    if (!a_new){
+        createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
+        a_new = account(pen->m_after);
+    }
+    if(a_new->mappingAddress().first != Address() && a_new->mappingAddress().second != _from){
+        cwarn << " the maping after_addr has alreay mapping_addr :"<< a_new->mappingAddress().first;
+        BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the maping after_addr has alreay mapping_addr"));
+    }
+
+}
+
+void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+    if (_ops.empty()){
+        cerror << "changeMiner  operation is empty!";
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+    std::shared_ptr<transationTool::changeMiner_operation> pen = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(
+            _ops[0]);
+    if(!pen){
+        cerror << "changeMiner  dynamic type field!";
+        BOOST_THROW_EXCEPTION(InvalidDynamic());
+    }
+
+    Account *befor_miner = account(pen->m_before);
+    if (!befor_miner){
+        cerror << "changeMiner  InvalidAddress for beforeAddress!";
+        BOOST_THROW_EXCEPTION(InvalidAddressAddr());
+    }
+    Account *a = account(SysVarlitorAddress);
+    Account *a_can = account(SysCanlitorAddress);
+    if (!a || !a_can) {
+        cerror << "changeMiner  InvalidSysAddress for SysVarlitorAddress!";
+        BOOST_THROW_EXCEPTION(InvalidMinner());
+    }
+    //a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+
+    int ret =0;
+    auto miner = a->vote_data();
+    auto canMiner = a_can->vote_data();
+    if (std::find(miner.begin(), miner.end(), pen->m_before) != miner.end()){
+        ret = 1;
+    }
+    else if (std::find(canMiner.begin(), canMiner.end(), pen->m_before) != canMiner.end()){
+        ret = 2;
+    }
+
+    if (0==ret){
+        cerror << "changeMiner  before not is miner!";
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+
+    auto mapping_addr = befor_miner->mappingAddress();
+    bool is_change = mapping_addr.second == Address() || mapping_addr.second == pen->m_before;
+    if (!is_change){
+        cerror << "changeMiner  can not to change :!"<< pen->m_before;
+        BOOST_THROW_EXCEPTION(InvalidFunction());
+    }
+
+    Account* a_new = account(pen->m_after);
+    if (!a_new){
+       createAccount(pen->m_after, {requireAccountStartNonce(), 0, 0});
+        a_new = account(pen->m_after);
+    }
+    //change sys data
+    Address change_addr = ret == 1 ? SysVarlitorAddress : SysCanlitorAddress;
+    Account *change_account = ret == 1 ? a : a_can;
+    std::vector<PollData> miners = change_account->vote_data();
+    std::vector<PollData> miners_log = miners;
+    auto find_ret = std::find(miners.begin(), miners.end(), pen->m_before);
+    find_ret->m_addr = pen->m_after;
+    change_account->set_vote_data(miners);
+    // TODO
+    ///rockback log
+    //change miner data  A  B  C  D
+    /*
+     *                      1. A: <0,0>
+							2. A -> B :A:<a, b>  B: <a,b>
+							3. B -> C :A:<a, c>  B: <0,0>  C:<a,c>
+							4. C -> D :A:<a, d>  C: <0,0>  D:<a,d>
+							5. D -> A :A:<0, 0>  D: <0,0>
+     * */
+    Address before_addr = pen->m_before;
+
+    if (mapping_addr.first != Address() && mapping_addr.first != pen->m_before){
+        auto  start_a = account(mapping_addr.first);
+        if (!start_a){
+            createAccount(mapping_addr.first, {requireAccountStartNonce(), 0, 0});
+            start_a = account(mapping_addr.first);
+        }
+        // log
+        m_changeLog.emplace_back(Change::NewChangeMiner, mapping_addr.first, start_a->mappingAddress());
+
+        before_addr = mapping_addr.first;
+        start_a->setChangeMiner({mapping_addr.first, pen->m_after});
 
     }
-    a->insertMiner(pen->m_before, pen->m_after, pen->m_blockNumber);
+    //log
+    m_changeLog.emplace_back(Change::NewChangeMiner, pen->m_before, befor_miner->mappingAddress());
+    m_changeLog.emplace_back(Change::NewChangeMiner, pen->m_after, a_new->mappingAddress());
+    //data
+    a_new->setChangeMiner({before_addr, pen->m_after});
+    if(before_addr == pen->m_after ){
+        a_new->setChangeMiner({Address(), Address()});
+    }
 
+    befor_miner->setChangeMiner({before_addr, pen->m_after});
+    if (befor_miner->mappingAddress().second != pen->m_before && befor_miner->mappingAddress().first != pen->m_before){
+        befor_miner->setChangeMiner({Address(), Address()});
+    }
+    m_changeLog.emplace_back(Change::MinnerSnapshot, change_addr, miners_log);
 
 }
 
@@ -903,8 +1071,31 @@ void State::freezeAmount(Address const &_addr, u256 _pendingOrderNum, u256 _pend
 }
 
 Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockNum) {
-    try_new_vote_snapshot(_address, _blockNum);
-    std::pair<u256, u256> _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
+    trySnapshotWithMinerMapping(_address, _blockNum);
+    std::pair<u256, u256> _pair ={0,0};
+
+    if (_blockNum < config::newChangeHeight()){
+        _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
+    }
+    /// new changeMiner fork
+    if(_blockNum >= config::newChangeHeight()){
+        do{
+            auto miner_mapping = minerMapping(_address);
+            if (miner_mapping.first != Address() && miner_mapping.first == _address &&
+                miner_mapping.second != _address) {
+                cwarn << "the minner address is changed by other:" << miner_mapping.second;
+                break;
+            }
+            _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
+            if (miner_mapping.first != Address() && miner_mapping.first != _address) {
+                auto ret = anytime_receivingPdFeeIncome(miner_mapping.first, (int64_t) _blockNum, false);
+                _pair.first += ret.first;
+                _pair.second += ret.second;
+            }
+        }
+        while (false);
+    }
+
     Json::Value res;
     Json::Value ret;
     ret["BRC"] = toJS(_pair.first);
@@ -914,7 +1105,38 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
 }
 
 Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum) {
-    try_new_vote_snapshot(_address, _blockNum);
+    trySnapshotWithMinerMapping(_address, _blockNum);
+    u256 _cookieFee =0;
+
+    if (_blockNum < config::newChangeHeight()){
+        _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
+    }
+    /// new changeMiner fork
+    if(_blockNum >= config::newChangeHeight()){
+        do{
+            auto miner_mapping = minerMapping(_address);
+            if (miner_mapping.first != Address() && miner_mapping.first == _address &&
+                miner_mapping.second != _address) {
+                cwarn << "the minner address is changed by other:" << miner_mapping.second;
+                break;
+            }
+            _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
+            if (miner_mapping.first != Address() && miner_mapping.first != _address && miner_mapping.second == _address) {
+                auto ret = rpcqueryBlcokReward(miner_mapping.first, (int64_t) _blockNum);
+                if (ret >0)
+                    _cookieFee += ret;
+            }
+        }
+        while (false);
+    }
+
+    Json::Value _retVal;
+    _retVal["CookieFeeIncome"] = toJS(_cookieFee);
+    return _retVal;
+
+}
+
+u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     auto a = account(_address);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
     ReceivedCookies _oldreceivedCookies = a->get_received_cookies();
@@ -926,7 +1148,6 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
     u256 _voteNodeFee = 0;
     std::map<u256, std::map<Address, u256>>::const_iterator _voteDataIt = _votesnapshot.m_voteDataHistory.find(
             _numberofrounds - 1);
-
 
     // If you receive the account, you will receive the income from the block node account.
 
@@ -957,7 +1178,7 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
         }
         for (auto _voteIt : _voteDataIt->second) {
             auto _pollAddr = account(_voteIt.first);
-            try_new_vote_snapshot(_voteIt.first, _blockNum);
+            trySnapshotWithMinerMapping(_voteIt.first, _blockNum);
             VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
             auto _pollMap = _pollVoteSnapshot.m_pollNumHistory;
             u256 _pollNum = _pollMap.find(_voteDataIt->first)->second;
@@ -997,10 +1218,7 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
                                     std::pair<u256, u256>(_totalIt.second.first, _totalIt.second.second));
         }
     }
-    Json::Value _retVal;
-    _retVal["CookieFeeIncome"] = toJS(_cookieFee);
-    return _retVal;
-
+    return _cookieFee;
 }
 
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
@@ -1232,7 +1450,6 @@ void State::addCooikeIncomeNum(const dev::Address &_addr, const dev::u256 &_valu
     if (_value) {
         m_changeLog.emplace_back(Change::CooikeIncomeNum, _addr, _value);
     }
-
 }
 
 void State::subCookieIncomeNum(const dev::Address &_addr, const dev::u256 &_value) {
@@ -1268,7 +1485,7 @@ std::unordered_map<Address, u256> State::incomeSummary(const dev::Address &_addr
 void
 State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<transationTool::operation>> const &_ops,
                        int64_t _blockNum) {
-    try_new_vote_snapshot(_addr, _blockNum);
+    trySnapshotWithMinerMapping(_addr, _blockNum);
     for (auto _it : _ops) {
         std::shared_ptr<transationTool::receivingincome_operation> _op = std::dynamic_pointer_cast<transationTool::receivingincome_operation>(
                 _it);
@@ -1278,15 +1495,44 @@ State::receivingIncome(const dev::Address &_addr, std::vector<std::shared_ptr<tr
         }
 
         ReceivingType _receType = (ReceivingType) _op->m_receivingType;
-        if (_receType == ReceivingType::RBlockFeeIncome) {
-            receivingBlockFeeIncome(_addr, _blockNum);
-        } else if (_receType == ReceivingType::RPdFeeIncome) {
-            anytime_receivingPdFeeIncome(_addr, _blockNum);
+        // TODO frok code
+        if(_blockNum < config::newChangeHeight()) {
+            if (_receType == ReceivingType::RBlockFeeIncome) {
+                receivingBlockFeeIncome(_addr, _blockNum);
+            } else if (_receType == ReceivingType::RPdFeeIncome) {
+                anytime_receivingPdFeeIncome(_addr, _blockNum);
+            }
+        }
+        else{
+            // new change fork
+            auto miner_mapping = minerMapping(_addr);
+            Address mapping_addr = miner_mapping.first == Address() ? _addr : miner_mapping.first;
+            if (_receType == ReceivingType::RBlockFeeIncome) {
+                receivingBlockFeeIncome(_addr, _blockNum);
+                if(mapping_addr != _addr){
+                    auto ret = receivingBlockFeeIncome(mapping_addr, _blockNum);
+                    if (ret >0){
+                        addBalance(_addr, ret);
+                        subBalance(mapping_addr, ret);
+                    }
+                }
+            } else if (_receType == ReceivingType::RPdFeeIncome) {
+                anytime_receivingPdFeeIncome(_addr, _blockNum);
+                if (mapping_addr != _addr){
+                    auto pair = anytime_receivingPdFeeIncome(mapping_addr, _blockNum, true);
+                    if(pair.first > 0 || pair.second > 0){
+                        addBalance(_addr, pair.second);
+                        addBRC(_addr, pair.first);
+                        subBalance(mapping_addr, pair.second);
+                        subBRC(mapping_addr, pair.first);
+                    }
+                }
+            }
         }
     }
 }
 
-void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
+u256 State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum) {
     auto a = account(_addr);
     ReceivedCookies _receivedCookies = a->get_received_cookies();
     ReceivedCookies _oldreceivedCookies = a->get_received_cookies();
@@ -1327,7 +1573,7 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
         }
         for (auto _voteIt : _voteDataIt->second) {
             auto _pollAddr = account(_voteIt.first);
-            try_new_vote_snapshot(_voteIt.first, _blockNum);
+            trySnapshotWithMinerMapping(_voteIt.first, _blockNum);
             VoteSnapshot _pollVoteSnapshot = _pollAddr->vote_snashot();
             auto _pollMap = _pollVoteSnapshot.m_pollNumHistory;
             u256 _pollNum = _pollMap.find(_voteDataIt->first)->second;
@@ -1372,6 +1618,7 @@ void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum
     addBalance(_addr, _cookieFee);
     a->updateNumofround(_pair.first);
     m_changeLog.emplace_back(Change::ReceiveCookies, _addr, _oldreceivedCookies);
+    return _cookieFee;
 }
 
 //void State::receivingBlockFeeIncome(const dev::Address &_addr, int64_t _blockNum)
@@ -1514,8 +1761,16 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
     uint32_t num = config::minner_rank_num();
     for (auto const &val: vote_data(SysVarlitorAddress)) {
         if (num) {
-            now_miner.emplace_back(val);
-            now_total_poll += val.m_poll;
+            PollData add_data = val;
+            if(_blockNum >= config::newChangeHeight()){
+                if (auto miner = account(val.m_addr)){
+                    if (miner->mappingAddress().first != Address() && miner->mappingAddress().second == val.m_addr){
+                        add_data.m_addr = miner->mappingAddress().first;
+                    }
+                }
+            }
+            now_miner.emplace_back(add_data);
+            now_total_poll += add_data.m_poll;
             --num;
         }
     }
@@ -1551,7 +1806,14 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
             } else {
                 _totalPoll = system_sanp.get_total_poll(i, config::minner_rank_num());
                 summary = system_sanp.m_Feesnapshot[i];
-                check_creater = system_sanp.m_sorted_creaters[i];
+                if(_blockNum >= config::newChangeHeight()){
+                    for(int j =0; j< config::minner_rank_num() && j < system_sanp.m_sorted_creaters[i].size(); j++){
+                        check_creater.emplace_back(system_sanp.m_sorted_creaters[i][j]);
+                    }
+                }
+                else{
+                    check_creater = system_sanp.m_sorted_creaters[i];
+                }
             }
             if (summary.first == old_summary.first && summary.second == old_summary.second) {
                 old_summary = std::make_pair(0, 0);
@@ -1876,6 +2138,9 @@ void State::rollback(size_t _savepoint) {
                 account.kill();
                 account.copyByAccount(change.old_account);
                 break;
+            case Change::NewChangeMiner:
+                account.setChangeMiner(change.mapping);
+                break;
             default:
                 break;
         }
@@ -1992,24 +2257,24 @@ void dev::brc::State::execute_vote(Address const &_addr,
         }
         VoteType _type = (VoteType) _p->m_vote_type;
         if (_type == VoteType::EBuyVote) {
-            try_new_vote_snapshot(_addr, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
             transferBallotBuy(_addr, _p->m_vote_numbers);
         } else if (_type == VoteType::ESellVote) {
-            try_new_vote_snapshot(_addr, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
             transferBallotSell(_addr, _p->m_vote_numbers);
         } else if (_type == VoteType::ELoginCandidate) {
-            try_new_vote_snapshot(_addr, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
             addSysVoteDate(SysElectorAddress, _addr);
         } else if (_type == VoteType::ELogoutCandidate) {
-            try_new_vote_snapshot(_addr, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
             subSysVoteDate(SysElectorAddress, _addr);
         } else if (_type == VoteType::EDelegate) {
-            try_new_vote_snapshot(_addr, block_num);
-            try_new_vote_snapshot(_p->m_to, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
+            trySnapshotWithMinerMapping(_p->m_to, block_num);
             add_vote(_addr, {_p->m_to, (u256) _p->m_vote_numbers, info.timestamp()});
         } else if (_type == EUnDelegate) {
-            try_new_vote_snapshot(_addr, block_num);
-            try_new_vote_snapshot(_p->m_to, block_num);
+            trySnapshotWithMinerMapping(_addr, block_num);
+            trySnapshotWithMinerMapping(_p->m_to, block_num);
             sub_vote(_addr, {_p->m_to, (u256) _p->m_vote_numbers, info.timestamp()});
         }
     }
@@ -2256,6 +2521,13 @@ const PollData dev::brc::State::poll_data(const dev::Address &_addr, const dev::
     return PollData();
 }
 
+std::pair<Address, Address>  dev::brc::State::minerMapping(Address const& addr){
+    if (auto a = account(addr)){
+        return a->mappingAddress();
+    }
+    return  {Address(), Address()};
+}
+
 void dev::brc::State::addSysVoteDate(Address const &_sysAddress, Address const &_id) {
     Account *sysAddr = account(_sysAddress);
     Account *a = account(_id);
@@ -2281,15 +2553,31 @@ void dev::brc::State::subSysVoteDate(Address const &_sysAddress, Address const &
     m_changeLog.emplace_back(_sysAddress, std::make_pair(_id, false));
 }
 
+void dev::brc::State::trySnapshotWithMinerMapping(const dev::Address &_addr, dev::u256 _block_num) {
+    std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t) _block_num);
+    if (_pair.second == Votingstage::ERRORSTAGE)
+        return;
+
+    // TODO frok code
+    if(_block_num >= config::newChangeHeight()) {
+        auto miner_mapping = minerMapping(_addr);
+        if (miner_mapping.first != Address() && miner_mapping.first != _addr && miner_mapping.second == _addr) {
+            try_new_vote_snapshot(miner_mapping.first, _block_num);
+        }
+    }
+    try_new_vote_snapshot(_addr, _block_num);
+}
+
 void dev::brc::State::try_new_vote_snapshot(const dev::Address &_addr, dev::u256 _block_num) {
     std::pair<uint32_t, Votingstage> _pair = dev::brc::config::getVotingCycle((int64_t) _block_num);
     if (_pair.second == Votingstage::ERRORSTAGE)
         return;
     auto a = account(_addr);
-    if (!a) {
+    if (! a) {
         createAccount(_addr, {0});
         a = account(_addr);
     }
+
     std::pair<bool, u256> ret_pair = a->get_no_record_snapshot((u256) _pair.first, _pair.second);
     if (!ret_pair.first) {
         return;
@@ -2346,8 +2634,19 @@ void dev::brc::State::tryRecordFeeSnapshot(int64_t _blockNum) {
             remainder_ballance = a->balance() % _snapshotTotalPoll;
         }
 
+        auto vote_datas = vote_data(SysVarlitorAddress);
+        /// fork code about changeMiner
+        if (_blockNum >= config::newChangeHeight()) {
+            for (auto &d: vote_datas) {
+                auto miner_mapping = minerMapping(d.m_addr);
+                if (miner_mapping.first != Address()) {
+                    d.m_addr = miner_mapping.first;
+                }
+            }
+        }
+
         a->tryRecordSnapshot(_pair.first, a->BRC() - remainder_brc, a->balance() - remainder_ballance,
-                             vote_data(SysVarlitorAddress), _blockNum);
+                             vote_datas, _blockNum);
 
         setBRC(dev::PdSystemAddress, remainder_brc);
         setBalance(dev::PdSystemAddress, remainder_ballance);
@@ -2453,15 +2752,34 @@ void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr
     std::vector<PollData> varlitors;
     std::vector<PollData> standbys;
 
-    for (auto const &val: p_data) {
-        if (var_num) {
-            varlitors.emplace_back(val);
-            var_num--;
-        } else if (standby_num) {
-            standbys.emplace_back(val);
-            standby_num--;
+    if(curr_header.number() >= config::newChangeHeight()) {
+        /// fork code about newChangeMiner
+        for (auto &val: p_data) {
+            auto mapping_addr = minerMapping(val.m_addr);
+            if(mapping_addr.first !=Address() && mapping_addr.second == val.m_addr){
+                val.m_addr = mapping_addr.first;
+            }
+            if (var_num) {
+                varlitors.emplace_back(val);
+                var_num--;
+            } else if (standby_num) {
+                standbys.emplace_back(val);
+                standby_num--;
+            }
         }
     }
+    else {
+        for (auto const &val: p_data) {
+            if (var_num) {
+                varlitors.emplace_back(val);
+                var_num--;
+            } else if (standby_num) {
+                standbys.emplace_back(val);
+                standby_num--;
+            }
+        }
+    }
+
     if (varlitors.empty())
         return;
 
@@ -2569,6 +2887,7 @@ void dev::brc::State::setSuccessExchange(dev::brc::ex::ExResultOrder const &_exr
     m_changeLog.emplace_back(Change::SuccessOrder, dev::ExdbSystemAddress, _oldOrder);
 }
 
+
 void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, ChainParams const &params) {
     if (params.chainID != 11)
         return;
@@ -2576,6 +2895,110 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
     if (!change_ret.first)
         return;
     changeMinerMigrationData(Address(change_ret.second.before_addr), Address(change_ret.second.new_addr), params);
+}
+
+void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
+    if(_header.number() == 4756444){
+        std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
+        for (auto const& it : _changeVote) {
+            Account *_a = account(Address(std::get<0>(it)));
+            Account *_pollA = account(Address(std::get<1>(it)));
+            if(!_a){
+                createAccount(Address(std::get<0>(it)), {0});
+                _a = account(Address(std::get<0>(it)));
+            }
+            if(!_pollA){
+                createAccount(Address(std::get<1>(it)), {0});
+                _pollA = account(Address(std::get<1>(it)));
+            }
+
+            VoteSnapshot a_snashot = _a->vote_snashot();
+            if (a_snashot.m_voteDataHistory.empty()) {
+                _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
+
+            } else{
+                //VoteSnapshot a_snashot = _a->vote_snashot();
+                for (auto & d : a_snashot.m_voteDataHistory){
+                    if(d.second.count(Address(std::get<1>(it)))){
+                        d.second[Address(std::get<1>(it))] += u256(std::get<2>(it));
+                    } else{
+                        d.second[Address(std::get<1>(it))] = u256(std::get<2>(it));
+                    }
+                }
+                _a->set_vote_snapshot(a_snashot);
+
+            }
+
+            VoteSnapshot a_snashot_A = _pollA->vote_snashot();
+            if (a_snashot_A.m_pollNumHistory.empty()) {
+                _pollA->addPoll(u256(std::get<2>(it)));
+
+            } else{
+                if(a_snashot_A.m_pollNumHistory.count(1)){
+                    a_snashot_A.m_pollNumHistory[1] += u256(std::get<2>(it));
+                }
+                else {
+                    a_snashot_A.m_pollNumHistory[1] = u256(std::get<2>(it));
+                }
+                _pollA->set_vote_snapshot(a_snashot_A);
+            }
+
+        }
+
+
+        Account *sysVar = account(SysVarlitorAddress);
+        std::vector<PollData> _sysVar = sysVar->vote_data();
+        Account *sysCan = account(SysCanlitorAddress);
+        std::vector<PollData> _sysCan = sysCan->vote_data();
+        for (auto &sysVarIt : _sysVar) {
+            Account *pa = account(sysVarIt.m_addr);
+//            CFEE_LOG << pa->poll();
+            auto  snapshot = pa->vote_snashot();
+            if(snapshot.m_pollNumHistory.empty()) {
+                sysVarIt.m_poll = pa->poll();
+                sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
+            }
+            else {
+                sysVar->set_system_poll({sysVarIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+            }
+        }
+
+        for (auto &sysCanIt : _sysCan) {
+            Account *pa = account(sysCanIt.m_addr);
+            if(!pa){
+                createAccount(sysCanIt.m_addr, {0});
+                pa = account(sysCanIt.m_addr);
+            }
+//            CFEE_LOG << pa->poll();
+            auto  snapshot = pa->vote_snashot();
+            if(snapshot.m_pollNumHistory.empty()) {
+                sysCanIt.m_poll = pa->poll();
+                sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
+            } else{
+                sysVar->set_system_poll({sysCanIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+            }
+        }
+
+        Account *_pdSystem = account(PdSystemAddress);
+        CouplingSystemfee _pdfee = _pdSystem->getFeeSnapshot();
+        for (auto &_pdit : _pdfee.m_sorted_creaters) {
+            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+            _pdit.second = _poll;
+        }
+//        CFEE_LOG << " LINSHI:  " << _pdfee;
+        _pdSystem->setCouplingSystemFeeSnapshot(_pdfee);
+//        CFEE_LOG <<_pdSystem->getFeeSnapshot();
+
+        Account *_minerSystem = account(SysMinerSnapshotAddress);
+        CouplingSystemfee _minerfee = _minerSystem->getFeeSnapshot();
+        for (auto &_minerit : _minerfee.m_sorted_creaters) {
+            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+            std::vector<PollData> _cpoll = vote_data(SysCanlitorAddress);
+            _poll.insert(_poll.end(), _cpoll.begin(), _cpoll.end());
+            _minerit.second = _poll;
+        }
+        _minerSystem->setCouplingSystemFeeSnapshot(_minerfee);
+    }
 }
 
 void dev::brc::State::changeVoteData(BlockHeader const &_header) {
@@ -2802,7 +3225,7 @@ State &dev::brc::createIntermediateState(
 
 template<class DB>
 AddressHash
-dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, uint64_t _time /*= FORKSIGNSTIME*/) {
+dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -2811,7 +3234,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                s.appendList(19);
+                if (_block_number >= config::newChangeHeight()) {
+                    s.appendList(20);
+                }
+                else{
+                    s.appendList(19);
+                }
+
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
                     assert(i.second.baseRoot());
@@ -2881,6 +3310,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                     s << i.second.getStreamRLPExOrder();
                 }
 
+                {
+                    /// fork about newChangeMiner
+                    if(_block_number >= config::newChangeHeight()){
+                        s << i.second.getRLPStreamChangeMiner();
+                        //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
+                    }
+                }
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);
@@ -2889,7 +3325,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
 }
 
 template AddressHash dev::brc::commit<OverlayDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, uint64_t _time = FORKSIGNSTIME);
+        AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state, int64_t _block_number = 0);
 
 template AddressHash dev::brc::commit<StateCacheDB>(
-        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state, uint64_t _time = FORKSIGNSTIME);
+        AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state, int64_t _block_number = 0);

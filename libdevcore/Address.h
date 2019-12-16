@@ -43,5 +43,7 @@ extern Address const PdSystemAddress;
 extern Address const SysMinerSnapshotAddress;
 
 extern Address const ExdbSystemAddress;
+
+extern std::vector<Address> const CreaterSysAddresses;
 }
 

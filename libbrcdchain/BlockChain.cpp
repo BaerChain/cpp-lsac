@@ -823,6 +823,48 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
         }
     };
 
+
+    /*
+     * curr_height = info().number()
+     * get_height = _block.info.number()
+     * if verify get_block_height must get block( get_height -1 )
+     * */
+
+    //check node down
+    Block s(*this, _db, _exdb);
+    s.populateFromChain(*this, numberHash(_block.info.number() -1));
+    State &state_db = s.mutableState();
+    auto exe_miners = state_db.vote_data(SysVarlitorAddress);
+    auto standby_miners =  state_db.vote_data(SysCanlitorAddress);
+
+
+    //assert(exe_miners.size() != 0);
+    //assert(standby_miners.size() != 0);
+
+    ///verify the miner Legitimacy
+    if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())){
+        int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
+        if (_block.info.author() != exe_miners[offset].m_addr){
+            // throw
+            cwarn << " the author:"<< _block.info.author() <<" can't to Seal in this time_point";
+            BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+        }
+    }
+    else{
+        if(standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
+            // throw
+            cwarn << " the author:"<< _block.info.author() <<" can't to Seal block in chain";
+            BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+        }
+        ///verify the standby Legitimacy
+//            Verify verify_creater;
+//            if(!verify_creater.verify_standby(state_db, _block.info.timestamp() , _block.info.author(), m_params.varlitorInterval)){
+//               // throw
+//                cwarn << " the standby author:"<< _block.info.author() <<" can't to Seal in this time_point";
+//                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+//            }
+    }
+
     return true;
 
 //    cwarn << "insert -----------------";
@@ -1964,7 +2006,7 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
         auto params_Acccount(m_params.genesisState);
         params_Acccount[ExdbSystemAddress] = account1;
         dev::brc::commit(params_Acccount,
-                         ret.mutableState().m_state, ret.mutableState().timestamp());        // bit horrible. maybe consider a better way of constructing it?
+                         ret.mutableState().m_state, ret.mutableState().blockNumber());        // bit horrible. maybe consider a better way of constructing it?
 
         ret.mutableState().db().commit();
         // have to use this db() since it's the one that has been altered with the above commit.

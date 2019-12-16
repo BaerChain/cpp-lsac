@@ -1013,8 +1013,10 @@ string dev::rpc::exceptionToErrorMessage()
 	{
 		ret = "Transaction rejected by user.";
 	}
-	catch (ChangeMinerFailed const &e){
-        ret = "Replace witness operations cannot be batch operated.";
+	catch (ChangeMinerFailed const &ex){
+        ret = "ChangeMinerFailed : ";
+        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
 	}
     catch (InvalidAutor const&ex)
     {

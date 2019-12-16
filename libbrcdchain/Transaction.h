@@ -187,38 +187,13 @@ namespace dev
                 uint8_t m_type = null;
                 Address m_before;
                 Address m_after;
-                unsigned m_blockNumber;
-                Signature m_signature;
-                std::vector<Signature> m_agreeMsgs;
-                changeMiner_operation(op_type type, const Address& before, const Address& after,
-                                      unsigned blockNumber, Signature& signature, std::vector<Signature>& agreeMsgs)
+                changeMiner_operation(op_type type, const Address& before, const Address& after)
                         : m_type(type),
                           m_before(before),
-                          m_after(after),
-                          m_blockNumber(blockNumber),
-                          m_signature(signature),
-                          m_agreeMsgs(agreeMsgs){
+                          m_after(after){
                 }
-                OPERATION_UNSERIALIZE(
-                        changeMiner_operation, (m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
-
-                OPERATION_SERIALIZE((m_type)(m_before)(m_after)(m_blockNumber)(m_signature)(m_agreeMsgs))
-                Address get_sign_data_address(Signature _signData, bool isOtherSigned){
-                    int count = 3;
-                    if (isOtherSigned){
-                        count = 4;
-                    }
-                    RLPStream s(count);
-                    s.append(m_before);
-                    s.append(m_after);
-                    s.append(m_blockNumber);
-                    if (isOtherSigned){
-                        s.append(m_signature);
-                    }
-                    auto _hash = sha3(s.out());
-                    auto p = recover(_signData, _hash);
-                    return right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
-                }
+                OPERATION_UNSERIALIZE(changeMiner_operation, (m_type)(m_before)(m_after))
+                OPERATION_SERIALIZE((m_type)(m_before)(m_after))
             };
 
             struct pendingorder_opearaion : public operation

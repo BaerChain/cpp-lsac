@@ -74,6 +74,10 @@ namespace dev
                 static int64_t changeVoteHeight();
 
                 static int64_t replaceMinerHeight();
+                ///@return the height of changeMiner by transaction
+                static int64_t newChangeHeight();
+                ///@return the height of initSysAddress
+                static int64_t initSysAddressHeight();
 
         private:
             config(){}
