@@ -901,10 +901,10 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
-Json::Value dev::rpc::Brc::brc_orderMessage(int key, const std::string& _blockNumber){
+Json::Value dev::rpc::Brc::brc_orderMessage(const std::string& key, const std::string& _blockNumber){
     try
     {
-        return client()->testBplusGet(key, jsToBlockNum(_blockNumber));
+        return client()->testBplusGet(dev::jsToU256(key), jsToBlockNum(_blockNumber));
     }
     catch(...)
     {
