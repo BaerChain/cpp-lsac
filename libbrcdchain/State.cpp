@@ -751,7 +751,7 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
 std::pair<u256 ,u256> dev::brc::State::newPendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
                                     std::vector<std::shared_ptr<transationTool::operation>> const &_ops)
 {
-    
+
 }
 
 void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
@@ -2228,7 +2228,7 @@ Account dev::brc::State::systemPendingorder(int64_t _time) {
     ex_order _order = {h256(1), dev::systemAddress, u256Safe(std::string("100000000")), systenCookie, systenCookie,
                        _time, dev::brc::ex::order_type::sell, dev::brc::ex::order_token_type::FUEL,
                        dev::brc::ex::order_buy_type::only_price};
-
+    cerror << " system time  = " << _time << "  price = :" << u256Safe(std::string("100000000"));
     try {
         _exdbState.insert_operation(_order);
     }
@@ -2576,6 +2576,56 @@ void dev::brc::State::addExchangeOrder(Address const &_addr, dev::brc::ex::ex_or
     _account->addExOrderMulti(_order);
 
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
+}
+
+
+void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
+{
+    Account *_account = account(dev::TestbplusAddress);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    }
+
+    std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
+    h256 _oldroot = _account->baseByteRoot();
+    _account->exchangeBplusAdd(_order, m_db);
+
+    m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
+    m_changeLog.emplace_back(Change::StorageByteRoot, dev::TestbplusAddress, _oldroot);
+
+    // _account->
+
+}
+
+Json::Value dev::brc::State::newExorderGet(int64_t _time, u256 _price)
+{
+    Account *_account = account(dev::TestbplusAddress);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    }
+
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_price, _time, m_db);
+    if(_ret.first)
+    {
+        Json::Value _retJson;
+        _retJson["orderID"] = toJS(_ret.second.m_orderId);
+        _retJson["from"] = toJS(_ret.second.m_from);
+        _retJson["pendingorderNum"] = toJS(_ret.second.m_pendingorderNum);
+        _retJson["pendingordertokenNum"] = toJS(_ret.second.m_pendingordertokenNum);
+        _retJson["pendingorderPrice"] = toJS(_ret.second.m_pendingorderPrice);
+        _retJson["createTime"] = toJS(_ret.second.m_createTime);
+        std::tuple<std::string, std::string, std::string>  _t = enumToString(_ret.second.m_pendingorderType,_ret.second.m_pendingorderTokenType,_ret.second.m_pendingorderBuyType); 
+        _retJson["pendingorderType"] = std::get<0>(_t);
+        _retJson["pendingorderTokenType"] = std::get<1>(_t);
+        _retJson["pendingorderBuyType"] = std::get<2>(_t);;
+        return _retJson;
+    }else{
+        return Json::Value();
+    }
 }
 
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid) {

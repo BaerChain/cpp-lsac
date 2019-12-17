@@ -15,7 +15,7 @@ namespace dev{
             u256 m_exchangePrice;
             int64_t m_exchangeTime;
 
-            bool operator < (exchangeSort const& _e)
+            bool operator<(exchangeSort const& _e) const
             {
                 if(m_exchangePrice < _e.m_exchangePrice)
                 {

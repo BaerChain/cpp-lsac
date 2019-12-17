@@ -4,6 +4,7 @@
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieCommon.h>
+#include <libbrccore/ExchangeType.h>
 #include <libbrccore/Common.h>
 #include "libbrccore/config.h"
 
@@ -15,6 +16,7 @@
 #include <libbrcdchain/bplusTree.h>
 #include <libdevcore/OverlayDB.h>
 #include <libbrcdchain/Transaction.h>
+
 namespace dev
 {
 class OverlayDB;
@@ -41,6 +43,7 @@ namespace brc
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
 struct testBplus;
+struct exchangeBplus;
 /// vote data
 struct PollData{
     Address     m_addr;
@@ -1200,6 +1203,11 @@ public:
     std::vector<h256> getNeedDelete() const{
         return m_needDelete;
     }
+    // test code end
+
+
+    void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
+    std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1275,6 +1283,10 @@ private:
     //test code
     std::shared_ptr<testBplus> testbplus;
     std::vector<h256> m_needDelete;
+    //test code end
+
+
+    std::shared_ptr<exchangeBplus> m_exchangeBplus;
 };
 
 struct testBplus : public databaseDelegate
@@ -1303,6 +1315,30 @@ private:
     OverlayDB m_db;
 };
 
+struct exchangeBplus : public databaseDelegate
+{
+    exchangeBplus(Account *_a, OverlayDB const& _db):
+        m_account(_a),
+        m_db(_db){}
+
+    virtual DataPackage getData(DataKey const& _key)
+    {
+        return m_account->storageByteValue(dev::sha3(_key), m_db);
+    }
+
+    virtual void setData(DataKey const& _key, DataPackage const& _val)
+    {
+        m_account->setStorageByte(dev::sha3(_key), _val);
+    }
+
+    virtual void deleteKey(DataKey const& _key)
+    {
+        m_account->deleteStorageBytes(dev::sha3(_key), m_db);
+    }
+private:
+    Account *m_account;
+    OverlayDB m_db;
+}; 
 
 class AccountMask
 {

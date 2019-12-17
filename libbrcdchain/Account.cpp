@@ -565,3 +565,48 @@ void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db
 }
 
 
+void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+
+    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
+
+    dev::brc::exchangeSort _exchangeSort;
+    _exchangeSort.m_exchangePrice = _order.price;
+    _exchangeSort.m_exchangeTime = _order.create_time;
+
+    dev::brc::exchangeValue _exchangeValue;
+    _exchangeValue.m_createTime = _order.create_time;
+    _exchangeValue.m_from = _order.sender;
+    _exchangeValue.m_orderId = _order.trxid;
+    _exchangeValue.m_pendingorderBuyType = _order.buy_type;
+    _exchangeValue.m_pendingorderNum = _order.source_amount;
+    _exchangeValue.m_pendingorderPrice = _order.price;
+    _exchangeValue.m_pendingordertokenNum = _order.token_amount;
+    _exchangeValue.m_pendingorderTokenType = _order.token_type;
+    _exchangeValue.m_pendingorderType = _order.type;
+
+    _exchangeBplus.insert(_exchangeSort, _exchangeValue);
+    _exchangeBplus.update();
+}
+
+std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+
+    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
+    
+    dev::brc::exchangeSort _exchangeSort;
+    _exchangeSort.m_exchangePrice = _pendingorderPrice;
+    _exchangeSort.m_exchangeTime = _createTime;
+
+    std::pair<bool, dev::brc::exchangeValue> _ret = _exchangeBplus.getValue(_exchangeSort);
+    return _ret;
+}
+
