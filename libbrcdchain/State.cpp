@@ -2584,8 +2584,8 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     Account *_account = account(dev::TestbplusAddress);
     if(!_account)
     {
-        BOOST_THROW_EXCEPTION(  
-                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+       createAccount(dev::TestbplusAddress, {0});
+       _account = account(dev::TestbplusAddress);
     }
 
     std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
@@ -2599,7 +2599,7 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
 
 }
 
-Json::Value dev::brc::State::newExorderGet(int64_t _time, u256 _price)
+Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)
 {
     Account *_account = account(dev::TestbplusAddress);
     if(!_account)
