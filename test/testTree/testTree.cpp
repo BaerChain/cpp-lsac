@@ -254,12 +254,12 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
             dev::brc::bplusTree<unsigned, std::string, 4> bp;
             size_t end = 128;
-            for (size_t i = 0; i < end; i++) {
+            for (size_t i = 0; i < end; i+=2) {
                 bp.insert(i, std::to_string(i));
             }
             bp.debug();
             
-            auto itr = bp.begin();
+            auto itr = bp.lower_bound(51);
             while (itr != bp.end())
             {
                 std::cout << "key " << (*itr).first << "  value: " << (*itr).second << std::endl;

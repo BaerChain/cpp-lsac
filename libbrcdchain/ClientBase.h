@@ -86,7 +86,7 @@ public:
 	Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize, BlockNumber _block) const override;
     Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const override;
     Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const override;
-    Json::Value testBplusGet(int key, BlockNumber _block) const override ;
+    Json::Value testBplusGet(u256 const& key, BlockNumber _block) const override ;
 
 
     Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;

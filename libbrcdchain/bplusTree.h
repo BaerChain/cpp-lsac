@@ -452,8 +452,12 @@ namespace dev {
                 iterator it(*this, NodeKey(), 0);
                 return it;
             }
-            iterator lower_bound(const key_type &kv) const { 
-                return iterator(*this);
+            iterator lower_bound(const key_type &key)  { 
+                std::pair<key_type, value_type> find;
+                find.first = key;
+                auto ret = findInsertPos(find.first, find.second);
+                auto indexOf = ret.second.getIndex(find);
+                return iterator(*this, ret.second.mSelfKey, indexOf.second);
             }
 
 
