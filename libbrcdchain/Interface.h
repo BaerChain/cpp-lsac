@@ -168,7 +168,7 @@ public:
 	virtual Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const = 0;
 
-    virtual Json::Value testBplusGet(u256 const& key, BlockNumber _block) const = 0;
+    virtual Json::Value testBplusGet(u256 const& key, int64_t time, BlockNumber _block) const = 0;
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
