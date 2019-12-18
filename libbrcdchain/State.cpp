@@ -2898,107 +2898,107 @@ void dev::brc::State::tryChangeMiner(const dev::brc::BlockHeader &curr_header, C
 }
 
 void dev::brc::State::changeMinerAddVote(BlockHeader const &_header) {
-    if(_header.number() == 4756444){
-        std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
-        for (auto const& it : _changeVote) {
-            Account *_a = account(Address(std::get<0>(it)));
-            Account *_pollA = account(Address(std::get<1>(it)));
-            if(!_a){
-                createAccount(Address(std::get<0>(it)), {0});
-                _a = account(Address(std::get<0>(it)));
-            }
-            if(!_pollA){
-                createAccount(Address(std::get<1>(it)), {0});
-                _pollA = account(Address(std::get<1>(it)));
-            }
+//     if(_header.number() == 4756444){
+//         std::vector<std::tuple<std::string, std::string, std::string>> _changeVote = changeVote::getChangeMinerAddVote();
+//         for (auto const& it : _changeVote) {
+//             Account *_a = account(Address(std::get<0>(it)));
+//             Account *_pollA = account(Address(std::get<1>(it)));
+//             if(!_a){
+//                 createAccount(Address(std::get<0>(it)), {0});
+//                 _a = account(Address(std::get<0>(it)));
+//             }
+//             if(!_pollA){
+//                 createAccount(Address(std::get<1>(it)), {0});
+//                 _pollA = account(Address(std::get<1>(it)));
+//             }
 
-            VoteSnapshot a_snashot = _a->vote_snashot();
-            if (a_snashot.m_voteDataHistory.empty()) {
-                _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
+//             VoteSnapshot a_snashot = _a->vote_snashot();
+//             if (a_snashot.m_voteDataHistory.empty()) {
+//                 _a->addVote(std::pair<Address, u256>(Address(std::get<1>(it)), u256(std::get<2>(it))));
 
-            } else{
-                //VoteSnapshot a_snashot = _a->vote_snashot();
-                for (auto & d : a_snashot.m_voteDataHistory){
-                    if(d.second.count(Address(std::get<1>(it)))){
-                        d.second[Address(std::get<1>(it))] += u256(std::get<2>(it));
-                    } else{
-                        d.second[Address(std::get<1>(it))] = u256(std::get<2>(it));
-                    }
-                }
-                _a->set_vote_snapshot(a_snashot);
+//             } else{
+//                 //VoteSnapshot a_snashot = _a->vote_snashot();
+//                 for (auto & d : a_snashot.m_voteDataHistory){
+//                     if(d.second.count(Address(std::get<1>(it)))){
+//                         d.second[Address(std::get<1>(it))] += u256(std::get<2>(it));
+//                     } else{
+//                         d.second[Address(std::get<1>(it))] = u256(std::get<2>(it));
+//                     }
+//                 }
+//                 _a->set_vote_snapshot(a_snashot);
 
-            }
+//             }
 
-            VoteSnapshot a_snashot_A = _pollA->vote_snashot();
-            if (a_snashot_A.m_pollNumHistory.empty()) {
-                _pollA->addPoll(u256(std::get<2>(it)));
+//             VoteSnapshot a_snashot_A = _pollA->vote_snashot();
+//             if (a_snashot_A.m_pollNumHistory.empty()) {
+//                 _pollA->addPoll(u256(std::get<2>(it)));
 
-            } else{
-                if(a_snashot_A.m_pollNumHistory.count(1)){
-                    a_snashot_A.m_pollNumHistory[1] += u256(std::get<2>(it));
-                }
-                else {
-                    a_snashot_A.m_pollNumHistory[1] = u256(std::get<2>(it));
-                }
-                _pollA->set_vote_snapshot(a_snashot_A);
-            }
+//             } else{
+//                 if(a_snashot_A.m_pollNumHistory.count(1)){
+//                     a_snashot_A.m_pollNumHistory[1] += u256(std::get<2>(it));
+//                 }
+//                 else {
+//                     a_snashot_A.m_pollNumHistory[1] = u256(std::get<2>(it));
+//                 }
+//                 _pollA->set_vote_snapshot(a_snashot_A);
+//             }
 
-        }
+//         }
 
 
-        Account *sysVar = account(SysVarlitorAddress);
-        std::vector<PollData> _sysVar = sysVar->vote_data();
-        Account *sysCan = account(SysCanlitorAddress);
-        std::vector<PollData> _sysCan = sysCan->vote_data();
-        for (auto &sysVarIt : _sysVar) {
-            Account *pa = account(sysVarIt.m_addr);
-//            CFEE_LOG << pa->poll();
-            auto  snapshot = pa->vote_snashot();
-            if(snapshot.m_pollNumHistory.empty()) {
-                sysVarIt.m_poll = pa->poll();
-                sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
-            }
-            else {
-                sysVar->set_system_poll({sysVarIt.m_addr, snapshot.m_pollNumHistory[1], 0});
-            }
-        }
+//         Account *sysVar = account(SysVarlitorAddress);
+//         std::vector<PollData> _sysVar = sysVar->vote_data();
+//         Account *sysCan = account(SysCanlitorAddress);
+//         std::vector<PollData> _sysCan = sysCan->vote_data();
+//         for (auto &sysVarIt : _sysVar) {
+//             Account *pa = account(sysVarIt.m_addr);
+// //            CFEE_LOG << pa->poll();
+//             auto  snapshot = pa->vote_snashot();
+//             if(snapshot.m_pollNumHistory.empty()) {
+//                 sysVarIt.m_poll = pa->poll();
+//                 sysVar->set_system_poll({sysVarIt.m_addr, pa->poll(), 0});
+//             }
+//             else {
+//                 sysVar->set_system_poll({sysVarIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+//             }
+//         }
 
-        for (auto &sysCanIt : _sysCan) {
-            Account *pa = account(sysCanIt.m_addr);
-            if(!pa){
-                createAccount(sysCanIt.m_addr, {0});
-                pa = account(sysCanIt.m_addr);
-            }
-//            CFEE_LOG << pa->poll();
-            auto  snapshot = pa->vote_snashot();
-            if(snapshot.m_pollNumHistory.empty()) {
-                sysCanIt.m_poll = pa->poll();
-                sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
-            } else{
-                sysVar->set_system_poll({sysCanIt.m_addr, snapshot.m_pollNumHistory[1], 0});
-            }
-        }
+//         for (auto &sysCanIt : _sysCan) {
+//             Account *pa = account(sysCanIt.m_addr);
+//             if(!pa){
+//                 createAccount(sysCanIt.m_addr, {0});
+//                 pa = account(sysCanIt.m_addr);
+//             }
+// //            CFEE_LOG << pa->poll();
+//             auto  snapshot = pa->vote_snashot();
+//             if(snapshot.m_pollNumHistory.empty()) {
+//                 sysCanIt.m_poll = pa->poll();
+//                 sysCan->set_system_poll({sysCanIt.m_addr, pa->poll(), 0});
+//             } else{
+//                 sysVar->set_system_poll({sysCanIt.m_addr, snapshot.m_pollNumHistory[1], 0});
+//             }
+//         }
 
-        Account *_pdSystem = account(PdSystemAddress);
-        CouplingSystemfee _pdfee = _pdSystem->getFeeSnapshot();
-        for (auto &_pdit : _pdfee.m_sorted_creaters) {
-            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
-            _pdit.second = _poll;
-        }
-//        CFEE_LOG << " LINSHI:  " << _pdfee;
-        _pdSystem->setCouplingSystemFeeSnapshot(_pdfee);
-//        CFEE_LOG <<_pdSystem->getFeeSnapshot();
+//         Account *_pdSystem = account(PdSystemAddress);
+//         CouplingSystemfee _pdfee = _pdSystem->getFeeSnapshot();
+//         for (auto &_pdit : _pdfee.m_sorted_creaters) {
+//             std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+//             _pdit.second = _poll;
+//         }
+// //        CFEE_LOG << " LINSHI:  " << _pdfee;
+//         _pdSystem->setCouplingSystemFeeSnapshot(_pdfee);
+// //        CFEE_LOG <<_pdSystem->getFeeSnapshot();
 
-        Account *_minerSystem = account(SysMinerSnapshotAddress);
-        CouplingSystemfee _minerfee = _minerSystem->getFeeSnapshot();
-        for (auto &_minerit : _minerfee.m_sorted_creaters) {
-            std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
-            std::vector<PollData> _cpoll = vote_data(SysCanlitorAddress);
-            _poll.insert(_poll.end(), _cpoll.begin(), _cpoll.end());
-            _minerit.second = _poll;
-        }
-        _minerSystem->setCouplingSystemFeeSnapshot(_minerfee);
-    }
+//         Account *_minerSystem = account(SysMinerSnapshotAddress);
+//         CouplingSystemfee _minerfee = _minerSystem->getFeeSnapshot();
+//         for (auto &_minerit : _minerfee.m_sorted_creaters) {
+//             std::vector<PollData> _poll = vote_data(SysVarlitorAddress);
+//             std::vector<PollData> _cpoll = vote_data(SysCanlitorAddress);
+//             _poll.insert(_poll.end(), _cpoll.begin(), _cpoll.end());
+//             _minerit.second = _poll;
+//         }
+//         _minerSystem->setCouplingSystemFeeSnapshot(_minerfee);
+//     }
 }
 
 void dev::brc::State::changeVoteData(BlockHeader const &_header) {
