@@ -438,8 +438,8 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
                                                     const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, dev::brc::EnvInfo const& _envinfo)
 {
     int64_t const& _timeStamp = _envinfo.timestamp();
-    if((_envinfo.number() < 4072941 && _envinfo.header().chain_id() == 0x1)
-        || (_envinfo.number() < 14524000 && _envinfo.header().chain_id() == 0xb))
+    if((_envinfo.number() < config::autoExTestNetHeight() && _envinfo.header().chain_id() == 0x1)
+        || (_envinfo.number() < config::autoExHeight() && _envinfo.header().chain_id() == 0xb))
     {
         BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Transfer automatic exchange fee function has not yet reached the opening time")));
     }
