@@ -45,6 +45,10 @@ namespace dev{
                     m_exchangeTime = _rlp[1].toInt<int64_t>();
                 }
             } 
+            std::string to_string() const
+            {
+                return " price = " + toJS(m_exchangePrice) + " time = " + toJS(m_exchangeTime);
+            }
         };
 
         struct exchangeValue
@@ -88,6 +92,11 @@ namespace dev{
                     m_pendingorderTokenType = (ex::order_token_type)_rlp[7].convert<uint8_t>(RLP::LaissezFaire);
                     m_pendingorderBuyType = (ex::order_buy_type)_rlp[8].convert<uint8_t>(RLP::LaissezFaire);
                 }
+            }
+
+            std::string to_string() const
+            {
+                return " orderId = " + toJS(m_orderId);
             }
         };
         

@@ -2628,6 +2628,18 @@ Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _pr
     }
 }
 
+Json::Value dev::brc::State::newExorderAllGet()
+{
+    Account *_account = account(dev::TestbplusAddress);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    }
+    Json::Value _ret = _account->exchangeBplusAllGet(m_db);
+    return _ret;
+}
+
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid) {
     Account *_account = account(_addr);
     if (!_account) {

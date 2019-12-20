@@ -616,3 +616,80 @@ std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _
     return std::pair<bool, dev::brc::exchangeValue>();
 }
 
+std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
+    std::string _type, _token_type, _buy_type;
+    switch (type) {
+        case dev::brc::ex::order_type::sell:
+            _type = std::string("sell");
+            break;
+        case dev::brc::ex::order_type::buy:
+            _type = std::string("buy");
+            break;
+        default:
+            _type = std::string("NULL");
+            break;
+    }
+
+    switch (token_type) {
+        case dev::brc::ex::order_token_type::BRC:
+            _token_type = std::string("BRC");
+            break;
+        case dev::brc::ex::order_token_type::FUEL:
+            _token_type = std::string("FUEL");
+            break;
+        default:
+            _token_type = std::string("NULL");
+            break;
+    }
+
+    switch (buy_type) {
+        case dev::brc::ex::order_buy_type::all_price:
+            _buy_type = std::string("all_price");
+            break;
+        case dev::brc::ex::order_buy_type::only_price:
+            _buy_type = std::string("only_price");
+            break;
+        default:
+            _buy_type = std::string("NULL");
+            break;
+    }
+
+    std::tuple<std::string, std::string, std::string> _result = std::make_tuple(_type, _token_type, _buy_type);
+    return _result;
+}
+
+Json::Value Account::exchangeBplusAllGet(OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+
+    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
+    cerror << "allget";
+    Json::Value _ret;
+    Json::Value _root;
+    _exchangeBplus.debug();
+    for(auto it : _exchangeBplus)
+    {
+        cerror << "allget";
+        Json::Value _order;
+        dev::brc::exchangeValue _val = it.second;
+        _order["orderID"] = toJS(_val.m_orderId);
+        _order["from"] = toJS(_val.m_from);
+        _order["pendingorderNum"] = toJS(_val.m_pendingorderNum);
+        _order["pendingordertokenNum"] = toJS(_val.m_pendingordertokenNum);
+        _order["pendingorderPrice"] = toJS(_val.m_pendingorderPrice);
+        _order["createTime"] = toJS(_val.m_createTime);
+        std::tuple<std::string, std::string, std::string>  _t = enumToString(_val.m_pendingorderType,_val.m_pendingorderTokenType,_val.m_pendingorderBuyType); 
+        _order["pendingorderType"] = std::get<0>(_t);
+        _order["pendingorderTokenType"] = std::get<1>(_t);
+        _order["pendingorderBuyType"] = std::get<2>(_t);
+        _root.append(_order);
+        cerror << "allget";
+    }
+    cerror << "allget";
+    _ret["order"] = Json::Value(_root);
+    cerror << "allget";
+    return _ret;
+}

@@ -486,7 +486,7 @@ public:
 
     void newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const &_order);
     Json::Value newExorderGet(int64_t const& _time, u256 const& _price);
-
+    Json::Value newExorderAllGet();
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
