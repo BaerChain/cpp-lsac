@@ -571,7 +571,7 @@ namespace dev {
                 assert(node.first);
                 NodeKey parentK = node.second.mParentKey;
                 bool go_up = true;
-                while(true){
+                while(true && parentK.size() != 0){
                     auto type = getType(parentK);
                     assert(type.first);
                     if(type.first) {
