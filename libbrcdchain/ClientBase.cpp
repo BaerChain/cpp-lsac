@@ -161,7 +161,7 @@ Json::Value dev::brc::ClientBase::queryBlockRewardMessage(Address _a, BlockNumbe
 
 Json::Value dev::brc::ClientBase::testBplusGet(u256 const& key, int64_t time, BlockNumber _block) const{
     Block _b = blockByNumber(_block);
-    return Json::Value();
+   // return Json::Value();
     return _b.mutableState().newExorderGet(time , key);
 }
 

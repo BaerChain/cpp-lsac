@@ -3057,7 +3057,10 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, ui
                         s << storageByteDB.root();
                     }
                 }
-
+                if(i.first == dev::TestbplusAddress || i.first == dev::ExdbSystemAddress)
+                {
+                    cerror << toJS(i.first) << "  " <<toJS(s.out());
+                }
                 _state.insert(i.first, &s.out());
             }
             ret.insert(i.first);

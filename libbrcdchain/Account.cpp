@@ -605,8 +605,14 @@ std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _
     dev::brc::exchangeSort _exchangeSort;
     _exchangeSort.m_exchangePrice = _pendingorderPrice;
     _exchangeSort.m_exchangeTime = _createTime;
-
-    std::pair<bool, dev::brc::exchangeValue> _ret = _exchangeBplus.getValue(_exchangeSort);
-    return _ret;
+    try{
+        std::pair<bool, dev::brc::exchangeValue> _ret = _exchangeBplus.getValue(_exchangeSort);
+        cerror << "123";
+        return _ret;
+    }catch(std::exception const& e)
+    {
+        cerror << "error:" << e.what();
+    }
+    return std::pair<bool, dev::brc::exchangeValue>();
 }
 

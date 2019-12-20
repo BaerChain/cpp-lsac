@@ -75,6 +75,7 @@ namespace dev{
 
             void decode(RLP const& _rlp) 
             {
+                std::cout << "decode " << std::endl; 
                 if(_rlp.isList())
                 {
                     m_orderId = _rlp[0].convert<h256>(RLP::LaissezFaire);
@@ -82,7 +83,7 @@ namespace dev{
                     m_pendingorderNum = _rlp[2].convert<u256>(RLP::LaissezFaire);
                     m_pendingordertokenNum = _rlp[3].convert<u256>(RLP::LaissezFaire);
                     m_pendingorderPrice = _rlp[4].convert<u256>(RLP::LaissezFaire);
-                    m_createTime = _rlp[5].convert<int64_t>(RLP::LaissezFaire);
+                    m_createTime = _rlp[5].toInt<int64_t>();
                     m_pendingorderType = (ex::order_type)_rlp[6].convert<uint8_t>(RLP::LaissezFaire);
                     m_pendingorderTokenType = (ex::order_token_type)_rlp[7].convert<uint8_t>(RLP::LaissezFaire);
                     m_pendingorderBuyType = (ex::order_buy_type)_rlp[8].convert<uint8_t>(RLP::LaissezFaire);
