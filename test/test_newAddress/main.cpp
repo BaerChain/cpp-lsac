@@ -67,7 +67,7 @@ void create_address(){
          if(ret_s.length() >4){
              ret_s= ret_s.substr(ret_s.length()-4, ret_s.length());
          }
-         std:: cout << ret_s <<"\n";
+         std:: cout << ret_s <<"     ";
          auto ret2 = dev::crypto::to_base58(ret_s.c_str(), 4);
          if(ret2.length() != 6){
              std::cout << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"<<"\n";
