@@ -137,19 +137,9 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                             break;
                         }
                         case changeMiner: {
-                            std::vector<Signature> agreeMsgs;
-                            for (auto &nodeMsg : op_obj["m_agreeMsg"].get_array()) {
-                                agreeMsgs.push_back(Signature(nodeMsg.get_str()));
-                            }
-                            Signature signature(op_obj["m_signature"].get_str());
-
                             auto changeMiner_op = new changeMiner_operation((op_type) type,
                                                                             Address(op_obj["m_before"].get_str()),
-                                                                            Address(op_obj["m_after"].get_str()),
-                                                                            unsigned(
-                                                                                    op_obj["m_blockNumber"].get_uint64()),
-                                                                            signature,
-                                                                            agreeMsgs
+                                                                            Address(op_obj["m_after"].get_str())
                             );
                             tx.ops.push_back(std::shared_ptr<changeMiner_operation>(changeMiner_op));
                             break;

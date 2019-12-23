@@ -135,7 +135,7 @@ bool sign_update_miner_tx(const std::string &content, const std::string &private
         m_agreeMsgs.push_back(Signature(fromHex(str)));
     }
 
-    dbt::changeMiner_operation op(dbt::op_type::changeMiner, from, to, blockNumber, source_sign, m_agreeMsgs);
+    dbt::changeMiner_operation op(dbt::op_type::changeMiner, from, to);
 
     u256 nonce;
     u256 gas;
