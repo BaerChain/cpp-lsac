@@ -678,6 +678,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
 
     auto miner = a->vote_data();
     auto canMiner = a_can->vote_data();
+
     if (std::find(miner.begin(), miner.end(), _from) == miner.end() &&
             std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
         cerror << "changeMiner from_address not is miner : "<< _from;
@@ -2715,6 +2716,12 @@ BlockRecord dev::brc::State::block_record() const {
     if (!a)
         return BlockRecord();
     return a->block_record();
+}
+std::pair<Address, Address> dev::brc::State::replaceMiner(Address const& _id) const{
+    auto a = account(_id);
+    if (a)
+        return a->mappingAddress();
+    return std::make_pair(Address(), Address());
 }
 
 void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header,

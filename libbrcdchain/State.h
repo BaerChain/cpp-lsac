@@ -604,6 +604,8 @@ public:
 
     BlockRecord block_record() const;
 
+    std::pair<Address, Address> replaceMiner(Address const& _id) const;
+
     /// try into new rounds if into: will statistical_poll and sort varlitor
     void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
     /// change miner
