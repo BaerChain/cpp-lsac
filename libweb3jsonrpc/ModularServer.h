@@ -174,6 +174,10 @@ public:
             ModularServer<Is...>::HandleNotificationCall(_proc, _input);
     }
 
+    bool find_methos(const std::string &method){
+        return false;
+    }
+
 private:
     std::unique_ptr<I> m_interface;
     std::map<std::string, MethodPointer> m_methods;

@@ -1119,6 +1119,7 @@ int main(int argc, char **argv) {
                                                nullptr
             );
             RouteRpc v1r;
+            v1r.setRoutepath("/", jsonrpcHttpServer);
 
             auto httpConnector = new SafeHttpServer(listenIP, (int) http_port, "", "", (int) http_threads);
             httpConnector->SetUrlHandler("/", &v1r);
