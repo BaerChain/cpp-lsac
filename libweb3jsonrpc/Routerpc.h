@@ -32,28 +32,63 @@ public:
     {
         std::cout << "path " << path << std::endl;
         std::cout << "request " << request << std::endl;
+        Json::Value input;
+        Json::Value response;
         try
         {
             Json::CharReaderBuilder readerBuilder;
-            Json::Value input;
+
             Json::Value output;
             Json::Value rque;
-
+            JSONCPP_STRING errs;
             std::unique_ptr<Json::CharReader> const jsonReader(readerBuilder.newCharReader());
-            
-            for(auto &itr : _route.rbegin(); itr != _route.rend();itr){
-                if(itr.first == path){
-                    itr.second.find_methos()
+            bool res = jsonReader->parse(
+                request.c_str(), request.c_str() + request.length(), &input, &errs);
+            if (res)
+            {
+                bool skip_version = false;
+                std::cout << "method: " << input["method"].asString() << std::endl;
+                std::cout << "method: " << input["params"].toStyledString() << std::endl;
+                for (auto itr = _route.rbegin(); itr != _route.rend(); itr++)
+                {
+                    if (itr->first == path || skip_version)
+                    {
+                        if (!itr->second->find_methods(input["method"].asString()))
+                        {
+                            skip_version = true;
+                        }
+                        else
+                        {
+                            jsonrpc::Procedure pro(input["method"].asString(),
+                                jsonrpc::parameterDeclaration_t::PARAMS_BY_NAME, NULL);
+                            itr->second->HandleMethodCall(pro, input["params"], output);
+
+                            response["result"] = output;
+                            response["id"] = input["id"];
+                            response["jsonrpc"] = Json::Value("2.0");
+                            retValue = response.toStyledString();
+
+                            return;
+                        }
+                    }
                 }
             }
-           
+            else
+            {
+                response["error"] = Json::Value("cant resolve json.");
+            }
+        }
+        catch (const jsonrpc::JsonRpcException& ex)
+        {
+            response["error"] = ex.what();
         }
         catch (const std::exception& e)
         {
-            Json::Value v;
-            v["error"] = "cant resolve json.s";
-            retValue = v.toStyledString();
+            response["error"] = "cant resolve json";
         }
+        response["jsonrpc"] = Json::Value("2.0");
+        response["id"] = input["id"];
+        retValue = response.toStyledString();
     }
 
 private:

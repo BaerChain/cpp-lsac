@@ -86,6 +86,10 @@ public:
         (void)_input;
     }
 
+    virtual bool find_methods(const std::string &method){
+        return false;
+    }
+
     /// server takes ownership of the connector
     unsigned addConnector(jsonrpc::AbstractServerConnector* _connector)
     {
@@ -174,7 +178,11 @@ public:
             ModularServer<Is...>::HandleNotificationCall(_proc, _input);
     }
 
-    bool find_methos(const std::string &method){
+    virtual bool find_methods(const std::string &method) override{
+        auto pointer = m_methods.find(method);
+        if(pointer != m_methods.end()){
+            return true;
+        }
         return false;
     }
 

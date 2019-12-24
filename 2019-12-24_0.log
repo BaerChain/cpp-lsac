@@ -1,16 +1,8 @@
-INFO  12-24 18:07:02-333586      net    [Host.cpp   91]  Id: [36m##f9ae7c77…[0m
-WARN  12-24 18:07:02-393738      warn   [BlockChain.cpp 332]  last block number 215   find all data: true
-WARN  12-24 18:07:02-440257      warn   [Client.cpp 716]     Client::doWork :   false
-INFO  12-24 18:07:02-440735      DposClinet [SHDposClient.cpp 45]  init the dposClient check state : number: 215 hash: [96m#c1a7c74f…[0m
-INFO  12-24 18:07:10-936266 p2p  info   [UPnP.cpp   73]  UPnP device not found.
-INFO  12-24 18:07:10-947083      client [Client.cpp 623]  Mining Beneficiary: [91m@042610e4…[0m
-INFO  12-24 18:07:18-051713 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
-WARN  12-24 18:07:18-056604 brc  warn   [Client.cpp 398]  1 blocks imported in 2 ms #216  author: [91m@042610e4…[0m hash:[96m#37574e2b…[0m late: 56ms size: 0
-INFO  12-24 18:07:36-051657 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
-WARN  12-24 18:07:36-055687 brc  warn   [Client.cpp 398]  1 blocks imported in 2 ms #217  author: [91m@042610e4…[0m hash:[96m#1a149a13…[0m late: 55ms size: 0
-INFO  12-24 18:07:42-058184 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
-WARN  12-24 18:07:42-062414 brc  warn   [Client.cpp 398]  1 blocks imported in 2 ms #218  author: [91m@042610e4…[0m hash:[96m#c6568256…[0m late: 62ms size: 0
-INFO  12-24 18:07:48-061728 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
-WARN  12-24 18:07:48-065947 brc  warn   [Client.cpp 398]  1 blocks imported in 2 ms #219  author: [91m@042610e4…[0m hash:[96m#74fa873d…[0m late: 65ms size: 0
-INFO  12-24 18:07:54-054962 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
-WARN  12-24 18:07:54-059186 brc  warn   [Client.cpp 398]  1 blocks imported in 2 ms #220  author: [91m@042610e4…[0m hash:[96m#b2e0e861…[0m late: 59ms size: 0
+INFO  12-24 21:20:01-388933      net    [Host.cpp   91]  Id: [36m##f9ae7c77…[0m
+WARN  12-24 21:20:01-434702      warn   [BlockChain.cpp 332]  last block number 346   find all data: true
+WARN  12-24 21:20:01-455726      warn   [Client.cpp 716]     Client::doWork :   false
+INFO  12-24 21:20:01-456018      DposClinet [SHDposClient.cpp 45]  init the dposClient check state : number: 346 hash: [96m#4edb948a…[0m
+INFO  12-24 21:20:10-133560 p2p  info   [UPnP.cpp   73]  UPnP device not found.
+INFO  12-24 21:20:10-146691      client [Client.cpp 623]  Mining Beneficiary: [91m@042610e4…[0m
+INFO  12-24 21:20:18-058709 brc  DposClinet [SHDposClient.cpp 230]  the last author not created block and will reset current data to seal block...
+WARN  12-24 21:20:18-064929 brc  warn   [Client.cpp 398]  1 blocks imported in 3 ms #347  author: [91m@042610e4…[0m hash:[96m#ce6fcaf1…[0m late: 64ms size: 0

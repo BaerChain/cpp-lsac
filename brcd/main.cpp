@@ -1118,12 +1118,13 @@ int main(int argc, char **argv) {
                                                new rpc::Debug(*web3.brcdChain()),
                                                nullptr
             );
-            RouteRpc v1r;
-            v1r.setRoutepath("/", jsonrpcHttpServer);
+            RouteRpc *v1r = new RouteRpc();
+            v1r->setRoutepath("/", jsonrpcHttpServer);
+            v1r->setRoutepath("/v2", jsonrpcHttpServer);
 
             auto httpConnector = new SafeHttpServer(listenIP, (int) http_port, "", "", (int) http_threads);
-            httpConnector->SetUrlHandler("/", &v1r);
-            httpConnector->SetUrlHandler("/v2", &v1r);
+            httpConnector->SetUrlHandler("/", v1r);
+            httpConnector->SetUrlHandler("/v2", v1r);
 
 
             // httpConnector->setAllowedOrigin("");
