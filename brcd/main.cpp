@@ -39,6 +39,7 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/SafeHttpServer.h>
+#include <libweb3jsonrpc/Routerpc.h>
 
 #include "MinerAux.h"
 #include "AccountManager.h"
@@ -1117,55 +1118,21 @@ int main(int argc, char **argv) {
                                                new rpc::Debug(*web3.brcdChain()),
                                                nullptr
             );
+            RouteRpc v1r;
+
             auto httpConnector = new SafeHttpServer(listenIP, (int) http_port, "", "", (int) http_threads);
-            httpConnector->setAllowedOrigin("");
-            jsonrpcHttpServer->addConnector(httpConnector);
-            jsonrpcHttpServer->StartListening();
-            // jsonrpcHttpServer->setStatistics(new InterfaceStatistics(getDataDir() + "RPC", chainParams.statsInterval));
-//            if (false == jsonrpcHttpServer->StartListening()) {
-//                cout << "RPC StartListening Fail!!!!" << "\n";
-//                exit(0);
-//            }
+            httpConnector->SetUrlHandler("/", &v1r);
+            httpConnector->SetUrlHandler("/v2", &v1r);
+
+
+            // httpConnector->setAllowedOrigin("");
+            // jsonrpcHttpServer->addConnector(httpConnector);
+            httpConnector->StartListening();
+
         }
 
     }
 
-
-    if (ipc) {
-        using FullServer = ModularServer<
-                rpc::BrcFace,
-                rpc::NetFace, rpc::Web3Face, //rpc::PersonalFace,
-//                rpc::AdminBrcFace, rpc::AdminNetFace,
-                rpc::DebugFace, rpc::TestFace
-        >;
-
-        sessionManager.reset(new rpc::SessionManager());
-        accountHolder.reset(new SimpleAccountHolder([&]() { return web3.brcdChain(); }, getAccountPassword, keyManager,
-                                                    authenticator));
-        auto brcFace = new rpc::Brc(*web3.brcdChain(), *accountHolder.get());
-        rpc::TestFace *testBrc = nullptr;
-        if (testingMode)
-            testBrc = new rpc::Test(*web3.brcdChain());
-
-        jsonrpcIpcServer.reset(new FullServer(
-                brcFace, new rpc::Net(web3),
-                new rpc::Web3(web3.clientVersion()), //new rpc::Personal(keyManager, *accountHolder, *web3.brcdChain()),
-//                new rpc::AdminBrc(*web3.brcdChain(), *gasPricer.get(), keyManager, *sessionManager.get()),
-//                new rpc::AdminNet(web3, *sessionManager.get()),
-                new rpc::Debug(*web3.brcdChain()),
-                testBrc
-        ));
-        auto ipcConnector = new IpcServer("cppbrc");
-        jsonrpcIpcServer->addConnector(ipcConnector);
-        ipcConnector->StartListening();
-
-        if (jsonAdmin.empty())
-            jsonAdmin = sessionManager->newSession(rpc::SessionPermissions{{rpc::Privilege::Admin}});
-        else
-            sessionManager->addSession(jsonAdmin, rpc::SessionPermissions{{rpc::Privilege::Admin}});
-
-        cout << "JSONRPC Admin Session Key: " << jsonAdmin << "\n";
-    }
 
     for (auto const &p: preferredNodes)
         if (p.second.second)

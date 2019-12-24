@@ -3,7 +3,7 @@
 #include "SafeHttpServer.h"
 #include "jsonrpccpp/server/abstractserverconnector.h"
 #include <thread>
-
+#include <iostream>
 
 // class IClientConnectionHandler {
 //     public:
@@ -21,6 +21,7 @@ class defualtHandleRequest : public jsonrpc::IClientConnectionHandler
 public:
     virtual ~defualtHandleRequest() {}
     virtual void HandleRequest(const std::string& request, std::string& retValue) {
+        std::cout << request << std::endl;
         retValue = "default";
     }
 };
@@ -31,9 +32,12 @@ class v1HanleRequest : public jsonrpc::IClientConnectionHandler
 public:
     virtual ~v1HanleRequest() {}
     virtual void HandleRequest(const std::string& request, std::string& retValue) {
+        std::cout << request << std::endl;
         retValue = "default v1";
     }
 };
+
+
 }  // namespace rpc
 }  // namespace dev
 

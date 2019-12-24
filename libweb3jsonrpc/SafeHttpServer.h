@@ -4,6 +4,7 @@
 #include <map>
 #include <microhttpd.h>
 #include "jsonrpccpp/server/abstractserverconnector.h"
+#include "Routerpc.h"
 
 namespace dev
 {
@@ -23,7 +24,7 @@ public:
 	virtual bool SendResponse(std::string const& _response, void* _addInfo = nullptr);
 	virtual bool SendOptionsResponse(void* _addInfo);
 
-	void SetUrlHandler(const std::string &url, jsonrpc::IClientConnectionHandler *handler);
+	void SetUrlHandler(const std::string &url, RouteRpcInterface *handler);
 	void setAllowedOrigin(std::string const& _origin) { m_allowedOrigin = _origin; }
 	std::string const& allowedOrigin() const { return m_allowedOrigin; }
 	virtual pCallBack getCallback() {
@@ -41,13 +42,13 @@ private:
 
     struct MHD_Daemon* daemon;
 
-    std::map<std::string, jsonrpc::IClientConnectionHandler*> urlhandler;
+    std::map<std::string, RouteRpcInterface*> urlhandler;
 
     static int callback(void* cls, struct MHD_Connection* connection, const char* url,
         const char* method, const char* version, const char* upload_data, size_t* upload_data_size,
         void** con_cls);
 
-    jsonrpc::IClientConnectionHandler* GetHandler(const std::string& url);
+    RouteRpcInterface* GetHandler(const std::string& url);
 
     std::string m_allowedOrigin;
     std::string m_address;
