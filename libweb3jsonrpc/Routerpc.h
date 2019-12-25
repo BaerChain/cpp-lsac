@@ -30,8 +30,6 @@ public:
     virtual void HandleRequest(
         const std::string& path, const std::string& request, std::string& retValue)
     {
-        std::cout << "path " << path << std::endl;
-        std::cout << "request " << request << std::endl;
         Json::Value input;
         Json::Value response;
         try
@@ -47,8 +45,6 @@ public:
             if (res)
             {
                 bool skip_version = false;
-                std::cout << "method: " << input["method"].asString() << std::endl;
-                std::cout << "method: " << input["params"].toStyledString() << std::endl;
                 for (auto itr = _route.rbegin(); itr != _route.rend(); itr++)
                 {
                     if (itr->first == path || skip_version)
@@ -64,11 +60,6 @@ public:
                             itr->second->HandleMethodCall(pro, input["params"], output);
 
                             response["result"] = output;
-                            response["id"] = input["id"];
-                            response["jsonrpc"] = Json::Value("2.0");
-                            retValue = response.toStyledString();
-
-                            return;
                         }
                     }
                 }
