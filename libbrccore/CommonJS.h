@@ -3,6 +3,7 @@
 #include <string>
 #include <libdevcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 
 // devcrypto
@@ -21,6 +22,11 @@ inline Address jsToAddress(std::string const& _s) { return brc::toAddress(_s); }
 
 /// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
 std::string prettyU256(u256 _n, bool _abridged = true);
+
+Address jsToAddressFromNewAddress(std::string const& _ns);
+std::string jsToNewAddress(std::string const _s);
+
+std::string to2HashAddress(Address const& _addr);
 
 }
 

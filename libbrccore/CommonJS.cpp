@@ -2,8 +2,11 @@
 #include <sstream>
 #include <string>
 #include <libbrccore/Exceptions.h>
+#include <libdevcrypto/base58.h>
 namespace dev
 {
+    using h192 = FixedHash<24>;
+
 std::string prettyU256(u256 _n, bool _abridged)
 {
     std::string raw;
@@ -34,7 +37,53 @@ std::string prettyU256(u256 _n, bool _abridged)
     return s.str();
 }
 
-namespace brc
+std::string to2HashAddress(Address const &_addr) {
+    return toHex(sha3(sha3(Address(_addr))).ref().cropped(0, 4).toBytes());
+}
+
+Address jsToAddressFromNewAddress(std::string const &_ns) {
+    try {
+        ///check length and brc
+        if (_ns.length() <=3 || _ns.substr(0, 3) != "brc") {
+            BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+        }
+        auto base58Str = _ns.substr(3, _ns.length());
+        auto hash_addr = dev::crypto::from_base58(base58Str);
+        if (hash_addr.size() != 24) {
+            BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+        }
+        auto hash_addr_str = toHex(hash_addr);
+        ///check addr hash
+        auto old_addr = hash_addr_str.substr(8, 48);
+        if (hash_addr_str.substr(0, 8) != to2HashAddress(Address(old_addr))) {
+            BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+        }
+        return jsToAddress(old_addr);
+    }
+    catch (dev::crypto::Base58_decode_exception& e){}
+    catch (dev::brc::InvalidAddress){}
+    catch (std::exception e){}
+    catch (...){}
+    BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+}
+
+std::string jsToNewAddress(std::string const _s) {
+    Address _addr = jsToAddress(_s);
+    std::string new_addr = "brc";
+    try {
+        auto newAddress = to2HashAddress(_addr) + toHex(_addr);
+        auto hexAddress = h192(newAddress);
+        if(hexAddress == h192())
+            BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+        return "brc" + dev::crypto::to_base58((char*)hexAddress.data(), 24);
+    }
+    catch (dev::crypto::Base58_decode_exception){}
+    catch (std::exception){}
+    catch (...){}
+    BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+}
+
+    namespace brc
 {
 
 BlockNumber jsToBlockNumber(std::string const& _js)
