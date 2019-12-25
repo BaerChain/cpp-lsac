@@ -75,7 +75,10 @@ public:
         }
         catch (const std::exception& e)
         {
-            response["error"] = "cant resolve json";
+            response["error"] = e.what();
+        }
+        catch (...){
+            response["error"] = "unknow can not find METHOD";
         }
         response["jsonrpc"] = Json::Value("2.0");
         response["id"] = input["id"];

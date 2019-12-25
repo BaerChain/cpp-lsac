@@ -36,6 +36,9 @@ set(sources
         WhisperFace.h
         SafeHttpServer.h
         SafeHttpServer.cpp
+        BrcV2.h
+        BrcV2.cpp
+        BrcFace.h
         )
 
 if(WIN32)

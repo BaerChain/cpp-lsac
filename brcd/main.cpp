@@ -40,6 +40,7 @@
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/SafeHttpServer.h>
 #include <libweb3jsonrpc/Routerpc.h>
+#include "libweb3jsonrpc/BrcV2.h"
 
 #include "MinerAux.h"
 #include "AccountManager.h"
@@ -1094,6 +1095,7 @@ int main(int argc, char **argv) {
     //http 端口
     {
         ModularServer<> *jsonrpcHttpServer;
+        ModularServer<> *jsonrpcBrcV2Server;
 
         int jsonRPCURL = 1;
         using FullServer = ModularServer<
@@ -1102,6 +1104,8 @@ int main(int argc, char **argv) {
                 //rpc::AdminBrcFace, rpc::AdminNetFace,
                 rpc::DebugFace, rpc::TestFace
         >;
+
+        using BrcV2Server = ModularServer<rpc::BrcV2Face>;
 
         sessionManager.reset(new rpc::SessionManager());
         accountHolder.reset(new SimpleAccountHolder([&]() { return web3.brcdChain(); }, getAccountPassword, keyManager,
@@ -1118,9 +1122,12 @@ int main(int argc, char **argv) {
                                                new rpc::Debug(*web3.brcdChain()),
                                                nullptr
             );
+            auto brcV2face = new rpc::BrcV2(*web3.brcdChain(), *accountHolder.get());
+            jsonrpcBrcV2Server = new BrcV2Server(brcV2face);
+
             RouteRpc *v1r = new RouteRpc();
             v1r->setRoutepath("/", jsonrpcHttpServer);
-            v1r->setRoutepath("/v2", jsonrpcHttpServer);
+            v1r->setRoutepath("/v2", jsonrpcBrcV2Server);
 
             auto httpConnector = new SafeHttpServer(listenIP, (int) http_port, "", "", (int) http_threads);
             httpConnector->SetUrlHandler("/", v1r);
