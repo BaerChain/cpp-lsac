@@ -20,6 +20,9 @@ using namespace dev::rpc;
 #define MAXQUERIES 50
 #define ZERONUM 0
 
+#define CATCHRPCEXCEPTION catch (Exception const& ex) { throw JsonRpcException(exceptionToErrorMessage());}  \
+                          catch(...){ BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));}
+
 BrcV2::BrcV2(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
         : m_brc(_brc), m_brcAccounts(_brcAccounts)
 {}
@@ -36,10 +39,7 @@ Json::Value BrcV2::brc_getSuccessPendingOrder(string const& _getSize, string con
     {
         return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNum(_blockNum));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getPendingOrderPoolForAddr(
@@ -48,12 +48,9 @@ Json::Value BrcV2::brc_getPendingOrderPoolForAddr(
     try
     {
         return client()->pendingOrderPoolForAddrMessage(
-                jsToAddress(_address), jsToInt(_getSize), jsToBlockNum(_blockNum));
+                jsToAddressFromNewAddress(_address), jsToInt(_getSize), jsToBlockNum(_blockNum));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
@@ -68,10 +65,7 @@ Json::Value BrcV2::brc_getPendingOrderPool(string const& _order_type, string con
         return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
                                                  1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getSuccessPendingOrderForAddr(string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
@@ -83,12 +77,10 @@ Json::Value BrcV2::brc_getSuccessPendingOrderForAddr(string const& _address, str
     }
 
     try {
-        return client()->successPendingOrderForAddrMessage(jsToAddress(_address), jsToint64(_minTime),
+        return client()->successPendingOrderForAddrMessage(jsToAddressFromNewAddress(_address), jsToint64(_minTime),
                                                            jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNum(_blockNum));
-    }catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
+    CATCHRPCEXCEPTION
 
 }
 
@@ -98,12 +90,9 @@ Json::Value BrcV2::brc_getBalance(string const& _address, string const& _blockNu
     try
     {
         // return toJS(client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
-        return client()->accountMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+        return client()->accountMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getBlockReward(string const& _address, string const& _pageNum, string const& _listNum, string const& _blockNumber)
@@ -117,48 +106,36 @@ Json::Value BrcV2::brc_getBlockReward(string const& _address, string const& _pag
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Incoming parameters cannot be negative")));
         }
-        return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNum(_blockNumber));
+        return client()->blockRewardMessage(jsToAddressFromNewAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNum(_blockNumber));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getQueryExchangeReward(string const& _address, std::string const& _blockNumber)
 {
     try {
 
-        return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+        return client()->queryExchangeRewardMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getQueryBlockReward(string const& _address, std::string const& _blockNumber)
 {
 
     try {
-        return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+        return client()->queryBlockRewardMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_getBallot(string const& _address, string const& _blockNumber)
 {
     try
     {
-        return toJS(client()->ballotAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
+        return toJS(client()->ballotAt(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_getStorageAt(
@@ -166,14 +143,10 @@ string BrcV2::brc_getStorageAt(
 {
     try
     {
-        return toJS(toCompactBigEndian(client()->stateAt(jsToAddress(_address), jsToU256(_position),
-                                                         jsToBlockNum(_blockNumber)),
-                                       32));
+        return toJS(toCompactBigEndian(client()->stateAt(jsToAddressFromNewAddress(_address), jsToU256(_position),
+                                                         jsToBlockNum(_blockNumber)), 32));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_getStorageRoot(string const& _address, string const& _blockNumber)
@@ -181,12 +154,9 @@ string BrcV2::brc_getStorageRoot(string const& _address, string const& _blockNum
     try
     {
         return toString(
-                client()->stateRootAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
+                client()->stateRootAt(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_pendingTransactions()
@@ -212,76 +182,9 @@ string BrcV2::brc_getTransactionCount(string const& _address, string const& _blo
 {
     try
     {
-        return toJS(client()->countAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
+        return toJS(client()->countAt(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-Json::Value BrcV2::brc_getBlockTransactionCountByHash(string const& _blockHash)
-{
-    try
-    {
-        h256 blockHash = jsToFixed<32>(_blockHash);
-        if (!client()->isKnown(blockHash))
-            return Json::Value(Json::nullValue);
-
-        return toJS(client()->transactionCount(blockHash));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-Json::Value BrcV2::brc_getBlockTransactionCountByNumber(string const& _blockNumber)
-{
-    try
-    {
-        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
-        if (!client()->isKnown(blockNumber))
-            return Json::Value(Json::nullValue);
-
-        return toJS(client()->transactionCount(jsToBlockNum(_blockNumber)));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-Json::Value BrcV2::brc_getUncleCountByBlockHash(string const& _blockHash)
-{
-    try
-    {
-        h256 blockHash = jsToFixed<32>(_blockHash);
-        if (!client()->isKnown(blockHash))
-            return Json::Value(Json::nullValue);
-
-        return toJS(client()->uncleCount(blockHash));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-Json::Value BrcV2::brc_getUncleCountByBlockNumber(string const& _blockNumber)
-{
-    try
-    {
-        BlockNumber blockNumber = jsToBlockNum(_blockNumber);
-        if (!client()->isKnown(blockNumber))
-            return Json::Value(Json::nullValue);
-
-        return toJS(client()->uncleCount(blockNumber));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_getCode(string const& _address, string const& _blockNumber)
@@ -308,39 +211,7 @@ Json::Value BrcV2::brc_inspectTransaction(std::string const& _rlp)
     {
         return toJson(Transaction(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::Everything));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-string BrcV2::brc_sendRawTransaction(std::string const& _rlp)
-{
-    try
-    {
-        // Don't need to check the transaction signature (CheckTransaction::None) since it will
-        // be checked as a part of transaction import
-        Transaction t(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::None);
-        return toJS(client()->importTransaction(t));
-    }
-    catch (Exception const& ex)
-    {
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
-}
-
-std::string BrcV2::brc_importBlock(const std::string &_rlp) {
-#ifndef NDEBUG
-    try {
-        auto by = jsToBytes(_rlp, OnFailed::Throw);
-        return toJS(client()->importBlock(&by));
-    }catch (const Exception &e){
-        testlog << " error:" << e.what();
-        throw JsonRpcException(exceptionToErrorMessage());
-    }
-#else
-    return "this method only use debug.";
-#endif
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_call(Json::Value const& _json, string const& _blockNumber)
@@ -353,10 +224,7 @@ string BrcV2::brc_call(Json::Value const& _json, string const& _blockNumber)
                                             jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
         return toJS(er.output);
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_estimateGas(Json::Value const& _json)
@@ -370,10 +238,7 @@ string BrcV2::brc_estimateGas(Json::Value const& _json)
                             ->estimateGas(t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock)
                             .first);
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getBlockByHash(string const& _blockHash, bool _includeTransactions)
@@ -391,10 +256,7 @@ Json::Value BrcV2::brc_getBlockByHash(string const& _blockHash, bool _includeTra
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getBlockDetialByHash(const string &_blockHash, bool _includeTransactions)
@@ -412,10 +274,7 @@ Json::Value BrcV2::brc_getBlockDetialByHash(const string &_blockHash, bool _incl
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 
@@ -435,10 +294,7 @@ Json::Value BrcV2::brc_getBlockByNumber(string const& _blockNumber, bool _includ
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getBlockDetialByNumber(string const& _blockNumber, bool _includeTransactions)
@@ -456,10 +312,7 @@ Json::Value BrcV2::brc_getBlockDetialByNumber(string const& _blockNumber, bool _
             return toJson(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getTransactionByHash(std::string const& _transactionHash)
@@ -472,10 +325,7 @@ Json::Value BrcV2::brc_getTransactionByHash(std::string const& _transactionHash)
 
         return toJson(client()->localisedTransaction(h), false, client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getTransactionDetialByHash(std::string const& _transactionHash)
@@ -488,16 +338,16 @@ Json::Value BrcV2::brc_getTransactionDetialByHash(std::string const& _transactio
 
         return toJson(client()->localisedTransaction(h), true, client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getAnalysisData(std::string const& _data)
 {
     bytes r = fromHex(_data);
-    return analysisData(r);
+    try {
+        return analysisData(r);
+    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getTransactionByBlockHashAndIndex(
@@ -515,10 +365,7 @@ Json::Value BrcV2::brc_getTransactionByBlockHashAndIndex(
 
         return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getTransactionDetialByBlockHashAndIndex(
@@ -533,10 +380,7 @@ Json::Value BrcV2::brc_getTransactionDetialByBlockHashAndIndex(
 
         return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 
@@ -562,10 +406,7 @@ Json::Value BrcV2::brc_getTransactionByBlockNumberAndIndex(
 
         return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getTransactionDetialByBlockNumberAndIndex(
@@ -581,10 +422,7 @@ Json::Value BrcV2::brc_getTransactionDetialByBlockNumberAndIndex(
 
         return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 
@@ -598,10 +436,7 @@ Json::Value BrcV2::brc_getTransactionReceipt(string const& _transactionHash)
 
         return toJson(client()->localisedTransactionReceipt(h));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getUncleByBlockHashAndIndex(
@@ -612,10 +447,7 @@ Json::Value BrcV2::brc_getUncleByBlockHashAndIndex(
         return toJson(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)),
                       client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getUncleByBlockNumberAndIndex(
@@ -629,10 +461,7 @@ Json::Value BrcV2::brc_getUncleByBlockNumberAndIndex(
         return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
                       client()->sealEngine());
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_newFilter(Json::Value const& _json)
@@ -641,10 +470,7 @@ string BrcV2::brc_newFilter(Json::Value const& _json)
     {
         return toJS(client()->installWatch(toLogFilter(_json, *client())));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_newFilterEx(Json::Value const& _json)
@@ -653,16 +479,7 @@ string BrcV2::brc_newFilterEx(Json::Value const& _json)
     {
         return toJS(client()->installWatch(toLogFilter(_json)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-string BrcV2::brc_newBlockFilter()
-{
-    h256 filter = dev::brc::ChainChangedFilter;
-    return toJS(client()->installWatch(filter));
+    CATCHRPCEXCEPTION
 }
 
 string BrcV2::brc_newPendingTransactionFilter()
@@ -671,33 +488,6 @@ string BrcV2::brc_newPendingTransactionFilter()
     return toJS(client()->installWatch(filter));
 }
 
-bool BrcV2::brc_uninstallFilter(string const& _filterId)
-{
-    try
-    {
-        return client()->uninstallWatch(jsToInt(_filterId));
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
-Json::Value BrcV2::brc_getFilterChanges(string const& _filterId)
-{
-    try
-    {
-        int id = jsToInt(_filterId);
-        auto entries = client()->checkWatch(id);
-        //		if (entries.size())
-        //			cnote << "FIRING WATCH" << id << entries.size();
-        return toJson(entries);
-    }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
 
 Json::Value BrcV2::brc_getFilterChangesEx(string const& _filterId)
 {
@@ -709,10 +499,7 @@ Json::Value BrcV2::brc_getFilterChangesEx(string const& _filterId)
         //			cnote << "FIRING WATCH" << id << entries.size();
         return toJsonByBlock(entries);
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getFilterLogs(string const& _filterId)
@@ -721,10 +508,7 @@ Json::Value BrcV2::brc_getFilterLogs(string const& _filterId)
     {
         return toJson(client()->logs(jsToInt(_filterId)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getFilterLogsEx(string const& _filterId)
@@ -733,10 +517,7 @@ Json::Value BrcV2::brc_getFilterLogsEx(string const& _filterId)
     {
         return toJsonByBlock(client()->logs(jsToInt(_filterId)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getLogs(Json::Value const& _json)
@@ -745,10 +526,7 @@ Json::Value BrcV2::brc_getLogs(Json::Value const& _json)
     {
         return toJson(client()->logs(toLogFilter(_json, *client())));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_getLogsEx(Json::Value const& _json)
@@ -757,41 +535,16 @@ Json::Value BrcV2::brc_getLogsEx(Json::Value const& _json)
     {
         return toJsonByBlock(client()->logs(toLogFilter(_json)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
-
-Json::Value BrcV2::brc_syncing()
-{
-    dev::brc::SyncStatus sync = client()->syncStatus();
-    if (sync.state == SyncState::Idle || !sync.majorSyncing)
-        return Json::Value(false);
-
-    Json::Value info(Json::objectValue);
-    info["startingBlock"] = sync.startBlockNumber;
-    info["highestBlock"] = sync.highestBlockNumber;
-    info["currentBlock"] = sync.currentBlockNumber;
-    return info;
-}
-
-string BrcV2::brc_chainId()
-{
-    return toJS(client()->chainId());
-}
-
 
 string BrcV2::brc_register(string const& _address)
 {
     try
     {
-        return toJS(m_brcAccounts.addProxyAccount(jsToAddress(_address)));
+        return toJS(m_brcAccounts.addProxyAccount(jsToAddressFromNewAddress(_address)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 bool BrcV2::brc_unregister(string const& _accountId)
@@ -800,10 +553,7 @@ bool BrcV2::brc_unregister(string const& _accountId)
     {
         return m_brcAccounts.removeProxyAccount(jsToInt(_accountId));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value BrcV2::brc_fetchQueuedTransactions(string const& _accountId)
@@ -818,22 +568,16 @@ Json::Value BrcV2::brc_fetchQueuedTransactions(string const& _accountId)
         m_brcAccounts.clearQueue(id);
         return ret;
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value dev::rpc::BrcV2::brc_getObtainVote(const std::string& _address, const std::string& _blockNumber)
 {
     try
     {
-        return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+        return client()->obtainVoteMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 
@@ -841,13 +585,11 @@ Json::Value dev::rpc::BrcV2::brc_getVoted(const std::string& _address, const std
 {
     try
     {
-        auto ret= client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+        auto  address = jsToAddressFromNewAddress(_address);
+        auto ret= client()->votedMessage(address, jsToBlockNum(_blockNumber));
         return ret;
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 
@@ -857,10 +599,7 @@ Json::Value dev::rpc::BrcV2::brc_getElector(const std::string& _blockNumber)
     {
         return client()->electorMessage(jsToBlockNum(_blockNumber));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 Json::Value dev::rpc::BrcV2::brc_estimateGasUsed(const Json::Value &_json)
@@ -873,10 +612,7 @@ Json::Value dev::rpc::BrcV2::brc_estimateGasUsed(const Json::Value &_json)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(std::string(*boost::get_error_info<errinfo_comment >(_e))));
     }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 
 }
 

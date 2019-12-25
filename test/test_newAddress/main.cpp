@@ -126,6 +126,10 @@ int main(int argc, char *argv[]){
     std::cout << ret__ << std::endl;
     std::cout << jsToAddressFromNewAddress(ret__) << std::endl;
     std:: cout << "*************************************" << std::endl;
+    auto test_a =jsToNewAddress("0x0000000067656e6573697343616e646964617465");
+    std::cout << test_a<<std::endl;
+    std::cout << jsToAddressFromNewAddress(test_a);
+
     for(int i=0; i<10000; i++){
         auto key_pair = KeyPair::create();
         auto sec = key_pair.secret();

@@ -1031,6 +1031,9 @@ string dev::rpc::exceptionToErrorMessage()
             ret += std::string(*_error);
         }
     }
+    catch (InvalidAddress){
+        ret = "has invalidAddress in method params";
+    }
 	catch (...)
 	{
 		ret = "Invalid RPC parameters.";
