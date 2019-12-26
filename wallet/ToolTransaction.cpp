@@ -30,6 +30,8 @@
 #define DATA_KEY_Price "gasPrice"
 #define DATA_KEY_ChainId "chainId"
 
+using namespace dev;
+
 std::string wallet::ToolTransaction::sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) {
     // toHexPrefixed(sign_t.rlp())
     std::string _result;
@@ -50,7 +52,8 @@ std::string wallet::ToolTransaction::connectNode(std::string const& _ip_port) {
     return _result;
 }
 
-std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::string json_str, std::string& transaction_hash) {
+std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::string const& json_str, std::string& transaction_hash,
+                                                                         std::string const& _get_noce_ip /*=""*/) {
     std::pair<bool , std::string> _pair =  std::make_pair(false, "");
     js::mValue val;
     js::mObject obj;
@@ -75,8 +78,8 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             for (auto &data : array) {
                 trx_source tx;
                 auto d_obj = data.get_obj();
-                tx.from = Address(d_obj[DATA_KEY_FROM].get_str());
-                tx.to = Address(d_obj[DATA_KEY_TO].get_str());
+                tx.from = jsToAddressAcceptAllAddress(d_obj[DATA_KEY_FROM].get_str());
+                tx.to = jsToAddressAcceptAllAddress(d_obj[DATA_KEY_TO].get_str());
                 tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
                 tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
                 tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
@@ -89,8 +92,8 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                     switch (type) {
                         case vote: {
                             auto new_op = new vote_operation((op_type) type,
-                                                             Address(op_obj["m_from"].get_str()),
-                                                             Address(op_obj["m_to"].get_str()),
+                                                             jsToAddressAcceptAllAddress(op_obj["m_from"].get_str()),
+                                                             jsToAddressAcceptAllAddress(op_obj["m_to"].get_str()),
                                                              (uint8_t) op_obj["m_vote_type"].get_int(),
                                                              u256(op_obj["m_vote_numbers"].get_str())
                             );
@@ -99,8 +102,8 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         }
                         case brcTranscation: {
                             auto transcation_op = new transcation_operation((op_type) type,
-                                                                            Address(op_obj["m_from"].get_str()),
-                                                                            Address(op_obj["m_to"].get_str()),
+                                                                            jsToAddressAcceptAllAddress(op_obj["m_from"].get_str()),
+                                                                            jsToAddressAcceptAllAddress(op_obj["m_to"].get_str()),
                                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
                                                                             u256(op_obj["m_transcation_numbers"].get_str())
                             );
@@ -109,7 +112,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         }
                         case pendingOrder: {
                             auto pendingorder_op = new pendingorder_opearaion((op_type) type,
-                                                                              Address(op_obj["m_from"].get_str()),
+                                                                              jsToAddressAcceptAllAddress(op_obj["m_from"].get_str()),
                                                                               (ex::order_type) op_obj["m_type"].get_int(),
                                                                               (ex::order_token_type) op_obj["m_token_type"].get_int(),
                                                                               (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
@@ -137,13 +140,17 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                             break;
                         }
                         case changeMiner: {
-   
+                            auto changeMiner_op = new changeMiner_operation((op_type) type,
+                                                                            jsToAddressAcceptAllAddress(op_obj["m_before"].get_str()),
+                                                                            jsToAddressAcceptAllAddress(op_obj["m_after"].get_str())
+                            );
+                            tx.ops.push_back(std::shared_ptr<changeMiner_operation>(changeMiner_op));
                             break;
                         }
                         case receivingincome: {
                             auto receivingincome_op = new receivingincome_operation((op_type) type,
                                                                                     1,
-                                                                                    Address(op_obj["m_from"].get_str())
+                                                                                    jsToAddressAcceptAllAddress(op_obj["m_from"].get_str())
                             );
                             tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
                             break;
@@ -154,8 +161,8 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                                                                                     transferAutoExType(op_obj["m_autoExType"].get_int()),
                                                                                     u256(op_obj["m_autoExNum"].get_str()),
                                                                                     u256(op_obj["m_transferNum"].get_str()),
-                                                                                    Address(op_obj["m_from"].get_str()),
-                                                                                    Address(op_obj["m_to"].get_str())
+                                                                                    jsToAddressAcceptAllAddress(op_obj["m_from"].get_str()),
+                                                                                    jsToAddressAcceptAllAddress(op_obj["m_to"].get_str())
                             );
                             tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
                             break;                    
@@ -248,7 +255,17 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             ts.from = t.from;
             ts.to = t.to;
             ts.value = t.value;
-            ts.nonce = t.nonce;
+            if(!_get_noce_ip.empty()) {
+                //ts.nonce = get_address_nonce(t.from, _ip);
+                auto ret= get_address_nonce(t.from, _get_noce_ip);
+                if(ret.first){
+                    ts.nonce = ret.second;
+                } else{
+                    ts.nonce = t.nonce;
+                }
+            }
+            else
+                ts.nonce = t.nonce;
             ts.gas = t.gas;
             ts.gasPrice = t.gasPrice;
             brc::Transaction sign_t(ts, keys[t.from]);
@@ -277,5 +294,29 @@ bytes wallet::ToolTransaction::packed_operation_data(const std::vector<std::shar
     }
     rlp.appendVector<bytes>(_v);
     return rlp.out();
+}
+
+std::pair<bool, u256> wallet::ToolTransaction::get_address_nonce(const Address &add, const std::string &ip) {
+    try {
+        std::string _result;
+        std::string send_msg = "{\"jsonrpc\":\"2.0\",\"method\":\"brc_getBalance\",\"params\":[\""+ toHex(add)  +"\", \"latest\"],\"id\":1}";
+        jsonrpc::HttpClient _httpClient = jsonrpc::HttpClient(ip);
+        _httpClient.SendRPCMessage(send_msg, _result);
+        auto value = string_to_json(_result)["result"];
+        return std::make_pair(true, u256(fromBigEndian<u256>(fromHex(value["nonce"].asString()))) );
+    }catch (...){
+    }
+    return std::make_pair(false, 0);
+}
+
+Json::Value wallet::ToolTransaction::string_to_json(const std::string &source) {
+    auto readerBuilder = Json::CharReaderBuilder();
+    auto sreader = readerBuilder.newCharReader();
+    Json::Value root;
+    std::string errotStr;
+    if (!sreader->parse(source.c_str(), source.c_str() + source.size(), &root, &errotStr)) {
+        std::cout << "TODO throw exception.\n";
+    }
+    return root;
 }
 

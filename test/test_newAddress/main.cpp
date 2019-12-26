@@ -128,24 +128,52 @@ int main(int argc, char *argv[]){
     std:: cout << "*************************************" << std::endl;
     auto test_a =jsToNewAddress("0x0000000067656e6573697343616e646964617465");
     std::cout << test_a<<std::endl;
-    std::cout << jsToAddressFromNewAddress(test_a);
+    std::cout << jsToAddressFromNewAddress(test_a)<<std::endl;
 
-    for(int i=0; i<10000; i++){
-        auto key_pair = KeyPair::create();
-        auto sec = key_pair.secret();
-        auto oldAddr = toString(key_pair.address());
-        auto ret = jsToNewAddress(oldAddr);
-        std::cout << ret << "  ";
-        auto ret1 = jsToAddressFromNewAddress(ret);
-        std::cout << ret1 ;
-        if(Address(oldAddr) == ret1)
-            std::cout << "     ok "<<std::endl;
-        else
-        {
-            std::cout << "&&&&&&&&&&&&&&&&&";
-            return 0;
-        }
+    try {
+        std::string a1= "0x4d51ba213bad0f7ed97d336b2c00dc76576aac98";
+        std::string a2= "4d51ba213bad0f7ed97d336b2c00dc76576aac98";
+        std::string a3= "brcDWqUiYGMfSwUGJ5comAWFa7WFsiKofPTS";
+
+        std::string a4=    "4d51ba213bad0f7ed97d336b2c00dcaac98";
+        std::string a41= "0x4d51ba213bad0f7ed97d336b2c00dcaac98";
+        std::string a5= "4d51ba213bad0f7ed97d336b2c00dc76576aac985";
+        std::string a6= "brcDWqUiYGMfSwUGJ5comAWFa7WFsiKofWTS";
+        std::string a7= "";
+        std::string a8= "0x";
+
+        std::cout << "****************************************************"<<std::endl;
+        std::cout << "a1:" << jsToAddressAcceptAllAddress(a1)<<std::endl;
+        std::cout << "a2:" << jsToAddressAcceptAllAddress(a2)<<std::endl;
+        std::cout << "a3:" << jsToAddressAcceptAllAddress(a3)<<std::endl;
+        //std::cout << "a41:" << jsToAddressAcceptAllAddress(a41)<<std::endl;
+        //std::cout << "a4:" << jsToAddressAcceptAllAddress(a4)<<std::endl;
+        //std::cout << "a5:" << jsToAddressAcceptAllAddress(a5)<<std::endl;
+        //std::cout << "a6:" << jsToAddressAcceptAllAddress(a6)<<std::endl;
+        std::cout << "a7:" << jsToAddressAcceptAllAddress(a7)<<std::endl;
+        //std::cout << "a8:" << jsToAddressAcceptAllAddress(a8)<<std::endl;
+
+    }catch (...){
+        std::cout << "address Error";
     }
+
+
+//    for(int i=0; i<10000; i++){
+//        auto key_pair = KeyPair::create();
+//        auto sec = key_pair.secret();
+//        auto oldAddr = toString(key_pair.address());
+//        auto ret = jsToNewAddress(oldAddr);
+//        std::cout << ret << "  ";
+//        auto ret1 = jsToAddressFromNewAddress(ret);
+//        std::cout << ret1 ;
+//        if(Address(oldAddr) == ret1)
+//            std::cout << "     ok "<<std::endl;
+//        else
+//        {
+//            std::cout << "&&&&&&&&&&&&&&&&&";
+//            return 0;
+//        }
+//    }
 
     return 0;
 }

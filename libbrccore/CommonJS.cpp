@@ -54,7 +54,7 @@ Address jsToAddressFromNewAddress(std::string const &_ns) {
         }
         auto hash_addr_str = toHex(hash_addr);
         ///check addr hash
-        auto old_addr = hash_addr_str.substr(8, 48);
+        auto old_addr = hash_addr_str.substr(8);
         if (hash_addr_str.substr(0, 8) != to2HashAddress(Address(old_addr))) {
             BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
         }
@@ -79,6 +79,20 @@ std::string jsToNewAddress(std::string const _s) {
     }
     catch (dev::crypto::Base58_decode_exception){}
     catch (std::exception){}
+    catch (...){}
+    BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
+}
+
+Address jsToAddressAcceptAllAddress(std::string const &_allAddr) {
+    if(_allAddr.empty())
+        return Address();
+    try{
+        return jsToAddressFromNewAddress(_allAddr);
+    }
+    catch (...){}
+    try {
+        return jsToAddress(_allAddr);
+    }
     catch (...){}
     BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
 }

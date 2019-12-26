@@ -21,6 +21,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libbrccore/CommonJS.h>
 #include <brc/types.hpp>
+#include <wallet/ToolTransaction.h>
 
 namespace bpo = boost::program_options;
 namespace bfs1 = boost::filesystem;
@@ -142,228 +143,30 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
     _httpClient.SetTimeout(1500);
     _httpClient.SendRPCMessage(send_msg, _result);
 
-    cwarn << _result;
+    cwarn <<"\n"<< _result;
 
 }
 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
+    std::pair<bool , std::string> _pair={false, ""};
     try {
-        js::mValue val;
-        js::mObject obj;
-        try {
-            js::read_string_or_throw(contentsString(path.string()), val);
-            obj = val.get_obj();
+        std::string hash_t = "";
+        _pair = wallet::ToolTransaction::sign_trx_from_json(contentsString(path.string()), hash_t, _ip);
+
+        if (_pair.first && _is_send) {
+            sendRawTransation(_pair.second, _ip);
         }
-        catch (...){
-            std::cout << "Error the Json format error !"<<std::endl;
-            exit(1);
-        }
-
-        std::vector<trx_source> trx_datas;
-        //获取数据
-        if (obj.count("source")) {
-            auto array = obj["source"].get_array();
-            if(array.empty()){
-                std::cout << "Error the source is null !"<<std::endl;
-                exit(1);
-            }
-            for (auto &data : array) {
-				trx_source tx;
-                auto d_obj = data.get_obj();
-                tx.from = Address(d_obj[DATA_KEY_FROM].get_str());
-                tx.to = Address(d_obj[DATA_KEY_TO].get_str());
-                tx.value = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_VALUE].get_str())));
-                tx.nonce = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_NONCE].get_str())));
-                tx.gas = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_GAS].get_str())));
-				tx.gasPrice = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_Price].get_str())));
-				tx.chainId = u256(fromBigEndian<u256>(fromHex(d_obj[DATA_KEY_ChainId].get_str())));   // must same with genesis chainId
-                for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
-                    auto op_obj = p.get_obj();
-                    auto type = op_obj["type"].get_int();
-                    switch (type) {
-                        case vote: {
-                            auto new_op = new vote_operation((op_type) type,
-                                                             Address(op_obj["m_from"].get_str()),
-                                                             Address(op_obj["m_to"].get_str()),
-                                                             (uint8_t) op_obj["m_vote_type"].get_int(),
-															 u256(op_obj["m_vote_numbers"].get_str())
-                                                             );
-                            tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
-                            break;
-                        }
-                        case brcTranscation: {
-                            auto transcation_op = new transcation_operation((op_type) type,
-                                                                            Address(op_obj["m_from"].get_str()),
-                                                                            Address(op_obj["m_to"].get_str()),
-                                                                            (uint8_t) op_obj["m_transcation_type"].get_int(),
-                                                                            u256(op_obj["m_transcation_numbers"].get_str())
-                                                                            );
-                            tx.ops.push_back(std::shared_ptr<transcation_operation>(transcation_op));
-                            break;
-                        }
-                        case pendingOrder: {
-                            auto pendingorder_op = new pendingorder_opearaion( (op_type)type,
-                                                                               Address(op_obj["m_from"].get_str()),
-                                                                              (ex::order_type) op_obj["m_type"].get_int(),
-                                                                              (ex::order_token_type) op_obj["m_token_type"].get_int(),
-                                                                              (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
-                                                                               u256(op_obj["m_num"].get_str()),
-                                                                               u256(op_obj["m_price"].get_str())
-                                                                              );
-                            tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
-                            break;
-                        }
-						case cancelPendingOrder: {
-							auto cancel_op = new cancelPendingorder_operation((op_type)type, 3,h256(op_obj["m_hash"].get_str()));
-							tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
-							break;
-						}
-						case deployContract: {
-							tx.to = Address();
-							tx.isContract = trx_source::Contract::deploy ;
-							tx.data = fromHex(op_obj["contract"].get_str());
-                            break;
-						}
-                        case executeContract:{						
-							tx.data = fromHex(op_obj["contract"].get_str());
-							tx.isContract = trx_source::Contract::execute;
-                            break;
-						}
-                        case changeMiner:{
-							auto changeMiner_op = new changeMiner_operation( (op_type)type,
-                                                                              Address(op_obj["m_before"].get_str()),
-                                                                              Address(op_obj["m_after"].get_str())
-                                                                              );
-                            tx.ops.push_back(std::shared_ptr<changeMiner_operation>(changeMiner_op));
-                            break;
-						}
-                        case receivingincome:{
-							auto receivingincome_op = new receivingincome_operation( (op_type)type,
-							            uint8_t(op_obj["m_receivingType"].get_int()),
-							            Address(op_obj["m_from"].get_str())
-                                                                              );
-                            tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
-                            break;
-						}
-                        case transferAutoEx:{
-                            auto transferAutoEx_op = new transferAutoEx_operation( (op_type) type,
-                                                                                   transationTool::transferAutoExType(op_obj["m_autoExType"].get_int()),
-                                                                                   u256(op_obj["m_autoExNum"].get_str()),
-                                                                                   u256(op_obj["m_transferNum"].get_str()),
-                                                                                   Address(op_obj["m_from"].get_str()),
-                                                                                   Address(op_obj["m_to"].get_str())
-                            );
-                            tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
-                            break;
-                        }
-					}
-                }
-                trx_datas.push_back(tx);
-            }
-        } else {
-            std::cout << "Error not find source.\n";
-            exit(1);
-        }
-
-        //获取私钥
-
-        std::map<Address, Secret> keys;
-        if (obj.count("keys")) {
-            js::mArray key_array;
-            try {
-                key_array = obj["keys"].get_array();
-                if (key_array.empty()){
-                    std::cout << "Error the keys is null !"<<std::endl;
-                    exit(1);
-                }
-            }
-            catch (...){
-                std::cout <<"Error the keys  not is array"<< std::endl;
-                exit(1);
-            }
-            try {
-                for (auto &obj : key_array) {
-                    auto key = obj.get_str();
-                    if(key.size() == 66 || key.size() == 64) {
-                        auto keyPair = dev::KeyPair(dev::Secret(key));
-                        keys[keyPair.address()] = keyPair.secret();
-                    }
-                    else {
-                        auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                        keys[keyPair.address()] = keyPair.secret();
-                    }
-                }
-            }
-            catch (...){
-                std::cout << "Error Secret key format error!"<<std::endl;
-                exit(1);
-            }
-        } else {
-            std::cout << "Error not find key.....\n";
-            exit(1);
-        }
-
-        //数据签名
-        std::vector<brc::Transaction> sign_trxs;
-        for (auto &t : trx_datas) {
-            if (keys.count(t.from)) {
-				brc::TransactionSkeleton ts;
-                if(t.isContract == trx_source::Contract::null)
-				{
-					bytes data = packed_operation_data(t.ops);
-					ts.data = data;
-				}
-				else if(t.isContract == trx_source::Contract::deploy)
-				{
-					ts.data = t.data;
-					ts.creation = true;
-				}
-				else if(t.isContract == trx_source::Contract::execute)
-				{
-					ts.data = t.data;
-				}
-				ts.chainId = t.chainId;
-                ts.from = t.from;
-                ts.to = t.to;
-                ts.value = t.value;
-                ts.nonce = get_address_nonce(t.from, _ip);
-
-                ts.gas = t.gas;
-                ts.gasPrice = t.gasPrice;
-
-                brc::Transaction sign_t(ts, keys[t.from]);
-
-//                auto sssss = dev::brc::toJson(sign_t);
-//                cerror << "test: " << sssss << std::endl;
-//                std::cout << "rlp: " << toHexPrefixed(sign_t.rlp()) <<std::endl;
-                std::cout << toHexPrefixed(sign_t.rlp())<<std::endl;
-                if (_is_send) {
-                    try {
-                        sendRawTransation(toHexPrefixed(sign_t.rlp()), _ip);
-                    }
-                    catch (...){
-                        std::cout << "Error can not to send:"<<_ip<<std::endl;
-                        exit(1);
-                    }
-                }
-            } else {
-                std::cout << "please input address: " << t.from << " private key."<<std::endl;
-                exit(1);
-            }
-        }
-
-
-        return true;
     }
-    catch (const std::exception &e) {
-        std::cout << "exception : " << e.what() << std::endl;
-        std::cout << "Error the data_json Field type error !"<<std::endl;
+    catch (...){
+        std::cout << "Error can not to send:"<<_ip<<std::endl;
+        exit(1);
     }
-    catch (const boost::exception &e) {
-        std::cout << "xxxxxxx " << std::endl;
+    if(!_pair.first){
+        std::cout <<"send field:\n"<< _pair.second <<std::endl;
+        exit(1);
+    } else{
+        std::cout << "send ok " << "rlp :"<< _pair.second<<std::endl;
     }
-
-    return false;
 }
 
 
@@ -405,6 +208,7 @@ void generate_key(const std::string &seed){
     std::cout << "private-key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
     std::cout << "address    : " << key_pair.address() << std::endl;
     std::cout << "public-key : " << toString(key_pair.pub())<<std::endl;
+    std::cout << "new-address: " << jsToNewAddress(toHex(key_pair.address())) << std::endl;
 
 }
 
@@ -415,6 +219,7 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(toHex(pair.address())) << std::endl;
     }
     else{
         auto pair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
@@ -422,6 +227,16 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(toHex(pair.address())) << std::endl;
+    }
+}
+
+void getNewAddressFromOld(std::string const& _oldAddr){
+    try{
+        std::cout<<"newAddress: "<< jsToNewAddress(_oldAddr) <<"\n\n";
+    }
+    catch (...){
+        std::cout << "Error! the address:"<< _oldAddr << "  is error" <<"\n\n";
     }
 }
 
@@ -438,6 +253,7 @@ int main(int argc, char *argv[]) {
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
                 ("sha3", bpo::value<std::string>(), "caculate string sha3.")
                 ("pri-tf", bpo::value<std::string>(), "private-key format.")
+                ("newaddress", bpo::value<std::string>(), "to newAddress by old Address.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -481,10 +297,14 @@ int main(int argc, char *argv[]) {
             return  0;
         }
 
-
         if(args_map.count("pri-tf")){
             format_private(args_map["pri-tf"].as<std::string>());
             return  0;
+        }
+
+        if(args_map.count("newaddress")){
+            auto oldAddr = args_map["newaddress"].as<std::string>();
+            getNewAddressFromOld(oldAddr);
         }
 
 

@@ -1,9 +1,11 @@
 add_executable(httpWallet
-        ToolTransaction.cpp
-        ToolTransaction.h
-        WalletServer.cpp
-        WalletServer.h
-        main.cpp)
+        ../ToolTransaction.cpp
+        ../ToolTransaction.h
+        HttpWalletFace.h
+        HttpWallet.h
+        HttpWallet.cpp
+        main.cpp
+        )
 target_link_libraries( httpWallet  ${Boost_LIBRARIES} devcrypto devcore brcdchain web3jsonrpc ${OPENSSL_LIBRARIES} Boost::program_options ${JSON_RPC_CPP_CLIENT_LIBRARY})
 
 target_include_directories(httpWallet
