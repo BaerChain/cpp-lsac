@@ -79,7 +79,9 @@ namespace dev
                 executeContract = 6,
                 changeMiner = 7,
                 receivingincome = 8,
-                transferAutoEx = 9
+                transferAutoEx = 9,
+                rdsnTransfer = 10,
+                rdsnReceivingIncome = 11
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -306,6 +308,36 @@ namespace dev
 
                 OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
+            };
+
+            struct rdsnTransfer_operation : public operation
+            {
+                uint8_t m_type;
+                u256 m_transferNum;
+                std::string m_data;
+                rdsnTransfer_operation(){}
+                rdsnTransfer_operation(op_type _type, u256 _rdsnTransferNum, std::string _data) :
+                    m_type(_type),
+                    m_transferNum(_rdsnTransferNum),
+                    m_data(_data){}
+
+                OPERATION_UNSERIALIZE(rdsnTransfer_operation, (m_type)(m_transferNum)(m_data))
+
+                OPERATION_SERIALIZE((m_type)(m_transferNum)(m_data))
+            };
+
+            struct rdsnReceivingIncome_operation : public operation
+            {
+                uint8_t m_type;
+                u256 m_receivingNum;
+                rdsnReceivingIncome_operation(){}
+                rdsnReceivingIncome_operation(op_type _type, u256 _receivingNum) :
+                    m_type(_type),
+                    m_receivingNum(_receivingNum){}
+
+                OPERATION_UNSERIALIZE(rdsnReceivingIncome_operation , (m_type)(m_receivingNum))
+
+                OPERATION_SERIALIZE((m_type)(m_receivingNum))
             };
 
         }  // namespace transationTool

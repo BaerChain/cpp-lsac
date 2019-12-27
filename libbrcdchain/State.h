@@ -475,6 +475,10 @@ public:
 
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
     std::pair<Address, Address> minerMapping(Address const& addr);
+
+    void rdsnTransfer(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    void rdsnReceiving(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

@@ -2,6 +2,7 @@
 #define BEARCHAIN_CONFIG_H
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Address.h>
 
 #define PRICEPRECISION 100000000
 #define MATCHINGFEERATIO 2000
@@ -79,6 +80,7 @@ namespace dev
                 ///@return the height of initSysAddress
                 static int64_t initSysAddressHeight();
 
+                static std::vector<Address> rdsnWhiteList();
         private:
             config(){}
             //~config(){}

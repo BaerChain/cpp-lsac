@@ -499,6 +499,32 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
     }
 }
 
+
+void dev::brc::BRCTranscation::verifyrdsnTransfer(Address const& _from, std::vector<std::shared_ptr<dev::brc::transationTool::operation>> const& _ops)
+{
+    for(auto _op : _ops)
+    {
+        std::shared_ptr<dev::brc::transationTool::rdsnTransfer_operation> _rdsnop = std::dynamic_pointer_cast<dev::brc::transationTool::rdsnTransfer_operation>(_op);
+        if(_rdsnop->m_transferNum > m_state.BRC(_from))
+        {
+            BOOST_THROW_EXCEPTION(RdsnTransferFailed() << errinfo_comment(std::string("verifyrdsnTransfer failed : Account BRC is not enough")));
+        }
+    }
+}
+
+void dev::brc::BRCTranscation::verifyrdsnReceiving(Address const& _from, std::vector<std::shared_ptr<dev::brc::transationTool::operation>> const& _ops)
+{
+    for(auto _op : _ops)
+    {
+        std::shared_ptr<dev::brc::transationTool::rdsnReceivingIncome_operation> _rdsnop = std::dynamic_pointer_cast<dev::brc::transationTool::rdsnReceivingIncome_operation>(_op);
+        std::vector<Address> _whiteList = config::rdsnWhiteList();
+        if(!std::count(_whiteList.begin(), _whiteList.end(), _from))
+        {
+            BOOST_THROW_EXCEPTION(RdsnReceivingFailed() << errinfo_comment(std::string("verifyrdsnReceiving failed : The transaction initiator is not in the whitelist")));
+        }
+    }
+}
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;

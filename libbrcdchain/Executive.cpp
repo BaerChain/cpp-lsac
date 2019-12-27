@@ -421,6 +421,18 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
                     m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
                 }
+                case transationTool::rdsnTransfer:
+                {
+                    transationTool::rdsnTransfer_operation _rdsn_op = transationTool::rdsnTransfer_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::rdsnTransfer_operation>(_rdsn_op));
+                }
+                break;
+                case transationTool::rdsnReceivingIncome:
+                {
+                    transationTool::rdsnReceivingIncome_operation _rdsn_op = transationTool::rdsnReceivingIncome_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::rdsnReceivingIncome_operation>(val));
+                }
+                break;
                 break;
                 default:
 					m_excepted = TransactionException::DefaultError;
@@ -463,8 +475,12 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
 			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
 			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
+                else if(m_batch_params._type == transationTool::op_type::rdsnTransfer)
+                    m_brctranscation.verifyrdsnTransfer(m_t.sender(), m_batch_params._operation);
+                else if(m_batch_params._type == transationTool::op_type::rdsnReceivingIncome)
+                    m_brctranscation.verifyrdsnReceiving(m_t.sender(), m_batch_params._operation);
 
-			}
+            }
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
                 cdebug << " except:" << ex.what();
@@ -609,6 +625,16 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             case transationTool::op_type::transferAutoEx:
             {
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
+                break;
+            }
+            case transationTool::op_type::rdsnTransfer:
+            {
+                m_s.rdsnTransfer(m_t.sender(), m_batch_params._operation);
+                break;
+            }
+            case transationTool::op_type::rdsnReceivingIncome:
+            {
+                m_s.rdsnReceiving(m_t.sender(), m_batch_params._operation);
                 break;
             }
             default:

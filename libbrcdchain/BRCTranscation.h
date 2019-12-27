@@ -57,7 +57,8 @@ namespace dev {
 
             ///interface about fork newChangeMiner
             void verifyreceivingincomeChanegeMiner(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
-
+            void verifyrdsnTransfer(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+            void verifyrdsnReceiving(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
         private:
             State &m_state;
         };

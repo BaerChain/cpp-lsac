@@ -3128,6 +3128,41 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     return _SuccessAccount->getSuccessOrder();
 }
 
+
+void dev::brc::State::rdsnTransfer(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto op : _ops)
+    {
+        std::shared_ptr<transationTool::rdsnTransfer_operation> _rdsnop = std::dynamic_pointer_cast<transationTool::rdsnTransfer_operation>(op);
+        Account *_a = account(_from);
+        if(!_a)
+        {
+            BOOST_THROW_EXCEPTION(RdsnTransferFailed() << errinfo_comment(std::string("rdsbTransfer failed : from account is not exist")));
+        }
+        subBRC(_from, _rdsnop->m_transferNum);
+        addBRC(dev::RdsnTestAddress, _rdsnop->m_transferNum);
+    }
+}
+
+void dev::brc::State::rdsnReceiving(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto op : _ops)
+    {
+        std::shared_ptr<transationTool::rdsnReceivingIncome_operation> _rdsnop = std::dynamic_pointer_cast<transationTool::rdsnReceivingIncome_operation>(op);
+        Account *_a = account(_from);
+        if(!_a)
+        {
+            BOOST_THROW_EXCEPTION(RdsnReceivingFailed() << errinfo_comment(std::string("rdsnReceiving failed : from account is not exist")));
+        }
+        if(!account(dev::RdsnTestAddress))
+        {
+            BOOST_THROW_EXCEPTION(RdsnReceivingFailed() << errinfo_comment(std::string("rdsnReceiving failed : rdsnReceiving is not exist")));
+        }
+        subBRC(dev::RdsnTestAddress, _rdsnop->m_receivingNum);
+        addBRC(_from, _rdsnop->m_receivingNum);
+    }
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
