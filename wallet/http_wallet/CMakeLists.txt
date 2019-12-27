@@ -1,6 +1,4 @@
 add_executable(httpWallet
-        ../ToolTransaction.cpp
-        ../ToolTransaction.h
         HttpWalletFace.h
         HttpWallet.h
         HttpWallet.cpp

@@ -53,7 +53,7 @@ std::string wallet::ToolTransaction::connectNode(std::string const& _ip_port) {
 }
 
 std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::string const& json_str, std::string& transaction_hash,
-                                                                         std::string const& _get_noce_ip /*=""*/) {
+                                                                         std::string const& _get_nonce_ip /*=""*/) {
     std::pair<bool , std::string> _pair =  std::make_pair(false, "");
     js::mValue val;
     js::mObject obj;
@@ -255,9 +255,9 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             ts.from = t.from;
             ts.to = t.to;
             ts.value = t.value;
-            if(!_get_noce_ip.empty()) {
+            if(!_get_nonce_ip.empty()) {
                 //ts.nonce = get_address_nonce(t.from, _ip);
-                auto ret= get_address_nonce(t.from, _get_noce_ip);
+                auto ret= get_address_nonce(t.from, _get_nonce_ip);
                 if(ret.first){
                     ts.nonce = ret.second;
                 } else{

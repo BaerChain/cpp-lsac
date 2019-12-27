@@ -21,7 +21,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libbrccore/CommonJS.h>
 #include <brc/types.hpp>
-#include <wallet/ToolTransaction.h>
+#include <libbrccore/ToolTransaction.h>
 
 namespace bpo = boost::program_options;
 namespace bfs1 = boost::filesystem;

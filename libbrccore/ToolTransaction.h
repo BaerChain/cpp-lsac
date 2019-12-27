@@ -50,7 +50,7 @@ namespace dev {
 
             ~ToolTransaction() = default;
 
-            static std::pair<bool, std::string> sign_trx_from_json(std::string const &json_str, std::string &transaction_hash, std::string const& _get_noce_ip ="");
+            static std::pair<bool, std::string> sign_trx_from_json(std::string const &json_str, std::string &transaction_hash, std::string const& _get_nonce_ip ="");
 
             static std::string sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port);
 

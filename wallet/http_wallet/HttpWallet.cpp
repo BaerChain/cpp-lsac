@@ -1,6 +1,6 @@
 
 #include "HttpWallet.h"
-#include <wallet/ToolTransaction.h>
+#include <libbrccore/ToolTransaction.h>
 #include <libbrccore/CommonJS.h>
 
 using namespace dev;

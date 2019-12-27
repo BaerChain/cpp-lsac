@@ -12,7 +12,7 @@
 #include <libbrcdchain/Transaction.h>
 #include <libdevcore/CommonIO.h>
 #include <microhttpd.h>
-#include "ToolTransaction.h"
+#include "libbrccore/ToolTransaction.h"
 
 using namespace dev;
 using namespace std;
