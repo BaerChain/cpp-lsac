@@ -100,7 +100,7 @@ Json::Value dev::wallet::HttpWallet::new_address(std::string const &_param) {
                 value["pri-key-bigInt"] = toHex(sec.ref());
                 value["address"] = toHex(key_pair.address());
                 value["pub-key"] = toHex(key_pair.pub());
-                value["new-address"] = jsToNewAddress(toHex(key_pair.address()));
+                value["new-address"] = jsToNewAddress(key_pair.address());
 
                 result.append(value);
             }

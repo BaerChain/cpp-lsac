@@ -193,10 +193,7 @@ string BrcV2::brc_getCode(string const& _address, string const& _blockNumber)
     {
         return toJS(client()->codeAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
-    catch (...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
+    CATCHRPCEXCEPTION
 }
 
 void BrcV2::setTransactionDefaults(TransactionSkeleton& _t)

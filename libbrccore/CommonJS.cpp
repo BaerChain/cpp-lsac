@@ -67,8 +67,8 @@ Address jsToAddressFromNewAddress(std::string const &_ns) {
     BOOST_THROW_EXCEPTION(dev::brc::InvalidAddress());
 }
 
-std::string jsToNewAddress(std::string const _s) {
-    Address _addr = jsToAddress(_s);
+std::string jsToNewAddress(Address const& _addr) {
+    //Address _addr = jsToAddress(_s);
     std::string new_addr = "brc";
     try {
         auto newAddress = to2HashAddress(_addr) + toHex(_addr);

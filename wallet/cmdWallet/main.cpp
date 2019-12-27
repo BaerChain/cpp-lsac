@@ -208,7 +208,7 @@ void generate_key(const std::string &seed){
     std::cout << "private-key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
     std::cout << "address    : " << key_pair.address() << std::endl;
     std::cout << "public-key : " << toString(key_pair.pub())<<std::endl;
-    std::cout << "new-address: " << jsToNewAddress(toHex(key_pair.address())) << std::endl;
+    std::cout << "new-address: " << jsToNewAddress(key_pair.address()) << std::endl;
 
 }
 
@@ -219,7 +219,7 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
-        std::cout << "new-address : " << jsToNewAddress(toHex(pair.address())) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(pair.address()) << std::endl;
     }
     else{
         auto pair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
@@ -227,13 +227,14 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
-        std::cout << "new-address : " << jsToNewAddress(toHex(pair.address())) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(pair.address()) << std::endl;
     }
 }
 
 void getNewAddressFromOld(std::string const& _oldAddr){
     try{
-        std::cout<<"newAddress: "<< jsToNewAddress(_oldAddr) <<"\n\n";
+        auto _addr = jsToAddress(_oldAddr);
+        std::cout<<"newAddress: "<< jsToNewAddress(_addr) <<"\n\n";
     }
     catch (...){
         std::cout << "Error! the address:"<< _oldAddr << "  is error" <<"\n\n";

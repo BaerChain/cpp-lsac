@@ -24,7 +24,7 @@ inline Address jsToAddress(std::string const& _s) { return brc::toAddress(_s); }
 std::string prettyU256(u256 _n, bool _abridged = true);
 
 Address jsToAddressFromNewAddress(std::string const& _ns);
-std::string jsToNewAddress(std::string const _s);
+std::string jsToNewAddress(Address const& _addr);
 std::string to2HashAddress(Address const& _addr);
 Address jsToAddressAcceptAllAddress(std::string const& _allAddr);
 

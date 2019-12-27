@@ -122,11 +122,11 @@ void create_address(){
 
 int main(int argc, char *argv[]){
     std:: cout << "*************************************" << std::endl;
-    auto ret__ = jsToNewAddress("efee5b4be9ba66b2f371d305cd4e0788fa2c7661");
+    auto ret__ = jsToNewAddress(Address("efee5b4be9ba66b2f371d305cd4e0788fa2c7661"));
     std::cout << ret__ << std::endl;
     std::cout << jsToAddressFromNewAddress(ret__) << std::endl;
     std:: cout << "*************************************" << std::endl;
-    auto test_a =jsToNewAddress("0x0000000067656e6573697343616e646964617465");
+    auto test_a =jsToNewAddress(Address("0x0000000067656e6573697343616e646964617465"));
     std::cout << test_a<<std::endl;
     std::cout << jsToAddressFromNewAddress(test_a)<<std::endl;
 
