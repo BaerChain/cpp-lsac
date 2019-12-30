@@ -32,6 +32,11 @@ namespace dev
         using UncleHashes = h256s;
         using TransactionHashes = h256s;
 
+        struct accountStu;
+        struct voteStu;
+        struct electorStu;
+        struct exchange_order;
+
         Json::Value toJsonV2(BlockHeader const& _bi, SealEngineFace* _face = nullptr);
 //TODO: wrap these params into one structure eg. "LocalisedTransaction"
         Json::Value toJsonV2(Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, bool _detialStatus, SealEngineFace* _face = nullptr);
@@ -46,11 +51,16 @@ namespace dev
         Json::Value toJsonV2(LocalisedLogEntry const& _e);
         Json::Value toJsonV2(LogEntry const& _e);
         Json::Value toJsonV2(std::unordered_map<h256, LocalisedLogEntries> const& _entriesByBlock);
+
+        Json::Value toJsonV2(accountStu const& _e);
+        Json::Value toJsonV2(voteStu const& _e);
+        Json::Value toJsonV2(electorStu const& _e);
+        Json::Value toJsonV2(exchange_order const& _e);
+
         Json::Value toJsonV2ByBlock(LocalisedLogEntries const& _entries);
         TransactionSkeleton toTransactionSkeletonV2(Json::Value const& _json);
         LogFilter toLogFilterV2(Json::Value const& _json);
         LogFilter toLogFilterV2(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.
-
         Json::Value analysisDataV2(bytes const& _data);
     }
 

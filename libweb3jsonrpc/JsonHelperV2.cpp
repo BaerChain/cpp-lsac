@@ -405,6 +405,22 @@ namespace dev {
             return res;
         }
 
+        Json::Value toJsonV2(accountStu const& _e) {
+            return Json::Value();
+        }
+
+        Json::Value toJsonV2(voteStu const& _e) {
+            return Json::Value();
+        }
+
+        Json::Value toJsonV2(electorStu const& _e) {
+            return Json::Value();
+        }
+
+        Json::Value toJsonV2(exchange_order const& _e) {
+            return Json::Value();
+        }
+
         Json::Value toJsonV2ByBlock(LocalisedLogEntries const &_entries) {
             vector<h256> order;
             unordered_map<h256, LocalisedLogEntries> entriesByBlock;
