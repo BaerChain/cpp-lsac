@@ -9,6 +9,8 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
+#include <libbrccore/Transactionstructure.h>
+#include <indexDb/database/include/brc/objects.hpp>
 
 namespace dev
 {
@@ -168,6 +170,9 @@ public:
 	virtual Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const = 0;
     // [LOGS API]
+
+    /// newAddress interface for brcV2
+    virtual accountStu accountMsg(Address const& _addr, BlockNumber _block)const = 0;
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
     virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;

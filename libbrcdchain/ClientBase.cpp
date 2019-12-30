@@ -655,3 +655,8 @@ int ClientBase::chainId() const
 {
     return bc().chainParams().chainID;
 }
+
+accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) const {
+    return accountStu();
+}
+

@@ -90,7 +90,11 @@ public:
 	Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
 	Json::Value votedMessage(Address _a, BlockNumber _block) const override;
 	Json::Value electorMessage(BlockNumber _block) const override;
-	
+
+    /// newAddress interface for brcV2
+    accountStu accountMsg(Address const& _addr, BlockNumber _block)const override ;
+
+
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
     virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;

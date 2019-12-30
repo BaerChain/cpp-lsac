@@ -8,7 +8,7 @@
 #include <boost/multi_index/composite_key.hpp>
 
 
-#include <chainbase/chainbase.hpp>
+#include <indexDb/chainbase/include/chainbase/chainbase.hpp>
 #include <libdevcore/RLP.h>
 
 //using namespace chainbase;

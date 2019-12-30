@@ -58,7 +58,7 @@ Json::Value BrcV2::brc_getBalance(string const& _address, string const& _blockNu
     try
     {
         // return toJS(client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
-        return client()->accountMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
+        return toJsonV2(client()->accountMsg(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
     }
     CATCHRPCEXCEPTION
 }

@@ -1,9 +1,11 @@
+#pragma once
 #include <libdevcore/Address.h>
 #include <libbrccore/Common.h>
 #include <jsoncpp/json/value.h>
 
 namespace dev
 {
+    namespace brc{
     struct accountStu
     {
         accountStu(){}
@@ -27,7 +29,7 @@ namespace dev
         {
             return m_isNull;
         }
-        
+
         private:
         Address m_addr;
         u256 m_cookie;
@@ -41,7 +43,7 @@ namespace dev
         u256 m_cookieInSummury;
         std::map<Address,u256> m_vote;
         bool m_isNull = true;
-    };  
+    };
 
     struct voteStu
     {
@@ -50,12 +52,12 @@ namespace dev
             m_vote(_vote),
             m_totalVoteNum(_totalVoteNum),
             m_isNull(false){}
-        
+
         bool isNull()
         {
             return m_isNull;
         }
-        
+
         private:
             std::map<Address, u256> m_vote;
             u256 m_totalVoteNum;
@@ -84,7 +86,7 @@ namespace dev
             bool m_isZeroAddr;
             bool m_isNull = true;
     };
-
+}
 } 
 
 
