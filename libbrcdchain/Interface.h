@@ -175,6 +175,7 @@ public:
     virtual accountStu accountMsg(Address const& _addr, BlockNumber _block)const = 0;
     virtual voteStu voteMsg(Address const& _addr, BlockNumber _block) const = 0;
     virtual electorStu electorMsg(Address const& _addr, BlockNumber _block) const = 0;
+    virtual electorStu obtainVoteMsg(Address _a, BlockNumber _block) const = 0;
 
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;

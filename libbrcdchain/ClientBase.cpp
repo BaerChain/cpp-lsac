@@ -661,9 +661,13 @@ accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) cons
 }
 
 voteStu ClientBase::voteMsg(Address const& _addr, BlockNumber _block) const{
-    return voteStu();
+    return blockByNumber(_block).mutableState().voteMsg(_addr);
 }
 
 electorStu ClientBase::electorMsg(Address const& _addr, BlockNumber _block) const{
-    return electorStu();
+    return blockByNumber(_block).mutableState().electorMsg(ZeroAddress);
+}
+
+electorStu ClientBase::obtainVoteMsg(Address _addr, BlockNumber _block) const {
+    return blockByNumber(_block).mutableState().electorMsg(_addr);
 }
