@@ -56,7 +56,7 @@ namespace dev
         Json::Value toJsonV2(accountStu const& _e);
         Json::Value toJsonV2(voteStu const& _e);
         Json::Value toJsonV2(electorStu const& _e);
-        Json::Value toJsonV2(dev::brc::ex::exchange_order const& _e);
+        Json::Value toJsonV2(ex::exchange_order const& _e);
 
         Json::Value toJsonV2ByBlock(LocalisedLogEntries const& _entries);
         TransactionSkeleton toTransactionSkeletonV2(Json::Value const& _json);
@@ -75,15 +75,6 @@ namespace dev
 
     template <class T>
     Json::Value toJsonV2(std::vector<T> const& _es)
-    {
-        Json::Value res(Json::arrayValue);
-        for (auto const& e: _es)
-            res.append(toJsonV2(e));
-        return res;
-    }
-
-    template < >
-    Json::Value toJsonV2(std::vector<dev::brc::ex::exchange_order> const& _es)
     {
         Json::Value res(Json::arrayValue);
         for (auto const& e: _es)
