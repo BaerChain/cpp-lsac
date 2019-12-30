@@ -660,3 +660,10 @@ accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) cons
     return blockByNumber(_block).mutableState().accountMsg(_addr);
 }
 
+voteStu ClientBase::voteMsg(Address const& _addr, BlockNumber _block) const{
+    return voteStu();
+}
+
+electorStu ClientBase::electorMsg(Address const& _addr, BlockNumber _block) const{
+    return electorStu();
+}

@@ -93,6 +93,8 @@ public:
 
     /// newAddress interface for brcV2
     accountStu accountMsg(Address const& _addr, BlockNumber _block)const override ;
+    voteStu voteMsg(Address const& _addr, BlockNumber _block) const override;
+    electorStu electorMsg(Address const& _addr, BlockNumber _block) const override;
 
 
     LocalisedLogEntries logs(unsigned _watchId) const override;
