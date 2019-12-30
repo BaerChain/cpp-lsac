@@ -47,8 +47,8 @@ Json::Value BrcV2::brc_getPendingOrderPool(string const& _order_type, string con
     }
     try
     {
-        return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
-                                                 1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
+        return toJsonV2(client()->pendingorderPoolMsg(jsToOrderEnum(_order_type),
+                                                 1, jsToU256(_getSize), jsToBlockNum(_blockNumber)));
     }
     CATCHRPCEXCEPTION
 }

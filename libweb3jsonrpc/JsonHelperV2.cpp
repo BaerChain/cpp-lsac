@@ -56,6 +56,49 @@ namespace dev {
 // ////////////////////////////////////////////////////////////////////////////////
 
     namespace brc {
+
+        std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
+            std::string _type, _token_type, _buy_type;
+            switch (type) {
+            case dev::brc::ex::order_type::sell:
+                _type = std::string("sell");
+                break;
+            case dev::brc::ex::order_type::buy:
+                _type = std::string("buy");
+                break;
+            default:
+                _type = std::string("NULL");
+                break;
+            }
+
+            switch (token_type) {
+            case dev::brc::ex::order_token_type::BRC:
+                _token_type = std::string("BRC");
+                break;
+            case dev::brc::ex::order_token_type::FUEL:
+                _token_type = std::string("FUEL");
+                break;
+            default:
+                _token_type = std::string("NULL");
+                break;
+            }
+
+            switch (buy_type) {
+                case dev::brc::ex::order_buy_type::all_price:
+                    _buy_type = std::string("all_price");
+                    break;
+                case dev::brc::ex::order_buy_type::only_price:
+                    _buy_type = std::string("only_price");
+                    break;
+                default:
+                    _buy_type = std::string("NULL");
+                break;
+            }
+
+        std::tuple<std::string, std::string, std::string> _result = std::make_tuple(_type, _token_type, _buy_type);
+        return _result;
+    }  
+
         Json::Value toJsonV2(dev::brc::BlockHeader const &_bi, SealEngineFace *_sealer) {
             Json::Value res;
             if (_bi) {
@@ -464,8 +507,21 @@ namespace dev {
             return jv;
         }
 
-        Json::Value toJsonV2(exchange_order const& _e) {
-            return Json::Value();
+        Json::Value toJsonV2(dev::brc::ex::exchange_order const& _e) {
+                    Json::Value _value;
+                    _value["Address"] = jsToNewAddress(_e.sender);
+                    _value["Hash"] = toJS(_e.trxid);
+                    _value["price"] = std::string(_e.price);
+                    _value["token_amount"] = std::string(_e.token_amount);
+                    _value["source_amount"] = std::string(_e.source_amount);
+                    _value["create_time"] = toJS(_e.create_time);
+                    std::tuple<std::string, std::string, std::string> _resultTuple = enumToString(_e.type, _e.token_type,
+                                                                                      (ex::order_buy_type) 0);
+                    _value["order_type"] = get<0>(_resultTuple);
+                    _value["order_token_type"] = get<1>(_resultTuple);
+
+
+                return _value;
         }
 
         Json::Value toJsonV2ByBlock(LocalisedLogEntries const &_entries) {

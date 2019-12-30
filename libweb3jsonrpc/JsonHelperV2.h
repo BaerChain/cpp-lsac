@@ -6,6 +6,7 @@
 #include <libbrccore/BlockHeader.h>
 #include <libbrcdchain/LogFilter.h>
 #include <libbrcdchain/Transaction.h>
+#include <indexDb/database/include/brc/objects.hpp>
 namespace dev
 {
 
@@ -35,7 +36,7 @@ namespace dev
         struct accountStu;
         struct voteStu;
         struct electorStu;
-        struct exchange_order;
+        //struct exchange_order;
 
         Json::Value toJsonV2(BlockHeader const& _bi, SealEngineFace* _face = nullptr);
 //TODO: wrap these params into one structure eg. "LocalisedTransaction"
@@ -55,13 +56,16 @@ namespace dev
         Json::Value toJsonV2(accountStu const& _e);
         Json::Value toJsonV2(voteStu const& _e);
         Json::Value toJsonV2(electorStu const& _e);
-        Json::Value toJsonV2(exchange_order const& _e);
+        Json::Value toJsonV2(dev::brc::ex::exchange_order const& _e);
 
         Json::Value toJsonV2ByBlock(LocalisedLogEntries const& _entries);
         TransactionSkeleton toTransactionSkeletonV2(Json::Value const& _json);
         LogFilter toLogFilterV2(Json::Value const& _json);
         LogFilter toLogFilterV2(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.
         Json::Value analysisDataV2(bytes const& _data);
+
+	    std::tuple<std::string, std::string, std::string> enumToString(ex::order_type _type, ex::order_token_type _token_type, ex::order_buy_type _buy_type);
+
     }
 
 //    namespace rpc
@@ -75,6 +79,15 @@ namespace dev
         Json::Value res(Json::arrayValue);
         for (auto const& e: _es)
             res.append(toJsonV2(e));
+        return res;
+    }
+
+    template < >
+    Json::Value toJsonV2(std::vector<dev::brc::ex::exchange_order> const& _es)
+    {
+        Json::Value res(Json::arrayValue);
+        for (auto const& e: _es)
+            res.append(brc::toJsonV2(e));
         return res;
     }
 
