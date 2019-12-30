@@ -7,13 +7,6 @@ namespace dev
         class BrcV2Face : public ServerInterface<BrcV2Face> {
         public:
             BrcV2Face() {
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_accounts", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_ARRAY, NULL),
-                                       &dev::rpc::BrcV2Face::brc_accountsI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_getSuccessPendingOrder",
-                                                          jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
-                                                          jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
-                                       &dev::rpc::BrcV2Face::brc_getSuccessPendingOrderI);
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_getPendingOrderPool",
                                                           jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
                                                           jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING,
@@ -25,22 +18,12 @@ namespace dev
                                            jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
                                            jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
                         &dev::rpc::BrcV2Face::brc_getPendingOrderPoolForAddrI);
-                this->bindAndAddMethod(
-                        jsonrpc::Procedure("brc_getSuccessPendingOrderForAddr", jsonrpc::PARAMS_BY_POSITION,
-                                           jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
-                                           jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, "param4",
-                                           jsonrpc::JSON_STRING, "param5", jsonrpc::JSON_STRING, NULL),
-                        &dev::rpc::BrcV2Face::brc_getSuccessPendingOrderForAddrI);
+
                 this->bindAndAddMethod(
                         jsonrpc::Procedure("brc_getBalance", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                                            "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
                         &dev::rpc::BrcV2Face::brc_getBalanceI);
-                this->bindAndAddMethod(
-                        jsonrpc::Procedure("brc_getBlockReward", jsonrpc::PARAMS_BY_POSITION,
-                                           jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
-                                           jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, "param4",
-                                           jsonrpc::JSON_STRING, NULL),
-                        &dev::rpc::BrcV2Face::brc_getBlockRewardI);
+
                 this->bindAndAddMethod(
                         jsonrpc::Procedure("brc_getQueryExchangeReward", jsonrpc::PARAMS_BY_POSITION,
                                            jsonrpc::JSON_STRING,
@@ -71,14 +54,6 @@ namespace dev
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_pendingTransactions",
                                                           jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, NULL),
                                        &dev::rpc::BrcV2Face::brc_pendingTransactionsI);
-                this->bindAndAddMethod(
-                        jsonrpc::Procedure("brc_getCode", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
-                                           "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
-                        &dev::rpc::BrcV2Face::brc_getCodeI);
-                this->bindAndAddMethod(
-                        jsonrpc::Procedure("brc_call", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
-                                           "param1", jsonrpc::JSON_OBJECT, "param2", jsonrpc::JSON_STRING, NULL),
-                        &dev::rpc::BrcV2Face::brc_callI);
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_getBlockByHash", jsonrpc::PARAMS_BY_POSITION,
                                                           jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING,
                                                           "param2",
@@ -129,20 +104,7 @@ namespace dev
                         jsonrpc::Procedure("brc_getTransactionReceipt", jsonrpc::PARAMS_BY_POSITION,
                                            jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
                         &dev::rpc::BrcV2Face::brc_getTransactionReceiptI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_getUncleByBlockHashAndIndex",
-                                                          jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
-                                                          jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
-                                       &dev::rpc::BrcV2Face::brc_getUncleByBlockHashAndIndexI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_getUncleByBlockNumberAndIndex",
-                                                          jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
-                                                          jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
-                                       &dev::rpc::BrcV2Face::brc_getUncleByBlockNumberAndIndexI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_newFilter", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL),
-                                       &dev::rpc::BrcV2Face::brc_newFilterI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_newFilterEx", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL),
-                                       &dev::rpc::BrcV2Face::brc_newFilterExI);
+
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_newPendingTransactionFilter",
                                                           jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL),
                                        &dev::rpc::BrcV2Face::brc_newPendingTransactionFilterI);
@@ -163,12 +125,6 @@ namespace dev
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_getLogsEx", jsonrpc::PARAMS_BY_POSITION,
                                                           jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL),
                                        &dev::rpc::BrcV2Face::brc_getLogsExI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_register", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL),
-                                       &dev::rpc::BrcV2Face::brc_registerI);
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_unregister", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL),
-                                       &dev::rpc::BrcV2Face::brc_unregisterI);
                 this->bindAndAddMethod(
                         jsonrpc::Procedure("brc_fetchQueuedTransactions", jsonrpc::PARAMS_BY_POSITION,
                                            jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL),
@@ -177,10 +133,6 @@ namespace dev
                         jsonrpc::Procedure("brc_inspectTransaction", jsonrpc::PARAMS_BY_POSITION,
                                            jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
                         &dev::rpc::BrcV2Face::brc_inspectTransactionI);
-
-                this->bindAndAddMethod(jsonrpc::Procedure("brc_estimateGas", jsonrpc::PARAMS_BY_POSITION,
-                                                          jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL),
-                                       &dev::rpc::BrcV2Face::brc_estimateGasI);
 
                 this->bindAndAddMethod(
                         jsonrpc::Procedure("brc_getObtainVote", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT,
@@ -200,11 +152,6 @@ namespace dev
                         &dev::rpc::BrcV2Face::brc_estimateGasUsedI);
             }
 
-            inline virtual void brc_accountsI(const Json::Value &request, Json::Value &response) {
-                (void) request;
-                response = this->brc_accounts();
-            }
-
             inline virtual void brc_getPendingOrderPoolForAddrI(
                     const Json::Value &request, Json::Value &response) {
                 response = this->brc_getPendingOrderPoolForAddr(
@@ -216,23 +163,8 @@ namespace dev
                                                          request[2u].asString(), request[3u].asString());
             }
 
-            inline virtual void brc_getSuccessPendingOrderI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_getSuccessPendingOrder(request[0u].asString(), request[1u].asString());
-            }
-
-            inline virtual void brc_getSuccessPendingOrderForAddrI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_getSuccessPendingOrderForAddr(request[0u].asString(), request[1u].asString(),
-                                                                   request[2u].asString(),
-                                                                   request[3u].asString(), request[4].asString());
-            }
-
             inline virtual void brc_getBalanceI(const Json::Value &request, Json::Value &response) {
                 response = this->brc_getBalance(request[0u].asString(), request[1u].asString());
-            }
-
-            inline virtual void brc_getBlockRewardI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_getBlockReward(request[0u].asString(), request[1u].asString(),
-                                                    request[2u].asString(), request[3u].asString());
             }
 
             inline virtual void brc_getQueryExchangeRewardI(const Json::Value &request, Json::Value &response) {
@@ -263,13 +195,6 @@ namespace dev
             inline virtual void brc_pendingTransactionsI(const Json::Value &request, Json::Value &response) {
                 (void) request;
                 response = this->brc_pendingTransactions();
-            }
-            inline virtual void brc_getCodeI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_getCode(request[0u].asString(), request[1u].asString());
-            }
-
-            inline virtual void brc_callI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_call(request[0u], request[1u].asString());
             }
 
             inline virtual void brc_getBlockByHashI(const Json::Value &request, Json::Value &response) {
@@ -329,26 +254,6 @@ namespace dev
                 response = this->brc_getTransactionReceipt(request[0u].asString());
             }
 
-            inline virtual void brc_getUncleByBlockHashAndIndexI(
-                    const Json::Value &request, Json::Value &response) {
-                response =
-                        this->brc_getUncleByBlockHashAndIndex(request[0u].asString(), request[1u].asString());
-            }
-
-            inline virtual void brc_getUncleByBlockNumberAndIndexI(
-                    const Json::Value &request, Json::Value &response) {
-                response =
-                        this->brc_getUncleByBlockNumberAndIndex(request[0u].asString(), request[1u].asString());
-            }
-
-            inline virtual void brc_newFilterI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_newFilter(request[0u]);
-            }
-
-            inline virtual void brc_newFilterExI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_newFilterEx(request[0u]);
-            }
-
             inline virtual void brc_newPendingTransactionFilterI(
                     const Json::Value &request, Json::Value &response) {
                 (void) request;
@@ -375,14 +280,6 @@ namespace dev
                 response = this->brc_getLogsEx(request[0u]);
             }
 
-            inline virtual void brc_registerI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_register(request[0u].asString());
-            }
-
-            inline virtual void brc_unregisterI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_unregister(request[0u].asString());
-            }
-
             inline virtual void brc_fetchQueuedTransactionsI(
                     const Json::Value &request, Json::Value &response) {
                 response = this->brc_fetchQueuedTransactions(request[0u].asString());
@@ -390,10 +287,6 @@ namespace dev
 
             inline virtual void brc_inspectTransactionI(const Json::Value &request, Json::Value &response) {
                 response = this->brc_inspectTransaction(request[0u].asString());
-            }
-
-            inline virtual void brc_estimateGasI(const Json::Value &request, Json::Value &response) {
-                response = this->brc_estimateGas(request[0u]);
             }
 
             inline virtual void brc_estimateGasUsedI(const Json::Value &request, Json::Value &response) {
@@ -412,9 +305,6 @@ namespace dev
                 response = this->brc_getElector(request[0u].asString());
             }
 
-
-            virtual Json::Value brc_accounts() = 0;
-
             virtual Json::Value brc_getPendingOrderPool(const std::string &param1,
                                                         const std::string &param2, const std::string &param3,
                                                         const std::string &param4) = 0;
@@ -422,17 +312,7 @@ namespace dev
             virtual Json::Value brc_getPendingOrderPoolForAddr(
                     const std::string &param1, const std::string &param2, const std::string &param3) = 0;
 
-            virtual Json::Value brc_getSuccessPendingOrder(const std::string &param1, const std::string &param2) = 0;
-
-            virtual Json::Value brc_getSuccessPendingOrderForAddr(const std::string &param1, const std::string &param2,
-                                                                  const std::string &param3, const std::string &param4,
-                                                                  const std::string &param5) = 0;
-
             virtual Json::Value brc_getBalance(const std::string &param1, const std::string &param2) = 0;
-
-            virtual Json::Value
-            brc_getBlockReward(const std::string &param1, const std::string &param2, const std::string &param3,
-                               const std::string &param4) = 0;
 
             virtual Json::Value brc_getQueryExchangeReward(const std::string &param1, const std::string &param2) = 0;
 
@@ -450,10 +330,6 @@ namespace dev
                     const std::string &param1, const std::string &param2) = 0;
 
             virtual Json::Value brc_pendingTransactions() = 0;
-
-            virtual std::string brc_getCode(const std::string &param1, const std::string &param2) = 0;
-
-            virtual std::string brc_call(const Json::Value &param1, const std::string &param2) = 0;
 
             virtual Json::Value brc_getBlockByHash(const std::string &param1, bool param2) = 0;
 
@@ -483,16 +359,6 @@ namespace dev
 
             virtual Json::Value brc_getTransactionReceipt(const std::string &param1) = 0;
 
-            virtual Json::Value brc_getUncleByBlockHashAndIndex(
-                    const std::string &param1, const std::string &param2) = 0;
-
-            virtual Json::Value brc_getUncleByBlockNumberAndIndex(
-                    const std::string &param1, const std::string &param2) = 0;
-
-            virtual std::string brc_newFilter(const Json::Value &param1) = 0;
-
-            virtual std::string brc_newFilterEx(const Json::Value &param1) = 0;
-
             virtual std::string brc_newPendingTransactionFilter() = 0;
 
             virtual Json::Value brc_getFilterChangesEx(const std::string &param1) = 0;
@@ -505,15 +371,9 @@ namespace dev
 
             virtual Json::Value brc_getLogsEx(const Json::Value &param1) = 0;
 
-            virtual std::string brc_register(const std::string &param1) = 0;
-
-            virtual bool brc_unregister(const std::string &param1) = 0;
-
             virtual Json::Value brc_fetchQueuedTransactions(const std::string &param1) = 0;
 
             virtual Json::Value brc_inspectTransaction(const std::string &param1) = 0;
-
-            virtual std::string brc_estimateGas(const Json::Value &param1) = 0;
 
             virtual Json::Value brc_estimateGasUsed(const Json::Value &param1) = 0;
 

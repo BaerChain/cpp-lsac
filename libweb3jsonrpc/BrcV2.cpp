@@ -27,21 +27,6 @@ BrcV2::BrcV2(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
         : m_brc(_brc), m_brcAccounts(_brcAccounts)
 {}
 
-Json::Value BrcV2::brc_accounts()
-{
-    return toJsonV2(m_brcAccounts.allAccounts());
-}
-
-Json::Value BrcV2::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
-{
-    BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
-    try
-    {
-        return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNum(_blockNum));
-    }
-    CATCHRPCEXCEPTION
-}
-
 Json::Value BrcV2::brc_getPendingOrderPoolForAddr(
         string const& _address, string const& _getSize, string const& _blockNum)
 {
@@ -68,45 +53,12 @@ Json::Value BrcV2::brc_getPendingOrderPool(string const& _order_type, string con
     CATCHRPCEXCEPTION
 }
 
-Json::Value BrcV2::brc_getSuccessPendingOrderForAddr(string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
-{
-    BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
-    if(jsToInt(_maxSize) > MAXQUERIES)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException("The number of query data cannot exceed 50"));
-    }
-
-    try {
-        return client()->successPendingOrderForAddrMessage(jsToAddressFromNewAddress(_address), jsToint64(_minTime),
-                                                           jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNum(_blockNum));
-    }
-    CATCHRPCEXCEPTION
-
-}
-
-
 Json::Value BrcV2::brc_getBalance(string const& _address, string const& _blockNumber)
 {
     try
     {
         // return toJS(client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
         return client()->accountMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
-    }
-    CATCHRPCEXCEPTION
-}
-
-Json::Value BrcV2::brc_getBlockReward(string const& _address, string const& _pageNum, string const& _listNum, string const& _blockNumber)
-{
-    try{
-        if(jsToInt(_listNum) > 50)
-        {
-            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
-        }
-        if(jsToInt(_pageNum) < 0 || jsToInt(_listNum) < 0)
-        {
-            BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Incoming parameters cannot be negative")));
-        }
-        return client()->blockRewardMessage(jsToAddressFromNewAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNum(_blockNumber));
     }
     CATCHRPCEXCEPTION
 }
@@ -187,15 +139,6 @@ string BrcV2::brc_getTransactionCount(string const& _address, string const& _blo
     CATCHRPCEXCEPTION
 }
 
-string BrcV2::brc_getCode(string const& _address, string const& _blockNumber)
-{
-    try
-    {
-        return toJS(client()->codeAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
-    }
-    CATCHRPCEXCEPTION
-}
-
 void BrcV2::setTransactionDefaults(TransactionSkeleton& _t)
 {
     if (!_t.from)
@@ -207,33 +150,6 @@ Json::Value BrcV2::brc_inspectTransaction(std::string const& _rlp)
     try
     {
         return toJsonV2(Transaction(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::Everything));
-    }
-    CATCHRPCEXCEPTION
-}
-
-string BrcV2::brc_call(Json::Value const& _json, string const& _blockNumber)
-{
-    try
-    {
-        TransactionSkeleton t = toTransactionSkeletonV2(_json);
-        setTransactionDefaults(t);
-        ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-                                            jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
-        return toJS(er.output);
-    }
-    CATCHRPCEXCEPTION
-}
-
-string BrcV2::brc_estimateGas(Json::Value const& _json)
-{
-    try
-    {
-        TransactionSkeleton t = toTransactionSkeletonV2(_json);
-        setTransactionDefaults(t);
-        int64_t gas = static_cast<int64_t>(t.gas);
-        return toJS(client()
-                            ->estimateGas(t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock)
-                            .first);
     }
     CATCHRPCEXCEPTION
 }
@@ -436,49 +352,6 @@ Json::Value BrcV2::brc_getTransactionReceipt(string const& _transactionHash)
     CATCHRPCEXCEPTION
 }
 
-Json::Value BrcV2::brc_getUncleByBlockHashAndIndex(
-        string const& _blockHash, string const& _uncleIndex)
-{
-    try
-    {
-        return toJsonV2(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)),
-                      client()->sealEngine());
-    }
-    CATCHRPCEXCEPTION
-}
-
-Json::Value BrcV2::brc_getUncleByBlockNumberAndIndex(
-        string const& _blockNumber, string const& _uncleIndex)
-{
-    try
-    {
-        BlockNumber h = jsToBlockNum(_blockNumber);
-        if (!client()->isKnown(h))
-            return Json::Value(Json::nullValue);
-        return toJsonV2(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
-                      client()->sealEngine());
-    }
-    CATCHRPCEXCEPTION
-}
-
-string BrcV2::brc_newFilter(Json::Value const& _json)
-{
-    try
-    {
-        return toJS(client()->installWatch(toLogFilterV2(_json, *client())));
-    }
-    CATCHRPCEXCEPTION
-}
-
-string BrcV2::brc_newFilterEx(Json::Value const& _json)
-{
-    try
-    {
-        return toJS(client()->installWatch(toLogFilterV2(_json)));
-    }
-    CATCHRPCEXCEPTION
-}
-
 string BrcV2::brc_newPendingTransactionFilter()
 {
     h256 filter = dev::brc::PendingChangedFilter;
@@ -531,24 +404,6 @@ Json::Value BrcV2::brc_getLogsEx(Json::Value const& _json)
     try
     {
         return toJsonV2ByBlock(client()->logs(toLogFilterV2(_json)));
-    }
-    CATCHRPCEXCEPTION
-}
-
-string BrcV2::brc_register(string const& _address)
-{
-    try
-    {
-        return toJS(m_brcAccounts.addProxyAccount(jsToAddressFromNewAddress(_address)));
-    }
-    CATCHRPCEXCEPTION
-}
-
-bool BrcV2::brc_unregister(string const& _accountId)
-{
-    try
-    {
-        return m_brcAccounts.removeProxyAccount(jsToInt(_accountId));
     }
     CATCHRPCEXCEPTION
 }
