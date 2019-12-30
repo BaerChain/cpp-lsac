@@ -455,6 +455,10 @@ namespace dev {
 
                 if (!_json["nonce"].empty())
                     ret.nonce = jsToU256(_json["nonce"].asString());
+
+                if(!_json["chainid"].empty()){
+                    ret.chainId = jsToU256(_json["chainid"].asString());
+                }
             }
             catch (boost::exception const &) {
                 throw jsonrpc::JsonRpcException("Invalid toTransactionSkeleton from json: ");
