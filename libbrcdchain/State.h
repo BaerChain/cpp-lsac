@@ -442,7 +442,7 @@ public:
     accountStu accountMsg(Address const& _addr);
     voteStu voteMsg(Address const& _addr) const;
     electorStu electorMsg(Address const& _addr) const;    
-    std::vector<exchange_order> pendingorderPoolMsgV2(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
+    std::vector<ex::exchange_order> pendingorderPoolMsgV2(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);

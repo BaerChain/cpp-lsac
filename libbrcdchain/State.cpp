@@ -2470,6 +2470,15 @@ electorStu dev::brc::State::electorMsg(Address const& _addr) const
     return electorStu();
 }
 
+std::vector<exchange_order> dev::brc::State::pendingorderPoolMsgV2(uint8_t _order_type, uint8_t _order_token_type, u256 getSize)
+{
+     ExdbState _exdbState(*this);
+    uint32_t _maxSize = (uint32_t) getSize;
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
+    std::vector<exchange_order> _v = _exdbState.get_order_by_type(
+            (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) _maxSize);
+    return _v;
+}
 
 Account dev::brc::State::systemPendingorder(int64_t _time) {
     auto u256Safe = [](std::string const &s) -> u256 {
