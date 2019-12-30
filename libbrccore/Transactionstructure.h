@@ -19,8 +19,14 @@ namespace dev
             m_poll(_poll),
             m_nonce(_nonce),
             m_cookieInSummury(_cookieInSummury),
-            m_vote(_vote)
+            m_vote(_vote),
+            m_isNull(false)
         {}
+
+        bool isNull()
+        {
+            return m_isNull;
+        }
         
         private:
         Address m_addr;
@@ -34,29 +40,49 @@ namespace dev
         u256 m_nonce;
         u256 m_cookieInSummury;
         std::map<Address,u256> m_vote;
+        bool m_isNull = true;
     };  
 
-    struct VoteStu
+    struct voteStu
     {
-        VoteStu(){}
-        VoteStu(std::map<Address, u256> _vote, u256 _totalVoteNum):
+        voteStu(){}
+        voteStu(std::map<Address, u256> _vote, u256 _totalVoteNum):
             m_vote(_vote),
-            m_totalVoteNum(_totalVoteNum){}
+            m_totalVoteNum(_totalVoteNum),
+            m_isNull(false){}
         
+        bool isNull()
+        {
+            return m_isNull;
+        }
         
         private:
             std::map<Address, u256> m_vote;
             u256 m_totalVoteNum;
+            bool m_isNull = true;
     };
 
     struct electorStu
     {
         electorStu(){}
-        electorStu(std::map<Address, u256> _elector):
-            m_elector(_elector){}
+        electorStu(std::map<Address, u256> _elector, bool _isZeroAddr):
+            m_elector(_elector),
+            m_isZeroAddr(_isZeroAddr),
+            m_isNull(false){}
+
+        bool isNull()
+        {
+            return m_isNull;
+        }
+        bool isZeroAddr()
+        {
+            return m_isZeroAddr;
+        }
 
         private:
             std::map<Address, u256> m_elector;
+            bool m_isZeroAddr;
+            bool m_isNull = true;
     };
 
 } 

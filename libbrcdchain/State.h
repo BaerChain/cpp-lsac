@@ -20,6 +20,7 @@
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <unordered_map>
+#include <libbrccore/Transactionstructure.h>
 
 
 namespace dev
@@ -436,6 +437,12 @@ public:
 	//get vote/eletor message
 	Json::Value votedMessage(Address const& _addr) const;
 	Json::Value electorMessage(Address _addr) const;
+
+    //new rpc return
+    accountStu accountMsg(Address const& _addr);
+    voteStu voteMsg(Address const& _addr) const;
+    electorStu electorMsg(Address const& _addr) const;    
+    std::vector<exchange_order> pendingorderPoolMsgV2(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);

@@ -2407,6 +2407,70 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const {
     return jv;
 }
 
+accountStu dev::brc::State::accountMsg(Address const& _addr)
+{
+    if(auto a = account(_addr))
+    {
+        std::map<Address, u256> _vote;
+        uint32_t num = 0;
+        for (auto val : a->vote_data()) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+            _vote[val.m_addr] = val.m_poll;
+        }
+        accountStu _accountStu(_addr, a->balance(), a->FBalance(), a->BRC(), a->FBRC(), a->voteAll(), 
+            a->ballot(), a->poll(), a->nonce(), a->CookieIncome(), _vote);
+        return _accountStu;
+    }
+    return accountStu();
+}
+
+voteStu dev::brc::State::voteMsg(Address const& _addr) const
+{
+    if (auto a = account(_addr)) {
+        u256 _num = 0;
+        uint32_t num = 0;
+        std::map<Address, u256> _vote;
+        for (auto val : a->vote_data()) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+
+            _vote[val.m_addr] = val.m_poll;
+            _num += val.m_poll;
+        }
+        voteStu _voteStu(_vote, _num);
+        return _voteStu;
+    }
+    return voteStu();
+}
+
+electorStu dev::brc::State::electorMsg(Address const& _addr) const
+{
+    const std::vector<PollData> _data = vote_data(SysElectorAddress);
+    if (_addr == ZeroAddress) {
+        int num = 0;
+        std::map<Address, u256> _elector;
+        for (auto val : _data) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+            _elector[val.m_addr] = val.m_poll;
+        }
+        electorStu _electorStu(_elector, true);
+        return _electorStu;
+    } else {
+        std::map<Address, u256> _elector;
+        auto ret = std::find(_data.begin(), _data.end(), _addr);
+        auto a = account(_addr);
+        if (ret != _data.end() && a) {
+            _elector[_addr] = a->poll();
+            electorStu _electorStu(_elector, false);
+            return _electorStu;
+        }
+    }
+    return electorStu();
+}
+
+
 Account dev::brc::State::systemPendingorder(int64_t _time) {
     auto u256Safe = [](std::string const &s) -> u256 {
         bigint ret(s);
