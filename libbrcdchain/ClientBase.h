@@ -95,7 +95,7 @@ public:
     accountStu accountMsg(Address const& _addr, BlockNumber _block)const override ;
     voteStu voteMsg(Address const& _addr, BlockNumber _block) const override;
     electorStu electorMsg(Address const& _addr, BlockNumber _block) const override;
-
+    std::vector<ex::exchange_order> pendingorderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
 
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
