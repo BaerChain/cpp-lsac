@@ -5,7 +5,7 @@
 #include <libbrcdchain/Client.h>
 #include <libbrchashseal/BrchashClient.h>
 #include <libdevcore/CommonData.h>
-#include <libweb3jsonrpc/JsonHelper.h>
+#include <libweb3jsonrpc/JsonHelperV2.h>
 #include <libwebthree/WebThree.h>
 #include <csignal>
 
@@ -29,7 +29,7 @@ BrcV2::BrcV2(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
 
 Json::Value BrcV2::brc_accounts()
 {
-    return toJson(m_brcAccounts.allAccounts());
+    return toJsonV2(m_brcAccounts.allAccounts());
 }
 
 Json::Value BrcV2::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
@@ -175,7 +175,7 @@ Json::Value BrcV2::brc_pendingTransactions()
         //}
     }
 
-    return toJson(ours);
+    return toJsonV2(ours);
 }
 
 string BrcV2::brc_getTransactionCount(string const& _address, string const& _blockNumber)
@@ -206,7 +206,7 @@ Json::Value BrcV2::brc_inspectTransaction(std::string const& _rlp)
 {
     try
     {
-        return toJson(Transaction(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::Everything));
+        return toJsonV2(Transaction(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::Everything));
     }
     CATCHRPCEXCEPTION
 }
@@ -215,7 +215,7 @@ string BrcV2::brc_call(Json::Value const& _json, string const& _blockNumber)
 {
     try
     {
-        TransactionSkeleton t = toTransactionSkeleton(_json);
+        TransactionSkeleton t = toTransactionSkeletonV2(_json);
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
                                             jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
@@ -228,7 +228,7 @@ string BrcV2::brc_estimateGas(Json::Value const& _json)
 {
     try
     {
-        TransactionSkeleton t = toTransactionSkeleton(_json);
+        TransactionSkeleton t = toTransactionSkeletonV2(_json);
         setTransactionDefaults(t);
         int64_t gas = static_cast<int64_t>(t.gas);
         return toJS(client()
@@ -247,10 +247,10 @@ Json::Value BrcV2::brc_getBlockByHash(string const& _blockHash, bool _includeTra
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -265,10 +265,10 @@ Json::Value BrcV2::brc_getBlockDetialByHash(const string &_blockHash, bool _incl
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -285,10 +285,10 @@ Json::Value BrcV2::brc_getBlockByNumber(string const& _blockNumber, bool _includ
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -303,10 +303,10 @@ Json::Value BrcV2::brc_getBlockDetialByNumber(string const& _blockNumber, bool _
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
+            return toJsonV2(client()->blockInfo(h), client()->blockDetails(h),
                           client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -320,7 +320,7 @@ Json::Value BrcV2::brc_getTransactionByHash(std::string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(h), false, client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(h), false, client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -333,7 +333,7 @@ Json::Value BrcV2::brc_getTransactionDetialByHash(std::string const& _transactio
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(h), true, client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(h), true, client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -342,7 +342,7 @@ Json::Value BrcV2::brc_getAnalysisData(std::string const& _data)
 {
     bytes r = fromHex(_data);
     try {
-        return analysisData(r);
+        return analysisDataV2(r);
     }
     CATCHRPCEXCEPTION
 }
@@ -360,7 +360,7 @@ Json::Value BrcV2::brc_getTransactionByBlockHashAndIndex(
             BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
         }
 
-        return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -375,7 +375,7 @@ Json::Value BrcV2::brc_getTransactionDetialByBlockHashAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(bh, ti), true, client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -401,7 +401,7 @@ Json::Value BrcV2::brc_getTransactionByBlockNumberAndIndex(
         }
         //return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -417,7 +417,7 @@ Json::Value BrcV2::brc_getTransactionDetialByBlockNumberAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
+        return toJsonV2(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
     }
     CATCHRPCEXCEPTION
 }
@@ -431,7 +431,7 @@ Json::Value BrcV2::brc_getTransactionReceipt(string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransactionReceipt(h));
+        return toJsonV2(client()->localisedTransactionReceipt(h));
     }
     CATCHRPCEXCEPTION
 }
@@ -441,7 +441,7 @@ Json::Value BrcV2::brc_getUncleByBlockHashAndIndex(
 {
     try
     {
-        return toJson(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)),
+        return toJsonV2(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)),
                       client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -455,7 +455,7 @@ Json::Value BrcV2::brc_getUncleByBlockNumberAndIndex(
         BlockNumber h = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(h))
             return Json::Value(Json::nullValue);
-        return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
+        return toJsonV2(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
                       client()->sealEngine());
     }
     CATCHRPCEXCEPTION
@@ -465,7 +465,7 @@ string BrcV2::brc_newFilter(Json::Value const& _json)
 {
     try
     {
-        return toJS(client()->installWatch(toLogFilter(_json, *client())));
+        return toJS(client()->installWatch(toLogFilterV2(_json, *client())));
     }
     CATCHRPCEXCEPTION
 }
@@ -474,7 +474,7 @@ string BrcV2::brc_newFilterEx(Json::Value const& _json)
 {
     try
     {
-        return toJS(client()->installWatch(toLogFilter(_json)));
+        return toJS(client()->installWatch(toLogFilterV2(_json)));
     }
     CATCHRPCEXCEPTION
 }
@@ -494,7 +494,7 @@ Json::Value BrcV2::brc_getFilterChangesEx(string const& _filterId)
         auto entries = client()->checkWatch(id);
         //		if (entries.size())
         //			cnote << "FIRING WATCH" << id << entries.size();
-        return toJsonByBlock(entries);
+        return toJsonV2ByBlock(entries);
     }
     CATCHRPCEXCEPTION
 }
@@ -503,7 +503,7 @@ Json::Value BrcV2::brc_getFilterLogs(string const& _filterId)
 {
     try
     {
-        return toJson(client()->logs(jsToInt(_filterId)));
+        return toJsonV2(client()->logs(jsToInt(_filterId)));
     }
     CATCHRPCEXCEPTION
 }
@@ -512,7 +512,7 @@ Json::Value BrcV2::brc_getFilterLogsEx(string const& _filterId)
 {
     try
     {
-        return toJsonByBlock(client()->logs(jsToInt(_filterId)));
+        return toJsonV2ByBlock(client()->logs(jsToInt(_filterId)));
     }
     CATCHRPCEXCEPTION
 }
@@ -521,7 +521,7 @@ Json::Value BrcV2::brc_getLogs(Json::Value const& _json)
 {
     try
     {
-        return toJson(client()->logs(toLogFilter(_json, *client())));
+        return toJsonV2(client()->logs(toLogFilterV2(_json, *client())));
     }
     CATCHRPCEXCEPTION
 }
@@ -530,7 +530,7 @@ Json::Value BrcV2::brc_getLogsEx(Json::Value const& _json)
 {
     try
     {
-        return toJsonByBlock(client()->logs(toLogFilter(_json)));
+        return toJsonV2ByBlock(client()->logs(toLogFilterV2(_json)));
     }
     CATCHRPCEXCEPTION
 }
@@ -561,7 +561,7 @@ Json::Value BrcV2::brc_fetchQueuedTransactions(string const& _accountId)
         Json::Value ret(Json::arrayValue);
         // TODO: throw an error on no account with given id
         for (TransactionSkeleton const& t : m_brcAccounts.queuedTransactions(id))
-            ret.append(toJson(t));
+            ret.append(toJsonV2(t));
         m_brcAccounts.clearQueue(id);
         return ret;
     }
