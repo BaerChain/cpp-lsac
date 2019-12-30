@@ -657,7 +657,7 @@ int ClientBase::chainId() const
 }
 
 accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) const {
-    return accountStu();
+    return blockByNumber(_block).mutableState().accountMsg(_addr);
 }
 
 voteStu ClientBase::voteMsg(Address const& _addr, BlockNumber _block) const{

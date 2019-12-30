@@ -25,12 +25,12 @@ namespace dev
             m_isNull(false)
         {}
 
-        bool isNull()
+        bool isNull() const
         {
             return m_isNull;
         }
 
-        private:
+    public:
         Address m_addr;
         u256 m_cookie;
         u256 m_fcookie;
@@ -53,12 +53,12 @@ namespace dev
             m_totalVoteNum(_totalVoteNum),
             m_isNull(false){}
 
-        bool isNull()
+        bool isNull() const
         {
             return m_isNull;
         }
 
-        private:
+    public:
             std::map<Address, u256> m_vote;
             u256 m_totalVoteNum;
             bool m_isNull = true;
@@ -72,16 +72,16 @@ namespace dev
             m_isZeroAddr(_isZeroAddr),
             m_isNull(false){}
 
-        bool isNull()
+        bool isNull() const
         {
             return m_isNull;
         }
-        bool isZeroAddr()
+        bool isZeroAddr() const
         {
             return m_isZeroAddr;
         }
 
-        private:
+    public:
             std::map<Address, u256> m_elector;
             bool m_isZeroAddr;
             bool m_isNull = true;
