@@ -62,7 +62,7 @@ namespace dev {
                 DEV_IGNORE_EXCEPTIONS(res["hash"] = toJS(_bi.hash()));
                 res["parentHash"] = toJS(_bi.parentHash());
                 res["sha3Uncles"] = toJS(_bi.sha3Uncles());
-                res["author"] = toJS(_bi.author());
+                res["author"] = jsToNewAddress(_bi.author());
                 res["stateRoot"] = toJS(_bi.stateRoot());
                 res["transactionsRoot"] = toJS(_bi.transactionsRoot());
                 res["receiptsRoot"] = toJS(_bi.receiptsRoot());
@@ -94,8 +94,8 @@ namespace dev {
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
                 res["input"] = toJS(_t.data());
-                res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
-                res["from"] = toJS(_t.safeSender());
+                res["to"] = _t.isCreation() ? Json::Value() : jsToNewAddress(_t.receiveAddress());
+                res["from"] = jsToNewAddress(_t.safeSender());
                 res["gas"] = toJS(_t.gas());
                 if( _face != nullptr)
                 {
@@ -155,8 +155,8 @@ namespace dev {
 
         Json::Value toJsonV2(dev::brc::TransactionSkeleton const &_t) {
             Json::Value res;
-            res["to"] = _t.creation ? Json::Value() : toJS(_t.to);
-            res["from"] = toJS(_t.from);
+            res["to"] = _t.creation ? Json::Value() : jsToNewAddress(_t.to);
+            res["from"] = jsToNewAddress(_t.from);
             res["gas"] = toJS(_t.gas);
             res["gasPrice"] = toJS(_t.gasPrice);
             res["value"] = toJS(_t.value);
@@ -182,8 +182,8 @@ namespace dev {
             res["transactionIndex"] = _t.transactionIndex();
             res["blockHash"] = toJS(_t.blockHash());
             res["blockNumber"] = _t.blockNumber();
-            res["from"] = toJS(_t.from());
-            res["to"] = toJS(_t.to());
+            res["from"] = jsToNewAddress(_t.from());
+            res["to"] = jsToNewAddress(_t.to());
             res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
 //            if(_face != nullptr)
 //            {
@@ -202,8 +202,8 @@ namespace dev {
 
         Json::Value toJsonV2(dev::brc::Transaction const &_t) {
             Json::Value res;
-            res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.to());
-            res["from"] = toJS(_t.from());
+            res["to"] = _t.isCreation() ? Json::Value() : jsToNewAddress(_t.to());
+            res["from"] = jsToNewAddress(_t.from());
             res["gas"] = toJS(_t.gas());
             res["gasPrice"] = toJS(_t.gasPrice());
             res["value"] = toJS(_t.value());
@@ -229,8 +229,8 @@ namespace dev {
             if (_t) {
                 res["hash"] = toJS(_t.sha3());
                 res["input"] = toJS(_t.data());
-                res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
-                res["from"] = toJS(_t.safeSender());
+                res["to"] = _t.isCreation() ? Json::Value() : jsToNewAddress(_t.receiveAddress());
+                res["from"] = jsToNewAddress(_t.safeSender());
                 if(_face != nullptr)
                 {
                     res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
@@ -262,8 +262,8 @@ namespace dev {
                         dev::brc::transationTool::transcation_operation _transation_op = dev::brc::transationTool::transcation_operation(val);
                         res["type"] = toJS(_type);
                         if(_transation_op.m_from != Address(0))
-                            res["from"] = toJS(_transation_op.m_from);
-                        res["to"] = toJS(_transation_op.m_to);
+                            res["from"] = jsToNewAddress(_transation_op.m_from);
+                        res["to"] = jsToNewAddress(_transation_op.m_to);
                         res["transcation_type"] = toJS(_transation_op.m_Transcation_type);
                         res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
                         _JsArray.append(res);
@@ -273,8 +273,8 @@ namespace dev {
                         dev::brc::transationTool::vote_operation _vote_op = dev::brc::transationTool::vote_operation(val);
                         res["type"] = toJS(_type);
                         if(_vote_op.m_from != Address(0))
-                            res["from"] = toJS(_vote_op.m_from);
-                        res["to"] = toJS(_vote_op.m_to);
+                            res["from"] = jsToNewAddress(_vote_op.m_from);
+                        res["to"] = jsToNewAddress(_vote_op.m_to);
                         res["vote_type"] = toJS(_vote_op.m_vote_type);
                         res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
                         _JsArray.append(res);
@@ -287,7 +287,7 @@ namespace dev {
                         uint8_t m_Pendingorder_buy_type = (uint8_t)_pendering_op.m_Pendingorder_buy_type;
 
                         res["type"] = toJS(_type);
-                        res["from"] = toJS(_pendering_op.m_from);
+                        res["from"] = jsToNewAddress(_pendering_op.m_from);
                         res["pendingorder_type"] = toJS(m_Pendingorder_type);
                         res["token_type"] = toJS(m_Pendingorder_Token_type);
                         res["buy_type"] = toJS(m_Pendingorder_buy_type);
@@ -308,7 +308,7 @@ namespace dev {
                         dev::brc::transationTool::receivingincome_operation _op = dev::brc::transationTool::receivingincome_operation(val);
                         res["type"] = toJS(_type);
                         res["receivingType"] = toJS(_op.m_receivingType);
-                        res["from"] = toJS(_op.m_from);
+                        res["from"] = jsToNewAddress(_op.m_from);
                         _JsArray.append(res);
                     }
                     if(_type == dev::brc::transationTool::transferAutoEx) {
@@ -318,8 +318,8 @@ namespace dev {
                         res["autoExType"] = toJS(_op.m_autoExType);
                         res["autoExNum"] = toJS(_op.m_autoExNum);
                         res["transferNum"] = toJS(_op.m_transferNum);
-                        res["from"] = toJS(_op.m_from);
-                        res["to"] = toJS(_op.m_to);
+                        res["from"] = jsToNewAddress(_op.m_from);
+                        res["to"] = jsToNewAddress(_op.m_to);
                         _JsArray.append(res);
                     }
                 }
@@ -361,7 +361,7 @@ namespace dev {
         Json::Value toJsonV2(dev::brc::LogEntry const &_e) {
             Json::Value res;
             res["data"] = toJS(_e.data);
-            res["address"] = toJS(_e.address);
+            res["address"] = jsToNewAddress(_e.address);
             res["topics"] = Json::Value(Json::arrayValue);
             for (auto const &t : _e.topics)
                 res["topics"].append(toJS(t));
@@ -390,7 +390,7 @@ namespace dev {
                     log["logIndex"] = e.logIndex;
                     log["transactionIndex"] = e.transactionIndex;
                     log["transactionHash"] = toJS(e.transactionHash);
-                    log["address"] = toJS(e.address);
+                    log["address"] = jsToNewAddress(e.address);
                     log["data"] = toJS(e.data);
                     log["topics"] = Json::Value(Json::arrayValue);
                     for (auto const &t : e.topics)
@@ -446,7 +446,7 @@ namespace dev {
                 return ret;
             try {
                 if (!_json["from"].empty())
-                    ret.from = jsToAddress(_json["from"].asString());
+                    ret.from =  jsToAddress(_json["from"].asString());
                 if (!_json["to"].empty() && _json["to"].asString() != "0x" && !_json["to"].asString().empty())
                     ret.to = jsToAddress(_json["to"].asString());
                 else
