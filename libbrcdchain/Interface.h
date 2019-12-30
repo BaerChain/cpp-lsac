@@ -173,6 +173,9 @@ public:
 
     /// newAddress interface for brcV2
     virtual accountStu accountMsg(Address const& _addr, BlockNumber _block)const = 0;
+    virtual voteStu voteMsg(Address const& _addr, BlockNumber _block) const = 0;
+    virtual electorStu electorMsg(Address const& _addr, BlockNumber _block) const = 0;
+
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
     virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;
