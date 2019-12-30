@@ -6,7 +6,7 @@
 #include <libbrccore/BlockHeader.h>
 #include <libbrcdchain/LogFilter.h>
 #include <libbrcdchain/Transaction.h>
-#include <indexDb/database/include/brc/objects.hpp>
+//#include <indexDb/database/include/brc/objects.hpp>
 namespace dev
 {
 
@@ -23,7 +23,9 @@ namespace dev
 
     namespace brc
     {
-
+        namespace ex{
+            struct exchange_order;
+        }
         class Transaction;
         class LocalisedTransaction;
         class SealEngineFace;
@@ -36,7 +38,6 @@ namespace dev
         struct accountStu;
         struct voteStu;
         struct electorStu;
-        //struct exchange_order;
 
         Json::Value toJsonV2(BlockHeader const& _bi, SealEngineFace* _face = nullptr);
 //TODO: wrap these params into one structure eg. "LocalisedTransaction"
@@ -75,6 +76,14 @@ namespace dev
 
     template <class T>
     Json::Value toJsonV2(std::vector<T> const& _es)
+    {
+        Json::Value res(Json::arrayValue);
+        for (auto const& e: _es)
+            res.append(toJsonV2(e));
+        return res;
+    }
+    template <>
+    inline Json::Value toJsonV2(std::vector<dev::brc::ex::exchange_order> const& _es)
     {
         Json::Value res(Json::arrayValue);
         for (auto const& e: _es)

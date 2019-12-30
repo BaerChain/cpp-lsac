@@ -6,10 +6,12 @@
 #include <libbrcdchain/Client.h>
 #include <libwebthree/WebThree.h>
 #include <libbrcdchain/Transaction.h>
+#include <indexDb/database/include/brc/objects.hpp>
 
 using namespace std;
 using namespace dev;
 using namespace brc;
+using namespace dev::brc::ex;
 
 namespace dev {
     Json::Value toJsonV2(unordered_map<u256, u256> const &_storage) {
@@ -507,7 +509,7 @@ namespace dev {
             return jv;
         }
 
-        Json::Value toJsonV2(dev::brc::ex::exchange_order const& _e) {
+        Json::Value toJsonV2(ex::exchange_order const& _e) {
                     Json::Value _value;
                     _value["Address"] = jsToNewAddress(_e.sender);
                     _value["Hash"] = toJS(_e.trxid);
