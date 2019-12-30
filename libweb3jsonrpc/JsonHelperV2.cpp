@@ -406,15 +406,62 @@ namespace dev {
         }
 
         Json::Value toJsonV2(accountStu const& _e) {
-            return Json::Value();
+            Json::Value jv;
+            if(_e.isNull())
+                return jv;
+            jv["Address"] = jsToNewAddress(_e.m_addr);
+            jv["balance"] = toJS(_e.m_cookie);
+            jv["FBalance"] = toJS(_e.m_fcookie);
+            jv["BRC"] = toJS(_e.m_brc);
+            jv["FBRC"] = toJS(_e.m_fbrc);
+            jv["vote"] = toJS(_e.m_voteAll);
+            jv["ballot"] = toJS(_e.m_ballot);
+            jv["poll"] = toJS(_e.m_poll);
+            jv["nonce"] = toJS(_e.m_nonce);
+            jv["cookieinsummury"] = toJS(_e.m_cookieInSummury);
+            Json::Value _array;
+            for(auto const& a : _e.m_vote){
+                Json::Value _v;
+                _v["Address"] = jsToNewAddress(a.first);
+                _v["vote_num"] = toJS(a.second);
+                _array.append(_v);
+            }
+            jv["vote"] = _array;
+
+            return jv;
         }
 
         Json::Value toJsonV2(voteStu const& _e) {
-            return Json::Value();
+            Json::Value jv;
+            if(_e.isNull())
+                return jv;
+            Json::Value _arry;
+            for(auto const& a: _e.m_vote){
+                Json::Value _v;
+                _v["address"] = jsToNewAddress(a.first);
+                _v["voted_num"] = toJS(a.second);
+                _arry.append(_v);
+            }
+            jv["vote"] = _arry;
+            jv["total_voted_num"] = toJS(_e.m_totalVoteNum);
+            return jv;
         }
 
         Json::Value toJsonV2(electorStu const& _e) {
-            return Json::Value();
+            Json::Value jv;
+            Json::Value _arry;
+            if(_e.isNull())
+                return jv;
+            if(_e.m_isZeroAddr){
+                for(auto const& a: _e.m_elector){
+                    Json::Value _v;
+                    _v["address"] = jsToNewAddress(a.first);
+                    _v["vote_num"] = toJS(a.second);
+                    _arry.append(_v);
+                }
+                jv["electors"] = _arry;
+            }
+            return jv;
         }
 
         Json::Value toJsonV2(exchange_order const& _e) {
