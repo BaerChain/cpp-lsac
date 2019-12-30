@@ -661,13 +661,13 @@ accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) cons
 }
 
 voteStu ClientBase::voteMsg(Address const& _addr, BlockNumber _block) const{
-    return voteStu();
+    return blockByNumber(_block).mutableState().voteMsg(_addr);
 }
 
 electorStu ClientBase::electorMsg(Address const& _addr, BlockNumber _block) const{
-    return electorStu();
+    return blockByNumber(_block).mutableState().electorMsg(_addr);
 }
 
 std::vector<ex::exchange_order> ClientBase::pendingorderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const{
-    return std::vector<ex::exchange_order>();
+    return blockByNumber(_block).mutableState().pendingorderPoolMsgV2(_order_type, _order_token_type, _getSize);
 }
