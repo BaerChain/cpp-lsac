@@ -468,6 +468,17 @@ Json::Value dev::rpc::BrcV2::brc_estimateGasUsed(const Json::Value &_json)
 
 }
 
+Json::Value BrcV2::brc_checkAddress(const std::string &_address) {
+    Json::Value ret;
+    try {
+        jsToAddressFromNewAddress(_address);
+        return Json::Value(true);
+    }
+    catch (...){
+    }
+    return Json::Value(false);
+}
+
 /*
 string dev::rpc::exceptionToErrorMessage()
 {

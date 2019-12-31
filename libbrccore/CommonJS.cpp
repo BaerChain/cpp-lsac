@@ -84,7 +84,7 @@ std::string jsToNewAddress(Address const& _addr) {
 }
 
 Address jsToAddressAcceptAllAddress(std::string const &_allAddr) {
-    if(_allAddr.empty())
+    if(_allAddr.empty() || _allAddr=="0x")
         return Address();
     try{
         return jsToAddressFromNewAddress(_allAddr);

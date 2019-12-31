@@ -45,6 +45,7 @@ public:
             if (res)
             {
                 bool skip_version = false;
+                bool find_method = false;
                 for (auto itr = _route.rbegin(); itr != _route.rend(); itr++)
                 {
                     if (itr->first == path || skip_version)
@@ -58,11 +59,13 @@ public:
                             jsonrpc::Procedure pro(input["method"].asString(),
                                 jsonrpc::parameterDeclaration_t::PARAMS_BY_NAME, NULL);
                             itr->second->HandleMethodCall(pro, input["params"], output);
-
+                            find_method = true;
                             response["result"] = output;
                         }
                     }
                 }
+                if(!find_method)
+                    response["error"] = Json::Value("can not find Method");
             }
             else
             {

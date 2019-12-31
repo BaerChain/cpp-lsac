@@ -150,6 +150,10 @@ namespace dev
                         jsonrpc::Procedure("brc_estimateGasUsed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
                                            "param1", jsonrpc::JSON_OBJECT, NULL),
                         &dev::rpc::BrcV2Face::brc_estimateGasUsedI);
+                this->bindAndAddMethod(
+                        jsonrpc::Procedure("brc_checkAddress", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
+                                           "param1", jsonrpc::JSON_OBJECT, NULL),
+                        &dev::rpc::BrcV2Face::brc_checkAddressI);
             }
 
             inline virtual void brc_getPendingOrderPoolForAddrI(
@@ -305,6 +309,10 @@ namespace dev
                 response = this->brc_getElector(request[0u].asString());
             }
 
+            inline virtual void brc_checkAddressI(const Json::Value &request, Json::Value &response) {
+                response = this->brc_checkAddress(request[0u].asString());
+            }
+
             virtual Json::Value brc_getPendingOrderPool(const std::string &param1,
                                                         const std::string &param2, const std::string &param3,
                                                         const std::string &param4) = 0;
@@ -382,6 +390,8 @@ namespace dev
             virtual Json::Value brc_getVoted(const std::string &param1, const std::string &param2) = 0;
 
             virtual Json::Value brc_getElector(const std::string &param1) = 0;
+
+            virtual Json::Value brc_checkAddress(const std::string &param1) = 0;
         };
 
     }  // namespace rpc

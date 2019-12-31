@@ -235,7 +235,7 @@ namespace dev {
 //                res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
 //            }
             res["gasUsed"] = toJS(_t.gasUsed());
-            res["contractAddress"] = toJS(_t.contractAddress());
+            res["contractAddress"] = jsToNewAddress(_t.contractAddress());
             res["logs"] = dev::toJsonV2(_t.localisedLogs());
             res["logsBloom"] = toJS(_t.bloom());
             if (_t.hasStatusCode())
