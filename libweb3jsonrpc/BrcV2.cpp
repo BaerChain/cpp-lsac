@@ -427,7 +427,7 @@ Json::Value dev::rpc::BrcV2::brc_getObtainVote(const std::string& _address, cons
 {
     try
     {
-        return client()->obtainVoteMessage(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
+        return toJsonV2(client()->obtainVoteMsg(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
     }
     CATCHRPCEXCEPTION
 }
@@ -438,7 +438,7 @@ Json::Value dev::rpc::BrcV2::brc_getVoted(const std::string& _address, const std
     try
     {
         auto  address = jsToAddressFromNewAddress(_address);
-        auto ret= client()->votedMessage(address, jsToBlockNum(_blockNumber));
+        auto ret= toJsonV2(client()->voteMsg(address, jsToBlockNum(_blockNumber)));
         return ret;
     }
     CATCHRPCEXCEPTION
@@ -449,7 +449,7 @@ Json::Value dev::rpc::BrcV2::brc_getElector(const std::string& _blockNumber)
 {
     try
     {
-        return client()->electorMessage(jsToBlockNum(_blockNumber));
+        return toJsonV2(client()->electorMsg(jsToBlockNum(_blockNumber)));
     }
     CATCHRPCEXCEPTION
 }

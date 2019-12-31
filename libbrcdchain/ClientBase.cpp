@@ -668,7 +668,7 @@ electorStu ClientBase::obtainVoteMsg(Address _addr, BlockNumber _block) const {
     return blockByNumber(_block).mutableState().electorMsg(_addr);
 }
 
-electorStu ClientBase::electorMsg(Address const& _addr, BlockNumber _block) const{
+electorStu ClientBase::electorMsg(BlockNumber _block) const{
     return blockByNumber(_block).mutableState().electorMsg(ZeroAddress);
 }
 
