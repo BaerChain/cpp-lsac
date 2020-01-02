@@ -498,6 +498,14 @@ std::string BrcV2::brc_call(Json::Value const &_json, std::string const &_blockN
     CATCHRPCEXCEPTION
 }
 
+Json::Value BrcV2::brc_toNewAddress(const std::string &_address) {
+   try{
+       auto ret_addr = jsToNewAddress(jsToAddress(_address));
+       return Json::Value(ret_addr);
+   }
+   CATCHRPCEXCEPTION
+}
+
 /*
 string dev::rpc::exceptionToErrorMessage()
 {
