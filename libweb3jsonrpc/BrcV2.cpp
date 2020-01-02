@@ -427,7 +427,14 @@ Json::Value dev::rpc::BrcV2::brc_getObtainVote(const std::string& _address, cons
 {
     try
     {
-        return toJsonV2(client()->obtainVoteMsg(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber)));
+        auto  ret_data =  client()->obtainVoteMsg(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
+        if(ret_data.isNull()){
+            Json::Value res;
+            res["addrsss"] = _address;
+            res["ret"] = "not is the eletor";
+            return  res;
+        }
+        return toJsonV2(ret_data);
     }
     CATCHRPCEXCEPTION
 }
@@ -477,6 +484,18 @@ Json::Value BrcV2::brc_checkAddress(const std::string &_address) {
     catch (...){
     }
     return Json::Value(false);
+}
+
+std::string BrcV2::brc_call(Json::Value const &_json, std::string const &_blockNumber) {
+    try
+    {
+        TransactionSkeleton t = toTransactionSkeletonV2(_json);
+        setTransactionDefaults(t);
+        ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+                                            jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
+        return toJS(er.output);
+    }
+    CATCHRPCEXCEPTION
 }
 
 /*

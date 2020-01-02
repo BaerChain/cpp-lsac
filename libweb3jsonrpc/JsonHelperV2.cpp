@@ -551,9 +551,9 @@ namespace dev {
                 return ret;
             try {
                 if (!_json["from"].empty())
-                    ret.from =  jsToAddress(_json["from"].asString());
+                    ret.from =  jsToAddressFromNewAddress(_json["from"].asString());
                 if (!_json["to"].empty() && _json["to"].asString() != "0x" && !_json["to"].asString().empty())
-                    ret.to = jsToAddress(_json["to"].asString());
+                    ret.to = jsToAddressFromNewAddress(_json["to"].asString());
                 else
                     ret.creation = true;
 

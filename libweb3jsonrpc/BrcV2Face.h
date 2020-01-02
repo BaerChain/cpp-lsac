@@ -47,6 +47,10 @@ namespace dev
                                                           "param2",
                                                           jsonrpc::JSON_STRING, NULL),
                                        &dev::rpc::BrcV2Face::brc_getStorageRootI);
+                this->bindAndAddMethod(
+                        jsonrpc::Procedure("brc_call", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,
+                                           "param1", jsonrpc::JSON_OBJECT, "param2", jsonrpc::JSON_STRING, NULL),
+                        &dev::rpc::BrcV2Face::brc_callI);
                 this->bindAndAddMethod(jsonrpc::Procedure("brc_getTransactionCount",
                                                           jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",
                                                           jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
@@ -192,6 +196,11 @@ namespace dev
                 response = this->brc_getStorageRoot(request[0u].asString(), request[1u].asString());
             }
 
+            inline virtual void brc_callI(const Json::Value& request, Json::Value& response)
+            {
+                response = this->brc_call(request[0u], request[1u].asString());
+            }
+
             inline virtual void brc_getTransactionCountI(const Json::Value &request, Json::Value &response) {
                 response = this->brc_getTransactionCount(request[0u].asString(), request[1u].asString());
             }
@@ -333,6 +342,8 @@ namespace dev
 
             virtual std::string brc_getStorageRoot(
                     const std::string &param1, const std::string &param2) = 0;
+
+            virtual std::string brc_call(const Json::Value& param1, const std::string& param2) = 0;
 
             virtual std::string brc_getTransactionCount(
                     const std::string &param1, const std::string &param2) = 0;

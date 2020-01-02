@@ -70,7 +70,7 @@ namespace dev
             //virtual Json::Value brc_getUncleCountByBlockHash(std::string const& _blockHash) override;
             //virtual Json::Value brc_getUncleCountByBlockNumber(std::string const& _blockNumber) override;
             //virtual std::string brc_getCode(std::string const& _address, std::string const& _blockNumber) override;
-            //virtual std::string brc_call(Json::Value const& _json, std::string const& _blockNumber) override;
+            virtual std::string brc_call(Json::Value const& _json, std::string const& _blockNumber) override;
             //virtual std::string brc_estimateGas(Json::Value const& _json) override;
             virtual Json::Value brc_getBlockByHash(std::string const& _blockHash, bool _includeTransactions) override;
             virtual Json::Value brc_getBlockDetialByHash(std::string const& _blockHash, bool _includeTransactions) override;
