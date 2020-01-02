@@ -3159,7 +3159,7 @@ void dev::brc::State::rdsnReceiving(Address const& _from, std::vector<std::share
             BOOST_THROW_EXCEPTION(RdsnReceivingFailed() << errinfo_comment(std::string("rdsnReceiving failed : rdsnReceiving is not exist")));
         }
         subBRC(dev::RdsnTestAddress, _rdsnop->m_receivingNum);
-        addBRC(_from, _rdsnop->m_receivingNum);
+        addBRC(_rdsnop->m_receivingAddr, _rdsnop->m_receivingNum);
     }
 }
 

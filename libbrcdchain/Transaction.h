@@ -329,15 +329,17 @@ namespace dev
             struct rdsnReceivingIncome_operation : public operation
             {
                 uint8_t m_type;
+                Address m_receivingAddr;
                 u256 m_receivingNum;
                 rdsnReceivingIncome_operation(){}
-                rdsnReceivingIncome_operation(op_type _type, u256 _receivingNum) :
+                rdsnReceivingIncome_operation(op_type _type, Address _receivingAddr, u256 _receivingNum) :
                     m_type(_type),
+                    m_receivingAddr(_receivingAddr),
                     m_receivingNum(_receivingNum){}
 
-                OPERATION_UNSERIALIZE(rdsnReceivingIncome_operation , (m_type)(m_receivingNum))
+                OPERATION_UNSERIALIZE(rdsnReceivingIncome_operation , (m_type)(m_receivingAddr)(m_receivingNum))
 
-                OPERATION_SERIALIZE((m_type)(m_receivingNum))
+                OPERATION_SERIALIZE((m_type)(m_receivingAddr)(m_receivingNum))
             };
 
         }  // namespace transationTool

@@ -177,6 +177,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         case rdsnReceivingIncome:{
                             auto rdsnReceiving_op = new rdsnReceivingIncome_operation(
                                                                                     (op_type)type,
+                                                                                    Address(op_obj["m_receivingAddr"].get_str()),
                                                                                     u256(op_obj["m_receivingNum"].get_str())
                             );
                             tx.ops.push_back(std::shared_ptr<rdsnReceivingIncome_operation>(rdsnReceiving_op));
