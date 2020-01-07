@@ -13,9 +13,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
-    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
+    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -Werror -Wreturn-type")
     #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 endif()
+
+
 
 
 if( APPLE )
