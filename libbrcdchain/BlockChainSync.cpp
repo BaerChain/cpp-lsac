@@ -841,8 +841,10 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         return;
 
     case ImportResult::AlreadyInChain:
-    case ImportResult::AlreadyKnown:
+    case ImportResult::AlreadyKnown:{
+        peer.setBlockNumber(max(unsigned(peer.block_number()), blockNumber));
         break;
+    }
 
     case ImportResult::FutureTimeUnknown:
     case ImportResult::UnknownParent:
@@ -855,11 +857,16 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         }
         logNewBlock(h);
         u256 totalDifficulty = _r[1].toInt<u256>();
-        if (totalDifficulty > peer.totalDifficulty())
+        if (info.number() > peer.block_number())
         {
             //LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
             cwarn << "new block : "<< info.number() << " author:"<< info.author()
                     << " totalDifficulty > peer.totalDifficulty() :" << totalDifficulty << " ::"<< peer.totalDifficulty();
+            if(info.number() <= host().chain().number()){
+                cwarn << "peer block:" << info.number() << " < last_block_num:"<< host().chain().number() << " can not to sync";
+                break;
+            }
+            m_haveCommonHeader = false;
             syncPeer(_peerID, true);
         }
         break;
