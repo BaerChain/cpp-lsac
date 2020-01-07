@@ -327,17 +327,15 @@ namespace dev {
                     if(_type == dev::brc::transationTool::pendingOrder) {
                         Json::Value res;
                         dev::brc::transationTool::pendingorder_opearaion _pendering_op = dev::brc::transationTool::pendingorder_opearaion(val);
-                        uint8_t m_Pendingorder_type = (uint8_t)_pendering_op.m_Pendingorder_type;
-                        uint8_t m_Pendingorder_Token_type = (uint8_t)_pendering_op.m_Pendingorder_Token_type;
-                        uint8_t m_Pendingorder_buy_type = (uint8_t)_pendering_op.m_Pendingorder_buy_type;
-
                         res["type"] = toJS(_type);
                         res["from"] = jsToNewAddress(_pendering_op.m_from);
-                        res["pendingorder_type"] = toJS(m_Pendingorder_type);
-                        res["token_type"] = toJS(m_Pendingorder_Token_type);
-                        res["buy_type"] = toJS(m_Pendingorder_buy_type);
                         res["num"] = toJS(_pendering_op.m_Pendingorder_num);
                         res["price"] = toJS(_pendering_op.m_Pendingorder_price);
+                        std::tuple<std::string, std::string, std::string> _tuple = enumToString(_pendering_op.m_Pendingorder_type, _pendering_op.m_Pendingorder_Token_type,
+                                                     _pendering_op.m_Pendingorder_buy_type);
+                        res["pendingorder_type"] = get<0>(_tuple);
+                        res["token_type"] = get<1>(_tuple);
+                        res["buy_type"] = get<2>(_tuple);
                         _JsArray.append(res);
                     }
                     if(_type == dev::brc::transationTool::cancelPendingOrder) {

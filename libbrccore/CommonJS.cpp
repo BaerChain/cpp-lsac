@@ -148,6 +148,7 @@ uint8_t jsToOrderEnum(std::string const& _js)
     }
 }
 
+
 int64_t jsToint64(std::string const& _js)
 {
     std::istringstream str(_js);
