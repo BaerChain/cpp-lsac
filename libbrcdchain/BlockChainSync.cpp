@@ -261,7 +261,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
                                                          << "  last import h: " << last_block_num;
             }
             else
-                LOG(m_loggerInfo) << "will can not ignore_sync sync block: peer:"<< _peerID << " height:" << peer_block_number;
+                LOG(m_loggerDetail) << "will can not ignore_sync sync block: peer:"<< _peerID << " height:" << peer_block_number;
         }
     }
 
