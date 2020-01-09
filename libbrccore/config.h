@@ -78,7 +78,8 @@ namespace dev
                 static int64_t newChangeHeight();
                 ///@return the height of initSysAddress
                 static int64_t initSysAddressHeight();
-
+                static int64_t autoExHeight();
+                static int64_t autoExTestNetHeight();
         private:
             config(){}
             //~config(){}

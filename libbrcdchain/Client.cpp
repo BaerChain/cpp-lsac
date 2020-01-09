@@ -1021,7 +1021,7 @@ h256  Client::importBlock(const dev::bytesConstRef &data) {
 }
 
 // TODO: remove try/catch, allow exceptions
-ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
+ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, u256 chainid, FudgeFactor _ff)
 {
     ExecutionResult ret;
     try
@@ -1030,7 +1030,8 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
         u256 nonce = max<u256>(temp.transactionsFrom(_from), m_tq.maxNonce(_from));
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
+        Transaction t(_value, gasPrice, gas, _dest, _data, nonce, chainid);
+    
         t.forceSender(_from);
         if (_ff == FudgeFactor::Lenient)
             temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));

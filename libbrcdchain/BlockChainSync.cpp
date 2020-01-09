@@ -245,15 +245,23 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     }
 
     bool ignore_sync = false;
-    if(height != 0 ){
-        auto latest_block = host().chain().info().timestamp();
+    if(host().chain().genesisHash() != peer.genesisHash()){
+        ignore_sync = true;
+        cwarn << " genesisHash is not same can't to sync...";
+    }
+    if(height != 0 && !ignore_sync){
+        //auto latest_block = host().chain().info().timestamp();
+        auto compareHash = height ? host().chain().numberHash(1) : host().chain().genesisHash();
+        auto compareTime = host().chain().info(compareHash).timestamp();
         if(peer_block_number > height){
-            int64_t time_offset = (peer_block_number - height) * host().chain().chainParams().blockInterval;
-            if(latest_block + time_offset > utcTimeMilliSec()){
+            int64_t time_offset = peer_block_number * host().chain().chainParams().blockInterval;
+            if(compareTime + time_offset > utcTimeMilliSec()){
                 ignore_sync = true;
                 LOG(m_loggerDetail) << "ignore sync "  << _peerID << " self height " << height  << " peer height " << peer_block_number
                                                          << "  last import h: " << last_block_num;
             }
+            else
+                LOG(m_loggerDetail) << "will can not ignore_sync sync block: peer:"<< _peerID << " height:" << peer_block_number;
         }
     }
 
@@ -841,8 +849,10 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         return;
 
     case ImportResult::AlreadyInChain:
-    case ImportResult::AlreadyKnown:
+    case ImportResult::AlreadyKnown:{
+        peer.setBlockNumber(max(unsigned(peer.block_number()), blockNumber));
         break;
+    }
 
     case ImportResult::FutureTimeUnknown:
     case ImportResult::UnknownParent:
@@ -855,11 +865,16 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         }
         logNewBlock(h);
         u256 totalDifficulty = _r[1].toInt<u256>();
-        if (totalDifficulty > peer.totalDifficulty())
+        if (info.number() > peer.block_number())
         {
             //LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
             cwarn << "new block : "<< info.number() << " author:"<< info.author()
                     << " totalDifficulty > peer.totalDifficulty() :" << totalDifficulty << " ::"<< peer.totalDifficulty();
+            if(info.number() <= host().chain().number()){
+                cwarn << "peer block:" << info.number() << " < last_block_num:"<< host().chain().number() << " can not to sync";
+                break;
+            }
+            m_haveCommonHeader = false;
             syncPeer(_peerID, true);
         }
         break;

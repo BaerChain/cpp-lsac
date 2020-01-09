@@ -372,7 +372,7 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-                                            jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
+                                            jsToBlockNum(_blockNumber), t.chainId, FudgeFactor::Lenient);
         return toJS(er.output);
     }
     catch (...)

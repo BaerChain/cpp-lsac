@@ -84,7 +84,7 @@ public:
     h256 importBlock(const bytesConstRef &data) override;
 
     /// Makes the given call. Nothing is recorded into the state.
-    ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+    ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, u256 chainid = 1, FudgeFactor _ff = FudgeFactor::Strict) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
