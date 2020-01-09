@@ -76,6 +76,7 @@ DEV_SIMPLE_EXCEPTION(InvalidAddressAddVote);
 DEV_SIMPLE_EXCEPTION(NotEnoughVoteLog);
 DEV_SIMPLE_EXCEPTION(InvalidSysAddress);
 DEV_SIMPLE_EXCEPTION(InvalidDynamic);
+DEV_SIMPLE_EXCEPTION(InvalidMappingAddress);
 
 class SealEngineFace;
 class Executive;
@@ -126,7 +127,8 @@ struct Change
         ReceiveCookies,
         UpExOrder,
         SuccessOrder,
-        ChangeMiner
+        ChangeMiner,
+        NewChangeMiner
     };
 
     Kind kind;        ///< The kind of the change.
@@ -147,6 +149,7 @@ struct Change
     dev::brc::ex::ExOrderMulti ex_multi;
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
+    std::pair<Address, Address> mapping;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -218,6 +221,10 @@ struct Change
     {
         old_account.kill();
         old_account.copyByAccount(_account);
+    }
+    Change(Kind _kind, Address const& _addr, std::pair<Address, Address>const& _map) :kind(_kind), address(_addr)
+    {
+        mapping =_map;
     }
 };
 
@@ -393,7 +400,8 @@ public:
 	void systemAutoPendingOrder(std::set<ex::order_type> const& _set, int64_t _nowTime);
     void changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     Account* getSysAccount();
-    
+    void verifyChangeMiner(Address const& _from, EnvInfo const& _envinfo, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+
 	Json::Value pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 getSize);
 
 	Json::Value pendingOrderPoolForAddrMsg(Address _a, uint32_t _getSize);
@@ -406,6 +414,7 @@ public:
 
     Json::Value queryExchangeReward(Address const& _address, unsigned _blockNum);
     Json::Value queryBlcokReward(Address const& _address, unsigned _blockNum);
+    u256 rpcqueryBlcokReward(Address const& _address, unsigned _blockNum);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -431,6 +440,10 @@ public:
     /// interface about vote snapshot
     void try_new_vote_snapshot(Address const& _addr, u256 _block_num);
 
+    /// new interface about miner_mapping in fuction:changeMiner
+    /// to up mapping_address
+    void trySnapshotWithMinerMapping(Address const& _addr, u256 _block_num);
+
 	Account systemPendingorder(int64_t _time);
 	void addBlockReward(Address const & _addr, u256 _blockNum, u256 _rewardNum);
 
@@ -438,7 +451,7 @@ public:
 	std::unordered_map<Address, u256> incomeSummary(Address const& _addr, uint32_t _snapshotNum);
 
 	void receivingIncome(Address const & _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum);
-	void receivingBlockFeeIncome(Address const& _addr, int64_t _blockNum);
+	u256 receivingBlockFeeIncome(Address const& _addr, int64_t _blockNum);
 	void receivingPdFeeIncome(Address const& _addr, int64_t _blockNum);
 	///@return <brc, cookies>
 	///@param is_update if true will up state_data
@@ -459,8 +472,9 @@ public:
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
-    
+
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
+    std::pair<Address, Address> minerMapping(Address const& addr);
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
@@ -577,6 +591,9 @@ public:
 	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
 	uint64_t timestamp() const{ return m_timestamp; }
 
+	void setBlockNumber(int64_t value) { m_block_number = value; }
+	int64_t blockNumber(){return m_block_number;}
+
 	///interface for create_block record
 	///Get last create_block record
 	///@returns create_time
@@ -596,6 +613,10 @@ public:
     std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
 
     void changeVoteData(BlockHeader const& _header);
+
+    void changeTestMiner(BlockHeader const& _header);
+    // test for changeMiner with test_net_data
+    void changeMinerAddVote(BlockHeader const& _header);
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -641,6 +662,8 @@ private:
     /// the time for current_block time
 	uint64_t m_timestamp = 0;
 
+	int64_t  m_block_number =0;
+
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
 
@@ -653,7 +676,7 @@ State& createIntermediateState(
     State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
 
 template <class DB>
-AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state, uint64_t _time = FORKSIGNSTIME);
+AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state, int64_t _block_number = 0);
 
 }  // namespace brc
 }  // namespace dev

@@ -704,6 +704,27 @@ public:
         return false;
     }
 
+    bytes getRLPStreamChangeMiner() const{
+        RLPStream rlp;
+        if( m_mappingAddress.first == Address()){
+            rlp.appendList(1);
+            rlp << "";
+        }
+        else{
+            rlp.appendList(2);
+            rlp << m_mappingAddress.first;
+            rlp << m_mappingAddress.second;
+        }
+        return rlp.out();
+    }
+    void populateChangeMiner(bytes const& b){
+        RLP rlp(b);
+        if(rlp.itemCount() == 2){
+            m_mappingAddress.first = rlp[0].convert<Address>(RLP::LaissezFaire);
+            m_mappingAddress.second = rlp[1].convert<Address>(RLP::LaissezFaire);
+        }
+    }
+
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
     void kill()
@@ -746,7 +767,8 @@ public:
         return nonce() == 0 && balance() == 0 && codeHash() == EmptySHA3 && BRC() == 0 && poll() == 0 &&
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
-                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() && m_exChangeOrder.size() == 0 && m_successExchange.size() == 0;
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 ;
     }
 
     /// @returns the balance of this account.
@@ -1067,6 +1089,14 @@ public:
         }
     }
 
+    void setChangeMiner(std::pair<Address, Address> const& _pair){
+        m_mappingAddress = _pair;
+        changed();
+    }
+    std::pair<Address, Address>const& mappingAddress() const{
+        return m_mappingAddress;
+    }
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -1134,6 +1164,9 @@ private:
 
     /// Varlitor's create_block records
     BlockRecord m_block_records;
+
+    /// mapping Address <original_address, next_address> for change Miner
+    std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 
 };
 

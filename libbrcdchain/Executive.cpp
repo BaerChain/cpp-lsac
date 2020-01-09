@@ -417,57 +417,6 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 case transationTool::changeMiner:
                 {
                     transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(val);
-					try {
-						// check 'from' and 'm_before'
-                        if(m_t.sender() != _changeMiner_op.m_before){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("The originator of the transaction is different from the address of the replacement witness"));
-                        }
-                        // check block height
-                        if (m_envInfo.number() <= _changeMiner_op.m_blockNumber){
-
-                        }
-                        // check sign
-                        if(m_t.sender() != _changeMiner_op.get_sign_data_address(_changeMiner_op.m_signature, false)){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Whether the signature data is the signature of the trader's originator"));
-                        }
-
-                        auto addrMap = m_vote.VarlitorsAddress();
-                        auto currentCheckerCount = addrMap.size() - addrMap.size() / 3;
-
-                        // check Permission
-                        auto  ret = std::find(addrMap.begin(), addrMap.end(), m_t.sender());
-                        if (ret == addrMap.end()){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Permission denied"));
-                        }
-
-                        // check other node sign and num >= 2/3(include own)
-                        int count = 1;
-                        sort(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end());
-                        _changeMiner_op.m_agreeMsgs.erase(unique(_changeMiner_op.m_agreeMsgs.begin(), _changeMiner_op.m_agreeMsgs.end()), _changeMiner_op.m_agreeMsgs.end());
-                        for(auto data : _changeMiner_op.m_agreeMsgs){
-                            auto addr = _changeMiner_op.get_sign_data_address(data, true);
-                            if(addr == m_t.sender()){
-                                continue;
-                            }
-                            auto  ret_addr = std::find(addrMap.begin(), addrMap.end(), addr);
-                            if(ret_addr != addrMap.end()){
-                                count++;
-                            }
-                        }
-                        if(count < currentCheckerCount){
-                            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("Not enough witnesses agree to change witnesses"));
-                        }
-					}
-					catch(Exception &ex)
-					{
-						LOG(m_execLogger)
-							<< "ChangeMiner field > "
-							<< "m_t.sender:" << m_t.sender() << " * "
-							<< " changeMiner_type:" << _changeMiner_op.m_type
-						    << ex.what();
-						m_excepted = TransactionException::ChangeMinerFailed;
-						BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
-					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
                 }
                 break;
@@ -520,7 +469,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincome(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                    m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                else if(m_batch_params._type == transationTool::op_type::changeMiner)
+                    m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
 			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
 			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
 
@@ -540,6 +491,10 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 			catch(receivingincomeFiled const& _r)
             {
 			    BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_r)));
+            }
+            catch(ChangeMinerFailed const& _r)
+            {
+                BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_r)));
             }
 		}
 	}
@@ -885,8 +840,19 @@ bool Executive::finalize()
     {
         m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
-        m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-        m_s.addCooikeIncomeNum(m_envInfo.author(),  m_totalGas - m_needRefundGas);
+
+        // updata about author mapping_address
+        // TODO fork code
+        if (m_envInfo.number() >= config::newChangeHeight()) {
+            auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+            Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
+            m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+            m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
+        }
+        else{
+            m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+            m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
+        }
     }
 
     // Suicides...

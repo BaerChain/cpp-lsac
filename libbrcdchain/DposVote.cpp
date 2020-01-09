@@ -55,6 +55,15 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
             if(p_data.m_addr == _from){
 				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("Accout early is Candidate"));
 			}
+            ///fork code about newchangeminer
+            // check after changeMiner about the mapping
+            if(_envinfo.number() >= config::newChangeHeight()) {
+                auto miner_mapping = m_state.minerMapping(_from);
+                if (!(miner_mapping.first == Address() || miner_mapping.first == _from)) {
+                    BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(
+                            " Accout is the chanege from other can not to oparetion this vote"));
+                }
+            }
 		}
 		break;
 		case dev::brc::ELogoutCandidate:
