@@ -474,8 +474,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
 			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
 			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
+                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice)
 
-			}
+            }
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
                 cdebug << " except:" << ex.what();
