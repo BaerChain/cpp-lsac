@@ -80,6 +80,9 @@ namespace dev
                 static int64_t initSysAddressHeight();
                 static int64_t autoExHeight();
                 static int64_t autoExTestNetHeight();
+
+                /// the height must bigger newChangeHeight about gasPriceHeight
+                static int64_t gasPriceHeight();
         private:
             config(){}
             //~config(){}

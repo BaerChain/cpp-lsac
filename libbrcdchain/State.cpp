@@ -226,6 +226,11 @@ Account *State::account(Address const &_addr) {
         }
     }
 
+    if(m_block_number >= config::gasPriceHeight() && state.itemCount() > 20){
+        const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
+        i.first->second.initGasPrice(_b);
+    }
+
 
     return &i.first->second;
 }
@@ -3234,7 +3239,11 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if (_block_number >= config::newChangeHeight()) {
+                if(_block_number >+ config::gasPriceHeight()){
+                    /// this height is contains newChangeHeight
+                    s.appendList(21);
+                }
+                else if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
                 else{
@@ -3316,6 +3325,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                         s << i.second.getRLPStreamChangeMiner();
                         //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
+                }
+                {
+                    if(_block_number >= config::gasPriceHeight()){
+                        s << i.second.getStreamRLPGasPrice();
+                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
+                    }
+
                 }
                 _state.insert(i.first, &s.out());
             }
