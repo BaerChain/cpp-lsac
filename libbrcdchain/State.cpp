@@ -2146,6 +2146,9 @@ void State::rollback(size_t _savepoint) {
             case Change::NewChangeMiner:
                 account.setChangeMiner(change.mapping);
                 break;
+            case Change::MinerGasPrice:
+                account.setMinerGasPrices(change.minerGasPrice);
+                break;
             default:
                 break;
         }
