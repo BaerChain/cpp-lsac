@@ -509,6 +509,12 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, s
         {
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));
         }
+        Account *_minerGasPriceAddr = m_state.account(dev::GaspriceAddress);
+        std::map<Address, u256> _gasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(!_gasPriceMap.count(_op->m_proposer))
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"))
+        }
     }
 }
 
