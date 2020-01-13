@@ -1115,8 +1115,13 @@ public:
     std::map<Address, u256> const& minerGasPrice() const{
         return m_minerGasPrice;
     }
-    void setMinerGasPrice(Address const& _id, u256 const& _price){
+    void setMinerGasPrice(Address const& _id, u256 const& _price) {
         m_minerGasPrice[_id] = _price;
+        changed();
+    }
+    void setMinerGasPrices(std::map<Address, u256> const& _prices){
+        m_minerGasPrice.clear();
+        m_minerGasPrice = _prices;
         changed();
     }
 
