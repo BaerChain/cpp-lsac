@@ -1238,7 +1238,8 @@ u256 State::getAveragegasPrice() {
 
 void State::initMinerGasPrice(BlockHeader const &_header){
     if(config::gasPriceHeight() == _header.number()){
-        u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        //u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        u256 init_value = 10;
         auto a_miner = account(SysVarlitorAddress);
         auto a_can = account(SysCanlitorAddress);
         if(a_miner && a_can){

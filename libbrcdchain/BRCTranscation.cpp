@@ -505,6 +505,10 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, s
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("modifyMinerGasPrice_operation Casting failed"));
+        }
         if(_from != _op->m_proposer)
         {
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));

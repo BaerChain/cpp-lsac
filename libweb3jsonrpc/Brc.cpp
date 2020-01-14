@@ -985,6 +985,10 @@ string dev::rpc::exceptionToErrorMessage()
     {
         ret = "transferAutoEx failed: " + std::string(*boost::get_error_info<errinfo_comment>(_t));
     }
+    catch (modifyminergaspriceFailed const& _m)
+    {
+        ret = "modifyminerGasprice failed: " + std::string(*boost::get_error_info<errinfo_comment>(_m));
+    }
     catch (getVotingCycleFailed const _g)
     {
         ret = std::string(*boost::get_error_info<errinfo_comment >(_g));
