@@ -3386,7 +3386,6 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 {
                     if(commitBlockNumber >= config::gasPriceHeight()){
                         s << i.second.getStreamRLPGasPrice();
-                        cwarn << toString(i.first);
                         cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getStreamRLPGasPrice()) << "      "<< _block_number;
                     }
 
