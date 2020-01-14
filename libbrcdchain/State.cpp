@@ -1226,6 +1226,20 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     return _cookieFee;
 }
 
+u256 State::getAveragegasPrice() {
+    auto a = account(GaspriceAddress);
+    if(a){
+        cwarn << "get average price";
+        return a->getAverageGasPrice();
+    }
+    return 0;
+}
+
+void State::initMinerGasPrice(BlockHeader const &_header){
+    if(config::replaceMinerHeight() == _header.number()){
+
+    }
+}
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
     uint32_t _maxSize = (uint32_t) _gsize;

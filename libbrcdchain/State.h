@@ -421,6 +421,8 @@ public:
     Json::Value queryExchangeReward(Address const& _address, unsigned _blockNum);
     Json::Value queryBlcokReward(Address const& _address, unsigned _blockNum);
     u256 rpcqueryBlcokReward(Address const& _address, unsigned _blockNum);
+    u256 getAveragegasPrice();
+    void initMinerGasPrice(BlockHeader const &_header);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;

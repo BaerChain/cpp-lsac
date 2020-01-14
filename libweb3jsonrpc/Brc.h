@@ -111,6 +111,7 @@ public:
 	virtual Json::Value brc_getElector(const std::string& _blockNumber) override;
 	virtual Json::Value brc_estimateGasUsed(const Json::Value& _json) override;
 	virtual Json::Value brc_getGasPrice() override;
+	virtual Json::Value brc_getAveragrGasPrice(const std::string& _blockNumber) override ;
 
 	virtual Json::Value brc_getAnalysisData(std::string const& _data) override;
 	void setTransactionDefaults(brc::TransactionSkeleton& _t);

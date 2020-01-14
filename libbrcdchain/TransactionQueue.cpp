@@ -390,7 +390,6 @@ void TransactionQueue::enqueue(std::vector<bytesConstRef> const& _dataV, h512 co
 
 void TransactionQueue::verifierBody()
 {
-    cerror << "TransactionQueue::verifierBody";
     while (!m_aborting)
     {
         UnverifiedTransaction work;

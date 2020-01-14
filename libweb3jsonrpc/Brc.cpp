@@ -910,6 +910,14 @@ Json::Value dev::rpc::Brc::brc_getGasPrice()
     }
 }
 
+Json::Value Brc::brc_getAveragrGasPrice(const std::string& _blockNumber) {
+    try{
+        return client()->getAveragePrice(jsToBlockNum(_blockNumber));
+    }catch(...){
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;
