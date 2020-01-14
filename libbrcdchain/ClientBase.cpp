@@ -667,6 +667,7 @@ int ClientBase::chainId() const
 Json::Value ClientBase::getAveragePrice(BlockNumber _block) {
     Block _b = blockByNumber(_block);
     Json::Value v;
+    cwarn << "    "<< _b.info().number();
     v["gasPrice"]= toJS(_b.mutableState().getAveragegasPrice());
     return v;
 }

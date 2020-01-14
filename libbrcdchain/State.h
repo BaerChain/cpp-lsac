@@ -601,7 +601,7 @@ public:
 	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
 	uint64_t timestamp() const{ return m_timestamp; }
 
-	void setBlockNumber(int64_t value) { m_block_number = value; }
+	void setBlockNumber(int64_t value) { m_block_number = value;  m_curr_number = m_block_number +1; }
 	int64_t blockNumber(){return m_block_number;}
 
 	///interface for create_block record
@@ -675,6 +675,7 @@ private:
 	uint64_t m_timestamp = 0;
 
 	int64_t  m_block_number =0;
+	int64_t  m_curr_number = 0;
 
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
