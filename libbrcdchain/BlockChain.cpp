@@ -1159,7 +1159,7 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         ///verify the standby Legitimacy
         Verify verify_creater;
         if (!verify_creater.verify_standby(state_db, _block.info.timestamp(), _block.info.author(),
-                                           m_params.varlitorInterval)) {
+                                           m_params.varlitorInterval, _block.info.number() >= config::newChangeHeight())) {
             // throw
             //cwarn << " the standby author:" << _block.info.author() << " can't to Seal in this time_point";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));

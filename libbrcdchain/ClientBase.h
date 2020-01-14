@@ -54,6 +54,7 @@ public:
     std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback) override;
     Json::Value estimateGasUsed(const Json::Value& _json, BlockNumber _blockNum) override;
     Json::Value getGasPrice() override;
+    Json::Value getAveragePrice(BlockNumber _block) override ;
     using Interface::balanceAt;
     using Interface::ballotAt;
     using Interface::countAt;

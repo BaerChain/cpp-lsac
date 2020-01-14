@@ -683,6 +683,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
 
     auto miner = a->vote_data();
     auto canMiner = a_can->vote_data();
+
     if (std::find(miner.begin(), miner.end(), _from) == miner.end() &&
             std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
         cerror << "changeMiner from_address not is miner : "<< _from;
@@ -1226,6 +1227,20 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     return _cookieFee;
 }
 
+u256 State::getAveragegasPrice() {
+    auto a = account(GaspriceAddress);
+    if(a){
+        cwarn << "get average price";
+        return a->getAverageGasPrice();
+    }
+    return 0;
+}
+
+void State::initMinerGasPrice(BlockHeader const &_header){
+    if(config::replaceMinerHeight() == _header.number()){
+
+    }
+}
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
     uint32_t _maxSize = (uint32_t) _gsize;
@@ -2736,6 +2751,12 @@ BlockRecord dev::brc::State::block_record() const {
     if (!a)
         return BlockRecord();
     return a->block_record();
+}
+std::pair<Address, Address> dev::brc::State::replaceMiner(Address const& _id) const{
+    auto a = account(_id);
+    if (a)
+        return a->mappingAddress();
+    return std::make_pair(Address(), Address());
 }
 
 void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header,

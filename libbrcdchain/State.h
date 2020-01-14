@@ -421,6 +421,8 @@ public:
     Json::Value queryExchangeReward(Address const& _address, unsigned _blockNum);
     Json::Value queryBlcokReward(Address const& _address, unsigned _blockNum);
     u256 rpcqueryBlcokReward(Address const& _address, unsigned _blockNum);
+    u256 getAveragegasPrice();
+    void initMinerGasPrice(BlockHeader const &_header);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -611,6 +613,8 @@ public:
     void set_last_block_record(Address const& _id, std::pair<int64_t, int64_t> value, uint32_t  varlitor_time);
 
     BlockRecord block_record() const;
+
+    std::pair<Address, Address> replaceMiner(Address const& _id) const;
 
     /// try into new rounds if into: will statistical_poll and sort varlitor
     void try_newrounds_count_vote(BlockHeader const& curr_header, BlockHeader const& previous_header);
