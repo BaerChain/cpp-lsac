@@ -321,6 +321,7 @@ public:
         /// init the minerGasPrice
         /// the interface has dealed chainId
         m_state.initMinerGasPrice(curr_info);
+
     }
 
 private:

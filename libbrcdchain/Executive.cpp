@@ -281,18 +281,32 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         cerror << "now gasPrice is :" << m_sealEngine.chainParams().m_minGasPrice;
         cerror << "enum is " << _enum;
         cerror << "transaction gas is " << m_t.gasPrice();
-		if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice && _enum == transationTool::initializeEnum::rpcinitialize){
+		// if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice && _enum == transationTool::initializeEnum::rpcinitialize){
+        //     cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+		// 		<< m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
+		// 	m_excepted = TransactionException::InvalidGasPrice;
+		// 	BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
+		// }else if(m_t.gasPrice() < c_min_price && _enum == transationTool::initializeEnum::executeinitialize)
+        // {
+        //     cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
+		// 		<< c_min_price << " Got " << m_t.gasPrice();
+		// 	m_excepted = TransactionException::InvalidGasPrice;
+		// 	BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
+        // }
+
+        if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::rpcinitialize){
             cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
-				<< m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
+				<< m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
 			m_excepted = TransactionException::InvalidGasPrice;
 			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
-		}else if(m_t.gasPrice() < c_min_price && _enum == transationTool::initializeEnum::executeinitialize)
+		}else if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::executeinitialize)
         {
             cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
-				<< c_min_price << " Got " << m_t.gasPrice();
+				<< m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
 			m_excepted = TransactionException::InvalidGasPrice;
-			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
+			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_s.getAveragegasPrice()))));
         }
+
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;
@@ -431,6 +445,12 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 {
                     transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
                     m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
+                }
+                break;
+                case transationTool::modifyMinerGasPrice:
+                {
+                    transationTool::modifyMinerGasPrice_operation _gasprice_op = transationTool::modifyMinerGasPrice_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::modifyMinerGasPrice_operation>(_gasprice_op));
                 }
                 break;
                 default:
@@ -623,6 +643,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
                 break;
             }
+            case transationTool::op_type::modifyMinerGasPrice:
+            {
+                m_s.modifyGasPrice(m_batch_params._operation);
+            }
+            break;
             default:
                 //TODO: unkown null.
                 assert(1);
