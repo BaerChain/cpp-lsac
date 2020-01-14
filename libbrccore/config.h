@@ -7,6 +7,8 @@
 #define MATCHINGFEERATIO 2000
 #define SELLCOOKIE 100000000
 #define BUYCOOKIE 99000000
+#define MAINCHAINID 11
+#define TESTCHAINID  1
 
 
 
@@ -44,13 +46,14 @@ namespace dev
             public:
                 static std::pair<uint32_t, Votingstage> getVotingCycle(int64_t _blockNum);
 
-                static const config getInstance(uint32_t _varlitor_num = 21, uint32_t _standby_num =30, uint32_t _min_cycle =3){
+                static const config getInstance(bool _init = false, uint32_t _varlitor_num = 21, uint32_t _standby_num =30, uint32_t _min_cycle =3,
+                                                int _chainId = 1){
                     static config instance;
-                    if(!instance.is_init){
+                    if(_init){
                         instance.varlitor_num = _varlitor_num;
                         instance.standby_num =_standby_num;
                         instance.min_cycel = _min_cycle;
-                        instance.is_init = true;
+                        instance.m_chainId = _chainId;
                     }
                     return instance;
                 }
@@ -61,6 +64,9 @@ namespace dev
                 static  uint32_t standbyNum();
                 ///@return Minimum period to enable standby_node if the super_node not to create_block
                 static  uint32_t minimum_cycle();
+
+                static int chainId();
+
                 static  uint32_t minner_rank_num() { return  7;}
                 ///@return the max num of rpc_interdace message
                 static  uint32_t max_message_num();
@@ -83,10 +89,13 @@ namespace dev
         private:
             config(){}
             //~config(){}
-            bool is_init = false;
             uint32_t varlitor_num =21;
             uint32_t standby_num = 30;
             uint32_t min_cycel = 3;
+            /// chain = 1: test net
+            /// chain = 11 : main net
+            /// other private net
+            int m_chainId = 1;
         };
     }
 }
