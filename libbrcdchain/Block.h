@@ -317,6 +317,10 @@ public:
         if(params.chainID == 1){
             m_state.changeMinerAddVote(curr_info);
         }
+
+        /// init the minerGasPrice
+        /// the interface has dealed chainId
+        m_state.initMinerGasPrice(curr_info);
     }
 
 private:

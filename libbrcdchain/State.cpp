@@ -1237,8 +1237,27 @@ u256 State::getAveragegasPrice() {
 }
 
 void State::initMinerGasPrice(BlockHeader const &_header){
-    if(config::replaceMinerHeight() == _header.number()){
-
+    if(config::gasPriceHeight() == _header.number()){
+        u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        auto a_miner = account(SysVarlitorAddress);
+        auto a_can = account(SysCanlitorAddress);
+        if(a_miner && a_can){
+            auto a_gas = account(GaspriceAddress);
+            if(!a_gas){
+                createAccount(GaspriceAddress, Account(0, 0));
+                a_gas = account(GaspriceAddress);
+            }
+            auto vars = a_miner->vote_data();
+            for(auto const& v: vars){
+                cwarn << v.m_addr;
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+            auto cans = a_can->vote_data();
+            for(auto const& v: cans){
+                cwarn << v.m_addr;
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+        }
     }
 }
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
@@ -3276,7 +3295,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if(_block_number >+ config::gasPriceHeight()){
+                if(_block_number >= config::gasPriceHeight()){
                     /// this height is contains newChangeHeight
                     s.appendList(21);
                 }
@@ -3366,7 +3385,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 {
                     if(_block_number >= config::gasPriceHeight()){
                         s << i.second.getStreamRLPGasPrice();
-                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
+                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getStreamRLPGasPrice());
                     }
 
                 }
