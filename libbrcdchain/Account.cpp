@@ -236,7 +236,15 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
     changed();
 }
 
-
+u256 Account::getAverageGasPrice() const {
+    if(m_minerGasPrice.size() <=0 )
+        return 0;
+    u256 total = 0;
+    for(auto const& a: m_minerGasPrice){
+        total += a.second;
+    }
+    return total / m_minerGasPrice.size();
+}
 
 
 namespace js = json_spirit;

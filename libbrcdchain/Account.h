@@ -1125,6 +1125,8 @@ public:
         changed();
     }
 
+    u256 getAverageGasPrice() const;
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
