@@ -1089,6 +1089,21 @@ public:
         }
     }
 
+    bytes getStreamRLPGasPrice() const{
+        RLPStream s(m_minerGasPrice.size());
+        for(auto const& a: m_minerGasPrice){
+            s.append<Address, u256>(std::make_pair(a.first, a.second));
+        }
+        return s.out();
+    }
+    void initGasPrice(bytes const& b){
+        m_minerGasPrice.clear();
+        for(auto const& v: RLP(b)){
+            auto _p = v.toPair<Address, u256>();
+            m_minerGasPrice[_p.first] = _p.second;
+        }
+    }
+
     void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
         changed();
@@ -1096,6 +1111,21 @@ public:
     std::pair<Address, Address>const& mappingAddress() const{
         return m_mappingAddress;
     }
+
+    std::map<Address, u256> const& minerGasPrice() const{
+        return m_minerGasPrice;
+    }
+    void setMinerGasPrice(Address const& _id, u256 const& _price) {
+        m_minerGasPrice[_id] = _price;
+        changed();
+    }
+    void setMinerGasPrices(std::map<Address, u256> const& _prices){
+        m_minerGasPrice.clear();
+        m_minerGasPrice = _prices;
+        changed();
+    }
+
+    u256 getAverageGasPrice() const;
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1167,6 +1197,9 @@ private:
 
     /// mapping Address <original_address, next_address> for change Miner
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+
+    /// miner and standbyMiner gasPrice;
+    std::map<Address, u256> m_minerGasPrice;
 
 };
 

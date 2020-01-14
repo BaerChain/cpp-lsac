@@ -128,7 +128,8 @@ struct Change
         UpExOrder,
         SuccessOrder,
         ChangeMiner,
-        NewChangeMiner
+        NewChangeMiner,
+        MinerGasPrice
     };
 
     Kind kind;        ///< The kind of the change.
@@ -150,6 +151,7 @@ struct Change
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
     std::pair<Address, Address> mapping;
+    std::map<Address, u256> minerGasPrice;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -225,6 +227,10 @@ struct Change
     Change(Kind _kind, Address const& _addr, std::pair<Address, Address>const& _map) :kind(_kind), address(_addr)
     {
         mapping =_map;
+    }
+    Change(Kind _kind, Address const& _addr, std::map<Address, u256>const& _map) :kind(_kind), address(_addr)
+    {
+        minerGasPrice =_map;
     }
 };
 
@@ -475,6 +481,8 @@ public:
 
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
     std::pair<Address, Address> minerMapping(Address const& addr);
+
+    void modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

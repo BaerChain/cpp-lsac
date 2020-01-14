@@ -226,6 +226,11 @@ Account *State::account(Address const &_addr) {
         }
     }
 
+    if(m_block_number >= config::gasPriceHeight() && state.itemCount() > 20){
+        const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
+        i.first->second.initGasPrice(_b);
+    }
+
 
     return &i.first->second;
 }
@@ -1904,6 +1909,19 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
     }
 }
 
+void State::modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto const& _it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(_it);
+        Account *_minerGasPrice = account(dev::GaspriceAddress);
+        std::map<Address, u256> _oldGasPriceMap = _minerGasPrice->minerGasPrice();
+        _minerGasPrice->setMinerGasPrice(_op->m_proposer, _op->m_proposedAmount);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldGasPriceMap);
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
@@ -2141,6 +2159,9 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::NewChangeMiner:
                 account.setChangeMiner(change.mapping);
+                break;
+            case Change::MinerGasPrice:
+                account.setMinerGasPrices(change.minerGasPrice);
                 break;
             default:
                 break;
@@ -3241,7 +3262,11 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if (_block_number >= config::newChangeHeight()) {
+                if(_block_number >+ config::gasPriceHeight()){
+                    /// this height is contains newChangeHeight
+                    s.appendList(21);
+                }
+                else if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
                 else{
@@ -3323,6 +3348,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                         s << i.second.getRLPStreamChangeMiner();
                         //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
+                }
+                {
+                    if(_block_number >= config::gasPriceHeight()){
+                        s << i.second.getStreamRLPGasPrice();
+                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
+                    }
+
                 }
                 _state.insert(i.first, &s.out());
             }

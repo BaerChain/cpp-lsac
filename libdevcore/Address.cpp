@@ -22,6 +22,7 @@ namespace dev
     Address const SysVarlitorAddress            { "0x000000000067656e657369735661726c69746f72" };
     Address const SysCanlitorAddress            { "0x0000000067656e6573697343616e646964617465" };
     Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
+    Address const GaspriceAddress               { "0x0000000000676173707269636541646472657373"};
 
     std::vector<Address> const CreaterSysAddresses {
             Address("0x0000006365617465725379734164647265737331"),
