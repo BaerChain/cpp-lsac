@@ -510,10 +510,25 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, s
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));
         }
         Account *_minerGasPriceAddr = m_state.account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("minerGasPriceAddr is not exist"));
+        }
         std::map<Address, u256> _gasPriceMap = _minerGasPriceAddr->minerGasPrice();
         if(!_gasPriceMap.count(_op->m_proposer))
         {
-            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"))
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"));
+        }
+
+        u256 _totalgasprice = 0;
+        for(auto _it : _gasPriceMap)
+        {
+            _totalgasprice += _it.second;
+        }
+        u256 _averageGasPrice = _totalgasprice / _gasPriceMap.size();
+        if(_op->m_proposedAmount > _averageGasPrice * 12 / 10 || _op->m_proposedAmount < _averageGasPrice * 8 / 10)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("Proposed value is outside the allowed range"));
         }
     }
 }

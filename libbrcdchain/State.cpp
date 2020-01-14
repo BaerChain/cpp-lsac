@@ -1908,6 +1908,19 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
     }
 }
 
+void State::modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto const& _it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(_it);
+        Account *_minerGasPrice = account(dev::GaspriceAddress);
+        std::map<Address, u256> _oldGasPriceMap = _minerGasPrice->minerGasPrice();
+        _minerGasPrice->setMinerGasPrice(_op->m_proposer, _op->m_proposedAmount);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldGasPriceMap);
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
