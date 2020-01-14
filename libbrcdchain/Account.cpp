@@ -241,6 +241,7 @@ u256 Account::getAverageGasPrice() const {
         return 0;
     u256 total = 0;
     for(auto const& a: m_minerGasPrice){
+        cwarn << a.first << "    " << a.second;
         total += a.second;
     }
     return total / m_minerGasPrice.size();
