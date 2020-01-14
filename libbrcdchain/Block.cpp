@@ -782,7 +782,7 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     execute_block_record(info());
     // try into new rounds
     intoNewBlockToDo(info(), previousBlock(), _bc.chainParams());
-
+    cwarn << " curr info:" << info().number() << "previousBlock:" << previousBlock().number();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =

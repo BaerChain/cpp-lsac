@@ -1249,12 +1249,10 @@ void State::initMinerGasPrice(BlockHeader const &_header){
             }
             auto vars = a_miner->vote_data();
             for(auto const& v: vars){
-                cwarn << v.m_addr;
                 a_gas->setMinerGasPrice(v.m_addr, init_value);
             }
             auto cans = a_can->vote_data();
             for(auto const& v: cans){
-                cwarn << v.m_addr;
                 a_gas->setMinerGasPrice(v.m_addr, init_value);
             }
         }
@@ -3287,6 +3285,9 @@ State &dev::brc::createIntermediateState(
 template<class DB>
 AddressHash
 dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
+    /// _block_number : m_previousBlock.number()
+    /// so the will commitBlockNumber: _block_number+1
+    int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -3295,7 +3296,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if(_block_number >= config::gasPriceHeight()){
+                if( commitBlockNumber >= config::gasPriceHeight()){
                     /// this height is contains newChangeHeight
                     s.appendList(21);
                 }
@@ -3383,9 +3384,10 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     }
                 }
                 {
-                    if(_block_number >= config::gasPriceHeight()){
+                    if(commitBlockNumber >= config::gasPriceHeight()){
                         s << i.second.getStreamRLPGasPrice();
-                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getStreamRLPGasPrice());
+                        cwarn << toString(i.first);
+                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getStreamRLPGasPrice()) << "      "<< _block_number;
                     }
 
                 }
