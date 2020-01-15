@@ -498,8 +498,12 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
 }
 
 
-void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, int64_t const& _blockNum, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
 {
+    if(_blockNum <= config::gasPriceHeight())
+    {
+        BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("ModifyMinerGasPrice function has not yet reached the opening time"))
+    }
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(it);

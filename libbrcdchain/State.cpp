@@ -1954,6 +1954,36 @@ void State::modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation
     }
 }
 
+void State::changeMinerModifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto _it : _ops)
+    {
+        std::shared_ptr<transationTool::changeMiner_operation> _op = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice operation is null"));
+        }
+
+        Account *_minerGasPriceAddr = account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice minerGaspriceAddr is null"));
+        }
+        
+        std::map<Address, u256> _minerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        std::map<Address, u256> _oldminerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(_minerGasPriceMap.count(op->m_before))
+        {
+            u256 _minerGasPrice = _minerGasPriceMap[op->m_before];
+            _minerGasPriceMap.erase(op->m_before);
+            _minerGasPriceMap[op->m_after] = _minerGasPrice;
+        } 
+        _minerGasPriceAddr->setMinerGasPrices(_minerGasPriceMap);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldminerGasPriceMap);
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
