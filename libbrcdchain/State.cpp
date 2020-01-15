@@ -713,6 +713,20 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the maping after_addr has alreay mapping_addr"));
     }
 
+    // verify MinerGasPrice data
+    if(_envinfo.number() > config::gasPriceHeight()){
+        auto a_gas = account(GaspriceAddress);
+        if(!a){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("MinerGas SysAddress null"));
+        }
+        if(!a_gas->minerGasPrice().count(pen->m_before)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map not have address:"+dev::toString(pen->m_before)));
+        }
+        if(a_gas->minerGasPrice().count(pen->m_after)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map has contains address:"+dev::toString(pen->m_after)));
+        }
+    }
+
 }
 
 void dev::brc::State::changeMiner(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
