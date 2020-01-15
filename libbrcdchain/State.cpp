@@ -716,7 +716,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
     // verify MinerGasPrice data
     if(_envinfo.number() > config::gasPriceHeight()){
         auto a_gas = account(GaspriceAddress);
-        if(!a){
+        if(!a_gas){
             BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("MinerGas SysAddress null"));
         }
         if(!a_gas->minerGasPrice().count(pen->m_before)){
