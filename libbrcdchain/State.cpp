@@ -44,7 +44,8 @@ State::State(State const &_s)
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
           m_accountStartNonce(_s.m_accountStartNonce),
-          m_block_number(_s.m_block_number)
+          m_block_number(_s.m_block_number),
+          m_curr_number (_s.m_curr_number)
           {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
@@ -139,6 +140,7 @@ State &State::operator=(State const &_s) {
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_block_number = _s.m_block_number;
+    m_curr_number =_s.m_curr_number;
     return *this;
 }
 
@@ -226,11 +228,10 @@ Account *State::account(Address const &_addr) {
         }
     }
 
-    if(m_block_number >= config::gasPriceHeight() && state.itemCount() > 20){
+    if(m_curr_number >= config::gasPriceHeight() && state.itemCount() > 20){
         const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
         i.first->second.initGasPrice(_b);
     }
-
 
     return &i.first->second;
 }
@@ -3385,9 +3386,9 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     }
                 }
                 {
+                    /// fork about GasPrice
                     if(commitBlockNumber >= config::gasPriceHeight()){
                         s << i.second.getStreamRLPGasPrice();
-                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getStreamRLPGasPrice()) << "      "<< _block_number;
                     }
 
                 }

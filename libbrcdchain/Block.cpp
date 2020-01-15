@@ -782,7 +782,6 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
     execute_block_record(info());
     // try into new rounds
     intoNewBlockToDo(info(), previousBlock(), _bc.chainParams());
-    cwarn << " curr info:" << info().number() << "previousBlock:" << previousBlock().number();
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
     bool removeEmptyAccounts =
@@ -900,4 +899,23 @@ void Block::execute_block_record(BlockHeader const& curr_info){
     if (m_sealEngine)
         varlitor_time = m_sealEngine->chainParams().varlitorInterval;
     m_state.set_last_block_record(curr_info.author(), std::make_pair(curr_info.number(), curr_info.timestamp()), varlitor_time);
+}
+
+void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params){
+    ///try into new rounds  record snapshot minner_rank and sort new
+    m_state.try_newrounds_count_vote(curr_info, previous_info);
+    /// change miner for point height
+    m_state.tryChangeMiner(curr_info, params);
+    if(params.chainID == 11)
+    {
+        m_state.changeVoteData(curr_info);
+    }
+
+    if(params.chainID == 1){
+        m_state.changeMinerAddVote(curr_info);
+    }
+
+    /// init the minerGasPrice
+    /// the interface has dealed chainId
+    m_state.initMinerGasPrice(curr_info);
 }

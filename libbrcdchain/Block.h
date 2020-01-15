@@ -304,25 +304,7 @@ public:
 	void execute_block_record(BlockHeader const& curr_info);
 
     /// into new block todo something
-    void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params){
-        ///try into new rounds  record snapshot minner_rank and sort new
-        m_state.try_newrounds_count_vote(curr_info, previous_info);
-        /// change miner for point height
-        m_state.tryChangeMiner(curr_info, params);
-        if(params.chainID == 11)
-        {
-            m_state.changeVoteData(curr_info);
-        }
-
-        if(params.chainID == 1){
-            m_state.changeMinerAddVote(curr_info);
-        }
-
-        /// init the minerGasPrice
-        /// the interface has dealed chainId
-        m_state.initMinerGasPrice(curr_info);
-
-    }
+    void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params);
 
 private:
     SealEngineFace* sealEngine() const;
