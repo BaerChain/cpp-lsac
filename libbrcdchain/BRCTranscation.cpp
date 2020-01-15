@@ -255,7 +255,6 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(try_ret));
         }
     }
-    cnote << "verify receive ok";
 }
 
 
@@ -280,7 +279,6 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, 
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome type is null")));
         }
     }
-    cnote << "verify receive ok";
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,
