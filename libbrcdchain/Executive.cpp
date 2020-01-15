@@ -281,32 +281,34 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         cerror << "now gasPrice is :" << m_sealEngine.chainParams().m_minGasPrice;
         cerror << "enum is " << _enum;
         cerror << "transaction gas is " << m_t.gasPrice();
-		// if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice && _enum == transationTool::initializeEnum::rpcinitialize){
-        //     cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
-		// 		<< m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
-		// 	m_excepted = TransactionException::InvalidGasPrice;
-		// 	BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
-		// }else if(m_t.gasPrice() < c_min_price && _enum == transationTool::initializeEnum::executeinitialize)
-        // {
-        //     cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
-		// 		<< c_min_price << " Got " << m_t.gasPrice();
-		// 	m_excepted = TransactionException::InvalidGasPrice;
-		// 	BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
-        // }
-
-        if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::rpcinitialize){
-            cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
-				<< m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
-			m_excepted = TransactionException::InvalidGasPrice;
-			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
-		}else if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::executeinitialize)
+        if(m_envInfo.number() > config::gasPriceHeight())
         {
-            cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
-				<< m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
-			m_excepted = TransactionException::InvalidGasPrice;
-			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_s.getAveragegasPrice()))));
+            if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::rpcinitialize){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
+		    }else if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::executeinitialize)
+            {
+                cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
+				    << m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_s.getAveragegasPrice()))));
+            }
+        }else{
+            if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice && _enum == transationTool::initializeEnum::rpcinitialize){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
+		    }else if(m_t.gasPrice() < c_min_price && _enum == transationTool::initializeEnum::executeinitialize)
+            {
+                cdebug << "Sender: " << m_t.sender().hex() << "executeinitialize Invalid gasPrice: Require >"
+				    << c_min_price << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
+            }
         }
-
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;
