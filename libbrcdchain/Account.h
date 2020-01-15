@@ -768,7 +768,7 @@ public:
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                 m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
-                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 ;
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_minerGasPrice.size()==0;
     }
 
     /// @returns the balance of this account.

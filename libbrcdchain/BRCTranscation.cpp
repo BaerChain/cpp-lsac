@@ -503,6 +503,10 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, s
     for(auto it : _ops)
     {
         std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("modifyMinerGasPrice_operation Casting failed"));
+        }
         if(_from != _op->m_proposer)
         {
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));
@@ -518,13 +522,10 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, s
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"));
         }
 
-        u256 _totalgasprice = 0;
-        for(auto _it : _gasPriceMap)
-        {
-            _totalgasprice += _it.second;
-        }
-        u256 _averageGasPrice = _totalgasprice / _gasPriceMap.size();
-        if(_op->m_proposedAmount > _averageGasPrice * 12 / 10 || _op->m_proposedAmount < _averageGasPrice * 8 / 10)
+        u256 _averageGasPrice = _minerGasPriceAddr->getAverageGasPrice();
+        u256 _lowerLimit = _averageGasPrice * 8 / 10;
+        u256 _highLimit =  _averageGasPrice * 12 / 10;
+        if(_op->m_proposedAmount > _highLimit || _op->m_proposedAmount < _lowerLimit)
         {
             BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("Proposed value is outside the allowed range"));
         }

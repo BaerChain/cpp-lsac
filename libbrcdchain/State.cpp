@@ -44,7 +44,8 @@ State::State(State const &_s)
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
           m_accountStartNonce(_s.m_accountStartNonce),
-          m_block_number(_s.m_block_number)
+          m_block_number(_s.m_block_number),
+          m_curr_number (_s.m_curr_number)
           {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
@@ -139,6 +140,7 @@ State &State::operator=(State const &_s) {
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_block_number = _s.m_block_number;
+    m_curr_number =_s.m_curr_number;
     return *this;
 }
 
@@ -226,11 +228,10 @@ Account *State::account(Address const &_addr) {
         }
     }
 
-    if(m_block_number >= config::gasPriceHeight() && state.itemCount() > 20){
+    if(m_curr_number >= config::gasPriceHeight() && state.itemCount() > 20){
         const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
         i.first->second.initGasPrice(_b);
     }
-
 
     return &i.first->second;
 }
@@ -1227,6 +1228,37 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     return _cookieFee;
 }
 
+u256 State::getAveragegasPrice() {
+    auto a = account(GaspriceAddress);
+    if(a){
+        return a->getAverageGasPrice();
+    }
+    return 0;
+}
+
+void State::initMinerGasPrice(BlockHeader const &_header){
+    if(config::gasPriceHeight() == _header.number()){
+        //u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        u256 init_value = 10;
+        auto a_miner = account(SysVarlitorAddress);
+        auto a_can = account(SysCanlitorAddress);
+        if(a_miner && a_can){
+            auto a_gas = account(GaspriceAddress);
+            if(!a_gas){
+                createAccount(GaspriceAddress, Account(0, 0));
+                a_gas = account(GaspriceAddress);
+            }
+            auto vars = a_miner->vote_data();
+            for(auto const& v: vars){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+            auto cans = a_can->vote_data();
+            for(auto const& v: cans){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+        }
+    }
+}
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
     uint32_t _maxSize = (uint32_t) _gsize;
@@ -3254,6 +3286,9 @@ State &dev::brc::createIntermediateState(
 template<class DB>
 AddressHash
 dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
+    /// _block_number : m_previousBlock.number()
+    /// so the will commitBlockNumber: _block_number+1
+    int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -3262,7 +3297,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if(_block_number >+ config::gasPriceHeight()){
+                if( commitBlockNumber >= config::gasPriceHeight()){
                     /// this height is contains newChangeHeight
                     s.appendList(21);
                 }
@@ -3350,9 +3385,9 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     }
                 }
                 {
-                    if(_block_number >= config::gasPriceHeight()){
+                    /// fork about GasPrice
+                    if(commitBlockNumber >= config::gasPriceHeight()){
                         s << i.second.getStreamRLPGasPrice();
-                        cwarn << " insert GasPrice rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
 
                 }
