@@ -1231,7 +1231,6 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
 u256 State::getAveragegasPrice() {
     auto a = account(GaspriceAddress);
     if(a){
-        cwarn << "get average price";
         return a->getAverageGasPrice();
     }
     return 0;
