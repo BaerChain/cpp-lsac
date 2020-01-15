@@ -1986,11 +1986,11 @@ void State::changeMinerModifyGasPrice(std::vector<std::shared_ptr<transationTool
         
         std::map<Address, u256> _minerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
         std::map<Address, u256> _oldminerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
-        if(_minerGasPriceMap.count(op->m_before))
+        if(_minerGasPriceMap.count(_op->m_before))
         {
-            u256 _minerGasPrice = _minerGasPriceMap[op->m_before];
-            _minerGasPriceMap.erase(op->m_before);
-            _minerGasPriceMap[op->m_after] = _minerGasPrice;
+            u256 _minerGasPrice = _minerGasPriceMap[_op->m_before];
+            _minerGasPriceMap.erase(_op->m_before);
+            _minerGasPriceMap[_op->m_after] = _minerGasPrice;
         } 
         _minerGasPriceAddr->setMinerGasPrices(_minerGasPriceMap);
 

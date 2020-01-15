@@ -502,7 +502,7 @@ void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, i
 {
     if(_blockNum <= config::gasPriceHeight())
     {
-        BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("ModifyMinerGasPrice function has not yet reached the opening time"))
+        BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("ModifyMinerGasPrice function has not yet reached the opening time"));
     }
     for(auto it : _ops)
     {
