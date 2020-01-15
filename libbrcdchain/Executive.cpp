@@ -278,9 +278,6 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 
 
         //check gasPrice the must bigger c_min_price
-        cerror << "now gasPrice is :" << m_sealEngine.chainParams().m_minGasPrice;
-        cerror << "enum is " << _enum;
-        cerror << "transaction gas is " << m_t.gasPrice();
         if(m_envInfo.number() > config::gasPriceHeight())
         {
             if(m_t.gasPrice() < m_s.getAveragegasPrice() && _enum == transationTool::initializeEnum::rpcinitialize){
