@@ -2581,11 +2581,24 @@ void dev::brc::State::addExchangeOrder(Address const &_addr, dev::brc::ex::ex_or
 
 void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
 {
-    Account *_account = account(dev::TestbplusAddress);
-    if(!_account)
+    Account *_account;
+    if(_order.type == ex::order_type::buy)
     {
-       createAccount(dev::TestbplusAddress, {0});
-       _account = account(dev::TestbplusAddress);
+        _account = account(dev::BuyExchangeAddress);
+        if(!_account)
+        {
+            createAccount(dev::BuyExchangeAddress, {0});
+            _account = account(dev::BuyExchangeAddress);
+        }
+    }else if(_order.type == ex::order_type::sell){
+        _account = account(dev::SellExchangeAddress);
+        if(!_account)
+        {
+            createAccount(dev::SellExchangeAddress, {0});
+            _account = account(dev::SellExchangeAddress);
+        }
+    }else{
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("Order transaction type analysis error")));
     }
 
     std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
@@ -2594,9 +2607,6 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
 
     m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
     m_changeLog.emplace_back(Change::StorageByteRoot, dev::TestbplusAddress, _oldroot);
-
-    // _account->
-
 }
 
 Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)

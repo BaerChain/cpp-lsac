@@ -45,5 +45,9 @@ extern Address const SysMinerSnapshotAddress;
 extern Address const ExdbSystemAddress;
 
 extern Address const TestbplusAddress;
+
+extern Address const BuyExchangeAddress;
+
+extern Address const SellExchangeAddress;
 }
 
