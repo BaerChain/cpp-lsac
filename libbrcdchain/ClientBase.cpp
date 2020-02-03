@@ -127,7 +127,8 @@ Json::Value dev::brc::ClientBase::pendingOrderPoolMessage(
 {
     // return blockByNumber(_block).mutableState().pendingOrderPoolMsg(
     //     _order_type, _order_token_type, _getSize);
-    return blockByNumber(_block).mutableState().newExorderAllGet();
+    return blockByNumber(_block).mutableState().newExorderGetByType(_order_type);
+
 }
 
 Json::Value dev::brc::ClientBase::pendingOrderPoolForAddrMessage(

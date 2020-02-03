@@ -2650,6 +2650,27 @@ Json::Value dev::brc::State::newExorderAllGet()
     return _ret;
 }
 
+Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){ 
+    Address orderAddress;
+    if(_order_type == (uint8_t)dev::brc::ex::order_type::buy){
+        orderAddress = dev::BuyExchangeAddress;
+    }
+    else if(_order_type == (uint8_t)dev::brc::ex::order_type::sell){
+         orderAddress = dev::SellExchangeAddress;
+    }
+    else{
+        BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: buyType is not exist")));
+    }
+    Account *_account = account(orderAddress);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    }
+    Json::Value _ret = _account->exchangeBplusAllGet(m_db);
+    return _ret;
+}
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid) {
     Account *_account = account(_addr);
     if (!_account) {
