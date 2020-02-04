@@ -17,6 +17,9 @@
 #include <libdevcore/OverlayDB.h>
 #include <libbrcdchain/Transaction.h>
 
+typedef dev::brc::bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4, std::greater<dev::brc::exchangeSort>> buyOrder;
+typedef dev::brc::bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4, std::less<dev::brc::exchangeSort>> sellOrder;
+
 namespace dev
 {
 class OverlayDB;
@@ -1208,6 +1211,10 @@ public:
 
     void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
     std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
+    
+    std::pair<buyOrder::iterator, buyOrder::iterator> buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
+    std::pair<sellOrder::iterator, sellOrder::iterator> sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
+
     Json::Value exchangeBplusAllGet(OverlayDB const& _db);
 
 private:

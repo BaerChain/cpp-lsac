@@ -616,6 +616,39 @@ std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _
     return std::pair<bool, dev::brc::exchangeValue>();
 }
 
+
+std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+    
+    buyOrder _exchangeBplus(m_exchangeBplus);
+
+    dev::brc::exchangeSort _sort;
+    _sort.m_exchangeTime = _createTime;
+    _sort.m_exchangePrice = _pendingorderPrice;
+    
+    return std::make_pair<buyOrder::iterator, buyOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
+}
+
+std::pair<sellOrder::iterator, sellOrder::iterator> Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+    
+    sellOrder _exchangeBplus(m_exchangeBplus);
+
+    dev::brc::exchangeSort _sort;
+    _sort.m_exchangeTime = _createTime;
+    _sort.m_exchangePrice = _pendingorderPrice;
+    
+    return std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
+}
+
 std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {
     std::string _type, _token_type, _buy_type;
     switch (type) {

@@ -10,6 +10,7 @@
 namespace dev{
     
     namespace brc{
+
         struct  exchangeSort
         {
             u256 m_exchangePrice;
@@ -18,6 +19,21 @@ namespace dev{
             bool operator<(exchangeSort const& _e) const
             {
                 if(m_exchangePrice < _e.m_exchangePrice)
+                {
+                    return true;
+                }else if(m_exchangePrice == _e.m_exchangePrice)
+                {
+                    if(m_exchangeTime < _e.m_exchangeTime)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            bool operator>(exchangeSort const& _e) const
+            {
+                if(m_exchangePrice > _e.m_exchangePrice)
                 {
                     return true;
                 }else if(m_exchangePrice == _e.m_exchangePrice)
