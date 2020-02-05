@@ -93,7 +93,7 @@ namespace dev{
             /// \param token_type   BRC OR FUEL
             /// \param price        upper price.
             /// \return         std::pair<lower iterator, upper iterator>
-            auto get_buy_itr(ex::order_token_type find_token, int64_t _time, u256 price) {
+            auto get_buy_itr(ex::order_token_type find_token, int64_t _time, u256 _price) {
                 auto find_it = m_state.newGetSellExChangeOrder( _time, _price);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;

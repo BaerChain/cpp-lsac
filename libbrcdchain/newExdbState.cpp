@@ -36,7 +36,7 @@ namespace dev {
             bool throw_exception = true;
             if (itr.buy_type == order_buy_type::only_price) {
                 if (itr.type == order_type::buy) {
-                    auto find_itr = get_buy_itr(itr.create_time, itr.price);
+                    auto find_itr = get_buy_itr(itr.token_type, itr.create_time, itr.price);
                     process_only_price(find_itr.first, find_itr.second, itr, itr.price,
                                        itr.source_amount,
                                        result,
@@ -54,20 +54,21 @@ namespace dev {
                 if (itr.type == order_type::buy) {
                     assert(itr.price != 0 && itr.source_amount == 0);
 
-                    auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+                    auto find_itr = get_buy_itr(itr.token_type,itr.create_time, u256(-1));
                     auto total_price = itr.price;
                     auto begin = find_itr.first;
                     auto end = find_itr.second;
                     if (begin != end) {
 
                         while (total_price > 0 && begin != end) {
-                            auto begin_total_price = begin->token_amount * begin->price;
+                            auto order = (*begin).second.to_ex_order();
+                            auto begin_total_price = order.token_amount * order.price;
                             result_order ret;
-                            if (begin_total_price <= total_price) {   //
+                            if (begin_total_price <= total_price) {
                                 total_price -= begin_total_price;
-                                ret.set_data(itr, begin, begin->token_amount, begin->price);
+                                ret.set_data(itr, order, order.token_amount, order.price);
                                 result.push_back(ret);
-                                auto remove_id = begin->trxid;
+                                auto remove_id = order.trxid;
                                 begin++;
                                 if(!reset){
                                     //add_resultOrder(ret);
@@ -75,18 +76,18 @@ namespace dev {
                                 }
 
                             } else if (begin_total_price > total_price) {
-                                auto can_buy_amount = total_price / begin->price;
+                                auto can_buy_amount = total_price / order.price;
                                 if (can_buy_amount == 0) {
                                     break;
                                 }
-                                ret.set_data(itr, begin, can_buy_amount, begin->price);
+                                ret.set_data(itr, begin, can_buy_amount, order.price);
                                 result.push_back(ret);
 
                                 if(!reset){
                                     //add_resultOrder(ret);
-                                    auto data_update = *begin;
-                                    data_update.token_amount -= can_buy_amount;
-                                    add_exchangeOrder(data_update);
+                                    //auto data_update = *begin;
+                                    order.token_amount -= can_buy_amount;
+                                    add_exchangeOrder(order);
                                 }
 
                                 break;
