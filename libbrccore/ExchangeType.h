@@ -4,6 +4,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Address.h>
 #include <libdevcore/RLP.h>
+#include <brc/objects.hpp>
 #include <indexDb/database/include/brc/types.hpp>
 
 
@@ -113,6 +114,20 @@ namespace dev{
             std::string to_string() const
             {
                 return " orderId = " + toJS(m_orderId);
+            }
+
+            ex::ex_order to_ex_order() const{
+                ex::ex_order order;
+                order.trxid =  m_orderId;
+                order.sender =  m_from;
+                order.price =  m_pendingorderPrice;
+                order.token_amount =  m_pendingordertokenNum;
+                order.source_amount =  m_pendingorderNum;
+                order.create_time =  m_createTime;
+                order.type =  m_pendingorderType;
+                order.token_type =  m_pendingorderTokenType;
+                order.buy_type =  m_pendingorderBuyType;
+                return order;
             }
         };
         

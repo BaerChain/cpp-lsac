@@ -645,7 +645,6 @@ std::pair<sellOrder::iterator, sellOrder::iterator> Account::sellExchangeGetIt(u
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
-    
     return std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
 }
 
