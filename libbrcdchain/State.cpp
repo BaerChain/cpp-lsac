@@ -649,7 +649,7 @@ Account *dev::brc::State::getSysAccount() {
 }
 
 //void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
-std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
+std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, int64_t blockHeight, h256 _pendingOrderHash,
                                     std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
     std::vector<ex_order> _v;
     std::vector<result_order> _result_v;
@@ -691,10 +691,10 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     for (auto _val : _v) {
         try {
             //default.
-            if(config::changeExchange() > 0){
+            if(config::changeExchange() > blockHeight){
                 _result_v = _exdbState.insert_operation(_val);
             }
-            else if(config::changeExchange() == 120000){
+            else if(config::changeExchange() == blockHeight){
                 //TODO move data  to new db; delete old data.
             }
             else {
@@ -1633,7 +1633,7 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
     return std::make_pair(total_income_brcs, total_income_cookies);
 }
 
-void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas)
+void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, int64_t height, u256 const& _baseGas)
 {
     for(auto const& val : _ops)
     {
@@ -1641,7 +1641,7 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
         std::shared_ptr<transationTool::pendingorder_opearaion> const& _pdop = std::make_shared<transationTool::pendingorder_opearaion>((transationTool::op_type)3, _op->m_from, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price, u256(0), _op->m_autoExNum);
         std::vector<std::shared_ptr<transationTool::operation>> _pdops;
         _pdops.push_back(_pdop);
-        std::pair<u256, u256> _exNumPair = pendingOrders(_op->m_from, _timeStamp, _trxid, _pdops);  // first: exCookieNum  second:exBRCNum
+        std::pair<u256, u256> _exNumPair = pendingOrders(_op->m_from, _timeStamp, height, _trxid, _pdops);  // first: exCookieNum  second:exBRCNum
         if(_op->m_autoExType == transationTool::transferAutoExType::Balancededuction)
         {
             transferBRC(_op->m_from, _op->m_to, _op->m_transferNum);
