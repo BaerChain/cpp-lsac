@@ -488,8 +488,8 @@ public:
     Json::Value newExorderGet(int64_t const& _time, u256 const& _price);
     Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
-    std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExChangeOrder(int64_t const& _time, u256 const& _price);
-
+    std::pair<sellOrder::iterator, sellOrder::iterator> newGetSellExChangeOrder(int64_t const& _time, u256 const& _price);
+    std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price);
 
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);

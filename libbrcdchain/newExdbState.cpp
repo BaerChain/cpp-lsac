@@ -43,102 +43,102 @@ namespace dev {
                                        throw_exception);
 
                 } else { //sell
-                    auto find_itr = get_sell_itr(itr.token_type, itr.price);
+                    auto find_itr = get_sell_itr(itr.create_time, itr.price);
                     process_only_price(find_itr.first, find_itr.second, itr, itr.price,
                                        itr.source_amount,
                                        result,
                                        throw_exception);
                 }
 
-            } else {
-                if (itr.type == order_type::buy) {
-                    assert(itr.price != 0 && itr.source_amount == 0);
+            // } else {
+            //     if (itr.type == order_type::buy) {
+            //         assert(itr.price != 0 && itr.source_amount == 0);
 
-                    auto find_itr = get_buy_itr(itr.token_type, u256(-1));
-                    auto total_price = itr.price;
-                    auto begin = find_itr.first;
-                    auto end = find_itr.second;
-                    if (begin != end) {
+            //         auto find_itr = get_buy_itr(itr.token_type, u256(-1));
+            //         auto total_price = itr.price;
+            //         auto begin = find_itr.first;
+            //         auto end = find_itr.second;
+            //         if (begin != end) {
 
-                        while (total_price > 0 && begin != end) {
-                            auto begin_total_price = begin->token_amount * begin->price;
-                            result_order ret;
-                            if (begin_total_price <= total_price) {   //
-                                total_price -= begin_total_price;
-                                ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                result.push_back(ret);
-                                auto remove_id = begin->trxid;
-                                begin++;
-                                if(!reset){
-                                    //add_resultOrder(ret);
-                                    remove_exchangeOrder(remove_id);
-                                }
+            //             while (total_price > 0 && begin != end) {
+            //                 auto begin_total_price = begin->token_amount * begin->price;
+            //                 result_order ret;
+            //                 if (begin_total_price <= total_price) {   //
+            //                     total_price -= begin_total_price;
+            //                     ret.set_data(itr, begin, begin->token_amount, begin->price);
+            //                     result.push_back(ret);
+            //                     auto remove_id = begin->trxid;
+            //                     begin++;
+            //                     if(!reset){
+            //                         //add_resultOrder(ret);
+            //                         remove_exchangeOrder(remove_id);
+            //                     }
 
-                            } else if (begin_total_price > total_price) {
-                                auto can_buy_amount = total_price / begin->price;
-                                if (can_buy_amount == 0) {
-                                    break;
-                                }
-                                ret.set_data(itr, begin, can_buy_amount, begin->price);
-                                result.push_back(ret);
+            //                 } else if (begin_total_price > total_price) {
+            //                     auto can_buy_amount = total_price / begin->price;
+            //                     if (can_buy_amount == 0) {
+            //                         break;
+            //                     }
+            //                     ret.set_data(itr, begin, can_buy_amount, begin->price);
+            //                     result.push_back(ret);
 
-                                if(!reset){
-                                    //add_resultOrder(ret);
-                                    auto data_update = *begin;
-                                    data_update.token_amount -= can_buy_amount;
-                                    add_exchangeOrder(data_update);
-                                }
+            //                     if(!reset){
+            //                         //add_resultOrder(ret);
+            //                         auto data_update = *begin;
+            //                         data_update.token_amount -= can_buy_amount;
+            //                         add_exchangeOrder(data_update);
+            //                     }
 
-                                break;
-                            }
-                        }
-
-
-
-                    } else {
-                        BOOST_THROW_EXCEPTION(all_price_operation_error());
-                    }
-                } else {   //all_price  , sell,
-                    assert(itr.price == 0 && itr.source_amount != 0);
-
-                    auto find_itr = get_sell_itr(itr.token_type, u256(0));
-                    auto begin = find_itr.first;
-                    auto end = find_itr.second;
-                    auto total_amount = itr.token_amount;
-                    if (begin != end) {
-                        while (total_amount > 0 && begin != end) {
-                            result_order ret;
-                            if (begin->token_amount > total_amount) {
-                                ret.set_data(itr, begin, total_amount, begin->price);
-                                result.push_back(ret);
+            //                     break;
+            //                 }
+            //             }
 
 
-                                if(!reset){
-                                    auto data_update = *begin;
-                                    data_update.token_amount -= total_amount;
-                                    add_exchangeOrder(data_update);
-                                }
+
+            //         } else {
+            //             BOOST_THROW_EXCEPTION(all_price_operation_error());
+            //         }
+            //     } else {   //all_price  , sell,
+            //         assert(itr.price == 0 && itr.source_amount != 0);
+
+            //         auto find_itr = get_sell_itr(itr.token_type, u256(0));
+            //         auto begin = find_itr.first;
+            //         auto end = find_itr.second;
+            //         auto total_amount = itr.token_amount;
+            //         if (begin != end) {
+            //             while (total_amount > 0 && begin != end) {
+            //                 result_order ret;
+            //                 if (begin->token_amount > total_amount) {
+            //                     ret.set_data(itr, begin, total_amount, begin->price);
+            //                     result.push_back(ret);
 
 
-                                total_amount = 0;
-                            } else {
-                                total_amount -= begin->token_amount;
-                                ret.set_data(itr, begin, begin->token_amount, begin->price);
-                                result.push_back(ret);
+            //                     if(!reset){
+            //                         auto data_update = *begin;
+            //                         data_update.token_amount -= total_amount;
+            //                         add_exchangeOrder(data_update);
+            //                     }
 
-                                auto remove_id = begin->trxid;
-                                begin++;
-                                if(!reset){
-                                    remove_exchangeOrder(remove_id);
-                                }
-                            }
-                            //add_resultOrder(ret);
-                        }
-                    } else {
-                        BOOST_THROW_EXCEPTION(all_price_operation_error());
-                    }
-                }
-            }
+
+            //                     total_amount = 0;
+            //                 } else {
+            //                     total_amount -= begin->token_amount;
+            //                     ret.set_data(itr, begin, begin->token_amount, begin->price);
+            //                     result.push_back(ret);
+
+            //                     auto remove_id = begin->trxid;
+            //                     begin++;
+            //                     if(!reset){
+            //                         remove_exchangeOrder(remove_id);
+            //                     }
+            //                 }
+            //                 //add_resultOrder(ret);
+            //             }
+            //         } else {
+            //             BOOST_THROW_EXCEPTION(all_price_operation_error());
+            //         }
+            //      }
+             }
             return result;
         }
 
@@ -157,11 +157,11 @@ namespace dev {
             bool rm = false;
             std::vector<h256> removeHashs;
             while (spend > 0 && begin != end) {
-                ctrace << "spend  " << spend << " begin : " << begin->format_string();
+                //ctrace << "spend  " << spend << " begin : " << begin->format_string();
                 result_order ret;
-                if (begin->token_amount <= spend) {
-                    spend -= begin->token_amount;
-                    ret.set_data(od, begin, begin->token_amount, begin->price);
+                if ((*begin).second.m_pendingordertokenNum <= spend) {
+                    spend -= (*begin).second.m_pendingordertokenNum;
+                    ret.set_data(od, begin, (*begin).second.m_pendingordertokenNum, (*begin).second.m_pendingorderPrice);
                     rm = true;
 
                 } else {

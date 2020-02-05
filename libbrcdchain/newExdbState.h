@@ -93,8 +93,8 @@ namespace dev{
             /// \param token_type   BRC OR FUEL
             /// \param price        upper price.
             /// \return         std::pair<lower iterator, upper iterator>
-            auto get_buy_itr(ex::order_token_type find_token, int64_t _time, u256 price) {
-                auto find_it = m_state.newGetSellExChangeOrder( _time, _price);
+            std::pair<sellOrder::iterator, sellOrder::iterator> get_buy_itr(int64_t _time, u256 price) {
+                std::pair<sellOrder::iterator, sellOrder::iterator> find_it = m_state.newGetSellExChangeOrder( _time, price);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                 // const auto &index_greater = m_state.getExOrder().get<ex::ex_by_price_less>();
@@ -118,20 +118,22 @@ namespace dev{
             /// \param token_type   BRC OR FUEL,
             /// \param price        lower price.
             /// \return             std::pair<lower iterator, upper iterator>
-            auto get_sell_itr(order_token_type find_token, u256 price) {
+            auto get_sell_itr(int64_t _time, u256 price) {
+                auto find_it = m_state.newGetBuyExchangeOrder(_time, price);
+                return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
-                const auto &index_less = m_state.getExOrder().get<ex_by_price_greater>();  //↑
+                // const auto &index_less = m_state.getExOrder().get<ex_by_price_greater>();  //↑
 
-                auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
-                                                                                            u256(-1), 0);
-                auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
-                                                                                            price, INT64_MAX);
+                // auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
+                //                                                                             u256(-1), 0);
+                // auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy, find_token,
+                //                                                                             price, INT64_MAX);
 
-                typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
-                typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
+                // typedef decltype(index_less.lower_bound(find_lower)) Lower_Type;
+                // typedef decltype(index_less.upper_bound(find_upper)) Upper_Type;
 
-                return std::pair<Lower_Type, Upper_Type>(index_less.lower_bound(find_lower),
-                                                         index_less.upper_bound(find_upper));
+                // return std::pair<Lower_Type, Upper_Type>(index_less.lower_bound(find_lower),
+                //                                          index_less.upper_bound(find_upper));
             };
 
 
