@@ -690,9 +690,16 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     }
     for (auto _val : _v) {
         try {
-
-            _result_v = _exdbState.insert_operation(_val);
-
+            //default.
+            if(config::changeExchange() > 0){
+                _result_v = _exdbState.insert_operation(_val);
+            }
+            else if(config::changeExchange() == 120000){
+                //TODO move data  to new db; delete old data.
+            }
+            else {
+                //TODO use new db.
+            }
         }
         catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -748,11 +755,6 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
 }
 
 
-std::pair<u256 ,u256> dev::brc::State::newPendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
-                                    std::vector<std::shared_ptr<transationTool::operation>> const &_ops)
-{
-
-}
 
 void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
     std::vector<result_order> _result_v;

@@ -406,7 +406,6 @@ public:
 
 	//void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, u256 &_exCookieNum = u256(0), u256 &_exBRCNum = u256(0));
     std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-    std::pair<u256, u256 > newPendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     void cancelPendingOrder(h256 _pendingOrderHash);
 	void cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
