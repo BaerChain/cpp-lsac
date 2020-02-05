@@ -107,8 +107,7 @@ namespace dev {
                     auto end = find_itr.second;
                     auto total_amount = itr.token_amount;
                     if (begin != end) {
-                        while (total_amount > 0 && begin != end)
-                            //auto order = (*begin).second.to_ex_order();
+                        while (total_amount > 0 && begin != end) {
                             result_order ret;
                             if (begin->token_amount > total_amount) {
                                 ret.set_data(itr, begin, total_amount, begin->price);
