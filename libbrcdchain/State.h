@@ -405,8 +405,7 @@ public:
         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);
 
 	//void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, u256 &_exCookieNum = u256(0), u256 &_exBRCNum = u256(0));
-    std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
-    std::pair<u256, u256 > newPendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, int64_t blockHeight, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     void cancelPendingOrder(h256 _pendingOrderHash);
 	void cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
@@ -488,14 +487,14 @@ public:
     Json::Value newExorderGet(int64_t const& _time, u256 const& _price);
     Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
-    std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExChangeOrder(int64_t const& _time, u256 const& _price);
-
+    std::pair<sellOrder::iterator, sellOrder::iterator> newGetSellExChangeOrder(int64_t const& _time, u256 const& _price);
+    std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price);
 
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
     
-    void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
+    void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, int64_t height, u256 const& _baseGas);
 
     void testBplus(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t const& _time);
     Json::Value testBplusGet(uint32_t const& _id, int64_t const& _blockNum);
