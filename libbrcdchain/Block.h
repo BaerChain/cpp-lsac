@@ -313,6 +313,8 @@ public:
         {
             m_state.changeVoteData(curr_info);
         }
+        m_state.transferOldExData(curr_info);
+
     }
 
 private:

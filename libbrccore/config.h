@@ -87,6 +87,8 @@ namespace dev
                 static int64_t autoExHeight();
                 static int64_t autoExTestNetHeight();
                 static int64_t changeExchange();
+                ///@return height about change old_ex_data to new
+                static int64_t changeOldExDataHeight();
 
                 /// the height must bigger newChangeHeight about gasPriceHeight
                 static int64_t gasPriceHeight();

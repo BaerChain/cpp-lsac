@@ -2872,6 +2872,51 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
     }
 }
 
+void dev::brc::State::transferOldExData(BlockHeader const &_header){
+    //TODO copy old ex_data to new_ex
+    if(_header.number() != config::changeOldExDataHeight())
+        return;
+    Account *_orderAccount = account(dev::ExdbSystemAddress);
+    if (!_orderAccount) {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment("transferOldExData failed"));
+    }
+
+    Account *_buyAccount = account(dev::BuyExchangeAddress);
+    Account *_sellAccount = account(dev::SellExchangeAddress);
+//    if(!_buyAccount){
+//        createAccount(dev::ExdbSystemAddress, {0});
+//        _buyAccount = account(dev::BuyExchangeAddress);
+//    }
+//    if(!_sellAccount){
+//        createAccount(dev::ExdbSystemAddress, {0});
+//        _sellAccount = account(dev::SellExchangeAddress);
+//    }
+    const auto &index= _orderAccount->getExOrder().get<ex_by_trx_id>();
+    auto begin = index.begin();
+    while (begin != index.end() ) {
+        newAddExchangeOrder(begin->sender,*begin);
+        begin++;
+//        exchangeValue eo;
+//        eo.m_orderId = begin->trxid;
+//        eo.m_from = begin->sender;
+//        eo.m_pendingorderNum = begin->source_amount;
+//        eo.m_pendingordertokenNum = begin->token_amount;
+//        eo.m_pendingorderPrice = begin->source_amount;
+//        eo.m_createTime = begin->create_time;
+//        eo.m_pendingorderType = begin->type;
+//        eo.m_pendingorderTokenType = begin->token_type;
+//        eo.m_pendingorderBuyType = begin->buy_type;
+//        if(eo.m_pendingorderType == ex::order_type::buy){
+//
+//        }
+//        else if(eo.m_pendingorderType == ex::order_type::sell){
+//
+//        } else{
+//            BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment("transferOldExData failed"));
+//        }
+    }
+    _orderAccount->clearExOrderMulti();
+}
 
 void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int64_t const& _blockNum)
 {

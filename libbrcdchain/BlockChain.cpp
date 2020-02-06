@@ -1897,10 +1897,10 @@ Block BlockChain::genesisBlock(OverlayDB const &_db, ex::exchange_plugin const &
     if (!_db.exists(r)) {
         ret.noteChain(*this);
         auto account1 = ret.mutableState().systemPendingorder(0);
-        auto account2 = *(ret.mutableState().account(TestbplusAddress));
+        //auto account2 = *(ret.mutableState().account(TestbplusAddress));
         auto params_Acccount(m_params.genesisState);
         params_Acccount[ExdbSystemAddress] = account1;
-        params_Acccount[TestbplusAddress] = account2;
+        //params_Acccount[TestbplusAddress] = account2;
         dev::brc::commit(params_Acccount,
                          ret.mutableState().m_state, ret.mutableState().timestamp());        // bit horrible. maybe consider a better way of constructing it?
 
