@@ -71,7 +71,7 @@ namespace dev {
                                 begin++;
                                 if(!reset){
                                     //add_resultOrder(ret);
-                                    remove_exchangeOrder(remove_id);
+                                    remove_exchangeOrder((uint8_t)order.type, order.create_time, order.price, remove_id);
                                 }
 
                             } else if (begin_total_price > total_price) {
@@ -128,9 +128,12 @@ namespace dev {
                                 result.push_back(ret);
 
                                 auto remove_id = (*begin).second.m_orderId;
+                                int64_t _time = (*begin).second.m_createTime;
+                                uint8_t _type = (uint8_t)(*begin).second.m_pendingorderType;
+                                u256 _price = (*begin).second.m_pendingorderPrice;
                                 begin++;
                                 if(!reset){
-                                    remove_exchangeOrder(remove_id);
+                                    remove_exchangeOrder(_type, _time, _price, remove_id);
                                 }
                             }
                             //add_resultOrder(ret);
@@ -156,7 +159,7 @@ namespace dev {
             auto spend = amount;
 
             bool rm = false;
-            std::vector<h256> removeHashs;
+            std::vector<std::tuple<uint8_t, int64_t, u256, h256>> removeHashs;
             while (spend > 0 && begin != end) {
                 //ctrace << "spend  " << spend << " begin : " << begin->format_string();
                 result_order ret;
@@ -183,15 +186,18 @@ namespace dev {
                 result.push_back(ret);
 
                 auto removeId = (*begin).second.m_orderId;
+                int64_t _time = (*begin).second.m_createTime;
+                uint8_t _type = (uint8_t)(*begin).second.m_pendingorderType;
+                u256 _price = (*begin).second.m_pendingorderPrice;
                 begin++;
                 if (rm) {
-                    removeHashs.push_back(removeId);
+                    removeHashs.push_back(std::make_tuple(_type, _time, _price, removeId));
                     rm = false;
                 }
             }
 
             for(auto &itr : removeHashs){
-                remove_exchangeOrder(itr);
+                remove_exchangeOrder(std::get<0>(itr), std::get<1>(itr), std::get<2>(itr), std::get<3>(itr));
             }
             //surplus token ,  record to db
             if (spend > 0) {
@@ -223,7 +229,7 @@ namespace dev {
             o.price_token.second = begin->token_amount;
 
 
-            remove_exchangeOrder(begin->trxid);
+            remove_exchangeOrder((uint8_t)begin->type, begin->create_time, begin->price, begin->trxid);
 
             return o;
         }
@@ -235,9 +241,10 @@ namespace dev {
         }
 
 
-        void newExdbState::remove_exchangeOrder(const dev::h256 &id) {
+        void newExdbState::remove_exchangeOrder(uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id) {
             cdebug << "will remove txid " << toHex(id);
-            m_state.removeExchangeOrder(ExdbSystemAddress, id);
+            //m_state.removeExchangeOrder(ExdbSystemAddress, id);
+            m_state.newRemoveExchangeOrder(_orderType, _time, _price, id);
         }
 
         void newExdbState::add_resultOrder(const dev::brc::result_order &od) {

@@ -16,6 +16,7 @@ namespace dev{
         {
             u256 m_exchangePrice;
             int64_t m_exchangeTime;
+            h256 m_exchangeHash;
 
             bool operator<(exchangeSort const& _e) const
             {
@@ -49,9 +50,10 @@ namespace dev{
 
             void encode(RLPStream &rlp) const
             {
-                rlp.appendList(2);
+                rlp.appendList(3);
                 rlp.append(m_exchangePrice);
                 rlp.append(m_exchangeTime);
+                rlp.append(m_exchangeHash);
             }
 
             void decode(RLP const& _rlp)
@@ -60,11 +62,12 @@ namespace dev{
                 {
                     m_exchangePrice = _rlp[0].toInt<u256>();
                     m_exchangeTime = _rlp[1].toInt<int64_t>();
+                    m_exchangeHash = _rlp[2].convert<h256>(RLP::LaissezFaire);
                 }
             } 
             std::string to_string() const
             {
-                return " price = " + toJS(m_exchangePrice) + " time = " + toJS(m_exchangeTime);
+                return " price = " + toJS(m_exchangePrice) + " time = " + toJS(m_exchangeTime) + "  hash = " + toJS(m_exchangeHash);
             }
         };
 

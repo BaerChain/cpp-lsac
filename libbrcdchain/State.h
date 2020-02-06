@@ -485,10 +485,12 @@ public:
 
     void newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const &_order);
     Json::Value newExorderGet(int64_t const& _time, u256 const& _price);
-    Json::Value newExorderAllGet();
+    // Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
     std::pair<sellOrder::iterator, sellOrder::iterator> newGetSellExChangeOrder(int64_t const& _time, u256 const& _price);
     std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price);
+    void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
+
 
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);

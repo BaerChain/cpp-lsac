@@ -2583,32 +2583,30 @@ void dev::brc::State::addExchangeOrder(Address const &_addr, dev::brc::ex::ex_or
 
 void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const& _order)
 {
-    Account *_account;
+    Address _orderAddress;
     if(_order.type == ex::order_type::buy)
     {
-        _account = account(dev::BuyExchangeAddress);
-        if(!_account)
-        {
-            createAccount(dev::BuyExchangeAddress, {0});
-            _account = account(dev::BuyExchangeAddress);
-        }
-    }else if(_order.type == ex::order_type::sell){
-        _account = account(dev::SellExchangeAddress);
-        if(!_account)
-        {
-            createAccount(dev::SellExchangeAddress, {0});
-            _account = account(dev::SellExchangeAddress);
-        }
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if(_order.type == ex::order_type::sell)
+    {
+        _orderAddress = dev::SellExchangeAddress;
     }else{
-        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("Order transaction type analysis error")));
+         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("Order transaction type analysis error")));
     }
 
-    std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
-    h256 _oldroot = _account->baseByteRoot();
-    _account->exchangeBplusAdd(_order, m_db);
+    Account *_orderAccount = account(_orderAddress);
+    if(!_orderAccount)
+    {
+        createAccount(_orderAddress, {0});
+        _orderAccount = account(_orderAddress);
+    }
 
-    m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
-    m_changeLog.emplace_back(Change::StorageByteRoot, dev::TestbplusAddress, _oldroot);
+    std::unordered_map<h256, bytes> _oldmap = _orderAccount->storageByteOverlay();
+    h256 _oldroot = _orderAccount->baseByteRoot();
+    _orderAccount->exchangeBplusAdd(_order, m_db);
+
+    m_changeLog.emplace_back(_orderAddress, _oldmap);
+    m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
 
 Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)
@@ -2640,17 +2638,17 @@ Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _pr
     }
 }
 
-Json::Value dev::brc::State::newExorderAllGet()
-{
-    Account *_account = account(dev::TestbplusAddress);
-    if(!_account)
-    {
-        BOOST_THROW_EXCEPTION(  
-                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
-    }
-    Json::Value _ret = _account->exchangeBplusAllGet(m_db);
-    return _ret;
-}
+// Json::Value dev::brc::State::newExorderAllGet()
+// {
+//     Account *_account = account(dev::TestbplusAddress);
+//     if(!_account)
+//     {
+//         BOOST_THROW_EXCEPTION(  
+//                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+//     }
+//     Json::Value _ret = _account->exchangeBplusAllGet(m_db);
+//     return _ret;
+// }
 
 Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){ 
     Address orderAddress;
@@ -2670,7 +2668,13 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
         BOOST_THROW_EXCEPTION(  
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
-    Json::Value _ret = _account->exchangeBplusAllGet(m_db);
+    Json::Value _ret;
+    if(_order_type == (uint8_t)ex::order_type::buy)
+    {
+        _ret = _account->exchangeBplusBuyAllGet( m_db);
+    }else{
+        _ret = _account->exchangeBplusSellAllGet( m_db);
+    }
     return _ret;
 }
 
@@ -2698,6 +2702,30 @@ std::pair<buyOrder::iterator, buyOrder::iterator> dev::brc::State::newGetBuyExch
     }
     auto _ret = _orderAccount->buyExchangeGetIt(_price, _time, m_db);
     return _ret;
+}
+
+void dev::brc::State::newRemoveExchangeOrder(uint8_t _orderType,int64_t const& _time, u256 const& _price, h256 const& _hash)
+{
+    Address _orderAddress;
+    if((order_type)_orderType == ex::order_type::buy)
+    {
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if((order_type)_orderType == ex::order_type::sell)
+    {
+        _orderAddress = dev::SellExchangeAddress;
+    }else{
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("Order transaction type analysis error")));
+    }
+
+    Account *_orderAccount = account(_orderAddress);
+    if(!_orderAccount)
+    {
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(std::string("Pending order address does not exist, delete order is wrong")));
+    }
+    std::vector<h256> _old = _orderAccount->getDeleteByte();
+    _orderAccount->exchangeBplusDelete(_orderType, _time, _price, _hash, m_db);
+    m_changeLog.emplace_back(_orderAddress, _old);
+
 }
 
 void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _trid) {

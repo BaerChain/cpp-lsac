@@ -70,7 +70,7 @@ void Account::deleteStorageBytes(const dev::h256 &_key, dev::OverlayDB const& _d
     {
         m_storageOverlayBytes.erase(it);
     }
-    m_needDelete.push_back(_key);
+    m_exchangeDelete.push_back(_key);
     changed();
 }
 
@@ -572,11 +572,10 @@ void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB c
         m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
     }
 
-    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
-
     dev::brc::exchangeSort _exchangeSort;
     _exchangeSort.m_exchangePrice = _order.price;
     _exchangeSort.m_exchangeTime = _order.create_time;
+    _exchangeSort.m_exchangeHash = _order.trxid;
 
     dev::brc::exchangeValue _exchangeValue;
     _exchangeValue.m_createTime = _order.create_time;
@@ -588,9 +587,20 @@ void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB c
     _exchangeValue.m_pendingordertokenNum = _order.token_amount;
     _exchangeValue.m_pendingorderTokenType = _order.token_type;
     _exchangeValue.m_pendingorderType = _order.type;
+    
+    if(_order.type == ex::order_type::buy)
+    {
+        buyOrder _exchangeBplus(m_exchangeBplus);
 
-    _exchangeBplus.insert(_exchangeSort, _exchangeValue);
-    _exchangeBplus.update();
+        _exchangeBplus.insert(_exchangeSort, _exchangeValue);
+        _exchangeBplus.update();
+    }else 
+    {
+        sellOrder _exchangeBplus(m_exchangeBplus);
+
+        _exchangeBplus.insert(_exchangeSort, _exchangeValue);
+        _exchangeBplus.update();
+    }
 }
 
 std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
@@ -616,6 +626,31 @@ std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _
     return std::pair<bool, dev::brc::exchangeValue>();
 }
 
+void Account::exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _time, u256 const& _price, h256 const& _hash, OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+
+    exchangeSort _sort;
+    _sort.m_exchangeTime = _time;
+    _sort.m_exchangePrice = _price;
+    _sort.m_exchangeHash = _hash;
+
+    if((ex::order_type)_orderType == ex::order_type::buy)
+    {
+        buyOrder _order(m_exchangeBplus);
+        _order.remove(_sort);
+        _order.update();
+    }else
+    {
+        sellOrder _order(m_exchangeBplus);
+        _order.remove(_sort);
+        _order.update();
+    }
+    
+}
 
 std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
 {
@@ -690,14 +725,14 @@ std::tuple<std::string, std::string, std::string> enumToString(ex::order_type ty
     return _result;
 }
 
-Json::Value Account::exchangeBplusAllGet(OverlayDB const& _db)
+Json::Value Account::exchangeBplusBuyAllGet(OverlayDB const& _db)
 {
     if(!m_exchangeBplus.get())
     {
         m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
     }
 
-    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
+    buyOrder _exchangeBplus(m_exchangeBplus);
     cerror << "allget";
     Json::Value _ret;
     Json::Value _root;
@@ -723,5 +758,36 @@ Json::Value Account::exchangeBplusAllGet(OverlayDB const& _db)
     cerror << "allget";
     _ret["order"] = Json::Value(_root);
     cerror << "allget";
+    return _ret;
+}
+
+Json::Value Account::exchangeBplusSellAllGet(OverlayDB const& _db)
+{
+    if(!m_exchangeBplus.get())
+    {
+        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    }
+
+    sellOrder _exchangeBplus(m_exchangeBplus);
+    Json::Value _ret;
+    Json::Value _root;
+    _exchangeBplus.debug();
+    for(auto it : _exchangeBplus)
+    {
+        Json::Value _order;
+        dev::brc::exchangeValue _val = it.second;
+        _order["orderID"] = toJS(_val.m_orderId);
+        _order["from"] = toJS(_val.m_from);
+        _order["pendingorderNum"] = toJS(_val.m_pendingorderNum);
+        _order["pendingordertokenNum"] = toJS(_val.m_pendingordertokenNum);
+        _order["pendingorderPrice"] = toJS(_val.m_pendingorderPrice);
+        _order["createTime"] = toJS(_val.m_createTime);
+        std::tuple<std::string, std::string, std::string>  _t = enumToString(_val.m_pendingorderType,_val.m_pendingorderTokenType,_val.m_pendingorderBuyType); 
+        _order["pendingorderType"] = std::get<0>(_t);
+        _order["pendingorderTokenType"] = std::get<1>(_t);
+        _order["pendingorderBuyType"] = std::get<2>(_t);
+        _root.append(_order);
+    }
+    _ret["order"] = Json::Value(_root);
     return _ret;
 }

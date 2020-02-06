@@ -932,10 +932,10 @@ public:
     void deleteStorageBytes(h256 const &_key, OverlayDB const& _db);
     void setDeleteStorageByte(std::vector<h256> const& _v)
     {
-        m_needDelete = _v;
+        m_exchangeDelete = _v;
         changed();
     } 
-    std::vector<h256> const& getDeleteByte() const { return m_needDelete;}
+    std::vector<h256> const& getDeleteByte() const { return m_exchangeDelete;}
 
     /// @returns the hash of the account's code.
     h256 codeHash() const { return m_codeHash; }
@@ -1211,11 +1211,16 @@ public:
 
     void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
     std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
-    
+    void exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _createTime, u256 const& _price, h256 const& _hash,OverlayDB const& _db);
+
     std::pair<buyOrder::iterator, buyOrder::iterator> buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
     std::pair<sellOrder::iterator, sellOrder::iterator> sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
 
-    Json::Value exchangeBplusAllGet(OverlayDB const& _db);
+    Json::Value exchangeBplusBuyAllGet(OverlayDB const& _db);
+    Json::Value exchangeBplusSellAllGet(OverlayDB const& _db);
+    std::vector<h256> getExchangeDelete() const{
+        return m_exchangeDelete;
+    }
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1295,6 +1300,7 @@ private:
 
 
     std::shared_ptr<exchangeBplus> m_exchangeBplus;
+    std::vector<h256> m_exchangeDelete;
 };
 
 struct testBplus : public databaseDelegate
@@ -1305,17 +1311,18 @@ struct testBplus : public databaseDelegate
 
     virtual DataPackage getData(DataKey const &_key)
     {
-        return m_account->storageByteValue(dev::sha3(_key), m_db);
+        // return m_account->storageByteValue(dev::sha3(_key), m_db);
+        return DataPackage();
     }
 
     virtual void setData(DataKey const& _key, DataPackage const& _value)
     {
-        m_account->setStorageByte(dev::sha3(_key), _value);
+        // m_account->setStorageByte(dev::sha3(_key), _value);
     }
 
     virtual void deleteKey(DataKey const& _key)
     {
-        m_account->deleteStorageBytes(dev::sha3(_key), m_db);
+        // m_account->deleteStorageBytes(dev::sha3(_key), m_db);
     }
 
 private:
