@@ -472,7 +472,7 @@ namespace dev {
                     }
                 }
             }
-
+            /// true : if key is not exits, false : this key is exits, then update value.
             bool insert(const key_type &key, const value_type &value) {
                 return __insert(key, value);
             }
