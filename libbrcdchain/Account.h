@@ -20,12 +20,10 @@
 typedef dev::brc::bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4, std::greater<dev::brc::exchangeSort>> buyOrder;
 typedef dev::brc::bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4, std::less<dev::brc::exchangeSort>> sellOrder;
 
-namespace dev
-{
-class OverlayDB;
+namespace dev {
+    class OverlayDB;
 
-namespace brc
-{
+    namespace brc {
 /**
  * Models the state of a single BrcdChain account.
  * Used to cache a portion of the full BrcdChain state. State keeps a mapping of Address's to
@@ -45,83 +43,88 @@ namespace brc
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
-struct testBplus;
-struct exchangeBplus;
+        struct testBplus;
+        struct exchangeBplus;
+
 /// vote data
-struct PollData{
-    Address     m_addr;
-    u256        m_poll = 0;
-    int64_t     m_time = 0;
+struct PollData {
+    Address m_addr;
+    u256 m_poll = 0;
+    int64_t m_time = 0;
 
-    PollData(){ m_addr = Address(); }
-    PollData(Address const& addr, u256 const& poll, int64_t time):m_addr (addr), m_poll(poll), m_time(time){}
-    PollData(Address const& addr): m_addr(addr), m_poll(0), m_time(0){}
+    PollData() { m_addr = Address(); }
 
-    PollData& operator = (PollData const& _p){
+    PollData(Address const &addr, u256 const &poll, int64_t time) : m_addr(addr), m_poll(poll), m_time(time) {}
+
+    PollData(Address const &addr) : m_addr(addr), m_poll(0), m_time(0) {}
+
+    PollData &operator=(PollData const &_p) {
         m_addr = _p.m_addr;
         m_poll = _p.m_poll;
         m_time = _p.m_time;
         return *this;
     }
 
-    void  streamRLP(RLPStream& _s) const{
+    void streamRLP(RLPStream &_s) const {
         _s.appendList(3);
-        _s<< m_addr << m_poll << (u256)m_time;
+        _s << m_addr << m_poll << (u256) m_time;
     }
 
-    bytes streamRLP() const{
+    bytes streamRLP() const {
         RLPStream _s(3);
-        _s<< m_addr << m_poll << (u256)m_time;
+        _s << m_addr << m_poll << (u256) m_time;
         return _s.out();
     }
 
-    void populate(bytes const& _b){
+    void populate(bytes const &_b) {
         RLP _rlp(_b);
         m_addr = _rlp[0].convert<Address>(RLP::LaissezFaire);
         m_poll = _rlp[1].convert<u256>(RLP::LaissezFaire);
-        m_time = (int64_t)_rlp[2].convert<u256>(RLP::LaissezFaire);
+        m_time = (int64_t) _rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 
-    bool operator == (Address const& addr) const{
+    bool operator==(Address const &addr) const {
         return m_addr == addr;
     }
 
-    bool  operator > (PollData const& p ) const{
-        if( p.m_poll > m_poll)
+    bool operator>(PollData const &p) const {
+        if (p.m_poll > m_poll)
             return true;
         if (m_poll == p.m_poll && !p.m_time && p.m_time < m_time)
             return true;
         return false;
     }
 
-    static  void sort_greater(std::vector<PollData>& p_data){
+    static void sort_greater(std::vector<PollData> &p_data) {
         int index = p_data.size();
-        for(int i=0; i<index-1; i++){
-            for(int j = i+1; j< index; j++){
-                if(p_data[j] > p_data[i]){
+        for (int i = 0; i < index - 1; i++) {
+            for (int j = i + 1; j < index; j++) {
+                if (p_data[j] > p_data[i]) {
                     PollData data = p_data[j];
-                    p_data[j]= p_data[i];
-                    p_data[j]= data;
+                    p_data[j] = p_data[i];
+                    p_data[j] = data;
                 }
             }
         }
     }
 
 };
+
 class PollDataComparerGreater {
-    public:
-            bool operator() (const PollData& a, const PollData& b) const {
-                return b > a;
-            }
+public:
+    bool operator()(const PollData &a, const PollData &b) const {
+        return b > a;
+    }
 };
 
 struct ReceivedCookies {
     std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
     u256 m_numberofRound = 0;
-    std::pair<u256, bool> m_is_received = std::make_pair(1, false);               // <rounds, bool> is recevied all in this rounds
+    std::pair<u256, bool> m_is_received = std::make_pair(1,
+                                                         false);               // <rounds, bool> is recevied all in this rounds
 
-    void up_received_cookies(u256 rounds, Address const& adress, std::pair<u256, u256> _pair){
-        if(!m_received_cookies.count(rounds)){
+    void up_received_cookies(u256 rounds, Address const &adress, std::pair<u256, u256> _pair) {
+        if (!m_received_cookies.count(rounds)) {
             std::map<Address, std::pair<u256, u256>> val;
             val[adress] = _pair;
             m_received_cookies[rounds] = val;
@@ -129,17 +132,19 @@ struct ReceivedCookies {
         }
         m_received_cookies[rounds][adress] = _pair;
     }
-    void updataNumberofRound(u256 _numofround)
-    {
+
+    void updataNumberofRound(u256 _numofround) {
         m_numberofRound = _numofround;
     }
-    ReceivedCookies()= default;
-    bytes streamRLP() const{
+
+    ReceivedCookies() = default;
+
+    bytes streamRLP() const {
         RLPStream _s(3);
         RLPStream receive_s(m_received_cookies.size());
-        for(auto const& receive : m_received_cookies){
+        for (auto const &receive : m_received_cookies) {
             RLPStream data_s(receive.second.size());
-            for(auto const& v: receive.second){
+            for (auto const &v: receive.second) {
                 RLPStream totala_s(2);
                 totala_s << v.second.first << v.second.second;
                 data_s.append<Address, bytes>(std::make_pair(v.first, totala_s.out()));
@@ -147,153 +152,157 @@ struct ReceivedCookies {
             receive_s.append<u256, bytes>(std::make_pair(receive.first, data_s.out()));
         }
         _s << receive_s.out() << m_numberofRound;
-        _s.append<u256, uint8_t>(std::make_pair(m_is_received.first, (uint8_t)m_is_received.second));
+        _s.append<u256, uint8_t>(std::make_pair(m_is_received.first, (uint8_t) m_is_received.second));
 
-        return  _s.out();
+        return _s.out();
     }
 
-    void populate(bytes const& _b){
+    void populate(bytes const &_b) {
         RLP rlp = RLP(_b);
         bytes b_receive = rlp[0].toBytes();
         m_numberofRound = rlp[1].toInt<u256>();
-        for(auto const& val: RLP(b_receive)){
-            std::pair<u256 , bytes> _pair = val.toPair<u256, bytes>();
+        for (auto const &val: RLP(b_receive)) {
+            std::pair<u256, bytes> _pair = val.toPair<u256, bytes>();
             std::map<Address, std::pair<u256, u256>> receve_data;
-            for(auto const& v: RLP(_pair.second)){
-                std::pair<Address , bytes> v_pair = v.toPair<Address, bytes>();
+            for (auto const &v: RLP(_pair.second)) {
+                std::pair<Address, bytes> v_pair = v.toPair<Address, bytes>();
                 auto r_total = RLP(v_pair.second);
                 receve_data[v_pair.first] = std::make_pair(r_total[0].toInt<u256>(), r_total[1].toInt<u256>());
             }
             m_received_cookies[_pair.first] = receve_data;
         }
         std::pair<u256, uint8_t> _pair = rlp[2].toPair<u256, uint8_t>();
-        m_is_received = {_pair.first, (bool)_pair.second};
+        m_is_received = {_pair.first, (bool) _pair.second};
 
     }
-    void clear(){
+
+    void clear() {
         m_received_cookies.clear();
     }
-    bool empty() const{ return m_received_cookies.empty();}
+
+    bool empty() const { return m_received_cookies.empty(); }
 
 };
 
-struct VoteSnapshot{
-    std::map< u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
-    std::map< u256, u256> m_pollNumHistory;                     // get tickets by other
-    std::map< u256, u256> m_blockSummaryHistory;                // create_block awards
+struct VoteSnapshot {
+    std::map<u256, std::map<Address, u256>> m_voteDataHistory; // vote to other data
+    std::map<u256, u256> m_pollNumHistory;                     // get tickets by other
+    std::map<u256, u256> m_blockSummaryHistory;                // create_block awards
     u256 numberofrounds = 0;                                    // the rounds of got awards
     u256 m_latest_round = 0;                                    // the last snapshot rounds of record
 
 //    std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <total_summary, total_recived>>> recevied from other
 //    std::map<u256, bool> m_is_received;                           // <rounds, bool> is recevied all in this rounds
 
-    VoteSnapshot() = default;
+	VoteSnapshot() = default;
 
-    VoteSnapshot& operator = (VoteSnapshot const& s_v){
-        clear();
-        for(auto const& val : s_v.m_voteDataHistory){
-            std::map<Address, u256> _temp = val.second;
-            m_voteDataHistory[val.first] = _temp;
-        }
-        m_pollNumHistory.insert(s_v.m_pollNumHistory.begin(),s_v.m_pollNumHistory.end());
-        m_blockSummaryHistory.insert(s_v.m_blockSummaryHistory.begin(),s_v.m_blockSummaryHistory.end());
-        numberofrounds = s_v.numberofrounds;
-        m_latest_round = s_v.m_latest_round;
-        return  *this;
-    }
+	VoteSnapshot &operator=(VoteSnapshot const &s_v) {
+	    clear();
+	    for (auto const &val : s_v.m_voteDataHistory) {
+	        std::map<Address, u256> _temp = val.second;
+	        m_voteDataHistory[val.first] = _temp;
+	    }
+	    m_pollNumHistory.insert(s_v.m_pollNumHistory.begin(), s_v.m_pollNumHistory.end());
+	    m_blockSummaryHistory.insert(s_v.m_blockSummaryHistory.begin(), s_v.m_blockSummaryHistory.end());
+	    numberofrounds = s_v.numberofrounds;
+	    m_latest_round = s_v.m_latest_round;
+	    return *this;
+	}
 
-    void  streamRLP(RLPStream& _s) const{
-        _s.appendList(5);
+	void streamRLP(RLPStream &_s) const {
+	    _s.appendList(5);
 
-        RLPStream vote_s(m_voteDataHistory.size());
-        for(auto const& vote : m_voteDataHistory){
-            RLPStream data_s(vote.second.size());
-            for(auto const& v: vote.second){
-                data_s.append<Address, u256>(std::make_pair(v.first, v.second));
-            }
-            vote_s.append<u256, bytes>(std::make_pair(vote.first, data_s.out()));
-        }
-        _s << vote_s.out();
+	    RLPStream vote_s(m_voteDataHistory.size());
+	    for (auto const &vote : m_voteDataHistory) {
+	        RLPStream data_s(vote.second.size());
+	        for (auto const &v: vote.second) {
+	            data_s.append<Address, u256>(std::make_pair(v.first, v.second));
+	        }
+	        vote_s.append<u256, bytes>(std::make_pair(vote.first, data_s.out()));
+	    }
+	    _s << vote_s.out();
 
-        RLPStream poll_s;
-        poll_s.appendList(m_pollNumHistory.size());
-        for(auto const& poll : m_pollNumHistory){
-            poll_s.append<u256, u256>(std::make_pair(poll.first, poll.second));
-        }
-        _s << poll_s.out();
+	    RLPStream poll_s;
+	    poll_s.appendList(m_pollNumHistory.size());
+	    for (auto const &poll : m_pollNumHistory) {
+	        poll_s.append<u256, u256>(std::make_pair(poll.first, poll.second));
+	    }
+	    _s << poll_s.out();
 
-        RLPStream block_s(m_blockSummaryHistory.size());
-        for(auto const& b: m_blockSummaryHistory){
-            block_s.append<u256, u256>(std::make_pair(b.first, b.second));
-        }
-        _s << block_s.out();
-        _s << numberofrounds << m_latest_round;
+	    RLPStream block_s(m_blockSummaryHistory.size());
+	    for (auto const &b: m_blockSummaryHistory) {
+	        block_s.append<u256, u256>(std::make_pair(b.first, b.second));
+	    }
+	    _s << block_s.out();
+	    _s << numberofrounds << m_latest_round;
 
-    }
-    void populate(bytes const& _b){
-        RLP rlp(_b);
-        bytes b_vote = rlp[0].toBytes();
-        for(auto const& val: RLP(b_vote)){
-            std::pair<u256 , bytes > _pair = val.toPair<u256, bytes>();
-            std::map<Address, u256> vote_data;
-            for(auto const& v: RLP(_pair.second)){
-                std::pair<Address , u256> v_pair = v.toPair<Address, u256>();
-                vote_data[v_pair.first] = v_pair.second;
-            }
-            m_voteDataHistory[_pair.first] = vote_data;
-        }
+	}
 
-        bytes  poll_b= rlp[1].toBytes();
-        for(auto const& val : RLP(poll_b)){
-            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
-            m_pollNumHistory[_pair.first] = _pair.second;
-        }
+	void populate(bytes const &_b) {
+	    RLP rlp(_b);
+	    bytes b_vote = rlp[0].toBytes();
+	    for (auto const &val: RLP(b_vote)) {
+	        std::pair<u256, bytes> _pair = val.toPair<u256, bytes>();
+	        std::map<Address, u256> vote_data;
+	        for (auto const &v: RLP(_pair.second)) {
+	            std::pair<Address, u256> v_pair = v.toPair<Address, u256>();
+	            vote_data[v_pair.first] = v_pair.second;
+	        }
+	        m_voteDataHistory[_pair.first] = vote_data;
+	    }
 
-        bytes block_b = rlp[2].toBytes();
-        for(auto const& val: RLP(block_b)){
-            std::pair< u256, u256> _pair = val.toPair<u256,u256>();
-            m_blockSummaryHistory[_pair.first] = _pair.second;
-        }
+	    bytes poll_b = rlp[1].toBytes();
+	    for (auto const &val : RLP(poll_b)) {
+	        std::pair<u256, u256> _pair = val.toPair<u256, u256>();
+	        m_pollNumHistory[_pair.first] = _pair.second;
+	    }
 
-        numberofrounds = rlp[3].toInt<u256>();
-        m_latest_round = rlp[4].toInt<u256>();
+	    bytes block_b = rlp[2].toBytes();
+	    for (auto const &val: RLP(block_b)) {
+	        std::pair<u256, u256> _pair = val.toPair<u256, u256>();
+	        m_blockSummaryHistory[_pair.first] = _pair.second;
+	    }
 
-    }
-    void clear(){
-        m_voteDataHistory.clear();
-        m_pollNumHistory.clear();
-        m_blockSummaryHistory.clear();
-        numberofrounds = 0;
-        m_latest_round = 0;
-    }
-    bool isEmpty() const{
-        return m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty();
-    }
+	    numberofrounds = rlp[3].toInt<u256>();
+	    m_latest_round = rlp[4].toInt<u256>();
+
+	}
+
+	void clear() {
+	    m_voteDataHistory.clear();
+	    m_pollNumHistory.clear();
+	    m_blockSummaryHistory.clear();
+	    numberofrounds = 0;
+	    m_latest_round = 0;
+	}
+
+	bool isEmpty() const {
+	    return m_voteDataHistory.empty() && m_pollNumHistory.empty() && m_blockSummaryHistory.empty();
+	}
 
 
 };
 
-enum CouplingReceiveType{
-    Cookies =1,
-    Brcs=2
+enum CouplingReceiveType {
+    Cookies = 1,
+    Brcs = 2
 };
 
-struct CouplingSystemfee
-{
-    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;   // <rounds, <brc, cookies>>
+struct CouplingSystemfee {
+    std::map<u256, std::pair<u256, u256>> m_Feesnapshot;   // <rounds, <brc, cookies>>
     std::map<u256, std::vector<PollData> > m_sorted_creaters;
     u256 m_rounds = 0;
     u256 m_numofrounds = 0;
     std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies;  // <rounds,<address, <brcs, cookies>>> recevied from other
     std::pair<u256, u256> m_total_summary;
 
-    u256 get_total_poll(u256 round, uint32_t miner_num =7) const{
+    u256 get_total_poll(u256 round, uint32_t miner_num = 7) const {
         auto ret = m_sorted_creaters.find(round);
-        if(ret == m_sorted_creaters.end())
+        if (ret == m_sorted_creaters.end())
             return 0;
-        u256 total =0;
-        for(auto const& val: ret->second) {
-            if(!miner_num)
+        u256 total = 0;
+        for (auto const &val: ret->second) {
+            if (!miner_num)
                 break;
             total += val.m_poll;
             --miner_num;
@@ -301,9 +310,10 @@ struct CouplingSystemfee
         return total;
     }
 
-    void up_received_cookies_brcs(u256 rounds, Address const& adress, std::pair<u256, u256> _pair_received, std::pair<u256, u256> _pair_summary){
+    void up_received_cookies_brcs(u256 rounds, Address const &adress, std::pair<u256, u256> _pair_received,
+                                  std::pair<u256, u256> _pair_summary) {
 
-        if(!m_received_cookies.count(rounds)){
+        if (!m_received_cookies.count(rounds)) {
             std::map<Address, std::pair<u256, u256>> val;
             val[adress] = _pair_received;
             m_received_cookies[rounds] = val;
@@ -314,12 +324,10 @@ struct CouplingSystemfee
 
     }
 
-    void streamRLP(RLPStream &_rlp) const
-    {
+    void streamRLP(RLPStream &_rlp) const {
         _rlp.appendList(6);
         RLPStream _Feesnapshotrlp(m_Feesnapshot.size());
-        for(auto const& it : m_Feesnapshot)
-        {
+        for (auto const &it : m_Feesnapshot) {
             RLPStream _amountRlp(2);
             _amountRlp << it.second.first << it.second.second;
             _Feesnapshotrlp.append<u256, bytes>(std::make_pair(it.first, _amountRlp.out()));
@@ -327,9 +335,9 @@ struct CouplingSystemfee
         _rlp << _Feesnapshotrlp.out() << m_rounds << m_numofrounds;
 
         RLPStream s_sort(m_sorted_creaters.size());
-        for(auto const& val: m_sorted_creaters){
+        for (auto const &val: m_sorted_creaters) {
             std::vector<bytes> sort_b;
-            for(auto const& poll: val.second){
+            for (auto const &poll: val.second) {
                 sort_b.emplace_back(poll.streamRLP());
             }
             RLPStream s_polls;
@@ -339,9 +347,9 @@ struct CouplingSystemfee
         _rlp << s_sort.out();
 
         RLPStream receive_cookies(m_received_cookies.size());
-        for(auto const& receive : m_received_cookies){
+        for (auto const &receive : m_received_cookies) {
             RLPStream data_s(receive.second.size());
-            for(auto const& v: receive.second){
+            for (auto const &v: receive.second) {
                 RLPStream totala_s(2);
                 totala_s << v.second.first << v.second.second;
                 data_s.append<Address, bytes>(std::make_pair(v.first, totala_s.out()));
@@ -350,29 +358,28 @@ struct CouplingSystemfee
         }
         _rlp << receive_cookies.out();
 
-        _rlp.append<u256, u256>(m_total_summary) ;
+        _rlp.append<u256, u256>(m_total_summary);
     }
 
-    void unstreamRLP(bytes const& _byte)
-    {
+    void unstreamRLP(bytes const &_byte) {
         RLP _rlp(_byte);
         bytes _feesnapshot = _rlp[0].toBytes();
-        for(auto it : RLP(_feesnapshot))
-        {
-            std::pair<u256 , bytes> _pair = it.toPair<u256, bytes>();
+        for (auto it : RLP(_feesnapshot)) {
+            std::pair<u256, bytes> _pair = it.toPair<u256, bytes>();
             RLP _amount(_pair.second);
-            m_Feesnapshot[_pair.first] = std::pair<u256, u256>(_amount[0].toInt<u256>(), _amount[1].toInt<u256>());
+            m_Feesnapshot[_pair.first] = std::pair<u256, u256>(_amount[0].toInt<u256>(),
+                                                               _amount[1].toInt<u256>());
         }
         m_rounds = _rlp[1].toInt<u256>();
         m_numofrounds = _rlp[2].toInt<u256>();
 
 
         bytes _sort_b = _rlp[3].toBytes();
-        for(auto const& val: RLP(_sort_b)){
+        for (auto const &val: RLP(_sort_b)) {
             std::pair<u256, bytes> pair = val.toPair<u256, bytes>();
             std::vector<bytes> polls = RLP(pair.second).toVector<bytes>();
             std::vector<PollData> p_datas;
-            for(auto const& v: polls){
+            for (auto const &v: polls) {
                 PollData p_data;
                 p_data.populate(v);
                 p_datas.emplace_back(p_data);
@@ -381,117 +388,119 @@ struct CouplingSystemfee
         }
 
         bytes b_receive_cookies = _rlp[4].toBytes();
-        for(auto const& val: RLP(b_receive_cookies)){
-            std::pair<u256 , bytes> _pair = val.toPair<u256, bytes>();
+        for (auto const &val: RLP(b_receive_cookies)) {
+            std::pair<u256, bytes> _pair = val.toPair<u256, bytes>();
             std::map<Address, std::pair<u256, u256>> receve_data;
-            for(auto const& v: RLP(_pair.second)){
-                std::pair<Address , bytes> v_pair = v.toPair<Address, bytes>();
+            for (auto const &v: RLP(_pair.second)) {
+                std::pair<Address, bytes> v_pair = v.toPair<Address, bytes>();
                 auto r_total = RLP(v_pair.second);
                 receve_data[v_pair.first] = std::make_pair(r_total[0].toInt<u256>(), r_total[1].toInt<u256>());
             }
             m_received_cookies[_pair.first] = receve_data;
         }
 
-       m_total_summary = _rlp[5].toPair<u256, u256>();
+        m_total_summary = _rlp[5].toPair<u256, u256>();
     }
 
-    void clear()
-    {
+    void clear() {
         m_Feesnapshot.clear();
         m_numofrounds = 0;
         m_rounds = 0;
     }
 
-    bool isEmpty() const{
-        return  m_Feesnapshot.empty() && m_sorted_creaters.empty();
+    bool isEmpty() const {
+        return m_Feesnapshot.empty() && m_sorted_creaters.empty();
     }
 };
 
-inline std::ostream& operator << (std::ostream& out, VoteSnapshot const& t){
-    out <<std::endl;
-    out<< "data_history:{";
-    for(auto const& val : t.m_voteDataHistory){
-        out<< "rounds:("<< val.first << ":";
-        for(auto const& v : val.second){
-            out<<"["<< v.first << ","<< v.second<<"]";
+inline std::ostream &operator<<(std::ostream &out, VoteSnapshot const &t) {
+    out << std::endl;
+    out << "data_history:{";
+    for (auto const &val : t.m_voteDataHistory) {
+        out << "rounds:(" << val.first << ":";
+        for (auto const &v : val.second) {
+            out << "[" << v.first << "," << v.second << "]";
         }
-        out<< ")";
+        out << ")";
     }
-    out<< "}"<<std::endl;
+    out << "}" << std::endl;
 
     out << "poll:{";
-    for(auto const& val: t.m_pollNumHistory){
-        out<<"["<<val.first <<","<< val.second<<"]";
+    for (auto const &val: t.m_pollNumHistory) {
+        out << "[" << val.first << "," << val.second << "]";
     }
-    out << "}"<<std::endl;
+    out << "}" << std::endl;
 
     out << "blockSummaryHistory:{";
-    for(auto const& val : t.m_blockSummaryHistory){
-        out<<"["<<val.first <<","<< val.second<<"]";
+    for (auto const &val : t.m_blockSummaryHistory) {
+        out << "[" << val.first << "," << val.second << "]";
     }
-    out << "}"<<std::endl;
+    out << "}" << std::endl;
 
-    out << "rounds:"<< t.numberofrounds<<std::endl;
-    out << "atest_round:"<< t.m_latest_round<<std::endl;
+    out << "rounds:" << t.numberofrounds << std::endl;
+    out << "atest_round:" << t.m_latest_round << std::endl;
 
     return out;
 }
-inline std::ostream& operator << (std::ostream& out, PollData const& p) {
-    out<< p.m_addr << " "<< p.m_poll << " "<< p.m_time;
-    return  out;
+
+inline std::ostream &operator<<(std::ostream &out, PollData const &p) {
+    out << p.m_addr << " " << p.m_poll << " " << p.m_time;
+    return out;
 }
-inline std::ostream& operator << (std::ostream& out, CouplingSystemfee const& c) {
+
+inline std::ostream &operator<<(std::ostream &out, CouplingSystemfee const &c) {
 //    std::map <u256, std::pair<u256, u256>> m_Feesnapshot;
 //    std::map<u256, std::vector<PollData> > m_sorted_creaters;
 //    u256 m_rounds = 0;
 //    u256 m_numofrounds = 0;
-    out << std::endl << "Feesnapshot:{"<<std::endl;
-    for(auto const& val: c.m_Feesnapshot){
-        out<< val.first<<"["<<val.second.first <<" "<< val.second.second<<"]";
+    out << std::endl << "Feesnapshot:{" << std::endl;
+    for (auto const &val: c.m_Feesnapshot) {
+        out << val.first << "[" << val.second.first << " " << val.second.second << "]";
     }
-    out<< "}"<< std::endl;
-    out<< "orted_creaters:{"<<std::endl;
-    for(auto const& val: c.m_sorted_creaters){
-        out<<val.first << "(" ;
-        for(auto const& v: val.second){
-            out<< v<<",";
+    out << "}" << std::endl;
+    out << "orted_creaters:{" << std::endl;
+    for (auto const &val: c.m_sorted_creaters) {
+        out << val.first << "(";
+        for (auto const &v: val.second) {
+            out << v << ",";
         }
-        out<< ")";
+        out << ")";
     }
-    out<<"}"<<std::endl;
+    out << "}" << std::endl;
 
-    out<< "m_rounds"<< c.m_rounds<<std::endl;
-    out<< "m_numofrounds"<<c.m_numofrounds <<std::endl;
+    out << "m_rounds" << c.m_rounds << std::endl;
+    out << "m_numofrounds" << c.m_numofrounds << std::endl;
 
     //std::map<u256, std::map<Address, std::pair<u256, u256>>> m_received_cookies
-    out << " m_received_cookies:{"<< std::endl;
-    for(auto const& val: c.m_received_cookies){
-        out << "rounds:"<< val.first << std::endl;
-        for(auto const& v: val.second){
-            out << "    ["<<v.first << "  "<<v.second.first << "  "<<  v.second.second<<"]";
+    out << " m_received_cookies:{" << std::endl;
+    for (auto const &val: c.m_received_cookies) {
+        out << "rounds:" << val.first << std::endl;
+        for (auto const &v: val.second) {
+            out << "    [" << v.first << "  " << v.second.first << "  " << v.second.second << "]";
         }
     }
-    out <<std::endl<< "}"<< std::endl;
+    out << std::endl << "}" << std::endl;
 
-    out << " m_total_summary:"<<c.m_total_summary.first << " "<< c.m_total_summary.second<< std::endl;
+    out << " m_total_summary:" << c.m_total_summary.first << " " << c.m_total_summary.second << std::endl;
 
-    out <<std::endl<< "}"<< std::endl;
+    out << std::endl << "}" << std::endl;
 
     return out;
 }
-inline std::ostream& operator << (std::ostream& out, ReceivedCookies const& c){
+
+inline std::ostream &operator<<(std::ostream &out, ReceivedCookies const &c) {
     out << std::endl;
-    out<< "{"<<std::endl;
-    for(auto const&val : c.m_received_cookies){
-        out<< "     ["<< val.first<<":"<<std::endl;
-        out<< "     ";
-        for(auto const& v: val.second){
-            out <<"("<< v.first <<"  "<< v.second.first << "  "<< v.second.second << ")";
+    out << "{" << std::endl;
+    for (auto const &val : c.m_received_cookies) {
+        out << "     [" << val.first << ":" << std::endl;
+        out << "     ";
+        for (auto const &v: val.second) {
+            out << "(" << v.first << "  " << v.second.first << "  " << v.second.second << ")";
         }
-        out<<std::endl<<"     ]"<< std::endl;
+        out << std::endl << "     ]" << std::endl;
     }
-    out<< "is_recevied:" << c.m_is_received.first << "  "<<c.m_is_received.second;
-    out<<std::endl<< "}"<<std::endl;
+    out << "is_recevied:" << c.m_is_received.first << "  " << c.m_is_received.second;
+    out << std::endl << "}" << std::endl;
 
     return out;
 }
@@ -502,37 +511,40 @@ inline std::ostream& operator << (std::ostream& out, ReceivedCookies const& c){
  * If the latest recorded event is less than three creater_node round robin cycles then
  * the standby node starts to block in its place
  * */
-struct BlockRecord{
-    std::map<Address, int64_t > m_last_time;
+struct BlockRecord {
+    std::map<Address, int64_t> m_last_time;
 
-    bytes streamRLP() const{
+    bytes streamRLP() const {
         RLPStream s(1);
 
         RLPStream time_s(m_last_time.size());
-        for(auto const& val: m_last_time){
+        for (auto const &val: m_last_time) {
             time_s.append<Address, u256>(std::make_pair(val.first, val.second));
         }
-        s<< time_s.out();
-        return  s.out();
+        s << time_s.out();
+        return s.out();
     }
-    void populate(bytes const& b){
+
+    void populate(bytes const &b) {
         RLP rlp(b);
 
         bytes time_b = rlp[0].toBytes();
-        for(auto const& val: RLP(time_b)){
-            std::pair<Address , u256 > pair = val.toPair<Address, u256>();
-            m_last_time[pair.first] = (int64_t)pair.second;
+        for (auto const &val: RLP(time_b)) {
+            std::pair<Address, u256> pair = val.toPair<Address, u256>();
+            m_last_time[pair.first] = (int64_t) pair.second;
         }
     }
-    void set_last_block(std::pair<Address , int64_t >const& value){
+
+    void set_last_block(std::pair<Address, int64_t> const &value) {
         m_last_time[value.first] = value.second;
     }
-    bool is_empty() const{
-        return  m_last_time.empty();
+
+    bool is_empty() const {
+        return m_last_time.empty();
     }
 };
 
-class  Account {
+class Account {
 public:
     /// Changedness of account to create.
     enum Changedness {
@@ -891,7 +903,7 @@ public:
         cerror << "getData key :" << toJS(_key);
         cerror << "getData";
         auto mit = m_storageOverlayBytes.find(_key);
-             cerror << "getData";
+        cerror << "getData";
         if (mit != m_storageOverlayBytes.end()) {
             return mit->second;
         }
@@ -909,8 +921,7 @@ public:
         changed();
     }
 
-    void setBytetoStorage(std::unordered_map<h256, bytes> const& _map)
-    {
+    void setBytetoStorage(std::unordered_map<h256, bytes> const &_map) {
         m_storageOverlayBytes = _map;
         changed();
     }
@@ -1073,7 +1084,8 @@ public:
     void initCoupingSystemFee(bytes const &_b) { m_couplingSystemFee.unstreamRLP(_b); }
 
     void
-    tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData> const &p_datas, int64_t _block_num);
+    tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData> const &p_datas,
+                      int64_t _block_num);
 
     u256 getSnapshotRounds() { return m_couplingSystemFee.m_rounds; }
 
@@ -1084,7 +1096,8 @@ public:
         changed();
     }
 
-    std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
+    std::map<u256, std::vector<PollData>>
+    getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
 
     void add_new_rounds_miner_sapshot(u256 _round,
                                       std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data; }
@@ -1115,6 +1128,7 @@ public:
 
 
     dev::brc::ex::ExOrderMulti const &getExOrder() { return m_exChangeOrder; }
+    void clearExOrderMulti() { m_exChangeOrder.clear();}
 
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const &_order) {
         m_exChangeOrder.clear();
@@ -1200,10 +1214,16 @@ public:
     }
 
     //test code
-    void testBplusAdd(std::string const& _key, std::string const& _value, int64_t const& _blockNum, uint32_t const& _id, OverlayDB const& _db);
-    dev::brc::transationTool::testDetails testBplusGet(int64_t const& _blockNum, uint32_t const& _id, OverlayDB const& _db);
-    void testBplusDelete(std::string const& _key, OverlayDB const& _db, int64_t const& _blockNum, uint32_t const& _id);
-    std::vector<h256> getNeedDelete() const{
+    void testBplusAdd(std::string const &_key, std::string const &_value, int64_t const &_blockNum,
+                      uint32_t const &_id, OverlayDB const &_db);
+
+    dev::brc::transationTool::testDetails
+    testBplusGet(int64_t const &_blockNum, uint32_t const &_id, OverlayDB const &_db);
+
+    void testBplusDelete(std::string const &_key, OverlayDB const &_db, int64_t const &_blockNum,
+                         uint32_t const &_id);
+
+    std::vector<h256> getNeedDelete() const {
         return m_needDelete;
     }
     // test code end
@@ -1221,6 +1241,7 @@ public:
     std::vector<h256> getExchangeDelete() const{
         return m_exchangeDelete;
     }
+
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1254,20 +1275,20 @@ private:
     u256 m_ballot = 0;
     // 在投票开启中自己的得到的票数 不能使用
     u256 m_poll = 0;
-	// Account's BRC
+    // Account's BRC
     u256 m_BRC = 0;
     // Account's FBRC
     u256 m_FBRC = 0;
     u256 m_FBalance = 0;
-	// Summary of the proceeds from the block address itself
-	u256 m_CooikeIncomeNum = 0;
+    // Summary of the proceeds from the block address itself
+    u256 m_CooikeIncomeNum = 0;
     std::vector<std::string> m_willChangeList;
     /// poll_data
     /// if this not is systemAddress : the address vote to other
     /// if this is systemAddress : this storage candidates_data or Varlitor ...
     std::vector<PollData> m_vote_data;
     // The snapshot about voteData
-    VoteSnapshot    m_vote_sapshot;
+    VoteSnapshot m_vote_sapshot;
     CouplingSystemfee m_couplingSystemFee;
     ReceivedCookies m_received_cookies;
     std::vector<std::pair<u256, u256>> m_BlockReward;
@@ -1303,11 +1324,10 @@ private:
     std::vector<h256> m_exchangeDelete;
 };
 
-struct testBplus : public databaseDelegate
-{
-    testBplus(Account *_a, OverlayDB const& _db) :
-        m_account(_a),
-        m_db(_db){}
+struct testBplus : public databaseDelegate {
+    testBplus(Account *_a, OverlayDB const &_db) :
+            m_account(_a),
+            m_db(_db) {}
 
     virtual DataPackage getData(DataKey const &_key)
     {
@@ -1330,46 +1350,40 @@ private:
     OverlayDB m_db;
 };
 
-struct exchangeBplus : public databaseDelegate
-{
-    exchangeBplus(Account *_a, OverlayDB const& _db):
-        m_account(_a),
-        m_db(_db){}
+struct exchangeBplus : public databaseDelegate {
+    exchangeBplus(Account *_a, OverlayDB const &_db) :
+            m_account(_a),
+            m_db(_db) {}
 
-    virtual DataPackage getData(DataKey const& _key)
-    {
+    virtual DataPackage getData(DataKey const &_key) {
         return m_account->storageByteValue(dev::sha3(_key), m_db);
     }
 
-    virtual void setData(DataKey const& _key, DataPackage const& _val)
-    {
+    virtual void setData(DataKey const &_key, DataPackage const &_val) {
         m_account->setStorageByte(dev::sha3(_key), _val);
     }
 
-    virtual void deleteKey(DataKey const& _key)
-    {
+    virtual void deleteKey(DataKey const &_key) {
         m_account->deleteStorageBytes(dev::sha3(_key), m_db);
     }
+
 private:
     Account *m_account;
     OverlayDB m_db;
-}; 
+};
 
-class AccountMask
-{
+class AccountMask {
 public:
     AccountMask(bool _all = false)
-      : m_hasBalance(_all), m_hasNonce(_all), m_hasCode(_all), m_hasStorage(_all)
-    {}
+            : m_hasBalance(_all), m_hasNonce(_all), m_hasCode(_all), m_hasStorage(_all) {}
 
     AccountMask(bool _hasBalance, bool _hasNonce, bool _hasCode, bool _hasStorage,
-        bool _shouldNotExist = false)
-      : m_hasBalance(_hasBalance),
-        m_hasNonce(_hasNonce),
-        m_hasCode(_hasCode),
-        m_hasStorage(_hasStorage),
-        m_shouldNotExist(_shouldNotExist)
-    {}
+                bool _shouldNotExist = false)
+            : m_hasBalance(_hasBalance),
+              m_hasNonce(_hasNonce),
+              m_hasCode(_hasCode),
+              m_hasStorage(_hasStorage),
+              m_shouldNotExist(_shouldNotExist) {}
 
     bool allSet() const { return m_hasBalance && m_hasNonce && m_hasCode && m_hasStorage; }
     bool hasBalance() const { return m_hasBalance; }
@@ -1392,9 +1406,9 @@ using AccountMaskMap = std::unordered_map<Address, AccountMask>;
 class PrecompiledContract;
 using PrecompiledContractMap = std::unordered_map<Address, PrecompiledContract>;
 
-AccountMap jsonToAccountMap(std::string const& _json, u256 const& _defaultNonce = 0,
-    AccountMaskMap* o_mask = nullptr, PrecompiledContractMap* o_precompiled = nullptr,
-    const boost::filesystem::path& _configPath = {});
+AccountMap jsonToAccountMap(std::string const &_json, u256 const &_defaultNonce = 0,
+    AccountMaskMap *o_mask = nullptr, PrecompiledContractMap *o_precompiled = nullptr,
+    const boost::filesystem::path &_configPath = {});
 }  // namespace brc
 }  // namespace dev
 

@@ -405,7 +405,7 @@ public:
         ex::order_buy_type _pendingOrderBuyType, int64_t _nowTime);
 
 	//void pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, u256 &_exCookieNum = u256(0), u256 &_exBRCNum = u256(0));
-    std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    std::pair<u256, u256 > pendingOrders(Address const& _addr, int64_t _nowTime, int64_t blockHeight, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
     void cancelPendingOrder(h256 _pendingOrderHash);
 	void cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 
@@ -496,7 +496,7 @@ public:
     void setSuccessExchange(dev::brc::ex::ExResultOrder const& _exresultOrder);
     dev::brc::ex::ExResultOrder const& getSuccessExchange();
     
-    void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
+    void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, int64_t height, u256 const& _baseGas);
 
     void testBplus(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t const& _time);
     Json::Value testBplusGet(uint32_t const& _id, int64_t const& _blockNum);
@@ -644,6 +644,8 @@ public:
     std::map<u256, std::vector<PollData>> get_miner_snapshot() const;
 
     void changeVoteData(BlockHeader const& _header);
+
+    void transferOldExData(BlockHeader const& _header);
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
