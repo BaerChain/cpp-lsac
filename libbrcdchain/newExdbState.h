@@ -66,7 +66,8 @@ namespace dev{
             /// \param token_type   BRC OR FUEL
             /// \param size         once search size.
             /// \return             complete order.
-            std::vector<ex::exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
+            //std::vector<ex::exchange_order> get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const;
+            std::vector<ex::exchange_order> get_order_by_type(order_type type, int64_t const& _time, u256 const& _price, uint32_t size) const;
 //
 
 

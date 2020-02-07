@@ -132,6 +132,18 @@ namespace dev{
                 order.buy_type =  m_pendingorderBuyType;
                 return order;
             }
+
+            ex::exchange_order toExchangeOrder() const{
+                ex::exchange_order _order;
+                _order.trxid = m_orderId;
+                _order.sender = m_from;
+                _order.price = m_pendingorderPrice;
+                _order.token_amount = m_pendingordertokenNum;
+                _order.source_amount = m_pendingorderNum;
+                _order.create_time = m_createTime;
+                _order.type = m_pendingorderType;
+                _order.token_type = m_pendingorderTokenType;
+            }
         };
         
         

@@ -1,5 +1,6 @@
 #include "State.h"
 #include "ExdbState.h"
+#include "newExdbState.h"
 #include "Block.h"
 #include "BlockChain.h"
 #include "DposVote.h"
@@ -830,7 +831,6 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     std::pair<u256, u256> _exNumPair;
     u256 _exCookieNum = 0;
     u256 _exBRCNum = 0;
-    ExdbState _exdbState(*this);
     for (auto const &val : _ops) {
         std::shared_ptr<transationTool::pendingorder_opearaion> pen = std::dynamic_pointer_cast<transationTool::pendingorder_opearaion>(
                 val);
@@ -863,9 +863,12 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
         try {
             //default.
             if(config::changeExchange() >= blockHeight){
+                ExdbState _exdbState(*this);
                 _result_v = _exdbState.insert_operation(_val);
             }
             else {
+                newExdbState _newExdbState(*this);
+                _result_v = _newExdbState.insert_operation(_val);
                 //TODO use new db.
             }
         }

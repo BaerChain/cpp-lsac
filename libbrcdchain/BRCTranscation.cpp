@@ -1,6 +1,7 @@
 #include "BRCTranscation.h"
 #include "DposVote.h"
 #include "ExdbState.h"
+#include "newExdbState.h"
 #include <brc/exchangeOrder.hpp>
 #include <brc/types.hpp>
 #include <libbrccore/config.h>
@@ -119,15 +120,23 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
             }
         }
 
-
-        ExdbState _exdbState(m_state);
         if (_buy_type == order_buy_type::all_price) {
             if (_type == order_type::buy) {
                 __type = order_type::sell;
             } else if (_type == order_type::sell) {
                 __type = order_type::buy;
+            } 
+
+            std::vector<exchange_order> _v;
+            if(config::changeExchange() >= _blockHeight)
+            {
+                ExdbState _exdbState(m_state);
+                _v = _exdbState.get_order_by_type(__type, order_token_type::FUEL, 10);
+            }else{
+                newExdbState _newExdbState(m_state);
+                _v = _newExdbState.get_order_by_type(__type, _nowTime, _pendingOrderPrice, 10);
             }
-            std::vector<exchange_order> _v = _exdbState.get_order_by_type(__type, order_token_type::FUEL, 10);
+
 
             if (_v.size() == 0) {
                 BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
@@ -151,8 +160,15 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
     for (auto _val : _verfys)
     {
         try{
-            ExdbState _exdbState(m_state);
-            std::vector<result_order> _retV = _exdbState.insert_operation(_val, true);
+            std::vector<result_order> _retV;
+            if(config::changeExchange() >= _blockHeight)
+            {
+                ExdbState _exdbState(m_state);
+                _retV = _exdbState.insert_operation(_val, true);
+            }else{
+                newExdbState _newExdbState(m_state);
+                _retV = _newExdbState.insert_operation(_val, true);
+            }
             u256 _cookieNum = 0;
             for(auto it : _retV){
                 if(it.type == order_type::buy && it.token_type == order_token_type::FUEL && it.buy_type == order_buy_type::all_price){
