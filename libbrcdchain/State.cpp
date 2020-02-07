@@ -3555,9 +3555,9 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 RLPStream s;
                 if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
-                    if(_block_number >= config::changeExchange()){
-                        s.appendList(21);
-                    }
+                }
+                else if(_block_number >= config::changeExchange()){
+                    s.appendList(21);
                 }
                 else{
                     s.appendList(19);
