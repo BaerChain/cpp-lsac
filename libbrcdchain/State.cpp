@@ -691,11 +691,8 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     for (auto _val : _v) {
         try {
             //default.
-            if(config::changeExchange() > blockHeight){
+            if(config::changeExchange() >= blockHeight){
                 _result_v = _exdbState.insert_operation(_val);
-            }
-            else if(config::changeExchange() == blockHeight){
-                //TODO move data  to new db; delete old data.
             }
             else {
                 //TODO use new db.
@@ -1185,7 +1182,7 @@ void State::cancelPendingOrder(h256 _pendingOrderHash) {
     }
 }
 
-void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transationTool::operation>> const &_ops, int64_t _blockHeight) {
     ctrace << "cancle pendingorder";
     ex::order val;
     std::vector<h256> _hashV;
@@ -1201,7 +1198,11 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     }
     for (auto _val : _hashV) {
         try {
-            val = _exdbState.cancel_order_by_trxid(_val);
+            if(_blockHeight <= config::changeExchange())
+                val = _exdbState.cancel_order_by_trxid(_val);
+            else{
+                //TODO new ex
+            }
         }
         catch (Exception &e) {
             cwarn << "cancelPendingorder Error :" << e.what();

@@ -39,7 +39,9 @@ void dev::brc::BRCTranscation::verifyTranscation(
 
 
 void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _total_cost, ex::exchange_plugin& _exdb,
-												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, std::vector<std::shared_ptr<transationTool::operation>> const& _ops) {
+												   int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash,
+												   std::vector<std::shared_ptr<transationTool::operation>> const& _ops,
+                                                   int64_t _blockHeight) {
 
     u256 total_brc = 0;
     u256 total_cost = _total_cost;

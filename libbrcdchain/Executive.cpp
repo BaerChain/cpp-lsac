@@ -511,7 +511,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				if(m_batch_params._type == transationTool::op_type::vote)
 					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
-					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
+					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation, m_envInfo.number());
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
@@ -646,7 +646,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::cancelPendingOrder:{
-                m_s.cancelPendingOrders(m_batch_params._operation);
+                m_s.cancelPendingOrders(m_batch_params._operation, m_envInfo.number());
                 break;
             }
             case transationTool::op_type::changeMiner:{
