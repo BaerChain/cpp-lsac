@@ -219,17 +219,18 @@ Account *State::account(Address const &_addr) {
     const bytes ex_order_b = state[18].convert<bytes>(RLP::LaissezFaire);
     i.first->second.initExOrder(ex_order_b);
 
-    const h256 storageByteRoot = state[19].toHash<h256>();
-    i.first->second.setStorageBytesRoot(storageByteRoot);
-    
     if(m_block_number >= config::newChangeHeight()){
         if(state.itemCount() > 19) {
             const bytes _b = state[19].convert<bytes>(RLP::LaissezFaire);
             i.first->second.populateChangeMiner(_b);
         }
     }
-
-
+    if(m_block_number >= config::changeExchange()){
+        if(state.itemCount() > 20) {
+            const h256 storageByteRoot = state[20].toHash<h256>();
+            i.first->second.setStorageBytesRoot(storageByteRoot);
+        }
+    }
     return &i.first->second;
 }
 
@@ -3627,10 +3628,18 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     s << i.second.getStreamRLPResultOrder();
                     s << i.second.getStreamRLPExOrder();
                 }
+
+                {
+                    /// fork about newChangeMiner
+                    if(_block_number >= config::newChangeHeight()){
+                        s << i.second.getRLPStreamChangeMiner();
+                        //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
+                    }
+                }
                 
                 //Add a new state field
                 {
-                    if(i.second.storageByteOverlay().empty() && i.second.getNeedDelete().empty())
+                    if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty())
                     {
                         assert(i.second.baseByteRoot());
                         s << i.second.baseByteRoot();
@@ -3645,24 +3654,12 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                                 storageByteDB.remove(val.first);
                             }
                         }
-                        for(auto const& keyVal : i.second.getNeedDelete())
+                        for(auto const& keyVal : i.second.getExchangeDelete())
                         {
                             storageByteDB.remove(keyVal);
                         }
                         assert(storageByteDB.root());
                         s << storageByteDB.root();
-                    }
-                }
-                if(i.first == dev::TestbplusAddress || i.first == dev::ExdbSystemAddress)
-                {
-                    cerror << toJS(i.first) << "  " <<toJS(s.out());
-                }
-
-                {
-                    /// fork about newChangeMiner
-                    if(_block_number >= config::newChangeHeight()){
-                        s << i.second.getRLPStreamChangeMiner();
-                        //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
                 }
                 _state.insert(i.first, &s.out());
