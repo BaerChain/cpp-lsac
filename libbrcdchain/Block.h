@@ -313,6 +313,7 @@ public:
         {
             m_state.changeVoteData(curr_info);
         }
+        /// transfer old Exdata to new ExData
         m_state.transferOldExData(curr_info);
 
     }

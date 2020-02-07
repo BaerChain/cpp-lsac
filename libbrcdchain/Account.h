@@ -1128,7 +1128,7 @@ public:
 
 
     dev::brc::ex::ExOrderMulti const &getExOrder() { return m_exChangeOrder; }
-    void clearExOrderMulti() { m_exChangeOrder.clear();}
+    void clearExOrderMulti() { m_exChangeOrder.clear(); changed();}
 
     void setExOrderMulti(dev::brc::ex::ExOrderMulti const &_order) {
         m_exChangeOrder.clear();
