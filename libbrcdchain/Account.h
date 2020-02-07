@@ -720,6 +720,27 @@ public:
         return false;
     }
 
+    bytes getRLPStreamChangeMiner() const{
+        RLPStream rlp;
+        if( m_mappingAddress.first == Address()){
+            rlp.appendList(1);
+            rlp << "";
+        }
+        else{
+            rlp.appendList(2);
+            rlp << m_mappingAddress.first;
+            rlp << m_mappingAddress.second;
+        }
+        return rlp.out();
+    }
+    void populateChangeMiner(bytes const& b){
+        RLP rlp(b);
+        if(rlp.itemCount() == 2){
+            m_mappingAddress.first = rlp[0].convert<Address>(RLP::LaissezFaire);
+            m_mappingAddress.second = rlp[1].convert<Address>(RLP::LaissezFaire);
+        }
+    }
+
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
     void kill() {
@@ -766,6 +787,7 @@ public:
                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageOverlayBytes.empty();
+
     }
 
     /// @returns the balance of this account.
@@ -1243,6 +1265,14 @@ public:
     }
 
 
+    void setChangeMiner(std::pair<Address, Address> const& _pair){
+        m_mappingAddress = _pair;
+        changed();
+    }
+    std::pair<Address, Address>const& mappingAddress() const{
+        return m_mappingAddress;
+    }
+
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
@@ -1322,6 +1352,7 @@ private:
 
     std::shared_ptr<exchangeBplus> m_exchangeBplus;
     std::vector<h256> m_exchangeDelete;
+      std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };
 
 struct testBplus : public databaseDelegate {
@@ -1370,6 +1401,9 @@ struct exchangeBplus : public databaseDelegate {
 private:
     Account *m_account;
     OverlayDB m_db;
+    /// mapping Address <original_address, next_address> for change Miner
+  
+
 };
 
 class AccountMask {

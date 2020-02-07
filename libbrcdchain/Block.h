@@ -316,6 +316,10 @@ public:
         /// transfer old Exdata to new ExData
         m_state.transferOldExData(curr_info);
 
+
+        if(params.chainID == 1){
+            m_state.changeMinerAddVote(curr_info);
+        }
     }
 
 private:

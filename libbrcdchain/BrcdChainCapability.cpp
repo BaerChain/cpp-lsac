@@ -428,6 +428,7 @@ void BrcdChainCapability::reset()
     // but we access m_latestBlockSent and m_transactionsSent only from the network thread
     m_host->scheduleExecution(0, [this]() {
         m_latestBlockSent = h256();
+        m_latestBlockSent = m_chain.currentHash();
         m_transactionsSent.clear();
     });
 }
@@ -450,7 +451,7 @@ void BrcdChainCapability::doBackgroundWork()
                 m_newTransactions = false;
                 maintainTransactions();
             }
-            if (m_newBlocks)
+            if (m_newBlocks && h!= m_latestBlockSent)
             {
                 m_newBlocks = false;
                 maintainBlocks(h);
@@ -619,7 +620,11 @@ void BrcdChainCapability::maintainBlocks(h256 const& _currentHash)
     // Send any new blocks.
     auto detailsFrom = m_chain.details(m_latestBlockSent);
     auto detailsTo = m_chain.details(_currentHash);
+    if(_currentHash == m_latestBlockSent){
+        cwarn << "lastSendHash:" << m_latestBlockSent << " curr:" << _currentHash;
+    }
 //    if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
+    //cwarn <<" into send new block";
     {
         if (diff(detailsFrom.number, detailsTo.number) < 20)
         {

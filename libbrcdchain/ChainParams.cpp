@@ -93,6 +93,8 @@ ChainParams ChainParams::loadConfig(
     if(params.count(c_minimum_cycle))
         cp.minimum_cycle = size_t(params.at(c_minimum_cycle).get_int());
 
+    config::getInstance(true,cp.varlitorNum, cp.standbyNum, cp.minimum_cycle, cp.chainID);
+
     ////Poa Validators
     //string poaStr = js::write_string(obj[c_poa], false);
     //cp = cp.loadpoaValidators(poaStr, _stateRoot);
@@ -104,10 +106,7 @@ ChainParams ChainParams::loadConfig(
 
     cp.genesisState = jsonToAccountMap(
                 genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath);
-
     cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot(true);
-
-    config::getInstance(cp.varlitorNum, cp.standbyNum, cp.minimum_cycle);
 
     return cp;
 }

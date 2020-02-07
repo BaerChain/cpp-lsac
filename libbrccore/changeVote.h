@@ -6,6 +6,25 @@
 namespace dev {
     namespace brc {
 
+        std::vector<std::tuple<std::string, std::string, std::string>> changeMinnerAddVote ={
+                {"ce02af6533cbe720a2c801e8f639ce3514929790","4d51ba213bad0f7ed97d336b2c00dc76576aac98","1000"},
+                {"8cacf2527c3b3b854ad4aedcca44533810cb50d0","8870f2e94d485ae78e70269a730b34c30132d88d","1000"},
+                {"bed37349469dc4d51577078631fedac81f2efb8b","19472617f1b685dd89b05d4c9eadb742da966a3c","1000"},
+                {"313b371e6fc013fb55c6dfe0db0235ffb7c592a2","687ec522068acf768a6d3d831c39fadb674b39da","1000"},
+                {"ce02af6533cbe720a2c801e8f639ce3514929790","49d233b6815dc0970458036cd1b1f9b0aaeb1e4f","1000"},
+                {"bed37349469dc4d51577078631fedac81f2efb8b","239d5368178b761b4b2f167a908e9797620fb934","1000"},
+                {"ce02af6533cbe720a2c801e8f639ce3514929790","adac92008f03107e11cec579b66a26b2b0f31686","1000"},
+                {"bed37349469dc4d51577078631fedac81f2efb8b","a105a2971e22df8678c1977e29ccc2b176acec9d","1000"},
+                {"4d51ba213bad0f7ed97d336b2c00dc76576aac98","4d51ba213bad0f7ed97d336b2c00dc76576aac98","1000"},
+                {"19472617f1b685dd89b05d4c9eadb742da966a3c","8870f2e94d485ae78e70269a730b34c30132d88d","1000"},
+                {"b172c802467c5507f2919ec417873a7fae167557","4d51ba213bad0f7ed97d336b2c00dc76576aac98","1000"},
+                {"b172c802467c5507f2919ec417873a7fae167557","687ec522068acf768a6d3d831c39fadb674b39da","1000"},
+                {"e3688750ecc7fa4a342c2127fe153b4306559b20","49d233b6815dc0970458036cd1b1f9b0aaeb1e4f","1000"},
+                {"e3688750ecc7fa4a342c2127fe153b4306559b20","239d5368178b761b4b2f167a908e9797620fb934","1000"},
+                {"e3688750ecc7fa4a342c2127fe153b4306559b20","8870f2e94d485ae78e70269a730b34c30132d88d","1000"},
+                {"e3688750ecc7fa4a342c2127fe153b4306559b20","a105a2971e22df8678c1977e29ccc2b176acec9d","1000"}
+        };
+
         std::vector<std::tuple<std::string, std::string, std::string>> _changeVoteVector = {
                 {"0x0000f0f93082b7308d4e947ad4829701090c24a7","0x0c49741d907aa2ec579c454c4e2ba58c756e6829","2150000"},
                 {"0x0000f0f93082b7308d4e947ad4829701090c24a7","0xf76529f84d8ff60ba90c8a3cbd43792f76cddb00","2467880"},
@@ -3240,6 +3259,10 @@ namespace dev {
             static std::vector<std::tuple<std::string, std::string, std::string>> const& getChangeVote()
             {
                 return _changeVoteVector;
+            }
+
+            static std::vector<std::tuple<std::string, std::string, std::string>> const& getChangeMinerAddVote(){
+                return changeMinnerAddVote;
             }
 
         };

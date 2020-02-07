@@ -211,6 +211,56 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 	}
 }
 
+void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address const& _from,
+        std::vector<std::shared_ptr<transationTool::operation>> const& _ops,
+        dev::brc::transationTool::dividendcycle _type,
+        dev::brc::EnvInfo const& _envinfo,
+        dev::brc::DposVote const& _vote)
+        {
+    if(_envinfo.number() < config::newChangeHeight()){
+        verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+        return;
+    }
+    if (_envinfo.number() >= config::newChangeHeight()){
+        auto miner_mapping = m_state.minerMapping(_from);
+        if (!(miner_mapping.first == Address() || miner_mapping.second == _from)) {
+            cerror << "minnerMapping error: <" << miner_mapping.first << miner_mapping.second << ">";
+            BOOST_THROW_EXCEPTION(
+                    receivingincomeFiled() << errinfo_comment(std::string("miner_mapping can not to receive")));
+        }
+
+        std::string try_ret = "";
+        bool  is_ok = false;
+        try {
+            verifyreceivingincome(_from, _ops, _type, _envinfo, _vote);
+            is_ok = true;
+        }
+        catch (receivingincomeFiled const& _r)
+        {
+            if(auto *_error = boost::get_error_info<errinfo_comment>(_r))
+                try_ret = "from address:"+std::string(*_error);
+        }
+
+        if (miner_mapping.first != _from && miner_mapping.first !=Address()){
+            try {
+                verifyreceivingincome(miner_mapping.first, _ops, _type, _envinfo, _vote);
+                is_ok = true;
+            }
+            catch (receivingincomeFiled const& _r){
+                if(auto *_error = boost::get_error_info<errinfo_comment>(_r))
+                    try_ret += "\n mapping address:" +std::string(*_error);
+            }
+        }
+
+        if (!is_ok){
+            cwarn << " verify recivied field !";
+            BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(try_ret));
+        }
+    }
+    cnote << "verify receive ok";
+}
+
+
 void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,dev::brc::transationTool::dividendcycle _type, dev::brc::EnvInfo const& _envinfo, dev::brc::DposVote const& _vote)
 {
     for(auto const& _it : _ops)
@@ -232,6 +282,7 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, 
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome type is null")));
         }
     }
+    cnote << "verify receive ok";
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,
@@ -275,7 +326,7 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
         std::vector<PollData> _dataV = a->vote_data();
         bool _status = false;
         std::vector<PollData> _mainNodeAddr = sysAccount->vote_data();
-        if(isMainNode(_dataV, _mainNodeAddr))
+        if(isMainNode(_dataV, _mainNodeAddr) || isMainNode(_from, _mainNodeAddr))
         {
             _status = true;
         }
@@ -291,13 +342,13 @@ void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, c
             if(_minerSnap.count(_voteIt->first))
             {
                 std::vector<PollData> _mainNodeV = _minerSnap[_voteIt->first];
-                if(isMainNode(_voteIt->second, _mainNodeV))
+                if(isMainNode(_voteIt->second, _mainNodeV) || isMainNode(_from, _mainNodeV))
                 {
                     _status = true;
                 }
             }else{
                 std::vector<PollData> _nowMiner = m_state.vote_data(SysVarlitorAddress);
-                if(isMainNode(_voteIt->second, _nowMiner))
+                if(isMainNode(_voteIt->second, _nowMiner) || isMainNode(_from, _nowMiner))
                 {
                     _status = true;
                 }
@@ -389,8 +440,8 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
                                                     const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, dev::brc::EnvInfo const& _envinfo)
 {
     int64_t const& _timeStamp = _envinfo.timestamp();
-    if((_envinfo.number() < 4072941 && _envinfo.header().chain_id() == 0x1)
-        || (_envinfo.number() < 99999999 && _envinfo.header().chain_id() == 0xb))
+    if((_envinfo.number() < config::autoExTestNetHeight() && _envinfo.header().chain_id() == 0x1)
+        || (_envinfo.number() < config::autoExHeight() && _envinfo.header().chain_id() == 0xb))
     {
         BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Transfer automatic exchange fee function has not yet reached the opening time")));
     }
@@ -465,6 +516,20 @@ bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteD
     }
     return  _status;
 }
+
+bool dev::brc::BRCTranscation::isMainNode(dev::Address const& _addr, std::vector<PollData> const& _pollData)
+{
+    bool _status = false;
+    for(uint32_t i = 0; i < _pollData.size(); i++)
+    {
+        if(_addr == _pollData[i].m_addr)
+        {
+            _status = true;
+        }
+    }
+    return _status;
+}
+
 
 bool dev::brc::BRCTranscation::isMainNode(const std::map<Address, u256> &_voteData,  const std::vector<dev::brc::PollData> &_pollData)
 {

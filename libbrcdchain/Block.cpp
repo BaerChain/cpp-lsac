@@ -117,7 +117,8 @@ void Block::resetCurrent(int64_t _timestamp) {
 
     m_state.exdb().rollback();
     m_state.setRoot(m_previousBlock.stateRoot());
-	m_state.set_timestamp(m_previousBlock.timestamp());
+	//m_state.set_timestamp(m_previousBlock.timestamp());
+	m_state.setBlockNumber(m_previousBlock.number());
     m_precommit = m_state;
 
     m_committedToSeal = false;

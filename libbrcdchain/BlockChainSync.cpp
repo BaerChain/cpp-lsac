@@ -245,15 +245,23 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
     }
 
     bool ignore_sync = false;
-    if(height != 0 ){
-        auto latest_block = host().chain().info().timestamp();
+    if(host().chain().genesisHash() != peer.genesisHash()){
+        ignore_sync = true;
+        cwarn << " genesisHash is not same can't to sync...";
+    }
+    if(height != 0 && !ignore_sync){
+        //auto latest_block = host().chain().info().timestamp();
+        auto compareHash = height ? host().chain().numberHash(1) : host().chain().genesisHash();
+        auto compareTime = host().chain().info(compareHash).timestamp();
         if(peer_block_number > height){
-            int64_t time_offset = (peer_block_number - height) * host().chain().chainParams().blockInterval;
-            if(latest_block + time_offset > utcTimeMilliSec()){
+            int64_t time_offset = peer_block_number * host().chain().chainParams().blockInterval;
+            if(compareTime + time_offset > utcTimeMilliSec()){
                 ignore_sync = true;
                 LOG(m_loggerDetail) << "ignore sync "  << _peerID << " self height " << height  << " peer height " << peer_block_number
                                                          << "  last import h: " << last_block_num;
             }
+            else
+                LOG(m_loggerDetail) << "will can not ignore_sync sync block: peer:"<< _peerID << " height:" << peer_block_number;
         }
     }
 
@@ -720,6 +728,7 @@ void BlockChainSync::collectBlocks(NodeID const& _peerID)
                 LOG(m_logger)
                     << "Already known or future time & unknown parent or unknown parent, block #"
                     << headers.first + i << ". Resetting sync.";
+                cwarn << "UnknownParent , :" << headers.first + i << " author:" << m_lastImportedBlock;
                 resetSync();
                 m_haveCommonHeader = false; // fork detected, search for common header again
             }
@@ -734,6 +743,7 @@ void BlockChainSync::collectBlocks(NodeID const& _peerID)
     if (host().bq().unknownFull() )
     {
         clog(VerbosityWarning, "sync") << "Too many unknown blocks, restarting sync";
+        cwarn << "unknownFull , :" << headers.first + i << " author:" << m_lastImportedBlock;
         syncPeer(_peerID, true);
         restartSync();
 
@@ -793,6 +803,7 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
     if (blockNumber > (m_lastImportedBlock + 1))
     {
         LOG(m_loggerDetail) << "Received unknown new block";
+        cwarn << "Received unknown new block : "<< info.number() << " author:"<< info.author();
         // Update the hash of highest known block of the peer.
         // syncPeer will then request the highest block header to properly restart syncing
         peer.setLatestHash(h);
@@ -838,8 +849,10 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         return;
 
     case ImportResult::AlreadyInChain:
-    case ImportResult::AlreadyKnown:
+    case ImportResult::AlreadyKnown:{
+        peer.setBlockNumber(max(unsigned(peer.block_number()), blockNumber));
         break;
+    }
 
     case ImportResult::FutureTimeUnknown:
     case ImportResult::UnknownParent:
@@ -852,9 +865,16 @@ void BlockChainSync::onPeerNewBlock(NodeID const& _peerID, RLP const& _r)
         }
         logNewBlock(h);
         u256 totalDifficulty = _r[1].toInt<u256>();
-        if (totalDifficulty > peer.totalDifficulty())
+        if (info.number() > peer.block_number())
         {
-            LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
+            //LOG(m_loggerDetail) << "Received block with no known parent. Peer needs syncing...";
+            cwarn << "new block : "<< info.number() << " author:"<< info.author()
+                    << " totalDifficulty > peer.totalDifficulty() :" << totalDifficulty << " ::"<< peer.totalDifficulty();
+            if(info.number() <= host().chain().number()){
+                cwarn << "peer block:" << info.number() << " < last_block_num:"<< host().chain().number() << " can not to sync";
+                break;
+            }
+            m_haveCommonHeader = false;
             syncPeer(_peerID, true);
         }
         break;
@@ -962,6 +982,7 @@ void BlockChainSync::onPeerNewHashes(
     if (unknowns > 0)
     {
         LOG(m_loggerDetail) << "Not syncing and new block hash discovered: syncing.";
+        cwarn << "unknow block_hash >0......:" << _hashes;
         syncPeer(_peerID, true);
     }
 }

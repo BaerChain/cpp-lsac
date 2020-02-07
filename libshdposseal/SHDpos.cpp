@@ -210,7 +210,12 @@ bool dev::bacd::SHDpos::CheckValidator(uint64_t _now) {
     if (h.number() <= dev::brc::config::varlitorNum() * dev::brc::config::minimum_cycle()) {
         return false;
     }
-    return verify_standby(_now - (_now % m_config.varlitorInterval), m_dpos_cleint->author());
+    /// fork about replace
+    if(h.number() >= config::replaceMinerHeight()) {
+        return verify_standby(_now - (_now % m_config.varlitorInterval), m_dpos_cleint->author());
+    } else{
+        return false;
+    }
 }
 
 bool dev::bacd::SHDpos::verify_standby(int64_t block_time, Address const &own_addr) const {
