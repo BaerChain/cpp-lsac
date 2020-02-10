@@ -393,36 +393,55 @@ namespace dev {
         }
 
         std::vector<exchange_order>
-        newExdbState::get_order_by_type(order_type type, order_token_type token_type, uint32_t size) const {
+        newExdbState::get_order_by_type(order_type type, int64_t const& _time, u256 const& _price, uint32_t size) const {
             std::vector<exchange_order> ret;
             if (type == order_type::buy) {
-                const auto &index_greater = m_state.getExOrder().get<ex_by_price_greater>();
-                auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
-                                                                                            token_type,
-                                                                                            u256(-1), 0);
-                auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
-                                                                                            token_type,
-                                                                                            u256(0), INT64_MAX);
-                auto begin = index_greater.lower_bound(find_lower);
-                auto end = index_greater.upper_bound(find_upper);
+                // const auto &index_greater = m_state.getExOrder().get<ex_by_price_greater>();
+                // auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                //                                                                             token_type,
+                //                                                                             u256(-1), 0);
+                // auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::buy,
+                //                                                                             token_type,
+                //                                                                             u256(0), INT64_MAX);
+                // auto begin = index_greater.lower_bound(find_lower);
+                // auto end = index_greater.upper_bound(find_upper);
 
-                while (begin != end && size > 0) {
-                    ret.push_back(exchange_order(*begin));
+                // while (begin != end && size > 0) {
+                //     ret.push_back(exchange_order(*begin));
+                //     begin++;
+                //     size--;
+                // }
+                auto find_it = m_state.newGetBuyExchangeOrder(_time, _price);
+                auto begin = find_it.first;
+                auto end = find_it.second;
+                while(begin != end && size > 0)
+                {
+                    ret.push_back((*begin).second.toExchangeOrder());
                     begin++;
                     size--;
                 }
             } else {
-                const auto &index_less = m_state.getExOrder().get<ex_by_price_less>();
-                auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
-                                                                                            token_type,
-                                                                                            u256(0), 0);
-                auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
-                                                                                            token_type,
-                                                                                            u256(-1), INT64_MAX);
-                auto begin = index_less.lower_bound(find_lower);
-                auto end = index_less.upper_bound(find_upper);
-                while (begin != end && size > 0) {
-                    ret.push_back(exchange_order(*begin));
+                // const auto &index_less = m_state.getExOrder().get<ex_by_price_less>();
+                // auto find_lower = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                //                                                                             token_type,
+                //                                                                             u256(0), 0);
+                // auto find_upper = boost::tuple<order_type, order_token_type, u256, Time_ms>(order_type::sell,
+                //                                                                             token_type,
+                //                                                                             u256(-1), INT64_MAX);
+                // auto begin = index_less.lower_bound(find_lower);
+                // auto end = index_less.upper_bound(find_upper);
+                // while (begin != end && size > 0) {
+                //     ret.push_back(exchange_order(*begin));
+                //     begin++;
+                //     size--;
+                // }
+                auto find_it = m_state.newGetSellExChangeOrder(_time, _price);
+
+                auto begin = find_it.first;
+                auto end = find_it.second;
+                while(begin != end && size > 0)
+                {
+                    ret.push_back((*begin).second.toExchangeOrder());
                     begin++;
                     size--;
                 }

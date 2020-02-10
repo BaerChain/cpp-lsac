@@ -10,7 +10,6 @@
 
 #include <chainbase/chainbase.hpp>
 #include <libdevcore/RLP.h>
-
 //using namespace chainbase;
 using namespace boost::multi_index;
 
@@ -466,6 +465,8 @@ namespace dev {
                           source_amount(obj.source_amount), create_time(obj.create_time), type(obj.type),
                           token_type(obj.token_type) {
                 }
+
+                exchange_order(){}
 
 
                 std::string format_string() const{
