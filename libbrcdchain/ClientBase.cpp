@@ -125,7 +125,7 @@ Json::Value dev::brc::ClientBase::blockRewardMessage(Address _a, uint32_t _pageN
 Json::Value dev::brc::ClientBase::pendingOrderPoolMessage(
     uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const
 {
-    if(_block<= config::changeExchange())
+    if(_block< config::changeExchange())
         return blockByNumber(_block).mutableState().pendingOrderPoolMsg(_order_type, _order_token_type, _getSize);
 
     return blockByNumber(_block).mutableState().newExorderGetByType(_order_type);
