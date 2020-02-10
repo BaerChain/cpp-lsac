@@ -670,7 +670,7 @@ std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256
     return std::make_pair<buyOrder::iterator, buyOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
 }
 
-std::pair<sellOrder::iterator, sellOrder::iterator> Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, std::pair<sellOrder::iterator, sellOrder::iterator> &_p, OverlayDB const& _db)
 {
     if(!m_exchangeBplus.get())
     {
@@ -682,7 +682,7 @@ std::pair<sellOrder::iterator, sellOrder::iterator> Account::sellExchangeGetIt(u
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
-    return std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
+    _p = std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
 }
 
 std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {

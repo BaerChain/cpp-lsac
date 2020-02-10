@@ -95,7 +95,8 @@ namespace dev{
             /// \param price        upper price.
             /// \return         std::pair<lower iterator, upper iterator>
             std::pair<sellOrder::iterator, sellOrder::iterator> get_buy_itr(int64_t _time, u256 price) {
-                std::pair<sellOrder::iterator, sellOrder::iterator> find_it = m_state.newGetSellExChangeOrder( _time, price);
+                std::pair<sellOrder::iterator, sellOrder::iterator> find_it;
+                m_state.newGetSellExChangeOrder( _time, price, find_it);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                 // const auto &index_greater = m_state.getExOrder().get<ex::ex_by_price_less>();

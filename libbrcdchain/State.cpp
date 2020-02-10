@@ -3009,7 +3009,7 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
 }
 
 
-std::pair<sellOrder::iterator, sellOrder::iterator> dev::brc::State::newGetSellExChangeOrder(int64_t const& _time, u256 const& _price)
+void dev::brc::State::newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, std::pair<sellOrder::iterator, sellOrder::iterator> &_p)
 {
     Account *_orderAccount = account(dev::SellExchangeAddress);
     if(!_orderAccount)
@@ -3017,8 +3017,7 @@ std::pair<sellOrder::iterator, sellOrder::iterator> dev::brc::State::newGetSellE
         createAccount(dev::SellExchangeAddress, {0});
         _orderAccount =  account(dev::SellExchangeAddress);
     }
-    auto _ret = _orderAccount->sellExchangeGetIt(_price, _time, m_db);
-    return _ret;
+     _orderAccount->sellExchangeGetIt(_price, _time, m_db);
 }
 
 

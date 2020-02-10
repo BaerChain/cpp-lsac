@@ -435,7 +435,8 @@ namespace dev {
                 //     begin++;
                 //     size--;
                 // }
-                auto find_it = m_state.newGetSellExChangeOrder(_time, _price);
+                std::pair<sellOrder::iterator, sellOrder::iterator> _p;
+                auto find_it = m_state.newGetSellExChangeOrder(_time, _price,_p);
 
                 auto begin = find_it.first;
                 auto end = find_it.second;
