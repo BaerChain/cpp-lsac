@@ -1,8 +1,8 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime: 2019-12-13 10:21:14
- * @LastEditors: Please set LastEditors
+ * @LastEditTime : 2020-02-10 17:30:00
+ * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
  */
@@ -416,6 +416,8 @@ namespace dev {
                    
                 }
 
+                iterator(const iterator &other):mbp(other.mbp), mLeafKey(other.mLeafKey), indexOfLeaf(other.indexOfLeaf){}
+
                 iterator& operator++() {  
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     if(indexOfLeaf + 1 < node.second.mValues.size()){
@@ -437,6 +439,12 @@ namespace dev {
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     assert(node.first);
                     return node.second.mValues[indexOfLeaf];
+                }
+                iterator &operator=(const iterator& other){
+                    mLeafKey = other.mLeafKey;
+                    indexOfLeaf = other.indexOfLeaf;
+                    mbp = other.mbp;
+                    return *this;
                 }
 
             private:
