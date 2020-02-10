@@ -3560,15 +3560,11 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if (_block_number >= config::newChangeHeight()) {
-                    s.appendList(20);
-                }
-                else if(fork_blockNumber >= config::changeExchange()){
-                    s.appendList(21);
-                }
-                else{
-                    s.appendList(19);
-                }
+                s.appendList(19);
+                if(_block_number >= config::newChangeHeight())
+                    s.appendList(1);
+                if(_block_number >= config::changeExchange())
+                    s.appendList(1);
 
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
