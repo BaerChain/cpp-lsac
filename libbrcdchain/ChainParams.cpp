@@ -406,8 +406,8 @@ h256 ChainParams::calculateStateRoot(bool _force) const
     if (!stateRoot || _force)
     {
         auto cmm(genesisState);
-        //cmm[ExdbSystemAddress] = read_rlp();
-        cmm[ExdbSystemAddress] = read_rlp(ExdbSystemAddress);
+        cmm[ExdbSystemAddress] = read_rlp();
+        //cmm[ExdbSystemAddress] = read_rlp(ExdbSystemAddress);
         //cmm[TestbplusAddress] = read_rlp(TestbplusAddress);
         dev::brc::commit(cmm, state);
         stateRoot = state.root();
