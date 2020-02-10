@@ -1,6 +1,7 @@
 #ifndef BAERCHAIN_NEWEXDBSTATE_H
 #define BAERCHAIN_NEWEXDBSTATE_H
 
+#include <boost/optional.hpp>
 #include "State.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/Address.h>
@@ -94,8 +95,8 @@ namespace dev{
             /// \param token_type   BRC OR FUEL
             /// \param price        upper price.
             /// \return         std::pair<lower iterator, upper iterator>
-            std::pair<sellOrder::iterator, sellOrder::iterator> get_buy_itr(int64_t _time, u256 price) {
-                std::pair<sellOrder::iterator, sellOrder::iterator> find_it;
+            boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> get_buy_itr(int64_t _time, u256 price) {
+                boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> find_it;
                 m_state.newGetSellExChangeOrder( _time, price, find_it);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;

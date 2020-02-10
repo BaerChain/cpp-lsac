@@ -417,7 +417,7 @@ namespace dev {
                 }
 
                 iterator(const iterator &other):mbp(other.mbp), mLeafKey(other.mLeafKey), indexOfLeaf(other.indexOfLeaf){}
-
+                            
                 iterator& operator++() {  
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     if(indexOfLeaf + 1 < node.second.mValues.size()){

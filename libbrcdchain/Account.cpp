@@ -670,7 +670,7 @@ std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256
     return std::make_pair<buyOrder::iterator, buyOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
 }
 
-void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, std::pair<sellOrder::iterator, sellOrder::iterator> &_p, OverlayDB const& _db)
+void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p, OverlayDB const& _db)
 {
     if(!m_exchangeBplus.get())
     {

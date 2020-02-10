@@ -1256,7 +1256,7 @@ public:
     void exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _createTime, u256 const& _price, h256 const& _hash,OverlayDB const& _db);
 
     std::pair<buyOrder::iterator, buyOrder::iterator> buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
-    void sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, std::pair<sellOrder::iterator, sellOrder::iterator> &_p, OverlayDB const& _db);
+    void sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p, OverlayDB const& _db);
 
     Json::Value exchangeBplusBuyAllGet(OverlayDB const& _db);
     Json::Value exchangeBplusSellAllGet(OverlayDB const& _db);
