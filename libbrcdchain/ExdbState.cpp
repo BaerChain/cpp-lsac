@@ -233,7 +233,7 @@ namespace dev {
         void ExdbState::add_exchangeOrder(const ex_order &od) {
             cdebug << "will  add_exchangeOrder txid " << od.format_string();
             //m_state.addExchangeOrder(ExdbSystemAddress, od);
-            m_state.newAddExchangeOrder(ExdbSystemAddress, od);
+            m_state.addExchangeOrder(ExdbSystemAddress, od);
         }
 
 

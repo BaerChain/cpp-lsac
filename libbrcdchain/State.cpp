@@ -225,7 +225,8 @@ Account *State::account(Address const &_addr) {
             i.first->second.populateChangeMiner(_b);
         }
     }
-    if(m_block_number >= config::changeExchange()){
+    /// the m_block_number is the m_previousBlock number
+    if((m_block_number+1) >= config::changeExchange()){
         if(state.itemCount() > 20) {
             const h256 storageByteRoot = state[20].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
@@ -3349,15 +3350,15 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
 
 void dev::brc::State::transferOldExData(BlockHeader const &_header){
     //TODO copy old ex_data to new_ex
-    if(_header.number() != config::changeOldExDataHeight())
+    if(_header.number() != config::changeExchange())
         return;
     Account *_orderAccount = account(dev::ExdbSystemAddress);
     if (!_orderAccount) {
         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment("transferOldExData failed"));
     }
 
-    Account *_buyAccount = account(dev::BuyExchangeAddress);
-    Account *_sellAccount = account(dev::SellExchangeAddress);
+//    Account *_buyAccount = account(dev::BuyExchangeAddress);
+//    Account *_sellAccount = account(dev::SellExchangeAddress);
 //    if(!_buyAccount){
 //        createAccount(dev::ExdbSystemAddress, {0});
 //        _buyAccount = account(dev::BuyExchangeAddress);
@@ -3370,6 +3371,7 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     auto begin = index.begin();
     while (begin != index.end() ) {
         newAddExchangeOrder(begin->sender,*begin);
+        cwarn << begin->trxid;
         begin++;
 //        exchangeValue eo;
 //        eo.m_orderId = begin->trxid;
@@ -3546,6 +3548,8 @@ template<class DB>
 AddressHash
 dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
     AddressHash ret;
+    /// the _block is the curre_block to storage next_block
+    int64_t fork_blockNumber = _block_number +1;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
 
@@ -3556,7 +3560,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
-                else if(_block_number >= config::changeExchange()){
+                else if(fork_blockNumber >= config::changeExchange()){
                     s.appendList(21);
                 }
                 else{
@@ -3642,28 +3646,32 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 
                 //Add a new state field
                 {
-                    if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty())
-                    {
-                        assert(i.second.baseByteRoot());
-                        s << i.second.baseByteRoot();
-                    }else{
-                        SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
-                        for(auto const& val : i.second.storageByteOverlay())
+                    if(fork_blockNumber >= config::changeExchange()){
+                        cwarn << "fork num:"<< fork_blockNumber;
+                        if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty())
                         {
-                            if(!val.second.empty())
+                            assert(i.second.baseByteRoot());
+                            s << i.second.baseByteRoot();
+                        }else{
+                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+                            for(auto const& val : i.second.storageByteOverlay())
                             {
-                                storageByteDB.insert(val.first, val.second);
-                            }else{
-                                storageByteDB.remove(val.first);
+                                if(!val.second.empty())
+                                {
+                                    storageByteDB.insert(val.first, val.second);
+                                }else{
+                                    storageByteDB.remove(val.first);
+                                }
                             }
+                            for(auto const& keyVal : i.second.getExchangeDelete())
+                            {
+                                storageByteDB.remove(keyVal);
+                            }
+                            assert(storageByteDB.root());
+                            s << storageByteDB.root();
                         }
-                        for(auto const& keyVal : i.second.getExchangeDelete())
-                        {
-                            storageByteDB.remove(keyVal);
-                        }
-                        assert(storageByteDB.root());
-                        s << storageByteDB.root();
                     }
+
                 }
                 _state.insert(i.first, &s.out());
             }
