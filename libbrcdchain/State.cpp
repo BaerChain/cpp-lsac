@@ -163,7 +163,6 @@ Account *State::account(Address const &_addr) {
     }
 
     clearCacheIfTooLarge();
-
     RLP state(stateBack);
 
     std::vector<PollData> _vote;
@@ -3560,11 +3559,15 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                s.appendList(19);
-                if(_block_number >= config::newChangeHeight())
-                    s.appendList(1);
-                if(_block_number >= config::changeExchange())
-                    s.appendList(1);
+                if(fork_blockNumber >= config::changeExchange()) {
+                    s.appendList(21);
+                }
+                else if(_block_number >= config::newChangeHeight()){
+                    s.appendList(20);
+
+                } else{
+                    s.appendList(19);
+                }
 
                 s << i.second.nonce() << i.second.balance();
                 if (i.second.storageOverlay().empty()) {
@@ -3646,7 +3649,6 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 //Add a new state field
                 {
                     if(fork_blockNumber >= config::changeExchange()){
-                        cwarn << "fork num:"<< fork_blockNumber;
                         if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty())
                         {
                             assert(i.second.baseByteRoot());
