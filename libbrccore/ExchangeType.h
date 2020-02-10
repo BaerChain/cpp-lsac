@@ -143,6 +143,7 @@ namespace dev{
                 _order.create_time = m_createTime;
                 _order.type = m_pendingorderType;
                 _order.token_type = m_pendingorderTokenType;
+                return _order;
             }
         };
         
