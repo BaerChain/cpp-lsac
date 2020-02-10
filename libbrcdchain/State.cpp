@@ -3373,7 +3373,7 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     auto begin = index.begin();
     while (begin != index.end() ) {
         newAddExchangeOrder(begin->sender,*begin);
-        cwarn << begin->trxid;
+        cwarn << "transfer order:"<< begin->trxid;
         begin++;
 //        exchangeValue eo;
 //        eo.m_orderId = begin->trxid;
