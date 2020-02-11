@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-10 17:30:00
+ * @LastEditTime : 2020-02-11 16:19:20
  * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -435,9 +435,10 @@ namespace dev {
                 }
                 bool operator==(iterator other) const {return mLeafKey == other.mLeafKey && indexOfLeaf == other.indexOfLeaf;}
                 bool operator!=(iterator other) const {return !(*this == other);}
-                typename leaf_type::kv_pair& operator*() const {
+                typename leaf_type::kv_pair operator*() const {
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     assert(node.first);
+                    cwarn << node.second.mValues.size();
                     return node.second.mValues[indexOfLeaf];
                 }
                 iterator &operator=(const iterator& other){
@@ -465,6 +466,9 @@ namespace dev {
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
+                if(indexOf.second == ret.second.mValues.size()){
+                    return end();
+                }
                 return iterator(*this, ret.second.mSelfKey, indexOf.second);
             }
 

@@ -677,12 +677,20 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
         m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
     }
     
-    sellOrder _exchangeBplus(m_exchangeBplus);
+    // sellOrder *_exchangeBplus = new sellOrder(m_exchangeBplus);
+    // // _exchangeBplus->debug();
+    // dev::brc::exchangeSort _sort;
+    // _sort.m_exchangeTime = _createTime;
+    // _sort.m_exchangePrice = _pendingorderPrice;
+    // _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus->lower_bound(_sort), _exchangeBplus->end()));
 
+    sellOrder _exchangeBplus(m_exchangeBplus);
+    // _exchangeBplus->debug();
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
-    _p = std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
+    _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end()));
+    
 }
 
 std::tuple<std::string, std::string, std::string> enumToString(ex::order_type type, ex::order_token_type token_type, ex::order_buy_type buy_type) {

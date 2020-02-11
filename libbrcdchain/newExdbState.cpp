@@ -436,16 +436,20 @@ namespace dev {
                 //     size--;
                 // }
                 boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> _p;
-                m_state.newGetSellExChangeOrder(_time, _price, _p);
+                m_state.newGetSellExChangeOrder(0, 0, _p);
 
-                auto begin = (*_p).first;
-                auto end = (*_p).second;
-                while(begin != end && size > 0)
-                {
-                    ret.push_back((*begin).second.toExchangeOrder());
-                    begin++;
-                    size--;
+                if(_p){
+                    auto begin = (*_p).first;
+                    auto end = (*_p).second;
+                    while(begin != end && size > 0)
+                    {
+                        auto d = (*begin).second.toExchangeOrder();
+                        ret.push_back(d);
+                        begin++;
+                        size--;
+                    }
                 }
+                
             }
             return ret;
         }
