@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-12 16:33:37
+ * @LastEditTime : 2020-02-12 17:04:42
  * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -501,11 +501,18 @@ namespace dev {
 
 
             void debug() {
-                std::string out;
-                _debug(rootKey, 0, out);
+                 std::string out;
+                if (rootKey.size() > 0)
+                {
+                   
+                    _debug(rootKey, 0, out);
+                 
+                }
                 std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
                 std::cout << out << std::endl;
                 std::cout << "*******************root key : " << rootKey << " *******************end " << std::endl;
+                
+           
             }
 
             void update() {
