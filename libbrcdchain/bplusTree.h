@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-11 16:19:20
+ * @LastEditTime : 2020-02-12 16:33:37
  * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -462,6 +462,9 @@ namespace dev {
                 return it;
             }
             iterator lower_bound(const key_type &key)  { 
+                if(rootKey.size() == 0){
+                    return end();
+                }
                 std::pair<key_type, value_type> find;
                 find.first = key;
                 cerror << "111111";
@@ -1130,7 +1133,7 @@ namespace dev {
                 NodeKey findKey = rootKey;
                 while (true) {
                     auto find_node_type = getType(findKey);
-                    cerror << "1111";
+                    cerror << "1111 " << rootKey;
                     assert(find_node_type.first);
 
                     if (find_node_type.second == NodeLeaf::node) {
