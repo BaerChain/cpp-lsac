@@ -464,6 +464,7 @@ namespace dev {
             iterator lower_bound(const key_type &key)  { 
                 std::pair<key_type, value_type> find;
                 find.first = key;
+                cerror << "111111";
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
                 if(indexOf.second == ret.second.mValues.size()){
@@ -1129,6 +1130,7 @@ namespace dev {
                 NodeKey findKey = rootKey;
                 while (true) {
                     auto find_node_type = getType(findKey);
+                    cerror << "1111";
                     assert(find_node_type.first);
 
                     if (find_node_type.second == NodeLeaf::node) {

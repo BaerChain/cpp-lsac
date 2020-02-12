@@ -501,7 +501,7 @@ public:
     // Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
     void newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p);
-    std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price);
+    void newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p);
     void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
     void initOrderAddress();
 

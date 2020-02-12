@@ -654,20 +654,13 @@ void Account::exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _time
     
 }
 
-std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+void Account::buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p,OverlayDB const& _db)
 {
-    if(!m_exchangeBplus.get())
-    {
-        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
-    }
-    
-    buyOrder _exchangeBplus(m_exchangeBplus);
-
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
     
-    return std::make_pair<buyOrder::iterator, buyOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end());
+    _p.reset(std::make_pair<buyOrder::iterator, buyOrder::iterator>(m_buyOrder->lower_bound(_sort), m_buyOrder->end()));
 }
 
 void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p, OverlayDB const& _db)

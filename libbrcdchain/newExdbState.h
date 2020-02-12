@@ -122,8 +122,10 @@ namespace dev{
             /// \param token_type   BRC OR FUEL,
             /// \param price        lower price.
             /// \return             std::pair<lower iterator, upper iterator>
-            auto get_sell_itr(int64_t _time, u256 price) {
-                auto find_it = m_state.newGetBuyExchangeOrder(_time, price);
+            boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> get_sell_itr(int64_t _time, u256 price) {
+                boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> find_it;
+                m_state.initOrderAddress();
+                m_state.newGetBuyExchangeOrder( 0, 0, find_it);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                 // const auto &index_less = m_state.getExOrder().get<ex_by_price_greater>();  //↑

@@ -3016,16 +3016,10 @@ void dev::brc::State::newGetSellExChangeOrder(int64_t const& _time, u256 const& 
 }
 
 
-std::pair<buyOrder::iterator, buyOrder::iterator> dev::brc::State::newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price)
+void dev::brc::State::newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p)
 {
-    Account *_orderAccount = account(dev::BuyExchangeAddress);
-    if(!_orderAccount)
-    {
-        createAccount(dev::BuyExchangeAddress, {0});
-        _orderAccount = account(dev::BuyExchangeAddress);
-    }
-    auto _ret = _orderAccount->buyExchangeGetIt(_price, _time, m_db);
-    return _ret;
+    m_buyAccount->initOrder(m_db);
+    m_buyAccount->buyExchangeGetIt(_price, _time, _p, m_db);
 }
 
 void dev::brc::State::initOrderAddress()

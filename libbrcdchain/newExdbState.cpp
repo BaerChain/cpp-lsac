@@ -44,7 +44,7 @@ namespace dev {
 
                 } else { //sell
                     auto find_itr = get_sell_itr(itr.create_time, itr.price);
-                    process_only_price(find_itr.first, find_itr.second, itr, itr.price,
+                    process_only_price((*find_itr).first, (*find_itr).second, itr, itr.price,
                                        itr.source_amount,
                                        result,
                                        throw_exception);
@@ -102,8 +102,8 @@ namespace dev {
                     assert(itr.price == 0 && itr.source_amount != 0);
 
                     auto find_itr = get_sell_itr(itr.create_time, u256(0));
-                    auto begin = find_itr.first;
-                    auto end = find_itr.second;
+                    auto begin = (*find_itr).first;
+                    auto end = (*find_itr).second;
                     auto total_amount = itr.token_amount;
                     if (begin != end) {
                         while (total_amount > 0 && begin != end) {
@@ -411,9 +411,10 @@ namespace dev {
                 //     begin++;
                 //     size--;
                 // }
-                auto find_it = m_state.newGetBuyExchangeOrder(_time, _price);
-                auto begin = find_it.first;
-                auto end = find_it.second;
+                boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> find_it;
+                m_state.newGetBuyExchangeOrder(_time, _price, find_it);
+                auto begin = (*find_it).first;
+                auto end = (*find_it).second;
                 while(begin != end && size > 0)
                 {
                     ret.push_back((*begin).second.toExchangeOrder());
