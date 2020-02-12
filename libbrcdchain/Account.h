@@ -1264,6 +1264,15 @@ public:
         return m_exchangeDelete;
     }
 
+    void initOrder(OverlayDB const& _db)
+    {
+        if(!m_exchangeBplus.get())
+        {
+            m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+        }
+        m_sellOrder = std::make_shared<sellOrder>(m_exchangeBplus);
+        m_buyOrder = std::make_shared<buyOrder>(m_exchangeBplus);
+    }
 
     void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
@@ -1351,6 +1360,8 @@ private:
 
 
     std::shared_ptr<exchangeBplus> m_exchangeBplus;
+    std::shared_ptr<sellOrder> m_sellOrder;
+    std::shared_ptr<buyOrder> m_buyOrder;
     std::vector<h256> m_exchangeDelete;
       std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };

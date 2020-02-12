@@ -672,10 +672,10 @@ std::pair<buyOrder::iterator, buyOrder::iterator> Account::buyExchangeGetIt(u256
 
 void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p, OverlayDB const& _db)
 {
-    if(!m_exchangeBplus.get())
-    {
-        m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
-    }
+    // if(!m_exchangeBplus.get())
+    // {
+    //     m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
+    // }
     
     // sellOrder *_exchangeBplus = new sellOrder(m_exchangeBplus);
     // // _exchangeBplus->debug();
@@ -684,12 +684,12 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
     // _sort.m_exchangePrice = _pendingorderPrice;
     // _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus->lower_bound(_sort), _exchangeBplus->end()));
 
-    sellOrder _exchangeBplus(m_exchangeBplus);
+    // sellOrder _exchangeBplus(m_exchangeBplus);
     // _exchangeBplus->debug();
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
-    _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus.lower_bound(_sort), _exchangeBplus.end()));
+    _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->end()));
     
 }
 

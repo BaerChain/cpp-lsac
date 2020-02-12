@@ -436,6 +436,7 @@ namespace dev {
                 //     size--;
                 // }
                 boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> _p;
+                m_state.initOrderAddress();
                 m_state.newGetSellExChangeOrder(0, 0, _p);
 
                 if(_p){
@@ -444,6 +445,7 @@ namespace dev {
                     while(begin != end && size > 0)
                     {
                         auto d = (*begin).second.toExchangeOrder();
+                        cerror << d.format_string();
                         ret.push_back(d);
                         begin++;
                         size--;

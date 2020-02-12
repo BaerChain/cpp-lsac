@@ -3011,13 +3011,8 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
 
 void dev::brc::State::newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p)
 {
-    Account *_orderAccount = account(dev::SellExchangeAddress);
-    if(!_orderAccount)
-    {
-        createAccount(dev::SellExchangeAddress, {0});
-        _orderAccount =  account(dev::SellExchangeAddress);
-    }
-     _orderAccount->sellExchangeGetIt(_price, _time, _p, m_db);
+    m_sellAccount->initOrder(m_db);
+     m_sellAccount->sellExchangeGetIt(_price, _time, _p, m_db);
 }
 
 
@@ -3031,6 +3026,22 @@ std::pair<buyOrder::iterator, buyOrder::iterator> dev::brc::State::newGetBuyExch
     }
     auto _ret = _orderAccount->buyExchangeGetIt(_price, _time, m_db);
     return _ret;
+}
+
+void dev::brc::State::initOrderAddress()
+{
+    m_sellAccount = account(dev::SellExchangeAddress);
+    if(!m_sellAccount)
+    {
+        createAccount(dev::SellExchangeAddress, {0});
+        m_sellAccount =  account(dev::SellExchangeAddress);
+    }
+    m_buyAccount = account(dev::BuyExchangeAddress);
+    if(!m_buyAccount)
+    {
+        createAccount(dev::BuyExchangeAddress, {0});
+        m_buyAccount =  account(dev::BuyExchangeAddress);
+    }
 }
 
 void dev::brc::State::newRemoveExchangeOrder(uint8_t _orderType,int64_t const& _time, u256 const& _price, h256 const& _hash)

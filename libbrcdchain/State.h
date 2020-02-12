@@ -503,6 +503,7 @@ public:
     void newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p);
     std::pair<buyOrder::iterator, buyOrder::iterator> newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price);
     void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
+    void initOrderAddress();
 
 
     void addSuccessExchange(dev::brc::ex::result_order const& _order);
@@ -717,7 +718,8 @@ private:
 
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
-
+    Account *m_sellAccount;
+    Account *m_buyAccount;
     mutable Logger m_loggerError{createLogger(VerbosityError, "State")};
 };
 
