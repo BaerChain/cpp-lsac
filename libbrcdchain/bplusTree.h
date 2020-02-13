@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-12 17:04:42
+ * @LastEditTime : 2020-02-13 14:35:28
  * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -456,7 +456,13 @@ namespace dev {
 
 
 
-            iterator begin() { return iterator(*this);}
+            iterator begin() { 
+                if(rootKey.size() == 0){
+                    return end();
+                }
+                return iterator(*this);
+            }
+            
             iterator end() { 
                 iterator it(*this, NodeKey(), 0);
                 return it;
