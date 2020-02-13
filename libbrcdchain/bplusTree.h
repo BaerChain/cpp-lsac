@@ -511,8 +511,6 @@ namespace dev {
                 std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
                 std::cout << out << std::endl;
                 std::cout << "*******************root key : " << rootKey << " *******************end " << std::endl;
-                
-           
             }
 
             void update() {

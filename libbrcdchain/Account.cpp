@@ -740,6 +740,7 @@ Json::Value Account::exchangeBplusBuyAllGet(OverlayDB const& _db)
     Json::Value _ret;
     Json::Value _root;
     _exchangeBplus.debug();
+    cerror << "allget";
     for(auto it : _exchangeBplus)
     {
         cerror << "allget";

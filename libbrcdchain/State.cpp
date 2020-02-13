@@ -2995,6 +2995,7 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     Account *_account = account(orderAddress);
     if(!_account)
     {
+        cerror << "ichang ";
         BOOST_THROW_EXCEPTION(  
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }

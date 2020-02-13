@@ -1041,6 +1041,12 @@ string dev::rpc::exceptionToErrorMessage()
         {
             ret += std::string(*_error);
         }
+    }catch (ExdbChangeFailed const& _e)
+    {
+        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        {
+            ret += std::string(*_error);
+        }
     }
 	catch (...)
 	{
