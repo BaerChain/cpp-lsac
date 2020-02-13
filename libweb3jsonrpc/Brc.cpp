@@ -90,6 +90,10 @@ Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const
         return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
             1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
     }
+    catch (Exception const& ex)
+    {
+        throw JsonRpcException(exceptionToErrorMessage());
+    }
     catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
