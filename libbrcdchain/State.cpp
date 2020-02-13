@@ -691,7 +691,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
     }
     if (std::find(miner.begin(), miner.end(), pen->m_after) != miner.end() ||
             std::find(canMiner.begin(), canMiner.end(), pen->m_after) != canMiner.end()){
-        cerror << "changeMiner after_address already is miner : "<< _from;
+        cerror << "changeMiner after_address already is miner : "<< pen->m_after;
         BOOST_THROW_EXCEPTION(ChangeMinerFailed() <<errinfo_comment(dev::toString(_from)+" already is miner"));
     }
 
