@@ -657,34 +657,26 @@ void Account::exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _time
 void Account::buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p,OverlayDB const& _db)
 {
     dev::brc::exchangeSort _sort;
-    _sort.m_exchangeTime = _createTime;
-    _sort.m_exchangePrice = _pendingorderPrice;
+    _sort.m_exchangeTime = 0;
+    _sort.m_exchangePrice = u256(-1);
     
-    _p.reset(std::make_pair<buyOrder::iterator, buyOrder::iterator>(m_buyOrder->lower_bound(_sort), m_buyOrder->end()));
+    dev::brc::exchangeSort _upperSort;
+    _upperSort.m_exchangeTime = INT64_MAX;
+    _upperSort.m_exchangePrice = _pendingorderPrice;
+    _p.reset(std::make_pair<buyOrder::iterator, buyOrder::iterator>(m_buyOrder->lower_bound(_sort), m_buyOrder->upper_bound(_upperSort)));
 }
 
 void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p, OverlayDB const& _db)
 {
-    // if(!m_exchangeBplus.get())
-    // {
-    //     m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
-    // }
-    
-    // sellOrder *_exchangeBplus = new sellOrder(m_exchangeBplus);
-    // // _exchangeBplus->debug();
-    // dev::brc::exchangeSort _sort;
-    // _sort.m_exchangeTime = _createTime;
-    // _sort.m_exchangePrice = _pendingorderPrice;
-    // _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(_exchangeBplus->lower_bound(_sort), _exchangeBplus->end()));
-
-    // sellOrder _exchangeBplus(m_exchangeBplus);
-    // _exchangeBplus->debug();
     dev::brc::exchangeSort _sort;
-    _sort.m_exchangeTime = _createTime;
-    _sort.m_exchangePrice = _pendingorderPrice;
-    auto begin = m_sellOrder->lower_bound(_sort);
-    // cerror << (*begin).second.to_string();
-    _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->end()));
+    _sort.m_exchangeTime = 0;
+    _sort.m_exchangePrice = u256(0);
+
+    dev::brc::exchangeSort _upperSort;
+    _upperSort.m_exchangeTime = INT64_MAX;
+    _upperSort.m_exchangePrice = _pendingorderPrice;
+
+    _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->upper_bound(_upperSort)));
     
 }
 
