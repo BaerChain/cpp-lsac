@@ -53,7 +53,7 @@ namespace dev {
                 if (itr.type == order_type::buy) {
                     assert(itr.price != 0 && itr.source_amount == 0);
 
-                    auto find_itr = get_buy_itr(itr.create_time, u256(-1));
+                    auto find_itr = get_buy_itr(itr.create_time, u256(0));
                     auto total_price = itr.price;
                     auto begin = (*find_itr).first;
                     auto end = (*find_itr).second;
