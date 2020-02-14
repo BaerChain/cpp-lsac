@@ -2954,7 +2954,7 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
 
-Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)
+Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price)
 {
     Account *_account = account(dev::TestbplusAddress);
     if(!_account)
@@ -2963,20 +2963,19 @@ Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _pr
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
 
-    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_price, _time, m_db);
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
     if(_ret.first)
     {
         Json::Value _retJson;
-        _retJson["orderID"] = toJS(_ret.second.m_orderId);
-        _retJson["from"] = toJS(_ret.second.m_from);
-        _retJson["pendingorderNum"] = toJS(_ret.second.m_pendingorderNum);
-        _retJson["pendingordertokenNum"] = toJS(_ret.second.m_pendingordertokenNum);
-        _retJson["pendingorderPrice"] = toJS(_ret.second.m_pendingorderPrice);
-        _retJson["createTime"] = toJS(_ret.second.m_createTime);
+        _retJson["Hash"] = toJS(_ret.second.m_orderId);
+        _retJson["Address"] = toJS(_ret.second.m_from);
+        _retJson["source_amount"] = toJS(_ret.second.m_pendingorderNum);
+        _retJson["token_amount"] = toJS(_ret.second.m_pendingordertokenNum);
+        _retJson["price"] = toJS(_ret.second.m_pendingorderPrice);
+        _retJson["create_time"] = toJS(_ret.second.m_createTime);
         std::tuple<std::string, std::string, std::string>  _t = enumToString(_ret.second.m_pendingorderType,_ret.second.m_pendingorderTokenType,_ret.second.m_pendingorderBuyType); 
-        _retJson["pendingorderType"] = std::get<0>(_t);
-        _retJson["pendingorderTokenType"] = std::get<1>(_t);
-        _retJson["pendingorderBuyType"] = std::get<2>(_t);;
+        _retJson["order_type"] = std::get<0>(_t);
+        _retJson["order_token_type"] = std::get<1>(_t);
         return _retJson;
     }else{
         return Json::Value();

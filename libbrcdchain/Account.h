@@ -1247,7 +1247,7 @@ public:
 
 
     void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
-    std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
+    std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(h256 const& _hash, u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
     void exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _createTime, u256 const& _price, h256 const& _hash,OverlayDB const& _db);
 
     void buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p, OverlayDB const& _db);

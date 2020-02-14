@@ -605,7 +605,7 @@ void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB c
     }
 }
 
-std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(h256 const& _hash, u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
 {
     if(!m_exchangeBplus.get())
     {
@@ -615,6 +615,7 @@ std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(u256 const& _
     bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
     
     dev::brc::exchangeSort _exchangeSort;
+    _exchangeSort.m_exchangeHash = _hash;
     _exchangeSort.m_exchangePrice = _pendingorderPrice;
     _exchangeSort.m_exchangeTime = _createTime;
     try{
@@ -676,6 +677,8 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
     _upperSort.m_exchangeTime = INT64_MAX;
     _upperSort.m_exchangePrice = _pendingorderPrice;
 
+    auto begin = m_sellOrder->lower_bound(_sort);
+    cerror << (*begin).second.to_string();
     _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->upper_bound(_upperSort)));
     
 }
