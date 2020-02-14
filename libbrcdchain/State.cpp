@@ -942,7 +942,11 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
             _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
             RLPStream _rlp(3);
-            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            if( config::changeExchange() >= _blockHeight){
+                _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            }else{
+            _rlp << _nowTime << _blockHeight << _num;
+            }
             h256 _trHash = dev::sha3(_rlp.out());
             ex_order _order = {_trHash, systemAddress, u256(BUYCOOKIE), _num, _num, _nowTime, order_type::buy,
                                order_token_type::FUEL, order_buy_type::only_price};
@@ -955,7 +959,11 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
             _needCookie = _num;
 
             RLPStream _rlp(3);
-            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            if( config::changeExchange() >= _blockHeight){
+                _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            }else{
+                _rlp << _nowTime << _blockHeight << _num;
+            }
             h256 _trHash = dev::sha3(_rlp.out());
 
             std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
