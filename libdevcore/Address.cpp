@@ -28,6 +28,8 @@ namespace dev
     //new orderAddress
     Address const BuyExchangeAddress            { "0x000042757945786368616e676541646472657373"};
     Address const SellExchangeAddress           { "0x0053656c6c45786368616e676541646472657373"};
+    Address const CancelOrderAddress            { "0x000043616e63656c4f7264657241646472657373"};
+
     std::vector<Address> const CreaterSysAddresses {
             Address("0x0000006365617465725379734164647265737331"),
             Address("0x0000006365617465725379734164647265737332"),

@@ -134,7 +134,8 @@ struct Change
         StorageByteRoot,
         StorageByte,
         DeleteStorgaeByte,
-        NewChangeMiner
+        NewChangeMiner,
+        CancelOrderEnum
     };
 
     Kind kind;        ///< The kind of the change.
@@ -158,6 +159,7 @@ struct Change
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
     std::pair<Address, Address> mapping;
+    CancelOrder cancelOrder;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -246,6 +248,10 @@ struct Change
     Change(Kind _kind, Address const& _addr, std::pair<Address, Address>const& _map) :kind(_kind), address(_addr)
     {
         mapping =_map;
+    }
+    Change(Kind _kind, Address const& _addr, CancelOrder const& _order) :kind(_kind), address(_addr)
+    {
+        cancelOrder = _order;
     }
 };
 
@@ -504,6 +510,10 @@ public:
     void newGetBuyExchangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p);
     void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
     void initOrderAddress();
+    ///cancelOrder
+    void addCancelOrder(h256 _id, int64_t _time, u256 _price);
+    void deleteCancelOrder(h256 _id);
+    CancelOrder getCancelOrder(h256 _id) const;
 
 
     void addSuccessExchange(dev::brc::ex::result_order const& _order);

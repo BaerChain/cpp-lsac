@@ -462,7 +462,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
 					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation, m_envInfo.number());
 				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
-					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
+					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation, m_envInfo.number());
 				else if(m_batch_params._type == transationTool::op_type::receivingincome)
                     m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
                 else if(m_batch_params._type == transationTool::op_type::changeMiner)

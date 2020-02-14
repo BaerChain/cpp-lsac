@@ -544,6 +544,18 @@ struct BlockRecord {
     }
 };
 
+struct CancelOrder{
+    h256 m_id;
+    int64_t m_time;
+    u256 m_price;
+    bool m_isAdd;
+    void init(h256 _id, int64_t _time, u256 _price){
+        m_id = _id;
+        m_time = _time;
+        m_price = _price;
+    }
+};
+
 class Account {
 public:
     /// Changedness of account to create.
@@ -1264,6 +1276,45 @@ public:
         return m_exchangeDelete;
     }
 
+    bytes streamRLPCanorder()const {
+        RLPStream bret(m_cancelOrder.size());
+        for(auto const&v: m_cancelOrder){
+            RLPStream bs(3);
+            bs <<v.first<< (u256)v.second.first << v.second.second;
+            bret.append(bs.out());
+        }
+        return bret.out();
+    }
+    void populateRLPCancelOrder(bytes const& _b){
+        RLP rlp(_b);
+        for(auto const& vb: rlp){
+            RLP _d(vb);
+            h256 _h = _d[0].convert<h256>(RLP::LaissezFaire);
+            int64_t _time = (int64_t)_d[1].convert<u256>(RLP::LaissezFaire);
+            u256 _price = _d[2].convert<u256>(RLP::LaissezFaire);
+            m_cancelOrder[_h] = std::make_pair(_time, _price);
+        }
+    }
+    void addCancelOrder(h256 _id, int64_t _time, u256 _price){
+        if(!m_cancelOrder.count(_id)){
+            m_cancelOrder[_id] = std::make_pair(_time, _price);
+            changed();
+        }
+    }
+    void deleteCancelOrder(h256 _id) {
+        if (m_cancelOrder.count(_id)) {
+            m_cancelOrder.erase(_id);
+            changed();
+        }
+    }
+    std::pair<int64_t , u256> getCancelOrder(h256 _id) const{
+        if(m_cancelOrder.count(_id)){
+            auto ret = m_cancelOrder.find(_id);
+            return ret->second;
+        }
+        return std::make_pair(0,0);
+    }
+
     void initOrder(OverlayDB const& _db)
     {
         if(!m_exchangeBplus.get())
@@ -1363,7 +1414,8 @@ private:
     std::shared_ptr<sellOrder> m_sellOrder;
     std::shared_ptr<buyOrder> m_buyOrder;
     std::vector<h256> m_exchangeDelete;
-      std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+    std::map<h256, std::pair<int64_t, u256>>  m_cancelOrder;
+    std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };
 
 struct testBplus : public databaseDelegate {

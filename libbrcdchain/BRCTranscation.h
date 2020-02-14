@@ -46,7 +46,7 @@ namespace dev {
 									 std::vector<std::shared_ptr<transationTool::operation>> const& _ops,
 									 int64_t _blockHeight);
 
-			void verifyCancelPendingOrders(ex::exchange_plugin &_exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+			void verifyCancelPendingOrders(ex::exchange_plugin &_exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t _blockNum);
 			void verifyreceivingincome(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyBlockFeeincome(Address const& _from, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyPdFeeincome(Address const& _from, int64_t _blockNum, DposVote const& _vote);

@@ -231,6 +231,9 @@ Account *State::account(Address const &_addr) {
             const h256 storageByteRoot = state[20].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
         }
+        if(state.itemCount() > 21){
+            i.first->second.populateRLPCancelOrder(state[21].convert<bytes>(RLP::LaissezFaire));
+        }
     }
     return &i.first->second;
 }
@@ -1429,10 +1432,12 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     }
     for (auto _val : _hashV) {
         try {
-            if(_blockHeight <= config::changeExchange())
+            if(_blockHeight < config::changeExchange())
                 val = _exdbState.cancel_order_by_trxid(_val);
             else{
                 //TODO new ex
+                newExdbState _newExdbState(*this);
+                val = _newExdbState.cancel_order_by_trxid(_val);
             }
         }
         catch (Exception &e) {
@@ -2224,6 +2229,15 @@ void State::rollback(size_t _savepoint) {
                 account.setDeleteStorageByte(change.deleteStorageByte);
             case Change::NewChangeMiner:
                 account.setChangeMiner(change.mapping);
+                break;
+            case Change::CancelOrderEnum:
+            {
+                if(change.cancelOrder.m_isAdd){
+                    account.deleteCancelOrder(change.cancelOrder.m_id);
+                }else{
+                    account.addCancelOrder(change.cancelOrder.m_id, change.cancelOrder.m_time, change.cancelOrder.m_price);
+                }
+            }
                 break;
             default:
                 break;
@@ -3086,6 +3100,44 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     //  TO DO
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
+void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price) {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        createAccount(dev::CancelOrderAddress, {0});
+        a =  account(dev::CancelOrderAddress);
+    }
+    CancelOrder order;
+    order.init(_id, _time, _price);
+    order.m_isAdd = true;
+    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
+    a->addCancelOrder(_id,_time, _price);
+}
+void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
+                std::string("CancelOrder failed: not exits this order")));
+    }
+    auto  _order = a->getCancelOrder(_id);
+    CancelOrder order;
+    order.init(_id, _order.first, _order.second );
+    order.m_isAdd = false;
+    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
+    a->deleteCancelOrder(_id);
+}
+CancelOrder dev::brc::State::getCancelOrder(dev::h256 _id) const {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
+                std::string("CancelOrder failed: not exits this order")));
+    }
+    auto _order = a->getCancelOrder(_id);
+    CancelOrder order;
+    //return CancelOrder(_id, order.first, order.second);
+    order.init(_id, _order.first, _order.second);
+    return order;
+}
+
 
 dev::brc::ex::ExOrderMulti const &dev::brc::State::getExOrder() {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
@@ -3571,7 +3623,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
             else {
                 RLPStream s;
                 if(fork_blockNumber >= config::changeExchange()) {
-                    s.appendList(21);
+                    s.appendList(22);
                 }
                 else if(_block_number >= config::newChangeHeight()){
                     s.appendList(20);
@@ -3682,6 +3734,8 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                             assert(storageByteDB.root());
                             s << storageByteDB.root();
                         }
+                        ///cancelOrder
+                        s << i.second.streamRLPCanorder();
                     }
 
                 }
