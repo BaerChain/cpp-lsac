@@ -497,7 +497,7 @@ public:
 
 
     void newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const &_order);
-    Json::Value newExorderGet(int64_t const& _time, u256 const& _price);
+    Json::Value newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, order_type const& _type);
     // Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
     void newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p);
