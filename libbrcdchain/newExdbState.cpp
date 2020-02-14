@@ -36,14 +36,14 @@ namespace dev {
             bool throw_exception = true;
             if (itr.buy_type == order_buy_type::only_price) {
                 if (itr.type == order_type::buy) {
-                    auto find_itr = get_buy_itr(itr.create_time, itr.price);
+                    auto find_itr = get_buy_itr(0, itr.price);
                     process_only_price((*find_itr).first, (*find_itr).second, itr, itr.price,
                                        itr.source_amount,
                                        result,
                                        throw_exception);
 
                 } else { //sell
-                    auto find_itr = get_sell_itr(itr.create_time, itr.price);
+                    auto find_itr = get_sell_itr(0, itr.price);
                     process_only_price((*find_itr).first, (*find_itr).second, itr, itr.price,
                                        itr.source_amount,
                                        result,
@@ -53,7 +53,7 @@ namespace dev {
                 if (itr.type == order_type::buy) {
                     assert(itr.price != 0 && itr.source_amount == 0);
 
-                    auto find_itr = get_buy_itr(itr.create_time, u256(0));
+                    auto find_itr = get_buy_itr(0, u256(0));
                     auto total_price = itr.price;
                     auto begin = (*find_itr).first;
                     auto end = (*find_itr).second;
@@ -101,7 +101,7 @@ namespace dev {
                 } else {   //all_price  , sell,
                     assert(itr.price == 0 && itr.source_amount != 0);
 
-                    auto find_itr = get_sell_itr(itr.create_time, u256(0));
+                    auto find_itr = get_sell_itr(0, u256(-1));
                     auto begin = (*find_itr).first;
                     auto end = (*find_itr).second;
                     auto total_amount = itr.token_amount;

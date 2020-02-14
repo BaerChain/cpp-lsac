@@ -682,6 +682,8 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
     dev::brc::exchangeSort _sort;
     _sort.m_exchangeTime = _createTime;
     _sort.m_exchangePrice = _pendingorderPrice;
+    auto begin = m_sellOrder->lower_bound(_sort);
+    // cerror << (*begin).second.to_string();
     _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->end()));
     
 }
