@@ -918,7 +918,7 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
     }
 
     if (_set.size() > 0) {
-        systemAutoPendingOrder(_set, _nowTime);
+        systemAutoPendingOrder(_set, _nowTime, blockHeight);
     }
 
     _exNumPair = std::make_pair(_exCookieNum, _exBRCNum);
@@ -927,7 +927,7 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
 
 
 
-void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime) {
+void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _nowTime, int64_t const& _blockHeight) {
     std::vector<result_order> _result_v;
     std::set<order_type> _autoSet;
     std::vector<ex_order> _v;
@@ -967,7 +967,14 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
 
     for (auto _val : _v) {
         try {
-            _result_v = _exdbState.insert_operation(_val);
+            if(config::changeExchange() >= _blockHeight)
+            {
+                ExdbState _exdbState(*this);
+                _result_v = _exdbState.insert_operation(_val);
+            }else{
+                newExdbState _newExdbState(*this);
+                _result_v = _newExdbState.insert_operation(_val);
+            }
         }
         catch (const boost::exception &e) {
             cerror << "this pendingOrder is error :" << diagnostic_information_what(e);
@@ -1002,7 +1009,7 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
         addFBRC(systemAddress, _needBrc);
     }
     if (_autoSet.size() > 0) {
-        systemAutoPendingOrder(_autoSet, _nowTime);
+        systemAutoPendingOrder(_autoSet, _nowTime, _blockHeight);
     }
 }
 
