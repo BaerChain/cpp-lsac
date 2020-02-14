@@ -412,7 +412,8 @@ namespace dev {
                 //     size--;
                 // }
                 boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> find_it;
-                m_state.newGetBuyExchangeOrder(_time, _price, find_it);
+                m_state.initOrderAddress();
+                m_state.newGetBuyExchangeOrder(0, 0, find_it);
                 auto begin = (*find_it).first;
                 auto end = (*find_it).second;
                 while(begin != end && size > 0)
