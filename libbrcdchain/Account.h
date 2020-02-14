@@ -934,14 +934,10 @@ public:
     }
 
     bytes storageByteValue(h256 const &_key, OverlayDB const &_db) const {
-        cerror << "getData key :" << toJS(_key);
-        cerror << "getData";
         auto mit = m_storageOverlayBytes.find(_key);
-        cerror << "getData";
         if (mit != m_storageOverlayBytes.end()) {
             return mit->second;
         }
-        cerror << "getData";
         return originalStorageByteValue(_key, _db);
     }
 
@@ -950,7 +946,6 @@ public:
     std::unordered_map<h256, bytes> const &storageByteOverlay() const { return m_storageOverlayBytes; }
 
     void setStorageByte(h256 const &_key, bytes const &_value) {
-        cerror << "setData key : " << toJS(_key) << "  setData Value :" << _value;
         m_storageOverlayBytes[_key] = _value;
         changed();
     }
@@ -1264,7 +1259,7 @@ public:
 
 
     void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
-    std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
+    std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(h256 const& _hash, u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
     void exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _createTime, u256 const& _price, h256 const& _hash,OverlayDB const& _db);
 
     void buyExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _createTime, boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> &_p, OverlayDB const& _db);

@@ -116,7 +116,7 @@ namespace dev{
 
             std::string to_string() const
             {
-                return " orderId = " + toJS(m_orderId);
+                return " orderId = " + toJS(m_orderId) + " price : " + std::string(m_pendingorderPrice);
             }
 
             ex::ex_order to_ex_order() const{

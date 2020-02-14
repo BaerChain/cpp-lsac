@@ -945,7 +945,11 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
             u256 _num = BRC(systemAddress) * PRICEPRECISION / BUYCOOKIE / 10000 * 10000;
             _needBrc = _num * u256(BUYCOOKIE) / PRICEPRECISION;
             RLPStream _rlp(3);
-            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            if( config::changeExchange() >= _blockHeight){
+                _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            }else{
+            _rlp << _nowTime << _blockHeight << _num;
+            }
             h256 _trHash = dev::sha3(_rlp.out());
             ex_order _order = {_trHash, systemAddress, u256(BUYCOOKIE), _num, _num, _nowTime, order_type::buy,
                                order_token_type::FUEL, order_buy_type::only_price};
@@ -958,7 +962,11 @@ void State::systemAutoPendingOrder(std::set<order_type> const &_set, int64_t _no
             _needCookie = _num;
 
             RLPStream _rlp(3);
-            _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            if( config::changeExchange() >= _blockHeight){
+                _rlp << _nowTime << account(ExdbSystemAddress)->getExOrder().size() << _num;
+            }else{
+                _rlp << _nowTime << _blockHeight << _num;
+            }
             h256 _trHash = dev::sha3(_rlp.out());
 
             std::pair<u256, u256> _pair = {u256(SELLCOOKIE), _num};
@@ -2960,29 +2968,38 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
 
-Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)
+Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, order_type const& _type)
 {
-    Account *_account = account(dev::TestbplusAddress);
+    Address _orderAddress;
+    if(_type == order_type::buy)
+    {
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if(_type == order_type::sell){
+        _orderAddress = dev::SellExchangeAddress;
+    }else{
+         BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("order type is error")));
+    }
+    Account *_account = account(dev::_orderAddress);
     if(!_account)
     {
         BOOST_THROW_EXCEPTION(  
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
 
-    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_price, _time, m_db);
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
     if(_ret.first)
     {
         Json::Value _retJson;
-        _retJson["orderID"] = toJS(_ret.second.m_orderId);
-        _retJson["from"] = toJS(_ret.second.m_from);
-        _retJson["pendingorderNum"] = toJS(_ret.second.m_pendingorderNum);
-        _retJson["pendingordertokenNum"] = toJS(_ret.second.m_pendingordertokenNum);
-        _retJson["pendingorderPrice"] = toJS(_ret.second.m_pendingorderPrice);
-        _retJson["createTime"] = toJS(_ret.second.m_createTime);
+        _retJson["Hash"] = toJS(_ret.second.m_orderId);
+        _retJson["Address"] = toJS(_ret.second.m_from);
+        _retJson["source_amount"] = toJS(_ret.second.m_pendingorderNum);
+        _retJson["token_amount"] = toJS(_ret.second.m_pendingordertokenNum);
+        _retJson["price"] = toJS(_ret.second.m_pendingorderPrice);
+        _retJson["create_time"] = toJS(_ret.second.m_createTime);
         std::tuple<std::string, std::string, std::string>  _t = enumToString(_ret.second.m_pendingorderType,_ret.second.m_pendingorderTokenType,_ret.second.m_pendingorderBuyType); 
-        _retJson["pendingorderType"] = std::get<0>(_t);
-        _retJson["pendingorderTokenType"] = std::get<1>(_t);
-        _retJson["pendingorderBuyType"] = std::get<2>(_t);;
+        _retJson["order_type"] = std::get<0>(_t);
+        _retJson["order_token_type"] = std::get<1>(_t);
         return _retJson;
     }else{
         return Json::Value();
