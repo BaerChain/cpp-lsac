@@ -98,7 +98,7 @@ namespace dev{
             boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> get_buy_itr(int64_t _time, u256 price) {
                 boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> find_it;
                 m_state.initOrderAddress();
-                m_state.newGetSellExChangeOrder( 0, 0, find_it);
+                m_state.newGetSellExChangeOrder( _time, price, find_it);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                 // const auto &index_greater = m_state.getExOrder().get<ex::ex_by_price_less>();
@@ -125,7 +125,7 @@ namespace dev{
             boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> get_sell_itr(int64_t _time, u256 price) {
                 boost::optional<std::pair<buyOrder::iterator, buyOrder::iterator>> find_it;
                 m_state.initOrderAddress();
-                m_state.newGetBuyExchangeOrder( 0, 0, find_it);
+                m_state.newGetBuyExchangeOrder( _time, price, find_it);
                 return find_it;
 //                    auto find_token = token_type == order_token_type::BRC ? order_token_type::FUEL : order_token_type::BRC;
                 // const auto &index_less = m_state.getExOrder().get<ex_by_price_greater>();  //↑
