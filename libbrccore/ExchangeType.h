@@ -40,7 +40,7 @@ namespace dev{
                     return true;
                 }else if(m_exchangePrice == _e.m_exchangePrice)
                 {
-                    if(m_exchangeTime < _e.m_exchangeTime)
+                    if(m_exchangeTime > _e.m_exchangeTime)
                     {
                         return true;
                     }
@@ -99,7 +99,6 @@ namespace dev{
 
             void decode(RLP const& _rlp) 
             {
-                std::cout << "decode " << std::endl; 
                 if(_rlp.isList())
                 {
                     m_orderId = _rlp[0].convert<h256>(RLP::LaissezFaire);

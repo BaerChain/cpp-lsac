@@ -126,6 +126,41 @@ struct detailbook {
 
 };
 
+ 
+struct test_op {
+public:
+    bool operator > (const test_op &t1) const {
+        return ss > t1.ss;
+    }
+
+    bool operator < (const test_op &t1) const {
+        return ss < t1.ss;
+    }
+
+    void encode(dev::RLPStream &rlp) const
+    {
+
+    }
+
+    void decode(dev::RLP const& _rlp)
+    {
+
+    } 
+
+    std::string to_string() const
+    {
+        return "";
+    }
+
+    // bool operator () (const unsigned &t1, const unsigned &t2) const {
+    //     return t1 < t2;
+    // }
+
+    unsigned int ss;
+    std::string data;
+};
+    
+
 HAS_MEMBER(books);
 
 HAS_MEMBER(detailbook);
@@ -250,19 +285,22 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
+           
 
+            dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            dev::brc::bplusTree<unsigned, std::string, 4> bp;
             size_t end = 128;
             for (size_t i = 0; i < end; i+=2) {
-                bp.insert(i, std::to_string(i));
+                bp.insert( {(unsigned)i, std::to_string(i)}, std::to_string(i));
             }
-            bp.debug();
+            // bp.debug();
             
-            auto itr = bp.lower_bound(51);
-            while (itr != bp.end())
+            auto itr = bp.lower_bound(test_op{0, ""});
+            // auto itr = bp.begin();
+            auto itr_end = bp.upper_bound(test_op{10, ""});
+            while (itr != itr_end)
             {
-                std::cout << "key " << (*itr).first << "  value: " << (*itr).second << std::endl;
+                std::cout << "key " << (*itr).first.ss << "  value: " << (*itr).second << std::endl;
                 itr++;
             }
             

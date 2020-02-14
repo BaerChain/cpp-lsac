@@ -45,11 +45,8 @@ bytes Account::originalStorageByteValue(h256 const& _key, OverlayDB const& _db) 
         return it->second;
     }
     SecureTrieDB<h256, OverlayDB> const memdb(const_cast<OverlayDB*>(&_db), m_storageByteRoot);
-    cerror << "m_stroageroot: " << m_storageByteRoot;
     std::string const payload = memdb.at(_key);
-    cerror << "payload : " << payload << " size :" << payload.size();
     auto const value = payload.size() ? RLP(payload).data().toBytes() : bytes();
-    cerror << "value : "  << value;
     m_storageOverlayBytes[_key] = value;
     return value;
 }
@@ -675,7 +672,6 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
     dev::brc::exchangeSort _upperSort;
     _upperSort.m_exchangeTime = INT64_MAX;
     _upperSort.m_exchangePrice = _pendingorderPrice;
-
     _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->upper_bound(_upperSort)));
     
 }

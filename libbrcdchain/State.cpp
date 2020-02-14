@@ -3010,7 +3010,6 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     Account *_account = account(orderAddress);
     if(!_account)
     {
-        cerror << "ichang ";
         return Json::Value();
     }
     Json::Value _ret;

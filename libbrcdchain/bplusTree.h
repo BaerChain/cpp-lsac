@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-14 15:41:49
+ * @LastEditTime : 2020-02-14 19:44:12
  * @LastEditors  : Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -213,9 +213,15 @@ namespace dev {
 
                 }
 
-                find_ret_type getIndex(const kv_pair &kv) {
+                find_ret_type getIndex(const kv_pair &kv, bool up = true) {
                     auto com = [&](const kv_pair &v1, const kv_pair &v2) -> bool {
-                        return mCompare(v1.first, v2.first);
+                        if(up){
+                            return mCompare(v1.first, v2.first);
+                        }
+                        else{
+                            return !mCompare(v1.first, v2.first);
+                        }
+                       
                     };
                     return findKeyIndex(kv, mValues, com);
                 }
@@ -419,6 +425,10 @@ namespace dev {
                 iterator(const iterator &other):mbp(other.mbp), mLeafKey(other.mLeafKey), indexOfLeaf(other.indexOfLeaf){}
                             
                 iterator& operator++() {  
+                    if(mLeafKey.size() == 0 && indexOfLeaf == 0){
+                        return *this;
+                    }
+                    
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     if(indexOfLeaf + 1 < node.second.mValues.size()){
                         indexOfLeaf++;
@@ -433,13 +443,21 @@ namespace dev {
                     operator++();
                     return *this;
                 }
-                bool operator==(iterator other) const {return mLeafKey == other.mLeafKey && indexOfLeaf == other.indexOfLeaf;}
-                bool operator!=(iterator other) const {return !(*this == other);}
+                bool operator==(const iterator &other) const {return mLeafKey == other.mLeafKey && indexOfLeaf == other.indexOfLeaf;}
+                bool operator!=(const iterator &other) const {return !(*this == other);}
                 typename leaf_type::kv_pair operator*() const {
+                    if(mLeafKey.size() == 0 && indexOfLeaf == 0){
+                        return typename leaf_type::kv_pair();
+                    }
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     assert(node.first);
                     return node.second.mValues[indexOfLeaf];
                 }
+
+                typename leaf_type::kv_pair operator->() const {
+                     return operator*();
+                 }  
+
                 iterator &operator=(const iterator& other){
                     mLeafKey = other.mLeafKey;
                     indexOfLeaf = other.indexOfLeaf;
@@ -447,6 +465,7 @@ namespace dev {
                     return *this;
                 }
 
+                 
             private:
                 NodeKey mLeafKey;
                 size_t  indexOfLeaf;
@@ -474,21 +493,28 @@ namespace dev {
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
-                if(indexOf.second == ret.second.mValues.size()){
+                if(indexOf.second > ret.second.mValues.size()){
                     return end();
                 }
                 return iterator(*this, ret.second.mSelfKey, indexOf.second);
             }
 
             iterator upper_bound(const key_type &key){
-                if(rootKey.size() == 0){
+               if(rootKey.size() == 0){
                     return end();
                 }
-                auto ret = lower_bound(key);
-                if(ret != end()){
-                    return ret++;
+                std::pair<key_type, value_type> find;
+                find.first = key;
+                auto ret = findInsertPos(find.first, find.second);
+                auto indexOf = ret.second.getIndex(find);
+                if(indexOf.second > ret.second.mValues.size()){
+                    return end();
                 }
-                return ret;
+                auto itr = iterator(*this, ret.second.mSelfKey, indexOf.second);
+                // if(!indexOf.first){
+                    itr++;
+                // }
+                return  itr;
             }
 
 
@@ -1153,7 +1179,6 @@ namespace dev {
                 NodeKey findKey = rootKey;
                 while (true) {
                     auto find_node_type = getType(findKey);
-                    cerror << "1111 " << rootKey;
                     assert(find_node_type.first);
 
                     if (find_node_type.second == NodeLeaf::node) {
