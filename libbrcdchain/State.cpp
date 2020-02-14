@@ -2968,7 +2968,7 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
 
-Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, order_type const& _type)
+Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type)
 {
     Address _orderAddress;
     if(_type == order_type::buy)
@@ -2980,7 +2980,7 @@ Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _ti
          BOOST_THROW_EXCEPTION(  
                 ExdbChangeFailed() << errinfo_comment(std::string("order type is error")));
     }
-    Account *_account = account(dev::_orderAddress);
+    Account *_account = account(_orderAddress);
     if(!_account)
     {
         BOOST_THROW_EXCEPTION(  

@@ -168,7 +168,7 @@ Json::Value dev::brc::ClientBase::queryBlockRewardMessage(Address _a, BlockNumbe
 Json::Value dev::brc::ClientBase::testBplusGet(u256 const& key, int64_t time, BlockNumber _block) const{
     Block _b = blockByNumber(_block);
    // return Json::Value();
-    return _b.mutableState().newExorderGet(time , key);
+    return _b.mutableState().newExorderGet(h256(),time , key, ex::order_type::sell);
 }
 
 Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _block) const
