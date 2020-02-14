@@ -161,7 +161,7 @@ namespace dev {
             bool rm = false;
             std::vector<std::tuple<uint8_t, int64_t, u256, h256>> removeHashs;
             while (spend > 0 && begin != end) {
-                //ctrace << "spend  " << spend << " begin : " << begin->format_string();
+                cwarn << "spend  " << spend << " begin : " << (*begin).second.to_string();
                 result_order ret;
                 ex_order order = (*begin).second.to_ex_order();
                 if ((*begin).second.m_pendingordertokenNum <= spend) {

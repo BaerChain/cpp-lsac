@@ -922,14 +922,10 @@ public:
     }
 
     bytes storageByteValue(h256 const &_key, OverlayDB const &_db) const {
-        cerror << "getData key :" << toJS(_key);
-        cerror << "getData";
         auto mit = m_storageOverlayBytes.find(_key);
-        cerror << "getData";
         if (mit != m_storageOverlayBytes.end()) {
             return mit->second;
         }
-        cerror << "getData";
         return originalStorageByteValue(_key, _db);
     }
 
@@ -938,7 +934,6 @@ public:
     std::unordered_map<h256, bytes> const &storageByteOverlay() const { return m_storageOverlayBytes; }
 
     void setStorageByte(h256 const &_key, bytes const &_value) {
-        cerror << "setData key : " << toJS(_key) << "  setData Value :" << _value;
         m_storageOverlayBytes[_key] = _value;
         changed();
     }
