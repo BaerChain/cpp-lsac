@@ -191,7 +191,7 @@ void dev::brc::BRCTranscation::verifyPendingOrders(Address const& _form, u256 _t
 }
 
 
-void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const & _ops){
+void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _exdb, Address _addr, std::vector<std::shared_ptr<transationTool::operation>> const & _ops, int64_t _blockNum){
 	std::vector<h256> _HashV;
 	for(auto const& val : _ops){
 		std::shared_ptr<transationTool::cancelPendingorder_operation> can_order = std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(val);
@@ -207,7 +207,19 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
     try{
         for(auto _it : _HashV)
         {
-            _resultV = _exdbState.exits_trxid(_it);
+            if(_blockNum < config::changeExchange()) {
+                _resultV = _exdbState.exits_trxid(_it);
+            } else{
+                //TODO new exDb
+                newExdbState _newExdbState(m_state);
+                _resultV = _newExdbState.exits_trxid(_it);
+                auto orderCancel = m_state.getCancelOrder(_it);
+                if(orderCancel.m_time == 0 && orderCancel.m_price ==0){
+                    /// not find order
+                    BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be find")));
+                }
+
+            }
         }
 	}
 	catch(const boost::exception& e){

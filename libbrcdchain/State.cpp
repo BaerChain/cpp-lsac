@@ -231,6 +231,9 @@ Account *State::account(Address const &_addr) {
             const h256 storageByteRoot = state[20].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
         }
+        if(state.itemCount() > 21){
+            i.first->second.populateRLPCancelOrder(state[21].convert<bytes>(RLP::LaissezFaire));
+        }
     }
     return &i.first->second;
 }
@@ -1437,10 +1440,12 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     }
     for (auto _val : _hashV) {
         try {
-            if(_blockHeight <= config::changeExchange())
+            if(_blockHeight < config::changeExchange())
                 val = _exdbState.cancel_order_by_trxid(_val);
             else{
                 //TODO new ex
+                newExdbState _newExdbState(*this);
+                val = _newExdbState.cancel_order_by_trxid(_val);
             }
         }
         catch (Exception &e) {
@@ -2233,6 +2238,15 @@ void State::rollback(size_t _savepoint) {
             case Change::NewChangeMiner:
                 account.setChangeMiner(change.mapping);
                 break;
+            case Change::CancelOrderEnum:
+            {
+                if(change.cancelOrder.m_isAdd){
+                    account.deleteCancelOrder(change.cancelOrder.m_id);
+                }else{
+                    account.addCancelOrder(change.cancelOrder.m_id, change.cancelOrder.m_time, change.cancelOrder.m_price);
+                }
+            }
+                break;
             default:
                 break;
         }
@@ -2954,29 +2968,38 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
 
-Json::Value dev::brc::State::newExorderGet(int64_t const& _time, u256 const& _price)
+Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type)
 {
-    Account *_account = account(dev::TestbplusAddress);
+    Address _orderAddress;
+    if(_type == order_type::buy)
+    {
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if(_type == order_type::sell){
+        _orderAddress = dev::SellExchangeAddress;
+    }else{
+         BOOST_THROW_EXCEPTION(  
+                ExdbChangeFailed() << errinfo_comment(std::string("order type is error")));
+    }
+    Account *_account = account(_orderAddress);
     if(!_account)
     {
         BOOST_THROW_EXCEPTION(  
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
 
-    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_price, _time, m_db);
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
     if(_ret.first)
     {
         Json::Value _retJson;
-        _retJson["orderID"] = toJS(_ret.second.m_orderId);
-        _retJson["from"] = toJS(_ret.second.m_from);
-        _retJson["pendingorderNum"] = toJS(_ret.second.m_pendingorderNum);
-        _retJson["pendingordertokenNum"] = toJS(_ret.second.m_pendingordertokenNum);
-        _retJson["pendingorderPrice"] = toJS(_ret.second.m_pendingorderPrice);
-        _retJson["createTime"] = toJS(_ret.second.m_createTime);
+        _retJson["Hash"] = toJS(_ret.second.m_orderId);
+        _retJson["Address"] = toJS(_ret.second.m_from);
+        _retJson["source_amount"] = toJS(_ret.second.m_pendingorderNum);
+        _retJson["token_amount"] = toJS(_ret.second.m_pendingordertokenNum);
+        _retJson["price"] = toJS(_ret.second.m_pendingorderPrice);
+        _retJson["create_time"] = toJS(_ret.second.m_createTime);
         std::tuple<std::string, std::string, std::string>  _t = enumToString(_ret.second.m_pendingorderType,_ret.second.m_pendingorderTokenType,_ret.second.m_pendingorderBuyType); 
-        _retJson["pendingorderType"] = std::get<0>(_t);
-        _retJson["pendingorderTokenType"] = std::get<1>(_t);
-        _retJson["pendingorderBuyType"] = std::get<2>(_t);;
+        _retJson["order_type"] = std::get<0>(_t);
+        _retJson["order_token_type"] = std::get<1>(_t);
         return _retJson;
     }else{
         return Json::Value();
@@ -3093,6 +3116,44 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     //  TO DO
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
+void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price) {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        createAccount(dev::CancelOrderAddress, {0});
+        a =  account(dev::CancelOrderAddress);
+    }
+    CancelOrder order;
+    order.init(_id, _time, _price);
+    order.m_isAdd = true;
+    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
+    a->addCancelOrder(_id,_time, _price);
+}
+void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
+                std::string("CancelOrder failed: not exits this order")));
+    }
+    auto  _order = a->getCancelOrder(_id);
+    CancelOrder order;
+    order.init(_id, _order.first, _order.second );
+    order.m_isAdd = false;
+    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
+    a->deleteCancelOrder(_id);
+}
+CancelOrder dev::brc::State::getCancelOrder(dev::h256 _id) const {
+    auto a = account(dev::CancelOrderAddress);
+    if(!a){
+        BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
+                std::string("CancelOrder failed: not exits this order")));
+    }
+    auto _order = a->getCancelOrder(_id);
+    CancelOrder order;
+    //return CancelOrder(_id, order.first, order.second);
+    order.init(_id, _order.first, _order.second);
+    return order;
+}
+
 
 dev::brc::ex::ExOrderMulti const &dev::brc::State::getExOrder() {
     Account *_orderAccount = account(dev::ExdbSystemAddress);
@@ -3578,7 +3639,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
             else {
                 RLPStream s;
                 if(fork_blockNumber >= config::changeExchange()) {
-                    s.appendList(21);
+                    s.appendList(22);
                 }
                 else if(_block_number >= config::newChangeHeight()){
                     s.appendList(20);
@@ -3689,6 +3750,8 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                             assert(storageByteDB.root());
                             s << storageByteDB.root();
                         }
+                        ///cancelOrder
+                        s << i.second.streamRLPCanorder();
                     }
 
                 }

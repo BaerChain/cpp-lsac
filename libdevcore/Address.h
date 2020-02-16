@@ -49,6 +49,7 @@ extern Address const TestbplusAddress;
 extern Address const BuyExchangeAddress;
 
 extern Address const SellExchangeAddress;
+extern Address const CancelOrderAddress;
 extern std::vector<Address> const CreaterSysAddresses;
 }
 
