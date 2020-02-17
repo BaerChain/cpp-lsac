@@ -130,11 +130,23 @@ struct detailbook {
 struct test_op {
 public:
     bool operator > (const test_op &t1) const {
-        return ss > t1.ss;
+        if(first > t1.first){
+            return true;
+        }
+        else if (first == t1.first){
+            return second > t1.second;
+        }
+        return false;
     }
 
     bool operator < (const test_op &t1) const {
-        return ss < t1.ss;
+        if(first < t1.first){
+            return true;
+        }
+        else if (first == t1.first){
+            return second < t1.second;
+        }
+        return false;
     }
 
     void encode(dev::RLPStream &rlp) const
@@ -149,15 +161,15 @@ public:
 
     std::string to_string() const
     {
-        return "";
+        return "[" + std::to_string(first) + "," + std::to_string(second) + "]";
     }
 
     // bool operator () (const unsigned &t1, const unsigned &t2) const {
     //     return t1 < t2;
     // }
 
-    unsigned int ss;
-    std::string data;
+    unsigned int first;
+    unsigned int second;
 };
     
 
@@ -289,18 +301,23 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
             dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            size_t end = 128;
-            for (size_t i = 0; i < end; i+=2) {
-                bp.insert( {(unsigned)i, std::to_string(i)}, std::to_string(i));
-            }
+            // bp.insert( {0, 0}, "0#1");
+            bp.insert( {1, 0}, "0#2");
+            // bp.insert( {1, 1}, "0#3");
+            // bp.insert( {2, 0}, "0#4");
+            // bp.insert( {2, 3}, "0#5");
+            // bp.insert( {3, 0}, "0#6");
+      
             // bp.debug();
             
-            auto itr = bp.lower_bound(test_op{0, ""});
+            auto itr = bp.lower_bound(test_op{1, 0});
             // auto itr = bp.begin();
-            auto itr_end = bp.upper_bound(test_op{10, ""});
+            auto itr_end = bp.upper_bound(test_op{999999, 9999});
+            // std::cout << "begin key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
+            // std::cout << "end key " << (*itr_end).first.to_string() << "  value: " << (*itr_end).second << std::endl;
             while (itr != itr_end)
             {
-                std::cout << "key " << (*itr).first.ss << "  value: " << (*itr).second << std::endl;
+                std::cout << "key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
                 itr++;
             }
             

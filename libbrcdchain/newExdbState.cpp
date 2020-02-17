@@ -52,7 +52,6 @@ namespace dev {
             } else {
                 if (itr.type == order_type::buy) {
                     assert(itr.price != 0 && itr.source_amount == 0);
-
                     auto find_itr = get_buy_itr(0, u256(-1));
                     auto total_price = itr.price;
                     auto begin = (*find_itr).first;
@@ -439,7 +438,7 @@ namespace dev {
                 // }
                 boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> _p;
                 m_state.initOrderAddress();
-                m_state.newGetSellExChangeOrder(0, 0, _p);
+                m_state.newGetSellExChangeOrder(0, u256(-1), _p);
 
                 if(_p){
                     auto begin = (*_p).first;

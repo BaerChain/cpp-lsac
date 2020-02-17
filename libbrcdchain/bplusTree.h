@@ -2,7 +2,7 @@
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
  * @LastEditTime : 2020-02-14 19:44:12
- * @LastEditors  : Please set LastEditors
+ * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
  */
@@ -500,20 +500,21 @@ namespace dev {
             }
 
             iterator upper_bound(const key_type &key){
-               if(rootKey.size() == 0){
+                Compare com;
+                if(rootKey.size() == 0){
                     return end();
                 }
                 std::pair<key_type, value_type> find;
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
-                if(indexOf.second > ret.second.mValues.size()){
+                if(indexOf.second >= ret.second.mValues.size()){
                     return end();
                 }
                 auto itr = iterator(*this, ret.second.mSelfKey, indexOf.second);
-                // if(!indexOf.first){
+                if(indexOf.first){
                     itr++;
-                // }
+                }
                 return  itr;
             }
 
