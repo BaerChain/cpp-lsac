@@ -25,10 +25,7 @@ namespace dev{
                     return true;
                 }else if(m_exchangePrice == _e.m_exchangePrice)
                 {
-                    if(m_exchangeTime < _e.m_exchangeTime)
-                    {
-                        return true;
-                    }
+                    return m_exchangeTime < _e.m_exchangeTime;
                 }
                 return false;
             }
@@ -40,10 +37,7 @@ namespace dev{
                     return true;
                 }else if(m_exchangePrice == _e.m_exchangePrice)
                 {
-                    if(m_exchangeTime > _e.m_exchangeTime)
-                    {
-                        return true;
-                    }
+                    return m_exchangeTime > _e.m_exchangeTime;
                 }
                 return false;
             }
@@ -67,7 +61,7 @@ namespace dev{
             } 
             std::string to_string() const
             {
-                return " price = " + toJS(m_exchangePrice) + " time = " + toJS(m_exchangeTime) + "  hash = " + toJS(m_exchangeHash);
+                return "[ price = " + toJS(m_exchangePrice) + " time = " + toJS(m_exchangeTime) + "  hash = " + toJS(m_exchangeHash) + "]";
             }
         };
 

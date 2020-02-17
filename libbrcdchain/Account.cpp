@@ -673,7 +673,7 @@ void Account::sellExchangeGetIt(u256 const& _pendingorderPrice, int64_t const& _
     dev::brc::exchangeSort _upperSort;
     _upperSort.m_exchangeTime = INT64_MAX;
     _upperSort.m_exchangePrice = _pendingorderPrice;
-    auto begin = m_sellOrder->lower_bound(_sort);
+
     _p.reset(std::make_pair<sellOrder::iterator, sellOrder::iterator>(m_sellOrder->lower_bound(_sort), m_sellOrder->upper_bound(_upperSort)));
     
 }
