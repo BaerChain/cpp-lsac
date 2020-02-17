@@ -478,6 +478,10 @@ namespace dev {
                 if(rootKey.size() == 0){
                     return end();
                 }
+                auto t = getData(rootKey, mLeafs);
+                if(t.second.mValues.size() == 0){
+                    return end();
+                }
                 return iterator(*this);
             }
             
