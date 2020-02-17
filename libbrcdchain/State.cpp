@@ -125,7 +125,10 @@ void State::noteAccountStartNonce(u256 const &_actual) {
 void State::removeEmptyAccounts() {
     for (auto &i : m_cache)
         if (i.second.isDirty() && i.second.isEmpty())
+        {
+            cerror << " remove account : " << toJS(i.first);
             i.second.kill();
+        }
 }
 
 State &State::operator=(State const &_s) {
@@ -3033,6 +3036,7 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     Account *_account = account(orderAddress);
     if(!_account)
     {
+        cerror << "yichang: " << toJS(orderAddress);
         return Json::Value();
     }
     Json::Value _ret;
