@@ -504,6 +504,7 @@ public:
 
     void newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex_order const &_order);
     Json::Value newExorderGet(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type);
+    bool verifyExchangeOrderExits(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type);
     // Json::Value newExorderAllGet();
     Json::Value newExorderGetByType( uint8_t _order_type);  
     void newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p);
@@ -511,7 +512,7 @@ public:
     void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
     void initOrderAddress();
     ///cancelOrder
-    void addCancelOrder(h256 _id, int64_t _time, u256 _price);
+    void addCancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type);
     void deleteCancelOrder(h256 _id);
     CancelOrder getCancelOrder(h256 _id) const;
 

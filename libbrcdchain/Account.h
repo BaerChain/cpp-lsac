@@ -548,11 +548,28 @@ struct CancelOrder{
     h256 m_id;
     int64_t m_time;
     u256 m_price;
+    uint8_t m_type;
     bool m_isAdd;
-    void init(h256 _id, int64_t _time, u256 _price){
-        m_id = _id;
-        m_time = _time;
-        m_price = _price;
+    CancelOrder(){}
+    CancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type, bool _isAdd = false):
+                m_id(_id), m_time(_time), m_price(_price), m_type(_type), m_isAdd(_isAdd){}
+//    void init(h256 _id, int64_t _time, u256 _price){
+//        m_id = _id;
+//        m_time = _time;
+//        m_price = _price;
+//    }
+    bytes streamRlp() const{
+        RLPStream b;
+        b.appendList(3);
+        b << (u256)m_time << m_price << (u256)m_type;
+        cwarn << b.out();
+        return b.out();
+    }
+    void populateRlp(bytes const& _b){
+        RLP rlp(_b);
+        m_time = (int64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
+        m_price = rlp[1].convert<u256>(RLP::LaissezFaire);
+        m_type = (uint8_t)rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 };
 
@@ -798,7 +815,8 @@ public:
                FBalance() == 0 && FBRC() == 0 && CookieIncome() == 0 && m_vote_data.empty() &&
                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
-               m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageOverlayBytes.empty();
+               m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageOverlayBytes.empty()&&
+               m_cancelOrder.empty();
 
     }
 
@@ -1274,25 +1292,25 @@ public:
     bytes streamRLPCanorder()const {
         RLPStream bret(m_cancelOrder.size());
         for(auto const&v: m_cancelOrder){
-            RLPStream bs(3);
-            bs <<v.first<< (u256)v.second.first << v.second.second;
+            RLPStream bs(2);
+            bs <<v.first<< v.second.streamRlp();
             bret.append(bs.out());
         }
         return bret.out();
     }
     void populateRLPCancelOrder(bytes const& _b){
-        RLP rlp(_b);
-        for(auto const& vb: rlp){
-            RLP _d(vb);
-            h256 _h = _d[0].convert<h256>(RLP::LaissezFaire);
-            int64_t _time = (int64_t)_d[1].convert<u256>(RLP::LaissezFaire);
-            u256 _price = _d[2].convert<u256>(RLP::LaissezFaire);
-            m_cancelOrder[_h] = std::make_pair(_time, _price);
+        for(auto const& vb: RLP(_b)){
+            auto _d = vb.convert<bytes>(RLP::LaissezFaire);
+            RLP rlp(_d);
+            CancelOrder order;
+            order.m_id = rlp[0].convert<h256>(RLP::LaissezFaire);
+            order.populateRlp(rlp[1].convert<bytes>(RLP::LaissezFaire));
+            m_cancelOrder[order.m_id] = order;
         }
     }
-    void addCancelOrder(h256 _id, int64_t _time, u256 _price){
+    void addCancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type){
         if(!m_cancelOrder.count(_id)){
-            m_cancelOrder[_id] = std::make_pair(_time, _price);
+            m_cancelOrder[_id] = {_id, _time, _price, _type};
             changed();
         }
     }
@@ -1302,12 +1320,12 @@ public:
             changed();
         }
     }
-    std::pair<int64_t , u256> getCancelOrder(h256 _id) const{
+    CancelOrder getCancelOrder(h256 _id) const{
         if(m_cancelOrder.count(_id)){
             auto ret = m_cancelOrder.find(_id);
             return ret->second;
         }
-        return std::make_pair(0,0);
+        return CancelOrder();
     }
 
     void initOrder(OverlayDB const& _db)
@@ -1409,7 +1427,7 @@ private:
     std::shared_ptr<sellOrder> m_sellOrder;
     std::shared_ptr<buyOrder> m_buyOrder;
     std::vector<h256> m_exchangeDelete;
-    std::map<h256, std::pair<int64_t, u256>>  m_cancelOrder;
+    std::map<h256, CancelOrder>  m_cancelOrder;
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };
 

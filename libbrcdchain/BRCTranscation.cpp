@@ -212,13 +212,19 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
             } else{
                 //TODO new exDb
                 newExdbState _newExdbState(m_state);
-                _resultV = _newExdbState.exits_trxid(_it);
+                //_resultV = _newExdbState.exits_trxid(_it);
                 auto orderCancel = m_state.getCancelOrder(_it);
-                if(orderCancel.m_time == 0 && orderCancel.m_price ==0){
-                    /// not find order
+                if(orderCancel.m_id != _it){
+                    /// not find
+                    cwarn << "Pendingorder hash cannot be find";
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be find")));
                 }
-
+                ///verity order in newExDB
+                auto ret = m_state.verifyExchangeOrderExits(_it, orderCancel.m_time, orderCancel.m_price, (ex::order_type)orderCancel.m_type);
+                if(!ret){
+                    cwarn << "Pendingorder cannot be find in ExDB";
+                    BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder cannot be find in ExDB")));
+                }
             }
         }
 	}

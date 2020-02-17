@@ -1446,6 +1446,14 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
                 //TODO new ex
                 newExdbState _newExdbState(*this);
                 val = _newExdbState.cancel_order_by_trxid(_val);
+                auto canOrder = getCancelOrder(_val);
+                if(canOrder.m_id != _val) {
+                    cwarn <<"can not find order_id";
+                    BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
+                }
+                //uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id
+                _newExdbState.remove_exchangeOrder(canOrder.m_type, canOrder.m_time, canOrder.m_price, canOrder.m_id);
+                deleteCancelOrder(_val);
             }
         }
         catch (Exception &e) {
@@ -2243,7 +2251,7 @@ void State::rollback(size_t _savepoint) {
                 if(change.cancelOrder.m_isAdd){
                     account.deleteCancelOrder(change.cancelOrder.m_id);
                 }else{
-                    account.addCancelOrder(change.cancelOrder.m_id, change.cancelOrder.m_time, change.cancelOrder.m_price);
+                    account.addCancelOrder(change.cancelOrder.m_id, change.cancelOrder.m_time, change.cancelOrder.m_price, change.cancelOrder.m_type);
                 }
             }
                 break;
@@ -2963,7 +2971,7 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     std::unordered_map<h256, bytes> _oldmap = _orderAccount->storageByteOverlay();
     h256 _oldroot = _orderAccount->baseByteRoot();
     _orderAccount->exchangeBplusAdd(_order, m_db);
-
+    addCancelOrder(_order.trxid, _order.create_time, _order.price, (uint8_t)_order.buy_type);
     m_changeLog.emplace_back(_orderAddress, _oldmap);
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
@@ -3045,6 +3053,30 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     return _ret;
 }
 
+bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type){
+    Address _orderAddress;
+    if(_type == order_type::buy)
+    {
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if(_type == order_type::sell){
+        _orderAddress = dev::SellExchangeAddress;
+    }else{
+        BOOST_THROW_EXCEPTION(
+                ExdbChangeFailed() << errinfo_comment(std::string("order type is error")));
+    }
+    Account *_account = account(_orderAddress);
+    if(!_account)
+    {
+        BOOST_THROW_EXCEPTION(
+                ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
+    }
+
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
+    if(_ret.first)
+        return true;
+    else
+        return false;
+}
 
 void dev::brc::State::newGetSellExChangeOrder(int64_t const& _time, u256 const& _price, boost::optional<std::pair<sellOrder::iterator, sellOrder::iterator>> &_p)
 {
@@ -3095,6 +3127,7 @@ void dev::brc::State::newRemoveExchangeOrder(uint8_t _orderType,int64_t const& _
     }
     std::vector<h256> _old = _orderAccount->getDeleteByte();
     _orderAccount->exchangeBplusDelete(_orderType, _time, _price, _hash, m_db);
+    deleteCancelOrder(_hash);
     m_changeLog.emplace_back(_orderAddress, _old);
 
 }
@@ -3116,17 +3149,15 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     //  TO DO
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
-void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price) {
+void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price, uint8_t _type) {
     auto a = account(dev::CancelOrderAddress);
     if(!a){
         createAccount(dev::CancelOrderAddress, {0});
         a =  account(dev::CancelOrderAddress);
     }
-    CancelOrder order;
-    order.init(_id, _time, _price);
-    order.m_isAdd = true;
+    CancelOrder order(_id, _time, _price, _type, true);
     m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
-    a->addCancelOrder(_id,_time, _price);
+    a->addCancelOrder(_id,_time, _price, _type);
 }
 void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
     auto a = account(dev::CancelOrderAddress);
@@ -3135,11 +3166,11 @@ void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
                 std::string("CancelOrder failed: not exits this order")));
     }
     auto  _order = a->getCancelOrder(_id);
-    CancelOrder order;
-    order.init(_id, _order.first, _order.second );
-    order.m_isAdd = false;
-    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
-    a->deleteCancelOrder(_id);
+    if(_order.m_id == _id) {
+        _order.m_isAdd = false;
+        m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, _order);
+        a->deleteCancelOrder(_id);
+    }
 }
 CancelOrder dev::brc::State::getCancelOrder(dev::h256 _id) const {
     auto a = account(dev::CancelOrderAddress);
@@ -3148,10 +3179,7 @@ CancelOrder dev::brc::State::getCancelOrder(dev::h256 _id) const {
                 std::string("CancelOrder failed: not exits this order")));
     }
     auto _order = a->getCancelOrder(_id);
-    CancelOrder order;
-    //return CancelOrder(_id, order.first, order.second);
-    order.init(_id, _order.first, _order.second);
-    return order;
+    return _order;
 }
 
 
@@ -3452,6 +3480,7 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     auto begin = index.begin();
     while (begin != index.end() ) {
         newAddExchangeOrder(begin->sender,*begin);
+        addCancelOrder(begin->trxid, begin->create_time, begin->price, (uint8_t)begin->buy_type);
         cwarn << "transfer order:"<< begin->trxid;
         begin++;
 //        exchangeValue eo;
@@ -3459,7 +3488,7 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
 //        eo.m_from = begin->sender;
 //        eo.m_pendingorderNum = begin->source_amount;
 //        eo.m_pendingordertokenNum = begin->token_amount;
-//        eo.m_pendingorderPrice = begin->source_amount;
+//        eo.m_pendingorderPrice = begin->price;
 //        eo.m_createTime = begin->create_time;
 //        eo.m_pendingorderType = begin->type;
 //        eo.m_pendingorderTokenType = begin->token_type;

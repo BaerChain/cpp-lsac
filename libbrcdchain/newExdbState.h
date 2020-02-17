@@ -80,12 +80,13 @@ namespace dev{
 
             std::vector<ex_order> exits_trxid(const h256  &trxid);
 
+        public:
+            void remove_exchangeOrder(uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id);
+
         private:
 
             //add or update
             void add_exchangeOrder(const ex_order &od);
-
-            void remove_exchangeOrder(uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id);
 
             void add_resultOrder(const result_order &od);
 
