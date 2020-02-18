@@ -512,6 +512,7 @@ public:
     void newRemoveExchangeOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
     void initOrderAddress();
     ///cancelOrder
+    exchangeValue getDeleteOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash);
     void addCancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type);
     void deleteCancelOrder(h256 _id);
     CancelOrder getCancelOrder(h256 _id) const;
