@@ -602,22 +602,28 @@ void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB c
     }
 }
 
-std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(h256 const& _hash, u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
+std::pair<bool, dev::brc::exchangeValue> Account::exchangeBplusGet(uint8_t _type,h256 const& _hash, u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db)
 {
     if(!m_exchangeBplus.get())
     {
         m_exchangeBplus = std::make_shared<exchangeBplus>(this, _db);
     }
-
-    bplusTree<dev::brc::exchangeSort, dev::brc::exchangeValue, 4> _exchangeBplus(m_exchangeBplus);
-    
     dev::brc::exchangeSort _exchangeSort;
     _exchangeSort.m_exchangeHash = _hash;
     _exchangeSort.m_exchangePrice = _pendingorderPrice;
     _exchangeSort.m_exchangeTime = _createTime;
+    std::pair<bool, dev::brc::exchangeValue> _ret;
+
     try{
-        std::pair<bool, dev::brc::exchangeValue> _ret = _exchangeBplus.getValue(_exchangeSort);
-        cerror << "123";
+        if(_type == (uint8_t)ex::order_type::buy)
+        {
+            buyOrder _order(m_exchangeBplus);
+            _ret = _order.getValue(_exchangeSort);
+        }else if(_type == (uint8_t)ex::order_type::sell)
+        {
+            sellOrder _order(m_exchangeBplus);
+            _ret = _order.getValue(_exchangeSort);
+        }
         return _ret;
     }catch(std::exception const& e)
     {

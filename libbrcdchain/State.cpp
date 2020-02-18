@@ -2998,7 +2998,7 @@ Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _ti
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
 
-    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet((uint8_t)_type,_hash, _price, _time, m_db);
     if(_ret.first)
     {
         Json::Value _retJson;
@@ -3075,7 +3075,7 @@ bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const&
                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
     }
 
-    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
+    std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet((uint8_t)_type,_hash, _price, _time, m_db);
     if(_ret.first) {
         if(_ret.second.m_from != _sender)
             return false;
