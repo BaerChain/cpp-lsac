@@ -46,7 +46,7 @@ namespace dev{
             {
                 rlp.appendList(3);
                 rlp.append(m_exchangePrice);
-                rlp.append(m_exchangeTime);
+                rlp.append((u256)m_exchangeTime);
                 rlp.append(m_exchangeHash);
             }
 
@@ -54,8 +54,8 @@ namespace dev{
             {
                 if(_rlp.isList())
                 {
-                    m_exchangePrice = _rlp[0].toInt<u256>();
-                    m_exchangeTime = _rlp[1].toInt<int64_t>();
+                    m_exchangePrice = _rlp[0].convert<u256>(RLP::LaissezFaire);
+                    m_exchangeTime = int64_t(_rlp[1].toInt<u256>());
                     m_exchangeHash = _rlp[2].convert<h256>(RLP::LaissezFaire);
                 }
             } 
@@ -85,7 +85,7 @@ namespace dev{
                 _rlp.append(m_pendingorderNum);
                 _rlp.append(m_pendingordertokenNum);
                 _rlp.append(m_pendingorderPrice);
-                _rlp.append(m_createTime);
+                _rlp.append((u256)m_createTime);
                 _rlp.append((uint8_t)m_pendingorderType);
                 _rlp.append((uint8_t)m_pendingorderTokenType);
                 _rlp.append((uint8_t)m_pendingorderBuyType); 
@@ -100,7 +100,7 @@ namespace dev{
                     m_pendingorderNum = _rlp[2].convert<u256>(RLP::LaissezFaire);
                     m_pendingordertokenNum = _rlp[3].convert<u256>(RLP::LaissezFaire);
                     m_pendingorderPrice = _rlp[4].convert<u256>(RLP::LaissezFaire);
-                    m_createTime = _rlp[5].toInt<int64_t>();
+                    m_createTime = int64_t(_rlp[5].toInt<u256>());
                     m_pendingorderType = (ex::order_type)_rlp[6].convert<uint8_t>(RLP::LaissezFaire);
                     m_pendingorderTokenType = (ex::order_token_type)_rlp[7].convert<uint8_t>(RLP::LaissezFaire);
                     m_pendingorderBuyType = (ex::order_buy_type)_rlp[8].convert<uint8_t>(RLP::LaissezFaire);
