@@ -1431,7 +1431,6 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     ctrace << "cancle pendingorder";
     ex::order val;
     std::vector<h256> _hashV;
-    ExdbState _exdbState(*this);
     for (auto const &val : _ops) {
         std::shared_ptr<transationTool::cancelPendingorder_operation> can_pen = std::dynamic_pointer_cast<transationTool::cancelPendingorder_operation>(
                 val);
@@ -1443,12 +1442,13 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
     }
     for (auto _val : _hashV) {
         try {
-            if(_blockHeight < config::changeExchange())
+            if(_blockHeight < config::changeExchange()) {
+                ExdbState _exdbState(*this);
                 val = _exdbState.cancel_order_by_trxid(_val);
+            }
             else{
                 //TODO new ex
                 newExdbState _newExdbState(*this);
-                val = _newExdbState.cancel_order_by_trxid(_val);
                 auto canOrder = getCancelOrder(_val);
                 if(canOrder.m_id != _val) {
                     cwarn <<"can not find order_id";
@@ -1456,7 +1456,7 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
                 }
                 //uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id
                 _newExdbState.remove_exchangeOrder(canOrder.m_type, canOrder.m_time, canOrder.m_price, canOrder.m_id);
-                deleteCancelOrder(_val);
+                //deleteCancelOrder(_val);
             }
         }
         catch (Exception &e) {
@@ -3057,7 +3057,7 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     return _ret;
 }
 
-bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type){
+bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const& _time, u256 const& _price, ex::order_type const& _type, Address const& _sender){
     Address _orderAddress;
     if(_type == order_type::buy)
     {
@@ -3076,8 +3076,11 @@ bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const&
     }
 
     std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet(_hash, _price, _time, m_db);
-    if(_ret.first)
+    if(_ret.first) {
+        if(_ret.second.m_from != _sender)
+            return false;
         return true;
+    }
     else
         return false;
 }

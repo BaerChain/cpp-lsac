@@ -562,7 +562,6 @@ struct CancelOrder{
         RLPStream b;
         b.appendList(3);
         b << (u256)m_time << m_price << (u256)m_type;
-        cwarn << b.out();
         return b.out();
     }
     void populateRlp(bytes const& _b){

@@ -220,7 +220,7 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be find")));
                 }
                 ///verity order in newExDB
-                auto ret = m_state.verifyExchangeOrderExits(_it, orderCancel.m_time, orderCancel.m_price, (ex::order_type)orderCancel.m_type);
+                auto ret = m_state.verifyExchangeOrderExits(_it, orderCancel.m_time, orderCancel.m_price, (ex::order_type)orderCancel.m_type, _addr);
                 if(!ret){
                     cwarn << "Pendingorder cannot be find in ExDB";
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder cannot be find in ExDB")));
@@ -232,17 +232,19 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
 		cwarn << "cancelpendingorder error" << boost::diagnostic_information(e);
 		BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool")));
 	}
-	if(_resultV.size() == 0){
-        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order does not exist in the trading pool  . vertiy")));
-	}
 
-
-	for(auto val : _resultV){
-        if (_addr != val.sender)
-        {
-            BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("This order is not the same as the transaction sponsor account")));
+    if(config::changeExchange() > _blockNum) {
+        if (_resultV.size() == 0) {
+            BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(
+                    std::string("This order does not exist in the trading pool  . vertiy")));
         }
-	}
+        for (auto val : _resultV) {
+            if (_addr != val.sender) {
+                BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(
+                        std::string("This order is not the same as the transaction sponsor account")));
+            }
+        }
+    }
 }
 
 void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address const& _from,
