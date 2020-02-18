@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime : 2020-02-14 19:44:12
+ * @LastEditTime: 2020-02-18 14:47:09
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -497,9 +497,10 @@ namespace dev {
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
-                if(indexOf.second > ret.second.mValues.size()){
+                if(indexOf.second > ret.second.mValues.size() || ret.second.mValues.size() == 0){
                     return end();
                 }
+           
                 return iterator(*this, ret.second.mSelfKey, indexOf.second);
             }
 
@@ -512,7 +513,7 @@ namespace dev {
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
                 auto indexOf = ret.second.getIndex(find);
-                if(indexOf.second >= ret.second.mValues.size()){
+                if(indexOf.second >= ret.second.mValues.size() || ret.second.mValues.size() == 0){
                     return end();
                 }
                 auto itr = iterator(*this, ret.second.mSelfKey, indexOf.second);
