@@ -1438,6 +1438,7 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
         _hashV.push_back({can_pen->m_hash});
     }
     for (auto _val : _hashV) {
+        exchangeValue _deleteVal;
         try {
             if(_blockHeight < config::changeExchange()) {
                 ExdbState _exdbState(*this);
@@ -1452,6 +1453,7 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
                 }
                 //uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id
+                 _deleteVal = getDeleteOrder(canOrder.m_type, canOrder.m_time, canOrder.m_price, canOrder.m_id);
                 _newExdbState.remove_exchangeOrder(canOrder.m_type, canOrder.m_time, canOrder.m_price, canOrder.m_id);
                 //deleteCancelOrder(_val);
             }
@@ -1461,12 +1463,13 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
             BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
         }
 
-        if (val.type == order_type::buy && val.token_type == order_token_type::FUEL) {
-            subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-            addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
-        } else if (val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
-            subFBalance(val.sender, val.price_token.second);
-            addBalance(val.sender, val.price_token.second);
+        if (_deleteVal.m_pendingorderType == order_type::buy && _deleteVal.m_pendingorderTokenType == order_token_type::FUEL) {
+            subFBRC(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum * _deleteVal.m_pendingorderPrice / PRICEPRECISION);
+            addBRC(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum * _deleteVal.m_pendingorderPrice / PRICEPRECISION);
+        }
+        else if (_deleteVal.m_pendingorderType == order_type::sell && _deleteVal.m_pendingorderTokenType == order_token_type::FUEL) {    
+            subFBalance(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum);
+            addBalance(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum);
         }
     }
 }
@@ -3153,6 +3156,32 @@ void dev::brc::State::removeExchangeOrder(const dev::Address &_addr, dev::h256 _
     //  TO DO
     m_changeLog.emplace_back(Change::UpExOrder, _addr, _oldMulti);
 }
+
+exchangeValue dev::brc::State::getDeleteOrder(uint8_t _orderType, int64_t const& _time, u256 const& _price, h256 const& _hash)
+{
+    Address _orderAddress;
+    if(_orderType == (uint8_t)ex::order_type::buy)
+    {
+        _orderAddress = dev::BuyExchangeAddress;
+    }else if(_orderType == (uint8_t)ex::order_type::sell)
+    {
+        _orderAddress = dev::SellExchangeAddress;
+    }else{
+        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("order type is error")));
+    }
+
+    Account *_orderAccount = account(_orderAddress);
+    std::pair<bool, exchangeValue> _ret =  _orderAccount->exchangeBplusGet(_orderType, _hash, _price, _time, m_db);
+    if(_ret.first == true)
+    {
+        return _ret.second;
+    }else{
+        BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("need delete order is not exist")));
+    }
+    return exchangeValue();
+}
+
+
 void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price, uint8_t _type) {
     auto a = account(dev::CancelOrderAddress);
     if(!a){
