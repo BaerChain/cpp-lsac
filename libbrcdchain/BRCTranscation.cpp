@@ -513,11 +513,18 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
         }
         
         std::vector<ex::result_order> _result;
+        ex::ex_order _order = { _trxid, _from, _autoExop->m_autoExNum * PRICEPRECISION, u256(0), u256(0), _timeStamp, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price};
         try
         {
-            ExdbState _exdbState(m_state);
-            ex::ex_order _order = { _trxid, _from, _autoExop->m_autoExNum * PRICEPRECISION, u256(0), u256(0), _timeStamp, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price};
-            _result =  _exdbState.insert_operation(_order);
+            if(config::changeExchange() >= _envinfo.number())
+            {
+                ExdbState _exdbState(m_state);
+                _result =  _exdbState.insert_operation(_order);
+            }else{
+                newExdbState _newExdbState(m_state);
+                _result = _newExdbState.insert_operation(_order);
+            }
+           
         }
         catch(const std::exception& e)
         {
