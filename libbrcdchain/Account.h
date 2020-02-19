@@ -1287,44 +1287,28 @@ public:
         return m_exchangeDelete;
     }
 
-    bytes streamRLPCanorder()const {
-        RLPStream bret(m_cancelOrder.size());
-        for(auto const&v: m_cancelOrder){
-            RLPStream bs(2);
-            bs <<v.first<< v.second.streamRlp();
-            bret.append(bs.out());
-        }
-        return bret.out();
-    }
-    void populateRLPCancelOrder(bytes const& _b){
-        for(auto const& vb: RLP(_b)){
-            auto _d = vb.convert<bytes>(RLP::LaissezFaire);
-            RLP rlp(_d);
-            CancelOrder order;
-            order.m_id = rlp[0].convert<h256>(RLP::LaissezFaire);
-            order.populateRlp(rlp[1].convert<bytes>(RLP::LaissezFaire));
-            m_cancelOrder[order.m_id] = order;
-        }
-    }
     void addCancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type){
         if(!m_cancelOrder.count(_id)){
-            m_cancelOrder[_id] = {_id, _time, _price, _type};
+            m_cancelOrder[_id] = {_id, _time, _price, _type, true};
             changed();
         }
     }
     void deleteCancelOrder(h256 _id) {
-        if (m_cancelOrder.count(_id)) {
-            m_cancelOrder.erase(_id);
+        if (!m_cancelOrder.count(_id)) {
+            m_cancelOrder[_id] = {_id, 0, 0, 0, false};
             changed();
         }
     }
-    CancelOrder getCancelOrder(h256 _id) const{
-        if(m_cancelOrder.count(_id)){
-            auto ret = m_cancelOrder.find(_id);
-            return ret->second;
-        }
-        return CancelOrder();
+    CancelOrder getCancelOrder(h256 _id, OverlayDB const& _db) const;
+
+    std::map<h256, CancelOrder> const& cancelOrders() const{
+        return m_cancelOrder;
     }
+    void setCancelorder(std::map<h256, CancelOrder>const& _orders) {
+        m_cancelOrder.clear();
+        m_cancelOrder = _orders;
+    }
+
 
     void initOrder(OverlayDB const& _db)
     {
@@ -1420,12 +1404,13 @@ private:
     std::vector<h256> m_needDelete;
     //test code end
 
-
+    /// strorage to strarageDb
     std::shared_ptr<exchangeBplus> m_exchangeBplus;
     std::shared_ptr<sellOrder> m_sellOrder;
     std::shared_ptr<buyOrder> m_buyOrder;
     std::vector<h256> m_exchangeDelete;
     std::map<h256, CancelOrder>  m_cancelOrder;
+
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };
 
