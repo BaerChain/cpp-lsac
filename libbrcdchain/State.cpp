@@ -1469,7 +1469,8 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
         if (_deleteVal.m_pendingorderType == order_type::buy && _deleteVal.m_pendingorderTokenType == order_token_type::FUEL) {
             subFBRC(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum * _deleteVal.m_pendingorderPrice / PRICEPRECISION);
             addBRC(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum * _deleteVal.m_pendingorderPrice / PRICEPRECISION);
-        } else if (val.type == order_type::sell && val.token_type == order_token_type::FUEL) {
+        }
+        else if (_deleteVal.m_pendingorderType == order_type::sell && _deleteVal.m_pendingorderTokenType == order_token_type::FUEL) {    
             subFBalance(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum);
             addBalance(_deleteVal.m_from, _deleteVal.m_pendingordertokenNum);
         }
