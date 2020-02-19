@@ -234,9 +234,6 @@ Account *State::account(Address const &_addr) {
             const h256 storageByteRoot = state[20].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
         }
-        if(state.itemCount() > 21){
-            i.first->second.populateRLPCancelOrder(state[21].convert<bytes>(RLP::LaissezFaire));
-        }
     }
     return &i.first->second;
 }
@@ -3172,7 +3169,7 @@ void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
                 std::string("CancelOrder failed: not exits this order")));
     }
-    auto  _order = a->getCancelOrder(_id);
+    auto  _order = a->getCancelOrder(_id, m_db);
     if(_order.m_id == _id) {
         _order.m_isAdd = false;
         m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, _order);
@@ -3185,7 +3182,7 @@ CancelOrder dev::brc::State::getCancelOrder(dev::h256 _id) const {
         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment(
                 std::string("CancelOrder failed: not exits this order")));
     }
-    auto _order = a->getCancelOrder(_id);
+    auto _order = a->getCancelOrder(_id, m_db);
     return _order;
 }
 
@@ -3675,7 +3672,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
             else {
                 RLPStream s;
                 if(fork_blockNumber >= config::changeExchange()) {
-                    s.appendList(22);
+                    s.appendList(21);
                 }
                 else if(_block_number >= config::newChangeHeight()){
                     s.appendList(20);
@@ -3783,11 +3780,18 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                             {
                                 storageByteDB.remove(keyVal);
                             }
+                            ///cancelOrder
+                            for(auto const& item : i.second.cancelOrders()){
+                                if(item.second.m_isAdd){
+                                    storageByteDB.insert(item.first, item.second.streamRlp());
+                                }
+                                else{
+                                    storageByteDB.remove(item.first);
+                                }
+                            }
                             assert(storageByteDB.root());
                             s << storageByteDB.root();
                         }
-                        ///cancelOrder
-                        s << i.second.streamRLPCanorder();
                     }
 
                 }

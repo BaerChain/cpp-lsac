@@ -1308,22 +1308,30 @@ public:
     }
     void addCancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type){
         if(!m_cancelOrder.count(_id)){
-            m_cancelOrder[_id] = {_id, _time, _price, _type};
+            m_cancelOrder[_id] = {_id, _time, _price, _type, true};
             changed();
         }
     }
     void deleteCancelOrder(h256 _id) {
-        if (m_cancelOrder.count(_id)) {
-            m_cancelOrder.erase(_id);
+        if (!m_cancelOrder.count(_id)) {
+            m_cancelOrder[_id] = {_id, 0, 0, 0, false};
             changed();
         }
     }
-    CancelOrder getCancelOrder(h256 _id) const{
-        if(m_cancelOrder.count(_id)){
-            auto ret = m_cancelOrder.find(_id);
-            return ret->second;
-        }
-        return CancelOrder();
+    CancelOrder getCancelOrder(h256 _id, OverlayDB const& _db) const{
+        auto _bs = storageByteValue(_id, _db);
+        CancelOrder order;
+        order.populateRlp(_bs);
+        order.m_id = _id;
+        return order;
+//        if(m_cancelOrder.count(_id)){
+//            auto ret = m_cancelOrder.find(_id);
+//            return ret->second;
+//        }
+//        return CancelOrder();
+    }
+    std::map<h256, CancelOrder> const& cancelOrders() const{
+        return m_cancelOrder;
     }
 
     void initOrder(OverlayDB const& _db)
@@ -1420,12 +1428,13 @@ private:
     std::vector<h256> m_needDelete;
     //test code end
 
-
+    /// strorage to strarageDb
     std::shared_ptr<exchangeBplus> m_exchangeBplus;
     std::shared_ptr<sellOrder> m_sellOrder;
     std::shared_ptr<buyOrder> m_buyOrder;
     std::vector<h256> m_exchangeDelete;
     std::map<h256, CancelOrder>  m_cancelOrder;
+
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
 };
 
