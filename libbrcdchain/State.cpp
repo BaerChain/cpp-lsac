@@ -3071,10 +3071,10 @@ bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const&
 
     std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet((uint8_t)_type,_hash, _price, _time, m_db);
     if(_ret.first) {
-//    if(_ret.second.m_from != _sender){
-//            cwarn << "This order is not the same as the transaction sponsor account";
-//            return false;
-//    }
+    if(_ret.second.m_from != _sender){
+            cwarn << "This order is not the same as the transaction sponsor account";
+            return false;
+    }
         return true;
     }
     else
