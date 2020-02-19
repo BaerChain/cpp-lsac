@@ -2968,7 +2968,7 @@ void dev::brc::State::newAddExchangeOrder(Address const& _addr, dev::brc::ex::ex
     std::unordered_map<h256, bytes> _oldmap = _orderAccount->storageByteOverlay();
     h256 _oldroot = _orderAccount->baseByteRoot();
     _orderAccount->exchangeBplusAdd(_order, m_db);
-    addCancelOrder(_order.trxid, _order.create_time, _order.price, (uint8_t)_order.buy_type);
+    addCancelOrder(_order.trxid, _order.create_time, _order.price, (uint8_t)_order.type);
     m_changeLog.emplace_back(_orderAddress, _oldmap);
     m_changeLog.emplace_back(Change::StorageByteRoot, _orderAddress, _oldroot);
 }
@@ -3184,7 +3184,6 @@ void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price, 
         createAccount(dev::CancelOrderAddress, {0});
         a =  account(dev::CancelOrderAddress);
     }
-    CancelOrder order(_id, _time, _price, _type, true);
     m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, a->cancelOrders());
     a->addCancelOrder(_id,_time, _price, _type);
 }
