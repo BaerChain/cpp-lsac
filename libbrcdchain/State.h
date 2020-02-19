@@ -159,7 +159,7 @@ struct Change
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
     std::pair<Address, Address> mapping;
-    CancelOrder cancelOrder;
+    std::map<h256, CancelOrder> cancelOrders;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -249,9 +249,9 @@ struct Change
     {
         mapping =_map;
     }
-    Change(Kind _kind, Address const& _addr, CancelOrder const& _order) :kind(_kind), address(_addr)
+    Change(Kind _kind, Address const& _addr, std::map<h256, CancelOrder> const& _orders) :kind(_kind), address(_addr)
     {
-        cancelOrder = _order;
+        cancelOrders = _orders;
     }
 };
 

@@ -795,3 +795,19 @@ Json::Value Account::exchangeBplusSellAllGet(OverlayDB const& _db)
     //_ret["order"] = Json::Value(_root);
     //return _ret;
 }
+
+CancelOrder Account::getCancelOrder(h256 _id, OverlayDB const &_db) const{
+    auto _bs = storageByteValue(_id, _db);
+    CancelOrder order;
+    if(_bs != bytes()) {
+        try{
+            order.populateRlp(_bs);
+        }
+        catch (...){
+            cwarn << "cant not get cancelOrder";
+            return order;
+        }
+        order.m_id = _id;
+    }
+    return order;
+}

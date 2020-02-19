@@ -2250,13 +2250,7 @@ void State::rollback(size_t _savepoint) {
                 account.setChangeMiner(change.mapping);
                 break;
             case Change::CancelOrderEnum:
-            {
-                if(change.cancelOrder.m_isAdd){
-                    account.deleteCancelOrder(change.cancelOrder.m_id);
-                }else{
-                    account.addCancelOrder(change.cancelOrder.m_id, change.cancelOrder.m_time, change.cancelOrder.m_price, change.cancelOrder.m_type);
-                }
-            }
+                account.setCancelorder(change.cancelOrders);
                 break;
             default:
                 break;
@@ -3077,8 +3071,10 @@ bool dev::brc::State::verifyExchangeOrderExits(h256 const& _hash, int64_t const&
 
     std::pair<bool, dev::brc::exchangeValue> _ret = _account->exchangeBplusGet((uint8_t)_type,_hash, _price, _time, m_db);
     if(_ret.first) {
-        if(_ret.second.m_from != _sender)
-            return false;
+//    if(_ret.second.m_from != _sender){
+//            cwarn << "This order is not the same as the transaction sponsor account";
+//            return false;
+//    }
         return true;
     }
     else
@@ -3189,7 +3185,7 @@ void dev::brc::State::addCancelOrder(dev::h256 _id, int64_t _time, u256 _price, 
         a =  account(dev::CancelOrderAddress);
     }
     CancelOrder order(_id, _time, _price, _type, true);
-    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, order);
+    m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, a->cancelOrders());
     a->addCancelOrder(_id,_time, _price, _type);
 }
 void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
@@ -3201,7 +3197,7 @@ void dev::brc::State::deleteCancelOrder(dev::h256 _id) {
     auto  _order = a->getCancelOrder(_id, m_db);
     if(_order.m_id == _id) {
         _order.m_isAdd = false;
-        m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, _order);
+        m_changeLog.emplace_back(Change::CancelOrderEnum, dev::CancelOrderAddress, a->cancelOrders());
         a->deleteCancelOrder(_id);
     }
 }
@@ -3498,42 +3494,13 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     if (!_orderAccount) {
         BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment("transferOldExData failed"));
     }
-
-//    Account *_buyAccount = account(dev::BuyExchangeAddress);
-//    Account *_sellAccount = account(dev::SellExchangeAddress);
-//    if(!_buyAccount){
-//        createAccount(dev::ExdbSystemAddress, {0});
-//        _buyAccount = account(dev::BuyExchangeAddress);
-//    }
-//    if(!_sellAccount){
-//        createAccount(dev::ExdbSystemAddress, {0});
-//        _sellAccount = account(dev::SellExchangeAddress);
-//    }
     const auto &index= _orderAccount->getExOrder().get<ex_by_trx_id>();
     auto begin = index.begin();
     while (begin != index.end() ) {
         newAddExchangeOrder(begin->sender,*begin);
-        addCancelOrder(begin->trxid, begin->create_time, begin->price, (uint8_t)begin->buy_type);
+        //addCancelOrder(begin->trxid, begin->create_time, begin->price, (uint8_t)begin->buy_type);
         cwarn << "transfer order:"<< begin->trxid;
         begin++;
-//        exchangeValue eo;
-//        eo.m_orderId = begin->trxid;
-//        eo.m_from = begin->sender;
-//        eo.m_pendingorderNum = begin->source_amount;
-//        eo.m_pendingordertokenNum = begin->token_amount;
-//        eo.m_pendingorderPrice = begin->price;
-//        eo.m_createTime = begin->create_time;
-//        eo.m_pendingorderType = begin->type;
-//        eo.m_pendingorderTokenType = begin->token_type;
-//        eo.m_pendingorderBuyType = begin->buy_type;
-//        if(eo.m_pendingorderType == ex::order_type::buy){
-//
-//        }
-//        else if(eo.m_pendingorderType == ex::order_type::sell){
-//
-//        } else{
-//            BOOST_THROW_EXCEPTION(ExdbChangeFailed() << errinfo_comment("transferOldExData failed"));
-//        }
     }
     _orderAccount->clearExOrderMulti();
 }
@@ -3790,7 +3757,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 //Add a new state field
                 {
                     if(fork_blockNumber >= config::changeExchange()){
-                        if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty())
+                        if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty() && i.second.cancelOrders().empty())
                         {
                             assert(i.second.baseByteRoot());
                             s << i.second.baseByteRoot();
