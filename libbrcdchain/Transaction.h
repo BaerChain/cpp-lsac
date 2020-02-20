@@ -152,6 +152,10 @@ namespace dev
                     rlp.append(_blockNum);
                     rlp.append(_sort);
                 }
+                
+                std::string to_string() const{
+                    return "";
+                }
             };
 
             struct testDetails
