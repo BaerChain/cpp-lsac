@@ -734,14 +734,14 @@ Json::Value Account::exchangeBplusBuyAllGet(OverlayDB const& _db)
     }
 
     buyOrder _exchangeBplus(m_exchangeBplus);
-    cerror << "allget";
+    // cerror << "allget";
     //Json::Value _ret;
     Json::Value _root;
     //_exchangeBplus.debug();
-    cerror << "allget";
+    // cerror << "allget";
     for(auto it : _exchangeBplus)
     {
-        cerror << "allget";
+        // cerror << "allget";
         Json::Value _order;
         dev::brc::exchangeValue _val = it.second;
         _order["Address"] = toJS(_val.m_from);
@@ -755,7 +755,7 @@ Json::Value Account::exchangeBplusBuyAllGet(OverlayDB const& _db)
         _order["order_token_type"] = std::get<1>(_t);
         //_order["pendingorderBuyType"] = std::get<2>(_t);
         _root.append(_order);
-        cerror << "allget";
+        // cerror << "allget";
     }
 //    cerror << "allget";
 //    _ret["order"] = Json::Value(_root);
@@ -774,7 +774,7 @@ Json::Value Account::exchangeBplusSellAllGet(OverlayDB const& _db)
     sellOrder _exchangeBplus(m_exchangeBplus);
     //Json::Value _ret;
     Json::Value _root;
-    _exchangeBplus.debug();
+    // _exchangeBplus.debug();
     for(auto it : _exchangeBplus)
     {
         Json::Value _order;
@@ -804,7 +804,7 @@ CancelOrder Account::getCancelOrder(h256 _id, OverlayDB const &_db) const{
             order.populateRlp(_bs);
         }
         catch (...){
-            cwarn << "cant not get cancelOrder";
+            // cwarn << "cant not get cancelOrder";
             return order;
         }
         order.m_id = _id;

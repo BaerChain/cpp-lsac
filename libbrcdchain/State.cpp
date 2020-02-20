@@ -126,7 +126,7 @@ void State::removeEmptyAccounts() {
     for (auto &i : m_cache)
         if (i.second.isDirty() && i.second.isEmpty())
         {
-            cerror << " remove account : " << toJS(i.first);
+            // cerror << " remove account : " << toJS(i.first);
             i.second.kill();
         }
 }
@@ -3038,7 +3038,7 @@ Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){
     Account *_account = account(orderAddress);
     if(!_account)
     {
-        cerror << "yichang: " << toJS(orderAddress);
+        // cerror << "yichang: " << toJS(orderAddress);
         return Json::Value();
     }
     Json::Value _ret;
@@ -3499,7 +3499,7 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     while (begin != index.end() ) {
         newAddExchangeOrder(begin->sender,*begin);
         //addCancelOrder(begin->trxid, begin->create_time, begin->price, (uint8_t)begin->buy_type);
-        cwarn << "transfer order:"<< begin->trxid;
+        // cwarn << "transfer order:"<< begin->trxid;
         begin++;
     }
     _orderAccount->clearExOrderMulti();

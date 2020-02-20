@@ -160,7 +160,7 @@ namespace dev {
             bool rm = false;
             std::vector<std::tuple<uint8_t, int64_t, u256, h256>> removeHashs;
             while (spend > 0 && begin != end) {
-                cwarn << "begin spend  " << spend  << " price" << price << " begin : " << (*begin).second.to_string();
+                // cwarn << "begin spend  " << spend  << " price" << price << " begin : " << (*begin).second.to_string();
                 result_order ret;
                 ex_order order = (*begin).second.to_ex_order();
                 if ((*begin).second.m_pendingordertokenNum <= spend) {
@@ -202,7 +202,7 @@ namespace dev {
             if (spend > 0) {
                 ex_order exod(od);
                 exod.token_amount = spend;
-                cwarn << "spend > 0  " << exod.format_string();
+                // cwarn << "spend > 0  " << exod.format_string();
                 add_exchangeOrder(exod);
             }
         }
@@ -446,7 +446,7 @@ namespace dev {
                     while(begin != end && size > 0)
                     {
                         auto d = (*begin).second.toExchangeOrder();
-                        cerror << d.format_string();
+                        // cerror << d.format_string();
                         ret.push_back(d);
                         begin++;
                         size--;
