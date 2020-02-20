@@ -23,8 +23,6 @@ namespace dev
     Address const SysCanlitorAddress            { "0x0000000067656e6573697343616e646964617465" };
     Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
 
-    //test code 
-    Address const TestbplusAddress              { "0x0000000062706c75737465737441646472657373"};
     //new orderAddress
     Address const BuyExchangeAddress            { "0x000042757945786368616e676541646472657373"};
     Address const SellExchangeAddress           { "0x0053656c6c45786368616e676541646472657373"};

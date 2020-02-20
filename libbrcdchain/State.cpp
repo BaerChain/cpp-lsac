@@ -3011,17 +3011,6 @@ Json::Value dev::brc::State::newExorderGet(h256 const& _hash, int64_t const& _ti
     }
 }
 
-// Json::Value dev::brc::State::newExorderAllGet()
-// {
-//     Account *_account = account(dev::TestbplusAddress);
-//     if(!_account)
-//     {
-//         BOOST_THROW_EXCEPTION(  
-//                 ExdbChangeFailed() << errinfo_comment(std::string("addExchangeOrder failed: account is not exist")));
-//     }
-//     Json::Value _ret = _account->exchangeBplusAllGet(m_db);
-//     return _ret;
-// }
 
 Json::Value dev::brc::State::newExorderGetByType( uint8_t _order_type){ 
     Address orderAddress;
@@ -3504,50 +3493,6 @@ void dev::brc::State::transferOldExData(BlockHeader const &_header){
     _orderAccount->clearExOrderMulti();
 }
 
-void dev::brc::State::testBplus(const std::vector<std::shared_ptr<transationTool::operation>> &_ops, int64_t const& _blockNum)
-{
-    Account *_account = account(dev::TestbplusAddress);
-    if(_account == NULL)
-    {
-        createAccount(dev::TestbplusAddress, {0});
-        _account = account(dev::TestbplusAddress);
-    }
-    for(auto it : _ops)
-    {
-        std::shared_ptr<transationTool::testBplus_operation> _op = std::dynamic_pointer_cast<transationTool::testBplus_operation>(it);
-        std::unordered_map<h256, bytes> _oldmap = _account->storageByteOverlay();
-        std::vector<h256> _oldv = _account->getDeleteByte();
-        if(_op->testType == transationTool::testBplusType::BplusAdd)
-        {   
-             _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
-             m_changeLog.emplace_back(dev::TestbplusAddress, _oldmap);
-        }else if(_op->testType == transationTool::testBplusType::BplusChange)
-        {
-            _account->testBplusAdd(_op->testKey, _op->testValue, _blockNum, _op->testId, m_db);
-             m_changeLog.emplace_back(dev::TestbplusAddress,_oldmap);
-        }else if(_op->testType == transationTool::testBplusType::BplusDelete)
-        {
-             _account->testBplusDelete(_op->testKey, m_db, _blockNum, _op->testId);
-             m_changeLog.emplace_back(dev::TestbplusAddress,_oldv);
-        }
-    }
-}
-
-Json::Value dev::brc::State::testBplusGet(uint32_t const& _id, int64_t const& _blockNum)
-{
-    Account *_a = account(dev::TestbplusAddress);
-    if(!_a)
-    {
-        cerror << "error";
-        return Json::Value();
-    }
-    dev::brc::transationTool::testDetails _testDetails = _a->testBplusGet(_blockNum, _id, m_db);
-    cerror << "testDetail : " << _testDetails;
-    Json::Value _ret;
-    _ret["firstData"] = _testDetails.firstData;
-    _ret["secondData"] = _testDetails.secondData;
-    return _ret;
-}
 
 dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     Account *_SuccessAccount = account(dev::ExdbSystemAddress);

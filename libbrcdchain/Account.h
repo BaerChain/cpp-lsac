@@ -43,7 +43,6 @@ namespace dev {
  * three allow a basic or contract account to be specified along with an initial balance. The fina
  * two allow either a basic or a contract account to be created with arbitrary values.
  */
-        struct testBplus;
         struct exchangeBplus;
 
 /// vote data
@@ -1258,22 +1257,6 @@ public:
         }
     }
 
-    //test code
-    void testBplusAdd(std::string const &_key, std::string const &_value, int64_t const &_blockNum,
-                      uint32_t const &_id, OverlayDB const &_db);
-
-    dev::brc::transationTool::testDetails
-    testBplusGet(int64_t const &_blockNum, uint32_t const &_id, OverlayDB const &_db);
-
-    void testBplusDelete(std::string const &_key, OverlayDB const &_db, int64_t const &_blockNum,
-                         uint32_t const &_id);
-
-    std::vector<h256> getNeedDelete() const {
-        return m_needDelete;
-    }
-    // test code end
-
-
     void exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db);
     std::pair<bool, dev::brc::exchangeValue> exchangeBplusGet(uint8_t _type,h256 const& _hash,u256 const& _pendingorderPrice, int64_t const& _createTime, OverlayDB const& _db);
     void exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _createTime, u256 const& _price, h256 const& _hash,OverlayDB const& _db);
@@ -1400,7 +1383,6 @@ private:
     BlockRecord m_block_records;
 
     //test code
-    std::shared_ptr<testBplus> testbplus;
     std::vector<h256> m_needDelete;
     //test code end
 
@@ -1412,32 +1394,6 @@ private:
     std::map<h256, CancelOrder>  m_cancelOrder;
 
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
-};
-
-struct testBplus : public databaseDelegate {
-    testBplus(Account *_a, OverlayDB const &_db) :
-            m_account(_a),
-            m_db(_db) {}
-
-    virtual DataPackage getData(DataKey const &_key)
-    {
-        // return m_account->storageByteValue(dev::sha3(_key), m_db);
-        return DataPackage();
-    }
-
-    virtual void setData(DataKey const& _key, DataPackage const& _value)
-    {
-        // m_account->setStorageByte(dev::sha3(_key), _value);
-    }
-
-    virtual void deleteKey(DataKey const& _key)
-    {
-        // m_account->deleteStorageBytes(dev::sha3(_key), m_db);
-    }
-
-private:
-    Account *m_account;
-    OverlayDB m_db;
 };
 
 struct exchangeBplus : public databaseDelegate {
