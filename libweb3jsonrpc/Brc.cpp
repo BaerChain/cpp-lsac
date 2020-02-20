@@ -905,17 +905,6 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
-Json::Value dev::rpc::Brc::brc_orderMessage(const std::string& key, const std::string& key_time, const std::string& _blockNumber){
-    try
-    {
-        return client()->testBplusGet(dev::jsToU256(key), int64_t(dev::jsToU256(key_time)), jsToBlockNum(_blockNumber));
-    }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-    }
-}
-
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;

@@ -505,65 +505,6 @@ AccountMap dev::brc::jsonToAccountMap(std::string const& _json, u256 const& _def
     return ret;
 }
 
-
-void Account::testBplusAdd(std::string const& _key, std::string const& _value, int64_t const& _blockNum, uint32_t const& _id, dev::OverlayDB const& _db)
-{
-    if(!testbplus.get())
-    {
-        testbplus = std::make_shared<testBplus>(this, _db);
-    }
-    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
-    dev::brc::transationTool::testSort _testSort;
-    dev::brc::transationTool::testDetails _testDetails;
-    _testSort._blockNum = _blockNum;
-    _testSort._sort = _id;
-    _testDetails.firstData = _key;
-    _testDetails.secondData = _value;
-
-    _bplustree.insert(_testSort, _testDetails);
-    _bplustree.update();
-}
-
-dev::brc::transationTool::testDetails Account::testBplusGet(int64_t const& _blockNum, uint32_t const& _id, const dev::OverlayDB &_db)
-{
-    if(!testbplus.get())
-    {
-        testbplus = std::make_shared<testBplus>(this, _db);
-    }
-    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
-    dev::brc::transationTool::testSort _testSort;
-    _testSort._blockNum = _blockNum;
-    _testSort._sort = _id;
-    std::pair<bool, dev::brc::transationTool::testDetails> _retPair = _bplustree.getValue(_testSort);
-    if(_retPair.first)
-    {
-        return _retPair.second;
-    }else{
-        return dev::brc::transationTool::testDetails();
-    }
-    //TODO  testbpuls.getData(key)
-}
-
-void Account::testBplusDelete(const std::string &_key, dev::OverlayDB const& _db, int64_t const& _blockNum, uint32_t const& _id)
-{
-    if(!testbplus.get())
-    {
-        testbplus = std::make_shared<testBplus>(this, _db);
-    }
-    bplusTree<dev::brc::transationTool::testSort, dev::brc::transationTool::testDetails, 4> _bplustree(testbplus);
-
-    dev::brc::transationTool::testSort _testsort;
-    _testsort._blockNum = _blockNum;
-    _testsort._sort = _id;
-
-    _bplustree.remove(_testsort);
-    _bplustree.update();
-    
-
-    //TODO  testbplus.deleteData
-}
-
-
 void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB const &_db)
 {
     if(!m_exchangeBplus.get())

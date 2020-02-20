@@ -422,12 +422,6 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
                 }
                 break;
-                case transationTool::testBplus:
-                {
-                    transationTool::testBplus_operation _test_op = transationTool::testBplus_operation(val);
-                    m_batch_params._operation.push_back(std::make_shared<transationTool::testBplus_operation>(_test_op));
-                    break;
-                }
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
@@ -615,12 +609,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             case transationTool::op_type::transferAutoEx:
             {
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), m_envInfo.number(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
-                break;
-            }
-            case transationTool::op_type::testBplus:
-            {
-                cerror << "test";
-                m_s.testBplus(m_batch_params._operation, m_envInfo.number());
                 break;
             }
             default:
