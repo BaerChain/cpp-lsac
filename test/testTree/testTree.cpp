@@ -301,25 +301,25 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
             dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            // bp.insert( {0, 0}, "0#1");
+            bp.insert( {0, 0}, "0#1");
             bp.insert( {1, 0}, "0#2");
-            // bp.insert( {1, 1}, "0#3");
-            // bp.insert( {2, 0}, "0#4");
-            // bp.insert( {2, 3}, "0#5");
+            bp.insert( {1, 1}, "0#3");
+            bp.insert( {2, 0}, "0#4");
+            bp.insert( {2, 3}, "0#5");
             // bp.insert( {3, 0}, "0#6");
       
-            // bp.debug();
+            bp.debug();
             
-            auto itr = bp.lower_bound(test_op{1, 0});
-            // auto itr = bp.begin();
-            auto itr_end = bp.upper_bound(test_op{999999, 9999});
-            // std::cout << "begin key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
-            // std::cout << "end key " << (*itr_end).first.to_string() << "  value: " << (*itr_end).second << std::endl;
-            while (itr != itr_end)
-            {
-                std::cout << "key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
-                itr++;
-            }
+            // auto itr = bp.lower_bound(test_op{1, 0});
+            // // auto itr = bp.begin();
+            // auto itr_end = bp.upper_bound(test_op{999999, 9999});
+            // // std::cout << "begin key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
+            // // std::cout << "end key " << (*itr_end).first.to_string() << "  value: " << (*itr_end).second << std::endl;
+            // while (itr != itr_end)
+            // {
+            //     std::cout << "key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
+            //     itr++;
+            // }
             
 
 

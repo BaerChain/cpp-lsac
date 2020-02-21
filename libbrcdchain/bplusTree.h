@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime: 2020-02-18 14:47:09
+ * @LastEditTime: 2020-02-21 10:33:27
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -479,8 +479,11 @@ namespace dev {
                     return end();
                 }
                 auto t = getData(rootKey, mLeafs);
-                if(t.second.mValues.size() == 0){
-                    return end();
+                if(t.second.mValues.size() == 0 && !t.first){
+                    auto t2 = getData(rootKey, mNodes);
+                    if(!t2.first){
+                        return end();
+                    }
                 }
                 return iterator(*this);
             }
@@ -533,6 +536,10 @@ namespace dev {
                     if (rootKey.size()) {
                         setRootKey(rootKey);
                     }
+                    auto key = mDelegate->getData("GenerateKey");
+                    if(key.size()){
+                        setGenerateKey(key);
+                    }
                 }
             }
             /// true : if key is not exits, false : this key is exits, then update value.
@@ -561,20 +568,31 @@ namespace dev {
             }
 
             void update() {
-                if (mDelegate) {
-                    for (auto &itr : mNodes) {
-                        if (!itr.first.empty()) {
-                            mDelegate->setData(itr.first, itr.second.encode());
+                try
+                {
+                    if (mDelegate) {
+                        for (auto &itr : mNodes) {
+                            if (!itr.first.empty()) {
+                                mDelegate->setData(itr.first, itr.second.encode());
+                            }
                         }
-                    }
-                    for (auto &itr : mLeafs) {
-                        if (!itr.first.empty()) {
-                            mDelegate->setData(itr.first, itr.second.encode());
+                        for (auto &itr : mLeafs) {
+                            if (!itr.first.empty()) {
+                                mDelegate->setData(itr.first, itr.second.encode());
+                            }
                         }
+                        RLPStream rlp(1);
+                        rlp << rootKey;
+                        mDelegate->setData("rootKey", rlp.out());
+                        
+                        RLPStream rlp2(1);
+                        rlp2 << (u256)mGenerateKey;
+                        mDelegate->setData("GenerateKey", rlp2.out());
                     }
-                    RLPStream rlp(1);
-                    rlp << rootKey;
-                    mDelegate->setData("rootKey", rlp.out());
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << "exception ....... bplus : " << e.what() << '\n';
                 }
             };
 
@@ -603,6 +621,11 @@ namespace dev {
             void setRootKey(const bytes &nd) {
                 RLP rlp(nd);
                 rootKey = rlp[0].convert<NodeKey>(RLP::LaissezFaire);
+            }
+
+            void setGenerateKey(const bytes &key){
+                RLP rlp(key);
+                mGenerateKey = uint64_t(rlp[0].convert<u256>(RLP::LaissezFaire));
             }
 
             
@@ -1229,7 +1252,7 @@ namespace dev {
                 return std::to_string(mGenerateKey++);
             }
 
-            ////////////////////
+            //////////////////// find bool true,  else false.
             template<typename T>
             std::pair<bool, T &> getData(const NodeKey &nk, std::map<NodeKey, T> &db) {
                 if (db.count(nk)) {
