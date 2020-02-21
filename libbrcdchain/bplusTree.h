@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime: 2020-02-21 10:33:27
+ * @LastEditTime: 2020-02-21 11:28:25
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -451,6 +451,7 @@ namespace dev {
                     }
                     auto node = mbp.getData(mLeafKey, mbp.mLeafs);
                     assert(node.first);
+                    assert(node.second.mValues.size() > 0);
                     return node.second.mValues[indexOfLeaf];
                 }
 
@@ -479,7 +480,7 @@ namespace dev {
                     return end();
                 }
                 auto t = getData(rootKey, mLeafs);
-                if(t.second.mValues.size() == 0 && !t.first){
+                if(t.second.mValues.size() == 0){
                     auto t2 = getData(rootKey, mNodes);
                     if(!t2.first){
                         return end();
@@ -568,32 +569,27 @@ namespace dev {
             }
 
             void update() {
-                try
-                {
-                    if (mDelegate) {
-                        for (auto &itr : mNodes) {
-                            if (!itr.first.empty()) {
-                                mDelegate->setData(itr.first, itr.second.encode());
-                            }
+            
+                if (mDelegate) {
+                    for (auto &itr : mNodes) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
                         }
-                        for (auto &itr : mLeafs) {
-                            if (!itr.first.empty()) {
-                                mDelegate->setData(itr.first, itr.second.encode());
-                            }
-                        }
-                        RLPStream rlp(1);
-                        rlp << rootKey;
-                        mDelegate->setData("rootKey", rlp.out());
-                        
-                        RLPStream rlp2(1);
-                        rlp2 << (u256)mGenerateKey;
-                        mDelegate->setData("GenerateKey", rlp2.out());
                     }
+                    for (auto &itr : mLeafs) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
+                        }
+                    }
+                    RLPStream rlp(1);
+                    rlp << rootKey;
+                    mDelegate->setData("rootKey", rlp.out());
+                    
+                    RLPStream rlp2(1);
+                    rlp2 << (u256)mGenerateKey;
+                    mDelegate->setData("GenerateKey", rlp2.out());
                 }
-                catch(const std::exception& e)
-                {
-                    std::cerr << "exception ....... bplus : " << e.what() << '\n';
-                }
+                
             };
 
             /*
