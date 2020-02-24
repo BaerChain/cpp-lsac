@@ -42,11 +42,11 @@ namespace dev{
                     return true;
                 }else if(m_exchangePrice == _e.m_exchangePrice)
                 {
-                    if(m_exchangeTime > _e.m_exchangeTime){
+                    if(m_exchangeTime < _e.m_exchangeTime){
                         return true;
                     }
                     else if(m_exchangeTime == _e.m_exchangeTime){
-                        return m_exchangeHash > _e.m_exchangeHash;
+                        return m_exchangeHash < _e.m_exchangeHash;
                     }
                 }
                 return false;

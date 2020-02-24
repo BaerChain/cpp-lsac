@@ -20,6 +20,7 @@
 #include <leveldb/db.h>
 #include <libdevcore/dbfwd.h>
 #include <libdevcore/Log.h>
+#include <thread>
 
 namespace bbfs = boost::filesystem;
 
@@ -168,8 +169,8 @@ public:
     //     return t1 < t2;
     // }
 
-    unsigned int first;
-    unsigned int second;
+    int32_t first;
+    int32_t second;
 };
     
 
@@ -298,17 +299,50 @@ BOOST_AUTO_TEST_SUITE(testTree)
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
            
-
+            auto rand_number = [](int32_t min, int32_t max, size_t size) ->  std::vector<int32_t> {
+                 auto seed = time(0);
+                 srand(seed);
+                 std::vector<int32_t> data;
+                 for(size_t i = 0; i < size; i++){
+                    int32_t ret = rand();
+                    ret %= (max - min);
+                    ret += min;
+                    data.push_back(ret);
+                 }
+                
+                 return data;
+            };
+            
             dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            bp.insert( {0, 0}, "0#1");
-            bp.insert( {1, 0}, "0#2");
-            bp.insert( {1, 1}, "0#3");
-            bp.insert( {2, 0}, "0#4");
-            bp.insert( {2, 3}, "0#5");
-            // bp.insert( {3, 0}, "0#6");
+            // bp.insert( {0, 0}, "0#1");
+            // bp.insert( {1, 0}, "0#2");
+            // bp.insert( {1, 1}, "0#3");
+            // bp.insert( {2, 0}, "0#4");
+            // bp.insert( {2, 3}, "0#5");
+            // // bp.insert( {3, 0}, "0#6");
       
+            // bp.debug();
+            // for(size_t i =0 ; i < 20; i++){
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            //     std::cout << rand_number(1, 100) << std::endl;
+            // }
+            auto data = rand_number(1, 1001, 2000);
+           
+            for(int32_t i = 0; i < data.size(); i = i + 2){
+                bp.insert( {data[i], data[i + 1]}, "11");
+            }
+            std::cout << "sleep 1s" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+              bp.debug();
+            auto data2 = rand_number(1, 1001, 2000);
+            for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
+                bp.remove({data[i], data[i + 1]});
+            }
             bp.debug();
+            
+
+
             
             // auto itr = bp.lower_bound(test_op{1, 0});
             // // auto itr = bp.begin();
