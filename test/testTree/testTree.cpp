@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
            
             auto rand_number = [](int32_t min, int32_t max, size_t size) ->  std::vector<int32_t> {
                  auto seed = time(0);
-                 srand(seed);
+                 srand(10);
                  std::vector<int32_t> data;
                  for(size_t i = 0; i < size; i++){
                     int32_t ret = rand();
@@ -327,17 +327,22 @@ BOOST_AUTO_TEST_SUITE(testTree)
             //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             //     std::cout << rand_number(1, 100) << std::endl;
             // }
-            auto data = rand_number(1, 1001, 2000);
+            auto data = rand_number(1, 100, 100);
            
             for(int32_t i = 0; i < data.size(); i = i + 2){
                 bp.insert( {data[i], data[i + 1]}, "11");
             }
             std::cout << "sleep 1s" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-              bp.debug();
-            auto data2 = rand_number(1, 1001, 2000);
+            bp.debug();
+            auto data2 = rand_number(1, 100, 100);
+        
             for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
+                // if(i == 64){
+                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
+                // }
                 bp.remove({data[i], data[i + 1]});
+                bp.debug();
             }
             bp.debug();
             
