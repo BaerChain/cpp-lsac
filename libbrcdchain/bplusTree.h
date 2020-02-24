@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2019-12-12 17:38:27
- * @LastEditTime: 2020-02-21 11:28:25
+ * @LastEditTime: 2020-02-24 20:22:21
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /cpp-lsac/libbrcdchain/bplusTree.h
@@ -1014,19 +1014,23 @@ namespace dev {
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 cwarn << "parent.mKeys.size( "  << parent.mKeys.size()  << " pk:"<< parent.mSelfKey;
                 if (parent.mKeys.size() == 1) {
-                    from.mKeys.push_back(parent.mKeys.back());
-                    for (size_t i = 0; i < to.mKeys.size(); i++) {
-                        from.mKeys.push_back(to.mKeys[i]);
+                    // cwarn << "debug ....";
+                    // debug();
+
+                    to.mKeys.push_back(parent.mKeys.back());
+                    for (size_t i = 0; i < from.mKeys.size(); i++) {
+                        to.mKeys.push_back(from.mKeys[i]);
                     }
-                    for (size_t i = 0; i < to.mChildrenNodes.size(); i++) {
-                        from.mChildrenNodes.push_back(to.mChildrenNodes[i]);
-                        modifyParentByNodeKey(from.mChildrenNodes.back(), from.mSelfKey);
+                    for (size_t i = 0; i < from.mChildrenNodes.size(); i++) {
+                        to.mChildrenNodes.push_back(from.mChildrenNodes[i]);
+                        modifyParentByNodeKey(from.mChildrenNodes[i], to.mSelfKey);
                     }
 
                     deleteData(mNodes, parent.mSelfKey);
-                    deleteData(mNodes, to.mSelfKey);
+                    deleteData(mNodes, from.mSelfKey);
                     from.mParentKey.clear();
                     rootKey = to.mSelfKey;
+                    
                     return false;
                 } else {
                     size_t indexTo = getIndexInParent(to.mSelfKey);
@@ -1158,7 +1162,9 @@ namespace dev {
                                 if (leftLeaf.mKeys.size() > LENGTH / 2) {
                                     moveValueFromTo(nd, leftLeaf);
                                 } else {
-                                    moveAllValueTo(nd, leftLeaf);
+                                    if (!moveAllValueTo(nd, leftLeaf)){
+                                        return NodeKey();
+                                    }
                                 }
                             } else {
                                 if (getData(parent.mChildrenNodes[indexOf + 1], mNodes).second.mKeys.size() >

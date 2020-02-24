@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
             auto data2 = rand_number(1, 100, 100);
         
             for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                // if(i == 64){
+                // if(i == 72 || i == 74){
                     std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
                 // }
                 bp.remove({data[i], data[i + 1]});
