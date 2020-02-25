@@ -846,6 +846,7 @@ namespace dev {
                             nd.mKeys.pop_back();
                             nd.mChildrenNodes.pop_back();
                         }
+                        parent.mParentKey = "";
                         rootKey = parent.mSelfKey;
                         return parent.mSelfKey;
                     } else {
@@ -875,7 +876,7 @@ namespace dev {
                     if (nd.mParentKey.empty()) {
                         return NodeKey();
                     }
-                    cwarn << "will catchValueFromBrother";
+                    cwarn << "will catchValueFromBrother " << nd.mParentKey;
                     return catchValueFromBrother(nd.mSelfKey);
                 }
 
@@ -910,7 +911,7 @@ namespace dev {
                         while (pop_size-- != 0) {
                             nd.mValues.pop_back();
                         }
-
+                        node.mParentKey = "";
                         rootKey = node.mSelfKey;
                         return node.mSelfKey;
                     } else {
@@ -993,10 +994,11 @@ namespace dev {
             }
 
             bool moveAllValueTo(leaf_type &from, leaf_type &to) {
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
+                
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
-
+                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey << "  indexFrom " << indexFrom;
                 auto &parent = getData(from.mParentKey, mNodes).second;
+                cwarn << "p " << parent.mKeys.size();
                 for (size_t i = 0; i < from.mValues.size(); i++) {
                     to.insertValue(from.mValues[i]);
                 }
@@ -1005,6 +1007,9 @@ namespace dev {
                 parent.mKeys.erase(parent.mKeys.begin() + remove_key);
                 parent.mChildrenNodes.erase(parent.mChildrenNodes.begin() + indexFrom);
                 deleteData(mLeafs, from.mSelfKey);
+
+                cwarn << "de mKeys " << parent.mKeys.size();
+                cwarn << "de mChildrenNodes " << parent.mChildrenNodes.size();
                 return true;
             }
 
@@ -1029,6 +1034,7 @@ namespace dev {
                     deleteData(mNodes, parent.mSelfKey);
                     deleteData(mNodes, from.mSelfKey);
                     from.mParentKey.clear();
+                    to.mParentKey = "";
                     rootKey = to.mSelfKey;
                     
                     return false;
@@ -1118,7 +1124,16 @@ namespace dev {
                                     moveValueFromTo(rightLeaf, nd);
                                 } else {
                                     moveAllValueTo(nd, rightLeaf);
+                                    cwarn << " root key " << rootKey << "  nd " << nd.mSelfKey;
+                                    if(parent.mKeys.size() == 0){
+                                        cwarn << "mNodes " << mNodes.size() << "  leaf " << mLeafs.size();
+                                        rightLeaf.mParentKey = "";
+                                        rootKey = rightLeaf.mSelfKey;
+                                        return rootKey;
+                                    }
                                 }
+                               
+
                             } else if (indexOf + 1 == parent.mChildrenNodes.size()) { ///from left
                                 auto &leftLeaf = getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second;
                                 if (leftLeaf.mValues.size() > LENGTH / 2) {
@@ -1140,6 +1155,7 @@ namespace dev {
                                     moveAllValueTo(nd, getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second);
                                 }
                             }
+                            cwarn << "return parent key " << parent.mSelfKey;
                             return parent.mSelfKey;
                         }
                         case NodeLeaf::node : {
@@ -1147,8 +1163,9 @@ namespace dev {
                             auto &nd = getData(nk, mNodes).second;
                             auto &parent = getData(nd.mParentKey, mNodes).second;
                             size_t indexOf = getIndexInParent(nd.mSelfKey);
-                            cwarn << "indexOF " << indexOf;
+                            cwarn << "indexOF " << indexOf  << " nd : " << nd.mSelfKey << " parent k " << parent.mKeys.size();
                             if (indexOf == 0) {               ///from right.
+                                assert(parent.mChildrenNodes.size() > 1);
                                 auto &rightNode = getData(parent.mChildrenNodes[indexOf + 1], mNodes).second;
                                 if (rightNode.mKeys.size() > LENGTH / 2) {
                                     moveValueFromTo(rightNode, nd);
