@@ -315,22 +315,46 @@ BOOST_AUTO_TEST_SUITE(testTree)
             
             dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            std::vector<int32_t> data = {5, 8, 10, 15, 16, 17, 18, 19, 20, 21, 22, 6, 9, 7};
-            
-            for(auto &itr : data){
-                bp.insert({itr, itr}, "");
+            // std::vector<int32_t> data = {5, 8, 10, 15, 16,6, 7, 9};
+            // for(auto &itr : data){
+            //     bp.insert({itr, itr}, "");
+            // }
+            // bp.debug();
+
+            auto data = rand_number(1, 200, 1000);
+           
+            for(int32_t i = 0; i < data.size(); i = i + 2){
+                bp.insert( {data[i], data[i + 1]}, "11");
+                // bp.debug();
             }
-
+            std::cout << "sleep 1s" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             bp.debug();
+            auto data2 = rand_number(1, 200, 1000);
+        
+            for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
+                // if(i == 72 || i == 74){
+                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
+                // }
+                
+                if(i == 44){
+                    int k = 0;
+                }
 
-            std::vector<int32_t> rd = {22, 15, 7};
-            for(auto &itr : rd){
-                std::cout  << "remove key ================ " << itr << std::endl;;
-                bp.remove({itr, itr});
+                bp.remove({data[i], data[i + 1]});
                 bp.debug();
-            }
+                bp.update();
 
+                if(i == 44){
+                    int k = 0;
+                    break;
+                }
+            }
             bp.debug();
+
+
+            
+
 
         } catch (const std::exception &e) {
             std::cout << "exception " << e.what() << std::endl;
