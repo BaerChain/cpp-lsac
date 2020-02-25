@@ -555,7 +555,7 @@ namespace dev {
 
 
 
-            void debug() {
+            std::string debug() {
                  std::string out;
                 if (rootKey.size() > 0)
                 {
@@ -563,9 +563,10 @@ namespace dev {
                     _debug(rootKey, 0, out);
                  
                 }
-                std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
-                std::cout << out << std::endl;
-                std::cout << "*******************root key : " << rootKey << " *******************end " << std::endl;
+                return out;
+//                std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
+//                std::cout << out << std::endl;
+//                std::cout << "*******************root key : " << rootKey << " *******************end " << std::endl;
             }
 
             void update() {

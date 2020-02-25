@@ -531,15 +531,21 @@ void Account::exchangeBplusAdd(dev::brc::ex::ex_order const& _order, OverlayDB c
     if(_order.type == ex::order_type::buy)
     {
         buyOrder _exchangeBplus(m_exchangeBplus);
-
+        cwarn << "insert Start Buy ";
+        cwarn<< _exchangeBplus.debug();
         _exchangeBplus.insert(_exchangeSort, _exchangeValue);
         _exchangeBplus.update();
+        cwarn << "insert End Buy ";
+        cwarn<< _exchangeBplus.debug();
     }else 
     {
         sellOrder _exchangeBplus(m_exchangeBplus);
-
+        cwarn << "insert Start Sell ";
+        cwarn<< _exchangeBplus.debug();
         _exchangeBplus.insert(_exchangeSort, _exchangeValue);
         _exchangeBplus.update();
+        cwarn << "insert End Sell ";
+        cwarn<< _exchangeBplus.debug();
     }
 }
 
@@ -588,13 +594,21 @@ void Account::exchangeBplusDelete(uint8_t const& _orderType,int64_t const& _time
     if((ex::order_type)_orderType == ex::order_type::buy)
     {
         buyOrder _order(m_exchangeBplus);
+        cwarn << "Remove Start Buy ";
+        cwarn<< _order.debug();
         _order.remove(_sort);
         _order.update();
+        cwarn << "Remove End Buy ";
+        cwarn<< _order.debug();
     }else
     {
         sellOrder _order(m_exchangeBplus);
+        cwarn << "Remove Start Sell ";
+        cwarn<< _order.debug();
         _order.remove(_sort);
         _order.update();
+        cwarn << "Remove End Sell ";
+        cwarn<< _order.debug();
     }
     
 }
