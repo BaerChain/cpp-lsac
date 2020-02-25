@@ -370,6 +370,13 @@ namespace dev {
             }
         };
 
+        template<>
+        struct string_debug<int32_t> {
+            std::string to_string(const int32_t &t) {
+                return std::to_string(t);
+            }
+        };
+
 
         template<typename KEY, typename VALUE, size_t LENGTH = 1024, typename Compare = std::less<KEY>>
         struct bplusTree {
@@ -382,29 +389,11 @@ namespace dev {
             typedef std::pair<bool, node_type> node_result;
             typedef std::pair<bool, leaf_type> leaf_result;
 
-
-//            static_assert(
-//                    std::is_same<key_type, std::string>::value ||
-//                    std::is_same<key_type, unsigned>::value ||
-//                    std::is_same<key_type, dev::u256>::value
-////                    || (has_member_encode<key_type>::value && has_member_decode<key_type>::value)
-//                    ,"key must std::string , u256 or has member endcode and decode"
-//            );
-
-//            static_assert(
-//                    std::is_same<value_type, std::string>::value ||
-//                    std::is_same<key_type, unsigned>::value ||
-//                    std::is_same<value_type, dev::u256>::value
-////                    ||  (has_member_encode<value_type>::value && has_member_decode<value_type>::value)
-//                    ,"value must std::string , u256 or has member endcode and decode"
-//            );
-
             enum class NodeLeaf {
                 node = 0,
                 leaf = 1,
                 null
             };
-
 
             struct iterator :  public std::iterator<
                         std::input_iterator_tag,   // iterator_category
@@ -1020,23 +1009,46 @@ namespace dev {
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 cwarn << "parent.mKeys.size( "  << parent.mKeys.size()  << " pk:"<< parent.mSelfKey;
                 if (parent.mKeys.size() == 1) {
-                    // cwarn << "debug ....";
-                    // debug();
+                    // must sort
+                    Compare com;
 
-                    to.mKeys.push_back(parent.mKeys.back());
-                    for (size_t i = 0; i < from.mKeys.size(); i++) {
-                        to.mKeys.push_back(from.mKeys[i]);
-                    }
-                    for (size_t i = 0; i < from.mChildrenNodes.size(); i++) {
-                        to.mChildrenNodes.push_back(from.mChildrenNodes[i]);
-                        modifyParentByNodeKey(from.mChildrenNodes[i], to.mSelfKey);
+                   
+                    //from 
+                    if(com(from.mKeys[0], to.mKeys[0])){
+                        from.mKeys.push_back(parent.mKeys.back());
+                        for (size_t i = 0; i < to.mKeys.size(); i++) {
+                            from.mKeys.push_back(to.mKeys[i]);
+                        }
+
+                        for (size_t i = 0; i < to.mChildrenNodes.size(); i++) {
+                            from.mChildrenNodes.push_back(to.mChildrenNodes[i]);
+                            modifyParentByNodeKey(to.mChildrenNodes[i], from.mSelfKey);
+                        }
+
+                        deleteData(mNodes, parent.mSelfKey);
+                        deleteData(mNodes, to.mSelfKey);
+
+                        to.mParentKey.clear();
+                        from.mParentKey = "";
+                        rootKey = from.mSelfKey;
+
+                    }else{
+                        to.mKeys.push_back(parent.mKeys.back());
+                        for (size_t i = 0; i < from.mKeys.size(); i++) {
+                            to.mKeys.push_back(from.mKeys[i]);
+                        }
+                        for (size_t i = 0; i < from.mChildrenNodes.size(); i++) {
+                            to.mChildrenNodes.push_back(from.mChildrenNodes[i]);
+                            modifyParentByNodeKey(from.mChildrenNodes[i], to.mSelfKey);
+                        }
+
+                        deleteData(mNodes, parent.mSelfKey);
+                        deleteData(mNodes, from.mSelfKey);
+                        from.mParentKey.clear();
+                        to.mParentKey = "";
+                        rootKey = to.mSelfKey;
                     }
 
-                    deleteData(mNodes, parent.mSelfKey);
-                    deleteData(mNodes, from.mSelfKey);
-                    from.mParentKey.clear();
-                    to.mParentKey = "";
-                    rootKey = to.mSelfKey;
                     
                     return false;
                 } else {

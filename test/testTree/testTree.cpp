@@ -315,52 +315,22 @@ BOOST_AUTO_TEST_SUITE(testTree)
             
             dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            // bp.insert( {0, 0}, "0#1");
-            // bp.insert( {1, 0}, "0#2");
-            // bp.insert( {1, 1}, "0#3");
-            // bp.insert( {2, 0}, "0#4");
-            // bp.insert( {2, 3}, "0#5");
-            // // bp.insert( {3, 0}, "0#6");
-      
-            // bp.debug();
-            // for(size_t i =0 ; i < 20; i++){
-            //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            //     std::cout << rand_number(1, 100) << std::endl;
-            // }
-            auto data = rand_number(1, 100, 100);
-           
-            for(int32_t i = 0; i < data.size(); i = i + 2){
-                bp.insert( {data[i], data[i + 1]}, "11");
+            std::vector<int32_t> data = {5, 8, 10, 15, 16, 17, 18, 19, 20, 21, 22, 6, 9, 7};
+            
+            for(auto &itr : data){
+                bp.insert({itr, itr}, "");
             }
-            std::cout << "sleep 1s" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
             bp.debug();
-            auto data2 = rand_number(1, 100, 100);
-        
-            for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                // if(i == 72 || i == 74){
-                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
-                // }
-                bp.remove({data[i], data[i + 1]});
+
+            std::vector<int32_t> rd = {22, 15, 7};
+            for(auto &itr : rd){
+                std::cout  << "remove key ================ " << itr << std::endl;;
+                bp.remove({itr, itr});
                 bp.debug();
             }
+
             bp.debug();
-            
-
-
-            
-            // auto itr = bp.lower_bound(test_op{1, 0});
-            // // auto itr = bp.begin();
-            // auto itr_end = bp.upper_bound(test_op{999999, 9999});
-            // // std::cout << "begin key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
-            // // std::cout << "end key " << (*itr_end).first.to_string() << "  value: " << (*itr_end).second << std::endl;
-            // while (itr != itr_end)
-            // {
-            //     std::cout << "key " << (*itr).first.to_string() << "  value: " << (*itr).second << std::endl;
-            //     itr++;
-            // }
-            
-
 
         } catch (const std::exception &e) {
             std::cout << "exception " << e.what() << std::endl;
