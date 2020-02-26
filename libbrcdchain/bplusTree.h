@@ -577,7 +577,7 @@ namespace dev {
                     //     cwarn << "find key " << itr.first;
                     //     assert(false);
                     // }
-                    if(itr.second.mKeys.size() < LENGTH / 2 && !itr.first.empty()){
+                    if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
@@ -743,9 +743,6 @@ namespace dev {
                     } else if (type.second == NodeLeaf::leaf) {
                         auto leaf = getData(nd, mLeafs);
                         // assert(nd == leaf.second.mParentKey);
-                        if(nd != leaf.second.mParentKey){
-                            cwarn << "nd " << nd << " leaf " << leaf.second.mParentKey;
-                        }
                         for (size_t i = 0; i < depth; i++) {
                             ret += "\t";
                         }
@@ -1006,8 +1003,14 @@ namespace dev {
 
                 } else if (indexTo > indexFrom) {
                     parent.mKeys[indexFrom] = from.mKeys.back();
-                     modifyParentByNodeKey(from.mChildrenNodes.back(), to.mSelfKey);
-                    to.insertKey_back(parent.mKeys[indexFrom], from.mChildrenNodes.back());
+                    modifyParentByNodeKey(from.mChildrenNodes.back(), to.mSelfKey);
+                    
+                    to.insertKey_back(from.mKeys.back(), from.mChildrenNodes.back());
+
+                    // //update key.
+                    assert(to.mChildrenNodes.size() > 0 );
+                    assert(to.mKeys.size() > 0 );
+                    to.mKeys[0] = getMinKey(to.mChildrenNodes[1]);
 
                     from.removeKeyValue(from.mKeys.size() - 1, from.mChildrenNodes.size() - 1);
 
@@ -1018,6 +1021,24 @@ namespace dev {
 
 
                 return false;
+            }
+
+            //@brief  get leaf min key.
+            key_type getMinKey(const NodeKey &key){
+                switch (getType(key).second)
+                {
+                case NodeLeaf::node:{
+                    auto itr = getData(key, mNodes).second;
+                    return getMinKey(itr.mChildrenNodes[0]);
+                }
+                case NodeLeaf::leaf:{
+                    auto itr = getData(key, mLeafs).second;
+                    return itr.mValues[0].first;
+                }
+                default:
+                    break;
+                }
+                return std::pair<key_type, value_type>().first;
             }
 
             bool moveValueFromTo(leaf_type &from, leaf_type &to) {
@@ -1248,7 +1269,7 @@ namespace dev {
                             } else if (indexOf + 1 == parent.mChildrenNodes.size()) { ///from left
                                 auto &leftLeaf = getData(parent.mChildrenNodes[indexOf - 1], mNodes).second;
                                 if (leftLeaf.mKeys.size() > LENGTH / 2) {
-                                    moveValueFromTo(nd, leftLeaf);
+                                    moveValueFromTo(leftLeaf, nd);
                                 } else {
                                     if (!moveAllValueTo(nd, leftLeaf)){
                                         return NodeKey();

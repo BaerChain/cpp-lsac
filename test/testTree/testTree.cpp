@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
                     std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
                 // }
                 
-                if(i == 44){
+                if(i == 264){
                     int k = 0;
                 }
 
@@ -345,10 +345,9 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 bp.debug();
                 bp.update();
 
-                if(i == 44){
-                    int k = 0;
-                    break;
-                }
+                // if(i == 264){
+                //     break;
+                // }
             }
             bp.debug();
 
