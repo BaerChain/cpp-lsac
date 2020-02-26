@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
                         int k = 0;
                     }
                     bp.remove({data[i], data[i + 1]});
-                    bp.debug();
+                    // bp.debug();
                     bp.update();
 
                     // //check
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
                     //     break;
                     // }
                 }
-                bp.debug();
+                // bp.debug();
             }
 
            
