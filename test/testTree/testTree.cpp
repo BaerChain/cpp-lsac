@@ -319,48 +319,38 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 
                  return data;
             };
-            
-            dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
-
-            // std::vector<int32_t> data = {5, 8, 10, 15, 16,6, 7, 9};
-            // for(auto &itr : data){
-            //     bp.insert({itr, itr}, "");
-            // }
-            // bp.debug();
-
-            // std::vector<int32_t> rm = {5 ,6, 7, 9, 10, 8, 15, 16};
-            // for(auto &itr : rm){
-            //     bp.remove({itr, itr});
-            //     bp.debug();
-            // }
-            // bp.debug();
-
-            auto data = rand_number(1, 200, 1000);
-            for(int32_t i = 0; i < data.size(); i = i + 2){
-                bp.insert( {data[i], data[i + 1]}, "11");
-                // bp.debug();
-            }
-            std::cout << "sleep 1s" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            bp.debug();
-            auto data2 = rand_number(1, 200, 1000);
-        
-
-            for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
-                if(i == 984){
-                    int k = 0;
+            int number = 0;
+            while(number++ < 1000){
+                dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
+                auto data = rand_number(1, 200, 1000);
+                for(int32_t i = 0; i < data.size(); i = i + 2){
+                    bp.insert( {data[i], data[i + 1]}, "11");
+                    // bp.debug();
                 }
-                bp.remove({data[i], data[i + 1]});
+                std::cout << "sleep 1s" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 bp.debug();
-                bp.update();
+                auto data2 = rand_number(1, 200, 1000);
+            
 
-                // //check
-                // if(i == 984){
-                //     break;
-                // }
+                for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
+                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
+                    if(i == 984){
+                        int k = 0;
+                    }
+                    bp.remove({data[i], data[i + 1]});
+                    bp.debug();
+                    bp.update();
+
+                    // //check
+                    // if(i == 984){
+                    //     break;
+                    // }
+                }
+                bp.debug();
             }
-            bp.debug();
+
+           
 
 
         } catch (const std::exception &e) {
