@@ -558,9 +558,7 @@ namespace dev {
                  std::string out;
                 if (rootKey.size() > 0)
                 {
-                   
                     _debug(rootKey, 0, out);
-                 
                 }
                 std::cout << "*******************root key : " << rootKey << " *******************begin " << std::endl;
                 std::cout << out << std::endl;
@@ -581,6 +579,7 @@ namespace dev {
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
+                    
                 }
 
                 for (auto &itr : mLeafs ) {
@@ -592,7 +591,7 @@ namespace dev {
                     //     assert(false);
                     // }
 
-                    if(itr.second.mValues.size() < LENGTH / 2 && !itr.first.empty()){
+                    if(itr.second.mValues.size() < LENGTH / 2 && itr.first != rootKey && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
@@ -735,6 +734,7 @@ namespace dev {
                             ret += "," + string_debug<KEY>().to_string(itr);
                         }
                         ret += "\n";
+                        considerChildren(node.second);
                         for (auto &itr : node.second.mChildrenNodes) {
                             consider(nd, itr);
                             _debug(itr, depth + 1, ret);
@@ -742,13 +742,13 @@ namespace dev {
 
                     } else if (type.second == NodeLeaf::leaf) {
                         auto leaf = getData(nd, mLeafs);
+                        assert(leaf.second.mValues.size() <= LENGTH);
                         // assert(nd == leaf.second.mParentKey);
                         for (size_t i = 0; i < depth; i++) {
                             ret += "\t";
                         }
-                        ret += "key self: " + leaf.second.mSelfKey + "<p:" + leaf.second.mParentKey + ">" + " = ";
+                        ret += "key leaf self: " + leaf.second.mSelfKey + "<p:" + leaf.second.mParentKey + ">" + " = ";
                         for (auto &itr : leaf.second.mValues) {
-                          
                             ret += "," + string_debug<key_type>().to_string(itr.first);;
                         }
                         ret += "\n";
@@ -758,6 +758,8 @@ namespace dev {
                 }
             }
 
+
+            //consifer parent.
             void consider(const NodeKey &parent, const NodeKey &chdildren){
                auto type = getType(chdildren);
                assert(type.first);
@@ -770,6 +772,17 @@ namespace dev {
                  }else{
                      assert(false);
                  }
+            }
+
+            void considerChildren(const node_type &node){
+                // assert(node.mKeys.size() <= LENGTH);
+                // auto chl_type = getType(node.mChildrenNodes[0]).second;
+                // if(chl_type == NodeLeaf::node){
+                //     assert(node.mChildrenNodes.size() <= LENGTH);
+                // }else{
+                //     assert(node.mChildrenNodes.size() <= LENGTH + 1);
+                // }
+                
             }
 
             bool __remove(const key_type &key) {
@@ -925,7 +938,7 @@ namespace dev {
                     }
                     cwarn << "will catchValueFromBrother " << nd.mParentKey;
                     return catchValueFromBrother(nd.mSelfKey);
-                }
+                } 
 
                 return NodeKey();
             }
@@ -1010,10 +1023,11 @@ namespace dev {
                     // //update key.
                     assert(to.mChildrenNodes.size() > 0 );
                     assert(to.mKeys.size() > 0 );
-                    to.mKeys[0] = getMinKey(to.mChildrenNodes[1]);
+                    for(size_t i = 1; i < to.mChildrenNodes.size(); i++){
+                        to.mKeys[i - 1] = getMinKey(to.mChildrenNodes[i]);
+                    }
 
                     from.removeKeyValue(from.mKeys.size() - 1, from.mChildrenNodes.size() - 1);
-
                    
                 } else {
                     assert(false);
@@ -1080,6 +1094,8 @@ namespace dev {
                 parent.mChildrenNodes.erase(parent.mChildrenNodes.begin() + indexFrom);
                 deleteData(mLeafs, from.mSelfKey);
 
+              
+
                 cwarn << "de mKeys " << parent.mKeys.size();
                 cwarn << "de mChildrenNodes " << parent.mChildrenNodes.size();
                 return true;
@@ -1143,7 +1159,7 @@ namespace dev {
                         modifyParentByNodeKey(from.mChildrenNodes.front(), to.mSelfKey);
 
                         //merge value from to.
-                        for (size_t i = 0; i < from.mKeys.size(); i++) {
+                        for (size_t i = 1; i < from.mKeys.size(); i++) {
                             cwarn << "from.mChildrenNodes[i] " << from.mChildrenNodes[i];
                             to.insertKey(from.mKeys[i + 1], from.mChildrenNodes[i + 1]);
                             modifyParentByNodeKey(from.mChildrenNodes[i + 1], to.mSelfKey);
@@ -1222,6 +1238,7 @@ namespace dev {
                                         cwarn << "mNodes " << mNodes.size() << "  leaf " << mLeafs.size();
                                         rightLeaf.mParentKey = "";
                                         rootKey = rightLeaf.mSelfKey;
+                                        deleteData(mNodes, parent.mSelfKey);
                                         return rootKey;
                                     }
                                 }
@@ -1232,6 +1249,15 @@ namespace dev {
                                     moveValueFromTo(leftLeaf, nd);
                                 } else {
                                     moveAllValueTo(nd, leftLeaf);
+                                    if(parent.mKeys.size() == 0){
+                                        if(parent.mSelfKey == rootKey){
+                                            leftLeaf.mParentKey = "";
+                                            rootKey = leftLeaf.mSelfKey;
+                                            deleteData(mNodes, parent.mSelfKey);
+                                        }
+                                        return rootKey;
+                                    }
+                                    
                                 }
                             } else {
                                 cwarn << "other ";

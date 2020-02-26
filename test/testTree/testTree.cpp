@@ -299,9 +299,16 @@ BOOST_AUTO_TEST_SUITE(testTree)
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
            
-            auto rand_number = [](int32_t min, int32_t max, size_t size) ->  std::vector<int32_t> {
-                 auto seed = time(0);
-                 srand(10);
+            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) ->  std::vector<int32_t> {
+                if(se == 0){
+                    auto seed = time(0);
+                    srand(seed);
+                    std::cout << "seed  " << seed << std::endl;
+                }else{
+                     srand(se);
+                }
+               
+                //  srand(10);
                  std::vector<int32_t> data;
                  for(size_t i = 0; i < size; i++){
                     int32_t ret = rand();
@@ -321,8 +328,14 @@ BOOST_AUTO_TEST_SUITE(testTree)
             // }
             // bp.debug();
 
+            // std::vector<int32_t> rm = {5 ,6, 7, 9, 10, 8, 15, 16};
+            // for(auto &itr : rm){
+            //     bp.remove({itr, itr});
+            //     bp.debug();
+            // }
+            // bp.debug();
+
             auto data = rand_number(1, 200, 1000);
-           
             for(int32_t i = 0; i < data.size(); i = i + 2){
                 bp.insert( {data[i], data[i + 1]}, "11");
                 // bp.debug();
@@ -332,27 +345,22 @@ BOOST_AUTO_TEST_SUITE(testTree)
             bp.debug();
             auto data2 = rand_number(1, 200, 1000);
         
+
             for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                // if(i == 72 || i == 74){
-                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
-                // }
-                
-                if(i == 264){
+                std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
+                if(i == 984){
                     int k = 0;
                 }
-
                 bp.remove({data[i], data[i + 1]});
                 bp.debug();
                 bp.update();
 
-                // if(i == 264){
+                // //check
+                // if(i == 984){
                 //     break;
                 // }
             }
             bp.debug();
-
-
-            
 
 
         } catch (const std::exception &e) {
