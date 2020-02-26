@@ -569,29 +569,13 @@ namespace dev {
             void update() {
 
                 for(auto &itr :mNodes){
-                    // if(!itr.first.empty()){
-                    //     continue;
-                    // }
-                    // if(itr.second.isNull() ){
-                    //     cwarn << "find key " << itr.first;
-                    //     assert(false);
-                    // }
                     if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
-                    
                 }
 
                 for (auto &itr : mLeafs ) {
-                    // if(!itr.first.empty()){
-                    //     continue;
-                    // }
-                    // if(itr.second.isNull() ){
-                    //     cwarn << "find key " << itr.first;
-                    //     assert(false);
-                    // }
-
                     if(itr.second.mValues.size() < LENGTH / 2 && itr.first != rootKey && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
                         assert(false);
@@ -599,25 +583,25 @@ namespace dev {
                 }
 
             
-                // if (mDelegate) {
-                //     for (auto &itr : mNodes) {
-                //         if (!itr.first.empty()) {
-                //             mDelegate->setData(itr.first, itr.second.encode());
-                //         }
-                //     }
-                //     for (auto &itr : mLeafs) {
-                //         if (!itr.first.empty()) {
-                //             mDelegate->setData(itr.first, itr.second.encode());
-                //         }
-                //     }
-                //     RLPStream rlp(1);
-                //     rlp << rootKey;
-                //     mDelegate->setData("rootKey", rlp.out());
+                if (mDelegate) {
+                    for (auto &itr : mNodes) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
+                        }
+                    }
+                    for (auto &itr : mLeafs) {
+                        if (!itr.first.empty()) {
+                            mDelegate->setData(itr.first, itr.second.encode());
+                        }
+                    }
+                    RLPStream rlp(1);
+                    rlp << rootKey;
+                    mDelegate->setData("rootKey", rlp.out());
                     
-                //     RLPStream rlp2(1);
-                //     rlp2 << (u256)mGenerateKey;
-                //     mDelegate->setData("GenerateKey", rlp2.out());
-                // }
+                    RLPStream rlp2(1);
+                    rlp2 << (u256)mGenerateKey;
+                    mDelegate->setData("GenerateKey", rlp2.out());
+                }
 
                 
             };
