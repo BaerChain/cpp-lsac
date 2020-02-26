@@ -299,9 +299,16 @@ BOOST_AUTO_TEST_SUITE(testTree)
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
            
-            auto rand_number = [](int32_t min, int32_t max, size_t size) ->  std::vector<int32_t> {
-                 auto seed = time(0);
-                 srand(10);
+            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) ->  std::vector<int32_t> {
+                if(se == 0){
+                    auto seed = time(0);
+                    srand(seed);
+                    std::cout << "seed  " << seed << std::endl;
+                }else{
+                     srand(se);
+                }
+               
+                //  srand(10);
                  std::vector<int32_t> data;
                  for(size_t i = 0; i < size; i++){
                     int32_t ret = rand();
@@ -312,25 +319,39 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 
                  return data;
             };
+            int number = 0;
+            while(number++ < 1000){
+                dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
+                auto data = rand_number(1, 200, 1000);
+                for(int32_t i = 0; i < data.size(); i = i + 2){
+                    bp.insert( {data[i], data[i + 1]}, "11");
+                    // bp.debug();
+                }
+                std::cout << "sleep 1s" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                bp.debug();
+                auto data2 = rand_number(1, 200, 1000);
             
-            dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
 
-            std::vector<int32_t> data = {5, 8, 10, 15, 16, 17, 18, 19, 20, 21, 22, 6, 9, 7};
-            
-            for(auto &itr : data){
-                bp.insert({itr, itr}, "");
-            }
+                for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
+                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
+                    if(i == 984){
+                        int k = 0;
+                    }
+                    bp.remove({data[i], data[i + 1]});
+                    bp.debug();
+                    bp.update();
 
-            bp.debug();
-
-            std::vector<int32_t> rd = {22, 15, 7};
-            for(auto &itr : rd){
-                std::cout  << "remove key ================ " << itr << std::endl;;
-                bp.remove({itr, itr});
+                    // //check
+                    // if(i == 984){
+                    //     break;
+                    // }
+                }
                 bp.debug();
             }
 
-            bp.debug();
+           
+
 
         } catch (const std::exception &e) {
             std::cout << "exception " << e.what() << std::endl;
