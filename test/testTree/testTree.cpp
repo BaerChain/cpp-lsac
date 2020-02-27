@@ -13,7 +13,6 @@
 
 
 #include <brc/database.hpp>
-#include <libdevcore/Address.h>
 #include <brc/exchangeOrder.hpp>
 #include <brc/exchangeOrder.hpp>
 #include <libbrcdchain/bplusTree.h>
@@ -24,6 +23,7 @@
 #include <set>
 
 namespace bbfs = boost::filesystem;
+using namespace dev;
 
 
 struct virtualDb : public dev::brc::databaseDelegate {
@@ -177,7 +177,55 @@ public:
     int32_t first;
     int32_t second;
 };
-    
+
+
+std::vector<int32_t> getRand(int32_t min, int32_t max, int32_t limit, int sed = 0){
+    if(sed == 0){
+        auto seed = time(0);
+        srand(seed);
+    }else{
+        srand(sed);
+    }
+
+    std::vector<int32_t> data;
+
+    for(size_t i = 0; i < limit;){
+        int32_t ret = rand();
+        ret %= (max - min);
+        ret += min;
+        data.push_back(ret);
+        i++;
+    }
+    return data;
+}
+
+std::vector<int32_t> get_diff_Rand(int32_t min, int32_t max, int32_t limit, int sed = 0){
+    if(sed == 0){
+        auto seed = time(0);
+        std::cout << "seed #### " << seed << std::endl;
+        srand(seed);
+    }else{
+        srand(sed);
+    }
+    assert(max - min > limit);
+
+    std::vector<int32_t> data;
+
+    for(size_t i = 0; i < limit;){
+        int32_t ret = rand();
+        ret %= (max - min);
+        ret += min;
+        if(data.end() == std::find(data.begin(), data.end(), ret)){
+            data.push_back(ret);
+            i++;
+        }
+      
+    }
+    return data;
+}
+
+
+
 
 HAS_MEMBER(books);
 
@@ -217,21 +265,6 @@ BOOST_AUTO_TEST_SUITE(testTree)
             auto db = static_cast<leveldb::DB *>(nullptr);
             auto ret = leveldb::DB::Open(op, "tdb", &db);
             std::cout << "open db : " << ret.ok() << std::endl;
-
-//            {
-//                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-//
-//                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
-//
-//                size_t end = 32;
-//                for (size_t i = 0; i < end; i++) {
-//                    bp.insert(i, std::to_string(i));
-//                }
-//
-//                bp.debug();
-//                bp.update();
-//            }
-
 
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
@@ -383,6 +416,44 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
         }
     }
+
+
+
+    BOOST_AUTO_TEST_CASE(tree_iter2) {
+        try {
+            auto rand_number1 = get_diff_Rand(1, 1000, 500);
+           
+            dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
+
+            for(auto &itr : rand_number1){
+                bp.insert({itr, itr}, "##");
+            }
+            bp.debug();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+            auto rm = get_diff_Rand(0, 500, 400);
+            for(auto &itr : rm){
+                std::cout << "remove ========== index " << itr << "  key: " << rand_number1[itr] << std::endl;
+                if(bp.remove({rand_number1[itr], rand_number1[itr]})){
+                    
+                }
+            }
+
+              bp.debug();
+
+
+                
+        } catch (const std::exception &e) {
+            std::cout << "exception " << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+
+        } catch (...) {
+
+        }
+    }
+
+
+
 
 
 BOOST_AUTO_TEST_SUITE_END()

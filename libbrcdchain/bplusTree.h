@@ -840,7 +840,6 @@ namespace dev {
                 std::pair<key_type, value_type> find;
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
-                cwarn << "remove from key " << ret.second.mSelfKey;
                 if (ret.first) {
                     return false;
                 }
@@ -981,7 +980,6 @@ namespace dev {
                     if (nd.mParentKey.empty()) {
                         return NodeKey();
                     }
-                    cwarn << "will catchValueFromBrother " << nd.mParentKey;
                     return catchValueFromBrother(nd.mSelfKey);
                 } 
 
@@ -1144,7 +1142,6 @@ namespace dev {
                 cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
-                cwarn << "parent.mKeys.size( "  << parent.mKeys.size()  << " pk:"<< parent.mSelfKey;
                 if (parent.mKeys.size() == 1) {
                     // must sort
                     Compare com;
@@ -1188,7 +1185,6 @@ namespace dev {
                     return false;
                 } else {
                     size_t indexTo = getIndexInParent(to.mSelfKey);
-                    cwarn << "indexTo " << indexTo << " indexFrom " << indexFrom << " to.mSelfKey " << to.mSelfKey << " from.mChildrenNodes " << from.mChildrenNodes.size() << "  from.mKeys.size() " << from.mKeys.size();
                     if (indexFrom > indexTo) { 
                         //catch key from parent.
                         to.insertKey(parent.mKeys[indexTo], from.mChildrenNodes.front());
@@ -1253,16 +1249,13 @@ namespace dev {
             /// \param nk
             /// \return
             NodeKey catchValueFromBrother(const NodeKey &nk) {
-                cwarn << "catchValueFromBrother " << nk;
                 auto type = getType(nk);
                 if (type.first) {
                     switch (type.second) {
                         case NodeLeaf::leaf : {
-                            cwarn << "catchValueFromBrother leaf " << nk;
                             auto &nd = getData(nk, mLeafs).second;
                             auto &parent = getData(nd.mParentKey, mNodes).second;
                             size_t indexOf = getIndexInParent(nd.mSelfKey);
-                            cwarn << "index of " << indexOf << " getIndexInParent " << nd.mParentKey << " parent " << parent.mSelfKey;
                             if (indexOf == 0) {               ///from right.
                                 assert(parent.mChildrenNodes.size() > 1);
                                 auto &rightLeaf = getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second;
@@ -1270,9 +1263,7 @@ namespace dev {
                                     moveValueFromTo(rightLeaf, nd);
                                 } else {
                                     moveAllValueTo(nd, rightLeaf);
-                                    cwarn << " root key " << rootKey << "  nd " << nd.mSelfKey;
                                     if(parent.mKeys.size() == 0){
-                                        cwarn << "mNodes " << mNodes.size() << "  leaf " << mLeafs.size();
                                         rightLeaf.mParentKey = "";
                                         rootKey = rightLeaf.mSelfKey;
                                         deleteData(mNodes, parent.mSelfKey);
@@ -1281,7 +1272,6 @@ namespace dev {
                                 }
                             } else if (indexOf + 1 == parent.mChildrenNodes.size()) { ///from left
                                 auto &leftLeaf = getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second;
-                                cwarn << "from left " << leftLeaf.mValues.size() << "  key " << leftLeaf.mSelfKey;
                                 if (leftLeaf.mValues.size() > LENGTH / 2) {
                                     moveValueFromTo(leftLeaf, nd);
                                 } else {
@@ -1297,7 +1287,6 @@ namespace dev {
                                     
                                 }
                             } else {
-                                cwarn << "other ";
                                 if (getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second.mValues.size() >
                                     LENGTH / 2) {
                                     ///from right.
@@ -1310,15 +1299,12 @@ namespace dev {
                                     moveAllValueTo(nd, getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second);
                                 }
                             }
-                            cwarn << "return parent key " << parent.mSelfKey;
                             return parent.mSelfKey;
                         }
                         case NodeLeaf::node : {
-                            cwarn << "catchValueFromBrother node";
                             auto &nd = getData(nk, mNodes).second;
                             auto &parent = getData(nd.mParentKey, mNodes).second;
                             size_t indexOf = getIndexInParent(nd.mSelfKey);
-                            cwarn << "indexOF " << indexOf  << " nd : " << nd.mSelfKey << " parent k " << parent.mKeys.size();
                             if (indexOf == 0) {               ///from right.
                                 assert(parent.mChildrenNodes.size() > 1);
                                 auto &rightNode = getData(parent.mChildrenNodes[indexOf + 1], mNodes).second;
