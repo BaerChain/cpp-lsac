@@ -551,6 +551,14 @@ namespace dev {
                 return __remove(key);
             }
 
+            bool find_key(const key_type &key){
+                std::pair<key_type, value_type> find;
+                find.first = key;
+                auto ret = findInsertPos(find.first, find.second).second;
+                auto f = ret.getIndex(find);
+                return f.first;
+            }
+
 
 
 
@@ -567,9 +575,15 @@ namespace dev {
 
             void update() {
 
+                auto usedKeys = getAllKeys();
+
                 for(auto &itr :mNodes){
                     if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
+                        assert(false);
+                    }
+                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                        cwarn << "mNodes un remove key " << itr.first << " mKeys " << itr.second.mKeys.size();
                         assert(false);
                     }
                 }
@@ -579,7 +593,13 @@ namespace dev {
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
+                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                        cwarn << "mLeafs un remove key " << itr.first  << " mValues " << itr.second.mValues.size();
+                        assert(false);
+                    }
                 }
+
+                
 
             
                 if (mDelegate) {
@@ -624,8 +644,31 @@ namespace dev {
             }
 
 
+            std::string getKeysStr(){
+                auto all_keys = getAllKeys();
+                std::string key_str;
+                key_str += "[";
+                for(auto &itr : all_keys){
+                    key_str += "," + itr;
+                }
+                key_str += "]";
+                return key_str;
+            }
+
+           
+
 
         private:
+
+            //get alll use key, 
+            //only use debug. test : remove unused key.
+            std::set<NodeKey> getAllKeys(){
+                std::set<NodeKey>  keys;
+
+                getKeys(rootKey, keys);
+
+                return keys;
+            }
 
             void setRootKey(const bytes &nd) {
                 RLP rlp(nd);
@@ -758,6 +801,30 @@ namespace dev {
                  }
             }
 
+          
+
+            void getKeys(const NodeKey &nd, std::set<NodeKey> &keys){
+                assert(!keys.count(nd));
+                keys.insert(nd);
+                auto type = getType(nd);
+                if (type.first) {
+                    if (type.second == NodeLeaf::node) {
+                        auto node = getData(nd, mNodes);
+                      
+                        for (auto &itr : node.second.mChildrenNodes) {
+                            consider(nd, itr);
+                            getKeys(itr, keys);
+                            // assert(keys.count(itr));
+                        }
+
+                    } else if (type.second == NodeLeaf::leaf) {
+                    }
+                } else {
+                    assert(false);
+                }
+            }
+
+
             void considerChildren(const node_type &node){
                 // assert(node.mKeys.size() <= LENGTH);
                 // auto chl_type = getType(node.mChildrenNodes[0]).second;
@@ -777,15 +844,9 @@ namespace dev {
                 if (ret.first) {
                     return false;
                 }
-
                 auto remove_ret =  ret.second.removeValue(key);
-                if(!remove_ret){
-                    cwarn << "remove data  error.";
-                }
                 checkFormat(ret.second.mSelfKey);
-
-
-                return true;
+                return remove_ret;
             }
 
             bool __insert(const key_type &key, const value_type &value) {
@@ -977,7 +1038,6 @@ namespace dev {
                     if (nd.mParentKey.empty()) {
                         return NodeKey();
                     }
-                    cwarn << "will  checkFormatLeaf  catchValueFromBrother";
                     return catchValueFromBrother(nd.mSelfKey);
                 }
 
@@ -1077,11 +1137,6 @@ namespace dev {
                 parent.mKeys.erase(parent.mKeys.begin() + remove_key);
                 parent.mChildrenNodes.erase(parent.mChildrenNodes.begin() + indexFrom);
                 deleteData(mLeafs, from.mSelfKey);
-
-              
-
-                cwarn << "de mKeys " << parent.mKeys.size();
-                cwarn << "de mChildrenNodes " << parent.mChildrenNodes.size();
                 return true;
             }
 
@@ -1138,14 +1193,12 @@ namespace dev {
                         //catch key from parent.
                         to.insertKey(parent.mKeys[indexTo], from.mChildrenNodes.front());
 
-                        cwarn << "to.mChildrenNodes.front() " << from.mChildrenNodes.front();
                         ///modify parent .
                         modifyParentByNodeKey(from.mChildrenNodes.front(), to.mSelfKey);
 
                         //merge value from to.
-                        for (size_t i = 1; i < from.mKeys.size(); i++) {
-                            cwarn << "from.mChildrenNodes[i] " << from.mChildrenNodes[i];
-                            to.insertKey(from.mKeys[i + 1], from.mChildrenNodes[i + 1]);
+                        for (size_t i = 0; i < from.mKeys.size(); i++) {
+                            to.insertKey(from.mKeys[i], from.mChildrenNodes[i + 1]);
                             modifyParentByNodeKey(from.mChildrenNodes[i + 1], to.mSelfKey);
                         }
                         //remove parent key and child.
@@ -1413,6 +1466,7 @@ namespace dev {
 
             template<typename T>
             bool deleteData(std::map<NodeKey, T> &db, const NodeKey &nd) {
+                cwarn << "remove key " << nd <<   " db.size " << db.size();
                 db.erase(nd);
                 return true;
             }

@@ -21,6 +21,7 @@
 #include <libdevcore/dbfwd.h>
 #include <libdevcore/Log.h>
 #include <thread>
+#include <set>
 
 namespace bbfs = boost::filesystem;
 
@@ -148,6 +149,10 @@ public:
             return second < t1.second;
         }
         return false;
+    }
+
+    bool operator == (const test_op &t1) const {
+        return first == t1.first && second == t1.second;
     }
 
     void encode(dev::RLPStream &rlp) const
@@ -299,7 +304,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
            
-            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) ->  std::vector<int32_t> {
+            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) -> std::set<std::pair<int32_t, int32_t>> {
                 if(se == 0){
                     auto seed = time(0);
                     srand(seed);
@@ -309,50 +314,67 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 }
                
                 //  srand(10);
-                 std::vector<int32_t> data;
-                 for(size_t i = 0; i < size; i++){
+                 std::set<std::pair<int32_t, int32_t>> data;
+                 for(size_t i = 0; i < size;){
                     int32_t ret = rand();
                     ret %= (max - min);
                     ret += min;
-                    data.push_back(ret);
+
+                    int32_t ret1 = rand();
+                    ret1 %= (max - min);
+                    ret1 += min;
+
+                    if(!data.count({ret, ret1})){
+                        i++;
+                        data.insert({ret, ret1});
+                    }
+                   
                  }
                 
                  return data;
             };
             int number = 0;
-            while(number++ < 1000){
                 dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
                 auto data = rand_number(1, 200, 1000);
-                for(int32_t i = 0; i < data.size(); i = i + 2){
-                    bp.insert( {data[i], data[i + 1]}, "11");
-                    // bp.debug();
+
+                for(auto &itr : data){
+                     bp.insert( {itr.first, itr.second}, "11");
                 }
+
                 std::cout << "sleep 1s" << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 bp.debug();
+
+                std::cout << bp.getKeysStr() << std::endl;
+
+                size_t i = 0;
+
                 auto data2 = rand_number(1, 200, 1000);
-            
 
-                for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
-                    if(i == 984){
-                        int k = 0;
+                for(auto &itr : data2){
+                    if(i == 172){
+                        int ww = 0;
                     }
-                    bp.remove({data[i], data[i + 1]});
-                    // bp.debug();
-                    bp.update();
+                    std::cout << "remove ======================== " << i << " data1: " << itr.first << "  data:" << itr.second << std::endl;
+                    if(bp.remove( {itr.first, itr.second})){
+                        data.erase({itr.first, itr.second});
 
-                    // //check
-                    // if(i == 984){
-                    //     break;
-                    // }
+                        // bp.debug();
+                        bp.update();
+                       
+
+                        //find key exits
+                        for(auto &it : data){ 
+                            if(!bp.find_key({it.first, it.second})){
+                                std::cout << "cant find key " <<  i << " data " << it.first << "," << it.second << std::endl;
+                                assert(false);
+                            }
+                        }
+                    }
+                    i++;
                 }
-                // bp.debug();
-            }
-
-           
-
-
+                bp.debug();
+                
         } catch (const std::exception &e) {
             std::cout << "exception " << e.what() << std::endl;
         } catch (const boost::exception &e) {
