@@ -1098,7 +1098,6 @@ namespace dev {
             }
 
             bool moveValueFromTo(leaf_type &from, leaf_type &to) {
-                cwarn << "moveValueFromTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 assert(!from.isNull() && !to.isNull() && from.mParentKey == to.mParentKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
@@ -1124,7 +1123,6 @@ namespace dev {
             bool moveAllValueTo(leaf_type &from, leaf_type &to) {
                 
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey << "  indexFrom " << indexFrom;
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 cwarn << "p " << parent.mKeys.size();
                 for (size_t i = 0; i < from.mValues.size(); i++) {
@@ -1139,7 +1137,6 @@ namespace dev {
             }
 
             bool moveAllValueTo(node_type &from, node_type &to) {
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 if (parent.mKeys.size() == 1) {
@@ -1452,7 +1449,6 @@ namespace dev {
 
             template<typename T>
             bool deleteData(std::map<NodeKey, T> &db, const NodeKey &nd) {
-                cwarn << "remove key " << nd <<   " db.size " << db.size();
                 db.erase(nd);
                 return true;
             }
