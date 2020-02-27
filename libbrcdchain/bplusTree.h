@@ -1044,7 +1044,6 @@ namespace dev {
 
 
             bool moveValueFromTo(node_type &from, node_type &to) {
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 assert(!from.isNull() && !to.isNull() && from.mParentKey == to.mParentKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
@@ -1124,7 +1123,6 @@ namespace dev {
                 
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
-                cwarn << "p " << parent.mKeys.size();
                 for (size_t i = 0; i < from.mValues.size(); i++) {
                     to.insertValue(from.mValues[i]);
                 }

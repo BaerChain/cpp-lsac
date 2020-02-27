@@ -229,13 +229,6 @@ std::vector<int32_t> get_diff_Rand(int32_t min, int32_t max, int32_t limit, int 
 }
 
 
-
-
-HAS_MEMBER(books);
-
-HAS_MEMBER(detailbook);
-
-
 BOOST_AUTO_TEST_SUITE(testTree)
 
     BOOST_AUTO_TEST_CASE(tree_test1) {
@@ -425,6 +418,9 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
     BOOST_AUTO_TEST_CASE(tree_iter2) {
         try {
+            int32_t num = 0;
+            while(num++ < 1000){
+            std::cout << "begin =============  " <<  num << "===== \n";
             auto rand_number1 = get_diff_Rand(1, 1000, 500);
 
             std::set<int32_t> ex_data;
@@ -436,13 +432,13 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 bp.insert({itr, itr}, "##");
                 ex_data.insert(itr);
             }
-            bp.debug();
+            // bp.debug();
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
             auto rm = get_diff_Rand(0, 500, 400);
 
             for(auto &itr : rm){
-                std::cout << "remove ========== index " << itr << "  key: " << rand_number1[itr] << std::endl;
+                // std::cout << "remove ========== index " << itr << "  key: " << rand_number1[itr] << std::endl;
                 if(bp.remove({rand_number1[itr], rand_number1[itr]})){
                     bp.update();
                     ex_data.erase(rand_number1[itr]);
@@ -460,8 +456,9 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 }
             }
 
-            bp.debug();
-
+            // bp.debug();
+        
+            }
 
                 
         } catch (const std::exception &e) {
