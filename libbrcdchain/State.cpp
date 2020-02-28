@@ -2314,10 +2314,12 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
+        int64_t _time = utcTimeMilliSec();
         _e.initialize(_t);
 
         if (!_e.execute())
             _e.go(_onOp);
+        cwarn << "finall one stransaction use:"<< utcTimeMilliSec() - _time;
         return _e.finalize();
     }
     catch (Exception const &) {
