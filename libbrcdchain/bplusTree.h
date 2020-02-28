@@ -551,6 +551,14 @@ namespace dev {
                 return __remove(key);
             }
 
+            bool find_key(const key_type &key){
+                std::pair<key_type, value_type> find;
+                find.first = key;
+                auto ret = findInsertPos(find.first, find.second).second;
+                auto f = ret.getIndex(find);
+                return f.first;
+            }
+
 
 
 
@@ -568,9 +576,15 @@ namespace dev {
 
             void update() {
 
+                auto usedKeys = getAllKeys();
+
                 for(auto &itr :mNodes){
                     if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
                         cwarn << "find key " << itr.first;
+                        assert(false);
+                    }
+                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                        cwarn << "mNodes un remove key " << itr.first << " mKeys " << itr.second.mKeys.size();
                         assert(false);
                     }
                 }
@@ -580,7 +594,13 @@ namespace dev {
                         cwarn << "find key " << itr.first;
                         assert(false);
                     }
+                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                        cwarn << "mLeafs un remove key " << itr.first  << " mValues " << itr.second.mValues.size();
+                        assert(false);
+                    }
                 }
+
+                
 
             
                 if (mDelegate) {
@@ -625,8 +645,31 @@ namespace dev {
             }
 
 
+            std::string getKeysStr(){
+                auto all_keys = getAllKeys();
+                std::string key_str;
+                key_str += "[";
+                for(auto &itr : all_keys){
+                    key_str += "," + itr;
+                }
+                key_str += "]";
+                return key_str;
+            }
+
+           
+
 
         private:
+
+            //get alll use key, 
+            //only use debug. test : remove unused key.
+            std::set<NodeKey> getAllKeys(){
+                std::set<NodeKey>  keys;
+
+                getKeys(rootKey, keys);
+
+                return keys;
+            }
 
             void setRootKey(const bytes &nd) {
                 RLP rlp(nd);
@@ -759,6 +802,30 @@ namespace dev {
                  }
             }
 
+          
+
+            void getKeys(const NodeKey &nd, std::set<NodeKey> &keys){
+                assert(!keys.count(nd));
+                keys.insert(nd);
+                auto type = getType(nd);
+                if (type.first) {
+                    if (type.second == NodeLeaf::node) {
+                        auto node = getData(nd, mNodes);
+                      
+                        for (auto &itr : node.second.mChildrenNodes) {
+                            consider(nd, itr);
+                            getKeys(itr, keys);
+                            // assert(keys.count(itr));
+                        }
+
+                    } else if (type.second == NodeLeaf::leaf) {
+                    }
+                } else {
+                    assert(false);
+                }
+            }
+
+
             void considerChildren(const node_type &node){
                 // assert(node.mKeys.size() <= LENGTH);
                 // auto chl_type = getType(node.mChildrenNodes[0]).second;
@@ -774,19 +841,12 @@ namespace dev {
                 std::pair<key_type, value_type> find;
                 find.first = key;
                 auto ret = findInsertPos(find.first, find.second);
-                cwarn << "remove from key " << ret.second.mSelfKey;
                 if (ret.first) {
                     return false;
                 }
-
                 auto remove_ret =  ret.second.removeValue(key);
-                if(!remove_ret){
-                    cwarn << "remove data  error.";
-                }
                 checkFormat(ret.second.mSelfKey);
-
-
-                return true;
+                return remove_ret;
             }
 
             bool __insert(const key_type &key, const value_type &value) {
@@ -921,7 +981,6 @@ namespace dev {
                     if (nd.mParentKey.empty()) {
                         return NodeKey();
                     }
-                    cwarn << "will catchValueFromBrother " << nd.mParentKey;
                     return catchValueFromBrother(nd.mSelfKey);
                 } 
 
@@ -978,7 +1037,6 @@ namespace dev {
                     if (nd.mParentKey.empty()) {
                         return NodeKey();
                     }
-                    cwarn << "will  checkFormatLeaf  catchValueFromBrother";
                     return catchValueFromBrother(nd.mSelfKey);
                 }
 
@@ -987,7 +1045,6 @@ namespace dev {
 
 
             bool moveValueFromTo(node_type &from, node_type &to) {
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 assert(!from.isNull() && !to.isNull() && from.mParentKey == to.mParentKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
@@ -1041,7 +1098,6 @@ namespace dev {
             }
 
             bool moveValueFromTo(leaf_type &from, leaf_type &to) {
-                cwarn << "moveValueFromTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 assert(!from.isNull() && !to.isNull() && from.mParentKey == to.mParentKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
@@ -1067,9 +1123,7 @@ namespace dev {
             bool moveAllValueTo(leaf_type &from, leaf_type &to) {
                 
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey << "  indexFrom " << indexFrom;
                 auto &parent = getData(from.mParentKey, mNodes).second;
-                cwarn << "p " << parent.mKeys.size();
                 for (size_t i = 0; i < from.mValues.size(); i++) {
                     to.insertValue(from.mValues[i]);
                 }
@@ -1078,19 +1132,12 @@ namespace dev {
                 parent.mKeys.erase(parent.mKeys.begin() + remove_key);
                 parent.mChildrenNodes.erase(parent.mChildrenNodes.begin() + indexFrom);
                 deleteData(mLeafs, from.mSelfKey);
-
-              
-
-                cwarn << "de mKeys " << parent.mKeys.size();
-                cwarn << "de mChildrenNodes " << parent.mChildrenNodes.size();
                 return true;
             }
 
             bool moveAllValueTo(node_type &from, node_type &to) {
-                cwarn << "moveAllValueTo " << from.mSelfKey << " to: " << to.mSelfKey;
                 size_t indexFrom = getIndexInParent(from.mSelfKey);
                 auto &parent = getData(from.mParentKey, mNodes).second;
-                cwarn << "parent.mKeys.size( "  << parent.mKeys.size()  << " pk:"<< parent.mSelfKey;
                 if (parent.mKeys.size() == 1) {
                     // must sort
                     Compare com;
@@ -1134,19 +1181,16 @@ namespace dev {
                     return false;
                 } else {
                     size_t indexTo = getIndexInParent(to.mSelfKey);
-                    cwarn << "indexTo " << indexTo << " indexFrom " << indexFrom << " to.mSelfKey " << to.mSelfKey << " from.mChildrenNodes " << from.mChildrenNodes.size() << "  from.mKeys.size() " << from.mKeys.size();
                     if (indexFrom > indexTo) { 
                         //catch key from parent.
                         to.insertKey(parent.mKeys[indexTo], from.mChildrenNodes.front());
 
-                        cwarn << "to.mChildrenNodes.front() " << from.mChildrenNodes.front();
                         ///modify parent .
                         modifyParentByNodeKey(from.mChildrenNodes.front(), to.mSelfKey);
 
                         //merge value from to.
-                        for (size_t i = 1; i < from.mKeys.size(); i++) {
-                            cwarn << "from.mChildrenNodes[i] " << from.mChildrenNodes[i];
-                            to.insertKey(from.mKeys[i + 1], from.mChildrenNodes[i + 1]);
+                        for (size_t i = 0; i < from.mKeys.size(); i++) {
+                            to.insertKey(from.mKeys[i], from.mChildrenNodes[i + 1]);
                             modifyParentByNodeKey(from.mChildrenNodes[i + 1], to.mSelfKey);
                         }
                         //remove parent key and child.
@@ -1201,16 +1245,13 @@ namespace dev {
             /// \param nk
             /// \return
             NodeKey catchValueFromBrother(const NodeKey &nk) {
-                cwarn << "catchValueFromBrother " << nk;
                 auto type = getType(nk);
                 if (type.first) {
                     switch (type.second) {
                         case NodeLeaf::leaf : {
-                            cwarn << "catchValueFromBrother leaf " << nk;
                             auto &nd = getData(nk, mLeafs).second;
                             auto &parent = getData(nd.mParentKey, mNodes).second;
                             size_t indexOf = getIndexInParent(nd.mSelfKey);
-                            cwarn << "index of " << indexOf << " getIndexInParent " << nd.mParentKey << " parent " << parent.mSelfKey;
                             if (indexOf == 0) {               ///from right.
                                 assert(parent.mChildrenNodes.size() > 1);
                                 auto &rightLeaf = getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second;
@@ -1218,9 +1259,7 @@ namespace dev {
                                     moveValueFromTo(rightLeaf, nd);
                                 } else {
                                     moveAllValueTo(nd, rightLeaf);
-                                    cwarn << " root key " << rootKey << "  nd " << nd.mSelfKey;
                                     if(parent.mKeys.size() == 0){
-                                        cwarn << "mNodes " << mNodes.size() << "  leaf " << mLeafs.size();
                                         rightLeaf.mParentKey = "";
                                         rootKey = rightLeaf.mSelfKey;
                                         deleteData(mNodes, parent.mSelfKey);
@@ -1229,7 +1268,6 @@ namespace dev {
                                 }
                             } else if (indexOf + 1 == parent.mChildrenNodes.size()) { ///from left
                                 auto &leftLeaf = getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second;
-                                cwarn << "from left " << leftLeaf.mValues.size() << "  key " << leftLeaf.mSelfKey;
                                 if (leftLeaf.mValues.size() > LENGTH / 2) {
                                     moveValueFromTo(leftLeaf, nd);
                                 } else {
@@ -1245,7 +1283,6 @@ namespace dev {
                                     
                                 }
                             } else {
-                                cwarn << "other ";
                                 if (getData(parent.mChildrenNodes[indexOf + 1], mLeafs).second.mValues.size() >
                                     LENGTH / 2) {
                                     ///from right.
@@ -1258,15 +1295,12 @@ namespace dev {
                                     moveAllValueTo(nd, getData(parent.mChildrenNodes[indexOf - 1], mLeafs).second);
                                 }
                             }
-                            cwarn << "return parent key " << parent.mSelfKey;
                             return parent.mSelfKey;
                         }
                         case NodeLeaf::node : {
-                            cwarn << "catchValueFromBrother node";
                             auto &nd = getData(nk, mNodes).second;
                             auto &parent = getData(nd.mParentKey, mNodes).second;
                             size_t indexOf = getIndexInParent(nd.mSelfKey);
-                            cwarn << "indexOF " << indexOf  << " nd : " << nd.mSelfKey << " parent k " << parent.mKeys.size();
                             if (indexOf == 0) {               ///from right.
                                 assert(parent.mChildrenNodes.size() > 1);
                                 auto &rightNode = getData(parent.mChildrenNodes[indexOf + 1], mNodes).second;

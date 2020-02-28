@@ -13,7 +13,6 @@
 
 
 #include <brc/database.hpp>
-#include <libdevcore/Address.h>
 #include <brc/exchangeOrder.hpp>
 #include <brc/exchangeOrder.hpp>
 #include <libbrcdchain/bplusTree.h>
@@ -21,8 +20,10 @@
 #include <libdevcore/dbfwd.h>
 #include <libdevcore/Log.h>
 #include <thread>
+#include <set>
 
 namespace bbfs = boost::filesystem;
+using namespace dev;
 
 
 struct virtualDb : public dev::brc::databaseDelegate {
@@ -150,6 +151,14 @@ public:
         return false;
     }
 
+    bool operator == (const test_op &t1) const {
+        return first == t1.first && second == t1.second;
+    }
+
+     bool operator != (const test_op &t1) const {
+        return first != t1.first || second != t1.second;
+    }
+
     void encode(dev::RLPStream &rlp) const
     {
 
@@ -172,11 +181,52 @@ public:
     int32_t first;
     int32_t second;
 };
-    
 
-HAS_MEMBER(books);
 
-HAS_MEMBER(detailbook);
+std::vector<int32_t> getRand(int32_t min, int32_t max, int32_t limit, int sed = 0){
+    if(sed == 0){
+        auto seed = time(0);
+        srand(seed);
+    }else{
+        srand(sed);
+    }
+
+    std::vector<int32_t> data;
+
+    for(size_t i = 0; i < limit;){
+        int32_t ret = rand();
+        ret %= (max - min);
+        ret += min;
+        data.push_back(ret);
+        i++;
+    }
+    return data;
+}
+
+std::vector<int32_t> get_diff_Rand(int32_t min, int32_t max, int32_t limit, int sed = 0){
+    if(sed == 0){
+        auto seed = time(0);
+        std::cout << "seed #### " << seed << std::endl;
+        srand(seed);
+    }else{
+        srand(sed);
+    }
+    assert(max - min > limit);
+
+    std::vector<int32_t> data;
+
+    for(size_t i = 0; i < limit;){
+        int32_t ret = rand();
+        ret %= (max - min);
+        ret += min;
+        if(data.end() == std::find(data.begin(), data.end(), ret)){
+            data.push_back(ret);
+            i++;
+        }
+      
+    }
+    return data;
+}
 
 
 BOOST_AUTO_TEST_SUITE(testTree)
@@ -212,21 +262,6 @@ BOOST_AUTO_TEST_SUITE(testTree)
             auto db = static_cast<leveldb::DB *>(nullptr);
             auto ret = leveldb::DB::Open(op, "tdb", &db);
             std::cout << "open db : " << ret.ok() << std::endl;
-
-//            {
-//                std::shared_ptr<virtualDb> vdb(new virtualDb(db));
-//
-//                dev::brc::bplusTree<unsigned, std::string, 4> bp(vdb);
-//
-//                size_t end = 32;
-//                for (size_t i = 0; i < end; i++) {
-//                    bp.insert(i, std::to_string(i));
-//                }
-//
-//                bp.debug();
-//                bp.update();
-//            }
-
 
             {
                 std::shared_ptr<virtualDb> vdb(new virtualDb(db));
@@ -299,7 +334,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
     BOOST_AUTO_TEST_CASE(tree_iter) {
         try {
            
-            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) ->  std::vector<int32_t> {
+            auto rand_number = [](int32_t min, int32_t max, size_t size, int se = 0) -> std::set<std::pair<int32_t, int32_t>> {
                 if(se == 0){
                     auto seed = time(0);
                     srand(seed);
@@ -309,50 +344,67 @@ BOOST_AUTO_TEST_SUITE(testTree)
                 }
                
                 //  srand(10);
-                 std::vector<int32_t> data;
-                 for(size_t i = 0; i < size; i++){
+                 std::set<std::pair<int32_t, int32_t>> data;
+                 for(size_t i = 0; i < size;){
                     int32_t ret = rand();
                     ret %= (max - min);
                     ret += min;
-                    data.push_back(ret);
+
+                    int32_t ret1 = rand();
+                    ret1 %= (max - min);
+                    ret1 += min;
+
+                    if(!data.count({ret, ret1})){
+                        i++;
+                        data.insert({ret, ret1});
+                    }
+                   
                  }
                 
                  return data;
             };
             int number = 0;
-            while(number++ < 1000){
                 dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
                 auto data = rand_number(1, 200, 1000);
-                for(int32_t i = 0; i < data.size(); i = i + 2){
-                    bp.insert( {data[i], data[i + 1]}, "11");
-                    // bp.debug();
+
+                for(auto &itr : data){
+                     bp.insert( {itr.first, itr.second}, "11");
                 }
+
                 std::cout << "sleep 1s" << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 bp.debug();
+
+                std::cout << bp.getKeysStr() << std::endl;
+
+                size_t i = 0;
+
                 auto data2 = rand_number(1, 200, 1000);
-            
 
-                for(int32_t i = 0; i  + 1 < data.size(); i = i + 2){
-                    std::cout << "remove ======================== " << i << " data1: " << data[i] << "  data:" << data[i + 1] << std::endl;
-                    if(i == 984){
-                        int k = 0;
+                for(auto &itr : data2){
+                    if(i == 172){
+                        int ww = 0;
                     }
-                    bp.remove({data[i], data[i + 1]});
-                    // bp.debug();
-                    bp.update();
+                    std::cout << "remove ======================== " << i << " data1: " << itr.first << "  data:" << itr.second << std::endl;
+                    if(bp.remove( {itr.first, itr.second})){
+                        data.erase({itr.first, itr.second});
 
-                    // //check
-                    // if(i == 984){
-                    //     break;
-                    // }
+                        // bp.debug();
+                        bp.update();
+                       
+
+                        //find key exits
+                        for(auto &it : data){ 
+                            if(!bp.find_key({it.first, it.second})){
+                                std::cout << "cant find key " <<  i << " data " << it.first << "," << it.second << std::endl;
+                                assert(false);
+                            }
+                        }
+                    }
+                    i++;
                 }
-                // bp.debug();
-            }
-
-           
-
-
+                bp.debug();
+                
         } catch (const std::exception &e) {
             std::cout << "exception " << e.what() << std::endl;
         } catch (const boost::exception &e) {
@@ -361,6 +413,65 @@ BOOST_AUTO_TEST_SUITE(testTree)
 
         }
     }
+
+
+
+    BOOST_AUTO_TEST_CASE(tree_iter2) {
+        try {
+            int32_t num = 0;
+            while(num++ < 1000){
+            std::cout << "begin =============  " <<  num << "===== \n";
+            auto rand_number1 = get_diff_Rand(1, 1000, 500);
+
+            std::set<int32_t> ex_data;
+
+
+            dev::brc::bplusTree<test_op, std::string, 4, std::less<test_op>> bp;
+
+            for(auto &itr : rand_number1){
+                bp.insert({itr, itr}, "##");
+                ex_data.insert(itr);
+            }
+            // bp.debug();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+            auto rm = get_diff_Rand(0, 500, 400);
+
+            for(auto &itr : rm){
+                // std::cout << "remove ========== index " << itr << "  key: " << rand_number1[itr] << std::endl;
+                if(bp.remove({rand_number1[itr], rand_number1[itr]})){
+                    bp.update();
+                    ex_data.erase(rand_number1[itr]);
+
+                    auto ex_begin = ex_data.begin();
+                    auto bp_begin = bp.begin();
+                    while(ex_begin != ex_data.end() && bp_begin != bp.end()){
+                        if(test_op{*ex_begin, *ex_begin} != (*bp_begin).first){
+                            assert(false);
+                        }
+                        ex_begin++;
+                        bp_begin++;
+                    }
+                    assert(ex_begin == ex_data.end() && bp_begin == bp.end());
+                }
+            }
+
+            // bp.debug();
+        
+            }
+
+                
+        } catch (const std::exception &e) {
+            std::cout << "exception " << e.what() << std::endl;
+        } catch (const boost::exception &e) {
+
+        } catch (...) {
+
+        }
+    }
+
+
+
 
 
 BOOST_AUTO_TEST_SUITE_END()
