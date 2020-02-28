@@ -718,8 +718,9 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 //    if (!can_exe) {
 //        return ImportRoute();
 //    }
+    int64_t _time = utcTimeMilliSec();
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
-
+    cwarn << "excute a block use:"<< utcTimeMilliSec() - _time;
     LOG(m_logger) << "write complete end";
     return  ret;
 }
