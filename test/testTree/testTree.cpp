@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
             int32_t num = 0;
             while(num++ < 1000){
             std::cout << "begin =============  " <<  num << "===== \n";
-            auto rand_number1 = get_diff_Rand(1, 1000, 500);
+            auto rand_number1 = get_diff_Rand(1, 2000, 1200);
 
             std::set<int32_t> ex_data;
 
@@ -435,7 +435,7 @@ BOOST_AUTO_TEST_SUITE(testTree)
             // bp.debug();
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-            auto rm = get_diff_Rand(0, 500, 400);
+            auto rm = get_diff_Rand(0, 1000, 800);
 
             for(auto &itr : rm){
                 // std::cout << "remove ========== index " << itr << "  key: " << rand_number1[itr] << std::endl;

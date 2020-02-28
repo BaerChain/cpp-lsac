@@ -575,33 +575,33 @@ namespace dev {
 
             void update() {
 
-                auto usedKeys = getAllKeys();
+                // auto usedKeys = getAllKeys();
 
-                for(auto &itr :mNodes){
-                    if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
-                        cwarn << "find key " << itr.first;
-                        assert(false);
-                    }
-                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
-                        cwarn << "mNodes un remove key " << itr.first << " mKeys " << itr.second.mKeys.size();
-                        assert(false);
-                    }
-                }
+                // for(auto &itr :mNodes){
+                //     if( (itr.second.mKeys.size() < LENGTH / 2  && itr.first != rootKey) && !itr.first.empty()){
+                //         cwarn << "find key " << itr.first;
+                //         assert(false);
+                //     }
+                //     if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                //         cwarn << "mNodes un remove key " << itr.first << " mKeys " << itr.second.mKeys.size();
+                //         assert(false);
+                //     }
+                // }
 
-                for (auto &itr : mLeafs ) {
-                    if(itr.second.mValues.size() < LENGTH / 2 && itr.first != rootKey && !itr.first.empty()){
-                        cwarn << "find key " << itr.first;
-                        assert(false);
-                    }
-                    if(!usedKeys.count(itr.first) && !itr.first.empty()){
-                        cwarn << "mLeafs un remove key " << itr.first  << " mValues " << itr.second.mValues.size();
-                        assert(false);
-                    }
-                }
+                // for (auto &itr : mLeafs ) {
+                //     if(itr.second.mValues.size() < LENGTH / 2 && itr.first != rootKey && !itr.first.empty()){
+                //         cwarn << "find key " << itr.first;
+                //         assert(false);
+                //     }
+                //     if(!usedKeys.count(itr.first) && !itr.first.empty()){
+                //         cwarn << "mLeafs un remove key " << itr.first  << " mValues " << itr.second.mValues.size();
+                //         assert(false);
+                //     }
+                // }
 
                 
 
-            
+              
                 if (mDelegate) {
                     for (auto &itr : mNodes) {
                         if (!itr.first.empty()) {
@@ -620,7 +620,11 @@ namespace dev {
                     RLPStream rlp2(1);
                     rlp2 << (u256)mGenerateKey;
                     mDelegate->setData("GenerateKey", rlp2.out());
+
+                    cwarn << "write numbers " << (mNodes.size() + mLeafs.size() + 2);
                 }
+
+            
 
                 
             };
