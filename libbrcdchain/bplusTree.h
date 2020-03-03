@@ -622,7 +622,6 @@ namespace dev {
                     rlp2 << (u256)mGenerateKey;
                     mDelegate->setData("GenerateKey", rlp2.out());
 
-                    cwarn << "write numbers " << (mNodes.size() + mLeafs.size() + 2);
                 }
 
             
