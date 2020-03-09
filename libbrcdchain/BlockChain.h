@@ -121,6 +121,13 @@ struct TransactionIndex
 	bool operator < (TransactionIndex const& _t) const { return this->index < _t.index; }
 };
 
+struct DBBlockConfig{
+    WithExisting exit_op ;
+    std::string db_name;
+    std::string dir_export;
+    int64_t number;
+    DBBlockConfig():exit_op(WithExisting::Trust), db_name("leveldb"), dir_export("dbnew"), number(0){}
+};
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -131,7 +138,7 @@ class  BlockChain
 public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback(), int64_t _rebuild_num = 0);
+    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback(), DBBlockConfig const&db_config = DBBlockConfig());
     ~BlockChain();
 
     /// @brief clean up unconfig blocks.
@@ -498,6 +505,7 @@ private:
     boost::filesystem::path m_dbPath;
 
     int64_t  m_rebuild_num =0;
+    DBBlockConfig dbConfig;
 
 	static const unsigned c_maxSyncTransactions = 1000;
 

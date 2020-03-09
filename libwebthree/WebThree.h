@@ -94,7 +94,7 @@ public:
         WithExisting _we = WithExisting::Trust,
         std::set<std::string> const& _interfaces = {"brc", "shh", "bzz"},
         p2p::NetworkConfig const& _n = p2p::NetworkConfig{},
-        bytesConstRef _network = bytesConstRef(), bool _testing = false, int64_t _rebuild_num =0);
+        bytesConstRef _network = bytesConstRef(), bool _testing = false, dev::brc::DBBlockConfig const& db_config = dev::brc::DBBlockConfig());
 
     /// Destructor.
     ~WebThreeDirect() override;
