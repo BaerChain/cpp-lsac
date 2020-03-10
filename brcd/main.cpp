@@ -69,6 +69,11 @@ namespace {
         std::cout << "compiler_id: " << info->compiler_id << std::endl;
         std::cout << "compiler_version: " << info->compiler_version << std::endl;
         std::cout << "build_type: " << info->build_type << std::endl;
+        auto dbs = dev::db::getDBVersion();
+        std::cout << "Databases_version:"<<std::endl;
+        for(auto const&a : dbs){
+            std::cout <<"\t"<<a.db_name <<" "<< a.db_majorVersion << "."<<a.db_minorVersion<<std::endl;
+        }
     }
 
     bool isTrue(std::string const &_m) {

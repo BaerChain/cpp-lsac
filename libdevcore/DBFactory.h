@@ -16,7 +16,12 @@ enum class DatabaseKind
     RocksDB,
     MemoryDB
 };
-
+/// struct for db Version
+struct DBVersion{
+    std::string db_name ="null";
+    int db_majorVersion =0;
+    int db_minorVersion =0;
+};
 /// Provide a set of program options related to databases
 ///
 /// @param _lineLength  The line length for description text wrapping, the same as in
@@ -29,6 +34,7 @@ DatabaseKind databaseKind();
 void setDatabaseKindByName(std::string const& _name);
 void setDatabaseKind(DatabaseKind _kind);
 boost::filesystem::path databasePath();
+std::vector<DBVersion> getDBVersion();
 
 class DBFactory
 {
