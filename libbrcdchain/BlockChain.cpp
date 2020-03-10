@@ -373,104 +373,104 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         return;
     }
     brcExport(_path,fs::path(""),0,dev::db::DatabaseKind::RocksDB);
-//     fs::path path = _path.empty() ? db::databasePath() : _path;
-//     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
-//     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
+     fs::path path = _path.empty() ? db::databasePath() : _path;
+     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
+     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
 
-//    cwarn << "path " << path;
-//    cwarn << "chainPath " << chainPath;
-//    cwarn << "extrasPath " << extrasPath;
-//     unsigned originalNumber = m_lastBlockNumber;
-//     if (m_rebuild_num >0 && (unsigned)m_rebuild_num < originalNumber)
-//         originalNumber = (unsigned) m_rebuild_num;
+    cwarn << "path " << path;
+    cwarn << "chainPath " << chainPath;
+    cwarn << "extrasPath " << extrasPath;
+     unsigned originalNumber = m_lastBlockNumber;
+     if (dbConfig.number >0 && (unsigned)dbConfig.number < originalNumber)
+         originalNumber = (unsigned) dbConfig.number;
 
-//     ///////////////////////////////
-//     // TODO
-//     // - KILL ALL STATE/CHAIN
-//     // - REINSERT ALL BLOCKS
-//     ///////////////////////////////
+     ///////////////////////////////
+     // TODO
+     // - KILL ALL STATE/CHAIN
+     // - REINSERT ALL BLOCKS
+     ///////////////////////////////
 
-//     // Keep extras DB around, but under a temp name
-//     m_extrasDB.reset();
-//     fs::rename(extrasPath / fs::path("extras"), extrasPath / fs::path("extras.old"));
-//     std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras.old")));
-//     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
+     // Keep extras DB around, but under a temp name
+     m_extrasDB.reset();
+     fs::rename(extrasPath / fs::path("extras"), extrasPath / fs::path("extras.old"));
+     std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras.old")));
+     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
 
-//     // Open a fresh state DB
+     // Open a fresh state DB
 
-//     Block s = genesisBlock(State::openDB(chainPath.string(), m_genesisHash, WithExisting::Kill),
-//                            State::openExdb(fs::path(path.string() + std::string("/exdb")), WithExisting::Kill));
+     Block s = genesisBlock(State::openDB(chainPath.string(), m_genesisHash, WithExisting::Kill),
+                            State::openExdb(fs::path(path.string() + std::string("/exdb")), WithExisting::Kill));
 
-//     // Clear all memos ready for replay.
-//     m_details.clear();
-//     m_logBlooms.clear();
-//     m_receipts.clear();
-//     m_transactionAddresses.clear();
-//     m_blockHashes.clear();
-//     m_blocksBlooms.clear();
-//     m_lastBlockHashes->clear();
-//     m_lastBlockHash = genesisHash();
-//     m_lastBlockNumber = 0;
+     // Clear all memos ready for replay.
+     m_details.clear();
+     m_logBlooms.clear();
+     m_receipts.clear();
+     m_transactionAddresses.clear();
+     m_blockHashes.clear();
+     m_blocksBlooms.clear();
+     m_lastBlockHashes->clear();
+     m_lastBlockHash = genesisHash();
+     m_lastBlockNumber = 0;
 
-//     m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
-//     m_details[m_lastBlockHash].number = s.info().number();
-//     m_extrasDB->insert(toSlice(m_lastBlockHash, ExtraDetails),
-//                        (db::Slice) dev::ref(m_details[m_lastBlockHash].rlp()));
+     m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
+     m_details[m_lastBlockHash].number = s.info().number();
+     m_extrasDB->insert(toSlice(m_lastBlockHash, ExtraDetails),
+                        (db::Slice) dev::ref(m_details[m_lastBlockHash].rlp()));
 
-//     h256 lastHash = m_lastBlockHash;
-//     Timer t;
-//     for (unsigned d = 1; d <= originalNumber; ++d) {
-//         if (!(d % 1000)) {
-//             cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
-//             t.restart();
-//         }
-//         if( !(d % 10000)){
-//             cwarn << "rebuild block number " << d;
-//         }
-//         try {
-//             //cwarn << "start_num "<<d;
-//             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
-//                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
-//                                     .value);
-//             if(b.size() == 0){
-//                 cwarn << "cant find block number " << d;
-//                 cwarn << "please connect mainnet sync blocks.";
-//                 break;
-//             }
-//             BlockHeader bi(&b);
+     h256 lastHash = m_lastBlockHash;
+     Timer t;
+     for (unsigned d = 1; d <= originalNumber; ++d) {
+         if (!(d % 1000)) {
+             cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
+             t.restart();
+         }
+         if( !(d % 10000)){
+             cwarn << "rebuild block number " << d;
+         }
+         try {
+             //cwarn << "start_num "<<d;
+             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
+                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
+                                     .value);
+             if(b.size() == 0){
+                 cwarn << "cant find block number " << d;
+                 cwarn << "please connect mainnet sync blocks.";
+                 break;
+             }
+             BlockHeader bi(&b);
 
-//             if (bi.parentHash() != lastHash) {
-//                 cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
-//                       << "; expected" << lastHash << "#" << (d - 1);
-//                 break;
-//             }
-//             lastHash = bi.hash();
-//             import(b, s.db(), s.exdb(), 0);
-//         }
-//         catch (const std::exception &e){
-//             cwarn << "rebuild exception : " << e.what();
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
-//         catch (const boost::exception &e){
-//             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
-//         catch (...) {
-//             // Failed to import - stop here.
-//             cerror <<  "rebuild blocks error.";
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
+             if (bi.parentHash() != lastHash) {
+                 cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
+                       << "; expected" << lastHash << "#" << (d - 1);
+                 break;
+             }
+             lastHash = bi.hash();
+             import(b, s.db(), s.exdb(), 0);
+         }
+         catch (const std::exception &e){
+             cwarn << "rebuild exception : " << e.what();
+             cwarn << "please connect mainnet sync blocks.  number " << d;
+             continue;
+         }
+         catch (const boost::exception &e){
+             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
+             cwarn << "please connect mainnet sync blocks.  number " << d;
+             continue;
+         }
+         catch (...) {
+             // Failed to import - stop here.
+             cerror <<  "rebuild blocks error.";
+             cwarn << "please connect mainnet sync blocks.  number " << d;
+             continue;
+         }
 
-//         if (_progress)
-//             _progress(d, originalNumber);
-//     }
-//     cwarn << "rebuild complete , rename extras.old";
-//     std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
-// //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
-//     fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
+         if (_progress)
+             _progress(d, originalNumber);
+     }
+     cwarn << "rebuild complete , rename extras.old";
+     std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
+ //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
+     fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
 }
 
 void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, uint64_t const& _exportHeight,
