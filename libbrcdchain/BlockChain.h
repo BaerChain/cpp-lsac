@@ -22,6 +22,7 @@
 #include <boost/filesystem/path.hpp>
 #include <brc/exchangeOrder.hpp>
 
+#include <libdevcore/DBFactory.h>
 
 namespace std
 {
@@ -284,7 +285,10 @@ public:
     /// Run through database and verify all blocks by reevaluating.
     /// Will call _progress with the progress in this operation first param done, second total.
     void rebuild(boost::filesystem::path const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
+    
 
+    void brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, uint64_t const& _exportHeight,
+            dev::db::DatabaseKind const& _dbKind);
     /// Alter the head of the chain to some prior block along it.
     void rewind(unsigned _newHead);
 
