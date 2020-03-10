@@ -172,10 +172,10 @@ static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
-BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, int64_t _rebuild_num) :
+BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, DBBlockConfig const&db_config ) :
         m_lastBlockHashes(new LastBlockHashes(*this)),
         m_dbPath(_dbPath),
-        m_rebuild_num(_rebuild_num){
+        dbConfig(db_config){
     init(_p);
     open(_dbPath, _we, _pc);
 }
