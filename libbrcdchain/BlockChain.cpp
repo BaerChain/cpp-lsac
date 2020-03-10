@@ -1594,46 +1594,64 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end) {
     }
 }
 
-void BlockChain::rescue(OverlayDB const &_db) {
-
-    unsigned u = 1;
-    while (true) {
-        try {
-            if (isKnown(numberHash(u)))
-                u *= 2;
-            else
+void BlockChain::rescue(OverlayDB const &_db){
+    unsigned u = dbConfig.number;
+    unsigned l = 0;
+    if (u <=0) {
+        cwarn<<"rescue the block latest...";
+        u =1;
+        while (true) {
+            try {
+                if (isKnown(numberHash(u)))
+                    u *= 2;
+                else
+                    break;
+            }
+            catch (...) {
                 break;
+            }
         }
-        catch (...) {
-            break;
+        l = u / 2;
+        cwarn << "Finding last likely block number..." << endl;
+        while (u - l > 1) {
+            unsigned m = (u + l) / 2;
+            cwarn << " " << m << flush;
+            if (isKnown(numberHash(m)))
+                l = m;
+            else
+                u = m;
         }
     }
-    unsigned l = u / 2;
-    cout << "Finding last likely block number..." << endl;
-    while (u - l > 1) {
-        unsigned m = (u + l) / 2;
-        cout << " " << m << flush;
-        if (isKnown(numberHash(m)))
-            l = m;
-        else
-            u = m;
+    else{
+        cwarn<<"rescue the block:"<<u;
+        if(m_lastBlockNumber < u){
+            cwarn << "the last block:"<< m_lastBlockNumber <<" < rescue height:"<<u << " will rescue the block:" <<m_lastBlockNumber;
+            u = m_lastBlockNumber;
+        }
+        l = u;
+        while (l >0){
+            if(isKnown(numberHash(l))){
+                break;
+            }
+            --l;
+        }
     }
-    cout << "  lowest is " << l << endl;
+    cwarn << "  lowest is " << l << endl;
     for (; l > 0; --l) {
         h256 h = numberHash(l);
-        cout << "Checking validity of " << l << " (" << h << ")..." << flush;
+        cwarn << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
-            cout << "block..." << flush;
+            cwarn << "block..." << flush;
             BlockHeader bi(block(h));
-            cout << "extras..." << flush;
+            cwarn << "extras..." << flush;
             details(h);
-            cout << "state..." << flush;
+            cwarn << "state..." << flush;
             if (_db.exists(bi.stateRoot()))
                 break;
         }
         catch (...) {}
     }
-    cout << "OK." << endl;
+    cwarn << "OK." << endl;
     rewind(l);
 }
 
