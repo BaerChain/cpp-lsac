@@ -14,7 +14,8 @@ enum class DatabaseKind
 {
     LevelDB,
     RocksDB,
-    MemoryDB
+    MemoryDB,
+    Null
 };
 
 /// Provide a set of program options related to databases
@@ -29,7 +30,7 @@ DatabaseKind databaseKind();
 void setDatabaseKindByName(std::string const& _name);
 void setDatabaseKind(DatabaseKind _kind);
 boost::filesystem::path databasePath();
-
+DatabaseKind stringtToKind(std::string _dbName);
 class DBFactory
 {
 public:

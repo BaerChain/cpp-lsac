@@ -151,6 +151,21 @@ std::unique_ptr<DatabaseFace> DBFactory::create(DatabaseKind _kind, fs::path con
     }
 }
 
+DatabaseKind stringtToKind(std::string _dbName)
+{
+    if(_dbName == "leveldb")
+    {
+        return DatabaseKind::LevelDB;
+    }else if(_dbName == "rocksdb")
+    {
+        return DatabaseKind::RocksDB;
+    }else if(_dbName == "memorydb")
+    {
+        return DatabaseKind::MemoryDB;
+    }
+    return DatabaseKind::Null;
+}
+
 
 }  // namespace db
 }  // namespace dev

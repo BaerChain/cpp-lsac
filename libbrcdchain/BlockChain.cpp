@@ -172,7 +172,7 @@ static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
-BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, DBBlockConfig const&db_config ) :
+BlockChain::BlockChain(ChainParams const &_p, fs::path const &_dbPath, WithExisting _we, ProgressCallback const &_pc, DBBlockConfig const& db_config ) :
         m_lastBlockHashes(new LastBlockHashes(*this)),
         m_dbPath(_dbPath),
         dbConfig(db_config){
@@ -282,6 +282,8 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
     }
 
     try {
+        cerror << chainPath;
+        cerror << extrasPath;
         m_blocksDB = db::DBFactory::create(chainPath / fs::path("blocks"));
         m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
     }
@@ -319,6 +321,15 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
         assert(isKnown(gb.hash()));
     }
 
+    if(_we != WithExisting::Export && !details(m_genesisHash))
+    {
+        BlockHeader gb(m_params.genesisBlock());
+        m_details[m_genesisHash] = BlockDetails(0, gb.difficulty(), h256(), {});
+        auto r = m_details[m_genesisHash].rlp();
+        m_extrasDB->insert(toSlice(m_genesisHash, ExtraDetails), (db::Slice) dev::ref(r));
+        assert(isKnown(gb.hash()));
+    }
+
 #if BRC_PARANOIA
     checkConsistency();
 #endif
@@ -336,8 +347,15 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
 }
 
 void BlockChain::open(fs::path const &_path, WithExisting _we, ProgressCallback const &_pc) {
-    if (open(_path, _we) != c_minorProtocolVersion || _we == WithExisting::Verify)
-        rebuild(_path, _pc);
+    auto ret = open(_path, _we);
+    if (ret != c_minorProtocolVersion || (_we == WithExisting::Verify || _we == WithExisting::Export))
+    {
+        if(_we == WithExisting::Verify){
+            rebuild(_path, _pc);
+        }else if(_we == WithExisting::Export){ 
+            brcExport(_path, fs::path(dbConfig.dir_export), dbConfig.number, stringtToKind(dbConfig.db_name));
+        }
+    }
 }
 
 void BlockChain::reopen(ChainParams const &_p, WithExisting _we, ProgressCallback const &_pc ) {
@@ -372,135 +390,16 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
         cwarn << "In-memory database detected, skipping rebuild (since there's no existing database to rebuild)";
         return;
     }
-    brcExport(_path,fs::path(""),0,dev::db::DatabaseKind::RocksDB);
-//     fs::path path = _path.empty() ? db::databasePath() : _path;
-//     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
-//     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
-
-//    cwarn << "path " << path;
-//    cwarn << "chainPath " << chainPath;
-//    cwarn << "extrasPath " << extrasPath;
-//     unsigned originalNumber = m_lastBlockNumber;
-//     if (m_rebuild_num >0 && (unsigned)m_rebuild_num < originalNumber)
-//         originalNumber = (unsigned) m_rebuild_num;
-
-//     ///////////////////////////////
-//     // TODO
-//     // - KILL ALL STATE/CHAIN
-//     // - REINSERT ALL BLOCKS
-//     ///////////////////////////////
-
-//     // Keep extras DB around, but under a temp name
-//     m_extrasDB.reset();
-//     fs::rename(extrasPath / fs::path("extras"), extrasPath / fs::path("extras.old"));
-//     std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras.old")));
-//     m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
-
-//     // Open a fresh state DB
-
-//     Block s = genesisBlock(State::openDB(chainPath.string(), m_genesisHash, WithExisting::Kill),
-//                            State::openExdb(fs::path(path.string() + std::string("/exdb")), WithExisting::Kill));
-
-//     // Clear all memos ready for replay.
-//     m_details.clear();
-//     m_logBlooms.clear();
-//     m_receipts.clear();
-//     m_transactionAddresses.clear();
-//     m_blockHashes.clear();
-//     m_blocksBlooms.clear();
-//     m_lastBlockHashes->clear();
-//     m_lastBlockHash = genesisHash();
-//     m_lastBlockNumber = 0;
-
-//     m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
-//     m_details[m_lastBlockHash].number = s.info().number();
-//     m_extrasDB->insert(toSlice(m_lastBlockHash, ExtraDetails),
-//                        (db::Slice) dev::ref(m_details[m_lastBlockHash].rlp()));
-
-//     h256 lastHash = m_lastBlockHash;
-//     Timer t;
-//     for (unsigned d = 1; d <= originalNumber; ++d) {
-//         if (!(d % 1000)) {
-//             cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
-//             t.restart();
-//         }
-//         if( !(d % 10000)){
-//             cwarn << "rebuild block number " << d;
-//         }
-//         try {
-//             //cwarn << "start_num "<<d;
-//             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
-//                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
-//                                     .value);
-//             if(b.size() == 0){
-//                 cwarn << "cant find block number " << d;
-//                 cwarn << "please connect mainnet sync blocks.";
-//                 break;
-//             }
-//             BlockHeader bi(&b);
-
-//             if (bi.parentHash() != lastHash) {
-//                 cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
-//                       << "; expected" << lastHash << "#" << (d - 1);
-//                 break;
-//             }
-//             lastHash = bi.hash();
-//             import(b, s.db(), s.exdb(), 0);
-//         }
-//         catch (const std::exception &e){
-//             cwarn << "rebuild exception : " << e.what();
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
-//         catch (const boost::exception &e){
-//             cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
-//         catch (...) {
-//             // Failed to import - stop here.
-//             cerror <<  "rebuild blocks error.";
-//             cwarn << "please connect mainnet sync blocks.  number " << d;
-//             continue;
-//         }
-
-//         if (_progress)
-//             _progress(d, originalNumber);
-//     }
-//     cwarn << "rebuild complete , rename extras.old";
-//     std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
-// //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
-//     fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
-}
-
-void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, uint64_t const& _exportHeight,
-            dev::db::DatabaseKind const& _dbKind)
-{
-    if (!db::isDiskDatabase()) {
-        cwarn << "In-memory database detected, skipping rebuild (since there's no existing database to rebuild)";
-        return;
-    }
-
     fs::path path = _path.empty() ? db::databasePath() : _path;
     fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
     fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
-    fs::path exportPath = fs::path(std::string("./data/db_new"));
-    fs::path newChainPath = exportPath / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
-    fs::path newExtrasPath = newChainPath / fs::path(toString(c_databaseVersion));
-        fs::create_directories(newExtrasPath);
-
 
    cwarn << "path " << path;
    cwarn << "chainPath " << chainPath;
    cwarn << "extrasPath " << extrasPath;
-   cwarn << "exportPath " << exportPath;
-   cwarn << "newChainPath " << newChainPath;
-   cwarn << "newExtrasPath " << newExtrasPath;
-
-
-    unsigned originalNumber = m_lastBlockNumber - 1;
-    // if (_exportHeight >0 && (unsigned)_exportHeight < originalNumber)
-    //     originalNumber = (unsigned) _exportHeight;
+    unsigned originalNumber = m_lastBlockNumber;
+    if (m_rebuild_num >0 && (unsigned)m_rebuild_num < originalNumber)
+        originalNumber = (unsigned) m_rebuild_num;
 
     ///////////////////////////////
     // TODO
@@ -510,14 +409,14 @@ void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesys
 
     // Keep extras DB around, but under a temp name
     m_extrasDB.reset();
-    std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras")));
-    setDatabaseKind(dev::db::DatabaseKind::RocksDB);
-    m_extrasDB = db::DBFactory::create(newExtrasPath /fs::path("extras"));
+    fs::rename(extrasPath / fs::path("extras"), extrasPath / fs::path("extras.old"));
+    std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras.old")));
+    m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
 
     // Open a fresh state DB
 
-    Block s = genesisBlock(State::openDB(newChainPath.string(), m_genesisHash, WithExisting::Kill),
-                           State::openExdb(fs::path(newChainPath.string() + std::string("/exdb")), WithExisting::Kill));
+    Block s = genesisBlock(State::openDB(chainPath.string(), m_genesisHash, WithExisting::Kill),
+                           State::openExdb(fs::path(path.string() + std::string("/exdb")), WithExisting::Kill));
 
     // Clear all memos ready for replay.
     m_details.clear();
@@ -581,8 +480,164 @@ void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesys
             cwarn << "please connect mainnet sync blocks.  number " << d;
             continue;
         }
+
+        if (_progress)
+            _progress(d, originalNumber);
     }
     cwarn << "rebuild complete , rename extras.old";
+    std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
+//    fs::remove_all(extrasPath / fs::path("extras.old" + ));
+    fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
+}
+
+void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, int64_t const& _exportHeight,
+            dev::db::DatabaseKind const& _dbKind)
+{
+    if (!db::isDiskDatabase()) {
+        cwarn << "In-memory database detected, skipping rebuild (since there's no existing database to rebuild)";
+        return;
+    }
+
+    fs::path path = _path.empty() ? db::databasePath() : _path;
+    fs::path chainPath = path / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
+    fs::path extrasPath = chainPath / fs::path(toString(c_databaseVersion));
+    fs::path blocksPath = chainPath / fs::path(std::string("blocks"));
+    fs::path exportPath = _exportPath.empty() ? fs::path("./data/db_new") : _exportPath;
+    fs::path newChainPath = exportPath / fs::path(toHex(m_genesisHash.ref().cropped(0, 4)));
+    fs::path newExtrasPath = newChainPath / fs::path(toString(c_databaseVersion));
+    fs::path newBlocksPath = newChainPath / fs::path(std::string("blocks"));
+    
+
+    if(!fs::exists(newExtrasPath))
+    {
+        fs::create_directories(newExtrasPath);
+    }
+
+    if(!fs::exists(newBlocksPath))
+    {
+        fs::create_directories(newBlocksPath);
+    }
+
+
+   cwarn << "path " << path;
+   cwarn << "chainPath " << chainPath;
+   cwarn << "extrasPath " << extrasPath;
+   cwarn << "blocksPath " << blocksPath;
+
+   cwarn << "exportPath " << exportPath;
+   cwarn << "newChainPath " << newChainPath;
+   cwarn << "newExtrasPath " << newExtrasPath;
+   cwarn << "newBlocksPath " << newBlocksPath;
+
+    bool cpStatus = true;
+    unsigned originalNumber = m_lastBlockNumber;
+    if (_exportHeight >0 && (unsigned)_exportHeight < originalNumber)
+        originalNumber = (unsigned) _exportHeight;
+
+    ///////////////////////////////
+    // TODO
+    // - KILL ALL STATE/CHAIN
+    // - REINSERT ALL BLOCKS
+    ///////////////////////////////
+
+    // Keep extras DB around, but under a temp name
+    m_extrasDB.reset();
+    std::unique_ptr<db::DatabaseFace> oldExtrasDB(db::DBFactory::create(extrasPath / fs::path("extras")));
+    std::unique_ptr<db::DatabaseFace> _blocksDB;
+    if(_dbKind != databaseKind())
+    {   
+        cpStatus = false;
+        setDatabaseKind(_dbKind);
+        _blocksDB = db::DBFactory::create(newBlocksPath);
+    }else{
+        fs::copy_directory(blocksPath, newBlocksPath);
+    }
+    m_extrasDB = db::DBFactory::create(newExtrasPath /fs::path("extras"));
+
+    // Open a fresh state DB
+
+    Block s = genesisBlock(State::openDB(exportPath.string(), m_genesisHash, WithExisting::Kill),
+                           State::openExdb(fs::path(newChainPath.string() + std::string("/exdb")), WithExisting::Kill));
+
+    // Clear all memos ready for replay.
+    m_details.clear();
+    m_logBlooms.clear();
+    m_receipts.clear();
+    m_transactionAddresses.clear();
+    m_blockHashes.clear();
+    m_blocksBlooms.clear();
+    m_lastBlockHashes->clear();
+    m_lastBlockHash = genesisHash();
+    m_lastBlockNumber = 0;
+
+    m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
+    m_details[m_lastBlockHash].number = s.info().number();
+    m_extrasDB->insert(toSlice(m_lastBlockHash, ExtraDetails),
+                       (db::Slice) dev::ref(m_details[m_lastBlockHash].rlp()));
+
+    h256 lastHash = m_lastBlockHash;
+    Timer t;
+    for (unsigned d = 1; d <= originalNumber; ++d) {
+        if (!(d % 1000)) {
+            cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
+            t.restart();
+        }
+        if( !(d % 10000)){
+            cwarn << "rebuild block number " << d;
+        }
+        try {
+            cwarn << "======================== start_num "<< d;
+            bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
+                    d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
+                                    .value);
+            if(b.size() == 0){
+                cwarn << "cant find block number " << d;
+                cwarn << "please connect mainnet sync blocks.";
+                break;
+            }
+            BlockHeader bi(&b);
+
+            if (bi.parentHash() != lastHash) {
+                cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash()
+                      << "; expected" << lastHash << "#" << (d - 1);
+                break;
+            }
+            lastHash = bi.hash();
+            VerifiedBlockRef const block = verifyBlock(&b, m_onBad, ImportRequirements::OutOfOrderChecks);
+            
+            import(block, s.db(), s.exdb(), 0);
+            if(cpStatus == false)
+            {
+                std::unique_ptr<db::WriteBatchFace> blocksWriteBatch = _blocksDB->createWriteBatch();
+                blocksWriteBatch->insert(toSlice(block.info.hash()), db::Slice(block.block));
+                _blocksDB->commit(std::move(blocksWriteBatch));
+            }
+            cwarn << "======================== end ";
+        }
+        catch (const std::exception &e){
+            cwarn << "rebuild exception : " << e.what();
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
+        }
+        catch (const boost::exception &e){
+            cwarn << "rebuild exception boost : "  <<  boost::diagnostic_information(e);
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
+        }
+        catch (...) {
+            // Failed to import - stop here.
+            cerror <<  "rebuild blocks error.";
+            cwarn << "please connect mainnet sync blocks.  number " << d;
+            continue;
+        }
+    }
+    cwarn << "rebuild complete , rename extras.old";
+    close();
+    if(_blocksDB)
+    {
+        _blocksDB.reset();
+    }
+    exit(1);
     // std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
 //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
     // fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
@@ -705,6 +760,7 @@ BlockChain::attemptImport(bytes const &_block, OverlayDB const &_stateDB, ex::ex
 ImportRoute BlockChain::import(bytes const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
+    cerror << "import";
     return import(block, _db, _exdb, _mustBeNew);
 }
 
@@ -817,11 +873,9 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 //    RLPStream stream;
 //    _block.info.streamRLP(stream);
 //    cwarn << "import block data rlp : " << stream.out();
-    cerror<< "import";
     if (_mustBeNew)
         checkBlockIsNew(_block);
     
-    cerror<< "import";
 
     // Work out its number as the parent's number + 1
     if (!isKnown(_block.info.parentHash(), false))  // doesn't have to be current.
@@ -830,14 +884,12 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
         // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
         BOOST_THROW_EXCEPTION(UnknownParent() << errinfo_hash256(_block.info.parentHash()));
     }
-    cerror<< "import";
 
 //    bool can_exe = update_cache_fork_database(_block, _db, _exdb);
 //
 //    if (!can_exe) {
 //        return ImportRoute();
 //    }
-    cerror<< " execute_block(_block, _db, _exdb, _mustBeNew);";
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
 
     LOG(m_logger) << "write complete end";
@@ -848,9 +900,7 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, const dev::OverlayDB &_db,
                                       dev::brc::ex::exchange_plugin &_exdb, bool _mustBeNew) {
     ImportPerformanceLogger performanceLogger; 
-    cerror << "execute_block";
     auto pd = details(_block.info.parentHash());
-    cerror << "pd";
     if (!pd) {
         auto pdata = pd.rlp();
         LOG(m_loggerError) << "Details is returning false despite block known: " << RLP(pdata);
@@ -865,12 +915,10 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
     }
 
     bool is_best = verifyReplaceMiner(_block, _db, _exdb);
-    cerror << "is_best";
 
     //cwarn << " block:"<<_block.info.number()<< " is best.......:"<< is_best;
 
     checkBlockTimestamp(_block.info);
-    cerror << "_block.info";
     
     // Verify parent-critical parts
     verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
@@ -2157,7 +2205,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
         if (!!(_ir & ImportRequirements::PostGenesis) && (!h.parentHash() || h.number() == 0))
             BOOST_THROW_EXCEPTION(
                     InvalidParentHash() << errinfo_required_h256(h.parentHash()) << errinfo_currentNumber(h.number()));
-
         BlockHeader parent;
         if (!!(_ir & ImportRequirements::Parent)) {
             bytes parentHeader(headerData(h.parentHash()));

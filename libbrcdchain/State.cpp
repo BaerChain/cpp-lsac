@@ -56,7 +56,7 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
         fs::remove_all(path / fs::path("state"));
     }
 
-
+    
     path /=
             fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
     cwarn << path;

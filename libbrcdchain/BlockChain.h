@@ -287,7 +287,7 @@ public:
     void rebuild(boost::filesystem::path const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
     
 
-    void brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, uint64_t const& _exportHeight,
+    void brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, int64_t const& _exportHeight,
             dev::db::DatabaseKind const& _dbKind);
     /// Alter the head of the chain to some prior block along it.
     void rewind(unsigned _newHead);

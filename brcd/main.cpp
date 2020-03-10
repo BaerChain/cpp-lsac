@@ -277,7 +277,12 @@ int main(int argc, char **argv) {
                     "Give the master password for the key store; use --master \"\" to show a prompt");
     addClientOption("password", po::value<string>()->value_name("<password>"),
                     "Give a password for a private key\n");
-
+    addClientOption("export-path", po::value<string>()->value_name("<string>"),
+                    "set export DB path\n");
+    addClientOption("export-dbtype",po::value<string>()->value_name("<string>"),
+                    "set export DB type (leveldb or rocksdb)\n");
+    addClientOption("export-height",po::value<string>()->value_name("<string>"),
+                    "set export DB height(example: set 0 is Default current node maximum height)\n");
     po::options_description clientTransacting("CLIENT TRANSACTING", c_lineWidth);
     auto addTransactingOption = clientTransacting.add_options();
     addTransactingOption("ask", po::value<u256>()->value_name("<wei>"),
@@ -359,8 +364,8 @@ int main(int argc, char **argv) {
     auto addImportExportOption = importExportMode.add_options();
     addImportExportOption(
             "import,I", po::value<string>()->value_name("<file>"), "Import blocks from file");
-    addImportExportOption(
-            "export,E", po::value<string>()->value_name("<file>"), "Export blocks to file");
+    // addImportExportOption(
+    //         "export,E", po::value<string>()->value_name("<file>"), "Export blocks to file");
     addImportExportOption("from", po::value<string>()->value_name("<n>"),
                           "Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'");
     addImportExportOption("to", po::value<string>()->value_name("<n>"),
@@ -706,6 +711,18 @@ int main(int argc, char **argv) {
         withExisting = WithExisting::Rescue;
         dbconfig.exit_op = WithExisting::Rescue;
         dbconfig.number = vm["rescue"].as<int64_t>();
+    }
+
+    if(vm.count("export-path") || vm.count("export-dbtype") || vm.count("export-height")){
+        if(vm.count("export-path") && vm.count("export-dbtype") && vm.count("export-height")){
+            withExisting = WithExisting::Export;
+            dbconfig.dir_export = vm["export-path"].as<string>();
+            dbconfig.db_name = vm["export-dbtype"].as<string>();
+            dbconfig.number = vm["export-height"].as<int64_t>();
+        }else{
+            cerror << "Export-path, export-dbtype, export-height must be present when exporting blocks";
+            exit(-1);
+        }
     }
 
     if ((vm.count("import-secret"))) {
