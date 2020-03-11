@@ -508,7 +508,6 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-    int64_t  m_rebuild_num =0;
     DBBlockConfig dbConfig;
 
 	static const unsigned c_maxSyncTransactions = 1000;

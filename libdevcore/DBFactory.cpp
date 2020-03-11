@@ -71,7 +71,30 @@ bool isDiskDatabase()
             return false;
     }
 }
-
+std::vector<DBVersion> getDBVersion()
+{
+    std::vector<DBVersion> versions;
+    for (auto& entry : dbKindsTable)
+    {
+        if(entry.kind == DatabaseKind::LevelDB){
+            DBVersion version;
+            version.db_name = entry.name;
+            version.db_majorVersion = leveldb::kMajorVersion;
+            version.db_minorVersion = leveldb::kMinorVersion;
+            versions.emplace_back(version);
+            continue;
+        }
+        if(entry.kind == DatabaseKind::RocksDB){
+            DBVersion version;
+            version.db_name = entry.name;
+            version.db_majorVersion = rocksdb::kMajorVersion;
+            version.db_minorVersion = rocksdb::kMinorVersion;
+            versions.emplace_back(version);
+            continue;
+        }
+    }
+    return versions;
+}
 DatabaseKind databaseKind()
 {
     return g_kind;
