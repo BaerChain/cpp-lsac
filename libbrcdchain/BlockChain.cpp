@@ -759,7 +759,6 @@ BlockChain::attemptImport(bytes const &_block, OverlayDB const &_stateDB, ex::ex
 ImportRoute BlockChain::import(bytes const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb, bool _mustBeNew) {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
-    cerror << "import";
     return import(block, _db, _exdb, _mustBeNew);
 }
 
