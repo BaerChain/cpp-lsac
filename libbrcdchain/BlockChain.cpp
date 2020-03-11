@@ -488,6 +488,8 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
      std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
  //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
      fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
+     close();
+     exit(1);
 }
 
 void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesystem::path const& _exportPath, int64_t const& _exportHeight,
