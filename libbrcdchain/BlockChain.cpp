@@ -587,7 +587,6 @@ void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesys
             cwarn << "rebuild block number " << d;
         }
         try {
-            cwarn << "======================== start_num "<< d;
             bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(
                     d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get())
                                     .value);
@@ -613,7 +612,6 @@ void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesys
                 blocksWriteBatch->insert(toSlice(block.info.hash()), db::Slice(block.block));
                 _blocksDB->commit(std::move(blocksWriteBatch));
             }
-            cwarn << "======================== end ";
         }
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
