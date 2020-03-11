@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
                     "set export DB path\n");
     addClientOption("export-dbtype",po::value<string>()->value_name("<string>"),
                     "set export DB type (leveldb or rocksdb)\n");
-    addClientOption("export-height",po::value<string>()->value_name("<string>"),
+    addClientOption("export-height",po::value<int64_t>()->value_name("<string>"),
                     "set export DB height(example: set 0 is Default current node maximum height)\n");
     po::options_description clientTransacting("CLIENT TRANSACTING", c_lineWidth);
     auto addTransactingOption = clientTransacting.add_options();
@@ -721,9 +721,12 @@ int main(int argc, char **argv) {
     if(vm.count("export-path") || vm.count("export-dbtype") || vm.count("export-height")){
         if(vm.count("export-path") && vm.count("export-dbtype") && vm.count("export-height")){
             withExisting = WithExisting::Export;
+            cerror << "123";
             dbconfig.dir_export = vm["export-path"].as<string>();
             dbconfig.db_name = vm["export-dbtype"].as<string>();
             dbconfig.number = vm["export-height"].as<int64_t>();
+            cerror << "123";
+
         }else{
             cerror << "Export-path, export-dbtype, export-height must be present when exporting blocks";
             exit(-1);

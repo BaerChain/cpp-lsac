@@ -550,6 +550,7 @@ void BlockChain::brcExport(boost::filesystem::path const& _path,  boost::filesys
         setDatabaseKind(_dbKind);
         _blocksDB = db::DBFactory::create(newBlocksPath);
     }else{
+        fs::remove(newBlocksPath);
         fs::copy_directory(blocksPath, newBlocksPath);
     }
     m_extrasDB = db::DBFactory::create(newExtrasPath /fs::path("extras"));
