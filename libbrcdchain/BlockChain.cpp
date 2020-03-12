@@ -545,15 +545,15 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
            // VerifiedBlockRef const block = verifyBlock(&b, m_onBad, ImportRequirements::OutOfOrderChecks);
 
             RLP r(b);
-            std::vector<bytes> v_trxb;
-            for(auto val : r[1])
-				v_trxb.push_back(val.data().toBytes());
 			std::vector<Transaction> ret_t;
+            for(auto val : r[1]){
             
+                ret_t.push_back( Transaction(val.data().toBytes(), CheckTransaction::Cheap));   
+            }
             for(auto &itr : ret_t){
                 std::set<Address> _ret;
-                _ret.insert(itr.from);
-                _ret.insert(itr.to);
+                _ret.insert(itr.from());
+                _ret.insert(itr.to());
                 // cwarn << "######## scane address " << toHex(itr.from) << " : " << toHex(itr.to);
                 if(itr.data().size() > 0){
                     for( auto const& _val : itr.data())
