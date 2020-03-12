@@ -590,6 +590,8 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
     std::string rename = "extras_"  + std::to_string(utcTimeMilliSec()) + ".old";
 //    fs::remove_all(extrasPath / fs::path("extras.old" + ));
     fs::rename(extrasPath / fs::path("extras.old"), extrasPath / fs::path(rename));
+    Close();
+    exit(1);
 }
 
 string BlockChain::dumpDatabase() const {
