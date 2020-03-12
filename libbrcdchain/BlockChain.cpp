@@ -55,7 +55,7 @@ std::ostream &dev::brc::operator<<(std::ostream &_out, BlockChain const &_bc) {
 }
 
 
-Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address) {
+Json::Value analysisData(bytes const& _data, std::set<dev::Address> &address) {
             try{
                 RLP _r(_data);
                 Json::Value _JsArray;
@@ -68,11 +68,11 @@ Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address)
                         res["type"] = toJS(_type);
                         if(_transation_op.m_from != Address(0)){
                             res["from"] = toJS(_transation_op.m_from);
-                            address.push_back(_transation_op.m_from);
+                            address.insert(_transation_op.m_from);
                         }
                           
                         res["to"] = toJS(_transation_op.m_to);
-                        address.push_back(_transation_op.m_to);
+                        address.insert(_transation_op.m_to);
                         res["transcation_type"] = toJS(_transation_op.m_Transcation_type);
                         res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
                         _JsArray.append(res);
@@ -84,11 +84,11 @@ Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address)
                         if(_vote_op.m_from != Address(0))
                         {  
                             res["from"] = toJS(_vote_op.m_from);
-                            address.push_back(_vote_op.m_from);
+                            address.insert(_vote_op.m_from);
                         }
                           
                         res["to"] = toJS(_vote_op.m_to);
-                        address.push_back(_vote_op.m_to);
+                        address.insert(_vote_op.m_to);
                         res["vote_type"] = toJS(_vote_op.m_vote_type);
                         res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
                         _JsArray.append(res);
@@ -102,6 +102,7 @@ Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address)
 
                         res["type"] = toJS(_type);
                         res["from"] = toJS(_pendering_op.m_from);
+                        address.insert(_pendering_op.m_from);
                         res["pendingorder_type"] = toJS(m_Pendingorder_type);
                         res["token_type"] = toJS(m_Pendingorder_Token_type);
                         res["buy_type"] = toJS(m_Pendingorder_buy_type);
@@ -123,6 +124,7 @@ Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address)
                         res["type"] = toJS(_type);
                         res["receivingType"] = toJS(_op.m_receivingType);
                         res["from"] = toJS(_op.m_from);
+                        address.insert(_op.m_from);
                         _JsArray.append(res);
                     }
                     if(_type == dev::brc::transationTool::transferAutoEx) {
@@ -132,6 +134,8 @@ Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address)
                         res["autoExType"] = toJS(_op.m_autoExType);
                         res["autoExNum"] = toJS(_op.m_autoExNum);
                         res["transferNum"] = toJS(_op.m_transferNum);
+                        address.insert(_op.m_from);
+                        address.insert(_op.m_to);
                         res["from"] = toJS(_op.m_from);
                         res["to"] = toJS(_op.m_to);
                         _JsArray.append(res);
@@ -538,12 +542,27 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 break;
             }
             lastHash = bi.hash();
-            VerifiedBlockRef const block = verifyBlock(&b, m_onBad, ImportRequirements::OutOfOrderChecks);
-            
-            for(auto &itr : block.transactions){
-                cwarn << "######## scane address " << toHex(itr.from) << " : " << toHex(itr.to);
-                if(itr.data().size() > 0){
+           // VerifiedBlockRef const block = verifyBlock(&b, m_onBad, ImportRequirements::OutOfOrderChecks);
 
+            RLP r(b);
+            std::vector<bytes> v_trxb;
+            for(auto val : r[1])
+				v_trxb.push_back(val.data().toBytes());
+			std::vector<Transaction> ret_t;
+            
+            for(auto &itr : ret_t){
+                std::set<Address> _ret;
+                _ret.insert(itr.from);
+                _ret.insert(itr.to);
+                // cwarn << "######## scane address " << toHex(itr.from) << " : " << toHex(itr.to);
+                if(itr.data().size() > 0){
+                    for( auto const& _val : itr.data())
+                    {
+                        analysisData(itr.data(),_ret);
+                    }
+                    for(auto const& ad : _ret){
+                        cwarn << "######## scane address " << toHex(ad);
+                    }
                 }
             }
         }
