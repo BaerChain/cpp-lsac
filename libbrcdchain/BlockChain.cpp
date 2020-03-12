@@ -54,6 +54,99 @@ std::ostream &dev::brc::operator<<(std::ostream &_out, BlockChain const &_bc) {
     return _out;
 }
 
+
+Json::Value analysisData(bytes const& _data, std::vector<dev::Address> &address) {
+            try{
+                RLP _r(_data);
+                Json::Value _JsArray;
+                std::vector<bytes> _ops = _r.toVector<bytes>();
+                for (auto val : _ops) {
+                    dev::brc::transationTool::op_type _type =  dev::brc::transationTool::operation::get_type(val);
+                    if(_type == dev::brc::transationTool::brcTranscation) {
+                        Json::Value res; 
+                        dev::brc::transationTool::transcation_operation _transation_op = dev::brc::transationTool::transcation_operation(val);
+                        res["type"] = toJS(_type);
+                        if(_transation_op.m_from != Address(0)){
+                            res["from"] = toJS(_transation_op.m_from);
+                            address.push_back(_transation_op.m_from);
+                        }
+                          
+                        res["to"] = toJS(_transation_op.m_to);
+                        address.push_back(_transation_op.m_to);
+                        res["transcation_type"] = toJS(_transation_op.m_Transcation_type);
+                        res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
+                        _JsArray.append(res);
+                    }
+                    if(_type == dev::brc::transationTool::vote) {
+                        Json::Value res;
+                        dev::brc::transationTool::vote_operation _vote_op = dev::brc::transationTool::vote_operation(val);
+                        res["type"] = toJS(_type);
+                        if(_vote_op.m_from != Address(0))
+                        {  
+                            res["from"] = toJS(_vote_op.m_from);
+                            address.push_back(_vote_op.m_from);
+                        }
+                          
+                        res["to"] = toJS(_vote_op.m_to);
+                        address.push_back(_vote_op.m_to);
+                        res["vote_type"] = toJS(_vote_op.m_vote_type);
+                        res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
+                        _JsArray.append(res);
+                    }
+                    if(_type == dev::brc::transationTool::pendingOrder) {
+                        Json::Value res;
+                        dev::brc::transationTool::pendingorder_opearaion _pendering_op = dev::brc::transationTool::pendingorder_opearaion(val);
+                        uint8_t m_Pendingorder_type = (uint8_t)_pendering_op.m_Pendingorder_type;
+                        uint8_t m_Pendingorder_Token_type = (uint8_t)_pendering_op.m_Pendingorder_Token_type;
+                        uint8_t m_Pendingorder_buy_type = (uint8_t)_pendering_op.m_Pendingorder_buy_type;
+
+                        res["type"] = toJS(_type);
+                        res["from"] = toJS(_pendering_op.m_from);
+                        res["pendingorder_type"] = toJS(m_Pendingorder_type);
+                        res["token_type"] = toJS(m_Pendingorder_Token_type);
+                        res["buy_type"] = toJS(m_Pendingorder_buy_type);
+                        res["num"] = toJS(_pendering_op.m_Pendingorder_num);
+                        res["price"] = toJS(_pendering_op.m_Pendingorder_price);
+                        _JsArray.append(res);
+                    }
+                    if(_type == dev::brc::transationTool::cancelPendingOrder) {
+                        Json::Value res;
+                        dev::brc::transationTool::cancelPendingorder_operation _cancel_op = dev::brc::transationTool::cancelPendingorder_operation(val);
+                        res["type"] = toJS(_type);
+                        res["cancelType"] = toJS(_cancel_op.m_cancelType);
+                        res["hash"] = toJS(_cancel_op.m_hash);
+                        _JsArray.append(res);
+                    }
+                    if(_type == dev::brc::transationTool::receivingincome) {
+                        Json::Value res;
+                        dev::brc::transationTool::receivingincome_operation _op = dev::brc::transationTool::receivingincome_operation(val);
+                        res["type"] = toJS(_type);
+                        res["receivingType"] = toJS(_op.m_receivingType);
+                        res["from"] = toJS(_op.m_from);
+                        _JsArray.append(res);
+                    }
+                    if(_type == dev::brc::transationTool::transferAutoEx) {
+                        Json::Value res;
+                        dev::brc::transationTool::transferAutoEx_operation _op = dev::brc::transationTool::transferAutoEx_operation(val);
+                        res["type"] = toJS(_type);
+                        res["autoExType"] = toJS(_op.m_autoExType);
+                        res["autoExNum"] = toJS(_op.m_autoExNum);
+                        res["transferNum"] = toJS(_op.m_transferNum);
+                        res["from"] = toJS(_op.m_from);
+                        res["to"] = toJS(_op.m_to);
+                        _JsArray.append(res);
+                    }
+                }
+                return _JsArray;
+            }             
+            catch (...) {
+                throw jsonrpc::JsonRpcException("Invalid data format!");
+            }
+
+}
+
+
+
 db::Slice dev::brc::toSlice(h256 const &_h, unsigned _sub) {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
     static thread_local FixedHash<33> h = _h;
@@ -445,7 +538,14 @@ void BlockChain::rebuild(fs::path const &_path, std::function<void(unsigned, uns
                 break;
             }
             lastHash = bi.hash();
-            import(b, s.db(), s.exdb(), 0);
+            VerifiedBlockRef const block = verifyBlock(&b, m_onBad, ImportRequirements::OutOfOrderChecks);
+            
+            for(auto &itr : block.transactions){
+                cwarn << "######## scane address " << toHex(itr.from) << " : " << toHex(itr.to);
+                if(itr.data().size() > 0){
+
+                }
+            }
         }
         catch (const std::exception &e){
             cwarn << "rebuild exception : " << e.what();
