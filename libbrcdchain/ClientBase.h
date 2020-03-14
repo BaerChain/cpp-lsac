@@ -87,6 +87,8 @@ public:
     Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const override;
     Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const override;
 
+    Json::Value getRecvnum(Address _a, BlockNumber _block) const override;
+
 	Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
 	Json::Value votedMessage(Address _a, BlockNumber _block) const override;
 	Json::Value electorMessage(BlockNumber _block) const override;

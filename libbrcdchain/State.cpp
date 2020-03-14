@@ -3336,3 +3336,31 @@ template AddressHash dev::brc::commit<OverlayDB>(
 
 template AddressHash dev::brc::commit<StateCacheDB>(
         AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state, int64_t _block_number = 0);
+
+
+
+
+Json::Value dev::brc::State::getrecvnum(Address const& _a)
+{
+    Account *a = account(_a);
+    if(!a)
+    {
+        return Json::Value();
+    }
+
+    ReceivedCookies recvCookie = a->get_received_cookies();
+
+    std::map<u256, std::map<Address, std::pair<u256, u256>>> _map = recvCookie.m_received_cookies;
+    Json::Value _v;
+    u256 _recv = 0;
+    for(auto const& round : _map)
+    {
+        for(auto val :round.second)
+        {
+            _recv += val.second.second;
+        }
+    }
+    _v["address"] = toJS(_a);
+    _v["recvived"] = toJS(_recv);
+    return _v;
+}

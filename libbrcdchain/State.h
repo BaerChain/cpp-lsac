@@ -620,6 +620,9 @@ public:
     // test for changeMiner with test_net_data
     void changeMinerAddVote(BlockHeader const& _header);
 
+
+    Json::Value getrecvnum(Address const& _a);
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();

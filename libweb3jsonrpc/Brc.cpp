@@ -1037,3 +1037,18 @@ string dev::rpc::exceptionToErrorMessage()
 	}
 	return ret;
 }
+
+
+
+Json::Value dev::rpc::Brc::brc_getRecvnum(std::string const& _address, std::string const& _blockNumber)
+{
+    try
+    {
+        return client()->getRecvnum(jsToAddress(_address) ,jsToBlockNumber( _blockNumber));
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+    
+}

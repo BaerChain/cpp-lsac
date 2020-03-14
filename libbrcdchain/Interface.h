@@ -143,6 +143,8 @@ public:
     }
     Json::Value queryExchangeRewardMessage(Address _a) const { return queryExchangeRewardMessage(_a, m_default); }
     Json::Value queryBlcokRewardMessage(Address _a) const { return queryBlockRewardMessage(_a, m_default); }
+    Json::Value getRecvnum(Address _a) const {return getRecvnum(_a,m_default);}
+
 
     virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
     virtual u256 ballotAt(Address _a, BlockNumber _block) const = 0;
@@ -167,6 +169,9 @@ public:
 	virtual Json::Value electorMessage(BlockNumber _block) const = 0;
 	virtual Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const = 0;
+
+
+    virtual Json::Value getRecvnum(Address _a, BlockNumber _block) const = 0;
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;

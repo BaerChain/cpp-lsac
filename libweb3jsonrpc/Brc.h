@@ -114,6 +114,8 @@ public:
 
 	virtual Json::Value brc_getAnalysisData(std::string const& _data) override;
 	
+	virtual Json::Value brc_getRecvnum(std::string const& _address, std::string const& _blockNum) override;
+
 	void setTransactionDefaults(brc::TransactionSkeleton& _t);
 protected:
 
