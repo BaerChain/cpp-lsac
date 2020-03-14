@@ -1044,7 +1044,7 @@ Json::Value dev::rpc::Brc::brc_getRecvnum(std::string const& _address, std::stri
 {
     try
     {
-        return client()->getRecvnum(jsToAddress(_address) ,jsToBlockNumber( _blockNumber));
+        return client()->getRecvnum(jsToAddress(_address) ,jsToBlockNum( _blockNumber));
     }
     catch(...)
     {
