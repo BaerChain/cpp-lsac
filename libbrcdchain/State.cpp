@@ -3348,19 +3348,22 @@ Json::Value dev::brc::State::getrecvnum(Address const& _a)
         return Json::Value();
     }
 
-    ReceivedCookies recvCookie = a->get_received_cookies();
-
+    // ReceivedCookies recvCookie = a->get_received_cookies();
+    CouplingSystemfee recvCookie =  a->getFeeSnapshot();
     std::map<u256, std::map<Address, std::pair<u256, u256>>> _map = recvCookie.m_received_cookies;
     Json::Value _v;
-    u256 _recv = 0;
+    u256 _recvCookie = 0;
+    u256 _recvBrc = 0;
     for(auto const& round : _map)
     {
         for(auto val :round.second)
         {
-            _recv += val.second.second;
+            _recvBrc += val.second.first;
+            _recvCookie += val.second.second;
         }
     }
     _v["address"] = toJS(_a);
-    _v["recvived"] = toJS(_recv);
+    _v["recvivedCookie"] = toJS(_recvCookie);
+    _v["recvivedBrc"] = toJS(_recvBrc);
     return _v;
 }
