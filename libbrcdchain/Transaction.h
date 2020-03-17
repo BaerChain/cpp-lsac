@@ -80,6 +80,7 @@ namespace dev
                 changeMiner = 7,
                 receivingincome = 8,
                 transferAutoEx = 9,
+                transferAccountControl = 10,
             };
 
             static std::map<op_type, u256> c_add_value = {

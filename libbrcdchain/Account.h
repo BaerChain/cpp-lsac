@@ -559,11 +559,7 @@ struct CancelOrder{
     CancelOrder(){}
     CancelOrder(h256 _id, int64_t _time, u256 _price, uint8_t _type, bool _isAdd = false):
                 m_id(_id), m_time(_time), m_price(_price), m_type(_type), m_isAdd(_isAdd){}
-//    void init(h256 _id, int64_t _time, u256 _price){
-//        m_id = _id;
-//        m_time = _time;
-//        m_price = _price;
-//    }
+
     bytes streamRlp() const{
         RLPStream b;
         b.appendList(3);
@@ -577,6 +573,44 @@ struct CancelOrder{
         m_type = (uint8_t)rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 };
+
+enum PermissionsType : uint64_t
+{
+    Transfer_brc = 1 ,
+    Buy_brc = 1 << 1,
+    Buy_cookie = 1 << 2,
+    Sell_brc = 1 << 3,
+    Sell_cookie = 1 << 4,
+    Can_pending = 1 << 5,
+    Buy_tickets = 1 << 6,
+    Sell_tickets = 1 << 7,
+    Vote = 1 << 8,
+    Cancel_vote = 1 << 9,
+    Login_candidata = 1 << 10,
+    Logout_candidate = 1 << 11,
+    Deploy_contract = 1 << 12,
+    Execute_contract = 1 << 13
+};
+
+struct AccountControl{
+    Address m_childAddress;
+    uint8_t  m_weight =0;                       //weight [0,100]
+    uint64_t  m_permissions =0;          // permissions for transaction
+
+    bytes streamRLP() const{
+        RLPStream s(3);
+        s<< m_childAddress <<m_weight <<(u256)m_permissions;
+        return s.out();
+    }
+    void populateRLP(bytes const& _b){
+        RLP rlp(_b);
+        m_childAddress = rlp[0].convert<Address>(RLP::LaissezFaire);
+        m_weight = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
+        m_permissions = (uint64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
+    }
+
+};
+
 
 class Account {
 public:
