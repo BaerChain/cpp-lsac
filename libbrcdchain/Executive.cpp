@@ -325,25 +325,18 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
                 }
                 bool is_verfy_cost = true;
-
                 if (m_batch_params._type != _type && m_batch_params.size() > 0) {
                     cwarn << "There cannot be multiple types of transactions in bulk transactions";
-                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                            std::string("There cannot be multiple types of transactions in bulk transactions")));
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(std::string("There cannot be multiple types of transactions in bulk transactions")));
                 }
-
                 if (_type != transationTool::brcTranscation && _ops.size() > 1) {
-                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                            "Only transfer transactions can be batch operated"));
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
                 }
-
                 if (_type == transationTool::brcTranscation && _ops.size() > 50)
                 {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
                             "The number of bulk transfers cannot exceed 50"));
                 }
-
-
                 m_batch_params._type = _type;
                 switch (_type)
                 {
@@ -407,7 +400,6 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     {
                         transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
                         m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
-
                     }
                         break;
                     case transationTool::transferAutoEx:
