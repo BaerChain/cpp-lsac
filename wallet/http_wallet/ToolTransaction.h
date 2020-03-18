@@ -58,6 +58,8 @@ namespace wallet{
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
+        static std::shared_ptr<operation> get_oparation_from_data(js::mObject& op_obj);
+
         //static Logger logInfo {createLogger(VerbosityInfo, "signTransaction")};
     };
 }

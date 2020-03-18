@@ -382,17 +382,11 @@ namespace dev
 
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
-                uint8_t m_dataType;
                 Address m_rootAddress;
-                bytes  m_transactionData;
-                std::set<bytes> m_signs;
+                std::shared_ptr<operation>  m_data_ptr;
+                std::set<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
-                transferMutilSigns_operation(op_type _type, op_type _dType, Address const& _rootAddr, bytes const& _bts, std::set<bytes>const& _sbts):
-                    m_type(_type), m_dataType(_dType), m_rootAddress(_rootAddr),m_transactionData(_bts),m_signs(_sbts){}
 
-                OPERATION_UNSERIALIZE(transferMutilSigns_operation, (m_type)(m_dataType)(m_rootAddress)(m_transactionData)(m_signs))
-
-                OPERATION_SERIALIZE((m_type)(m_dataType)(m_rootAddress)(m_transactionData)(m_signs))
             };
 
            
