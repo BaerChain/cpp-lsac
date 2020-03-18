@@ -556,7 +556,33 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
 
     std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
 
-    m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
+    bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
+    RLP _rlp(_data);
+    if(_rlp.isList())
+    {
+        Address _rootAddrbyFrom = _rlp[0].convert<Address>(RLP::LaissezFaire);
+    }
+    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
+
+    if(_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
+    {
+        //TO DO: Exception details
+        BOOST_THROW_EXCEPTION();
+    }
+
+    for(auto _addr : _signAddr)
+    {
+        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
+        RLP _signAddrRlp(_signAddrData);
+        if(_signAddrRlp.isList())
+        {
+            Address _rootAddrbysignAddr = _signAddrRlp[0].convert<Address>(RLP::LaissezFaire);
+            if(_rootAddrbysignAddr != _mutilSign_op->m_rootAddress)
+            {
+                BOOST_THROW_EXCEPTION();
+            }
+        }
+    }
 }
 
 
