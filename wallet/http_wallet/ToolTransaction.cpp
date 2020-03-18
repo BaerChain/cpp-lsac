@@ -218,8 +218,23 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         }
     }
     /// 子账户签名
-    if(true){
-
+    for(auto& op : trx_datas[0].ops){
+       auto d_type = op->type();
+       if(d_type == op_type::transferMutilSigns){
+           std::shared_ptr<transationTool::transferMutilSigns_operation> op_ptr =
+                   std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation> (op);
+           auto op_rlp = op_ptr->m_data_ptr->serialize();
+           for(auto const&a : childAddress){
+               if(!childKeys.count(a)) {
+                   _pair.second = "not find the Child Addrss:"+ dev::toString(a) +" key...";
+                   cwarn<< _pair.second;
+                   return _pair;
+               }
+               auto sig = ToolTransaction::getSignByBytes(op_rlp, childKeys[a]);
+               op_ptr->m_signs.emplace_back(sig);
+           }
+           //op.reset(op_ptr.get());
+       }
     }
 
     //数据签名
@@ -276,6 +291,13 @@ bytes wallet::ToolTransaction::packed_operation_data(const std::vector<std::shar
     return rlp.out();
 }
 
+SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret _key){
+    auto sig = dev::sign(_key,dev::sha3(_bs));
+    SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
+    if (sigStruct.isValid())
+        return sigStruct;
+    return SignatureStruct{h256(),h256(),0};
+}
 
 operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
     auto type = op_obj["type"].get_int();
