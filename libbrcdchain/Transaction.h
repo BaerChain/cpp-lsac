@@ -81,6 +81,7 @@ namespace dev
                 receivingincome = 8,
                 transferAutoEx = 9,
                 transferAccountControl = 10,
+                transferMutilSigns = 11,
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -377,6 +378,21 @@ namespace dev
 
                 OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
+            };
+
+            struct transferMutilSigns_operation : public operation{
+                uint8_t m_type;
+                uint8_t m_dataType;
+                Address m_rootAddress;
+                bytes  m_transactionData;
+                std::set<bytes> m_signs;
+                transferMutilSigns_operation(){}
+                transferMutilSigns_operation(op_type _type, op_type _dType, Address const& _rootAddr, bytes const& _bts, std::set<bytes>const& _sbts):
+                    m_type(_type), m_dataType(_dType), m_rootAddress(_rootAddr),m_transactionData(_bts),m_signs(_sbts){}
+
+                OPERATION_UNSERIALIZE(transferMutilSigns_operation, (m_type)(m_dataType)(m_rootAddress)(m_transactionData)(m_signs))
+
+                OPERATION_SERIALIZE((m_type)(m_dataType)(m_rootAddress)(m_transactionData)(m_signs))
             };
 
            

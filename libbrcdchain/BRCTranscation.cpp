@@ -549,8 +549,9 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
     }
 }
 
-void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::vector<std::shared_ptr<transationTool::opeartion>> const& _op, u256 const& _baseGas)
+void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::shared_ptr<transationTool::opeartion> const& _op)
 {
+    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
     
 }
 
