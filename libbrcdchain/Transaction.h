@@ -109,13 +109,11 @@ namespace dev
                 Transferdeduction = 2
             };
 
-
             enum  initializeEnum : uint8_t
             {
                 rpcinitialize = 0,
                 executeinitialize = 1
             };
-
 
             //test code  begin
             struct testSort
@@ -206,7 +204,7 @@ namespace dev
 
                 virtual bytes serialize() const{ return bytes(); }
                 
-                virtual op_type type() = 0;
+                virtual op_type type() { return op_type::null;}
                 
             };
             struct vote_operation : public operation
@@ -310,7 +308,6 @@ namespace dev
                     m_Pendingorder_price = rlp[6].convert<u256>(RLP::LaissezFaire);
                 }
 
-
                 //	OPERATION_SERIALIZE((m_type)(m_from)(m_Pendingorder_type)(m_Pendingorder_Token_type)(m_Pendingorder_buy_type)(m_Pendingorder_num)(m_Pendingorder_price))
                 virtual bytes serialize()  const{
                     RLPStream stream(7);
@@ -402,14 +399,16 @@ namespace dev
                 std::shared_ptr<operation>  m_data_ptr;
                 std::vector<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
-
-
+                transferMutilSigns_operation(op_type _type, Address const& _rootAddr, operation* _ptr):
+                    m_type(_type), m_rootAddress(_rootAddr){
+                    m_data_ptr.reset(_ptr);
+                }
+                virtual bytes serialize()  const;
+                transferMutilSigns_operation(bytes const& _bs);
                 std::vector<Address> getSignAddress() {return std::vector<Address>();}
                 virtual op_type type(){return (op_type)m_type;}
             };
-
-           
-
+        operation* getOperationByRLP(bytes const& _bs);
         }  // namespace transationTool
 
         enum class CodeDeposit
