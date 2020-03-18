@@ -597,6 +597,10 @@ struct AccountControl{
     uint8_t  m_weight =0;                       //weight [0,100]
     uint64_t  m_permissions =0;          // permissions for transaction
 
+    AccountControl(bytes const& _b){
+        populateRLP(_b);
+    }
+
     bytes streamRLP() const{
         RLPStream s(3);
         s<< m_childAddress <<m_weight <<(u256)m_permissions;

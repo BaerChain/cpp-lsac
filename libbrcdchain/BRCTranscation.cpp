@@ -555,33 +555,54 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
 
     std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
-
+    uint64_t _trxWeight = 0;
     bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
     RLP _rlp(_data);
     if(_rlp.isList())
     {
         Address _rootAddrbyFrom = _rlp[0].convert<Address>(RLP::LaissezFaire);
+        if (_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
+        {
+            // TO DO: Exception details
+            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+        }
     }
-    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
 
-    if(_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
-    {
-        //TO DO: Exception details
-        BOOST_THROW_EXCEPTION();
+
+
+    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
+    AccountControl _fromControl(_accountControlData);
+    if(!_fromControl.isTrxType(_trxType)){
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
     }
+    _trxWeight += _fromControl.m_weight;
 
     for(auto _addr : _signAddr)
     {
-        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
-        RLP _signAddrRlp(_signAddrData);
+        bytes _signAddrRootData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
+        RLP _signAddrRlp(_signAddrRootData);
         if(_signAddrRlp.isList())
         {
             Address _rootAddrbysignAddr = _signAddrRlp[0].convert<Address>(RLP::LaissezFaire);
             if(_rootAddrbysignAddr != _mutilSign_op->m_rootAddress)
             {
-                BOOST_THROW_EXCEPTION();
+                BOOST_THROW_EXCEPTION(ExecutiveFailed());
             }
+
         }
+        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::ChildDataKey);
+        AccountControl _signAddrControl(_signAddrData);
+
+        if(!_signAddrControl.isTrxType(_trxType)){
+            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+        }
+
+        _trxWeight += _signAddrControl.m_weight;
+    }
+
+    if(_trxWeight < 100)
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
     }
 }
 
