@@ -549,6 +549,12 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
     }
 }
 
+void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::vector<std::shared_ptr<transationTool::opeartion>> const& _op, u256 const& _baseGas)
+{
+    
+}
+
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;

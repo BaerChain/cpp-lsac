@@ -343,86 +343,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                             "The number of bulk transfers cannot exceed 50"));
                 }
 
-
-                m_batch_params._type = _type;
-                switch (_type)
-                {
-                    case transationTool::vote:
-                    {
-                        transationTool::vote_operation _vote_op = transationTool::vote_operation(val);
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::vote_operation>(_vote_op));
-                    }
-                        break;
-                    case transationTool::brcTranscation:
-                    {
-                        transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(val);
-                        try {
-                            total_brc = _transcation_op.m_Transcation_numbers;
-                            m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to, (size_t)_transcation_op.m_Transcation_type,total_brc);
-                        }
-                        catch(Exception &ex)
-                        {
-                            LOG(m_execLogger)
-                                << "transcation field > "
-                                << "m_t.sender:" << m_t.sender() << " * "
-                                << " to:" << _transcation_op.m_to
-                                << " transcation_type:" << _transcation_op.m_Transcation_type
-                                << " transcation_num:" << _transcation_op.m_Transcation_numbers
-                                << ex.what();
-                            m_excepted = TransactionException::BrcTranscationField;
-                            BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
-                        }
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
-                    }
-                        break;
-                    case transationTool::pendingOrder:
-                    {
-                        if(m_batch_params.size() > 0)
-                            BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment("This peding_order is not batch !"));
-                        transationTool::pendingorder_opearaion _pengdingorder_op = transationTool::pendingorder_opearaion(val);
-                        if(_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
-                           _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
-                           _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
-                           m_s.balance(m_t.sender()) < totalCost)
-                        {
-                            m_pendingorderStatus = true;
-                            is_verfy_cost = false;
-                        }
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::pendingorder_opearaion>(_pengdingorder_op));
-                    }
-                        break;
-                    case transationTool::cancelPendingOrder:
-                    {
-                        transationTool::cancelPendingorder_operation  _cancel_op = transationTool::cancelPendingorder_operation(val);
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
-                    }
-                        break;
-                    case transationTool::changeMiner:
-                    {
-                        transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(val);
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
-                    }
-                        break;
-                    case transationTool::receivingincome:
-                    {
-                        transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(val);
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
-
-                    }
-                        break;
-                    case transationTool::transferAutoEx:
-                    {
-                        transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
-                        m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
-                    }
-                        break;
-                    default:
-                        m_excepted = TransactionException::DefaultError;
-                        BOOST_THROW_EXCEPTION(
-                                DefaultError()
-                                        << errinfo_comment(m_t.sender().hex()));
-                        break;
-                }
+                analysisTrx(totalCost, val, is_verfy_cost, _type);
 
                 if(is_verfy_cost && m_s.balance(m_t.sender()) < totalCost && _type != transationTool::transferAutoEx){
                     LOG(m_execLogger) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
@@ -482,6 +403,104 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         }
     }
 }
+
+
+void analysisTrx(u256& totalGas, bytes const& _ops, bool& is_verfy_cost, op_type const& _trxtype)
+{
+    m_batch_params._type = _type;
+    switch (_type)
+    {
+    case transationTool::vote:
+    {
+        transationTool::vote_operation _vote_op = transationTool::vote_operation(val);
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::vote_operation>(_vote_op));
+    }
+    break;
+    case transationTool::brcTranscation:
+    {
+        transationTool::transcation_operation _transcation_op =
+            transationTool::transcation_operation(val);
+        try
+        {
+            total_brc = _transcation_op.m_Transcation_numbers;
+            m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
+                (size_t)_transcation_op.m_Transcation_type, total_brc);
+        }
+        catch (Exception& ex)
+        {
+            LOG(m_execLogger) << "transcation field > "
+                              << "m_t.sender:" << m_t.sender() << " * "
+                              << " to:" << _transcation_op.m_to
+                              << " transcation_type:" << _transcation_op.m_Transcation_type
+                              << " transcation_num:" << _transcation_op.m_Transcation_numbers
+                              << ex.what();
+            m_excepted = TransactionException::BrcTranscationField;
+            BOOST_THROW_EXCEPTION(BrcTranscationField()
+                                  << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+        }
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::transcation_operation>(_transcation_op));
+    }
+    break;
+    case transationTool::pendingOrder:
+    {
+        if (m_batch_params.size() > 0)
+            BOOST_THROW_EXCEPTION(
+                VerifyPendingOrderFiled() << errinfo_comment("This peding_order is not batch !"));
+        transationTool::pendingorder_opearaion _pengdingorder_op =
+            transationTool::pendingorder_opearaion(val);
+        if (_pengdingorder_op.m_Pendingorder_buy_type == ex::order_buy_type::all_price &&
+            _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
+            _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
+            m_s.balance(m_t.sender()) < totalCost)
+        {
+            m_pendingorderStatus = true;
+            is_verfy_cost = false;
+        }
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::pendingorder_opearaion>(_pengdingorder_op));
+    }
+    break;
+    case transationTool::cancelPendingOrder:
+    {
+        transationTool::cancelPendingorder_operation _cancel_op =
+            transationTool::cancelPendingorder_operation(val);
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
+    }
+    break;
+    case transationTool::changeMiner:
+    {
+        transationTool::changeMiner_operation _changeMiner_op =
+            transationTool::changeMiner_operation(val);
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
+    }
+    break;
+    case transationTool::receivingincome:
+    {
+        transationTool::receivingincome_operation _receiving_op =
+            transationTool::receivingincome_operation(val);
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
+    }
+    break;
+    case transationTool::transferAutoEx:
+    {
+        transationTool::transferAutoEx_operation _autoEx_op =
+            transationTool::transferAutoEx_operation(val);
+        m_batch_params._operation.push_back(
+            std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
+    }
+    break;
+    default:
+        m_excepted = TransactionException::DefaultError;
+        BOOST_THROW_EXCEPTION(DefaultError() << errinfo_comment(m_t.sender().hex()));
+        break;
+    }
+}
+
 
 bool Executive::execute()
 {
