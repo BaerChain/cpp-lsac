@@ -449,11 +449,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 break;
                 case transationTool::transferMutilSigns:
                 {
-                    transationTool::transferMutilSigns_operation _mutilSign_op =
-                        transationTool::transferMutilSigns_operation(val);
-                    m_brctranscation.verifyPermissionTrx(m_t.sender(), _mutilSign_op);
-                    analysisTrx(totalGas, _mutilSign_op.m_transactionData, is_verfy_cost,
-                        _mutilSign_op.m_dataType);
+                    // transationTool::transferMutilSigns_operation _mutilSign_op =
+                    //     transationTool::transferMutilSigns_operation(val);
+                    // m_brctranscation.verifyPermissionTrx(m_t.sender(), _mutilSign_op);
                 }
                 break;
                 default:

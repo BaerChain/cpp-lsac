@@ -205,6 +205,9 @@ namespace dev
                 }
 
                 virtual bytes serialize() const{ return bytes(); }
+                
+                virtual op_type type() = 0;
+                
             };
             struct vote_operation : public operation
             {
@@ -227,6 +230,7 @@ namespace dev
                 OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_vote_type)(m_vote_numbers))
 
                 virtual ~vote_operation(){ }
+                virtual op_type type(){return (op_type)m_type;}
             };
 
             struct transcation_operation : public operation
@@ -252,6 +256,8 @@ namespace dev
                 /// bytes serialize this struct
                 /// \return  bytes
                 OPERATION_SERIALIZE((m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+                virtual op_type type(){return (op_type)m_type;}
+
             };
 
             struct changeMiner_operation : public operation
@@ -266,6 +272,8 @@ namespace dev
                 }
                 OPERATION_UNSERIALIZE(changeMiner_operation, (m_type)(m_before)(m_after))
                 OPERATION_SERIALIZE((m_type)(m_before)(m_after))
+                virtual op_type type(){return (op_type)m_type;}
+
             };
 
             struct pendingorder_opearaion : public operation
@@ -315,6 +323,8 @@ namespace dev
                     stream.append(m_Pendingorder_price);
                     return stream.out();
                 }
+                virtual op_type type(){return (op_type)m_type;}
+
             };
 
             struct cancelPendingorder_operation : public operation
@@ -330,6 +340,8 @@ namespace dev
                 OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))
 
                 OPERATION_SERIALIZE((m_type)(m_cancelType)(m_hash))
+                virtual op_type type(){return (op_type)m_type;}
+
             };
 
             struct contract_operation : public operation
@@ -340,6 +352,8 @@ namespace dev
                 contract_operation(op_type _type, bytes _d):m_type(_type) { m_date = _d; }
                 OPERATION_UNSERIALIZE(contract_operation, (m_date))
                 OPERATION_SERIALIZE((m_date))
+                virtual op_type type(){return (op_type)m_type;}
+
             };
 
             struct receivingincome_operation : public operation
@@ -354,6 +368,7 @@ namespace dev
                 OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_receivingType)(m_from))
 
                 OPERATION_SERIALIZE((m_type)(m_receivingType)(m_from))
+                virtual op_type type(){return (op_type)m_type;}
 
             };
 
@@ -377,6 +392,7 @@ namespace dev
                 OPERATION_UNSERIALIZE(transferAutoEx_operation, (m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
 
                 OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
+                virtual op_type type(){return (op_type)m_type;}
 
             };
 
@@ -384,9 +400,12 @@ namespace dev
                 uint8_t m_type;
                 Address m_rootAddress;
                 std::shared_ptr<operation>  m_data_ptr;
-                std::set<SignatureStruct> m_signs;
+                std::vector<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
 
+
+                std::vector<Address> getSignAddress() {return std::vector<Address>();}
+                virtual op_type type(){return (op_type)m_type;}
             };
 
            

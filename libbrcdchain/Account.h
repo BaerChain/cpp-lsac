@@ -609,6 +609,7 @@ struct AccountControl{
         m_permissions = (uint64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
     }
 
+    bool isTrxType(dev::brc::transationTool::op_type _type){return true;}
 };
 
 

@@ -3512,7 +3512,7 @@ bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootK
     Account *a = account(_addr);
     h256 _key = a->toGetAccountKey(_addr, _type);
     bytes _data = a->storageByteValue(_key, m_db);
-    return bytes;
+    return _data;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

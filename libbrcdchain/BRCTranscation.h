@@ -51,7 +51,7 @@ namespace dev {
             void verifyBlockFeeincome(Address const& _from, EnvInfo const& _envinfo, DposVote const& _vote);
             void verifyPdFeeincome(Address const& _from, int64_t _blockNum, DposVote const& _vote);
             void verifyTransferAutoEx(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _op, u256 const& _baseGas, h256 const& _trxid, EnvInfo const& _envinfo);
-            void verifyPermissionTrx(Address const& _from, std::shared_ptr<transationTool::opeartion> const& _op);
+            void verifyPermissionTrx(Address const& _from, std::shared_ptr<dev::brc::transationTool::operation> const& _op);
             
             bool findAddress(std::map<Address, u256> const& _voteData, std::vector<PollData> const& _pollData);
             bool isMainNode(dev::Address const& _addr, std::vector<PollData> const& _pollData);
@@ -60,7 +60,6 @@ namespace dev {
 
             ///interface about fork newChangeMiner
             void verifyreceivingincomeChanegeMiner(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops,transationTool::dividendcycle _type, EnvInfo const& _envinfo, DposVote const& _vote);
-
         private:
             State &m_state;
         };

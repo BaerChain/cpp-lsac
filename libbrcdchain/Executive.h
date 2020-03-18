@@ -190,8 +190,6 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
-    void analysisTrx(u256 &totalGas, bytes const& _ops, bool &is_verfy_cost, op_type const& _trxType);
-
 private:
 	const u256 c_min_price = 5;
     enum Method
