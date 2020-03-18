@@ -60,6 +60,8 @@ namespace wallet{
 
         static operation* get_oparation_from_data(js::mObject& op_obj);
 
+        static SignatureStruct getSignByBytes(bytes const& _bs, Secret _key);
+
         //static Logger logInfo {createLogger(VerbosityInfo, "signTransaction")};
     };
 }

@@ -118,6 +118,7 @@ bytes transationTool::transferMutilSigns_operation::serialize()  const
     RLPStream s(4);
     s<< m_type << m_rootAddress << m_data_ptr->serialize();
     std::vector<bytes> sign_bs;
+    cwarn << "*******sign size:"<<m_signs.size();
     for(auto const& v: m_signs){
         if (!v.r && !v.s) {
             RLPStream sign(3);
