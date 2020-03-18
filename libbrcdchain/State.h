@@ -525,6 +525,8 @@ public:
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, int64_t height, u256 const& _baseGas);
 
     std::pair<Address, Address> minerMapping(Address const& addr);
+
+    bytes getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type);
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);

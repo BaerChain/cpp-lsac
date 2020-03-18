@@ -45,6 +45,13 @@ namespace dev {
  */
         struct exchangeBplus;
 
+enum class getRootKeyType : uint8_t
+{
+    RootAddrKey = 0,
+    ChildAddrKey,
+    ChildDataKey
+};
+
 /// vote data
 struct PollData {
     Address m_addr;
@@ -602,6 +609,7 @@ struct AccountControl{
         m_permissions = (uint64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
     }
 
+    bool isTrxType(dev::brc::transationTool::op_type _type){return true;}
 };
 
 
@@ -1345,6 +1353,7 @@ public:
         return m_mappingAddress;
     }
 
+    h256 toGetAccountKey(Address const& _addr, getRootKeyType const& _type);
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

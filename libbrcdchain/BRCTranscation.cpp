@@ -549,6 +549,17 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
     }
 }
 
+void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
+{
+    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
+    dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
+
+    std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
+
+    m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
+}
+
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;

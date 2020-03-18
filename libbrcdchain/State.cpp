@@ -3505,6 +3505,16 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     return _SuccessAccount->getSuccessOrder();
 }
 
+
+
+bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type)
+{
+    Account *a = account(_addr);
+    h256 _key = a->toGetAccountKey(_addr, _type);
+    bytes _data = a->storageByteValue(_key, m_db);
+    return _data;
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;

@@ -113,10 +113,72 @@ std::ostream& dev::brc::operator<<(std::ostream& _out, TransactionException cons
 Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
   : TransactionBase(_rlpData, _checkSig)
 {}
-
-/*Transaction::Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag):
-    TransactionBase(_ts, _s, _flag)
+bytes transationTool::transferMutilSigns_operation::serialize()  const
 {
-    m_type = VoteMassage;
-    m_value = _flag;
-}*/
+    RLPStream s(4);
+    s<< m_type << m_rootAddress << m_data_ptr->serialize();
+    std::vector<bytes> sign_bs;
+    for(auto const& v: m_signs){
+        if (!v.r && !v.s) {
+            RLPStream sign(3);
+            sign << v.r << v.s << v.v;
+            sign_bs.emplace_back(sign.out());
+        }
+    }
+    s.appendVector<bytes>(sign_bs);
+    return s.out();
+}
+transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes const& _bs)
+{
+    RLP rlp(_bs);
+    m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
+    m_rootAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
+    auto op_bs = rlp[2].convert<bytes>(RLP::LaissezFaire);
+    //m_data_ptr = std::make_shared<operation>(getOperationByRLP(op_bs));
+    m_data_ptr.reset(getOperationByRLP(op_bs));
+    auto signs = rlp[3].toVector<bytes>();
+    for(auto const& r:signs){
+        RLP sign(r);
+        auto _sign = SignatureStruct{sign[0].toInt<u256>(),sign[1].toInt<u256>(), sign[2].toInt<uint8_t>()};
+        m_signs.emplace_back(_sign);
+    }
+
+    //    if(type == op_type::vote)
+//        m_data_ptr = std::make_shared<vote_operation>(new vote_operation(op_bs));
+//    else if(type == op_type::brcTranscation)
+//        m_data_ptr = std::make_shared<transcation_operation>(new transcation_operation(op_bs));
+//    else if(type == op_type::cancelPendingOrder)
+//        m_data_ptr = std::make_shared<cancelPendingorder_operation>(new cancelPendingorder_operation(op_bs));
+//    else if(type == op_type::pendingOrder)
+//        m_data_ptr = std::make_shared<pendingorder_opearaion>(new pendingorder_opearaion(op_bs));
+//    else if(type == op_type::receivingincome)
+//        m_data_ptr = std::make_shared<receivingincome_operation>(new receivingincome_operation(op_bs));
+//    else if(type == op_type::transferAutoEx)
+//        m_data_ptr = std::make_shared<transferAutoEx_operation>(new transferAutoEx_operation(op_bs));
+////    else if(type == op_type::transferAccountControl){
+////    }
+//    else{
+//    }
+
+
+}
+
+transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)
+{
+    auto type = operation::get_type(_bs);
+    if(type == op_type::vote)
+        return new vote_operation(_bs);
+    else if(type == op_type::brcTranscation)
+        return new transcation_operation(_bs);
+    else if(type == op_type::cancelPendingOrder)
+        return new cancelPendingorder_operation(_bs);
+    else if(type == op_type::pendingOrder)
+        return new pendingorder_opearaion(_bs);
+    else if(type == op_type::receivingincome)
+        return new receivingincome_operation(_bs);
+    else if(type == op_type::transferAutoEx)
+        return new transferAutoEx_operation(_bs);
+//    else if(type == op_type::transferAccountControl){
+//    }
+    return nullptr;
+}
