@@ -386,7 +386,13 @@ namespace dev
                 std::shared_ptr<operation>  m_data_ptr;
                 std::set<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
+                transferMutilSigns_operation(op_type _type, Address const& _rootAddr, operation* _ptr):
+                    m_type(_type), m_rootAddress(_rootAddr){
+                    m_data_ptr.reset(_ptr);
+                }
+                virtual bytes serialize()  const {
 
+                }
             };
 
            

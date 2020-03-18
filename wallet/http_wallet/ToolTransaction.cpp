@@ -85,11 +85,19 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         fromHex(d_obj[DATA_KEY_ChainId].get_str())));   // must same with genesis chainId
                 for (auto &p : d_obj[DATA_KEY_DATA].get_array()) {
                     auto op_obj = p.get_obj();
-                    auto op_ptr = get_oparation_from_data(op_obj);
-                    if(!op_ptr){
+                    auto type = op_obj["type"].get_int();
 
+                    if((op_type)type == op_type::deployContract){
+                        tx.to = Address();
+                        tx.isContract = trx_source::Contract::deploy;
+                        tx.data = fromHex(op_obj["contract"].get_str());
+                    } else if((op_type)type == op_type::executeContract){
+                        tx.data = fromHex(op_obj["contract"].get_str());
+                        tx.isContract = trx_source::Contract::execute;
+                    } else {
+                        auto op_ptr = get_oparation_from_data(op_obj);
+                        tx.ops.push_back(std::shared_ptr<operation>(op_ptr));
                     }
-                    tx.ops.push_back(op_ptr);
                 }
 
                 trx_datas.push_back(tx);
@@ -188,6 +196,31 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         _pair.second = "json_data is error not has key:keys";
         return _pair;
     }
+    ///判断 有且只有一笔transction
+    if(trx_datas.size() != 1) {
+        std::string log = "error transction size must be 1";
+        cerror << log;
+        _pair.second = log;
+        return _pair;
+    }
+    /// 获取交易子账户
+    std::vector<Address> childAddress;
+    if (obj.count("childAddresses")) {
+        try {
+            auto addr_array = obj["childAddresses"].get_array();
+            for (auto &o : addr_array) {
+                childAddress.emplace_back(Address(o.get_str()));
+            }
+        }
+        catch (...) {
+            _pair.second = "the childAddresses or invalid address";
+            return _pair;
+        }
+    }
+    /// 子账户签名
+    if(true){
+
+    }
 
     //数据签名
     std::vector<brc::Transaction> sign_trxs;
@@ -244,7 +277,7 @@ bytes wallet::ToolTransaction::packed_operation_data(const std::vector<std::shar
 }
 
 
-std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
+operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
     auto type = op_obj["type"].get_int();
     switch (type) {
         case vote: {
@@ -255,7 +288,7 @@ std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::
                                              u256(op_obj["m_vote_numbers"].get_str())
             );
             //tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
-            return std::shared_ptr<vote_operation>(new_op);
+            return new_op;
         }
         case brcTranscation: {
             auto transcation_op = new transcation_operation((op_type) type,
@@ -265,7 +298,7 @@ std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::
                                                             u256(op_obj["m_transcation_numbers"].get_str())
             );
             //tx.ops.push_back(std::shared_ptr<transcation_operation>(transcation_op));
-            return std::shared_ptr<transcation_operation>(transcation_op);
+            return transcation_op;
         }
         case pendingOrder: {
             auto pendingorder_op = new pendingorder_opearaion((op_type) type,
@@ -277,13 +310,12 @@ std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::
                                                               u256(op_obj["m_price"].get_str())
             );
             //tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
-            return std::shared_ptr<pendingorder_opearaion>(pendingorder_op);
+            return pendingorder_op;
         }
         case cancelPendingOrder: {
-            auto cancel_op = new cancelPendingorder_operation((op_type) type, 3,
-                                                              h256(op_obj["m_hash"].get_str()));
+            auto cancel_op = new cancelPendingorder_operation((op_type) type, 3, h256(op_obj["m_hash"].get_str()));
             //tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
-            return std::shared_ptr<cancelPendingorder_operation>(cancel_op);
+            return cancel_op;
         }
         case deployContract: {
 //            tx.to = Address();
@@ -301,12 +333,10 @@ std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::
             return nullptr;
         }
         case receivingincome: {
-            auto receivingincome_op = new receivingincome_operation((op_type)type,
-                                                                    1,
-                                                                    Address(op_obj["m_from"].get_str())
+            auto receivingincome_op = new receivingincome_operation((op_type)type,1,Address(op_obj["m_from"].get_str())
             );
             //tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
-            return std::shared_ptr<receivingincome_operation>(receivingincome_op);
+            return receivingincome_op;
         }
         case transferAutoEx: {
             auto transferAutoEx_op = new transferAutoEx_operation(
@@ -318,15 +348,16 @@ std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::
                     Address(op_obj["m_to"].get_str())
             );
             //tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
-            return std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op);
+            return transferAutoEx_op;
         }
         case transferMutilSigns: {
-            auto d_type = op_obj["dataType"].get_int();
             auto TxData = op_obj["transactionData"].get_obj();
             auto op_ptr = get_oparation_from_data(TxData);
             if(!op_ptr)
                 return nullptr;
-            break;
+            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),op_ptr);
+            return tran_sings;
         }
     }
+    return nullptr;
 }
