@@ -219,10 +219,19 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
     }
     /// 子账户签名
     for(auto& op : trx_datas[0].ops){
+        if(!op){
+            cwarn << " not have data in transaction";
+            break;
+        }
        auto d_type = op->type();
        if(d_type == op_type::transferMutilSigns){
            std::shared_ptr<transationTool::transferMutilSigns_operation> op_ptr =
                    std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation> (op);
+           if(!op_ptr->m_data_ptr){
+               _pair.second = "in this mutilSignsTransaction not have transaction_data!";
+               cerror << _pair.second;
+               return _pair;
+           }
            auto op_rlp = op_ptr->m_data_ptr->serialize();
            for(auto const&a : childAddress){
                if(!childKeys.count(a)) {
