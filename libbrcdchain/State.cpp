@@ -3515,6 +3515,14 @@ bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootK
     return _data;
 }
 
+void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& ){
+    for(auto const& val : _ops) {
+        std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(val);
+        // TODO excute
+        cwarn <<"excute"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<_op->m_permissions;
+    }
+}
+
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;

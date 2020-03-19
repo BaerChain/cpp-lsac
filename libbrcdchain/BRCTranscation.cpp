@@ -608,6 +608,17 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     }
 }
 
+void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo){
+    for(auto const& _it : _ops) {
+        std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(_it);
+        if (!_op) {
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(std::string("authority_operation is error")));
+        }
+        /// TODO verify
+        cwarn <<"verify"<< _op->m_childAddress << " weight:"<<_op->m_weight << " permiss:"<<_op->m_permissions;
+    }
+}
+
 
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {

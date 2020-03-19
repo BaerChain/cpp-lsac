@@ -393,6 +393,22 @@ namespace dev
 
             };
 
+            struct authority_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_childAddress;
+                uint8_t m_weight;
+                uint64_t m_permissions;
+                authority_operation(){}
+                authority_operation(op_type _type, Address const& _childAddr, uint8_t _weight, uint64_t _permssion):
+                    m_type(_type),m_childAddress(_childAddr),m_weight(_weight),m_permissions(_permssion){}
+
+                OPERATION_UNSERIALIZE(authority_operation, (m_type)(m_childAddress)(m_weight)(m_permissions))
+
+                OPERATION_SERIALIZE((m_type)(m_childAddress)(m_weight)(m_permissions))
+                virtual op_type type(){return (op_type)m_type;}
+            };
+
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
                 Address m_rootAddress;

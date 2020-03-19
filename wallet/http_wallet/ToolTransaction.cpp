@@ -191,10 +191,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             return  _pair;
         }
 
-    } else {
-        cerror << "not find key.....\n";
-        _pair.second = "json_data is error not has key:keys";
-        return _pair;
     }
     ///判断 有且只有一笔transction
     if(trx_datas.size() != 1) {
@@ -380,6 +376,16 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
             );
             //tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
             return transferAutoEx_op;
+        }
+        case transferAccountControl:{
+            auto authority_op = new authority_operation(
+                    (op_type)type,
+                    Address(op_obj["childAddress"].get_str()),
+                    uint8_t (op_obj["weight"].get_int()),
+                    uint64_t (op_obj["permissions"].get_uint64())
+                    );
+
+            return authority_op;
         }
         case transferMutilSigns: {
             auto TxData = op_obj["transactionData"].get_obj();
