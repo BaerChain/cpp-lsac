@@ -548,6 +548,11 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(
                                           *boost::get_error_info<errinfo_comment>(_r)));
             }
+            catch (transferAuthotityControlFailed const& _r)
+            {
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(
+                        *boost::get_error_info<errinfo_comment>(_r)));
+            }
         }
     }
 }

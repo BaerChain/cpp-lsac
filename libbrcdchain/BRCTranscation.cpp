@@ -574,7 +574,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
 
     bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
     AccountControl _fromControl(_accountControlData);
-    if(!_fromControl.isTrxType(_trxType)){
+    if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _fromControl.m_permissions)){
         BOOST_THROW_EXCEPTION(ExecutiveFailed());
     }
     _trxWeight += _fromControl.m_weight;
@@ -595,7 +595,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
         bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::ChildDataKey);
         AccountControl _signAddrControl(_signAddrData);
 
-        if(!_signAddrControl.isTrxType(_trxType)){
+        if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _signAddrControl.m_permissions)){
             BOOST_THROW_EXCEPTION(ExecutiveFailed());
         }
 
@@ -614,8 +614,28 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         if (!_op) {
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(std::string("authority_operation is error")));
         }
-        /// TODO verify
         cwarn <<"verify"<< _op->m_childAddress << " weight:"<<_op->m_weight << " permiss:"<<_op->m_permissions;
+        //verify the premassion
+        if(!authority::checkPermission(PermissionsType::Per_TransferAll, _op->m_permissions)){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of permissions invalid")));
+        }
+        //verify the weight
+        if(!authority::checkWeight(_op->m_weight)){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
+        }
+        //verify child account
+        //TODO get child Control
+        AccountControl _control;
+        bool isDel = false;
+        if(_op->m_weight == 0 && _op->m_permissions == 0)
+            isDel = true;
+        if(_op->m_childAddress != _control.m_childAddress && isDel){
+            //can not to del invalid AccountControl
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the childAdress invalid")));
+        }
+        if(_op->m_weight == _control.m_weight && _op->m_permissions == _control.m_permissions){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("childAdress Conterol_value is not changed")));
+        }
     }
 }
 

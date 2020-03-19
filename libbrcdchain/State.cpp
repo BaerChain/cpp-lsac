@@ -3520,6 +3520,16 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(val);
         // TODO excute
         cwarn <<"excute"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<_op->m_permissions;
+        AccountControl control = AccountControl{_op->m_childAddress, _op->m_weight, _op->m_permissions};
+        auto a = account(_from);
+        if(!a){
+            BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment("the account:"+toJS(_from)+" is null"));
+        }
+        auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
+        //TODO add code about childAddress:vetctor
+
+        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
+        setStorageBytes(_from, key_data, control.streamRLP());
     }
 }
 

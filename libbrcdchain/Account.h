@@ -573,47 +573,78 @@ struct CancelOrder{
         m_type = (uint8_t)rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 };
-
+/*
+ *              vote = 1,
+                brcTranscation = 2,
+                pendingOrder = 3,
+                cancelPendingOrder = 4,
+                deployContract = 5,
+                executeContract = 6,
+                changeMiner = 7,
+                receivingincome = 8,
+                transferAutoEx = 9,
+                transferAccountControl = 10,
+                transferMutilSigns = 11,
+ * */
 enum PermissionsType : uint64_t
 {
-    Transfer_brc = 1 ,
-    Buy_brc = 1 << 1,
-    Buy_cookie = 1 << 2,
-    Sell_brc = 1 << 3,
-    Sell_cookie = 1 << 4,
-    Can_pending = 1 << 5,
-    Buy_tickets = 1 << 6,
-    Sell_tickets = 1 << 7,
-    Vote = 1 << 8,
-    Cancel_vote = 1 << 9,
-    Login_candidata = 1 << 10,
-    Logout_candidate = 1 << 11,
-    Deploy_contract = 1 << 12,
-    Execute_contract = 1 << 13
+    Per_TransferVote = 1,
+    Per_TransferBrc = 1<<1 ,
+    Per_TransferPending = 1<<2,
+    Per_TransferCanPending = 1 << 3,
+    Per_DeployContract = 1 << 4,
+    Per_ExecuteContract = 1 << 5,
+    Per_TransferChangeMiner = 1 << 6,
+    Per_TransferReceiveIncome = 1 << 7,
+    Per_TransferAutoEx = 1 << 8,
+    Per_TransferAccountControl = 1 << 9,
+    Per_TransferMutilSigns = 1 << 10,
+
+    Per_ChildAll = Per_TransferVote + Per_TransferBrc +Per_TransferPending +
+                   Per_TransferCanPending +Per_DeployContract +Per_ExecuteContract +
+                   Per_TransferReceiveIncome + Per_TransferAutoEx + Per_TransferAccountControl+
+                   Per_TransferMutilSigns,
+
+    Per_TransferAll = Per_ChildAll,
+
+    Per_Null = 1 <<30,
 };
+namespace authority {
+    PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
+    inline bool checkPermission(PermissionsType _perType, uint64_t _permsssion) {
+        return (_perType & _permsssion) == _permsssion;
+    }
+    inline bool checkWeight(uint8_t _weight){
+        return _weight>=0 && _weight<=100;
+    }
+}
 
 struct AccountControl{
     Address m_childAddress;
     uint8_t  m_weight =0;                       //weight [0,100]
     uint64_t  m_permissions =0;          // permissions for transaction
-
+    AccountControl(){}
     AccountControl(bytes const& _b){
         populateRLP(_b);
     }
+    AccountControl(Address const& _addr, uint8_t _weight, uint64_t _premission):
+                m_childAddress(_addr),m_weight(_weight), m_permissions(_premission){}
 
     bytes streamRLP() const{
+        if((m_weight==0 && m_permissions==0) || m_childAddress == Address())
+            return bytes();
         RLPStream s(3);
         s<< m_childAddress <<m_weight <<(u256)m_permissions;
         return s.out();
     }
     void populateRLP(bytes const& _b){
         RLP rlp(_b);
+        if(!rlp.isList())
+            return;
         m_childAddress = rlp[0].convert<Address>(RLP::LaissezFaire);
         m_weight = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
         m_permissions = (uint64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
     }
-
-    bool isTrxType(dev::brc::transationTool::op_type _type){return true;}
 };
 
 
@@ -1441,6 +1472,7 @@ private:
     std::map<h256, CancelOrder>  m_cancelOrder;
 
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+
 };
 
 struct exchangeBplus : public databaseDelegate {
