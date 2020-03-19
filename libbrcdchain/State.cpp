@@ -3530,17 +3530,17 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
     Json::Value _ret;
     if(_type == getRootKeyType::RootAddrKey)
     {
-        std::vector<Address> _roots = getAddrByData();
+        std::vector<Address> _roots = getAddrByData(_data);
         Json::Value _rootArray;
         for(auto const& root : _roots)
         {
-            _childArray.append(toJS(root));
+            _rootArray.append(toJS(root));
         }
         _ret["rootAddr"] = _rootArray;
         return _ret;
     }else if(_type == getRootKeyType::ChildAddrKey)
     {
-        std::vector<Address> _roots = getAddrByData();
+        std::vector<Address> _childs = getAddrByData(_data);
         Json::Value _childArray;
         for(auto const& child : _childs)
         {
