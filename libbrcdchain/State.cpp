@@ -3570,11 +3570,60 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         if(!a){
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment("the account:"+toJS(_from)+" is null"));
         }
-        auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
-        //TODO add code about childAddress:vetctor
+        //auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
+        auto rlp_child = getDataByRootKey(_from,getRootKeyType::ChildAddrKey);
+        auto childAddrs = getAddrByData(rlp_child);
+        auto control_data= control.streamRLP();
+        bool isDel = control_data.empty();
+        bool isUp = false;
 
+        // rootAddress for childAddress
+        auto ret = find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
+        if(isDel&& ret!=childAddrs.end()){
+            //dell child address
+            childAddrs.erase(ret);
+            isUp = true;
+        }
+        if(!isDel && ret==childAddrs.end()){
+            // add new child Address
+            childAddrs.emplace_back(_op->m_childAddress);
+            isUp = true;
+        }
+        if(isUp){
+            // update ChildAddress
+            RLPStream s;
+            s.appendVector(childAddrs);
+            auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
+            setStorageBytes(_from, key, s.out());
+        }
+
+        //childAddress for rootAddress
+        auto c_a = account(_op->m_childAddress);
+        if(!c_a){
+            createAccount(_op->m_childAddress, {0});
+            c_a = account(_op->m_childAddress);
+        }
+        auto rlp_root = getDataByRootKey(_op->m_childAddress,getRootKeyType::ChildAddrKey);
+        auto rootAddrs = getAddrByData(rlp_root);
+        auto ret_root = find(rootAddrs.begin(), rootAddrs.end(), _from);
+        isUp = false;
+        if(isDel && ret_root != rootAddrs.end()){
+            rootAddrs.erase(ret_root);
+            isUp = true;
+        }
+        if(!isDel && ret_root ==rootAddrs.end()){
+            rootAddrs.emplace_back(_from);
+            isUp = true;
+        }
+        if(isUp){
+            auto rootKey = c_a->toGetAccountKey(_op->m_childAddress, getRootKeyType::RootAddrKey);
+            RLPStream s;
+            s.appendVector(rootAddrs);
+            setStorageBytes(_op->m_childAddress, rootKey, s.out());
+        }
+        // ControlData
         auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
-        setStorageBytes(_from, key_data, control.streamRLP());
+        setStorageBytes(_from, key_data, control_data);
     }
 }
 
