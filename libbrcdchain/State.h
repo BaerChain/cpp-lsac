@@ -528,6 +528,9 @@ public:
 
     void transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo);
     bytes getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type);
+    
+    std::vector<Address> getAddrByData(bytes const& _data);
+    
 
     Json::Value getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type);
 

@@ -3515,23 +3515,32 @@ bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootK
     return _data;
 }
 
+std::vector<Address> dev::brc::State::getAddrByData(bytes const& _data){
+    RLP _rlp(_data);
+    if(!_rlp.isData())
+    {
+        return std::vector<Address>();
+    }
+    return _rlp.toVector<Address>();
+}
+
 Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type)
 {
     bytes _data = getDataByRootKey(_addr, _type);
     Json::Value _ret;
-    RLP _rlp(_data);
-    if(!_rlp.isList())
-    {
-        return Json::Value();
-    }
     if(_type == getRootKeyType::RootAddrKey)
     {
-        Address _rootAddr = _rlp[0].convert<Address>(RLP::LaissezFaire);
-        _ret["rootAddr"] = toJS(_rootAddr);
+        std::vector<Address> _roots = getAddrByData();
+        Json::Value _rootArray;
+        for(auto const& root : _roots)
+        {
+            _childArray.append(toJS(root));
+        }
+        _ret["rootAddr"] = _rootArray;
         return _ret;
     }else if(_type == getRootKeyType::ChildAddrKey)
     {
-        std::vector<Address> _childs = _rlp[0].convert<std::vector<Address>>(RLP::LaissezFaire);
+        std::vector<Address> _roots = getAddrByData();
         Json::Value _childArray;
         for(auto const& child : _childs)
         {
@@ -3541,8 +3550,7 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
         return _ret;
     }else if(_type == getRootKeyType::ChildDataKey)
     {
-        bytes _childByte = _rlp[0].convert<bytes>(RLP::LaissezFaire);
-        AccountControl _control(_childByte);
+        AccountControl _control(_data);
         _ret["childAddress"] = toJS(_control.m_childAddress);
         _ret["trxWeight"] = std::to_string(_control.m_weight);
         _ret["trxPermissions"] = std::to_string(_control.m_permissions);
