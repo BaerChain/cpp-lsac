@@ -191,10 +191,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             return  _pair;
         }
 
-    } else {
-        cerror << "not find key.....\n";
-        _pair.second = "json_data is error not has key:keys";
-        return _pair;
     }
     ///判断 有且只有一笔transction
     if(trx_datas.size() != 1) {
@@ -219,10 +215,19 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
     }
     /// 子账户签名
     for(auto& op : trx_datas[0].ops){
+        if(!op){
+            cwarn << " not have data in transaction";
+            break;
+        }
        auto d_type = op->type();
        if(d_type == op_type::transferMutilSigns){
            std::shared_ptr<transationTool::transferMutilSigns_operation> op_ptr =
                    std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation> (op);
+           if(!op_ptr->m_data_ptr){
+               _pair.second = "in this mutilSignsTransaction not have transaction_data!";
+               cerror << _pair.second;
+               return _pair;
+           }
            auto op_rlp = op_ptr->m_data_ptr->serialize();
            for(auto const&a : childAddress){
                if(!childKeys.count(a)) {
@@ -371,6 +376,16 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
             );
             //tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
             return transferAutoEx_op;
+        }
+        case transferAccountControl:{
+            auto authority_op = new authority_operation(
+                    (op_type)type,
+                    Address(op_obj["childAddress"].get_str()),
+                    uint8_t (op_obj["weight"].get_int()),
+                    uint64_t (op_obj["permissions"].get_uint64())
+                    );
+
+            return authority_op;
         }
         case transferMutilSigns: {
             auto TxData = op_obj["transactionData"].get_obj();

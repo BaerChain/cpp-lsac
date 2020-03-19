@@ -441,17 +441,24 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 break;
                 case transationTool::transferAutoEx:
                 {
-                    transationTool::transferAutoEx_operation _autoEx_op =
-                        transationTool::transferAutoEx_operation(val);
+                    transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
                     m_batch_params._operation.push_back(
                         std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
                 }
                 break;
+                case transationTool::transferAccountControl:{
+                    transationTool::authority_operation _authority_op = transationTool::authority_operation(val);
+                    m_batch_params._operation.push_back(
+                            std::make_shared<transationTool::authority_operation>(_authority_op));
+                    break;
+                }
                 case transationTool::transferMutilSigns:
                 {
-                    // transationTool::transferMutilSigns_operation _mutilSign_op =
-                    //     transationTool::transferMutilSigns_operation(val);
-                    // m_brctranscation.verifyPermissionTrx(m_t.sender(), _mutilSign_op);
+                     transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
+                     m_brctranscation.verifyPermissionTrx(m_t.sender(),
+                             std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+                     m_batch_params._type = _mutilSign_op.m_data_ptr->type();
+                     m_batch_params._operation.push_back(_mutilSign_op.m_data_ptr);
                 }
                 break;
                 default:
@@ -508,10 +515,10 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
                 else if (m_batch_params._type == transationTool::op_type::transferAutoEx)
                     m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation,
-                        (m_baseGasRequired +
-                            transationTool::c_add_value[transationTool::op_type::transferAutoEx]) *
-                            m_t.gasPrice(),
+                        (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(),
                         m_t.sha3(), m_envInfo);
+                else if(m_batch_params._type == transationTool::op_type::transferAccountControl)
+                    m_brctranscation.verifyAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
             }
             catch (VerifyVoteField& ex)
             {
@@ -665,6 +672,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             case transationTool::op_type::transferAutoEx:
             {
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), m_envInfo.number(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
+                break;
+            }
+            case transationTool::op_type::transferAccountControl:
+            {
+                m_s.transferAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
                 break;
             }
             default:
