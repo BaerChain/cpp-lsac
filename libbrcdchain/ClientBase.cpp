@@ -270,8 +270,7 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
 
 Json::Value dev::brc::ClientBase::accountAuthorityDetails(Address _a, uint8_t _type, BlockNumber _block) const
 {
-    // return blockByNumber(_block).mutableState().getDataByRootKey(_a, getRootKeyType(_type));
-    return Json::Value();
+    return blockByNumber(_block).mutableState().getDataByRootKeyMsg(_a, getRootKeyType(_type));
 }
 
 // TODO: remove try/catch, allow exceptions

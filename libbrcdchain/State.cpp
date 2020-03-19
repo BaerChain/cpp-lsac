@@ -3515,6 +3515,51 @@ bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootK
     return _data;
 }
 
+std::vector<Address> dev::brc::State::getAddrByData(bytes const& _data){
+    RLP _rlp(_data);
+    if(!_rlp.isData())
+    {
+        return std::vector<Address>();
+    }
+    return _rlp.toVector<Address>();
+}
+
+Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type)
+{
+    bytes _data = getDataByRootKey(_addr, _type);
+    Json::Value _ret;
+    if(_type == getRootKeyType::RootAddrKey)
+    {
+        std::vector<Address> _roots = getAddrByData(_data);
+        Json::Value _rootArray;
+        for(auto const& root : _roots)
+        {
+            _rootArray.append(toJS(root));
+        }
+        _ret["rootAddr"] = _rootArray;
+        return _ret;
+    }else if(_type == getRootKeyType::ChildAddrKey)
+    {
+        std::vector<Address> _childs = getAddrByData(_data);
+        Json::Value _childArray;
+        for(auto const& child : _childs)
+        {
+            _childArray.append(toJS(child));
+        }
+        _ret["childAddr"] = _childArray;
+        return _ret;
+    }else if(_type == getRootKeyType::ChildDataKey)
+    {
+        AccountControl _control(_data);
+        _ret["childAddress"] = toJS(_control.m_childAddress);
+        _ret["trxWeight"] = std::to_string(_control.m_weight);
+        _ret["trxPermissions"] = std::to_string(_control.m_permissions);
+        return _ret;
+    }
+    return Json::Value();
+}
+
+
 void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& ){
     for(auto const& val : _ops) {
         std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(val);
