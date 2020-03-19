@@ -529,6 +529,8 @@ public:
     void transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo);
     bytes getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type);
 
+    Json::Value getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type);
+
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
