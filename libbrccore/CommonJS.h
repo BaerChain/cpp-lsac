@@ -35,5 +35,6 @@ BlockNumber jsToBlockNumber(std::string const& _js);
 BlockNumber jsToBlockNum(std::string const& _js);
 uint8_t jsToOrderEnum(std::string const& _js);
 int64_t jsToint64(std::string const& _js);
+uint8_t jsToRootKeyEnum(std::string const& _js);
 }
 }

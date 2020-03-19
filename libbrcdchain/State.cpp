@@ -3507,6 +3507,7 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
 
 
 
+
 bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type)
 {
     Account *a = account(_addr);
@@ -3526,6 +3527,10 @@ std::vector<Address> dev::brc::State::getAddrByData(bytes const& _data){
 
 Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type)
 {
+    if(_type == getRootKeyType::Null)
+    {
+        return Json::Value();
+    }
     bytes _data = getDataByRootKey(_addr, _type);
     Json::Value _ret;
     if(_type == getRootKeyType::RootAddrKey)
