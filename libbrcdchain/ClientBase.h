@@ -69,6 +69,7 @@ public:
     using Interface::queryExchangeRewardMessage;
     using Interface::queryBlcokRewardMessage;
 
+
     u256 balanceAt(Address _a, BlockNumber _block) const override;
     u256 ballotAt(Address _a, BlockNumber _block) const override;
     u256 countAt(Address _a, BlockNumber _block) const override;
@@ -86,12 +87,12 @@ public:
 	Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize, BlockNumber _block) const override;
     Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const override;
     Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const override;
-
+    Json::Value accountAuthorityDetails(Address _a, uint8_t _type, BlockNumber _block) const override;
 
     Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
 	Json::Value votedMessage(Address _a, BlockNumber _block) const override;
 	Json::Value electorMessage(BlockNumber _block) const override;
-	
+
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;
     virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;

@@ -249,7 +249,10 @@ public:
 		this->bindAndAddMethod(jsonrpc::Procedure("brc_getVoted", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getVotedI);
 		this->bindAndAddMethod(jsonrpc::Procedure("brc_getElector", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getElectorI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_estimateGasUsed",jsonrpc::PARAMS_BY_POSITION,jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL), &dev::rpc::BrcFace::brc_estimateGasUsedI); 
-
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getAccountAuthorityDetails", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getAccountAuthorityDetailsI);
     }
 
     inline virtual void brc_protocolVersionI(const Json::Value& request, Json::Value& response)
@@ -530,18 +533,23 @@ public:
         (void)request;
         response = this->brc_chainId();
     }
-				inline virtual void brc_getObtainVoteI(const Json::Value &request, Json::Value &response)
-				{
-					response = this->brc_getObtainVote(request[0u].asString(), request[1u].asString());
-				}
-				inline virtual void brc_getVotedI(const Json::Value &request, Json::Value &response)
-				{
-					response = this->brc_getVoted(request[0u].asString(), request[1u].asString());
-				}
-				inline virtual void brc_getElectorI(const Json::Value &request, Json::Value &response)
-				{
-					response = this->brc_getElector(request[0u].asString());
-                }
+    inline virtual void brc_getObtainVoteI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getObtainVote(request[0u].asString(), request[1u].asString());
+    }
+    inline virtual void brc_getVotedI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getVoted(request[0u].asString(), request[1u].asString());
+    }
+    inline virtual void brc_getElectorI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getElector(request[0u].asString());
+    }
+    inline virtual void brc_getAccountAuthorityDetailsI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getAccountAuthorityDetails(request[0u].asString(), request[1u].asString(), request[2u].asString());
+    }
+
 
     virtual std::string brc_protocolVersion() = 0;
     virtual std::string brc_coinbase() = 0;
@@ -614,9 +622,10 @@ public:
     virtual std::string brc_estimateGas(const Json::Value& param1) = 0;
     virtual Json::Value brc_estimateGasUsed(const Json::Value& param1) = 0;
     virtual std::string brc_chainId() = 0;
-				virtual Json::Value brc_getObtainVote(const std::string& param1, const std::string& param2) = 0;
-				virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;
-				virtual Json::Value brc_getElector(const std::string& param1) = 0;
+    virtual Json::Value brc_getObtainVote(const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;
+    virtual Json::Value brc_getElector(const std::string& param1) = 0;
+    virtual Json::Value brc_getAccountAuthorityDetails(std::string const& param1, std::string const& param2, std::string const& param3) = 0;
 };
 
 }  // namespace rpc

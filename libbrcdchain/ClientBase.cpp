@@ -268,6 +268,12 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     return _ret;
 }
 
+Json::Value dev::brc::ClientBase::accountAuthorityDetails(Address _a, uint8_t _type, BlockNumber _block) const
+{
+    // return blockByNumber(_block).mutableState().getDataByRootKey(_a, getRootKeyType(_type));
+    return Json::Value();
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {

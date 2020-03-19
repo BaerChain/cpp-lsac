@@ -905,6 +905,18 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
+Json::Value dev::rpc::Brc::brc_getAccountAuthorityDetails(std::string const& _addr, std::string const& _type, std::string const& _blockNumber)
+{
+    try
+    {
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+    
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;
