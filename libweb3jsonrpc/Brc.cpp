@@ -909,6 +909,7 @@ Json::Value dev::rpc::Brc::brc_getAccountAuthorityDetails(std::string const& _ad
 {
     try
     {
+        client()->accountAuthorityDetails(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
     }
     catch(...)
     {

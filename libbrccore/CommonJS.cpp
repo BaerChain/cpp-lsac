@@ -65,6 +65,21 @@ BlockNumber jsToBlockNum(std::string const& _js)
     }
 }
 
+uint8_t jsToRootKeyEnum(std::string const& _js)
+{
+    if(_js == "RootAddr")
+    {
+        return 1;
+    }else if(_js == "ChildAddr")
+    {
+        return 2;
+    }else if(_js == "ChildData")
+    {
+        return 3;
+    }
+    return 0;
+}
+
 uint8_t jsToOrderEnum(std::string const& _js)
 {
     if (_js == "sell")

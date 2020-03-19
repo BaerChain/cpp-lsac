@@ -47,7 +47,8 @@ namespace dev {
 
 enum class getRootKeyType : uint8_t
 {
-    RootAddrKey = 0,
+    Null = 0,
+    RootAddrKey,
     ChildAddrKey,
     ChildDataKey
 };
