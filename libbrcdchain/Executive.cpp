@@ -449,9 +449,11 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 break;
                 case transationTool::transferMutilSigns:
                 {
-                    // transationTool::transferMutilSigns_operation _mutilSign_op =
-                    //     transationTool::transferMutilSigns_operation(val);
-                    // m_brctranscation.verifyPermissionTrx(m_t.sender(), _mutilSign_op);
+                     transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
+                     m_brctranscation.verifyPermissionTrx(m_t.sender(),
+                             std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+                     m_batch_params._type = _mutilSign_op.m_data_ptr->type();
+                     m_batch_params._operation.push_back(_mutilSign_op.m_data_ptr);
                 }
                 break;
                 default:

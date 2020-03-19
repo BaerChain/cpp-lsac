@@ -118,9 +118,8 @@ bytes transationTool::transferMutilSigns_operation::serialize()  const
     RLPStream s(4);
     s<< m_type << m_rootAddress << m_data_ptr->serialize();
     std::vector<bytes> sign_bs;
-    cwarn << "*******sign size:"<<m_signs.size();
     for(auto const& v: m_signs){
-        if (!v.r && !v.s) {
+        if (v.r && v.s) {
             RLPStream sign(3);
             sign << v.r << v.s << v.v;
             sign_bs.emplace_back(sign.out());
@@ -135,7 +134,6 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
     m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
     m_rootAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
     auto op_bs = rlp[2].convert<bytes>(RLP::LaissezFaire);
-    //m_data_ptr = std::make_shared<operation>(getOperationByRLP(op_bs));
     m_data_ptr.reset(getOperationByRLP(op_bs));
     auto signs = rlp[3].toVector<bytes>();
     for(auto const& r:signs){
@@ -143,25 +141,23 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
         auto _sign = SignatureStruct{sign[0].toInt<u256>(),sign[1].toInt<u256>(), sign[2].toInt<uint8_t>()};
         m_signs.emplace_back(_sign);
     }
+}
 
-    //    if(type == op_type::vote)
-//        m_data_ptr = std::make_shared<vote_operation>(new vote_operation(op_bs));
-//    else if(type == op_type::brcTranscation)
-//        m_data_ptr = std::make_shared<transcation_operation>(new transcation_operation(op_bs));
-//    else if(type == op_type::cancelPendingOrder)
-//        m_data_ptr = std::make_shared<cancelPendingorder_operation>(new cancelPendingorder_operation(op_bs));
-//    else if(type == op_type::pendingOrder)
-//        m_data_ptr = std::make_shared<pendingorder_opearaion>(new pendingorder_opearaion(op_bs));
-//    else if(type == op_type::receivingincome)
-//        m_data_ptr = std::make_shared<receivingincome_operation>(new receivingincome_operation(op_bs));
-//    else if(type == op_type::transferAutoEx)
-//        m_data_ptr = std::make_shared<transferAutoEx_operation>(new transferAutoEx_operation(op_bs));
-////    else if(type == op_type::transferAccountControl){
-////    }
-//    else{
-//    }
-
-
+std::vector<Address> transationTool::transferMutilSigns_operation::getSignAddress(){
+    std::vector<Address> childAddrs;
+    if(!m_data_ptr)
+        return childAddrs;
+    auto data_rlp_sha3 =dev::sha3(m_data_ptr->serialize());
+    for(auto const& k: m_signs){
+        if (!k.isValid())
+            BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
+        auto p = recover(k, data_rlp_sha3 );
+        if (!p)
+            BOOST_THROW_EXCEPTION(InvalidSignature());
+        auto addr = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+        childAddrs.emplace_back(addr);
+    }
+    return childAddrs;
 }
 
 transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)

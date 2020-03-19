@@ -555,6 +555,8 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
 
     std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
+    for(auto const& a: _signAddr)
+        cwarn << "childAddress:"<< toJS(a);
     uint64_t _trxWeight = 0;
     bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
     RLP _rlp(_data);

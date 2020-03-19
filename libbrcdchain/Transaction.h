@@ -405,7 +405,7 @@ namespace dev
                 }
                 virtual bytes serialize()  const;
                 transferMutilSigns_operation(bytes const& _bs);
-                std::vector<Address> getSignAddress() {return std::vector<Address>();}
+                std::vector<Address> getSignAddress();
                 virtual op_type type(){return (op_type)m_type;}
             };
         operation* getOperationByRLP(bytes const& _bs);
