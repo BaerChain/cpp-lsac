@@ -3611,7 +3611,6 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
         a = account(_from);
     }
     auto addrs = getAddressesByRootKey(_from, _type);
-    cwarn << addrs;
     auto ret = find(addrs.begin(), addrs.end(), _changeAddr);
     bool isUp = false;
     if(_isDel && ret != addrs.end()){
@@ -3627,7 +3626,6 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
         RLPStream s(1);
         s.appendVector(addrs);
         setStorageBytes(_from, key, s.out());
-        cwarn << "up addrs:"<<addrs;
     }
 }
 

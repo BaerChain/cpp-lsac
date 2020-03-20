@@ -568,7 +568,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     bytes _accountControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, _from ,getRootKeyType::ChildDataKey);
     AccountControl _fromControl(_accountControlData);
     PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
-    if(!dev::brc::authority::checkPermission(_perType, _fromControl.m_permissions))
+    if(!dev::brc::authority::checkPermission(_fromControl.m_permissions,_perType ))
     {
         BOOST_THROW_EXCEPTION(ExecutiveFailed());
     }

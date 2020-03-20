@@ -613,8 +613,8 @@ enum PermissionsType : uint64_t
 };
 namespace authority {
     PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
-    inline bool checkPermission(PermissionsType _perType, uint64_t _permsssion) {
-        return (_perType & _permsssion) == _permsssion;
+    inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion) {
+        return (_verifyPermsssion & _complexPermssion) == _verifyPermsssion;
     }
     inline bool checkWeight(uint8_t _weight){
         return _weight>=0 && _weight<=100;
