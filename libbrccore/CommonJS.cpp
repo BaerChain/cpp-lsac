@@ -67,13 +67,11 @@ BlockNumber jsToBlockNum(std::string const& _js)
 
 uint8_t jsToRootKeyEnum(std::string const& _js)
 {
-    if(_js == "RootAddr")
+    if(_js == "RootData")
     {
-        return 1;
-    }else if(_js == "ChildAddr")
-    {
-        return 2;
-    }else if(_js == "ChildData")
+        return 4;
+    }
+    else if(_js == "ChildData")
     {
         return 3;
     }

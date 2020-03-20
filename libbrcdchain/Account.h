@@ -50,7 +50,8 @@ enum class getRootKeyType : uint8_t
     Null = 0,
     RootAddrKey,
     ChildAddrKey,
-    ChildDataKey
+    ChildDataKey,
+    RootDataKey
 };
 
 /// vote data
