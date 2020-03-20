@@ -3506,11 +3506,9 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
 }
 
 std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr, getRootKeyType const& _type){
-    Account *a = account(_addr);
-    if(!a)
+    if(!(_type==getRootKeyType::RootAddrKey || _type==getRootKeyType::ChildAddrKey))
         return std::vector<Address>();
-    h256 _key = a->toGetAccountKey(_addr, _type);
-    bytes _data = a->storageByteValue(_key, m_db);
+    auto _data =  getDataByKeyAddress(_addr, _addr, _type);
     RLP _rlp(_data);
     if(!_rlp.isList())
     {
@@ -3520,10 +3518,12 @@ std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr
 }
 
 
-bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type)
+bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::getRootKeyType const& _type)
 {
-    Account *a = account(_addr);
-    h256 _key = a->toGetAccountKey(_addr, _type);
+    Account *a = account(_strorageAddr);
+    if(!a)
+        return bytes();
+    h256 _key = a->toGetAccountKey(_keyAddr, _type);
     bytes _data = a->storageByteValue(_key, m_db);
     return _data;
 }
@@ -3625,10 +3625,10 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
         isUp = true;
     }
     if(isUp){
-        auto rootKey = a->toGetAccountKey(_changeAddr, _type);
+        auto key = a->toGetAccountKey(_from, _type);
         RLPStream s(1);
         s.appendVector(addrs);
-        setStorageBytes(_from, rootKey, s.out());
+        setStorageBytes(_from, key, s.out());
         cwarn << "up addrs:"<<addrs;
     }
 }

@@ -530,8 +530,8 @@ public:
     void transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo);
     Json::Value getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type);
     std::vector<Address> getAddressesByRootKey(Address const& _addr, getRootKeyType const& _type);
+    bytes getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::getRootKeyType const& _type);
 private:
-    bytes getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type);
     std::vector<Address> getAddrByData(bytes const& _data);
     ///update the set of address ,contains rootAddress and childAddress
     void updateAddressSet(Address const& _from, Address const& _changeAddr, bool _isDel, getRootKeyType const& _type);

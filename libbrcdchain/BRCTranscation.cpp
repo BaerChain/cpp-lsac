@@ -625,7 +625,14 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         }
         //verify child account
         //TODO get child Control
-        AccountControl _control;
+        auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
+        auto rootAddrs = m_state.getAddressesByRootKey(_op->m_childAddress, getRootKeyType::RootAddrKey);
+        cwarn << "child:"<< childAddrs;
+        cwarn << "root:"<< rootAddrs;
+
+        auto  _data = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
+        AccountControl _control = AccountControl{_data};
+
         bool isDel = false;
         if(_op->m_weight == 0 && _op->m_permissions == 0)
             isDel = true;
