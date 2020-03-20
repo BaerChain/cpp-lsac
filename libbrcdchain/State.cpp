@@ -3505,7 +3505,19 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     return _SuccessAccount->getSuccessOrder();
 }
 
-
+std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr, getRootKeyType const& _type){
+    Account *a = account(_addr);
+    if(!a)
+        return std::vector<Address>();
+    h256 _key = a->toGetAccountKey(_addr, _type);
+    bytes _data = a->storageByteValue(_key, m_db);
+    RLP _rlp(_data);
+    if(!_rlp.isList())
+    {
+        return std::vector<Address>();
+    }
+    return _rlp[0].toVector<Address>();
+}
 
 
 bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootKeyType const& _type)
@@ -3518,11 +3530,11 @@ bytes dev::brc::State::getDataByRootKey(Address const& _addr, dev::brc::getRootK
 
 std::vector<Address> dev::brc::State::getAddrByData(bytes const& _data){
     RLP _rlp(_data);
-    if(!_rlp.isData())
+    if(!_rlp.isList())
     {
         return std::vector<Address>();
     }
-    return _rlp.toVector<Address>();
+    return _rlp[0].toVector<Address>();
 }
 
 Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type)
@@ -3575,60 +3587,42 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         if(!a){
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment("the account:"+toJS(_from)+" is null"));
         }
-        //auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
-        auto rlp_child = getDataByRootKey(_from,getRootKeyType::ChildAddrKey);
-        auto childAddrs = getAddrByData(rlp_child);
         auto control_data= control.streamRLP();
         bool isDel = control_data.empty();
-        bool isUp = false;
-
         // rootAddress for childAddress
-        auto ret = find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
-        if(isDel&& ret!=childAddrs.end()){
-            //dell child address
-            childAddrs.erase(ret);
-            isUp = true;
-        }
-        if(!isDel && ret==childAddrs.end()){
-            // add new child Address
-            childAddrs.emplace_back(_op->m_childAddress);
-            isUp = true;
-        }
-        if(isUp){
-            // update ChildAddress
-            RLPStream s;
-            s.appendVector(childAddrs);
-            auto key =a->toGetAccountKey(_from, getRootKeyType::ChildAddrKey);
-            setStorageBytes(_from, key, s.out());
-        }
-
+        updateAddressSet(_from, _op->m_childAddress, isDel, getRootKeyType::ChildAddrKey);
         //childAddress for rootAddress
-        auto c_a = account(_op->m_childAddress);
-        if(!c_a){
-            createAccount(_op->m_childAddress, {0});
-            c_a = account(_op->m_childAddress);
-        }
-        auto rlp_root = getDataByRootKey(_op->m_childAddress,getRootKeyType::ChildAddrKey);
-        auto rootAddrs = getAddrByData(rlp_root);
-        auto ret_root = find(rootAddrs.begin(), rootAddrs.end(), _from);
-        isUp = false;
-        if(isDel && ret_root != rootAddrs.end()){
-            rootAddrs.erase(ret_root);
-            isUp = true;
-        }
-        if(!isDel && ret_root ==rootAddrs.end()){
-            rootAddrs.emplace_back(_from);
-            isUp = true;
-        }
-        if(isUp){
-            auto rootKey = c_a->toGetAccountKey(_op->m_childAddress, getRootKeyType::RootAddrKey);
-            RLPStream s;
-            s.appendVector(rootAddrs);
-            setStorageBytes(_op->m_childAddress, rootKey, s.out());
-        }
+        updateAddressSet(_op->m_childAddress,_from, isDel, getRootKeyType::RootAddrKey);
         // ControlData
         auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
         setStorageBytes(_from, key_data, control_data);
+    }
+}
+
+void dev::brc::State::updateAddressSet(Address const& _from, Address const& _changeAddr, bool _isDel, getRootKeyType const& _type){
+    auto a = account(_from);
+    if(!a){
+        createAccount(_from, {0});
+        a = account(_from);
+    }
+    auto addrs = getAddressesByRootKey(_from, _type);
+    cwarn << addrs;
+    auto ret = find(addrs.begin(), addrs.end(), _changeAddr);
+    bool isUp = false;
+    if(_isDel && ret != addrs.end()){
+        addrs.erase(ret);
+        isUp = true;
+    }
+    if(!_isDel && ret ==addrs.end()){
+        addrs.emplace_back(_changeAddr);
+        isUp = true;
+    }
+    if(isUp){
+        auto rootKey = a->toGetAccountKey(_changeAddr, _type);
+        RLPStream s(1);
+        s.appendVector(addrs);
+        setStorageBytes(_from, rootKey, s.out());
+        cwarn << "up addrs:"<<addrs;
     }
 }
 

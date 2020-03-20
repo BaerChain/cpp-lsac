@@ -277,9 +277,9 @@ h256 Account::toGetAccountKey(Address const& _addr, getRootKeyType const& _type)
 {
     std::string _key;
     if(_type == getRootKeyType::RootAddrKey){
-        _key = "rootKey" + toJS(_addr);
+        _key = "rootKeys" + toJS(_addr);
     }else if(_type == getRootKeyType::ChildAddrKey){
-        _key = "ChildKey" + toJS(_addr);
+        _key = "ChildKeys" + toJS(_addr);
     }else if(_type == getRootKeyType::ChildDataKey){
         _key = "ChildDataKey" + toJS(_addr);
     }else{
