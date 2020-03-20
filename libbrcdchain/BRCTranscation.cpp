@@ -15,7 +15,7 @@ using namespace dev::brc::ex;
 
 #define SELLCOOKIELIMIT 1
 #define BUYCOOKIELIMIT 1
-
+#define TOTALTRXWEIGHT 100
 
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
@@ -554,58 +554,46 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
     dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
 
-    std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
-    for(auto const& a: _signAddr)
-        cwarn << "childAddress:"<< toJS(a);
-//    uint64_t _trxWeight = 0;
-//    bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
-//    RLP _rlp(_data);
-//    if(_rlp.isList())
-//    {
-//        Address _rootAddrbyFrom = _rlp[0].convert<Address>(RLP::LaissezFaire);
-//        if (_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
-//        {
-//            // TO DO: Exception details
-//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//        }
-//    }
-//
-//
-//
-//    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
-//    AccountControl _fromControl(_accountControlData);
-//    if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _fromControl.m_permissions)){
-//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//    }
-//    _trxWeight += _fromControl.m_weight;
-//
-//    for(auto _addr : _signAddr)
-//    {
-//        bytes _signAddrRootData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
-//        RLP _signAddrRlp(_signAddrRootData);
-//        if(_signAddrRlp.isList())
-//        {
-//            Address _rootAddrbysignAddr = _signAddrRlp[0].convert<Address>(RLP::LaissezFaire);
-//            if(_rootAddrbysignAddr != _mutilSign_op->m_rootAddress)
-//            {
-//                BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//            }
-//
-//        }
-//        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::ChildDataKey);
-//        AccountControl _signAddrControl(_signAddrData);
-//
-//        if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _signAddrControl.m_permissions)){
-//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//        }
-//
-//        _trxWeight += _signAddrControl.m_weight;
-//    }
-//
-//    if(_trxWeight < 100)
-//    {
-//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//    }
+    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
+    uint64_t _trxWeight = 0;
+    bytes _data =  m_state.getDataByKeyAddress(_from, _from,getRootKeyType::RootAddrKey);
+    std::vector<Address> _rootVector = m_state.getAddrByData(_data);
+
+    if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
+        _rootVector.end())
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+    }
+
+    bytes _accountControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, _from ,getRootKeyType::ChildDataKey);
+    AccountControl _fromControl(_accountControlData);
+    PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
+    if(!dev::brc::authority::checkPermission(_perType, _fromControl.m_permissions))
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+    }
+    _trxWeight += _fromControl.m_weight;
+    for(auto const& a: _signAddrs)
+    {
+        bytes _signAddrData = m_state.getDataByKeyAddress(a,a,getRootKeyType::RootAddrKey);
+        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
+        if(std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(), _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
+        {
+            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+        }
+        bytes _signAddrControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
+        AccountControl _signAddrControl(_signAddrControlData);
+        if(!dev::brc::authority::checkPermission(_perType, _signAddrControl.m_permissions))
+        {
+            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+        }
+        _trxWeight += _signAddrControl.m_weight;
+    }
+
+    if(_trxWeight < TOTALTRXWEIGHT)
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+    }
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo){
