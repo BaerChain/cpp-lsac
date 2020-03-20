@@ -602,9 +602,9 @@ enum PermissionsType : uint64_t
     Per_TransferAccountControl = 1 << 9,
     Per_TransferMutilSigns = 1 << 10,
 
-    Per_ChildAll = Per_TransferVote + Per_TransferBrc +Per_TransferPending +
-                   Per_TransferCanPending +Per_DeployContract +Per_ExecuteContract +
-                   Per_TransferReceiveIncome + Per_TransferAutoEx + Per_TransferAccountControl+
+    Per_ChildAll = Per_TransferVote | Per_TransferBrc | Per_TransferPending |
+                   Per_TransferCanPending | Per_DeployContract | Per_ExecuteContract |
+                   Per_TransferReceiveIncome | Per_TransferAutoEx | Per_TransferAccountControl |
                    Per_TransferMutilSigns,
 
     Per_TransferAll = Per_ChildAll,
@@ -644,8 +644,8 @@ struct AccountControl{
         if(!rlp.isList())
             return;
         m_childAddress = rlp[0].convert<Address>(RLP::LaissezFaire);
-        m_weight = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
-        m_permissions = (uint64_t)rlp[0].convert<u256>(RLP::LaissezFaire);
+        m_weight = rlp[1].convert<uint8_t>(RLP::LaissezFaire);
+        m_permissions = (uint64_t)rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 };
 

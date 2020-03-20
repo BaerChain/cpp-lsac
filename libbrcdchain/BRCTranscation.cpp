@@ -557,55 +557,55 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
     std::vector<Address> _signAddr = _mutilSign_op->getSignAddress();
     for(auto const& a: _signAddr)
         cwarn << "childAddress:"<< toJS(a);
-    uint64_t _trxWeight = 0;
-    bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
-    RLP _rlp(_data);
-    if(_rlp.isList())
-    {
-        Address _rootAddrbyFrom = _rlp[0].convert<Address>(RLP::LaissezFaire);
-        if (_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
-        {
-            // TO DO: Exception details
-            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-        }
-    }
-
-
-
-    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
-    AccountControl _fromControl(_accountControlData);
-    if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _fromControl.m_permissions)){
-        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-    }
-    _trxWeight += _fromControl.m_weight;
-
-    for(auto _addr : _signAddr)
-    {
-        bytes _signAddrRootData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
-        RLP _signAddrRlp(_signAddrRootData);
-        if(_signAddrRlp.isList())
-        {
-            Address _rootAddrbysignAddr = _signAddrRlp[0].convert<Address>(RLP::LaissezFaire);
-            if(_rootAddrbysignAddr != _mutilSign_op->m_rootAddress)
-            {
-                BOOST_THROW_EXCEPTION(ExecutiveFailed());
-            }
-
-        }
-        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::ChildDataKey);
-        AccountControl _signAddrControl(_signAddrData);
-
-        if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _signAddrControl.m_permissions)){
-            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-        }
-
-        _trxWeight += _signAddrControl.m_weight;
-    }
-
-    if(_trxWeight < 100)
-    {
-        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-    }
+//    uint64_t _trxWeight = 0;
+//    bytes _data =  m_state.getDataByRootKey(_from, getRootKeyType::RootAddrKey);
+//    RLP _rlp(_data);
+//    if(_rlp.isList())
+//    {
+//        Address _rootAddrbyFrom = _rlp[0].convert<Address>(RLP::LaissezFaire);
+//        if (_rootAddrbyFrom != _mutilSign_op->m_rootAddress)
+//        {
+//            // TO DO: Exception details
+//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//        }
+//    }
+//
+//
+//
+//    bytes _accountControlData = m_state.getDataByRootKey(_from, getRootKeyType::ChildDataKey);
+//    AccountControl _fromControl(_accountControlData);
+//    if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _fromControl.m_permissions)){
+//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//    }
+//    _trxWeight += _fromControl.m_weight;
+//
+//    for(auto _addr : _signAddr)
+//    {
+//        bytes _signAddrRootData = m_state.getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
+//        RLP _signAddrRlp(_signAddrRootData);
+//        if(_signAddrRlp.isList())
+//        {
+//            Address _rootAddrbysignAddr = _signAddrRlp[0].convert<Address>(RLP::LaissezFaire);
+//            if(_rootAddrbysignAddr != _mutilSign_op->m_rootAddress)
+//            {
+//                BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//            }
+//
+//        }
+//        bytes _signAddrData = m_state.getDataByRootKey(_addr, getRootKeyType::ChildDataKey);
+//        AccountControl _signAddrControl(_signAddrData);
+//
+//        if(!authority::checkPermission(authority::getPermissionsTypeByTransactionType(_trxType), _signAddrControl.m_permissions)){
+//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//        }
+//
+//        _trxWeight += _signAddrControl.m_weight;
+//    }
+//
+//    if(_trxWeight < 100)
+//    {
+//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//    }
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo){
@@ -615,6 +615,10 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(std::string("authority_operation is error")));
         }
         cwarn <<"verify"<< _op->m_childAddress << " weight:"<<_op->m_weight << " permiss:"<<_op->m_permissions;
+        //verify address
+        if(_from == _op->m_childAddress){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress and childAddress can't be same")));
+        }
         //verify the premassion
         if(!authority::checkPermission(PermissionsType::Per_TransferAll, _op->m_permissions)){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of permissions invalid")));
@@ -624,18 +628,18 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
         }
         //verify child account
-        //TODO get child Control
-        auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
-        auto rootAddrs = m_state.getAddressesByRootKey(_op->m_childAddress, getRootKeyType::RootAddrKey);
-        cwarn << "child:"<< childAddrs;
-        cwarn << "root:"<< rootAddrs;
-
         auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
         AccountControl _control = AccountControl{_data};
 
         bool isDel = false;
         if(_op->m_weight == 0 && _op->m_permissions == 0)
             isDel = true;
+        if(isDel){
+            auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
+            auto ret = find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
+            if(ret == childAddrs.end())
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress not contains childAddress:"+toJS(_op->m_childAddress))));
+        }
         if(_op->m_childAddress != _control.m_childAddress && isDel){
             //can not to del invalid AccountControl
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the childAdress invalid")));
