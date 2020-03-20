@@ -583,7 +583,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::sh
         }
         bytes _signAddrControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
         AccountControl _signAddrControl(_signAddrControlData);
-        if(!dev::brc::authority::checkPermission(_perType, _signAddrControl.m_permissions))
+        if(!dev::brc::authority::checkPermission(_signAddrControl.m_permissions, _perType))
         {
             BOOST_THROW_EXCEPTION(ExecutiveFailed());
         }
