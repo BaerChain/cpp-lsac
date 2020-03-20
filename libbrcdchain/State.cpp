@@ -3531,37 +3531,44 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
     {
         return Json::Value();
     }
-    bytes _data = getDataByRootKey(_addr, _type);
     Json::Value _ret;
-    if(_type == getRootKeyType::RootAddrKey)
+    if(_type == getRootKeyType::RootDataKey)
     {
+        bytes _data = getDataByRootKey(_addr, getRootKeyType::RootAddrKey);
         std::vector<Address> _roots = getAddrByData(_data);
-        Json::Value _rootArray;
+        Json::Value _rootsValue;
         for(auto const& root : _roots)
         {
-            _rootArray.append(toJS(root));
+            Json::Value _rootValue;
+            bytes _rootData = getDataByRootKey(root, getRootKeyType::ChildDataKey);
+            AccountControl _control(_rootData);
+            _rootValue["rootAddress"] = toJS(root);
+            _rootValue["trxWeight"] = std::to_string(_control.m_weight);
+            _rootValue["trxPermission"] = std::to_string(_control.m_permissions);
+            _rootsValue.append(_rootValue);
         }
-        _ret["rootAddr"] = _rootArray;
-        return _ret;
-    }else if(_type == getRootKeyType::ChildAddrKey)
-    {
-        std::vector<Address> _childs = getAddrByData(_data);
-        Json::Value _childArray;
-        for(auto const& child : _childs)
-        {
-            _childArray.append(toJS(child));
-        }
-        _ret["childAddr"] = _childArray;
-        return _ret;
+        _ret["RootData"] = _rootsValue;
     }else if(_type == getRootKeyType::ChildDataKey)
     {
-        AccountControl _control(_data);
-        _ret["childAddress"] = toJS(_control.m_childAddress);
-        _ret["trxWeight"] = std::to_string(_control.m_weight);
-        _ret["trxPermissions"] = std::to_string(_control.m_permissions);
-        return _ret;
+        bytes _data = getDataByRootKey(_addr, getRootKeyType::ChildAddrKey);
+        std::vector<Address> _childs = getAddrByData(_data);
+        Json::Value _childsValue;
+        Account *rootAccount = account(_addr);
+        for(auto const& _child : _childs)
+        {
+            Json::Value _childValue;
+            h256 _key = rootAccount->toGetAccountKey(_child, getRootKeyType::ChildDataKey);
+            bytes _data = rootAccount->storageByteValue(_key, m_db);
+            AccountControl _control(_data);
+            _childValue["childAddress"] = toJS(_child);
+            _childValue["trxWeight"] = std::to_string(_control.m_weight);
+            _childValue["trxPermission"] = std::to_string(_control.m_permissions);
+            _childsValue.append(_childValue);
+        }
+        _ret["ChildData"] = _childsValue;
     }
-    return Json::Value();
+
+    return _ret;
 }
 
 
