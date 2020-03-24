@@ -612,15 +612,15 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
         }
         //verify child account
-        auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
+        auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, dev::brc::transationTool::getRootKeyType::ChildDataKey);
         AccountControl _control = AccountControl{_data};
 
         bool isDel = false;
         if(_op->m_weight == 0 && _op->m_permissions == 0)
             isDel = true;
         if(isDel){
-            auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
-            auto ret = find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
+            auto childAddrs = m_state.getAddressesByRootKey(_from, transationTool::getRootKeyType::ChildAddrKey);
+            auto ret = std::find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
             if(ret == childAddrs.end())
                 BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress not contains childAddress:"+toJS(_op->m_childAddress))));
         }

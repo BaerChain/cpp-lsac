@@ -273,25 +273,6 @@ void Account::tryRecordSnapshot(u256 _rounds,  u256 brc, u256 balance, std::vect
 }
 
 
-h256 Account::toGetAccountKey(Address const& _addr, getRootKeyType const& _type)
-{
-    std::string _key;
-    if(_type == getRootKeyType::RootAddrKey){
-        _key = "rootKeys" + toJS(_addr);
-    }else if(_type == getRootKeyType::ChildAddrKey){
-        _key = "ChildKeys" + toJS(_addr);
-    }else if(_type == getRootKeyType::ChildDataKey){
-        _key = "ChildDataKey" + toJS(_addr);
-    }else{
-        return h256();
-    }
-    return dev::sha3(_key);
-
-}
-
-
-
-
 namespace js = json_spirit;
 
 namespace

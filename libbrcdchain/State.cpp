@@ -3505,8 +3505,8 @@ dev::brc::ex::ExResultOrder const &dev::brc::State::getSuccessExchange() {
     return _SuccessAccount->getSuccessOrder();
 }
 
-std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr, getRootKeyType const& _type){
-    if(!(_type==getRootKeyType::RootAddrKey || _type==getRootKeyType::ChildAddrKey))
+std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type){
+    if(!(_type==transationTool::getRootKeyType::RootAddrKey || _type==transationTool::getRootKeyType::ChildAddrKey))
         return std::vector<Address>();
     auto _data =  getDataByKeyAddress(_addr, _addr, _type);
     RLP _rlp(_data);
@@ -3518,12 +3518,12 @@ std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr
 }
 
 
-bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::getRootKeyType const& _type)
+bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::transationTool::getRootKeyType const& _type)
 {
     Account *a = account(_strorageAddr);
     if(!a)
         return bytes();
-    h256 _key = a->toGetAccountKey(_keyAddr, _type);
+    h256 _key = dev::brc::authority::toGetAccountKey(_keyAddr, _type);
     bytes _data = a->storageByteValue(_key, m_db);
     return _data;
 }
@@ -3537,42 +3537,56 @@ std::vector<Address> dev::brc::State::getAddrByData(bytes const& _data){
     return _rlp[0].toVector<Address>();
 }
 
-Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::getRootKeyType const& _type)
+Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
 {
-    if(_type == getRootKeyType::Null)
+    if(_type == transationTool::getRootKeyType::Null)
     {
         return Json::Value();
     }
     Json::Value _ret;
-    if(_type == getRootKeyType::RootDataKey)
+    if(_type == transationTool::getRootKeyType::RootDataKey)
     {
-        bytes _data = getDataByKeyAddress(_addr, _addr, getRootKeyType::RootAddrKey);
+        bytes _data = getDataByKeyAddress(_addr, _addr, transationTool::getRootKeyType::RootAddrKey);
         std::vector<Address> _roots = getAddrByData(_data);
         Json::Value _rootsValue;
         for(auto const& root : _roots)
         {
             Json::Value _rootValue;
-            bytes _rootData = getDataByKeyAddress(root, _addr, getRootKeyType::ChildDataKey);
+            Json::Value _permissionValue;
+            bytes _rootData = getDataByKeyAddress(root, _addr, transationTool::getRootKeyType::ChildDataKey);
             AccountControl _control(_rootData);
             _rootValue["rootAddress"] = toJS(root);
-//            _rootValue["trxWeight"] = std::to_string(_control.m_weight);
-//            _rootValue["trxPermission"] = std::to_string(_control.m_permissions);
+            for(auto _trxPermission : _control.m_authority)
+            {
+                Json::Value _trxData;
+                _trxData["trxType"] = std::to_string(_trxPermission.first);
+                _trxData["trxWeight"] = std::to_string(_trxPermission.second);
+                _permissionValue.append(_trxData);
+            }
+            _rootValue["trxPermission"] = _permissionValue;
             _rootsValue.append(_rootValue);
         }
         _ret["RootData"] = _rootsValue;
-    }else if(_type == getRootKeyType::ChildDataKey)
+    }else if(_type == transationTool::getRootKeyType::ChildDataKey)
     {
-        bytes _data = getDataByKeyAddress(_addr, _addr, getRootKeyType::ChildAddrKey);
+        bytes _data = getDataByKeyAddress(_addr, _addr, transationTool::getRootKeyType::ChildAddrKey);
         std::vector<Address> _childs = getAddrByData(_data);
         Json::Value _childsValue;
         for(auto const& _child : _childs)
         {
             Json::Value _childValue;
-            bytes _data = getDataByKeyAddress(_addr, _child, getRootKeyType::ChildDataKey);
+            Json::Value _permissionValue;
+            bytes _data = getDataByKeyAddress(_addr, _child, transationTool::getRootKeyType::ChildDataKey);
             AccountControl _control(_data);
             _childValue["childAddress"] = toJS(_child);
-//            _childValue["trxWeight"] = std::to_string(_control.m_weight);
-//            _childValue["trxPermission"] = std::to_string(_control.m_permissions);
+            for(auto _trxPermission : _control.m_authority)
+            {
+                Json::Value _trxData;
+                _trxData["trxType"] = std::to_string(_trxPermission.first);
+                _trxData["trxWeight"] = std::to_string(_trxPermission.second);
+                _permissionValue.append(_trxData);
+            }
+            _childValue["trxPermission"] = _permissionValue;
             _childsValue.append(_childValue);
         }
         _ret["ChildData"] = _childsValue;
@@ -3592,23 +3606,23 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment("the account:"+toJS(_from)+" is null"));
         }
 
-        auto rlp = getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
-        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
+        auto rlp = getDataByKeyAddress(_from, _op->m_childAddress, transationTool::getRootKeyType::ChildDataKey);
+        auto key_data =dev::brc::authority::toGetAccountKey(_op->m_childAddress,transationTool::getRootKeyType::ChildDataKey);
         AccountControl control = AccountControl{rlp};
         control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight);
 
         auto control_data= control.streamRLP();
         bool isDel = control_data.empty();
         // rootAddress for childAddress
-        updateAddressSet(_from, _op->m_childAddress, isDel, getRootKeyType::ChildAddrKey);
+        updateAddressSet(_from, _op->m_childAddress, isDel, transationTool::getRootKeyType::ChildAddrKey);
         //childAddress for rootAddress
-        updateAddressSet(_op->m_childAddress,_from, isDel, getRootKeyType::RootAddrKey);
+        updateAddressSet(_op->m_childAddress,_from, isDel, transationTool::getRootKeyType::RootAddrKey);
         // ControlData
         setStorageBytes(_from, key_data, control_data);
     }
 }
 
-void dev::brc::State::updateAddressSet(Address const& _from, Address const& _changeAddr, bool _isDel, getRootKeyType const& _type){
+void dev::brc::State::updateAddressSet(Address const& _from, Address const& _changeAddr, bool _isDel, dev::brc::transationTool::getRootKeyType const& _type){
     auto a = account(_from);
     if(!a){
         createAccount(_from, {0});
@@ -3626,7 +3640,7 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
         isUp = true;
     }
     if(isUp){
-        auto key = a->toGetAccountKey(_from, _type);
+        auto key = dev::brc::authority::toGetAccountKey(_from, _type);
         RLPStream s(1);
         s.appendVector(addrs);
         setStorageBytes(_from, key, s.out());
