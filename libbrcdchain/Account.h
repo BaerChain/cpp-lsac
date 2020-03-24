@@ -1358,7 +1358,6 @@ public:
         return m_mappingAddress;
     }
 
-    h256 toGetAccountKey(Address const& _addr, getRootKeyType const& _type);
 private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

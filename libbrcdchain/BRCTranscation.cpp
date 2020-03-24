@@ -613,7 +613,7 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
         }
         //verify child account
-        auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
+        auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, dev::brc::transationTool::getRootKeyType::ChildDataKey);
         AccountControl _control = AccountControl{_data};
         if(!_control.m_authority.empty() && _control.m_childAddress != _op->m_childAddress){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("Invalid storage about:"+toJS(_op->m_childAddress))));
@@ -625,12 +625,19 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         bool isDel = false;
         if(_control.m_authority.empty())
             isDel = true;
+        auto childAddrs = m_state.getAddressesByRootKey(_from, transationTool::getRootKeyType::ChildAddrKey);
+        auto ret = std::find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
         if(isDel){
-            auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
-            auto ret = find(childAddrs.begin(), childAddrs.end(), _op->m_childAddress);
             if(ret == childAddrs.end())
                 BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress not contains childAddress:"+toJS(_op->m_childAddress))));
+        } else{
+            if(ret == childAddrs.end()){
+                //limit childAddress num
+                if(childAddrs.size() >= authority::ChildAddressNum)
+                    BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the number of childAddress can't out:"+std::to_string(authority::ChildAddressNum))));
+            }
         }
+
         if(_op->m_childAddress != _control.m_childAddress && isDel){
             //can not to del invalid AccountControl
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the childAdress invalid")));

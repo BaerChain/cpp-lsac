@@ -5,7 +5,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <boost/preprocessor/seq.hpp>
-
+#include <libdevcore/CommonJS.h>
 //#include "brc/types.hpp"
 #include <brc/types.hpp>
 
@@ -48,6 +48,9 @@ namespace dev
             ChangeMinerFailed,
             DefaultError
         };
+
+
+
 
         namespace transationTool
         {
@@ -115,74 +118,85 @@ namespace dev
                 executeinitialize = 1
             };
 
-            //test code  begin
-            struct testSort
+            enum class getRootKeyType : uint8_t
             {
-                int64_t _blockNum;
-                int32_t _sort;
-
-                bool operator<(testSort const& _t) const
-                {
-                    if(_blockNum < _t._blockNum)
-                    {
-                        return true;
-                    }else if(_blockNum == _t._blockNum)
-                    {
-                        if(_blockNum < _t._blockNum)
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
-                void decode(RLP const& rlp)
-                {
-                    if(rlp.isList())
-                    {
-                        _blockNum = rlp[0].toInt<int64_t>();
-                        _sort = rlp[1].toInt<int32_t>();
-                    }
-                }
-                
-                void encode(RLPStream &rlp) const
-                {
-                    rlp.appendList(2);
-                    rlp.append(_blockNum);
-                    rlp.append(_sort);
-                }
-                
-                std::string to_string() const{
-                    return "";
-                }
+                Null = 0,
+                RootAddrKey,
+                ChildAddrKey,
+                ChildDataKey,
+                RootDataKey,
+                CookiesRootAddrKey,
+                CookiesChildAddrKey,
             };
 
-            struct testDetails
-            {
-                std::string firstData;
-                std::string secondData;
-                void decode(RLP const& rlp)
-                {
-                    if(rlp.isList())
-                    {
-                        firstData = rlp[0].toString();
-                        secondData = rlp[1].toString();
-                    }
-                }
+            // //test code  begin
+            // struct testSort
+            // {
+            //     int64_t _blockNum;
+            //     int32_t _sort;
 
-                void encode(RLPStream& rlp) const
-                {
-                    rlp.appendList(2);
-                    rlp.append(firstData);
-                    rlp.append(secondData);
-                }
-            };
-            inline std::ostream & operator << (std::ostream& out, const testDetails& t)
-            {
-                out << "firstData : " << t.firstData << " secondData: " << t.secondData;
-                return out;
-            }
-            //test code end
+            //     bool operator<(testSort const& _t) const
+            //     {
+            //         if(_blockNum < _t._blockNum)
+            //         {
+            //             return true;
+            //         }else if(_blockNum == _t._blockNum)
+            //         {
+            //             if(_blockNum < _t._blockNum)
+            //             {
+            //                 return true;
+            //             }
+            //         }
+            //         return false;
+            //     }
+
+            //     void decode(RLP const& rlp)
+            //     {
+            //         if(rlp.isList())
+            //         {
+            //             _blockNum = rlp[0].toInt<int64_t>();
+            //             _sort = rlp[1].toInt<int32_t>();
+            //         }
+            //     }
+                
+            //     void encode(RLPStream &rlp) const
+            //     {
+            //         rlp.appendList(2);
+            //         rlp.append(_blockNum);
+            //         rlp.append(_sort);
+            //     }
+                
+            //     std::string to_string() const{
+            //         return "";
+            //     }
+            // };
+
+            // struct testDetails
+            // {
+            //     std::string firstData;
+            //     std::string secondData;
+            //     void decode(RLP const& rlp)
+            //     {
+            //         if(rlp.isList())
+            //         {
+            //             firstData = rlp[0].toString();
+            //             secondData = rlp[1].toString();
+            //         }
+            //     }
+
+            //     void encode(RLPStream& rlp) const
+            //     {
+            //         rlp.appendList(2);
+            //         rlp.append(firstData);
+            //         rlp.append(secondData);
+            //     }
+            // };
+            // inline std::ostream & operator << (std::ostream& out, const testDetails& t)
+            // {
+            //     out << "firstData : " << t.firstData << " secondData: " << t.secondData;
+            //     return out;
+            // }
+            // //test code end
 
             struct operation
             {
@@ -430,16 +444,42 @@ namespace dev
         operation* getOperationByRLP(bytes const& _bs);
         }  // namespace transationTool
 
-        namespace authority {
-            typedef transationTool::op_type PermissionsType;
-            PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
-            inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion) {
-                return (_verifyPermsssion & _complexPermssion) == _verifyPermsssion;
+        namespace authority
+        {
+        typedef transationTool::op_type PermissionsType;
+        int const ChildAddressNum = 10;
+        PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
+        inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion)
+        {
+            return (_verifyPermsssion & _complexPermssion) == _verifyPermsssion;
+        }
+        inline bool checkWeight(uint8_t _weight)
+        {
+            return _weight >= 0 && _weight <= 100;
+        }
+
+        static h256 toGetAccountKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
+        {
+            std::string _key;
+            if (_type == dev::brc::transationTool::getRootKeyType::RootAddrKey)
+            {
+                _key = "rootKeys" + toJS(_addr);
             }
-            inline bool checkWeight(uint8_t _weight){
-                return _weight>=0 && _weight<=100;
+            else if (_type == dev::brc::transationTool::getRootKeyType::ChildAddrKey)
+            {
+                _key = "ChildKeys" + toJS(_addr);
             }
-        }   // namespace authority
+            else if (_type == dev::brc::transationTool::getRootKeyType::ChildDataKey)
+            {
+                _key = "ChildDataKey" + toJS(_addr);
+            }
+            else
+            {
+                return h256();
+            }
+            return dev::sha3(_key);
+        }
+        }  // namespace authority
 
 
         enum class CodeDeposit
