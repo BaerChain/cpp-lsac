@@ -457,7 +457,7 @@ namespace dev
             return _weight >= 0 && _weight <= 100;
         }
 
-        static h256 toGetAccountKey(Address const& _addr, dev::brc::transationTool::getRootKeyType _type)
+        static h256 toGetAccountKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
         {
             std::string _key;
             if (_type == dev::brc::transationTool::getRootKeyType::RootAddrKey)
