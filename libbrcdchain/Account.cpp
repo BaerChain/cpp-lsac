@@ -790,11 +790,14 @@ bool AccountControl::updateAuthority(authority::PermissionsType _per, uint8_t _w
         m_authority.clear();
         return true;
     }
+    if(m_authority.empty() && _per == authority::PermissionsType::null){
+        return false;
+    }
     auto _w = getWeight(_per);
     if(_w == _weight)
         return false;
     m_authority[_per] = _weight;
     if(_weight ==0 && m_authority.count(_per))
         m_authority.erase(_per);
-    return false;
+    return true;
 }

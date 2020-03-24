@@ -3593,8 +3593,10 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         }
 
         auto rlp = getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
-        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
-        AccountControl control = AccountControl{rlp};
+        AccountControl control;
+        control.m_childAddress = _op->m_childAddress;
+        if(!rlp.empty())
+            control= AccountControl{rlp};
         control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight);
 
         auto control_data= control.streamRLP();
@@ -3604,6 +3606,7 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         //childAddress for rootAddress
         updateAddressSet(_op->m_childAddress,_from, isDel, getRootKeyType::RootAddrKey);
         // ControlData
+        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
         setStorageBytes(_from, key_data, control_data);
     }
 }

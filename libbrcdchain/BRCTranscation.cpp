@@ -596,17 +596,18 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         if (!_op) {
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(std::string("authority_operation is error")));
         }
-        cwarn <<"verify"<< _op->m_childAddress << " weight:"<<_op->m_weight << " permiss:"<<_op->m_permissions;
+        cwarn <<"verify"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<(int)_op->m_permissions;
         //verify address
         if(_from == _op->m_childAddress){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress and childAddress can't be same")));
         }
+        if(_op->m_weight !=0 && _op->m_permissions == transationTool::op_type::null){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the Invalid controlTransacion params")));
+        }
         //verify the premassion
-        auto _perType = authority::getPermissionsTypeByTransactionType((transationTool::op_type)_op->m_permissions);
+        if((authority::PermissionsType)_op->m_permissions != authority::PermissionsType::null)
+            authority::getPermissionsTypeByTransactionType((transationTool::op_type)_op->m_permissions);
 
-//        if(!authority::checkPermission(PermissionsType::Per_TransferAll, _op->m_permissions)){
-//            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of permissions invalid")));
-//        }
         //verify the weight
         if(!authority::checkWeight(_op->m_weight)){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
@@ -614,9 +615,15 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         //verify child account
         auto  _data = m_state.getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
         AccountControl _control = AccountControl{_data};
+        if(!_control.m_authority.empty() && _control.m_childAddress != _op->m_childAddress){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("Invalid storage about:"+toJS(_op->m_childAddress))));
+        }
+        if(!_control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight)){
+            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("childAdress Conterol_value is not changed")));
+        }
 
         bool isDel = false;
-        if(_op->m_weight == 0 && _op->m_permissions == 0)
+        if(_control.m_authority.empty())
             isDel = true;
         if(isDel){
             auto childAddrs = m_state.getAddressesByRootKey(_from, getRootKeyType::ChildAddrKey);
@@ -627,9 +634,6 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         if(_op->m_childAddress != _control.m_childAddress && isDel){
             //can not to del invalid AccountControl
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the childAdress invalid")));
-        }
-        if(_op->m_permissions != 0 && _op->m_weight == _control.getWeight(_perType)){
-            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("childAdress Conterol_value is not changed")));
         }
     }
 }

@@ -585,7 +585,6 @@ struct AccountControl{
     AccountControl(bytes const& _b){
         populateRLP(_b);
     }
-    AccountControl(Address const& _addr):m_childAddress(_addr){}
     uint8_t getWeight(authority::PermissionsType _per){
         if(m_authority.count(_per))
             return m_authority[_per];
