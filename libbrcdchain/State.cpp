@@ -3555,8 +3555,8 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
             bytes _rootData = getDataByKeyAddress(root, _addr, getRootKeyType::ChildDataKey);
             AccountControl _control(_rootData);
             _rootValue["rootAddress"] = toJS(root);
-            _rootValue["trxWeight"] = std::to_string(_control.m_weight);
-            _rootValue["trxPermission"] = std::to_string(_control.m_permissions);
+//            _rootValue["trxWeight"] = std::to_string(_control.m_weight);
+//            _rootValue["trxPermission"] = std::to_string(_control.m_permissions);
             _rootsValue.append(_rootValue);
         }
         _ret["RootData"] = _rootsValue;
@@ -3571,8 +3571,8 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
             bytes _data = getDataByKeyAddress(_addr, _child, getRootKeyType::ChildDataKey);
             AccountControl _control(_data);
             _childValue["childAddress"] = toJS(_child);
-            _childValue["trxWeight"] = std::to_string(_control.m_weight);
-            _childValue["trxPermission"] = std::to_string(_control.m_permissions);
+//            _childValue["trxWeight"] = std::to_string(_control.m_weight);
+//            _childValue["trxPermission"] = std::to_string(_control.m_permissions);
             _childsValue.append(_childValue);
         }
         _ret["ChildData"] = _childsValue;
@@ -3586,12 +3586,17 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
     for(auto const& val : _ops) {
         std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(val);
         // TODO excute
-        cwarn <<"excute"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<_op->m_permissions;
-        AccountControl control = AccountControl{_op->m_childAddress, _op->m_weight, _op->m_permissions};
+        cwarn <<"excute"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<(int)_op->m_permissions;
         auto a = account(_from);
         if(!a){
             BOOST_THROW_EXCEPTION(InvalidAutor() << errinfo_comment("the account:"+toJS(_from)+" is null"));
         }
+
+        auto rlp = getDataByKeyAddress(_from, _op->m_childAddress, getRootKeyType::ChildDataKey);
+        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
+        AccountControl control = AccountControl{rlp};
+        control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight);
+
         auto control_data= control.streamRLP();
         bool isDel = control_data.empty();
         // rootAddress for childAddress
@@ -3599,7 +3604,6 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         //childAddress for rootAddress
         updateAddressSet(_op->m_childAddress,_from, isDel, getRootKeyType::RootAddrKey);
         // ControlData
-        auto key_data =a->toGetAccountKey(_op->m_childAddress, getRootKeyType::ChildDataKey);
         setStorageBytes(_from, key_data, control_data);
     }
 }

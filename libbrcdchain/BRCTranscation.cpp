@@ -551,49 +551,43 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
 
 void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
 {
-    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
-    dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
-
-    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
-    uint64_t _trxWeight = 0;
-    bytes _data =  m_state.getDataByKeyAddress(_from, _from,getRootKeyType::RootAddrKey);
-    std::vector<Address> _rootVector = m_state.getAddrByData(_data);
-
-    if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
-        _rootVector.end())
-    {
-        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-    }
-
-    bytes _accountControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, _from ,getRootKeyType::ChildDataKey);
-    AccountControl _fromControl(_accountControlData);
-    PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
-    if(!dev::brc::authority::checkPermission(_fromControl.m_permissions,_perType ))
-    {
-        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-    }
-    _trxWeight += _fromControl.m_weight;
-    for(auto const& a: _signAddrs)
-    {
-        bytes _signAddrData = m_state.getDataByKeyAddress(a,a,getRootKeyType::RootAddrKey);
-        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
-        if(std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(), _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
-        {
-            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-        }
-        bytes _signAddrControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
-        AccountControl _signAddrControl(_signAddrControlData);
-        if(!dev::brc::authority::checkPermission(_signAddrControl.m_permissions, _perType))
-        {
-            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-        }
-        _trxWeight += _signAddrControl.m_weight;
-    }
-
-    if(_trxWeight < TOTALTRXWEIGHT)
-    {
-        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-    }
+//    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
+//    dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
+//
+//    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
+//    uint64_t _trxWeight = 0;
+//    bytes _data =  m_state.getDataByKeyAddress(_from, _from,getRootKeyType::RootAddrKey);
+//    std::vector<Address> _rootVector = m_state.getAddrByData(_data);
+//
+//    if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
+//        _rootVector.end())
+//    {
+//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//    }
+//
+//    bytes _accountControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, _from ,getRootKeyType::ChildDataKey);
+//    AccountControl _fromControl(_accountControlData);
+//    authority::PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
+//
+//    _trxWeight += _fromControl.getWeight(_perType);
+//    for(auto const& a: _signAddrs)
+//    {
+//        bytes _signAddrData = m_state.getDataByKeyAddress(a,a,getRootKeyType::RootAddrKey);
+//        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
+//        if(std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(), _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
+//        {
+//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//        }
+//        bytes _signAddrControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
+//        AccountControl _signAddrControl(_signAddrControlData);
+//
+//        _trxWeight += _signAddrControl.getWeight(_perType);
+//    }
+//
+//    if(_trxWeight < TOTALTRXWEIGHT)
+//    {
+//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+//    }
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo){
@@ -608,9 +602,11 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("rootAddress and childAddress can't be same")));
         }
         //verify the premassion
-        if(!authority::checkPermission(PermissionsType::Per_TransferAll, _op->m_permissions)){
-            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of permissions invalid")));
-        }
+        auto _perType = authority::getPermissionsTypeByTransactionType((transationTool::op_type)_op->m_permissions);
+
+//        if(!authority::checkPermission(PermissionsType::Per_TransferAll, _op->m_permissions)){
+//            BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of permissions invalid")));
+//        }
         //verify the weight
         if(!authority::checkWeight(_op->m_weight)){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the value of weight invalid, range of [0,100]")));
@@ -632,7 +628,7 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
             //can not to del invalid AccountControl
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("the childAdress invalid")));
         }
-        if(_op->m_weight == _control.m_weight && _op->m_permissions == _control.m_permissions){
+        if(_op->m_permissions != 0 && _op->m_weight == _control.getWeight(_perType)){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("childAdress Conterol_value is not changed")));
         }
     }

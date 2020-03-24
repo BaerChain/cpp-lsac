@@ -398,9 +398,9 @@ namespace dev
                 uint8_t m_type;
                 Address m_childAddress;
                 uint8_t m_weight;
-                uint64_t m_permissions;
+                uint8_t m_permissions;
                 authority_operation(){}
-                authority_operation(op_type _type, Address const& _childAddr, uint8_t _weight, uint64_t _permssion):
+                authority_operation(op_type _type, Address const& _childAddr, uint8_t _weight, uint8_t _permssion):
                     m_type(_type),m_childAddress(_childAddr),m_weight(_weight),m_permissions(_permssion){}
 
                 OPERATION_UNSERIALIZE(authority_operation, (m_type)(m_childAddress)(m_weight)(m_permissions))
@@ -412,20 +412,35 @@ namespace dev
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
                 Address m_rootAddress;
-                std::shared_ptr<operation>  m_data_ptr;
+                Address m_cookiesAddress;
+                std::vector<std::shared_ptr<operation>> m_data_ptrs;
                 std::vector<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
-                transferMutilSigns_operation(op_type _type, Address const& _rootAddr, operation* _ptr):
-                    m_type(_type), m_rootAddress(_rootAddr){
-                    m_data_ptr.reset(_ptr);
+                transferMutilSigns_operation(op_type _type, Address const& _cookiesAddr, std::vector<operation*>& _ptrs):
+                    m_type(_type), m_cookiesAddress(_cookiesAddr){
+                    for(auto p:_ptrs)
+                        m_data_ptrs.emplace_back(std::shared_ptr<operation>(p));
                 }
                 virtual bytes serialize()  const;
                 transferMutilSigns_operation(bytes const& _bs);
                 std::vector<Address> getSignAddress();
+                bytes datasBytes() const;
                 virtual op_type type(){return (op_type)m_type;}
             };
         operation* getOperationByRLP(bytes const& _bs);
         }  // namespace transationTool
+
+        namespace authority {
+            typedef transationTool::op_type PermissionsType;
+            PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
+            inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion) {
+                return (_verifyPermsssion & _complexPermssion) == _verifyPermsssion;
+            }
+            inline bool checkWeight(uint8_t _weight){
+                return _weight>=0 && _weight<=100;
+            }
+        }   // namespace authority
+
 
         enum class CodeDeposit
         {

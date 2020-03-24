@@ -113,10 +113,22 @@ std::ostream& dev::brc::operator<<(std::ostream& _out, TransactionException cons
 Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
   : TransactionBase(_rlpData, _checkSig)
 {}
+
+bytes transationTool::transferMutilSigns_operation::datasBytes() const{
+    RLPStream s;
+    std::vector<bytes> datas;
+    for (auto const& a: m_data_ptrs){
+        datas.emplace_back(a->serialize());
+    }
+    s.appendVector(datas);
+    return s.out();
+}
+
+
 bytes transationTool::transferMutilSigns_operation::serialize()  const
 {
     RLPStream s(4);
-    s<< m_type << m_rootAddress << m_data_ptr->serialize();
+    s<< m_type << m_rootAddress << datasBytes();
     std::vector<bytes> sign_bs;
     for(auto const& v: m_signs){
         if (v.r && v.s) {
@@ -133,8 +145,13 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
     RLP rlp(_bs);
     m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
     m_rootAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
-    auto op_bs = rlp[2].convert<bytes>(RLP::LaissezFaire);
-    m_data_ptr.reset(getOperationByRLP(op_bs));
+    auto op_bs = rlp[2].toBytes();
+    RLP r(op_bs);
+    for(auto const& op: r.toVector<bytes>()){
+        auto op_ptr = getOperationByRLP(op);
+        m_data_ptrs.emplace_back(std::shared_ptr<operation>(op_ptr));
+    }
+    //m_data_ptr.reset(getOperationByRLP(op_bs));
     auto signs = rlp[3].toVector<bytes>();
     for(auto const& r:signs){
         RLP sign(r);
@@ -145,9 +162,9 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
 
 std::vector<Address> transationTool::transferMutilSigns_operation::getSignAddress(){
     std::vector<Address> childAddrs;
-    if(!m_data_ptr)
+    if(m_data_ptrs.empty())
         return childAddrs;
-    auto data_rlp_sha3 =dev::sha3(m_data_ptr->serialize());
+    auto data_rlp_sha3 =dev::sha3(datasBytes());
     for(auto const& k: m_signs){
         if (!k.isValid())
             BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
@@ -175,7 +192,19 @@ transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)
         return new receivingincome_operation(_bs);
     else if(type == op_type::transferAutoEx)
         return new transferAutoEx_operation(_bs);
-//    else if(type == op_type::transferAccountControl){
-//    }
+    else
+        BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() <<errinfo_comment("invalid transaction type in mutilTrasnction"));
     return nullptr;
+}
+
+authority::PermissionsType authority::getPermissionsTypeByTransactionType(transationTool::op_type _type){
+    // verify the op_type is allowed
+    if(_type == transationTool::op_type::vote || _type == transationTool::op_type::brcTranscation ||
+       _type == transationTool::op_type::pendingOrder || _type == transationTool::op_type::cancelPendingOrder||
+       _type == transationTool::op_type::receivingincome || _type == transationTool::op_type::transferAutoEx ||
+       _type == transationTool::op_type::executeContract )
+    {
+        return _type;
+    }
+    BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() << errinfo_comment("transaction type:"+ std::to_string(_type) + " can't to mutilSings"));
 }

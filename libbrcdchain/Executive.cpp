@@ -457,8 +457,15 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                      transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
                      m_brctranscation.verifyPermissionTrx(m_t.sender(),
                              std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
-                     m_batch_params._type = _mutilSign_op.m_data_ptr->type();
-                     m_batch_params._operation.push_back(_mutilSign_op.m_data_ptr);
+                     /// mutilSign transaction batch
+                     transationTool::op_type _type = transationTool::op_type::null;
+                     for(auto &p: _mutilSign_op.m_data_ptrs){
+                        _type = p->type();
+                        if(_type != transationTool::op_type::brcTranscation && _mutilSign_op.m_data_ptrs.size() >1)
+                            BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
+                     }
+                     m_batch_params._type = _type;
+                     m_batch_params._operation = _mutilSign_op.m_data_ptrs;
                 }
                 break;
                 default:

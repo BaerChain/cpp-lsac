@@ -784,29 +784,17 @@ CancelOrder Account::getCancelOrder(h256 _id, OverlayDB const &_db) const{
     return order;
 }
 
-PermissionsType authority::getPermissionsTypeByTransactionType(transationTool::op_type _type){
-    if(_type==transationTool::op_type::brcTranscation)
-        return PermissionsType ::Per_TransferBrc;
-    else if(_type==transationTool::op_type::vote)
-        return PermissionsType ::Per_TransferVote;
-    else if(_type==transationTool::op_type::pendingOrder)
-        return PermissionsType ::Per_TransferPending;
-    else if(_type==transationTool::op_type::cancelPendingOrder)
-        return PermissionsType ::Per_TransferCanPending;
-    else if(_type==transationTool::op_type::deployContract)
-        return PermissionsType ::Per_DeployContract;
-    else if(_type==transationTool::op_type::executeContract)
-        return PermissionsType ::Per_ExecuteContract;
-    else if(_type==transationTool::op_type::changeMiner)
-        return PermissionsType ::Per_TransferChangeMiner;
-    else if(_type==transationTool::op_type::receivingincome)
-        return PermissionsType ::Per_TransferReceiveIncome;
-    else if(_type==transationTool::op_type::transferAutoEx)
-        return PermissionsType ::Per_TransferAutoEx;
-    else if(_type==transationTool::op_type::transferAccountControl)
-        return PermissionsType ::Per_TransferAccountControl;
-    else if(_type==transationTool::op_type::transferMutilSigns)
-        return PermissionsType ::Per_TransferMutilSigns;
-    else
-        return Per_Null;
+bool AccountControl::updateAuthority(authority::PermissionsType _per, uint8_t _weight){
+    if (_per == authority::PermissionsType::null && _weight == 0 && !m_authority.empty()){
+        //delete child address
+        m_authority.clear();
+        return true;
+    }
+    auto _w = getWeight(_per);
+    if(_w == _weight)
+        return false;
+    m_authority[_per] = _weight;
+    if(_weight ==0 && m_authority.count(_per))
+        m_authority.erase(_per);
+    return false;
 }

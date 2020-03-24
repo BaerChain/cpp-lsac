@@ -51,7 +51,9 @@ enum class getRootKeyType : uint8_t
     RootAddrKey,
     ChildAddrKey,
     ChildDataKey,
-    RootDataKey
+    RootDataKey,
+    CookiesRootAddrKey,
+    CookiesChildAddrKey,
 };
 
 /// vote data
@@ -575,68 +577,33 @@ struct CancelOrder{
         m_type = (uint8_t)rlp[2].convert<u256>(RLP::LaissezFaire);
     }
 };
-/*
- *              vote = 1,
-                brcTranscation = 2,
-                pendingOrder = 3,
-                cancelPendingOrder = 4,
-                deployContract = 5,
-                executeContract = 6,
-                changeMiner = 7,
-                receivingincome = 8,
-                transferAutoEx = 9,
-                transferAccountControl = 10,
-                transferMutilSigns = 11,
- * */
-enum PermissionsType : uint64_t
-{
-    Per_TransferVote = 1,
-    Per_TransferBrc = 1<<1 ,
-    Per_TransferPending = 1<<2,
-    Per_TransferCanPending = 1 << 3,
-    Per_DeployContract = 1 << 4,
-    Per_ExecuteContract = 1 << 5,
-    Per_TransferChangeMiner = 1 << 6,
-    Per_TransferReceiveIncome = 1 << 7,
-    Per_TransferAutoEx = 1 << 8,
-    Per_TransferAccountControl = 1 << 9,
-    Per_TransferMutilSigns = 1 << 10,
-
-    Per_ChildAll = Per_TransferVote | Per_TransferBrc | Per_TransferPending |
-                   Per_TransferCanPending | Per_DeployContract | Per_ExecuteContract |
-                   Per_TransferReceiveIncome | Per_TransferAutoEx | Per_TransferAccountControl |
-                   Per_TransferMutilSigns,
-
-    Per_TransferAll = Per_ChildAll,
-
-    Per_Null = 1 <<30,
-};
-namespace authority {
-    PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
-    inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion) {
-        return (_verifyPermsssion & _complexPermssion) == _verifyPermsssion;
-    }
-    inline bool checkWeight(uint8_t _weight){
-        return _weight>=0 && _weight<=100;
-    }
-}
 
 struct AccountControl{
     Address m_childAddress;
-    uint8_t  m_weight =0;                       //weight [0,100]
-    uint64_t  m_permissions =0;          // permissions for transaction
+    std::map<authority::PermissionsType, uint8_t > m_authority;
     AccountControl(){}
     AccountControl(bytes const& _b){
         populateRLP(_b);
     }
-    AccountControl(Address const& _addr, uint8_t _weight, uint64_t _premission):
-                m_childAddress(_addr),m_weight(_weight), m_permissions(_premission){}
+    AccountControl(Address const& _addr):m_childAddress(_addr){}
+    uint8_t getWeight(authority::PermissionsType _per){
+        if(m_authority.count(_per))
+            return m_authority[_per];
+        return 0;
+    }
+    /// return true if the AccountControl is changed
+    bool updateAuthority(authority::PermissionsType _per, uint8_t _weight);
 
     bytes streamRLP() const{
-        if((m_weight==0 && m_permissions==0) || m_childAddress == Address())
+        if(m_authority.empty() || m_childAddress == Address())
             return bytes();
-        RLPStream s(3);
-        s<< m_childAddress <<m_weight <<(u256)m_permissions;
+        RLPStream s(2);
+        s<< m_childAddress ;
+        RLPStream _as(m_authority.size());
+        for(auto const& a : m_authority){
+            _as.append<u256, u256>(std::make_pair((u256)a.first, (u256)a.second));
+        }
+        s << _as.out();
         return s.out();
     }
     void populateRLP(bytes const& _b){
@@ -644,11 +611,13 @@ struct AccountControl{
         if(!rlp.isList())
             return;
         m_childAddress = rlp[0].convert<Address>(RLP::LaissezFaire);
-        m_weight = rlp[1].convert<uint8_t>(RLP::LaissezFaire);
-        m_permissions = (uint64_t)rlp[2].convert<u256>(RLP::LaissezFaire);
+        auto _as = rlp[1].toBytes();
+        for(auto const& r: RLP(_as)){
+            auto _pair = r.toPair<u256, u256>();
+            m_authority[(authority::PermissionsType)_pair.first] = (uint8_t)_pair.second;
+        }
     }
 };
-
 
 class Account {
 public:

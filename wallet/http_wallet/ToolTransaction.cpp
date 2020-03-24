@@ -223,12 +223,12 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
        if(d_type == op_type::transferMutilSigns){
            std::shared_ptr<transationTool::transferMutilSigns_operation> op_ptr =
                    std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation> (op);
-           if(!op_ptr->m_data_ptr){
+           if(op_ptr->m_data_ptrs.empty()){
                _pair.second = "in this mutilSignsTransaction not have transaction_data!";
                cerror << _pair.second;
                return _pair;
            }
-           auto op_rlp = op_ptr->m_data_ptr->serialize();
+           auto op_rlp = op_ptr->datasBytes();
            for(auto const&a : childAddress){
                if(!childKeys.count(a)) {
                    _pair.second = "not find the Child Addrss:"+ dev::toString(a) +" key...";
@@ -382,17 +382,23 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                     (op_type)type,
                     Address(op_obj["childAddress"].get_str()),
                     uint8_t (op_obj["weight"].get_int()),
-                    uint64_t (op_obj["permissions"].get_uint64())
+                    uint8_t (op_obj["permissions"].get_int())
                     );
 
             return authority_op;
         }
         case transferMutilSigns: {
-            auto TxData = op_obj["transactionData"].get_obj();
-            auto op_ptr = get_oparation_from_data(TxData);
-            if(!op_ptr)
-                return nullptr;
-            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),op_ptr);
+            auto txData = op_obj["transactionData"].get_array();
+            std::vector<operation*> ptrs;
+            for(auto &d : txData){
+                auto op_ptr = get_oparation_from_data(d.get_obj());
+                if(!op_ptr)
+                    return nullptr;
+                ///verify operation type is allowed mutilSign
+                authority::getPermissionsTypeByTransactionType(op_ptr->type());
+                ptrs.emplace_back(op_ptr);
+            }
+            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["cookiesAddress"].get_str()),ptrs);
             return tran_sings;
         }
     }
