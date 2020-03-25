@@ -455,8 +455,6 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                 case transationTool::transferMutilSigns:
                 {
                      transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
-                     m_brctranscation.verifyPermissionTrx(m_t.sender(),
-                             std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
                      /// mutilSign transaction batch
                      transationTool::op_type _type = transationTool::op_type::null;
                      for(auto &p: _mutilSign_op.m_data_ptrs){
@@ -467,6 +465,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                      m_batch_params._type = _type;
                      // onely the PermissionsType to do
                      authority::getPermissionsTypeByTransactionType(_type);
+                      m_brctranscation.verifyPermissionTrx(m_t.sender(),
+                             std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
                      m_batch_params._operation = _mutilSign_op.m_data_ptrs;
                 }
                 break;

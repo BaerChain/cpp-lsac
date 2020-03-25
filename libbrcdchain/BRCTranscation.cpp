@@ -549,45 +549,53 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
     }
 }
 
-void dev::brc::BRCTranscation::verifyPermissionTrx(Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
+void dev::brc::BRCTranscation::verifyPermissionTrx(
+    Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
 {
-//    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op = std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
-//    dev::brc::transationTool::op_type _trxType = _mutilSign_op->m_data_ptr->type();
-//
-//    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
-//    uint64_t _trxWeight = 0;
-//    bytes _data =  m_state.getDataByKeyAddress(_from, _from,getRootKeyType::RootAddrKey);
-//    std::vector<Address> _rootVector = m_state.getAddrByData(_data);
-//
-//    if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
-//        _rootVector.end())
-//    {
-//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//    }
-//
-//    bytes _accountControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, _from ,getRootKeyType::ChildDataKey);
-//    AccountControl _fromControl(_accountControlData);
-//    authority::PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
-//
-//    _trxWeight += _fromControl.getWeight(_perType);
-//    for(auto const& a: _signAddrs)
-//    {
-//        bytes _signAddrData = m_state.getDataByKeyAddress(a,a,getRootKeyType::RootAddrKey);
-//        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
-//        if(std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(), _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
-//        {
-//            BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//        }
-//        bytes _signAddrControlData = m_state.getDataByKeyAddress(_mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
-//        AccountControl _signAddrControl(_signAddrControlData);
-//
-//        _trxWeight += _signAddrControl.getWeight(_perType);
-//    }
-//
-//    if(_trxWeight < TOTALTRXWEIGHT)
-//    {
-//        BOOST_THROW_EXCEPTION(ExecutiveFailed());
-//    }
+    std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op =
+        std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
+    
+    auto _firstTrx = _mutilSign_op->m_data_ptrs.begin();
+    dev::brc::transationTool::op_type _trxType = (*_firstTrx)->type();
+
+    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
+    uint64_t _trxWeight = 0;
+    bytes _data = m_state.getDataByKeyAddress(_from, _from, transationTool::getRootKeyType::RootAddrKey);
+    std::vector<Address> _rootVector = m_state.getAddrByData(_data);
+
+    if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
+        _rootVector.end())
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+    }
+
+    bytes _accountControlData = m_state.getDataByKeyAddress(
+        _mutilSign_op->m_rootAddress, _from, getRootKeyType::ChildDataKey);
+    AccountControl _fromControl(_accountControlData);
+    authority::PermissionsType _perType =
+        dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
+
+    _trxWeight += _fromControl.getWeight(_perType);
+    for (auto const& a : _signAddrs)
+    {
+        bytes _signAddrData = m_state.getDataByKeyAddress(a, a, getRootKeyType::RootAddrKey);
+        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
+        if (std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(),
+                _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
+        {
+            BOOST_THROW_EXCEPTION(ExecutiveFailed());
+        }
+        bytes _signAddrControlData = m_state.getDataByKeyAddress(
+            _mutilSign_op->m_rootAddress, a, getRootKeyType::ChildDataKey);
+        AccountControl _signAddrControl(_signAddrControlData);
+
+        _trxWeight += _signAddrControl.getWeight(_perType);
+    }
+
+    if (_trxWeight < TOTALTRXWEIGHT)
+    {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed());
+    }
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo){
