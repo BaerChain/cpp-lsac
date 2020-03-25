@@ -3,7 +3,6 @@
 //
 
 #include "ToolTransaction.h"
-#include <cstdlib>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libbrccore/Common.h>
@@ -11,13 +10,10 @@
 #include <libdevcore/Address.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/JsonUtils.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/base58.h>
 #include <boost/filesystem.hpp>
 #include <iostream>
-#include <libweb3jsonrpc/JsonHelper.h>
-#include <libbrccore/CommonJS.h>
 #include <brc/types.hpp>
 
 
@@ -95,7 +91,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         tx.data = fromHex(op_obj["contract"].get_str());
                         tx.isContract = trx_source::Contract::execute;
                     } else {
-                        auto op_ptr = get_oparation_from_data(op_obj);
+                        auto op_ptr = get_oparation_from_data(op_obj, op_type::null);
                         tx.ops.push_back(std::shared_ptr<operation>(op_ptr));
                     }
                 }
@@ -238,7 +234,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                auto sig = ToolTransaction::getSignByBytes(op_rlp, childKeys[a]);
                op_ptr->m_signs.emplace_back(sig);
            }
-           //op.reset(op_ptr.get());
        }
     }
 
@@ -289,7 +284,6 @@ bytes wallet::ToolTransaction::packed_operation_data(const std::vector<std::shar
     RLPStream rlp;
     std::vector<bytes> _v;
     for (auto &p : op) {
-        // rlp.append(p->serialize());
         _v.push_back(p->serialize());
     }
     rlp.appendVector<bytes>(_v);
@@ -304,7 +298,9 @@ SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret
     return SignatureStruct{h256(),h256(),0};
 }
 
-operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
+operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj, op_type parent_type){
+    if(parent_type!=op_type::null || parent_type!=op_type::transferMutilSigns)
+        return nullptr;
     auto type = op_obj["type"].get_int();
     switch (type) {
         case vote: {
@@ -314,7 +310,6 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                                              (uint8_t) op_obj["m_vote_type"].get_int(),
                                              u256(op_obj["m_vote_numbers"].get_str())
             );
-            //tx.ops.push_back(std::shared_ptr<vote_operation>(new_op));
             return new_op;
         }
         case brcTranscation: {
@@ -324,7 +319,6 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
                                                             u256(op_obj["m_transcation_numbers"].get_str())
             );
-            //tx.ops.push_back(std::shared_ptr<transcation_operation>(transcation_op));
             return transcation_op;
         }
         case pendingOrder: {
@@ -336,33 +330,31 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                                                               u256(op_obj["m_num"].get_str()),
                                                               u256(op_obj["m_price"].get_str())
             );
-            //tx.ops.push_back(std::shared_ptr<pendingorder_opearaion>(pendingorder_op));
             return pendingorder_op;
         }
         case cancelPendingOrder: {
             auto cancel_op = new cancelPendingorder_operation((op_type) type, 3, h256(op_obj["m_hash"].get_str()));
-            //tx.ops.push_back(std::shared_ptr<cancelPendingorder_operation>(cancel_op));
             return cancel_op;
         }
         case deployContract: {
-//            tx.to = Address();
-//            tx.isContract = trx_source::Contract::deploy;
-//            tx.data = fromHex(op_obj["contract"].get_str());
-            return nullptr;
+            if(parent_type == op_type::null)
+                return nullptr;
+            return new contract_operation((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
         }
         case executeContract: {
-//            tx.data = fromHex(op_obj["contract"].get_str());
-//            tx.isContract = trx_source::Contract::execute;
-            return nullptr;
+            if(parent_type == op_type::null)
+                return nullptr;
+            return new contract_operation((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
         }
         case changeMiner: {
-
-            return nullptr;
+            auto changeMiner_op = new changeMiner_operation( (op_type)type,
+                                                             Address(op_obj["m_before"].get_str()),
+                                                             Address(op_obj["m_after"].get_str())
+            );
+            return changeMiner_op;
         }
         case receivingincome: {
-            auto receivingincome_op = new receivingincome_operation((op_type)type,1,Address(op_obj["m_from"].get_str())
-            );
-            //tx.ops.push_back(std::shared_ptr<receivingincome_operation>(receivingincome_op));
+            auto receivingincome_op = new receivingincome_operation((op_type)type,1,Address(op_obj["m_from"].get_str()));
             return receivingincome_op;
         }
         case transferAutoEx: {
@@ -372,9 +364,7 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                     u256(op_obj["m_autoExNum"].get_str()),
                     u256(op_obj["m_transferNum"].get_str()),
                     Address(op_obj["m_from"].get_str()),
-                    Address(op_obj["m_to"].get_str())
-            );
-            //tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
+                    Address(op_obj["m_to"].get_str()));
             return transferAutoEx_op;
         }
         case transferAccountControl:{
@@ -384,14 +374,15 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                     uint8_t (op_obj["weight"].get_int()),
                     uint8_t (op_obj["permissions"].get_int())
                     );
-
             return authority_op;
         }
         case transferMutilSigns: {
+            if(parent_type == op_type::transferMutilSigns)
+                return nullptr;
             auto txData = op_obj["transactionData"].get_array();
             std::vector<operation*> ptrs;
             for(auto &d : txData){
-                auto op_ptr = get_oparation_from_data(d.get_obj());
+                auto op_ptr = get_oparation_from_data(d.get_obj(), op_type::transferMutilSigns);
                 if(!op_ptr)
                     return nullptr;
                 ///verify operation type is allowed mutilSign

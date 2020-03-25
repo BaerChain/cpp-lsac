@@ -58,7 +58,7 @@ namespace wallet{
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
-        static operation* get_oparation_from_data(js::mObject& op_obj);
+        static operation* get_oparation_from_data(js::mObject& op_obj, op_type parent_type);
 
         static SignatureStruct getSignByBytes(bytes const& _bs, Secret _key);
 

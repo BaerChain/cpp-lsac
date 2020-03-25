@@ -357,10 +357,11 @@ namespace dev
 
             struct contract_operation : public operation
             {
-                op_type m_type;
+                uint8_t m_type;
+                Address m_to;
                 bytes m_date;
                 contract_operation(){}
-                contract_operation(op_type _type, bytes _d):m_type(_type) { m_date = _d; }
+                contract_operation(op_type _type, Address const& _to, bytes const& _d):m_type(_type), m_to(_to) { m_date = _d; }
                 OPERATION_UNSERIALIZE(contract_operation, (m_date))
                 OPERATION_SERIALIZE((m_date))
                 virtual op_type type(){return (op_type)m_type;}

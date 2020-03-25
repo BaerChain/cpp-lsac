@@ -3,7 +3,7 @@
 //
 
 #include "WalletServer.h"
-#include "ToolTransaction.h"
+#include "libwallet/ToolTransaction.h"
 
 wallet::WalletServer::WalletServer(dev::SafeHttpServer &server, std::string _send_url):AbstractServer<WalletServer>(server), m_send_url(_send_url){
 //    this->bindAndAddMethod(Procedure("testhello", PARAMS_BY_NAME, JSON_STRING,

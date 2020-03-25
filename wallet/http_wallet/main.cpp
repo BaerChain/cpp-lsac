@@ -10,7 +10,7 @@
 #include <libbrcdchain/Transaction.h>
 #include <libdevcore/CommonIO.h>
 #include <microhttpd.h>
-#include "ToolTransaction.h"
+#include "libwallet/ToolTransaction.h"
 #include "WalletServer.h"
 
 
