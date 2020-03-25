@@ -17,6 +17,28 @@ using namespace dev::brc::ex;
 #define BUYCOOKIELIMIT 1
 #define TOTALTRXWEIGHT 100
 
+void dev::brc::BRCTranscation::verifyTransactions(std::vector<bytes> const& _ops, std::vector<std::shared_ptr<transationTool::operation>> &_operations)
+{
+    u256 _totalBrc = 0;
+    for (auto const& _op : _ops)
+    {
+        transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(_op);
+        try
+        {
+            _totalBrc += _transcation_op.m_Transcation_numbers;
+            verifyTranscation(_transcation_op.m_from, _transcation_op.m_to,
+                (size_t)_transcation_op.m_Transcation_type, _totalBrc);
+                _operations.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
+        }
+        catch (Exception& ex)
+        {
+            BOOST_THROW_EXCEPTION(BrcTranscationField()
+                                  << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+        }
+    }
+}
+
+
 void dev::brc::BRCTranscation::verifyTranscation(
     Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {

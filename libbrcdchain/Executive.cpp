@@ -357,7 +357,13 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                               "The number of bulk transfers cannot exceed 50"));
                 }
 
+                if(_type == transationTool::brcTranscation)
+                {
+                    break;    
+                }
+                
                 m_batch_params._type = _type;
+
                 switch (_type)
                 {
                 case transationTool::vote:
@@ -367,33 +373,11 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                         std::make_shared<transationTool::vote_operation>(_vote_op));
                 }
                 break;
-                case transationTool::brcTranscation:
-                {
-                    transationTool::transcation_operation _transcation_op =
-                        transationTool::transcation_operation(val);
-                    try
-                    {
-                        total_brc = _transcation_op.m_Transcation_numbers;
-                        m_brctranscation.verifyTranscation(m_t.sender(), _transcation_op.m_to,
-                            (size_t)_transcation_op.m_Transcation_type, total_brc);
-                    }
-                    catch (Exception& ex)
-                    {
-                        LOG(m_execLogger)
-                            << "transcation field > "
-                            << "m_t.sender:" << m_t.sender() << " * "
-                            << " to:" << _transcation_op.m_to
-                            << " transcation_type:" << _transcation_op.m_Transcation_type
-                            << " transcation_num:" << _transcation_op.m_Transcation_numbers
-                            << ex.what();
-                        m_excepted = TransactionException::BrcTranscationField;
-                        BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(
-                                                  *boost::get_error_info<errinfo_comment>(ex)));
-                    }
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::transcation_operation>(_transcation_op));
-                }
-                break;
+                // case transationTool::brcTranscation:
+                // {
+                //     _isSpecial = true;
+                // }
+                // break;   
                 case transationTool::pendingOrder:
                 {
                     if (m_batch_params.size() > 0)
@@ -509,6 +493,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             {
                 if (m_batch_params._type == transationTool::op_type::vote)
                     m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
+                else if (m_batch_params._type == transationTool::op_type::brcTranscation)
+                    m_brctranscation.verifyTransactions(_ops, m_batch_params._operation);
                 else if (m_batch_params._type == transationTool::op_type::pendingOrder)
                     m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(),
                         m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
