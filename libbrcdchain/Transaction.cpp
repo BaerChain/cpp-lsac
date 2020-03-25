@@ -127,8 +127,8 @@ bytes transationTool::transferMutilSigns_operation::datasBytes() const{
 
 bytes transationTool::transferMutilSigns_operation::serialize()  const
 {
-    RLPStream s(4);
-    s<< m_type << m_cookiesAddress << datasBytes();
+    RLPStream s(5);
+    s<< m_type << m_rootAddress<< m_cookiesAddress << datasBytes();
     std::vector<bytes> sign_bs;
     for(auto const& v: m_signs){
         if (v.r && v.s) {
@@ -145,15 +145,16 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
 {
     RLP rlp(_bs);
     m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
-    m_cookiesAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
-    auto op_bs = rlp[2].toBytes();
+    m_rootAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
+    m_cookiesAddress = rlp[2].convert<Address>(RLP::LaissezFaire);
+    auto op_bs = rlp[3].toBytes();
     RLP r(op_bs);
     for(auto const& op: r.toVector<bytes>()){
         auto op_ptr = getOperationByRLP(op);
         m_data_ptrs.emplace_back(std::shared_ptr<operation>(op_ptr));
     }
     //m_data_ptr.reset(getOperationByRLP(op_bs));
-    auto signs = rlp[3].toVector<bytes>();
+    auto signs = rlp[4].toVector<bytes>();
     for(auto const& r:signs) {
         cwarn << "sign....:" << dev::toJS(r);
     }
