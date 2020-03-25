@@ -398,7 +398,8 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                 authority::getPermissionsTypeByTransactionType(op_ptr->type());
                 ptrs.emplace_back(op_ptr);
             }
-            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["cookiesAddress"].get_str()),ptrs);
+            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),
+                                                        Address(op_obj["cookiesAddress"].get_str()),ptrs);
             return tran_sings;
         }
     }

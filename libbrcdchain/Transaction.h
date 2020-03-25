@@ -425,12 +425,13 @@ namespace dev
 
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
+                Address m_rootAddress;
                 Address m_cookiesAddress;
                 std::vector<std::shared_ptr<operation>> m_data_ptrs;
                 std::vector<SignatureStruct> m_signs;
                 transferMutilSigns_operation(){}
-                transferMutilSigns_operation(op_type _type, Address const& _cookiesAddr, std::vector<operation*>& _ptrs):
-                    m_type(_type), m_cookiesAddress(_cookiesAddr){
+                transferMutilSigns_operation(op_type _type, Address const& _rootAddr, Address const& _cookiesAddr, std::vector<operation*>& _ptrs):
+                    m_type(_type), m_rootAddress(_rootAddr), m_cookiesAddress(_cookiesAddr){
                     for(auto p:_ptrs)
                         m_data_ptrs.emplace_back(std::shared_ptr<operation>(p));
                 }
