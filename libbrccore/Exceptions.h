@@ -126,5 +126,7 @@ DEV_SIMPLE_EXCEPTION(RrpInvalidParams);
 
 DEV_SIMPLE_EXCEPTION(EstimateGasUsed);
 DEV_SIMPLE_EXCEPTION(ExecutiveFailed);
+
+DEV_SIMPLE_EXCEPTION(VerifyPermissonTrxFailed);
 }
 }
