@@ -128,13 +128,14 @@ bytes transationTool::transferMutilSigns_operation::datasBytes() const{
 bytes transationTool::transferMutilSigns_operation::serialize()  const
 {
     RLPStream s(4);
-    s<< m_type << m_rootAddress << datasBytes();
+    s<< m_type << m_cookiesAddress << datasBytes();
     std::vector<bytes> sign_bs;
     for(auto const& v: m_signs){
         if (v.r && v.s) {
             RLPStream sign(3);
-            sign << v.r << v.s << v.v;
+            sign << (u256)v.r << (u256)v.s << v.v;
             sign_bs.emplace_back(sign.out());
+            cwarn << "signs:" << dev::toJS(sign.out());
         }
     }
     s.appendVector<bytes>(sign_bs);
@@ -144,7 +145,7 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
 {
     RLP rlp(_bs);
     m_type = (op_type)rlp[0].convert<uint8_t>(RLP::LaissezFaire);
-    m_rootAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
+    m_cookiesAddress = rlp[1].convert<Address>(RLP::LaissezFaire);
     auto op_bs = rlp[2].toBytes();
     RLP r(op_bs);
     for(auto const& op: r.toVector<bytes>()){
@@ -153,9 +154,12 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
     }
     //m_data_ptr.reset(getOperationByRLP(op_bs));
     auto signs = rlp[3].toVector<bytes>();
+    for(auto const& r:signs) {
+        cwarn << "sign....:" << dev::toJS(r);
+    }
     for(auto const& r:signs){
         RLP sign(r);
-        auto _sign = SignatureStruct{sign[0].toInt<u256>(),sign[1].toInt<u256>(), sign[2].toInt<uint8_t>()};
+        auto _sign = SignatureStruct{(h256)sign[0].toInt<u256>(),(h256)sign[1].toInt<u256>(), sign[2].toInt<uint8_t>()};
         m_signs.emplace_back(_sign);
     }
 }

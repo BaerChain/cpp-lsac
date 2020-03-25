@@ -465,6 +465,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                             BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
                      }
                      m_batch_params._type = _type;
+                     // onely the PermissionsType to do
+                     authority::getPermissionsTypeByTransactionType(_type);
                      m_batch_params._operation = _mutilSign_op.m_data_ptrs;
                 }
                 break;

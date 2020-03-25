@@ -425,7 +425,6 @@ namespace dev
 
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
-                Address m_rootAddress;
                 Address m_cookiesAddress;
                 std::vector<std::shared_ptr<operation>> m_data_ptrs;
                 std::vector<SignatureStruct> m_signs;
