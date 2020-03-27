@@ -92,6 +92,10 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         tx.isContract = trx_source::Contract::execute;
                     } else {
                         auto op_ptr = get_oparation_from_data(op_obj, op_type::null);
+                        if(!op_ptr){
+                            _pair.second = "can't get transaction type from json";
+                            return _pair;
+                        }
                         tx.ops.push_back(std::shared_ptr<operation>(op_ptr));
                     }
                 }
@@ -299,7 +303,7 @@ SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret
 }
 
 operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj, op_type parent_type){
-    if(parent_type!=op_type::null || parent_type!=op_type::transferMutilSigns)
+    if(!(parent_type==op_type::null || parent_type ==op_type::transferMutilSigns))
         return nullptr;
     auto type = op_obj["type"].get_int();
     switch (type) {

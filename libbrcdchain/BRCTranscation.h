@@ -39,9 +39,8 @@ namespace dev {
             void setState(State &_s) { m_state = _s; }
 
         public:
-            void verifyTransactions(std::vector<bytes> const& _ops, std::vector<std::shared_ptr<transationTool::operation>> &_operations);
-            void verifyTranscation(
-                    Address const &_form, Address const &_to, size_t _type, const u256 &_transcationNum);
+            void verifyTransactions(std::vector<bytes>const& _bs, Address const& _from, std::vector<std::shared_ptr<transationTool::operation>>&_operations);
+            void verifyTranscation( Address const &_form, Address const &_to, size_t _type, const u256 &_transcationNum);
 			void verifyPendingOrders(Address const& _addr, u256 _total_cost, ex::exchange_plugin& _exdb,
 									 int64_t _nowTime, u256 _transcationGas, h256 _pendingOrderHash, 
 									 std::vector<std::shared_ptr<transationTool::operation>> const& _ops,

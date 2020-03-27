@@ -321,234 +321,178 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             std::vector<bytes> _ops = _r.toVector<bytes>();
             if (_ops.empty())
             {
-                LOG(m_execLogger) << "m_t.sender:" << m_t.sender() << " * "
-                                  << " to:" << m_t.receiveAddress();
+                LOG(m_execLogger) << "m_t.sender:" << m_t.sender() << " * "<< " to:" << m_t.receiveAddress();
                 m_excepted = TransactionException::BadRLP;
                 std::string ex_info = "badRLP the data is empty...";
                 BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment(ex_info));
             }
-            bigint totalCost = m_t.gas() * m_t.gasPrice();
+            u256 totalCost = m_t.gas() * m_t.gasPrice();
             m_addCostValue = 0;
             m_batch_params.clear();
-            for (auto val : _ops)
-            {
+            for(auto const& val: _ops){
                 transationTool::op_type _type = transationTool::operation::get_type(val);
-                if (m_batch_params.size() == 0)
-                {
-                    totalCost += transationTool::c_add_value[_type] * m_t.gasPrice();
-                    m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
-                }
-                bool is_verfy_cost = true;
                 if (m_batch_params._type != _type && m_batch_params.size() > 0)
                 {
                     cwarn << "There cannot be multiple types of transactions in bulk transactions";
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                                              std::string("There cannot be multiple types of "
-                                                          "transactions in bulk transactions")));
+                            std::string("There cannot be multiple types of "
+                                        "transactions in bulk transactions")));
                 }
                 if (_type != transationTool::brcTranscation && _ops.size() > 1)
                 {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                                              "Only transfer transactions can be batch operated"));
+                            "Only transfer transactions can be batch operated"));
                 }
                 if (_type == transationTool::brcTranscation && _ops.size() > 50)
                 {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
-                                              "The number of bulk transfers cannot exceed 50"));
+                            "The number of bulk transfers cannot exceed 50"));
                 }
-
-                if(_type == transationTool::brcTranscation)
-                {
-                    break;    
-                }
-                
+                m_addCostValue += transationTool::c_add_value[_type]*m_t.gasPrice();
+                totalCost += transationTool::c_add_value[_type]*m_t.gasPrice();
                 m_batch_params._type = _type;
-
-                switch (_type)
-                {
-                case transationTool::vote:
-                {
-                    transationTool::vote_operation _vote_op = transationTool::vote_operation(val);
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::vote_operation>(_vote_op));
-                }
-                break;
-                // case transationTool::brcTranscation:
-                // {
-                //     _isSpecial = true;
-                // }
-                // break;   
-                case transationTool::pendingOrder:
-                {
-                    if (m_batch_params.size() > 0)
-                        BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
-                                                  "This peding_order is not batch !"));
-                    transationTool::pendingorder_opearaion _pengdingorder_op =
-                        transationTool::pendingorder_opearaion(val);
-                    if (_pengdingorder_op.m_Pendingorder_buy_type ==
-                            ex::order_buy_type::all_price &&
-                        _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
-                        _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
-                        m_s.balance(m_t.sender()) < totalCost)
-                    {
-                        m_pendingorderStatus = true;
-                        is_verfy_cost = false;
-                    }
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::pendingorder_opearaion>(
-                            _pengdingorder_op));
-                }
-                break;
-                case transationTool::cancelPendingOrder:
-                {
-                    transationTool::cancelPendingorder_operation _cancel_op =
-                        transationTool::cancelPendingorder_operation(val);
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
-                }
-                break;
-                case transationTool::changeMiner:
-                {
-                    transationTool::changeMiner_operation _changeMiner_op =
-                        transationTool::changeMiner_operation(val);
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
-                }
-                break;
-                case transationTool::receivingincome:
-                {
-                    transationTool::receivingincome_operation _receiving_op =
-                        transationTool::receivingincome_operation(val);
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
-                }
-                break;
-                case transationTool::transferAutoEx:
-                {
-                    transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(val);
-                    m_batch_params._operation.push_back(
-                        std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
-                }
-                break;
-                case transationTool::transferAccountControl:{
-                    transationTool::authority_operation _authority_op = transationTool::authority_operation(val);
-                    m_batch_params._operation.push_back(
-                            std::make_shared<transationTool::authority_operation>(_authority_op));
-                    break;
-                }
-                case transationTool::transferMutilSigns:
-                {
-                     transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
-                     /// mutilSign transaction batch
-                     transationTool::op_type _type = transationTool::op_type::null;
-                     for(auto &p: _mutilSign_op.m_data_ptrs){
-                        _type = p->type();
-                        if(_type != transationTool::op_type::brcTranscation && _mutilSign_op.m_data_ptrs.size() >1)
-                            BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
-                     }
-                     m_batch_params._type = _type;
-                     // onely the PermissionsType to do
-                     authority::getPermissionsTypeByTransactionType(_type);
-                      m_brctranscation.verifyPermissionTrx(m_t.sender(),
-                             std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
-                     m_batch_params._operation = _mutilSign_op.m_data_ptrs;
-                }
-                break;
-                default:
-                    m_excepted = TransactionException::DefaultError;
-                    BOOST_THROW_EXCEPTION(DefaultError() << errinfo_comment(m_t.sender().hex()));
-                    break;
-                }
-
-                if (is_verfy_cost && m_s.balance(m_t.sender()) < totalCost &&
-                    _type != transationTool::transferAutoEx)
-                {
-                    LOG(m_execLogger)
-                        << "Not enough cash: Require > " << totalCost << " = " << m_t.gas() << " * "
-                        << m_t.gasPrice() << " + " << m_t.value() << " Got"
-                        << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
-                    m_excepted = TransactionException::NotEnoughCash;
-                    std::string ex_info =
-                        "not enough Cookie to execute tarnsaction will cost:" + toString(totalCost);
-                    BOOST_THROW_EXCEPTION(
-                        ExecutiveFailed()
-                        << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender()))
-                        << errinfo_comment(ex_info));
-                }
             }
-
-
+            verifyTransactionOperation(totalCost,m_t.sender(), _ops, transationTool::op_type::null);
+            ///verify the prepayment gas is enough
             if (totalCost < m_t.gasPrice() * m_baseGasRequired + m_addCostValue)
             {
                 m_excepted = TransactionException::NotEnoughCash;
-                std::string ex_info =
-                    "not enough require cookie to execute tarnsaction will cost:" +
-                    toString(totalCost);
+                std::string ex_info ="not enough require cookie to execute tarnsaction will cost:" +toString(totalCost);
                 BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
             }
             m_totalGas = (u256)totalCost;
-            //
 
-            try
-            {
-                if (m_batch_params._type == transationTool::op_type::vote)
-                    m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
-                else if (m_batch_params._type == transationTool::op_type::brcTranscation)
-                    m_brctranscation.verifyTransactions(_ops, m_batch_params._operation);
-                else if (m_batch_params._type == transationTool::op_type::pendingOrder)
-                    m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(),
-                        m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
-                        m_batch_params._operation, m_envInfo.number());
-                else if (m_batch_params._type == transationTool::op_type::cancelPendingOrder)
-                    m_brctranscation.verifyCancelPendingOrders(
-                        m_s.exdb(), m_t.sender(), m_batch_params._operation, m_envInfo.number());
-                else if (m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(),
-                        m_batch_params._operation, transationTool::dividendcycle::blocknum,
-                        m_envInfo, m_vote);
-                else if (m_batch_params._type == transationTool::op_type::changeMiner)
-                    m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
-                else if (m_batch_params._type == transationTool::op_type::transferAutoEx)
-                    m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation,
-                        (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(),
-                        m_t.sha3(), m_envInfo);
-                else if(m_batch_params._type == transationTool::op_type::transferAccountControl)
-                    m_brctranscation.verifyAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
-            }
-            catch (VerifyVoteField& ex)
-            {
-                cdebug << "verifyVote field ! ";
-                cdebug << " except:" << ex.what();
-                m_excepted = TransactionException::VerifyVoteField;
-                BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(
-                                          *boost::get_error_info<errinfo_comment>(ex)));
-            }
-            catch (VerifyPendingOrderFiled const& _v)
-            {
-                BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(
-                                          *boost::get_error_info<errinfo_comment>(_v)));
-            }
-            catch (CancelPendingOrderFiled const& _c)
-            {
-                BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(
-                                          *boost::get_error_info<errinfo_comment>(_c)));
-            }
-            catch (receivingincomeFiled const& _r)
-            {
-                BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(
-                                          *boost::get_error_info<errinfo_comment>(_r)));
-            }
-            catch (ChangeMinerFailed const& _r)
-            {
-                BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment(
-                                          *boost::get_error_info<errinfo_comment>(_r)));
-            }
-            catch (transferAuthotityControlFailed const& _r)
-            {
-                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(
-                        *boost::get_error_info<errinfo_comment>(_r)));
-            }
         }
+    }
+}
+
+void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from, std::vector<bytes>const& _ops, transationTool::op_type _baseType){
+    /// into this is verifyed transaction_type is onely and num limit
+    /// the m_batch_params._type is the batch_transaction type
+    /// will to verify many transaction_types
+    if(m_batch_params._type == _baseType) {
+        BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
+        errinfo_comment("Invalid transaction type to Nested transactionstype:"+std::to_string(int(m_batch_params._type))));
+    }
+    bool is_verfy_cost = true;
+    switch (m_batch_params._type){
+        case transationTool::op_type::vote:
+        {
+            transationTool::vote_operation _vote_op = transationTool::vote_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::vote_operation>(_vote_op));
+            m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
+            break;
+        }
+        case transationTool::op_type::brcTranscation:
+        {
+            m_brctranscation.verifyTransactions(_ops, m_t.sender(),m_batch_params._operation);
+            break;
+        }
+        case transationTool::op_type::pendingOrder:
+        {
+            transationTool::pendingorder_opearaion _pengdingorder_op =
+                    transationTool::pendingorder_opearaion(_ops[0]);
+            if (_pengdingorder_op.m_Pendingorder_buy_type ==
+                ex::order_buy_type::all_price &&
+                _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
+                _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
+                m_s.balance(m_t.sender()) < _totalCost)
+            {
+                is_verfy_cost = false;
+            }
+            m_batch_params._operation.push_back( std::make_shared<transationTool::pendingorder_opearaion>( _pengdingorder_op));
+            m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)_totalCost, m_s.exdb(),
+                                                 m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
+                                                 m_batch_params._operation, m_envInfo.number());
+            break;
+        }
+        case transationTool::op_type::cancelPendingOrder:
+        {
+            transationTool::cancelPendingorder_operation _cancel_op = transationTool::cancelPendingorder_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
+            m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation, m_envInfo.number());
+            break;
+        }
+        case transationTool::op_type::deployContract:
+        {
+            break;
+        }
+        case transationTool::op_type::executeContract:
+        {
+            break;
+        }
+        case transationTool::op_type::changeMiner:
+        {
+            if(_baseType == transationTool::op_type::transferMutilSigns){
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
+                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
+            }
+            transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
+            m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
+            break;
+        }
+        case transationTool::op_type::receivingincome:
+        {
+            transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
+            m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(),m_batch_params._operation,
+                    transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+            break;
+        }
+        case transationTool::op_type::transferAutoEx:
+        {
+            transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
+            m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation,
+                                                  (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(),
+                                                  m_t.sha3(), m_envInfo);
+            break;
+        }
+        case transationTool::op_type::transferAccountControl:
+        {
+            if(_baseType == transationTool::op_type::transferMutilSigns){
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
+                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
+            }
+            transationTool::authority_operation _authority_op = transationTool::authority_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::authority_operation>(_authority_op));
+            m_brctranscation.verifyAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
+            break;
+        }
+        case transationTool::op_type::transferMutilSigns:
+        {
+            transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(_ops[0]);
+            /// mutilSign transaction batch
+            transationTool::op_type _type = transationTool::op_type::null;
+            for(auto &p: _mutilSign_op.m_data_ptrs){
+                _type = p->type();
+                if(_type != transationTool::op_type::brcTranscation && _mutilSign_op.m_data_ptrs.size() >1)
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
+            }
+            m_batch_params._type = _type;
+            // onely the PermissionsType to do
+            authority::getPermissionsTypeByTransactionType(_type);
+            //m_brctranscation.verifyPermissionTrx(m_t.sender(), std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+            verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
+            break;
+        }
+        default:
+            m_excepted = TransactionException::DefaultError;
+            BOOST_THROW_EXCEPTION(DefaultError() << errinfo_comment(m_t.sender().hex()));
+            break;
+    }
+
+    ///verify total cost
+    if (is_verfy_cost && m_s.balance(m_t.sender()) < _totalCost && m_batch_params._type != transationTool::transferAutoEx)
+    {
+        LOG(m_execLogger)
+            << "Not enough cash: Require > " << _totalCost << " = " << m_t.gas() << " * "
+            << m_t.gasPrice() << " + " << m_t.value() << " Got"
+            << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
+        m_excepted = TransactionException::NotEnoughCash;
+        std::string ex_info ="not enough Cookie to execute tarnsaction will cost:" + toString(_totalCost);
+        BOOST_THROW_EXCEPTION(ExecutiveFailed()<< errinfo_comment(ex_info));
     }
 }
 
@@ -577,6 +521,8 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
+    cwarn << "$$$$$$$ sender:"<<_p.senderAddress << " code:"<< _p.codeAddress << " receive:" << _p.receiveAddress;
+    cwarn << "$$$$$$$:"<< toHex(_p.data);
     // If external transaction.
     if (m_t)
     {
@@ -824,7 +770,7 @@ bool Executive::go(OnOpFunc const& _onOp)
             }
             else{
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-
+                cwarn <<"*******" << toHex(m_output);
             }
             success = true;
         }

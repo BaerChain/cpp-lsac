@@ -124,6 +124,13 @@ bytes transationTool::transferMutilSigns_operation::datasBytes() const{
     return s.out();
 }
 
+std::vector<bytes> transationTool::transferMutilSigns_operation::getTransactionDatabytes() const{
+    std::vector<bytes> datas;
+    for (auto const& a: m_data_ptrs){
+        datas.emplace_back(a->serialize());
+    }
+    return datas;
+}
 
 bytes transationTool::transferMutilSigns_operation::serialize()  const
 {
@@ -155,9 +162,6 @@ transationTool::transferMutilSigns_operation::transferMutilSigns_operation(bytes
     }
     //m_data_ptr.reset(getOperationByRLP(op_bs));
     auto signs = rlp[4].toVector<bytes>();
-    for(auto const& r:signs) {
-        cwarn << "sign....:" << dev::toJS(r);
-    }
     for(auto const& r:signs){
         RLP sign(r);
         auto _sign = SignatureStruct{(h256)sign[0].toInt<u256>(),(h256)sign[1].toInt<u256>(), sign[2].toInt<uint8_t>()};

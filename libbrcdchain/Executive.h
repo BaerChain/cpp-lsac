@@ -130,6 +130,11 @@ public:
         initialize(Transaction(_transaction, CheckTransaction::None));
     }
     void initialize(Transaction const& _transaction, transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
+    /// init TrsansctionData's operation and verify thos transactions
+    /// \param _totalCost
+    /// \param _ops
+    void verifyTransactionOperation(u256 _totalCost, Address const& _from, std::vector<bytes>const& _ops, transationTool::op_type _baseType);
+
     /// Finalise a transaction previously set up with initialize().
     /// @warning Only valid after initialize() and execute(), and possibly go().
     /// @returns true if the outermost execution halted normally, false if exceptionally halted.
@@ -242,7 +247,7 @@ private:
 
     struct batch_transaction_params
 	{
-		transationTool::op_type _type;
+		transationTool::op_type _type = transationTool::op_type::null;
 		std::vector<std::shared_ptr<transationTool::operation> > _operation;
 		/*std::vector<transationTool::vote_operation> _vote_operation;
 		std::vector<transationTool::transcation_operation> _brc_operation;
@@ -307,6 +312,7 @@ private:
     Logger m_execLogger{createLogger(VerbosityDebug, "exec")};
     Logger m_detailsLogger{createLogger(VerbosityTrace, "exec")};
     Logger m_vmTraceLogger{createLogger(VerbosityTrace, "vmtrace")};
+
 };
 
 }  // namespace brc

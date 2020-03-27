@@ -440,6 +440,7 @@ namespace dev
                 transferMutilSigns_operation(bytes const& _bs);
                 std::vector<Address> getSignAddress();
                 bytes datasBytes() const;
+                std::vector<bytes> getTransactionDatabytes() const;
                 virtual op_type type(){return (op_type)m_type;}
             };
         operation* getOperationByRLP(bytes const& _bs);

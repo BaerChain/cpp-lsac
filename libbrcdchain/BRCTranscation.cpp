@@ -17,24 +17,16 @@ using namespace dev::brc::ex;
 #define BUYCOOKIELIMIT 1
 #define TOTALTRXWEIGHT 100
 
-void dev::brc::BRCTranscation::verifyTransactions(std::vector<bytes> const& _ops, std::vector<std::shared_ptr<transationTool::operation>> &_operations)
+void dev::brc::BRCTranscation:: verifyTransactions(std::vector<bytes>const& _bs, Address const& _from,
+        std::vector<std::shared_ptr<transationTool::operation>>&_operations)
 {
     u256 _totalBrc = 0;
-    for (auto const& _op : _ops)
+    for (auto const& val : _bs)
     {
-        transationTool::transcation_operation _transcation_op = transationTool::transcation_operation(_op);
-        try
-        {
-            _totalBrc += _transcation_op.m_Transcation_numbers;
-            verifyTranscation(_transcation_op.m_from, _transcation_op.m_to,
-                (size_t)_transcation_op.m_Transcation_type, _totalBrc);
-                _operations.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
-        }
-        catch (Exception& ex)
-        {
-            BOOST_THROW_EXCEPTION(BrcTranscationField()
-                                  << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
-        }
+        transationTool::transcation_operation _brc_op = transationTool::transcation_operation(val);
+        _totalBrc += _brc_op.m_Transcation_numbers;
+        verifyTranscation(_from, _brc_op.m_to,(size_t)_brc_op.m_Transcation_type, _totalBrc);
+        _operations.emplace_back(std::make_shared<transationTool::transcation_operation>(_brc_op));
     }
 }
 
@@ -45,21 +37,19 @@ void dev::brc::BRCTranscation::verifyTranscation(
     if (_type <= dev::brc::TranscationEnum::ETranscationNull ||
         _type >= dev::brc::TranscationEnum::ETranscationMax || ( _type == dev::brc::TranscationEnum::EBRCTranscation && _transcationNum == 0))
     {
-		BOOST_THROW_EXCEPTION(BrcTranscationField() 
-							  << errinfo_comment("the brc transaction's type is error:" + toString(_type)));
+        BOOST_THROW_EXCEPTION(BrcTranscationField()
+                                      << errinfo_comment("the brc transaction's type is error:" + toString(_type)));
     }
 
     if (_type == dev::brc::TranscationEnum::EBRCTranscation)
     {
         if (_form == _to)
         {
-			BOOST_THROW_EXCEPTION(BrcTranscationField()
-								  << errinfo_comment(" cant't transfer brc to me"));
+            BOOST_THROW_EXCEPTION(BrcTranscationField()<< errinfo_comment(" cant't transfer brc to me"));
         }
         if (_transcationNum > m_state.BRC(_form))
         {
-			BOOST_THROW_EXCEPTION(BrcTranscationField()
-								  << errinfo_comment(" not Enough brcd "));
+            BOOST_THROW_EXCEPTION(BrcTranscationField()<< errinfo_comment(" not Enough brcd "));
         }
     }
 }
