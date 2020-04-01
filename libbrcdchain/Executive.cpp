@@ -374,18 +374,22 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
         errinfo_comment("Invalid transaction type to Nested transactionstype:"+std::to_string(int(m_batch_params._type))));
     }
+    /// address for rootAddress to cost and excute_address
+    if(_baseType == transationTool::null && m_batch_params._type != transationTool::transferMutilSigns){
+        m_batch_params._rootAddress = _from;
+    }
     bool is_verfy_cost = true;
     switch (m_batch_params._type){
         case transationTool::op_type::vote:
         {
             transationTool::vote_operation _vote_op = transationTool::vote_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::vote_operation>(_vote_op));
-            m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
+            m_vote.verifyVote(_from, m_envInfo, m_batch_params._operation);
             break;
         }
         case transationTool::op_type::brcTranscation:
         {
-            m_brctranscation.verifyTransactions(_ops, m_t.sender(),m_batch_params._operation);
+            m_brctranscation.verifyTransactions(_ops, _from,m_batch_params._operation);
             break;
         }
         case transationTool::op_type::pendingOrder:
@@ -401,7 +405,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 is_verfy_cost = false;
             }
             m_batch_params._operation.push_back( std::make_shared<transationTool::pendingorder_opearaion>( _pengdingorder_op));
-            m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)_totalCost, m_s.exdb(),
+            m_brctranscation.verifyPendingOrders(_from, (u256)_totalCost, m_s.exdb(),
                                                  m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
                                                  m_batch_params._operation, m_envInfo.number());
             break;
@@ -410,7 +414,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         {
             transationTool::cancelPendingorder_operation _cancel_op = transationTool::cancelPendingorder_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_cancel_op));
-            m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation, m_envInfo.number());
+            m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), _from, m_batch_params._operation, m_envInfo.number());
             break;
         }
         case transationTool::op_type::deployContract:
@@ -429,14 +433,14 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             }
             transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
-            m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
+            m_s.verifyChangeMiner(_from, m_envInfo, m_batch_params._operation);
             break;
         }
         case transationTool::op_type::receivingincome:
         {
             transationTool::receivingincome_operation _receiving_op = transationTool::receivingincome_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::receivingincome_operation>(_receiving_op));
-            m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(),m_batch_params._operation,
+            m_brctranscation.verifyreceivingincomeChanegeMiner(_from,m_batch_params._operation,
                     transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
             break;
         }
@@ -444,7 +448,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         {
             transationTool::transferAutoEx_operation _autoEx_op = transationTool::transferAutoEx_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
-            m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation,
+            m_brctranscation.verifyTransferAutoEx(_from, m_batch_params._operation,
                                                   (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(),
                                                   m_t.sha3(), m_envInfo);
             break;
@@ -457,7 +461,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             }
             transationTool::authority_operation _authority_op = transationTool::authority_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authority_operation>(_authority_op));
-            m_brctranscation.verifyAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
+            m_brctranscation.verifyAuthorityControl(_from, m_batch_params._operation, m_envInfo);
             break;
         }
         case transationTool::op_type::transferMutilSigns:
@@ -470,10 +474,12 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 if(_type != transationTool::op_type::brcTranscation && _mutilSign_op.m_data_ptrs.size() >1)
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
             }
+            is_verfy_cost = false;
             m_batch_params._type = _type;
+            m_batch_params._rootAddress = _mutilSign_op.m_rootAddress;
             // onely the PermissionsType to do
             authority::getPermissionsTypeByTransactionType(_type);
-            //m_brctranscation.verifyPermissionTrx(m_t.sender(), std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+            m_brctranscation.verifyPermissionTrx(_from, std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
             verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
             break;
         }
@@ -484,7 +490,8 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
     }
 
     ///verify total cost
-    if (is_verfy_cost && m_s.balance(m_t.sender()) < _totalCost && m_batch_params._type != transationTool::transferAutoEx)
+    if (is_verfy_cost && m_s.balance(_from) < _totalCost &&
+        m_batch_params._type != transationTool::transferAutoEx )
     {
         LOG(m_execLogger)
             << "Not enough cash: Require > " << _totalCost << " = " << m_t.gas() << " * "
@@ -521,8 +528,8 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
-    cwarn << "$$$$$$$ sender:"<<_p.senderAddress << " code:"<< _p.codeAddress << " receive:" << _p.receiveAddress;
-    cwarn << "$$$$$$$:"<< toHex(_p.data);
+    //cwarn << "$$$$$$$ sender:"<<_p.senderAddress << " code:"<< _p.codeAddress << " receive:" << _p.receiveAddress;
+    //cwarn << "$$$$$$$:"<< toHex(_p.data);
     // If external transaction.
     if (m_t)
     {
@@ -591,15 +598,15 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
         switch (_type){
             case transationTool::op_type::vote:{
-                m_s.execute_vote(m_t.sender(), m_batch_params._operation, m_envInfo);
+                m_s.execute_vote(m_batch_params._rootAddress, m_batch_params._operation, m_envInfo);
                 break;
             }
             case transationTool::op_type::brcTranscation:{
-                m_s.execute_transfer_BRCs(m_t.sender(), m_batch_params._operation);
+                m_s.execute_transfer_BRCs(m_batch_params._rootAddress, m_batch_params._operation);
                 break;
             }
             case transationTool::op_type::pendingOrder:{
-                m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_envInfo.number(), m_t.sha3(), m_batch_params._operation);
+                m_s.pendingOrders(m_batch_params._rootAddress, m_envInfo.timestamp(), m_envInfo.number(), m_t.sha3(), m_batch_params._operation);
 
                 break;
             }
@@ -612,7 +619,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::receivingincome:{
-                m_s.receivingIncome(m_t.sender(), m_batch_params._operation ,m_envInfo.number());
+                m_s.receivingIncome(m_batch_params._rootAddress, m_batch_params._operation ,m_envInfo.number());
                 break;
             }
             case transationTool::op_type::transferAutoEx:
@@ -622,7 +629,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::transferAccountControl:
             {
-                m_s.transferAuthorityControl(m_t.sender(), m_batch_params._operation, m_envInfo);
+                m_s.transferAuthorityControl(m_batch_params._rootAddress, m_batch_params._operation, m_envInfo);
                 break;
             }
             default:
@@ -630,7 +637,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 assert(1);
         }
 
-        m_batch_params.clear();
+        //m_batch_params.clear();
         return true;
     }
     return !m_ext;
@@ -841,7 +848,11 @@ bool Executive::finalize()
 
     if (m_t)
     {
-        m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+        if(m_batch_params.customTransaction())
+            m_s.subBalance(m_batch_params._rootAddress, m_totalGas - m_needRefundGas);
+        else
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
 
         // updata about author mapping_address

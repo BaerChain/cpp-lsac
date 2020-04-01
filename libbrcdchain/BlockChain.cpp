@@ -1455,11 +1455,11 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
         LOG(m_logger) << "   Imported and best " << _totalDifficulty << " (#"
                       << _block.info.number() << "). Has "
                       << (details(_block.info.parentHash()).children.size() - 1)
-                      << " siblings. Route: " << route;
+                      << " siblings. Route: " << route << "author:"<< _block.info.author();
     } else {
        cwarn << "   Imported but not best (oTD: " << details(last).totalDifficulty
                             << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
-                            << _block.info.number() << ")";
+                            << _block.info.number() <<" authorL"<< _block.info.author() << ")";
     }
 
     try {

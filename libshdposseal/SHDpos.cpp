@@ -222,7 +222,9 @@ bool dev::bacd::SHDpos::verify_standby(int64_t block_time, Address const &own_ad
 
     if (!m_dpos_cleint)
         return false;
-    return m_dpos_cleint->verify_standby(block_time, own_addr, m_config.varlitorInterval);
+    auto ret= m_dpos_cleint->verify_standby(block_time, own_addr, m_config.varlitorInterval);
+    cnote << " verify standby_miner:"<<own_addr<<" result:"<<ret;
+    return ret;
 }
 
 bool dev::bacd::SHDpos::chooseBlockAddr(Address const &_addr, bool _isok) {

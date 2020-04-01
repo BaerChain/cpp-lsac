@@ -358,7 +358,9 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return changeMiner_op;
         }
         case receivingincome: {
-            auto receivingincome_op = new receivingincome_operation((op_type)type,1,Address(op_obj["m_from"].get_str()));
+            auto receivingincome_op = new receivingincome_operation((op_type)type,
+                                                            (uint8_t)op_obj["m_receivingType"].get_int(),
+                                                            Address(op_obj["m_from"].get_str()));
             return receivingincome_op;
         }
         case transferAutoEx: {

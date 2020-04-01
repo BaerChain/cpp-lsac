@@ -2814,8 +2814,8 @@ void dev::brc::State::set_last_block_record(const dev::Address &_id, std::pair<i
             int index = 0;
             for (auto const &val: varlitor_a->vote_data()) {
                 if (val.m_addr != _id) {
-                    int64_t _time = value.second + (index - offset) * (int) varlitor_time;
-                    a->set_create_record(std::make_pair(val.m_addr, _time));
+                    int64_t _var_time = value.second + (index - offset) * (int) varlitor_time;
+                    a->set_create_record(std::make_pair(val.m_addr, _var_time));
                 }
                 ++index;
             }

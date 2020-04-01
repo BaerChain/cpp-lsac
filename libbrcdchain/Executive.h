@@ -246,21 +246,23 @@ private:
     };
 
     struct batch_transaction_params
-	{
-		transationTool::op_type _type = transationTool::op_type::null;
-		std::vector<std::shared_ptr<transationTool::operation> > _operation;
-		/*std::vector<transationTool::vote_operation> _vote_operation;
-		std::vector<transationTool::transcation_operation> _brc_operation;
-		std::vector<transationTool::pendingorder_opearaion> _pen_operation;
-		std::vector<transationTool::cancelPendingorder_operation> _can_operation;*/
+    {
+        transationTool::op_type _type = transationTool::op_type::null;
+        Address _rootAddress;
+        Address _cookiesAddress;
+        std::vector<std::shared_ptr<transationTool::operation> > _operation;
         void clear(){
-			_type = transationTool::null;
-			_operation.clear();
-		}
+            _type = transationTool::null;
+            _rootAddress = Address();
+            _operation.clear();
+        }
         int size() const{
-			return _operation.size();
-		}
-	};
+            return _operation.size();
+        }
+        bool customTransaction() const {
+            return _type != transationTool::op_type::null;
+        }
+    };
 
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,

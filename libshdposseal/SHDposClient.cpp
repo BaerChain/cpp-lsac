@@ -197,8 +197,8 @@ void dev::bacd::SHDposClient::rejigSealing()
 {
     if(!m_wouldSeal)
         return;
-	if((wouldSeal() || remoteActive()) && !isMajorSyncing())
-	{
+    if((wouldSeal() || remoteActive()) && !isMajorSyncing())
+    {
         if (!verifyVarlitorPrivatrKey()){
             cwarn << "not find private key..";
             return;
@@ -216,67 +216,69 @@ void dev::bacd::SHDposClient::rejigSealing()
             return;
         }
 
-		if(sealEngine()->shouldSeal(this))
-		{
-			m_wouldButShouldnot = false;
+        if(sealEngine()->shouldSeal(this))
+        {
+            m_wouldButShouldnot = false;
 
             //  check the parent autor is true id SHDpod
             //  if false : will reset the block current state example : time, blocl_num ...
-			if(!checkPreviousBlock(m_working.previousBlock()))
-			{
-				//m_working.mutableState().exdb().rollback();
-				m_working.resetCurrent();
+            if(!checkPreviousBlock(m_working.previousBlock()))
+            {
+                //m_working.mutableState().exdb().rollback();
+                m_working.resetCurrent();
                 syncTransactionQueue();
-				LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
-			}
+                LOG(m_logger) << "the last author not created block and will reset current data to seal block...";
+            }
 
-			//LOG(m_loggerDetail) << "Rejmeigging seal engine...";
-			DEV_WRITE_GUARDED(x_working)
-			{
-				if(m_working.isSealed())
-				{
-					LOG(m_logger) << "Tried to seal sealed block...";
-					return;
-				}
+            //LOG(m_loggerDetail) << "Rejmeigging seal engine...";
+            DEV_WRITE_GUARDED(x_working)
+            {
+                if(m_working.isSealed())
+                {
+                    LOG(m_logger) << "Tried to seal sealed block...";
+                    return;
+                }
 
-				// TODO is that needed? we have "Generating seal on" below
-				m_working.commitToSeal(bc(), m_extraData);
-			}
-			DEV_READ_GUARDED(x_working)
-			{
-				DEV_WRITE_GUARDED(x_postSeal)
-					m_postSeal = m_working;
-				m_sealingInfo = m_working.info();
-				auto author = m_working.author();
+                // TODO is that needed? we have "Generating seal on" below
+                m_working.commitToSeal(bc(), m_extraData);
+            }
+            DEV_READ_GUARDED(x_working)
+            {
+                DEV_WRITE_GUARDED(x_postSeal)
+                    m_postSeal = m_working;
+                m_sealingInfo = m_working.info();
+                auto author = m_working.author();
 
-				if(!m_params.m_block_addr_keys.count(author)){
-					cerror << "not find author : " << author << "private key , please set private key.";
-					return;
-				}
-				else{
-					m_sealingInfo.sign_block(m_params.m_block_addr_keys.at(author));
-				}
+                if(!m_params.m_block_addr_keys.count(author)){
+                    cerror << "not find author : " << author << "private key , please set private key.";
+                    return;
+                }
+                else{
+                    m_sealingInfo.sign_block(m_params.m_block_addr_keys.at(author));
+                }
 
-			}
-			//出块
-			if(wouldSeal())
-			{
-				//调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
-				sealEngine()->onSealGenerated([=](bytes const& _header){
-					if(this->submitSealed(_header))
-					{
-						m_onBlockSealed(_header);
-					}
-					else
-						LOG(m_logger) << "Submitting block failed...";
-				});
-				ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
-				sealEngine()->generateSeal(m_sealingInfo);
-			}
-		}
-		else
-			m_wouldButShouldnot = true;
-	}
+            }
+            cdebug << "will seal new block:"<<m_sealingInfo.number() << " author:"<<m_sealingInfo.author();
+            //出块
+            if(wouldSeal())
+            {
+                //调用父类接口 声明回调，提供证明后调用 保存在 m_onSealGenerated
+                sealEngine()->onSealGenerated([=](bytes const& _header){
+                    if(this->submitSealed(_header))
+                    {
+                        m_onBlockSealed(_header);
+                    }
+                    else
+                        LOG(m_logger) << "Submitting block failed...";
+                });
+                ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
+                sealEngine()->generateSeal(m_sealingInfo);
+                ctrace << "Generat sealed block:"<<m_sealingInfo.number();
+            }
+        }
+        else
+            m_wouldButShouldnot = true;
+    }
     if (!m_wouldSeal)
     {
        sealEngine()->cancelGeneration();

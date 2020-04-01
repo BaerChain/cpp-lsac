@@ -31,8 +31,7 @@ void dev::brc::BRCTranscation:: verifyTransactions(std::vector<bytes>const& _bs,
 }
 
 
-void dev::brc::BRCTranscation::verifyTranscation(
-    Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
+void dev::brc::BRCTranscation::verifyTranscation( Address const& _form, Address const& _to, size_t _type, const u256 & _transcationNum)
 {
     if (_type <= dev::brc::TranscationEnum::ETranscationNull ||
         _type >= dev::brc::TranscationEnum::ETranscationMax || ( _type == dev::brc::TranscationEnum::EBRCTranscation && _transcationNum == 0))
@@ -236,7 +235,7 @@ void dev::brc::BRCTranscation::verifyCancelPendingOrders(ex::exchange_plugin & _
                     cwarn << "Pendingorder hash cannot be find";
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(std::string("Pendingorder hash cannot be find")));
                 }
-                ///verity order in newExDB
+                ///verify order in newExDB
                 auto ret = m_state.verifyExchangeOrderExits(_it, orderCancel.m_time, orderCancel.m_price, (ex::order_type)orderCancel.m_type, _addr);
                 if(!ret){
                     cwarn << "Pendingorder cannot be find in ExDB";
