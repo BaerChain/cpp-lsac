@@ -1459,7 +1459,7 @@ BlockChain::insertBlockAndExtras(VerifiedBlockRef const &_block, bytesConstRef _
     } else {
        cwarn << "   Imported but not best (oTD: " << details(last).totalDifficulty
                             << " > TD: " << _totalDifficulty << "; " << details(last).number << ".."
-                            << _block.info.number() <<" authorL"<< _block.info.author() << ")";
+                            << _block.info.number() <<" author"<< _block.info.author() << ")";
     }
 
     try {
