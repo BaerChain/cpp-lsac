@@ -1306,10 +1306,10 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         try {
             cwarn << "verifyReplaceMiner: current_block:"<< info().number() << " hash:"<< info().hash() << " parentHash:"<< info().parentHash()
                   << " _block:"<< _block.info.number() << " _blockHash:"<< _block.info.hash() << " _blockparent:"<< _block.info.parentHash();
-            s.populateFromChain(*this, numberHash(_block.info.number() - 1));
+            s.populateFromChain(*this, _block.info.parentHash());
         }
         catch (...) {
-            cerror << " can not find block:" << _block.info.number() - 1;
+            cerror << " can not find block:" << _block.info.number() - 1  << "  hash:" << _block.info.parentHash();
             BOOST_THROW_EXCEPTION(UnknownParent() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
     } else {
