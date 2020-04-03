@@ -1304,6 +1304,8 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         return true;
     if (_block.info.number() >= config::replaceMinerHeight()) {
         try {
+            cwarn << "verifyReplaceMiner: current_block:"<< info().number() << " hash:"<< info().hash() << " parentHash:"<< info().parentHash()
+                  << " _block:"<< _block.info.number() << " _blockHash:"<< _block.info.hash() << " _blockparent:"<< _block.info.parentHash();
             s.populateFromChain(*this, numberHash(_block.info.number() - 1));
         }
         catch (...) {

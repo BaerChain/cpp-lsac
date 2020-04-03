@@ -264,13 +264,14 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
                 LOG(m_loggerDetail) << "will can not ignore_sync sync block: peer:"<< _peerID << " height:" << peer_block_number;
         }
     }
-
+    cwarn << "syncPeer  currHeight:"<<height << " m_lastImportedBlock:" <<m_lastImportedBlock;
     if( (_force || std::max(height, last_block_num)  < peer_block_number ) && m_state != SyncState::Blocks && !ignore_sync){
         if(m_state == SyncState::Idle || m_state == SyncState::NotSynced){
             LOG(m_loggerInfo) << "Starting full sync from " << _peerID << " self height " << height  << " peer height " << peer_block_number
                               << "  last import h: " << last_block_num;
             m_state = SyncState::Blocks;
         }
+        cwarn << " requestBlockHeaders by hash...";
         peer.requestBlockHeaders(peer.latestHash(), 1, 0, false);
         peer.setWaitingForTransactions(true);
         return;
@@ -278,6 +279,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
     if (m_state == SyncState::Blocks)
     {
+        cwarn << "state is Blocks will to requestBlocks...";
         requestBlocks(_peerID);
         return;
     }
@@ -310,7 +312,8 @@ void BlockChainSync::requestBlocks(NodeID const& _peerID)
     }
     // check to see if we need to download any block bodies first
     auto header = m_headers.begin();
-
+    cwarn << " requestBlocks:  m_haveCommonHeader:"<<m_haveCommonHeader << "header:"<< header->first
+          <<" m_lastImportedBlock:"<<  m_lastImportedBlock <<" m_chainStartBlock:"<<m_chainStartBlock;
     h256s neededBodies;
     vector<unsigned> neededNumbers;
     unsigned index = 0;
@@ -383,6 +386,7 @@ void BlockChainSync::requestBlocks(NodeID const& _peerID)
                 {
                     m_headerSyncPeers[_peerID] = headers;
                     assert(!haveItem(m_headers, start));
+                    cwarn << " resuest blocks, start:"<< start << " num:"<< count;
                     m_host.peer(_peerID).requestBlockHeaders(start, count, 0, false);
                 }
                 else if (start >= next->first)
@@ -392,8 +396,12 @@ void BlockChainSync::requestBlocks(NodeID const& _peerID)
                 }
             }
         }
-        else
+        else {
+            cwarn << " request one block :"<< start;
+            cwarn << " requestBlocks2:  m_haveCommonHeader:"<<m_haveCommonHeader << "header:"<< header->first
+                  <<" m_lastImportedBlock:"<<  m_lastImportedBlock <<" m_chainStartBlock:"<<m_chainStartBlock;
             m_host.peer(_peerID).requestBlockHeaders(start, 1, 0, false);
+        }
     }
 }
 
@@ -498,6 +506,8 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
         }
         LOG(m_logger) << "get headerData  from number " << os.str();
     }
+    cwarn << "getHeader m_chainStartBlock:"<< m_chainStartBlock << " m_lastImportedBlock:" <<m_lastImportedBlock
+          << " m_haveCommonHeader:" << m_haveCommonHeader << " m_highestBlock"<<m_highestBlock;
     for (unsigned i = 0; i < itemCount; i++)
     {
         BlockHeader info(_r[i].data(), HeaderData);
@@ -537,6 +547,8 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
                 restartSync();
                 return;
             }
+            cwarn << "getHeader2 m_chainStartBlock:"<< m_chainStartBlock << " m_lastImportedBlock:" <<m_lastImportedBlock
+                  << " m_haveCommonHeader:" << m_haveCommonHeader << " m_highestBlock"<<m_highestBlock;
         }
         else
         {
@@ -577,11 +589,12 @@ void BlockChainSync::onPeerBlockHeaders(NodeID const& _peerID, RLP const& _r)
                     removeAllStartingWith(m_bodies, blockNumber + 1);
                 }
             }
-
+            cwarn << " mergeInto:"<<  blockNumber <<" headers" <<m_headers.begin()->first;
             mergeInto(m_headers, blockNumber, std::move(hdr));
             if (headerId.transactionsRoot == EmptyTrie && headerId.uncles == EmptyListSHA3)
             {
                 //empty body, just mark as downloaded
+                cwarn << " marger block"<< blockNumber;
                 RLPStream r(2);
                 r.appendRaw(RLPEmptyList);
                 r.appendRaw(RLPEmptyList);
@@ -670,7 +683,7 @@ void BlockChainSync::collectBlocks(NodeID const& _peerID)
 {
     if (!m_haveCommonHeader || m_headers.empty() || m_bodies.empty())
         return;
-
+    cwarn << " start collectBlock...";
     // merge headers and bodies
     auto& headers = *m_headers.begin();
     auto& bodies = *m_bodies.begin();
@@ -766,6 +779,7 @@ void BlockChainSync::collectBlocks(NodeID const& _peerID)
     if (m_headers.empty())
     {
         assert(m_bodies.empty());
+        cwarn << "completeSync ...";
         completeSync();
     }
     DEV_INVARIANT_CHECK_HERE;
