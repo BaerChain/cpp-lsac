@@ -161,16 +161,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         contains(m_knownBad, h) || contains(m_futureSet, h))
     {
         // Already know about this one.
-        if(contains(m_readySet, h))
-            cwarn << "m_readySet contains...";
-        if(contains(m_drainingSet, h))
-            cwarn << "m_drainingSet contains...";
-        if(contains(m_unknownSet, h))
-            cwarn << "m_unknownSet contains...";
-        if(contains(m_knownBad, h))
-            cwarn << "m_knownBad contains...";
-        if(contains(m_futureSet, h))
-            cwarn << "m_futureSet contains...";
         LOG(m_loggerDetail) << "Already known.";
         return ImportResult::AlreadyKnown;
     }
@@ -228,7 +218,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_knownBad.insert(bi.hash());
             updateBad_WITH_LOCK(bi.hash());
             // bad parent; this is bad too, note it as such
-            cwarn << "bad block...";
+            cerror << "bad block...";
             return ImportResult::BadChain;
         }
         else if (!m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash()))
@@ -244,7 +234,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         else
         {
             // If valid, append to blocks.
-
             DEV_GUARDED(m_verification)
                 m_unverified.enqueue(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
             m_moreToVerify.notify_one();
@@ -252,7 +241,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_difficulty += bi.difficulty();
             m_now_height = bi.number() > m_now_height ? bi.number() : m_now_height;
             noteReady_WITH_LOCK(h);
-            cwarn << " will to import...";
             return ImportResult::Success;
         }
     }
