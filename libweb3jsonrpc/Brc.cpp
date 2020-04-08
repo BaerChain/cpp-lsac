@@ -910,7 +910,7 @@ Json::Value dev::rpc::Brc::brc_getGasPrice()
     }
 }
 
-Json::Value Brc::brc_getAveragrGasPrice(const std::string& _blockNumber) {
+Json::Value Brc::brc_getMinimumGasPrice(const std::string& _blockNumber) {
     try{
         return client()->getAveragePrice(jsToBlockNum(_blockNumber));
     }catch(...){

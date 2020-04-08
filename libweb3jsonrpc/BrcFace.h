@@ -252,13 +252,13 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getGasPrice",jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getGasPriceI);
-        this->bindAndAddMethod(jsonrpc::Procedure("brc_getAveragrGasPrice",jsonrpc::PARAMS_BY_POSITION,
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getMinimumGasPrice",jsonrpc::PARAMS_BY_POSITION,
                                                   jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL),
-                               &dev::rpc::BrcFace::brc_getAveragrGasPriceI);
+                               &dev::rpc::BrcFace::brc_getMinimumGasPriceI);
     }
 
-    inline virtual void brc_getAveragrGasPriceI(const Json::Value& request, Json::Value& response){
-        response = this->brc_getAveragrGasPrice(request[0u].asString());
+    inline virtual void brc_getMinimumGasPriceI(const Json::Value& request, Json::Value& response){
+        response = this->brc_getMinimumGasPrice(request[0u].asString());
     }
 
     inline virtual void brc_protocolVersionI(const Json::Value& request, Json::Value& response)
@@ -631,7 +631,7 @@ public:
     virtual Json::Value brc_getObtainVote(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getElector(const std::string& param1) = 0;
-    virtual Json::Value brc_getAveragrGasPrice(const std::string& param1) = 0;
+    virtual Json::Value brc_getMinimumGasPrice(const std::string& param1) = 0;
 };
 
 }  // namespace rpc
