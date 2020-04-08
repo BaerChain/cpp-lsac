@@ -33,7 +33,6 @@ TransactionQueue::~TransactionQueue()
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
 {
-    cerror << "TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)";
     try
     {
         Transaction t = Transaction(_transactionRLP, CheckTransaction::Everything);
@@ -101,7 +100,6 @@ h256Hash TransactionQueue::knownTransactions() const
 
 ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction)
 {
-    cerror << "manageImport_WITH_LOCK";
     try
     {
         assert(_h == _transaction.sha3());
@@ -194,7 +192,6 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
         cwarn << "Transaction hash" << _p.first << "already in current?!";
         return;
     }
-    cerror << "insert????????";
     Transaction const& t = _p.second;
     // Insert into current
     auto inserted = m_currentByAddressAndNonce[t.from()].insert(std::make_pair(t.nonce(), PriorityQueue::iterator()));
