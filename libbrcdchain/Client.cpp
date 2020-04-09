@@ -1044,3 +1044,36 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
     }
     return ret;
 }
+
+Json::Value Client::getAveragePrice(BlockNumber _block)  {
+    Block _b = blockByNumber(_block);
+    // cwarn << "    "<< _b.info().number();
+    Transactions _trxs = pending();
+    u256 _pendingTrxGasPrice = 0;
+    for (auto const& _trx : _trxs)
+    {
+        _pendingTrxGasPrice += _trx.gasPrice();
+    }
+
+    Block _previousBlock = blockByNumber(_b.info().number() - 1);
+
+    Transactions _previousTrxs = _previousBlock.pending();
+    for(auto const& _trx : _previousTrxs)
+    {
+        _pendingTrxGasPrice += _trx.gasPrice();
+    }
+    
+    u256 _minimumGasPrice = _b.mutableState().getAveragegasPrice();
+
+    _pendingTrxGasPrice += _minimumGasPrice;
+
+    u256 _recommendGasPrice = (_pendingTrxGasPrice / (_trxs.size() + _previousTrxs.size() + 1)) * 12 /10;
+    u256 _fastGasPrice = (_pendingTrxGasPrice / (_trxs.size() + _previousTrxs.size() + 1)) * 15 /10;
+
+    Json::Value _ret;
+    _ret["minimumGasPrice"] = toJS(_minimumGasPrice);
+    _ret["recommendGasPrice"] = toJS(_recommendGasPrice);
+    _ret["fastGasPrice"] = toJS(_fastGasPrice);
+
+    return _ret;
+}
