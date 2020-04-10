@@ -210,11 +210,7 @@ void dev::bacd::SHDposClient::rejigSealing()
             return;
         }
 
-        if (m_is_firt_run){
-            m_is_firt_run  = false;
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));  //sleep : wait to sync
-            return;
-        }
+       
 
 		if(sealEngine()->shouldSeal(this))
 		{

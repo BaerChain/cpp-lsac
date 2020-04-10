@@ -396,7 +396,7 @@ void Client::syncBlockQueue()
 		{
 
 			cwarn << count << " blocks imported in " << unsigned(elapsed * 1000) << " ms #" << bc().number()
-			<< "  author: " << last.author() <<" hash:"<<last.hash()<< " late: " << late << "ms size: " << ir.goodTranactions.size();
+			<< "  author: " << last.author() <<" hash:"<< last.hash() << " late: " << late << "ms size: " << ir.goodTranactions.size();
 		}
 	}
 

@@ -109,6 +109,7 @@ void Block::resetCurrent(int64_t _timestamp) {
     m_transactionSet.clear();
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor(m_author);
+    
 	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp(), _timestamp));
     // m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, _timestamp));
     m_currentBytes.clear();
