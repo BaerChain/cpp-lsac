@@ -169,6 +169,9 @@ public:
     bool call(Address const& _receiveAddress, Address const& _txSender, u256 const& _txValue,
         u256 const& _gasPrice, bytesConstRef _txData, u256 const& _gas);
     bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
+    /// excuteContract about create and excute
+    /// @true false if some exception
+    bool excuteContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin);
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState(SubState& _parentContext);
 

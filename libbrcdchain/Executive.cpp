@@ -418,11 +418,14 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             break;
         }
         case transationTool::op_type::deployContract:
-        {
-            break;
-        }
         case transationTool::op_type::executeContract:
         {
+            if(_baseType != transationTool::op_type::transferMutilSigns){
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
+                                                        errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
+            }
+            transationTool::contract_operation _contract_op = transationTool::contract_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_contract_op));
             break;
         }
         case transationTool::op_type::changeMiner:
@@ -528,8 +531,6 @@ bool Executive::call(Address const& _receiveAddress, Address const& _senderAddre
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
-    //cwarn << "$$$$$$$ sender:"<<_p.senderAddress << " code:"<< _p.codeAddress << " receive:" << _p.receiveAddress;
-    //cwarn << "$$$$$$$:"<< toHex(_p.data);
     // If external transaction.
     if (m_t)
     {
@@ -542,49 +543,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     }
 
-    m_savepoint = m_s.savepoint();
-    cwarn << "Contrat myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
-    if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
-    {
-        bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
-        if (_p.gas < g)
-        {
-            m_excepted = TransactionException::OutOfGasBase;
-            if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
-                m_s.addBalance(_p.codeAddress, 0);
+    /// try to exctue contract
+    if(!excuteContract(_p, _gasPrice, _origin))
+        return true;
 
-            return true;  // true actually means "all finished - nothing more to be done regarding
-            // go().
-        }
-        else
-        {
-            m_gas = (u256)(_p.gas - g);
-            bytes output;
-            bool success;
-            tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
-            size_t outputSize = output.size();
-            m_output = owning_bytes_ref{std::move(output), 0, outputSize};
-            if (!success)
-            {
-                m_gas = 0;
-                m_excepted = TransactionException::OutOfGas;
-                return true;  // true means no need to run go().
-            }
-        }
-    }
-    else
-    {
-        m_gas = _p.gas;
-        if (m_s.addressHasCode(_p.codeAddress))
-        {
-            bytes const& c = m_s.code(_p.codeAddress);
-            h256 codeHash = m_s.codeHash(_p.codeAddress);
-            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
-            m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
-                                       _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                                       m_depth, false, _p.staticCall);
-        }
-    }
     // Transfer brcer.
     if (!m_t.isVoteTranction())
     {
@@ -632,6 +594,21 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.transferAuthorityControl(m_batch_params._rootAddress, m_batch_params._operation, m_envInfo);
                 break;
             }
+            case transationTool::op_type ::deployContract:
+            {
+                std::shared_ptr<transationTool::contract_operation> _op =
+                        std::dynamic_pointer_cast<transationTool::contract_operation>(m_batch_params._operation[0]);
+                if (!_op) {
+                    BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(
+                            std::string("receivingincome_operation is error")));
+                }
+                return create(m_batch_params._rootAddress, m_t.value(), m_t.gasPrice(),
+                              m_t.gas() - (u256)m_baseGasRequired, &_op->m_date, m_batch_params._rootAddress);
+            }
+            case transationTool::op_type ::executeContract:
+            {
+                break;
+            }
             default:
                 //TODO: unkown null.
                 assert(1);
@@ -641,6 +618,53 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         return true;
     }
     return !m_ext;
+}
+
+bool Executive::excuteContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
+    m_savepoint = m_s.savepoint();
+    //cwarn << "Contrat myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
+    if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
+    {
+        bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+        if (_p.gas < g)
+        {
+            m_excepted = TransactionException::OutOfGasBase;
+            if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
+                m_s.addBalance(_p.codeAddress, 0);
+
+            return false;  // true actually means "all finished - nothing more to be done regarding
+            // go().
+        }
+        else
+        {
+            m_gas = (u256)(_p.gas - g);
+            bytes output;
+            bool success;
+            tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+            size_t outputSize = output.size();
+            m_output = owning_bytes_ref{std::move(output), 0, outputSize};
+            if (!success)
+            {
+                m_gas = 0;
+                m_excepted = TransactionException::OutOfGas;
+                return false;  // true means no need to run go().
+            }
+        }
+    }
+    else
+    {
+        m_gas = _p.gas;
+        if (m_s.addressHasCode(_p.codeAddress))
+        {
+            bytes const& c = m_s.code(_p.codeAddress);
+            h256 codeHash = m_s.codeHash(_p.codeAddress);
+            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
+            m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
+                                       _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+                                       m_depth, false, _p.staticCall);
+        }
+    }
+    return true;
 }
 
 bool Executive::create(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,

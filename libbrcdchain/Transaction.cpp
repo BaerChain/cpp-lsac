@@ -211,9 +211,9 @@ authority::PermissionsType authority::getPermissionsTypeByTransactionType(transa
     if(_type == transationTool::op_type::vote || _type == transationTool::op_type::brcTranscation ||
        _type == transationTool::op_type::pendingOrder || _type == transationTool::op_type::cancelPendingOrder||
        _type == transationTool::op_type::receivingincome || _type == transationTool::op_type::transferAutoEx ||
-       _type == transationTool::op_type::executeContract )
+       _type == transationTool::op_type::deployContract  || _type == transationTool::op_type::executeContract)
     {
         return _type;
     }
-    BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() << errinfo_comment("transaction type:"+ std::to_string(_type) + " can't to mutilSings"));
+    BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() << errinfo_comment("transaction type:"+ std::to_string(_type) + " can't to add permissions for address"));
 }
