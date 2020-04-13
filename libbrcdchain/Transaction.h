@@ -131,6 +131,13 @@ namespace dev
                 CookiesChildAddrKey,
             };
 
+            enum class authorizeCookieType : uint8_t
+            {
+                Null = 0,
+                addCookieChild,
+                deleteCookieChild
+            }
+
             // //test code  begin
             // struct testSort
             // {
@@ -426,6 +433,25 @@ namespace dev
                 virtual op_type type(){return (op_type)m_type;}
             };
 
+            struct authorizeCookies_operation : public operation
+            {
+                uint8_t m_type;
+                authorizeCookieType m_cookieType;
+                Address m_childAddress;
+                
+                authorizeCookies_operation(){}
+                authorizeCookies_operation(op_type _type, authorizeCookieType _cookieType, Address const& _childAddress):
+                    m_type(_type),
+                    m_cookieType(_cookieType),
+                    m_childAddress(_childAddress){}
+
+                OPERATION_SERIALIZE((m_type)(uint8_t))
+
+                OPERATION_UNSERIALIZE
+
+                
+            }
+
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
                 Address m_rootAddress;
@@ -481,6 +507,20 @@ namespace dev
             {
                 return h256();
             }
+            return dev::sha3(_key);
+        }
+
+        static h256 toGetCookieKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
+        {
+            std::string _key;
+            if(_type == dev::brc::transationTool::getRootKeyType::CookiesRootAddrKey){
+                _key = "CookieRootKeys" + toJS(_addr);
+            }else if(_type == dev::brc::transationTool::getRootKeyType::CookiesChildAddrKey){
+                _key = "CookieChildKeys" + toJS(_addr);
+            }else {
+                return h256();
+            }
+
             return dev::sha3(_key);
         }
         }  // namespace authority
