@@ -57,11 +57,9 @@ ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 
 ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped _ik)
 {
-    cerror << "TransactionQueue::import";
     if (_transaction.hasZeroSignature())
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
-    cerror << "TransactionQueue::import";
     h256 h = _transaction.sha3(WithSignature);
     ImportResult ret;
     {
@@ -71,7 +69,6 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
             return ir;
 
         {
-                cerror << "TransactionQueue::import";
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
             UpgradeGuard ul(l);
             ret = manageImport_WITH_LOCK(h, _transaction);

@@ -967,7 +967,6 @@ h256 Client::importTransaction(Transaction const& _t)
     // (e.g. transaction signature, account balance) using the state of
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
-    cerror << "importTransaction";
     Block currentBlock = block(bc().currentHash());
     Executive e(currentBlock, bc());
     e.initialize(_t,transationTool::initializeEnum::rpcinitialize);
