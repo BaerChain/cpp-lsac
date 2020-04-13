@@ -162,36 +162,36 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         return _pair;
     }
 
-    //获取子账户私钥
-    std::map<Address, Secret> childKeys;
-    if (obj.count("childKeys")) {
-        js::mArray key_array;
-        try {
-            key_array = obj["childKeys"].get_array();
-        }
-        catch (...){
-            _pair.second = "the keys not is array";
-            return  _pair;
-        }
-        try{
-            for (auto &obj : key_array) {
-                auto key = obj.get_str();
-                if(key.size() == 66 || key.size() == 64) {
-                    auto keyPair = dev::KeyPair(dev::Secret(key));
-                    childKeys[keyPair.address()] = keyPair.secret();
-                }
-                else {
-                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-                    childKeys[keyPair.address()] = keyPair.secret();
-                }
-            }
-        }
-        catch (...){
-            _pair.second = "Secret key format error";
-            return  _pair;
-        }
-
-    }
+//    //获取子账户私钥
+//    std::map<Address, Secret> childKeys;
+//    if (obj.count("childKeys")) {
+//        js::mArray key_array;
+//        try {
+//            key_array = obj["childKeys"].get_array();
+//        }
+//        catch (...){
+//            _pair.second = "the keys not is array";
+//            return  _pair;
+//        }
+//        try{
+//            for (auto &obj : key_array) {
+//                auto key = obj.get_str();
+//                if(key.size() == 66 || key.size() == 64) {
+//                    auto keyPair = dev::KeyPair(dev::Secret(key));
+//                    childKeys[keyPair.address()] = keyPair.secret();
+//                }
+//                else {
+//                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
+//                    childKeys[keyPair.address()] = keyPair.secret();
+//                }
+//            }
+//        }
+//        catch (...){
+//            _pair.second = "Secret key format error";
+//            return  _pair;
+//        }
+//
+//    }
     ///判断 有且只有一笔transction
     if(trx_datas.size() != 1) {
         std::string log = "error transction size must be 1";
@@ -230,12 +230,12 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
            }
            auto op_rlp = op_ptr->datasBytes();
            for(auto const&a : childAddress){
-               if(!childKeys.count(a)) {
+               if(!keys.count(a)) {
                    _pair.second = "not find the Child Addrss:"+ dev::toString(a) +" key...";
                    cwarn<< _pair.second;
                    return _pair;
                }
-               auto sig = ToolTransaction::getSignByBytes(op_rlp, childKeys[a]);
+               auto sig = ToolTransaction::getSignByBytes(op_rlp, keys[a]);
                op_ptr->m_signs.emplace_back(sig);
            }
        }

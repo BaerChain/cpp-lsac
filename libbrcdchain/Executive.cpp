@@ -543,7 +543,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
 
     m_savepoint = m_s.savepoint();
-
+    cwarn << "Contrat myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
         bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
@@ -561,8 +561,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             m_gas = (u256)(_p.gas - g);
             bytes output;
             bool success;
-            tie(success, output) =
-                    m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+            tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{std::move(output), 0, outputSize};
             if (!success)
@@ -580,6 +579,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         {
             bytes const& c = m_s.code(_p.codeAddress);
             h256 codeHash = m_s.codeHash(_p.codeAddress);
+            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
             m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                                        _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                                        m_depth, false, _p.staticCall);
@@ -868,7 +868,7 @@ bool Executive::finalize()
             m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
         }
     }
-
+    m_batch_params.clear();
     // Suicides...
     if (m_ext)
         for (auto a : m_ext->sub.suicides)
