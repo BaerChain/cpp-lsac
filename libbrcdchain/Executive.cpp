@@ -362,6 +362,11 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             }
             m_totalGas = (u256)totalCost;
 
+            if(m_batch_params._type !=transationTool::op_type::null && m_batch_params.size() <=0){
+                auto err_str = " the transaction of:"+ std::to_string(m_batch_params._type) + " the operation size:0";
+                cerror << err_str;
+                BOOST_THROW_EXCEPTION(ExecutiveFailed()<<errinfo_comment(err_str));
+            }
         }
     }
 }
@@ -425,7 +430,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                                                         errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
             }
             transationTool::contract_operation _contract_op = transationTool::contract_operation(_ops[0]);
-            m_batch_params._operation.push_back(std::make_shared<transationTool::cancelPendingorder_operation>(_contract_op));
+            m_batch_params._operation.push_back(std::make_shared<transationTool::contract_operation>(_contract_op));
             break;
         }
         case transationTool::op_type::changeMiner:
@@ -544,7 +549,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
 
     /// try to exctue contract
-    if(!excuteContract(_p, _gasPrice, _origin))
+    if(!callContract(_p, _gasPrice, _origin))
         return true;
 
     // Transfer brcer.
@@ -599,15 +604,25 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 std::shared_ptr<transationTool::contract_operation> _op =
                         std::dynamic_pointer_cast<transationTool::contract_operation>(m_batch_params._operation[0]);
                 if (!_op) {
-                    BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(
-                            std::string("receivingincome_operation is error")));
+                    cerror << "deployContract dynamic type field!";
+                    BOOST_THROW_EXCEPTION(InvalidDynamic());
                 }
                 return create(m_batch_params._rootAddress, m_t.value(), m_t.gasPrice(),
                               m_t.gas() - (u256)m_baseGasRequired, &_op->m_date, m_batch_params._rootAddress);
             }
             case transationTool::op_type ::executeContract:
             {
-                break;
+                std::shared_ptr<transationTool::contract_operation> _op =
+                        std::dynamic_pointer_cast<transationTool::contract_operation>(m_batch_params._operation[0]);
+                if (!_op) {
+                    cerror << "executeContract dynamic type field!";
+                    BOOST_THROW_EXCEPTION(InvalidDynamic());
+                }
+                CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
+                                       m_t.gasPrice(), bytesConstRef(&m_t.data()), {}};
+                if(!callContract(params, _gasPrice, m_batch_params._rootAddress)){
+                    return true;
+                }
             }
             default:
                 //TODO: unkown null.
@@ -620,7 +635,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     return !m_ext;
 }
 
-bool Executive::excuteContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
+bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
     m_savepoint = m_s.savepoint();
     //cwarn << "Contrat myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
@@ -801,7 +816,6 @@ bool Executive::go(OnOpFunc const& _onOp)
             }
             else{
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-                cwarn <<"*******" << toHex(m_output);
             }
             success = true;
         }
@@ -849,7 +863,7 @@ bool Executive::go(OnOpFunc const& _onOp)
         if (m_res && m_output)
             // Copy full output:
             m_res->output = m_output.toVector();
-
+        cwarn <<"*******"<<success <<"****" << toHex(m_output);
 #if BRC_TIMED_EXECUTIONS
         cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 #endif
