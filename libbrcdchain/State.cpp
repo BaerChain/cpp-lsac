@@ -228,7 +228,7 @@ Account *State::account(Address const &_addr) {
         }
     }
 
-
+    i.first->second.untouch();
     return &i.first->second;
 }
 
