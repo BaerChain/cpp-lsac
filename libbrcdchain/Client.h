@@ -62,7 +62,7 @@ public:
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{102400, 102400},
-        int64_t _rebuild_num = 0);
+        DBBlockConfig const& db_config = DBBlockConfig());
     /// Destructor.
     virtual ~Client();
 

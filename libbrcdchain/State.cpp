@@ -50,15 +50,17 @@ State::State(State const &_s)
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
-
     if (db::isDiskDatabase() && _we == WithExisting::Kill) {
         clog(VerbosityDebug, "statedb") << "Killing state database (WithExisting::Kill).";
         cwarn << "will remove " << path << "/" << fs::path("state");
+        cwarn << path / fs::path("state");
         fs::remove_all(path / fs::path("state"));
     }
 
+    
     path /=
             fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
+    cwarn << path;
     if (db::isDiskDatabase()) {
         fs::create_directories(path);
         DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));

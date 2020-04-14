@@ -279,6 +279,7 @@ enum class WithExisting: int
     Trust = 0,
     Verify,
     Rescue,
+    Export,
     Kill
 };
 
