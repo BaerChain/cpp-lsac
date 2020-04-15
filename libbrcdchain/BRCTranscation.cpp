@@ -671,6 +671,16 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
 }
 
 
+
+void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for (auto const& val : _ops)
+    {
+        std::shared_ptr<transationTool::authorizeCookies_operation> _authorityCookie_op = std::dynamic_pointer_cast<std::shared_ptr<transationTool::authorizeCookies_operation>>(val);
+    }
+}
+
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;
