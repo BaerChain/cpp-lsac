@@ -85,6 +85,7 @@ namespace dev
                 transferAutoEx = 9,
                 transferAccountControl = 10,
                 transferMutilSigns = 11,
+                authorizeUseCookie = 12
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -136,7 +137,7 @@ namespace dev
                 Null = 0,
                 addCookieChild,
                 deleteCookieChild
-            }
+            };
 
             // //test code  begin
             // struct testSort
@@ -436,21 +437,21 @@ namespace dev
             struct authorizeCookies_operation : public operation
             {
                 uint8_t m_type;
-                authorizeCookieType m_cookieType;
+                uint8_t m_cookieType;
                 Address m_childAddress;
                 
                 authorizeCookies_operation(){}
                 authorizeCookies_operation(op_type _type, authorizeCookieType _cookieType, Address const& _childAddress):
                     m_type(_type),
-                    m_cookieType(_cookieType),
+                    m_cookieType((uint8_t)_cookieType),
                     m_childAddress(_childAddress){}
 
-                OPERATION_SERIALIZE((m_type)(uint8_t))
+                OPERATION_SERIALIZE((m_type)(m_cookieType)(m_childAddress))
 
-                OPERATION_UNSERIALIZE
+                OPERATION_UNSERIALIZE(authorizeCookies_operation, (m_type)(m_cookieType)(m_childAddress))
 
-                
-            }
+                virtual op_type type(){return (op_type)m_type;}
+            };
 
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;

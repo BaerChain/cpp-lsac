@@ -483,6 +483,15 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
             break;
         }
+        case transationTool::op_type::authorizeUseCookie:
+        {
+            if(_baseType == transationTool::op_type::authorizeUseCookie){
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
+                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
+            }
+            transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(ops[0]);
+
+        }
         default:
             m_excepted = TransactionException::DefaultError;
             BOOST_THROW_EXCEPTION(DefaultError() << errinfo_comment(m_t.sender().hex()));
