@@ -261,6 +261,14 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     return _ret;
 }
 
+Json::Value dev::brc::ClientBase::getGasPrice()
+{
+    u256 _gasPrice = sealEngine()->chainParams().m_minGasPrice;
+    Json::Value val;
+    val["minGasPrice"] = toJS(_gasPrice);
+    return val;
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {
@@ -655,3 +663,11 @@ int ClientBase::chainId() const
 {
     return bc().chainParams().chainID;
 }
+
+// Json::Value ClientBase::getAveragePrice(BlockNumber _block) {
+//     Block _b = blockByNumber(_block);
+//     Json::Value v;
+//     // cwarn << "    "<< _b.info().number();
+//     v["gasPrice"]= toJS(_b.mutableState().getAveragegasPrice());
+//     return v;
+// }

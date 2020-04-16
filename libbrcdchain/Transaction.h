@@ -79,7 +79,8 @@ namespace dev
                 executeContract = 6,
                 changeMiner = 7,
                 receivingincome = 8,
-                transferAutoEx = 9
+                transferAutoEx = 9,
+                modifyMinerGasPrice = 10
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -307,6 +308,22 @@ namespace dev
                 OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to)) 
 
             };
+
+            struct modifyMinerGasPrice_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_proposer;
+                u256 m_proposedAmount;
+                modifyMinerGasPrice_operation(){}
+                modifyMinerGasPrice_operation(op_type _type, Address const& _proposer, u256 const& _proposedAmount):
+                    m_type(_type),
+                    m_proposer(_proposer),
+                    m_proposedAmount(_proposedAmount){}
+
+                
+                OPERATION_UNSERIALIZE(modifyMinerGasPrice_operation, (m_type)(m_proposer)(m_proposedAmount))
+                OPERATION_SERIALIZE((m_type)(m_proposer)(m_proposedAmount))
+            }; 
 
         }  // namespace transationTool
 

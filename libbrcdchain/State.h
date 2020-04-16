@@ -128,7 +128,8 @@ struct Change
         UpExOrder,
         SuccessOrder,
         ChangeMiner,
-        NewChangeMiner
+        NewChangeMiner,
+        MinerGasPrice
     };
 
     Kind kind;        ///< The kind of the change.
@@ -150,6 +151,7 @@ struct Change
     dev::brc::ex::ExResultOrder ret_orders;
     Account old_account;
     std::pair<Address, Address> mapping;
+    std::map<Address, u256> minerGasPrice;
 
     /// Helper constructor to make change log update more readable.
     Change(Kind _kind, Address const& _addr, u256 const& _value = 0)
@@ -225,6 +227,10 @@ struct Change
     Change(Kind _kind, Address const& _addr, std::pair<Address, Address>const& _map) :kind(_kind), address(_addr)
     {
         mapping =_map;
+    }
+    Change(Kind _kind, Address const& _addr, std::map<Address, u256>const& _map) :kind(_kind), address(_addr)
+    {
+        minerGasPrice =_map;
     }
 };
 
@@ -415,6 +421,8 @@ public:
     Json::Value queryExchangeReward(Address const& _address, unsigned _blockNum);
     Json::Value queryBlcokReward(Address const& _address, unsigned _blockNum);
     u256 rpcqueryBlcokReward(Address const& _address, unsigned _blockNum);
+    u256 getAveragegasPrice();
+    void initMinerGasPrice(BlockHeader const &_header);
 
     //投票数相关接口 自己拥有可以操作的票数
     u256 ballot(Address const& _id) const;
@@ -475,6 +483,9 @@ public:
 
     void transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas);
     std::pair<Address, Address> minerMapping(Address const& addr);
+
+    void modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    void changeMinerModifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
 private:
     void addSysVoteDate(Address const& _sysAddress, Address const& _id);
     void subSysVoteDate(Address const& _sysAddress, Address const& _id);
@@ -591,7 +602,7 @@ public:
 	void set_timestamp(uint64_t _time){ m_timestamp = _time; }
 	uint64_t timestamp() const{ return m_timestamp; }
 
-	void setBlockNumber(int64_t value) { m_block_number = value; }
+	void setBlockNumber(int64_t value) { m_block_number = value;  m_curr_number = m_block_number +1; }
 	int64_t blockNumber(){return m_block_number;}
 
 	///interface for create_block record
@@ -665,6 +676,7 @@ private:
 	uint64_t m_timestamp = 0;
 
 	int64_t  m_block_number =0;
+	int64_t  m_curr_number = 0;
 
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;

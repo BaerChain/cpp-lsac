@@ -246,6 +246,11 @@ int main(int argc, char **argv) {
     string nodemonitorIP;
     bool skip_same_ip = true;
 
+    //minimum gasprice
+    // bool isSetGasPrice = false;
+    u256 gasPrice = 5;
+
+
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
     addClientOption("mainnet", "Use the main network protocol");
@@ -282,6 +287,7 @@ int main(int argc, char **argv) {
                     "Give the master password for the key store; use --master \"\" to show a prompt");
     addClientOption("password", po::value<string>()->value_name("<password>"),
                     "Give a password for a private key\n");
+
     addClientOption("export-path", po::value<string>()->value_name("<string>"),
                     "set export DB path\n");
     addClientOption("export-dbtype",po::value<string>()->value_name("<string>"),
@@ -792,6 +798,13 @@ int main(int argc, char **argv) {
 
     if (!nodemonitorIP.empty()) {
         chainParams.savenodemonitorIP(nodemonitorIP);
+    }
+
+    if (vm.count("setgasprice"))
+    {
+        gasPrice = vm["setgasprice"].as<u256>();
+        std::cout << " gasprice = " << gasPrice << std::endl;
+        chainParams.setGasPrice(gasPrice);
     }
 
     setupLogging(loggingOptions);

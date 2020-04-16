@@ -214,7 +214,7 @@ public:
         return m_onBlockSealed.add(_handler);
     }
 
-
+	Json::Value getAveragePrice(BlockNumber _block) override ;
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.

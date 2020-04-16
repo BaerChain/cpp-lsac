@@ -901,6 +901,15 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
+Json::Value dev::rpc::Brc::brc_getGasPrice(std::string const& _blockNumber)
+{
+    try{
+        return client()->getAveragePrice(jsToBlockNum(_blockNumber));
+    }catch(...){
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;
@@ -967,6 +976,10 @@ string dev::rpc::exceptionToErrorMessage()
     catch (transferAutoExFailed const& _t)
     {
         ret = "transferAutoEx failed: " + std::string(*boost::get_error_info<errinfo_comment>(_t));
+    }
+    catch (modifyminergaspriceFailed const& _m)
+    {
+        ret = "modifyminerGasprice failed: " + std::string(*boost::get_error_info<errinfo_comment>(_m));
     }
     catch (getVotingCycleFailed const _g)
     {

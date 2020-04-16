@@ -768,7 +768,7 @@ public:
                 FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
                 m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
                 m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
-                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 ;
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_minerGasPrice.size()==0;
     }
 
     /// @returns the balance of this account.
@@ -924,7 +924,7 @@ public:
 
     // VoteDate 投票数据
     u256 voteAll()const { u256 vote_num = 0; for(auto const&val : m_vote_data) vote_num += val.m_poll; return vote_num; }
-    void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); }
+    void set_vote_data(std::vector<PollData> const& _vote) { m_vote_data.clear(); m_vote_data.assign(_vote.begin(), _vote.end()); changed(); }
     void clear_vote_data() { m_vote_data.clear();}
 
     /// this interface only for normalAddress
@@ -1010,11 +1010,11 @@ public:
     u256 getFeeNumofRounds(){ return m_couplingSystemFee.m_numofrounds;}
     void setCouplingSystemFeeSnapshot(CouplingSystemfee const& _fee){ m_couplingSystemFee = _fee;changed();}
     std::map<u256, std::vector<PollData>> getPollDataSnapshot() { return m_couplingSystemFee.m_sorted_creaters; }
-    void add_new_rounds_miner_sapshot(u256 _round, std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data;}
+    void add_new_rounds_miner_sapshot(u256 _round, std::vector<PollData> _poll_data) { m_couplingSystemFee.m_sorted_creaters[_round] = _poll_data; changed();}
 
 
     ///interface about received_cookies
-    void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received;}
+    void set_received(ReceivedCookies const& _received){ m_received_cookies.clear(); m_received_cookies = _received; changed();}
     ReceivedCookies const& get_received_cookies() const { return  m_received_cookies;}
     void init_received_cookies(bytes const& _b) { m_received_cookies.populate(_b);}
     void addSetreceivedCookie(u256 _round, Address const& _addr, std::pair<u256, u256> _pair){ m_received_cookies.up_received_cookies(_round, _addr, _pair); changed();}
@@ -1089,6 +1089,21 @@ public:
         }
     }
 
+    bytes getStreamRLPGasPrice() const{
+        RLPStream s(m_minerGasPrice.size());
+        for(auto const& a: m_minerGasPrice){
+            s.append<Address, u256>(std::make_pair(a.first, a.second));
+        }
+        return s.out();
+    }
+    void initGasPrice(bytes const& b){
+        m_minerGasPrice.clear();
+        for(auto const& v: RLP(b)){
+            auto _p = v.toPair<Address, u256>();
+            m_minerGasPrice[_p.first] = _p.second;
+        }
+    }
+
     void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
         changed();
@@ -1096,6 +1111,21 @@ public:
     std::pair<Address, Address>const& mappingAddress() const{
         return m_mappingAddress;
     }
+
+    std::map<Address, u256> const& minerGasPrice() const{
+        return m_minerGasPrice;
+    }
+    void setMinerGasPrice(Address const& _id, u256 const& _price) {
+        m_minerGasPrice[_id] = _price;
+        changed();
+    }
+    void setMinerGasPrices(std::map<Address, u256> const& _prices){
+        m_minerGasPrice.clear();
+        m_minerGasPrice = _prices;
+        changed();
+    }
+
+    u256 getAverageGasPrice() const;
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1167,6 +1197,9 @@ private:
 
     /// mapping Address <original_address, next_address> for change Miner
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+
+    /// miner and standbyMiner gasPrice;
+    std::map<Address, u256> m_minerGasPrice;
 
 };
 

@@ -108,16 +108,17 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
             auto t = cs->second.find(_transaction.nonce());
             if (t != cs->second.end())
             {
-                LOG(m_loggerDetail) << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
-				return ImportResult::NonceRepeat;
-				/*if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
+                // LOG(m_loggerDetail) << "Nonce:"<< _transaction.nonce() << " alreadyInChain ";
+				// return ImportResult::NonceRepeat;
+                cerror << "Nonce = " << _transaction.nonce() << "   queuenonce is " << t->first;
+				if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
 					return ImportResult::OverbidGasPrice;
 				else
 				{
 					h256 dropped = (*t->second).transaction.sha3();
 					remove_WITH_LOCK(dropped);
 					m_onReplaced(dropped);
-				}*/
+				}
             }
         }
         auto fs = m_future.find(_transaction.from());
@@ -336,6 +337,7 @@ void TransactionQueue::clear()
 
 void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
 {
+    cerror << "TransactionQueue::enqueue";
     bool queued = false;
     {
         Guard l(x_queue);
@@ -354,6 +356,30 @@ void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
     }
     if (queued)
         m_queueReady.notify_all();
+}
+
+void TransactionQueue::enqueue(std::vector<bytesConstRef> const& _dataV, h512 const& _nodeId)
+{
+    bool queued = false;
+    {
+        Guard l(x_queue);
+        for(int i = 0; i < _dataV.size(); i++)
+        {
+            if(m_unverified.size() >= c_maxVerificationQueueSize)
+            {
+                LOG(m_logger) << "Transaction verification queue is full. Dropping "
+                              << _dataV.size() - i << " transactions";
+                break;
+            }
+            m_unverified.emplace_back(UnverifiedTransaction(_dataV[i], _nodeId));
+            queued = true;
+        }
+    }
+
+    if(queued)
+    {
+        m_queueReady.notify_all();
+    }
 }
 
 void TransactionQueue::verifierBody()
