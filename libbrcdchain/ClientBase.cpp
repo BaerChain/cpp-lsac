@@ -508,7 +508,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     if (tl.second > 0)
         gasUsed -= bc().transactionReceipt(tl.first, tl.second - 1).cumulativeGasUsed();
 
-    auto getRootAddress = [&](Transaction const& _t, BlockNumber _number) ->std::pair<Address, u256> {
+    auto getRootAddress = [this](Transaction const& _t, BlockNumber _number) ->std::pair<Address, u256> {
         Address _root = _t.from();
         u256 nonce = _t.nonce();
         try {
@@ -516,12 +516,10 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
                 RLP _r(_t.data());
                 std::vector<bytes> _ops = _r.toVector<bytes>();
                 for(auto const& val : _ops){
-                    transationTool::op_type _type = transationTool::operation::get_type(_ops[0]);
+                    transationTool::op_type _type = transationTool::operation::get_type(val);
                     if(_type == transationTool::op_type::transferMutilSigns){
-                        transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(_ops[0]);
-                        //get nonce
-                        _number = _number ? : _number-1, _number;
-                        nonce = blockByNumber(_number).mutableState().getNonce(_mutilSign_op.m_rootAddress);
+                        transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
+                        nonce = blockByNumber(_number ? --_number:_number).mutableState().getNonce(_mutilSign_op.m_rootAddress);
                         _root = _mutilSign_op.m_rootAddress;
                     }
                     break;
