@@ -61,6 +61,7 @@ public:
 		Address const& _to, 
 		unsigned _transactionIndex,
 		u256 const& _gasUsed,
+		Address const& _root,
 		Address const& _contractAddress = Address()
 	):
 		TransactionReceipt(_t),
@@ -71,6 +72,7 @@ public:
 		m_to(_to),
 		m_transactionIndex(_transactionIndex),
 		m_gasUsed(_gasUsed),
+		m_rootAddress(_root),
 		m_contractAddress(_contractAddress)
 	{
 		LogEntries entries = log();
@@ -94,6 +96,7 @@ public:
 	u256 const& gasUsed() const { return m_gasUsed; }
 	Address const& contractAddress() const { return m_contractAddress; }
 	LocalisedLogEntries const& localisedLogs() const { return m_localisedLogs; };
+	Address const& rootAddress() const { return m_rootAddress;}
 
 private:
 	h256 m_hash;
@@ -105,6 +108,7 @@ private:
 	u256 m_gasUsed;
 	Address m_contractAddress;
 	LocalisedLogEntries m_localisedLogs;
+	Address m_rootAddress;
 };
 
 }

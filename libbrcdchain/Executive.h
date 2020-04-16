@@ -170,7 +170,7 @@ public:
         u256 const& _gasPrice, bytesConstRef _txData, u256 const& _gas);
     bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
     /// excuteContract to excute about Precompiled or other contract
-    /// @true false if some exception
+    /// @returns false iff go() be called (and thus a VM execution in required)
     bool callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin);
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState(SubState& _parentContext);

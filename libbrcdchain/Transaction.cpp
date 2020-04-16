@@ -201,7 +201,7 @@ transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)
         return new receivingincome_operation(_bs);
     else if(type == op_type::transferAutoEx)
         return new transferAutoEx_operation(_bs);
-    else if(type == op_type::executeContract)
+    else if(type == op_type::executeContract || type == op_type::deployContract)
         return new contract_operation(_bs);
     else
         BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() <<errinfo_comment("invalid transaction type:"+std::to_string(type)+" in mutilTrasnction"));

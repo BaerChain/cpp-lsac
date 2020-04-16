@@ -548,13 +548,12 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     }
 
-    /// try to exctue contract
-    if(!callContract(_p, _gasPrice, _origin))
-        return true;
-
     // Transfer brcer.
     if (!m_t.isVoteTranction())
     {
+        /// try to exctue contract
+        if(callContract(_p, _gasPrice, _origin))
+            return true;
         m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
     }
     else
@@ -619,17 +618,13 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                     BOOST_THROW_EXCEPTION(InvalidDynamic());
                 }
                 CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
-                                       m_t.gasPrice(), bytesConstRef(&m_t.data()), {}};
-                if(!callContract(params, _gasPrice, m_batch_params._rootAddress)){
-                    return true;
-                }
+                                       m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_date), {}};
+                return callContract(params, _gasPrice, m_batch_params._rootAddress);
             }
             default:
                 //TODO: unkown null.
                 assert(1);
         }
-
-        //m_batch_params.clear();
         return true;
     }
     return !m_ext;
@@ -647,7 +642,7 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
             if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
                 m_s.addBalance(_p.codeAddress, 0);
 
-            return false;  // true actually means "all finished - nothing more to be done regarding
+            return true;  // true actually means "all finished - nothing more to be done regarding
             // go().
         }
         else
@@ -662,7 +657,7 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
             {
                 m_gas = 0;
                 m_excepted = TransactionException::OutOfGas;
-                return false;  // true means no need to run go().
+                return true;  // true means no need to run go().
             }
         }
     }
@@ -673,13 +668,14 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
         {
             bytes const& c = m_s.code(_p.codeAddress);
             h256 codeHash = m_s.codeHash(_p.codeAddress);
-            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
+            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin
+            << " data:" << _p.data << " codeHash:" << codeHash;
             m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                                        _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                                        m_depth, false, _p.staticCall);
         }
     }
-    return true;
+    return !m_ext;
 }
 
 bool Executive::create(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
@@ -743,9 +739,12 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     m_s.clearStorage(m_newAddress);
 
     // Schedule _init execution if not empty.
-    if (!_init.empty())
+    if (!_init.empty()) {
         m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin,
                                    _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth, true, false);
+        cwarn << "create: m_newAddress:" <<dev::toJS(m_newAddress) << " sender:" << _sender << " _origin:" <<_origin
+            << "_init_data:"<<_init;
+    }
 
     return !m_ext;
 }
