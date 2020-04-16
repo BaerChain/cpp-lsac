@@ -371,9 +371,9 @@ namespace dev
                 Address m_to;
                 bytes m_date;
                 contract_operation(){}
-                contract_operation(op_type _type, Address const& _to, bytes const& _d):m_type(_type), m_to(_to) { m_date = _d; }
-                OPERATION_UNSERIALIZE(contract_operation, (m_date))
-                OPERATION_SERIALIZE((m_date))
+                contract_operation(uint8_t _type, Address const& _to, bytes const& _d):m_type(_type), m_to(_to) { m_date = _d; }
+                OPERATION_UNSERIALIZE(contract_operation,(m_type)(m_to)(m_date))
+                OPERATION_SERIALIZE((m_type)(m_to)(m_date))
                 virtual op_type type(){return (op_type)m_type;}
 
             };
