@@ -228,7 +228,9 @@ Account *State::account(Address const &_addr) {
         }
     }
 
-    i.first->second.untouch();
+    if(m_block_number >= config::repeatStorageAccountHeight())
+        i.first->second.untouch();
+
     return &i.first->second;
 }
 

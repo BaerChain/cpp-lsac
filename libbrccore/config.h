@@ -86,6 +86,7 @@ namespace dev
                 static int64_t initSysAddressHeight();
                 static int64_t autoExHeight();
                 static int64_t autoExTestNetHeight();
+                static int64_t repeatStorageAccountHeight();
         private:
             config(){}
             //~config(){}
