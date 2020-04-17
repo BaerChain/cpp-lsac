@@ -24,7 +24,7 @@ using namespace dev::brc::transationTool;
 namespace js = json_spirit;
 
 namespace wallet{
-
+    DEV_SIMPLE_EXCEPTION(InvalidTransaciontType);
     struct trx_source {
         enum Contract
         {

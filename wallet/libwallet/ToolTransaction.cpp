@@ -92,7 +92,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         tx.isContract = trx_source::Contract::execute;
                     } else {
                         auto op_ptr = get_oparation_from_data(op_obj, op_type::null);
-                        if(!op_ptr){
+                        if (!op_ptr) {
                             _pair.second = "can't get transaction type from json";
                             return _pair;
                         }
@@ -109,7 +109,13 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                 cnote << "Analysis of the json_data success... json_data: \n"<<val["source"].toStyledString();
             }
          }
-         catch (std::exception& e){
+         catch (InvalidTransaciontType const& ex){
+             _pair.second = "Error ";
+             if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+                 _pair.second += std::string(*_error);
+             return _pair;
+         }
+         catch (Exception& e){
              cerror << "the json format error. ";
              cerror << e.what();
              //_pair.second = e.what();
@@ -162,36 +168,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         return _pair;
     }
 
-//    //获取子账户私钥
-//    std::map<Address, Secret> childKeys;
-//    if (obj.count("childKeys")) {
-//        js::mArray key_array;
-//        try {
-//            key_array = obj["childKeys"].get_array();
-//        }
-//        catch (...){
-//            _pair.second = "the keys not is array";
-//            return  _pair;
-//        }
-//        try{
-//            for (auto &obj : key_array) {
-//                auto key = obj.get_str();
-//                if(key.size() == 66 || key.size() == 64) {
-//                    auto keyPair = dev::KeyPair(dev::Secret(key));
-//                    childKeys[keyPair.address()] = keyPair.secret();
-//                }
-//                else {
-//                    auto keyPair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
-//                    childKeys[keyPair.address()] = keyPair.secret();
-//                }
-//            }
-//        }
-//        catch (...){
-//            _pair.second = "Secret key format error";
-//            return  _pair;
-//        }
-//
-//    }
     ///判断 有且只有一笔transction
     if(trx_datas.size() != 1) {
         std::string log = "error transction size must be 1";
@@ -304,7 +280,7 @@ SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret
 
 operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj, op_type parent_type){
     if(!(parent_type==op_type::null || parent_type ==op_type::transferMutilSigns))
-        return nullptr;
+        BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:"+std::to_string(parent_type)+" can't have child"));
     auto type = op_obj["type"].get_int();
     switch (type) {
         case vote: {
@@ -342,15 +318,17 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
         }
         case deployContract: {
             if(parent_type == op_type::null)
-                return nullptr;
+                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("this transaction can't have type:5"));
             return new contract_operation((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
         }
         case executeContract: {
             if(parent_type == op_type::null)
-                return nullptr;
+                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("this transaction can't have type:6"));
             return new contract_operation((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
         }
         case changeMiner: {
+            if(parent_type == op_type::transferMutilSigns)
+                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 cant't contains type:7"));
             auto changeMiner_op = new changeMiner_operation( (op_type)type,
                                                              Address(op_obj["m_before"].get_str()),
                                                              Address(op_obj["m_after"].get_str())
@@ -374,6 +352,8 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return transferAutoEx_op;
         }
         case transferAccountControl:{
+            if(parent_type == op_type::transferMutilSigns)
+                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 cant't contains type:10"));
             auto authority_op = new authority_operation(
                     (op_type)type,
                     Address(op_obj["childAddress"].get_str()),
@@ -383,14 +363,15 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return authority_op;
         }
         case transferMutilSigns: {
-            if(parent_type == op_type::transferMutilSigns)
-                return nullptr;
+            if(parent_type == op_type::transferMutilSigns) {
+                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't nested"));
+            }
             auto txData = op_obj["transactionData"].get_array();
             std::vector<operation*> ptrs;
             for(auto &d : txData){
                 auto op_ptr = get_oparation_from_data(d.get_obj(), op_type::transferMutilSigns);
                 if(!op_ptr)
-                    return nullptr;
+                    BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't contains empty"));
                 ///verify operation type is allowed mutilSign
                 authority::getPermissionsTypeByTransactionType(op_ptr->type());
                 ptrs.emplace_back(op_ptr);
@@ -399,6 +380,9 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
                                                         Address(op_obj["cookiesAddress"].get_str()),ptrs);
             return tran_sings;
         }
+        default:
+            BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment(" Invalid transaction type"));
+            break;
     }
     return nullptr;
 }

@@ -383,11 +383,6 @@ public:
     {
         subBRC(_FromAddr, _value);
         addBRC(_ToAddr, _value);
-        RLPStream rlp(2);
-        rlp << _ToAddr << _value;
-        // cerror << rlp.out();
-        h256 _hash = sha3(_FromAddr);
-        setStorageBytes(_FromAddr, _hash, rlp.out());
     }
 	void execute_transfer_BRCs(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation> > const& _ops)
 	{
