@@ -670,16 +670,48 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
     }
 }
 
-
-
 void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
 {
     for (auto const& val : _ops)
     {
-        std::shared_ptr<transationTool::authorizeCookies_operation> _authorityCookie_op = std::dynamic_pointer_cast<std::shared_ptr<transationTool::authorizeCookies_operation>>(val);
+        std::shared_ptr<transationTool::authorizeCookies_operation> _op = std::dynamic_pointer_cast<transationTool::authorizeCookies_operation>(val);
+        if((transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::addCookieChild || (transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::deleteCookieChild)
+        {
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+        }
+
+        if(_from == _op->m_childAddress)
+        {
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+        }
+
+        std::vector<Address> _childAddrs = m_state.getAuthorityCookiesAddress(_from, transationTool::getRootKeyType::CookiesChildAddrKey);
+        std::vector<Address> _rootAddrs = m_state.getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+        if((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::addCookieChild)
+        {
+            if(std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress) != _childAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            }
+            if(std::find(_rootAddrs.begin(), _rootAddrs.end(), _from) != _rootAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            }
+        }else if ((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::deleteCookieChild)
+        {
+            if(std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress) == _childAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            }
+            if(std::find(_rootAddrs.begin(), _rootAddrs.end(), _from) == _rootAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            }
+        }else{
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+        }
     }
 }
-
 
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {

@@ -497,7 +497,9 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
                 errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
             }
-            transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(ops[0]);
+            transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::authorizeCookies_operation>(_authorize_op));
+            m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);
 
         }
         default:
@@ -629,6 +631,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
                                        m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_date), {}};
                 return callContract(params, _gasPrice, m_batch_params._rootAddress);
+            }
+            case transationTool::op_type::authorizeUseCookie:
+            {
+                m_s.transferAuthorityUseCookie(m_batch_params._rootAddress, m_batch_params._operation);
+                break;
             }
             default:
                 //TODO: unkown null.

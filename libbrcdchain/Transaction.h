@@ -437,18 +437,18 @@ namespace dev
             struct authorizeCookies_operation : public operation
             {
                 uint8_t m_type;
-                uint8_t m_cookieType;
+                uint8_t m_authorizeType;
                 Address m_childAddress;
                 
                 authorizeCookies_operation(){}
-                authorizeCookies_operation(op_type _type, authorizeCookieType _cookieType, Address const& _childAddress):
+                authorizeCookies_operation(op_type _type, authorizeCookieType _authorizeType, Address const& _childAddress):
                     m_type(_type),
-                    m_cookieType((uint8_t)_cookieType),
+                    m_authorizeType((uint8_t)_authorizeType),
                     m_childAddress(_childAddress){}
 
-                OPERATION_SERIALIZE((m_type)(m_cookieType)(m_childAddress))
+                OPERATION_SERIALIZE((m_type)(m_authorizeType)(m_childAddress))
 
-                OPERATION_UNSERIALIZE(authorizeCookies_operation, (m_type)(m_cookieType)(m_childAddress))
+                OPERATION_UNSERIALIZE(authorizeCookies_operation, (m_type)(m_authorizeType)(m_childAddress))
 
                 virtual op_type type(){return (op_type)m_type;}
             };
