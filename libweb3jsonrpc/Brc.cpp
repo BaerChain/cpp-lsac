@@ -863,12 +863,24 @@ Json::Value dev::rpc::Brc::brc_getVoted(const std::string& _address, const std::
 {
 	try
 	{
-		return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+		return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber), 0);
 	}
 	catch(...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
+}
+
+Json::Value dev::rpc::Brc::brc_getPreviousRoundVoted(const std::string& _address, const std::string& _blockNumber)
+{
+    try
+    {
+        return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber), 1);
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
 }
 
 

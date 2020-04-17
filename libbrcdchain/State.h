@@ -442,7 +442,7 @@ public:
     Json::Value accoutMessage(Address const& _addr);
     Json::Value blockRewardMessage(Address const& _addr, uint32_t const& _pageNum, uint32_t const& _listNum);
 	//get vote/eletor message
-	Json::Value votedMessage(Address const& _addr) const;
+	Json::Value votedMessage(Address const& _addr, unsigned const& rounds) const;
 	Json::Value electorMessage(Address _addr) const;
 
     /// interface about vote snapshot

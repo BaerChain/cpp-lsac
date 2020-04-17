@@ -2463,20 +2463,34 @@ dev::brc::State::blockRewardMessage(Address const &_addr, uint32_t const &_pageN
 
 }
 
-Json::Value dev::brc::State::votedMessage(Address const &_addr) const {
+Json::Value dev::brc::State::votedMessage(Address const &_addr, unsigned const& rounds) const {
     Json::Value jv;
     if (auto a = account(_addr)) {
         Json::Value _arry;
         int _num = 0;
         uint32_t num = 0;
-        for (auto val : a->vote_data()) {
-            if (num++ > config::max_message_num())   // limit message num
-                break;
-            Json::Value _v;
-            _v["address"] = toJS(val.m_addr);
-            _v["voted_num"] = toJS(val.m_poll);
-            _arry.append(_v);
-            _num += (int) val.m_poll;
+        auto snap = a->vote_snashot();
+        if(!snap.m_voteDataHistory.count(rounds)) {
+            for (auto val : a->vote_data()) {
+                if (num++ <= config::max_message_num()) {   // limit message num
+                    Json::Value _v;
+                    _v["address"] = toJS(val.m_addr);
+                    _v["voted_num"] = toJS(val.m_poll);
+                    _arry.append(_v);
+                }
+                _num += (int) val.m_poll;
+            }
+        }
+        else{
+            for(auto v: snap.m_voteDataHistory[rounds]){
+                if(num++ <= config::max_message_num()){
+                    Json::Value _v;
+                    _v["address"] = toJS(v.first);
+                    _v["voted_num"] = toJS(v.second);
+                    _arry.append(_v);
+                }
+                _num += (int) v.second;
+            }
         }
         jv["vote"] = _arry;
         jv["total_voted_num"] = toJS(_num);

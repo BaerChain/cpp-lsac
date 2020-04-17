@@ -166,7 +166,7 @@ public:
         Address _a, uint32_t _getSize, BlockNumber _block) const = 0;
     virtual Json::Value successPendingOrderForAddrMessage(Address _a, int64_t _minTime, int64_t _maxTime, uint32_t _maxSize, BlockNumber _block) const = 0;
 	virtual Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const = 0;
-	virtual Json::Value votedMessage(Address _a, BlockNumber _block) const = 0;
+	virtual Json::Value votedMessage(Address _a, BlockNumber _block, unsigned rollbackRounds) const = 0;
 	virtual Json::Value electorMessage(BlockNumber _block) const = 0;
 	virtual Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const = 0;
