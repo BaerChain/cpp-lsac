@@ -85,6 +85,7 @@ namespace dev
                 transferAutoEx = 9,
                 transferAccountControl = 10,
                 transferMutilSigns = 11,
+                authorizeUseCookie = 12
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -129,6 +130,13 @@ namespace dev
                 RootDataKey,
                 CookiesRootAddrKey,
                 CookiesChildAddrKey,
+            };
+
+            enum class authorizeCookieType : uint8_t
+            {
+                Null = 0,
+                addCookieChild,
+                deleteCookieChild
             };
 
             // //test code  begin
@@ -426,6 +434,25 @@ namespace dev
                 virtual op_type type(){return (op_type)m_type;}
             };
 
+            struct authorizeCookies_operation : public operation
+            {
+                uint8_t m_type;
+                uint8_t m_authorizeType;
+                Address m_childAddress;
+                
+                authorizeCookies_operation(){}
+                authorizeCookies_operation(op_type _type, authorizeCookieType _authorizeType, Address const& _childAddress):
+                    m_type(_type),
+                    m_authorizeType((uint8_t)_authorizeType),
+                    m_childAddress(_childAddress){}
+
+                OPERATION_SERIALIZE((m_type)(m_authorizeType)(m_childAddress))
+
+                OPERATION_UNSERIALIZE(authorizeCookies_operation, (m_type)(m_authorizeType)(m_childAddress))
+
+                virtual op_type type(){return (op_type)m_type;}
+            };
+
             struct transferMutilSigns_operation : public operation{
                 uint8_t m_type;
                 Address m_rootAddress;
@@ -481,6 +508,20 @@ namespace dev
             {
                 return h256();
             }
+            return dev::sha3(_key);
+        }
+
+        static h256 toGetCookieKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
+        {
+            std::string _key;
+            if(_type == dev::brc::transationTool::getRootKeyType::CookiesRootAddrKey){
+                _key = "CookieRootKeys" + toJS(_addr);
+            }else if(_type == dev::brc::transationTool::getRootKeyType::CookiesChildAddrKey){
+                _key = "CookieChildKeys" + toJS(_addr);
+            }else {
+                return h256();
+            }
+
             return dev::sha3(_key);
         }
         }  // namespace authority

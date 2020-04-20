@@ -53,7 +53,9 @@ namespace dev {
             void verifyTransferAutoEx(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _op, u256 const& _baseGas, h256 const& _trxid, EnvInfo const& _envinfo);
             void verifyPermissionTrx(Address const& _from, std::shared_ptr<dev::brc::transationTool::operation> const& _op);
             void verifyAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo);
-            
+            void verifyAuthorityCookies(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+
+
             bool findAddress(std::map<Address, u256> const& _voteData, std::vector<PollData> const& _pollData);
             bool isMainNode(dev::Address const& _addr, std::vector<PollData> const& _pollData);
             bool isMainNode(std::map<Address, u256> const& _voteData , std::vector<PollData> const& _pollData);

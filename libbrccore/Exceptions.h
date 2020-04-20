@@ -128,5 +128,6 @@ DEV_SIMPLE_EXCEPTION(EstimateGasUsed);
 DEV_SIMPLE_EXCEPTION(ExecutiveFailed);
 
 DEV_SIMPLE_EXCEPTION(VerifyPermissonTrxFailed);
+DEV_SIMPLE_EXCEPTION(transferAuthorityUseCookieFailed);
 }
 }

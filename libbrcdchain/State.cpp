@@ -3597,6 +3597,66 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
     return _ret;
 }
 
+std::vector<Address> dev::brc::State::getAuthorityCookiesAddress(Address const& _addr, transationTool::getRootKeyType const& _type)
+{
+    h256 _key = dev::brc::authority::toGetCookieKey(_addr, _type);
+    if(_key == h256())
+    {
+        return std::vector<Address>();
+    }
+
+    Account *a = account(_addr);
+    bytes _data = a->storageByteValue(_key, m_db);
+    return getAddrByData(_data);
+}
+
+void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto const& _val : _ops)
+    {
+        std::shared_ptr<transationTool::authorizeCookies_operation> _op = std::dynamic_pointer_cast<transationTool::authorizeCookies_operation>(_val);
+        if((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::addCookieChild)
+        {
+            h256 _childKey = dev::brc::authority::toGetCookieKey(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+            std::vector<Address> _childAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+            _childAddrs.push_back(_op->m_childAddress);
+            RLPStream _childRlp(1);
+            _childRlp.appendVector(_childAddrs);
+            setStorageBytes(_addr, _childKey, _childRlp.out());
+
+            h256 _rootKey = dev::brc::authority::toGetCookieKey(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+            std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+            _rootAddrs.push_back(_addr);
+            RLPStream rootRlp(1);
+            rootRlp.appendVector(_rootAddrs);
+            setStorageBytes(_op->m_childAddress, _rootKey, rootRlp.out());
+        }else if((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::deleteCookieChild){
+            h256 _childKey = dev::brc::authority::toGetCookieKey(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+            std::vector<Address> _childAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+            auto _childIt = std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress);
+            if(_childIt == _childAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed());
+            }
+            _childAddrs.erase(_childIt);
+            RLPStream _childRlp(1);
+            _childRlp.appendVector(_childAddrs);
+            setStorageBytes(_addr, _childKey, _childRlp.out());
+
+            h256 _rootKey = dev::brc::authority::toGetCookieKey(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+            std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+            auto _rootIt = std::find(_rootAddrs.begin(), _rootAddrs.end(), _addr);
+            if(_rootIt == _rootAddrs.end())
+            {
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed());
+            }
+            _rootAddrs.erase(_rootIt);
+            RLPStream rootRlp(1);
+            rootRlp.appendVector(_rootAddrs);
+            setStorageBytes(_op->m_childAddress, _rootKey, rootRlp.out());
+        }
+    }
+}
 
 void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& ){
     for(auto const& val : _ops) {
