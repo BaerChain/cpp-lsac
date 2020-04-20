@@ -116,6 +116,8 @@ public:
 	virtual Json::Value brc_getAccountAuthorityDetails(std::string const& _addr, std::string const& _type, std::string const& _blockNumber) override;
 
 	void setTransactionDefaults(brc::TransactionSkeleton& _t);
+
+	virtual Json::Value brc_getAuthorizeCookie(std::string const& _addr, std::string const& _type, std::string const& _blockNumber) override;
 protected:
 
 	brc::Interface* client() { return &m_brc; }

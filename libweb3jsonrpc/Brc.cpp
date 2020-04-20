@@ -918,6 +918,19 @@ Json::Value dev::rpc::Brc::brc_getAccountAuthorityDetails(std::string const& _ad
     
 }
 
+Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std::string const& _type, std::string const& _blockNumber)
+{
+    try
+    {
+        return client()->authorizeCookie(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
+    }
+    catch(const std::exception& e)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+    
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;

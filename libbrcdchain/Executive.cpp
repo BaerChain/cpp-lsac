@@ -500,7 +500,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authorizeCookies_operation>(_authorize_op));
             m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);
-
+            break;
         }
         default:
             m_excepted = TransactionException::DefaultError;

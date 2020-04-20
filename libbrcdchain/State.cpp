@@ -3595,6 +3595,37 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
     return _ret;
 }
 
+Json::Value dev::brc::State::getCookieDataByKeyMsg(Address const& _addr, transationTool::getRootKeyType const& _type)
+{
+    if(_type != transationTool::getRootKeyType::CookiesChildDataKey || _type != transationTool::getRootKeyType::CookiesRootDataKey)
+    {
+        return Json::Value();
+    }
+
+    Json::Value _ret;
+    if(_type == transationTool::getRootKeyType::CookiesChildDataKey)
+    {
+        std::vector<Address> _childAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+        Json::Value _childJson;
+        for(auto const& _child : _childAddrs)
+        {
+            _childJson.append(toJS(_child));
+        }
+        _ret["CookieChild"] = _childJson;
+    }else if(_type == transationTool::getRootKeyType::CookiesRootDataKey)
+    {
+        std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+        Json::Value _rootJson;
+        for(auto const& _root : _rootAddrs)
+        {
+            _rootJson.append(toJS(_root));
+        }
+        _ret["CookieRoot"] = _rootJson;
+    }
+    return _ret;
+}
+
+
 std::vector<Address> dev::brc::State::getAuthorityCookiesAddress(Address const& _addr, transationTool::getRootKeyType const& _type)
 {
     h256 _key = dev::brc::authority::toGetCookieKey(_addr, _type);

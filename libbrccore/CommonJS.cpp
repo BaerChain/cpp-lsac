@@ -74,6 +74,12 @@ uint8_t jsToRootKeyEnum(std::string const& _js)
     else if(_js == "ChildData")
     {
         return 3;
+    }else if(_js == "RootCookieData")
+    {
+        return 7;
+    }else if(_js == "ChildCookieData")
+    {
+        return 8;
     }
     return 0;
 }

@@ -528,7 +528,8 @@ public:
     bytes getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, transationTool::getRootKeyType const& _type);
 
     std::vector<Address> getAuthorityCookiesAddress(Address const& _addr, transationTool::getRootKeyType const& _type);
-    void transferAuthorityUseCookie(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops);
+    void transferAuthorityUseCookie(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops); 
+    Json::Value getCookieDataByKeyMsg(Address const& _addr, transationTool::getRootKeyType const& _type);
 
 private:
     std::vector<Address> getAddrByData(bytes const& _data);

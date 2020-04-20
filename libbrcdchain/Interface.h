@@ -168,6 +168,7 @@ public:
 	virtual Json::Value queryExchangeRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const = 0;
     virtual Json::Value accountAuthorityDetails(Address _a, uint8_t _type, BlockNumber _block) const = 0;
+    virtual Json::Value authorizeCookie(Address _a, uint8_t _type, BlockNumber _block) const = 0;
     // [LOGS API]
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;

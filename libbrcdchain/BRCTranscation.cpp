@@ -677,12 +677,12 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std:
         std::shared_ptr<transationTool::authorizeCookies_operation> _op = std::dynamic_pointer_cast<transationTool::authorizeCookies_operation>(val);
         if((transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::addCookieChild || (transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::deleteCookieChild)
         {
-            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : authorize use cookie type is error")));
         }
 
         if(_from == _op->m_childAddress)
         {
-            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : The authorized address is the same as the authorized address")));
         }
 
         std::vector<Address> _childAddrs = m_state.getAuthorityCookiesAddress(_from, transationTool::getRootKeyType::CookiesChildAddrKey);
@@ -691,24 +691,24 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std:
         {
             if(std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress) != _childAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : This address has been authorized")));
             }
             if(std::find(_rootAddrs.begin(), _rootAddrs.end(), _from) != _rootAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : This address has been authorized")));
             }
         }else if ((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::deleteCookieChild)
         {
             if(std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress) == _childAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : The address is not authorized and cannot be deleted")));
             }
             if(std::find(_rootAddrs.begin(), _rootAddrs.end(), _from) == _rootAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+                BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : The address is not authorized and cannot be deleted")));
             }
         }else{
-            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed());
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed()  << errinfo_comment(std::string("transferAuthorityUseCookieFailed : authorize use cookie type is error")));
         }
     }
 }

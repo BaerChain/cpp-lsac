@@ -380,6 +380,13 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
                                                         Address(op_obj["cookiesAddress"].get_str()),ptrs);
             return tran_sings;
         }
+        case authorizeUseCookie:{
+            auto authorize_op = new authorizeCookies_operation((op_type) type,
+                                                              authorizeCookieType(op_obj["m_authorizeType"].get_int()),
+                                                              Address(op_obj["m_childAddr"].get_str())
+            );
+            return authorize_op;
+        }
         default:
             BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment(" Invalid transaction type"));
             break;

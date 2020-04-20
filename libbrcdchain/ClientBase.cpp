@@ -273,6 +273,12 @@ Json::Value dev::brc::ClientBase::accountAuthorityDetails(Address _a, uint8_t _t
     return blockByNumber(_block).mutableState().getDataByRootKeyMsg(_a, (dev::brc::transationTool::getRootKeyType)_type);
 }
 
+Json::Value dev::brc::ClientBase::authorizeCookie(Address _a, uint8_t _type, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().getCookieDataByKeyMsg(_a, (dev::brc::transationTool::getRootKeyType)_type);
+}
+
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {

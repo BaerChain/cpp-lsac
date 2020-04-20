@@ -253,6 +253,11 @@ public:
                                     jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
                                     jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getAccountAuthorityDetailsI);
+
+        this->bindAndAddMethod(jsonrpc::Procedure("brc_getAuthorizeCookie",jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
+            &dev::rpc::BrcFace::brc_getAuthorizeCookieI);
     }
 
     inline virtual void brc_protocolVersionI(const Json::Value& request, Json::Value& response)
@@ -549,7 +554,10 @@ public:
     {
         response = this->brc_getAccountAuthorityDetails(request[0u].asString(), request[1u].asString(), request[2u].asString());
     }
-
+    inline virtual void brc_getAuthorizeCookieI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getAccountAuthorityDetails(request[0u].asString(), request[1u].asString(), request[2u].asString());
+    }
 
     virtual std::string brc_protocolVersion() = 0;
     virtual std::string brc_coinbase() = 0;
@@ -626,6 +634,8 @@ public:
     virtual Json::Value brc_getVoted(const std::string& param1, const std::string& param2) = 0;
     virtual Json::Value brc_getElector(const std::string& param1) = 0;
     virtual Json::Value brc_getAccountAuthorityDetails(std::string const& param1, std::string const& param2, std::string const& param3) = 0;
+    virtual Json::Value brc_getAuthorizeCookie(std::string const& param1, std::string const& param2, std::string const& param3) = 0;
+
 };
 
 }  // namespace rpc

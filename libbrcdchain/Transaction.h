@@ -130,6 +130,8 @@ namespace dev
                 RootDataKey,
                 CookiesRootAddrKey,
                 CookiesChildAddrKey,
+                CookiesRootDataKey,
+                CookiesChildDataKey
             };
 
             enum class authorizeCookieType : uint8_t
@@ -510,7 +512,7 @@ namespace dev
             }
             return dev::sha3(_key);
         }
-
+        
         static h256 toGetCookieKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
         {
             std::string _key;
