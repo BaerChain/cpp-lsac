@@ -338,6 +338,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                             std::string("There cannot be multiple types of "
                                         "transactions in bulk transactions")));
                 }
+                if(_type == transationTool::op_type::null){
+                    BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Invalid transaction type:0"));
+                }
                 if (_type != transationTool::brcTranscation && _ops.size() > 1)
                 {
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
@@ -348,9 +351,11 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(
                             "The number of bulk transfers cannot exceed 50"));
                 }
-                m_addCostValue += transationTool::c_add_value[_type]*m_t.gasPrice();
-                totalCost += transationTool::c_add_value[_type]*m_t.gasPrice();
-                m_batch_params._type = _type;
+                if(m_batch_params._type == transationTool::op_type::null) {
+                    m_addCostValue += transationTool::c_add_value[_type] * m_t.gasPrice();
+                    totalCost += transationTool::c_add_value[_type] * m_t.gasPrice();
+                    m_batch_params._type = _type;
+                }
             }
             verifyTransactionOperation(totalCost,m_t.sender(), _ops, transationTool::op_type::null);
             ///verify the prepayment gas is enough
@@ -569,6 +574,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
     else
     {
+        m_gas = _p.gas;
         if(m_batch_params.size() < 1)
             return false;
         transationTool::op_type  _type = m_batch_params._type;
@@ -901,8 +907,10 @@ bool Executive::finalize()
 
     if (m_t)
     {
-        if(m_batch_params.customTransaction())
+        if(m_batch_params.customTransaction()) {
+            cwarn << " cost :" << m_batch_params._rootAddress << " :" << m_totalGas - m_needRefundGas;
             m_s.subBalance(m_batch_params._rootAddress, m_totalGas - m_needRefundGas);
+        }
         else
             m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
 

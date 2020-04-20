@@ -2293,6 +2293,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
     TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
                                        TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
                                        TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
+    cwarn << "statusCode:" << statusCode << " startGasUsed:"<<startGasUsed <<" e.gasUsed():" << e.gasUsed();
+    cwarn << "statusCode:" << statusCode << " startGasUsed + e.gasUsed():" <<startGasUsed + e.gasUsed();
     return make_pair(res, receipt);
 }
 
@@ -3713,11 +3715,6 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
 }
 
 void dev::brc::State::updateAddressSet(Address const& _from, Address const& _changeAddr, bool _isDel, dev::brc::transationTool::getRootKeyType const& _type){
-    auto a = account(_from);
-    if(!a){
-        createAccount(_from, {0});
-        a = account(_from);
-    }
     auto addrs = getAddressesByRootKey(_from, _type);
     auto ret = find(addrs.begin(), addrs.end(), _changeAddr);
     bool isUp = false;
@@ -3838,6 +3835,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
     AddressHash ret;
     /// the _block is the curre_block to storage next_block
     int64_t fork_blockNumber = _block_number +1;
+    //cwarn << "commit ....... start";
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
 
@@ -3970,9 +3968,11 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
 
                 }
                 _state.insert(i.first, &s.out());
+                //cwarn << "insert:" << dev::toJS(i.first) << " data:"<< s.out();
             }
             ret.insert(i.first);
         }
+    //cwarn << "commit ....... end";
     return ret;
 }
 
