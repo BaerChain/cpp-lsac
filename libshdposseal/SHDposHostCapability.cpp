@@ -1,21 +1,33 @@
 #include "SHDposHostCapability.h"
 
-dev::bacd::SHDposHostcapality::SHDposHostcapality(std::shared_ptr<p2p::CapabilityHostFace> _host, u256 _networkId, MsgHandler _h, OnConnHandler _oh):
-    m_host(std::move(_host)),
-    m_networkId(_networkId),
-    m_msg_handler(_h),
-    m_onconn_handler(_oh)
-{
 
+namespace dev
+{
+namespace brc
+{
+SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
+    BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq,
+    u256 _networkId)
+  : m_host(std::move(_host))
+  ,m_chain(_ch)
+  ,m_db(_db)
+  ,m_tq(_tq)
+  ,m_bq(_bq)
+  ,m_networkId(_networkId)
+
+{}
+
+void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion)
+{
+    CP2P_LOG << "connect new capability";
 }
 
-void dev::bacd::SHDposHostcapality::onConnect(NodeID const & _nodeID, u256 const & _peerCapabilityVersion)
+bool SHDposHostcapability::interpretCapabilityPacket(
+    NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
-    m_onconn_handler(_nodeID, _peerCapabilityVersion);
-}
-
-bool dev::bacd::SHDposHostcapality::interpretCapabilityPacket(NodeID const & _peerID, unsigned _id, RLP const & _r)
-{
-    m_msg_handler(_peerID, _id, _r);
     return true;
 }
+
+
+}  // namespace brc
+}  // namespace dev

@@ -324,7 +324,7 @@ void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
 {
     //about SH-dpos net_host CapabilityHostFace 接口
 	cdebug << "capabilityHost :: SHDposHostCapability";
-//	auto brcCapability = make_shared<SHDposHostcapality>(_host.capabilityHost(),
+//	auto brcCapability = make_shared<SHDposHostcapability>(_host.capabilityHost(),
 //							_netWorkId,
 //							[this](NodeID _nodeid, unsigned _id, RLP const& _r){
 //								dpos()->onDposMsg(_nodeid, _id, _r);

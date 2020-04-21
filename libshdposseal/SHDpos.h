@@ -44,7 +44,7 @@ namespace dev
 			inline std::vector<Address> const& getCurrCreaters() const { return m_curr_varlitors; }
 
 
-			inline void         initNet(std::weak_ptr<SHDposHostcapality> _host) { m_host = _host; }
+			inline void         initNet(std::weak_ptr<SHDposHostcapability> _host) { m_host = _host; }
             inline void         startGeneration() { setName("SHDpos"); startWorking(); }   //loop 开启 
             
 			inline int64_t      get_next_time() const{ return m_next_block_time; }
@@ -122,7 +122,7 @@ namespace dev
 			std::map<Address, BadBlocksData>  m_badVarlitors;                   // SH-Dpos the varify field blockes for varlitor
 
 			mutable  Mutex                    m_mutex;                            // lock for msg_data
-			std::weak_ptr<SHDposHostcapality> m_host;                             // SH-Dpos network
+			std::weak_ptr<SHDposHostcapability> m_host;                             // SH-Dpos network
 			SHDposMsgQueue                    m_msg_queue;                        // msg-data
 
 			std::unique_ptr<db::DatabaseFace> m_badblock_db;                    // SHDpos badBlock  

@@ -15,7 +15,7 @@
 
 namespace dev
 {
-namespace bacd
+namespace brc
 {
 using NodeID = p2p::NodeID;
 
