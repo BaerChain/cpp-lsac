@@ -48,8 +48,6 @@ dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID
 		m_isSendNodeStatus = true;
 		m_nodemonitor.setMonitorParams(_host.Networkrlp(), _params.getnodemonitorIp());
 	}
-
-
 }
 
 dev::bacd::SHDposClient::~SHDposClient() 
@@ -303,16 +301,9 @@ void dev::bacd::SHDposClient::syncTransactionQueue(){
 
 void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
 {
-    //about SH-dpos net_host CapabilityHostFace 接口
-	cdebug << "capabilityHost :: SHDposHostCapability";
-	//auto brcCapability = make_shared<SHDposHostcapability>(_host.capabilityHost(),bc(), m_stateDB, m_tq, m_bq, _netWorkId);
-	//_host.registerCapability(brcCapability);
-
-	//dpos()->initNet(brcCapability);
+    //about SH-dpos
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
-
-    //m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
 }
 
 bool dev::bacd::SHDposClient::isBlockSeal(uint64_t _now)

@@ -41,26 +41,7 @@ void dev::bacd::SHDpos::populateFromParent(BlockHeader &_bi, BlockHeader const &
 void dev::bacd::SHDpos::verify(Strictness _s, BlockHeader const &_bi, BlockHeader const &_parent /*= BlockHeader()*/,
                                bytesConstRef _block /*= bytesConstRef()*/) const {
     // will verify sign and creater
-
-    auto start = utcTimeMilliSec();
     SealEngineBase::verify(_s, _bi, _parent, _block);
-
-    ///can't to verify any about State
-//	if(_s == Strictness::CheckEverything) {
-//        std::vector<Address> var_v;
-//        if (m_dpos_cleint) {
-//            m_dpos_cleint->getCurrCreater(CreaterType::Varlitor, var_v);
-//            auto ret = find(var_v.begin(), var_v.end(), _bi.author());
-//            if (ret == var_v.end()) {
-//                uint64_t offet = (_bi.timestamp() + 5) / m_config.varlitorInterval;
-//                offet %= var_v.size();
-//                if (!verify_standby(_bi.timestamp(), _bi.author())) {
-//                    BOOST_THROW_EXCEPTION(
-//                            InvalidAutor() << errinfo_wrongAddress(toString(_bi.author()) + " Invalid to seal block"));
-//                }
-//            }
-//        }
-//    }
 }
 
 void dev::bacd::SHDpos::initConfigAndGenesis(ChainParams const &m_params) {
@@ -100,7 +81,7 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now) {
         return false;
     }
 
-    if (_now < uint64_t(m_next_block_time))
+    if (_now < uint64_t(m_next_block_time + 50))
         return false;
 
     //得到每次出块的整数时间刻度，比较上次，现在和下次

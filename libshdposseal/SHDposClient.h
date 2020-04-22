@@ -67,9 +67,6 @@ private:
 private:
     ChainParams                     m_params;         
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
-
-	int64_t                         m_startSeal_time =0;
-
     p2p::Host                       &m_p2pHost;
     NodeMonitor                     m_nodemonitor;
     bool                            m_is_firt_run = true;
