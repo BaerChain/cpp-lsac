@@ -165,9 +165,18 @@ Json::Value dev::brc::ClientBase::obtainVoteMessage(Address _a, BlockNumber _blo
 }
 
 
-Json::Value dev::brc::ClientBase::votedMessage(Address _a, BlockNumber _block) const
+Json::Value dev::brc::ClientBase::votedMessage(Address _a, BlockNumber _block,unsigned rollbackRounds) const
 {
-	return blockByNumber(_block).mutableState().votedMessage(_a);
+    auto block =  blockByNumber(_block);
+    auto rounds = config::getVotingCycle(block.info().number());
+    block.mutableState().try_new_vote_snapshot(_a, block.info().number());
+    if(!rollbackRounds){
+        rounds.first = 0; // current rounds
+    }
+    else{
+        rounds.first= rounds.first>rollbackRounds ? rounds.first- rollbackRounds: rounds.first;
+    }
+    return block.mutableState().votedMessage(_a, rounds.first);
 }
 
 
