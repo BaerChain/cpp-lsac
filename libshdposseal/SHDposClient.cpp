@@ -144,12 +144,6 @@ void dev::bacd::SHDposClient::sendDataToNodeMonitor()
 	}
 }
 
-void dev::bacd::SHDposClient::getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector) const
-{
-	Block _block = blockByNumber(LatestBlock);
-	_block.mutableVote().getSortElectors(_v, _num, _vector);
-}
-
 /// if the block have manch transaction this function will use much time 
 /// so can't use the function
 void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const
@@ -170,28 +164,11 @@ void dev::bacd::SHDposClient::getCurrCreater(CreaterType _type, std::vector<Addr
 	    _creaters.push_back(val.m_addr);
 }
 
-
-Secret dev::bacd::SHDposClient::getVarlitorSecret(Address const& _addr)  const
-{
-	//Block _block = blockByNumber(LatestBlock);
-	//return _block.mutableVote().getVarlitorSecret(_addr);
-    auto iter = m_params.m_block_addr_keys.find(_addr);
-    if (iter != m_params.m_block_addr_keys.end())
-    {
-        //cwarn << "[*1*]: find bad block addr: " << _addr << ": secret: " << iter->second;
-        return iter->second;
-    }
-	return Secret();
-}
-
 bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey() const
 {
 	return m_params.m_block_addr_keys.find(author()) != m_params.m_block_addr_keys.end();
 }
 
-bool dev::bacd::SHDposClient::verifyVarlitorPrivatrKey(Address const& _addr) const{
-	return m_params.m_block_addr_keys.find(_addr) != m_params.m_block_addr_keys.end();
-}
 
 void dev::bacd::SHDposClient::rejigSealing()
 {
@@ -210,7 +187,11 @@ void dev::bacd::SHDposClient::rejigSealing()
             return;
         }
 
-       
+        if (m_is_firt_run){
+            m_is_firt_run  = false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));  //sleep : wait to sync
+            return;
+        }
 
 		if(sealEngine()->shouldSeal(this))
 		{
@@ -324,12 +305,14 @@ void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
 {
     //about SH-dpos net_host CapabilityHostFace 接口
 	cdebug << "capabilityHost :: SHDposHostCapability";
-	auto brcCapability = make_shared<SHDposHostcapability>(_host.capabilityHost(),bc(), m_stateDB, m_tq, m_bq, _netWorkId);
-	_host.registerCapability(brcCapability);
-	dpos()->initNet(brcCapability);
+	//auto brcCapability = make_shared<SHDposHostcapability>(_host.capabilityHost(),bc(), m_stateDB, m_tq, m_bq, _netWorkId);
+	//_host.registerCapability(brcCapability);
+
+	//dpos()->initNet(brcCapability);
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
-	m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
+
+    //m_bq.setOnBad([this](Exception& ex){ this->importBadBlock(ex); });
 }
 
 bool dev::bacd::SHDposClient::isBlockSeal(uint64_t _now)
@@ -343,25 +326,6 @@ bool dev::bacd::SHDposClient::isBlockSeal(uint64_t _now)
     if(!dpos()->isBolckSeal(_now))
         return false;
     return true;
-}
-
-void dev::bacd::SHDposClient::importBadBlock(Exception& _ex) const
-{
-	// BAD BLOCK!!!
-	bytes const* block = boost::get_error_info<errinfo_block>(_ex);
-	if(!block)
-	{
-		cwarn << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
-		cwarn << boost::diagnostic_information(_ex);
-		return;
-	}
-	return; // test
-    // SH-DPOS to del bad Block the must be Varlitor
-	std::vector<Address> _varlitor; //= getCurrHeader().dposCurrVarlitors();
-	auto ret = find(_varlitor.begin(), _varlitor.end(), author());
-    if(ret != _varlitor.end())
-	    dpos()->dellImportBadBlock(*block);
-	badBlock(*block, _ex.what());
 }
 
 bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const

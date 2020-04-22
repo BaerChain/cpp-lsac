@@ -43,15 +43,10 @@ public:
     inline const BlockHeader    getCurrHeader()const     { return m_bc.info(); }
     inline h256                 getCurrBlockhash()const  { return m_bc.currentHash(); }
     inline h256                 getGenesisHash()const    { return m_bc.genesisHash(); }
-    inline BlockHeader const&   getGenesisHeader()const  { return m_bc.genesis(); }
-    inline h256s                getTransationsHashByBlockNum(size_t num) const { return transactionHashes(hashFromNumber(num)); }
 
-	void getEletorsByNum(std::vector<Address>& _v, size_t _num, std::vector<Address> _vector = std::vector<Address>()) const;
 	void getCurrCreater(CreaterType _type, std::vector<Address>& _creaters) const;
-	Secret getVarlitorSecret(Address const& _addr) const;
 
 	bool verifyVarlitorPrivatrKey() const;
-	bool verifyVarlitorPrivatrKey(Address const& _addr) const;
 
 	/// verify standby_node
     ///@return true if own_addr can create_block
@@ -64,9 +59,6 @@ protected:
 private:
     void init(p2p::Host & _host, int _netWorkId);
     bool isBlockSeal(uint64_t _now);
-	/// Called when we have attempted to import a bad block.
-   /// @warning May be called from any thread.
-	void importBadBlock(Exception& _ex) const;
 
     /// check the block is follow SHDpos  in mine creater_time
     /// @paramer _ph : the last block in chain
