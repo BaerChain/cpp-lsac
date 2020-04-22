@@ -57,6 +57,8 @@
 { "name": "brc_estimateGas", "params": [{}], "order": [], "returns": ""},
 { "name": "brc_emtimateGasUsed", "params":[{}], "order":[],"returns":""},
 { "name": "brc_chainId", "params": [], "order": [], "returns": ""},
-{"name":"brc_getAccountAuthorityDetails", "params":["","",""],"order":[],"returns":""}
+{"name":"brc_getAccountAuthorityDetails", "params":["","",""],"order":[],"returns":""},
+{"name":"brc_getAuthorizeCookie", "params":["","",""],"order":[],"returns":""}
+
 ]
 

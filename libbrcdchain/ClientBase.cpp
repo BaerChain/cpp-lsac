@@ -275,6 +275,7 @@ Json::Value dev::brc::ClientBase::accountAuthorityDetails(Address _a, uint8_t _t
 
 Json::Value dev::brc::ClientBase::authorizeCookie(Address _a, uint8_t _type, BlockNumber _block) const
 {
+    cerror << "123124";
     return blockByNumber(_block).mutableState().getCookieDataByKeyMsg(_a, (dev::brc::transationTool::getRootKeyType)_type);
 }
 
