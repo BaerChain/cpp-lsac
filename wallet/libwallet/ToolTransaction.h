@@ -55,6 +55,8 @@ namespace wallet{
 
         static std::string connectNode(std::string const& _ip_port);
 
+        static std::pair<bool , std::string> sing_data_from_json(std::string json_str, std::string& transaction_hash);
+
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
