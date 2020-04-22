@@ -556,7 +556,7 @@ public:
     }
     inline virtual void brc_getAuthorizeCookieI(const Json::Value& request, Json::Value& response)
     {
-        response = this->brc_getAccountAuthorityDetails(request[0u].asString(), request[1u].asString(), request[2u].asString());
+        response = this->brc_getAuthorizeCookie(request[0u].asString(), request[1u].asString(), request[2u].asString());
     }
 
     virtual std::string brc_protocolVersion() = 0;

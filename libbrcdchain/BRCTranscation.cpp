@@ -675,7 +675,7 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std:
     for (auto const& val : _ops)
     {
         std::shared_ptr<transationTool::authorizeCookies_operation> _op = std::dynamic_pointer_cast<transationTool::authorizeCookies_operation>(val);
-        if((transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::addCookieChild || (transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::deleteCookieChild)
+        if((transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::addCookieChild && (transationTool::authorizeCookieType)_op->m_authorizeType != transationTool::authorizeCookieType::deleteCookieChild)
         {
             BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : authorize use cookie type is error")));
         }
@@ -685,8 +685,8 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std:
             BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed : The authorized address is the same as the authorized address")));
         }
 
-        std::vector<Address> _childAddrs = m_state.getAuthorityCookiesAddress(_from, transationTool::getRootKeyType::CookiesChildAddrKey);
-        std::vector<Address> _rootAddrs = m_state.getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+        std::vector<Address> _childAddrs = m_state.verifyGetAuthorityCookiesAddrs(_from, transationTool::getRootKeyType::CookiesChildAddrKey, true);
+        std::vector<Address> _rootAddrs = m_state.verifyGetAuthorityCookiesAddrs(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey, false);
         if((transationTool::authorizeCookieType)_op->m_authorizeType == transationTool::authorizeCookieType::addCookieChild)
         {
             if(std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress) != _childAddrs.end())

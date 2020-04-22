@@ -2293,8 +2293,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
     TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
                                        TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
                                        TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
-    cwarn << "statusCode:" << statusCode << " startGasUsed:"<<startGasUsed <<" e.gasUsed():" << e.gasUsed();
-    cwarn << "statusCode:" << statusCode << " startGasUsed + e.gasUsed():" <<startGasUsed + e.gasUsed();
+    // cwarn << "statusCode:" << statusCode << " startGasUsed:"<<startGasUsed <<" e.gasUsed():" << e.gasUsed();
+    // cwarn << "statusCode:" << statusCode << " startGasUsed + e.gasUsed():" <<startGasUsed + e.gasUsed();
     return make_pair(res, receipt);
 }
 
@@ -2321,7 +2321,7 @@ bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc co
 
         if (!_e.execute())
             _e.go(_onOp);
-        cwarn << "finall one stransaction use:"<< utcTimeMilliSec() - _time;
+        // cwarn << "finall one stransaction use:"<< utcTimeMilliSec() - _time;
         return _e.finalize();
     }
     catch (Exception const &) {
@@ -3599,11 +3599,10 @@ Json::Value dev::brc::State::getDataByRootKeyMsg(Address const& _addr, dev::brc:
 
 Json::Value dev::brc::State::getCookieDataByKeyMsg(Address const& _addr, transationTool::getRootKeyType const& _type)
 {
-    if(_type != transationTool::getRootKeyType::CookiesChildDataKey || _type != transationTool::getRootKeyType::CookiesRootDataKey)
+    if(_type != transationTool::getRootKeyType::CookiesChildDataKey && _type != transationTool::getRootKeyType::CookiesRootDataKey)
     {
         return Json::Value();
     }
-
     Json::Value _ret;
     if(_type == transationTool::getRootKeyType::CookiesChildDataKey)
     {
@@ -3611,15 +3610,17 @@ Json::Value dev::brc::State::getCookieDataByKeyMsg(Address const& _addr, transat
         Json::Value _childJson;
         for(auto const& _child : _childAddrs)
         {
+            cerror << toJS(_child);
             _childJson.append(toJS(_child));
         }
         _ret["CookieChild"] = _childJson;
     }else if(_type == transationTool::getRootKeyType::CookiesRootDataKey)
     {
-        std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesChildAddrKey);
+        std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_addr, transationTool::getRootKeyType::CookiesRootAddrKey);
         Json::Value _rootJson;
         for(auto const& _root : _rootAddrs)
         {
+            cerror << toJS(_root);
             _rootJson.append(toJS(_root));
         }
         _ret["CookieRoot"] = _rootJson;
@@ -3637,9 +3638,42 @@ std::vector<Address> dev::brc::State::getAuthorityCookiesAddress(Address const& 
     }
 
     Account *a = account(_addr);
+    if(!a)
+    {
+        cerror << "create";
+        createAccount(_addr, {0});
+        a = account(_addr);
+    }
     bytes _data = a->storageByteValue(_key, m_db);
     return getAddrByData(_data);
 }
+
+
+std::vector<Address> dev::brc::State::verifyGetAuthorityCookiesAddrs(Address const& _addr, transationTool::getRootKeyType const& _type, bool isRoot)
+{
+    h256 _key = dev::brc::authority::toGetCookieKey(_addr, _type);
+    if(_key == h256())
+    {
+        return std::vector<Address>();
+    }
+
+    Account *a = account(_addr);
+    if(isRoot == true)
+    {
+        if(!a)
+        {
+            BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed failed : transfer sender is not exist")));
+        }   
+    }else{
+        // return std::vector<Address>();
+        cerror << "verifyGetAuthorityCookiesAddrs create";
+        createAccount(_addr, {0});
+        a = account(_addr);
+    }
+    bytes _data = a->storageByteValue(_key, m_db);
+    return getAddrByData(_data);
+}
+
 
 void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
 {
@@ -3657,6 +3691,7 @@ void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vect
 
             h256 _rootKey = dev::brc::authority::toGetCookieKey(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
             std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
+            cerror << " _rootAddrs : " << _rootAddrs.size();
             _rootAddrs.push_back(_addr);
             RLPStream rootRlp(1);
             rootRlp.appendVector(_rootAddrs);

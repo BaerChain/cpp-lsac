@@ -922,6 +922,7 @@ Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std:
 {
     try
     {
+        cerror << "123123";
         return client()->authorizeCookie(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
     }
     catch(const std::exception& e)
