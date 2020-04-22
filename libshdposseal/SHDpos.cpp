@@ -123,50 +123,10 @@ bool dev::bacd::SHDpos::checkDeadline(uint64_t _now) {
 }
 
 void dev::bacd::SHDpos::workLoop() {
-    while (isWorking()) {
-        //TODO dell net message
-        std::pair<bool, SHDposMsgPacket> ret = m_msg_queue.tryPop(5);
-        if (!ret.first) {
-            continue;
-        }
-        LOG(m_logger) << " get mesg: ||" << ret.second.packet_id << ret.second.node_id;
-        switch ((SHDposPacketType) ret.second.packet_id) {
-            case SHDposPacketType::SHDposDataPacket: {
-                // init the new SHDpos data from other peer
-                // TODO
-            }
-                break;
-            case SHDposPacketType::SHDposBadBlockPacket: {
-                // int this get a new badBlock
-                // will to verfy the badBlock if verfy feild will to record the bad log into dataBase
-                // TODO
-                SH_DposBadBlock _data;
-                _data.populate(RLP(ret.second.data));
-                LOG(m_logger) << "get BadBlockData msg :" << _data;
-                // check sgin
-                if (!verifySignBadBlock(_data.m_badBlock, _data.m_signData))
-                    return;
-                BlockHeader _h = BlockHeader(_data.m_badBlock);
-                auto ret = m_badVarlitors.find(_h.author());
-                if (ret == m_badVarlitors.end())
-                    m_badVarlitors[_h.author()] = {_h.hash(), _data.m_badBlock, _data.m_addr};
-                else {
-                    if (ret->second.findVerifyVarlitor(_h.hash(), _data.m_addr))
-                        return;
-                    ret->second.insert(_h.hash(), _data.m_badBlock, _data.m_addr);
-                }
-                RLPStream _s;
-                _data.streamRLPFields(_s);
-                brocastMsg(SHDposBadBlockPacket, _s);
-
-                insertUpdataSet(_h.author(), BadBlockDatas);
-                updateBadBlockData();
-            }
-                break;
-            default:
-                break;
-        }
-    }
+    // while (isWorking()) {
+    //     //TODO dell net message
+     
+    // }
 }
 
 
@@ -596,7 +556,6 @@ void dev::bacd::SHDpos::sendBadBlockToNet(bytes const &_block) {
 
     RLPStream _s;
     _badBlock.streamRLPFields(_s);
-    brocastMsg(SHDposBadBlockPacket, _s);
 }
 
 dev::db::Slice dev::bacd::SHDpos::toSlice(Address const &_h, unsigned _sub) {

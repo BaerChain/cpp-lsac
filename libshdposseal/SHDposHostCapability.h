@@ -29,8 +29,8 @@ public:
 
     std::string name() const override { return "Dpos"; }
     u256 version() const override { return brc::c_protocolVersion; }
-    unsigned messageCount() const override { return SHDposPacketCount; }
-    unsigned offset() const override { return SHDposStatuspacket + p2p::PacketType::UserPacket; }
+    unsigned messageCount() const override { return (unsigned)SHDposPacketType::SHDposPacketCount; }
+    unsigned offset() const override { return p2p::PacketType::UserPacket +  (unsigned)SHDposPacketType::SHDposStatuspacket; }
 
     void onStarting() override {}
     void onStopping() override {}

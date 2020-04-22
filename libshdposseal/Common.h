@@ -19,11 +19,9 @@ namespace brc
 {
 using NodeID = p2p::NodeID;
 
-enum SHDposPacketType :byte
+enum SHDposPacketType : unsigned
 {
-	SHDposStatuspacket = 0x23,
-	SHDposDataPacket,
-	SHDposBadBlockPacket,
+	SHDposStatuspacket = 0x1,
 	SHDposPacketCount
 };
 

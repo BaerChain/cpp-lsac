@@ -25,6 +25,7 @@ void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCap
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
+    
     return true;
 }
 
