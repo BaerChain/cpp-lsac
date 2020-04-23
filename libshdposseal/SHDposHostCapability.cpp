@@ -20,12 +20,16 @@ SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFa
 void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion)
 {
     CP2P_LOG << "connect new capability";
-}
+    
+}   
 
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
     
+
+
+
     return true;
 }
 
