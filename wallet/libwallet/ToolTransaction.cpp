@@ -91,12 +91,21 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         tx.data = fromHex(op_obj["contract"].get_str());
                         tx.isContract = trx_source::Contract::execute;
                     } else {
-                        auto op_ptr = get_oparation_from_data(op_obj, op_type::null);
+                        auto op_ptr = get_oparation_from_data(op_obj);
                         if (!op_ptr) {
                             _pair.second = "can't get transaction type from json";
                             return _pair;
                         }
                         tx.ops.push_back(std::shared_ptr<operation>(op_ptr));
+                    }
+                    if(type == op_type::transferMutilSigns){
+                        //childAddress signs
+                        for (auto &d : op_obj["signs"].get_array()){
+                            auto sign = fromHex(d.get_str());
+                            if(sign != bytes())
+                                tx.signs.emplace_back(sign);
+                        }
+
                     }
                 }
 
@@ -115,11 +124,23 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                  _pair.second += std::string(*_error);
              return _pair;
          }
-         catch (Exception& e){
+         catch (InvalidMutilTransactionType const& ex){
+             _pair.second = "Error ";
+             if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+                 _pair.second += std::string(*_error);
+             return _pair;
+         }
+         catch (BadRLP const& ex){
+             _pair.second = "Error ";
+             if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+                 _pair.second += std::string(*_error);
+             return _pair;
+         }
+         catch (std::exception& e){
              cerror << "the json format error. ";
              cerror << e.what();
-             //_pair.second = e.what();
-             _pair.second = "the data_json Field type error";
+             _pair.second = "json format error: ";
+             _pair.second +=e.what();
              return _pair;
          }
          catch (...){
@@ -175,48 +196,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
         _pair.second = log;
         return _pair;
     }
-    /// 获取交易子账户
-    std::vector<Address> childAddress;
-    if (obj.count("childAddresses")) {
-        try {
-            auto addr_array = obj["childAddresses"].get_array();
-            for (auto &o : addr_array) {
-                childAddress.emplace_back(Address(o.get_str()));
-            }
-        }
-        catch (...) {
-            _pair.second = "the childAddresses or invalid address";
-            return _pair;
-        }
-    }
-    /// 子账户签名
-    for(auto& op : trx_datas[0].ops){
-        if(!op){
-            cwarn << " not have data in transaction";
-            break;
-        }
-       auto d_type = op->type();
-       if(d_type == op_type::transferMutilSigns){
-           std::shared_ptr<transationTool::transferMutilSigns_operation> op_ptr =
-                   std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation> (op);
-           if(op_ptr->m_data_ptrs.empty()){
-               _pair.second = "in this mutilSignsTransaction not have transaction_data!";
-               cerror << _pair.second;
-               return _pair;
-           }
-           auto op_rlp = op_ptr->datasBytes();
-           for(auto const&a : childAddress){
-               if(!keys.count(a)) {
-                   _pair.second = "not find the Child Addrss:"+ dev::toString(a) +" key...";
-                   cwarn<< _pair.second;
-                   return _pair;
-               }
-               auto sig = ToolTransaction::getSignByBytes(op_rlp, keys[a]);
-               op_ptr->m_signs.emplace_back(sig);
-           }
-       }
-    }
-
     //数据签名
     std::vector<brc::Transaction> sign_trxs;
     for (auto &t : trx_datas) {
@@ -256,7 +235,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
     return _pair;
 }
 
-std::pair<bool, std::string> wallet::ToolTransaction::sing_data_from_json(std::string json_str, std::string& transaction_hash){
+std::pair<bool, std::string> wallet::ToolTransaction::sing_data_from_json(std::string json_str){
     std::pair<bool , std::string> _pair = {false, ""};
     js::mValue val;
     js::mObject obj;
@@ -286,14 +265,19 @@ std::pair<bool, std::string> wallet::ToolTransaction::sing_data_from_json(std::s
         _pair.second = "Secret key format error";
         return  _pair;
     }
-    return _pair;
 
     // load data
     std::vector<std::shared_ptr<operation>> ops;
     try{
         for(auto const& d : obj["data"].get_array()){
             auto data = d.get_obj();
-            auto op_ptr = get_oparation_from_data(data, op_type::null);
+            //check type
+            auto data_type = data["type"].get_int();
+            if(data_type == op_type::transferMutilSigns){
+                _pair.second = "can not sign type:11";
+                return _pair;
+            }
+            auto op_ptr = get_oparation_from_data(data);
             if (!op_ptr) {
                 _pair.second = "can't get transaction type from json";
                 return _pair;
@@ -309,11 +293,12 @@ std::pair<bool, std::string> wallet::ToolTransaction::sing_data_from_json(std::s
 
     auto rlp = packed_operation_data(ops);
     auto signs = getSignByBytes(rlp, se_key);
-    //_pair.second =getSignByBytes(rlp, se_key);  //dev::toHex(rlp);
     _pair.first = true;
     RLPStream s(3);
     s << (u256)signs.r << (u256)signs.s << signs.v;
     _pair.second = dev::toHex(s.out());
+//    cwarn << "rlp:"<< rlp;
+//    cwarn << "sign:"<< _pair.second;
     return _pair;
 }
 
@@ -339,9 +324,7 @@ SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret
     return SignatureStruct{h256(),h256(),0};
 }
 
-operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj, op_type parent_type){
-//    if(!(parent_type==op_type::null || parent_type ==op_type::transferMutilSigns))
-//        BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:"+std::to_string(parent_type)+" can't have child"));
+operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
     auto type = op_obj["type"].get_int();
     switch (type) {
         case vote: {
@@ -378,18 +361,12 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return cancel_op;
         }
         case deployContract: {
-            if(parent_type == op_type::null)
-                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("this transaction can't have type:5"));
             return new contract_operation((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
         }
         case executeContract: {
-//            if(parent_type == op_type::null)
-//                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("this transaction can't have type:6"));
             return new contract_operation((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
         }
         case changeMiner: {
-//            if(parent_type == op_type::transferMutilSigns)
-//                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 cant't contains type:7"));
             auto changeMiner_op = new changeMiner_operation( (op_type)type,
                                                              Address(op_obj["m_before"].get_str()),
                                                              Address(op_obj["m_after"].get_str())
@@ -413,8 +390,6 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return transferAutoEx_op;
         }
         case transferAccountControl:{
-//            if(parent_type == op_type::transferMutilSigns)
-//                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 cant't contains type:10"));
             auto authority_op = new authority_operation(
                     (op_type)type,
                     Address(op_obj["childAddress"].get_str()),
@@ -424,13 +399,11 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             return authority_op;
         }
         case transferMutilSigns: {
-            if(parent_type == op_type::transferMutilSigns) {
-                BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't nested"));
-            }
             auto txData = op_obj["transactionData"].get_array();
             std::vector<operation*> ptrs;
             for(auto &d : txData){
-                auto op_ptr = get_oparation_from_data(d.get_obj(), op_type::transferMutilSigns);
+                /// check data_type
+                auto op_ptr = get_oparation_from_data(d.get_obj());
                 if(!op_ptr)
                     BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't contains empty"));
                 ///verify operation type is allowed mutilSign
@@ -439,6 +412,27 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj,
             }
             auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),
                                                         Address(op_obj["cookiesAddress"].get_str()),ptrs);
+            ///load child signs
+            try{
+                auto signs = op_obj["signs"].get_array();
+                for(auto const&s : signs){
+                    auto rlp_str = fromHex(s.get_str());
+                    if(rlp_str.empty())
+                        continue;
+                    RLP r(rlp_str);
+                    auto _sign = SignatureStruct{(h256)r[0].toInt<u256>(),(h256)r[1].toInt<u256>(), r[2].toInt<uint8_t>()};
+                    tran_sings->m_signs.emplace_back(_sign);
+                }
+            }
+            catch (BadHexCharacter &e)
+            {
+                cwarn<< e.what();
+                BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment(" Invalid sign data"));
+            }
+            catch (RLPException &e){
+                cwarn<< e.what();
+                BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment(" Invalid sign data"));
+            }
             return tran_sings;
         }
         case authorizeUseCookie:{

@@ -204,7 +204,7 @@ transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)
     else if(type == op_type::executeContract || type == op_type::deployContract)
         return new contract_operation(_bs);
     else
-        BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() <<errinfo_comment("invalid transaction type:"+std::to_string(type)+" in mutilTrasnction"));
+        BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() <<errinfo_comment("Invalid transaction type:"+std::to_string(type)+" in mutilTrasnction"));
     return nullptr;
 }
 
@@ -217,5 +217,5 @@ authority::PermissionsType authority::getPermissionsTypeByTransactionType(transa
     {
         return _type;
     }
-    BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() << errinfo_comment("transaction type:"+ std::to_string(_type) + " can't to add permissions for address"));
+    BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() << errinfo_comment("Invalid permissiions:"+ std::to_string(_type)));
 }

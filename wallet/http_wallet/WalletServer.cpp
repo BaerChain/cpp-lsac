@@ -113,11 +113,10 @@ void wallet::WalletServer::testhello(const Json::Value &request, Json::Value &re
 void wallet::WalletServer::sign_data(const Json::Value & request, Json::Value & respone) {
     try{
         std::string json_str = request["param"].toStyledString();
-        std::string _sign;
         cnote << "get message:" << " sign_data :";
-        std::pair<bool, std::string> _pair = ToolTransaction::sign_trx_from_json(json_str, _sign);
-        cnote << "sign:"<< _sign;
-        respone["sign"] = _sign;
+        std::pair<bool, std::string> _pair = ToolTransaction::sing_data_from_json(json_str);
+        cnote << "sign:"<< _pair.second;
+        respone["sign"] = _pair.second;
     }
     catch (...)
     {

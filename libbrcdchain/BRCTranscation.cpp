@@ -576,6 +576,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
     dev::brc::transationTool::op_type _trxType = (*_firstTrx)->type();
 
     std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
+    cwarn << _signAddrs;
     uint64_t _trxWeight = 0;
     bytes _data = m_state.getDataByKeyAddress(_from, _from, transationTool::getRootKeyType::RootAddrKey);
     std::vector<Address> _rootVector = m_state.getAddrByData(_data);
