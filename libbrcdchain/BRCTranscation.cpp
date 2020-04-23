@@ -565,7 +565,7 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
 {
     std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op =
         std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
-    
+    std::set<Address> _permissionAddrs;
     if(_mutilSign_op->m_data_ptrs.empty())
     {
         BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("The specific content of the weighted transaction does not exist")));
@@ -593,7 +593,11 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
     authority::PermissionsType _perType =
         dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
 
-    _trxWeight += _fromControl.getWeight(_perType);
+    if(!_permissionAddrs.count(_from))
+    {
+        _trxWeight += _fromControl.getWeight(_perType);
+    }
+    _permissionAddrs.insert(_from);
     for (auto const& a : _signAddrs)
     {
         bytes _signAddrData = m_state.getDataByKeyAddress(a, a, transationTool::getRootKeyType::RootAddrKey);
@@ -607,7 +611,11 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
             _mutilSign_op->m_rootAddress, a, transationTool::getRootKeyType::ChildDataKey);
         AccountControl _signAddrControl(_signAddrControlData);
 
-        _trxWeight += _signAddrControl.getWeight(_perType);
+        if(!_permissionAddrs.count(a))
+        {
+            _trxWeight += _signAddrControl.getWeight(_perType);
+        }
+        _permissionAddrs.insert(a);
     }
 
     if (_trxWeight < TOTALTRXWEIGHT)
