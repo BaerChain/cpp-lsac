@@ -16,6 +16,7 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libbrcdchain/Transaction.h>
 #include <libdevcore/Log.h>
+#include <libbrccore/Exceptions.h>
 
 using namespace std;
 using namespace dev;
@@ -42,6 +43,7 @@ namespace wallet{
         u256 chainId = -4;
         std::vector<std::shared_ptr<operation>> ops;
         Contract isContract = Contract::null;
+        std::vector<bytes> signs;
     };
 
     class ToolTransaction {
@@ -55,10 +57,12 @@ namespace wallet{
 
         static std::string connectNode(std::string const& _ip_port);
 
+        static std::pair<bool , std::string> sing_data_from_json(std::string json_str);
+
     private:
         static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
-        static operation* get_oparation_from_data(js::mObject& op_obj, op_type parent_type);
+        static operation* get_oparation_from_data(js::mObject& op_obj);
 
         static SignatureStruct getSignByBytes(bytes const& _bs, Secret _key);
 

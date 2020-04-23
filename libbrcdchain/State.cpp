@@ -3523,8 +3523,10 @@ std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr
 bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::transationTool::getRootKeyType const& _type)
 {
     Account *a = account(_strorageAddr);
-    if(!a)
+    if(!a) {
+        createAccount(_strorageAddr, {0});
         return bytes();
+    }
     h256 _key = dev::brc::authority::toGetAccountKey(_keyAddr, _type);
     bytes _data = a->storageByteValue(_key, m_db);
     return _data;

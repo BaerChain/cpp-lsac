@@ -22,6 +22,10 @@ wallet::WalletServer::WalletServer(dev::SafeHttpServer &server, std::string _sen
 
     this->bindAndAddMethod(Procedure("new_address", PARAMS_BY_POSITION, JSON_OBJECT, "param1", JSON_STRING, NULL),
                            &WalletServer::new_address);
+
+    this->bindAndAddMethod(Procedure("sign_data", PARAMS_BY_NAME, JSON_STRING,
+                                     "param", JSON_OBJECT, NULL),
+                           &WalletServer::sign_data);
 }
 
 void wallet::WalletServer::sign_transaction(const Json::Value &request, Json::Value &respone) {
@@ -104,6 +108,21 @@ void wallet::WalletServer::sign_transaction_send(const Json::Value &request, Jso
 void wallet::WalletServer::testhello(const Json::Value &request, Json::Value &respone){
     cnote<< "test:"<< request["test"].asString();
     respone = "test..." + request["test"].asString();
+}
+
+void wallet::WalletServer::sign_data(const Json::Value & request, Json::Value & respone) {
+    try{
+        std::string json_str = request["param"].toStyledString();
+        cnote << "get message:" << " sign_data :";
+        std::pair<bool, std::string> _pair = ToolTransaction::sing_data_from_json(json_str);
+        cnote << "sign:"<< _pair.second;
+        respone["sign"] = _pair.second;
+    }
+    catch (...)
+    {
+        cnote << "error : jsonrpccpp params error!";
+        respone["error"] = "jsonrpccpp params error!";
+    }
 }
 
 void wallet::WalletServer::new_address(const Json::Value & request, Json::Value & respone) {

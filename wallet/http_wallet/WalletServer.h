@@ -29,6 +29,8 @@ public:
     /// new address by
     void new_address(const  Json::Value & request, Json::Value & respone);
 
+    void sign_data(const  Json::Value & request, Json::Value & respone);
+
     bool test_connect_node();
 
 private:
