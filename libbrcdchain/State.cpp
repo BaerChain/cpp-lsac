@@ -3665,10 +3665,11 @@ std::vector<Address> dev::brc::State::verifyGetAuthorityCookiesAddrs(Address con
             BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("transferAuthorityUseCookieFailed failed : transfer sender is not exist")));
         }   
     }else{
-        // return std::vector<Address>();
-        cerror << "verifyGetAuthorityCookiesAddrs create";
-        createAccount(_addr, {0});
-        a = account(_addr);
+        if(!a)
+        {
+            createAccount(_addr, {0});
+            a = account(_addr);
+        }
     }
     bytes _data = a->storageByteValue(_key, m_db);
     return getAddrByData(_data);
