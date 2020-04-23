@@ -13,9 +13,15 @@ public:
     NodePeer(std::shared_ptr<p2p::CapabilityHostFace> _host, const NodeID& _peerID):m_host(_host),m_id(_peerID) {}
 
     void sendNewStatus(u256 height, h256 genesisHash, h256 latestBlock);
+    void setPeerStatus(u256 height, h256 genesisHash, h256 latestBlock);
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
     NodeID  m_id;
+
+    //peer max height.
+    u256 m_height;  
+    //block hash.
+    h256 latestBlock;
 };
 
 }  // namespace brc
