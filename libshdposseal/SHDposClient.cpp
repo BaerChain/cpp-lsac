@@ -301,6 +301,10 @@ void dev::bacd::SHDposClient::syncTransactionQueue(){
 
 void dev::bacd::SHDposClient::init(p2p::Host & _host, int _netWorkId)
 {
+	cdebug << "capabilityHost :: SHDposHostCapability";
+	auto brcCapability = make_shared<SHDposHostcapability>(_host.capabilityHost(),bc(), m_stateDB, m_tq, m_bq, _netWorkId);
+	_host.registerCapability(brcCapability);
+	
     //about SH-dpos
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);

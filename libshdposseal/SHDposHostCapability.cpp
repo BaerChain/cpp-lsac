@@ -20,14 +20,33 @@ SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFa
 void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion)
 {
     CP2P_LOG << "connect new capability";
-    
+    NodePeer  np(m_host, _nodeID);
+    m_peers.emplace(_nodeID, np);
+
+    m_peers[_nodeID].sendNewStatus(m_chain.details().number, m_chain.genesisHash(), m_chain.currentHash());
 }   
 
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
+    CP2P_LOG << "get new message from interpretCapabilityPacket";
+    try
+    {
+        switch (_id){
+            case SHDposStatuspacket:{
+                CP2P_LOG << "SHDposStatuspacket ";
+                break;
+            }
+            default:{
+                CP2P_LOG << "cant resolve protocol.";
+            }
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
     
-
 
 
     return true;

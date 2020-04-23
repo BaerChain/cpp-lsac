@@ -1,6 +1,8 @@
 set(sources
     Common.h
     Common.cpp
+    NodePeer.hpp
+    NodePeer.cpp
     SHDpos.cpp
     SHDpos.h
     SHDposClient.cpp

@@ -7,6 +7,8 @@
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Common.h>
 
+#include <libshdposseal/NodePeer.hpp>
+#include <libbrcdchain/BlockChain.h>
 
 namespace dev
 {
@@ -30,7 +32,7 @@ public:
     std::string name() const override { return "Dpos"; }
     u256 version() const override { return brc::c_protocolVersion; }
     unsigned messageCount() const override { return (unsigned)SHDposPacketType::SHDposPacketCount; }
-    unsigned offset() const override { return p2p::PacketType::UserPacket +  (unsigned)SHDposPacketType::SHDposStatuspacket; }
+    unsigned offset() const override { return p2p::PacketType::UserPacket + PacketCount + 1; }
 
     void onStarting() override {}
     void onStopping() override {}
@@ -57,7 +59,7 @@ private:
     TransactionQueue& m_tq;                    ///< Maintains a list of incoming transactions not yet in a block on the blockchain.
     BlockQueue& m_bq;                        ///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
-    // std::unordered_map<NodeID, BrcdChainPeer> m_peers;
+    std::map<NodeID, NodePeer> m_peers;
 };
 }  // namespace brc
 }  // namespace dev
