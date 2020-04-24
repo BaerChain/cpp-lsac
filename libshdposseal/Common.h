@@ -22,6 +22,7 @@ using NodeID = p2p::NodeID;
 enum SHDposPacketType : unsigned
 {
 	SHDposStatuspacket = 0x1,
+	SHDposRequestBlocks = 0x2,
 	SHDposPacketCount
 };
 

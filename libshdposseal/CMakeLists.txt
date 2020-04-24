@@ -9,6 +9,8 @@ set(sources
     SHDposClient.h
     SHDposHostCapability.cpp
     SHDposHostCapability.h
+    SHDposSync.hpp
+    SHDposSync.cpp
 )
 
 add_library(shdposseal ${sources})

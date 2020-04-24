@@ -7,8 +7,10 @@
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Common.h>
 
-#include <libshdposseal/NodePeer.hpp>
 #include <libbrcdchain/BlockChain.h>
+#include <libshdposseal/NodePeer.hpp>
+#include "SHDposSync.hpp"
+
 
 namespace dev
 {
@@ -27,7 +29,8 @@ class SHDposHostcapability : public p2p::CapabilityFace
 {
 public:
     SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFace> _host, BlockChain const& _ch,
-        OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
+        OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId,
+        uint32_t version = 0);
 
     std::string name() const override { return "Dpos"; }
     u256 version() const override { return brc::c_protocolVersion; }
@@ -53,13 +56,19 @@ public:
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
     u256 m_networkId;
-    
+
     BlockChain const& m_chain;
-    OverlayDB const& m_db;                    ///< References to DB, needed for some of the BrcdChain Protocol responses.
-    TransactionQueue& m_tq;                    ///< Maintains a list of incoming transactions not yet in a block on the blockchain.
-    BlockQueue& m_bq;                        ///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+    OverlayDB const& m_db;   ///< References to DB, needed for some of the BrcdChain Protocol
+                             ///< responses.
+    TransactionQueue& m_tq;  ///< Maintains a list of incoming transactions not yet in a block on
+                             ///< the blockchain.
+    BlockQueue& m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
+                       ///< imported).
 
     std::map<NodeID, NodePeer> m_peers;
+    uint32_t m_version;
+
+    std::shared_ptr<SHDposSync> m_sync;
 };
 }  // namespace brc
 }  // namespace dev
