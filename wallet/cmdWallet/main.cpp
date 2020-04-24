@@ -149,16 +149,6 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
     try {
-//        js::mValue val;
-//        js::mObject obj;
-//        try {
-//            js::read_string_or_throw(contentsString(path.string()), val);
-//            obj = val.get_obj();
-//        }
-//        catch (...){
-//            std::cout << "Error the Json format error !"<<std::endl;
-//            exit(1);
-//        }
         std::string hash;
         auto _pair = wallet::ToolTransaction::sign_trx_from_json(contentsString(path.string()), hash);
 
@@ -253,6 +243,7 @@ int main(int argc, char *argv[]) {
                 ("generate-key,g", bpo::value<std::string>(),"by seed generate private-key and address. ")
                 ("sha3", bpo::value<std::string>(), "caculate string sha3.")
                 ("pri-tf", bpo::value<std::string>(), "private-key format.")
+                ("sign-json", bpo::value<bfs1::path>(), "read from data from file to sign.")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -295,13 +286,20 @@ int main(int argc, char *argv[]) {
             cwarn << ret;
             return  0;
         }
-
-
         if(args_map.count("pri-tf")){
             format_private(args_map["pri-tf"].as<std::string>());
             return  0;
         }
 
+        if(args_map.count("sign-json")){
+            json_path = args_map["sign-json"].as<bfs1::path>();
+            auto _pair = wallet::ToolTransaction::sing_data_from_json(contentsString(json_path.string()));
+            if(_pair.first)
+                std::cout <<"sign data:"<< _pair.second <<std::endl;
+            else{
+                std::cout << "ERROR:" << _pair.second << std::endl;
+            }
+        }
 
     }catch (const std::exception &e){
         cwarn << e.what();

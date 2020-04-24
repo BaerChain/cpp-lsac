@@ -98,15 +98,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                         }
                         tx.ops.push_back(std::shared_ptr<operation>(op_ptr));
                     }
-                    if(type == op_type::transferMutilSigns){
-                        //childAddress signs
-                        for (auto &d : op_obj["signs"].get_array()){
-                            auto sign = fromHex(d.get_str());
-                            if(sign != bytes())
-                                tx.signs.emplace_back(sign);
-                        }
-
-                    }
                 }
 
                 trx_datas.push_back(tx);
@@ -140,7 +131,6 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
              cerror << "the json format error. ";
              cerror << e.what();
              _pair.second = "json format error: ";
-             _pair.second +=e.what();
              return _pair;
          }
          catch (...){
@@ -285,6 +275,12 @@ std::pair<bool, std::string> wallet::ToolTransaction::sing_data_from_json(std::s
             ops.emplace_back(std::shared_ptr<operation>(op_ptr));
         }
     }
+    catch (InvalidTransaciontType &ex){
+        _pair.second = "Error ";
+        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+            _pair.second += std::string(*_error);
+        return _pair;
+    }
     catch (...)
     {
         _pair.second = "the json data format error";
@@ -403,12 +399,13 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
             std::vector<operation*> ptrs;
             for(auto &d : txData){
                 /// check data_type
+                auto  data_type = d.get_obj()["type"].get_int();
+                authority::getPermissionsTypeByTransactionType((op_type)data_type);
+                ///load data
                 auto op_ptr = get_oparation_from_data(d.get_obj());
                 if(!op_ptr)
                     BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't contains empty"));
-                ///verify operation type is allowed mutilSign
-                authority::getPermissionsTypeByTransactionType(op_ptr->type());
-                ptrs.emplace_back(op_ptr);
+                ptrs.emplace_back(std::move(op_ptr));
             }
             auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),
                                                         Address(op_obj["cookiesAddress"].get_str()),ptrs);

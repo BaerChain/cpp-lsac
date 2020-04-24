@@ -43,7 +43,6 @@ namespace wallet{
         u256 chainId = -4;
         std::vector<std::shared_ptr<operation>> ops;
         Contract isContract = Contract::null;
-        std::vector<bytes> signs;
     };
 
     class ToolTransaction {

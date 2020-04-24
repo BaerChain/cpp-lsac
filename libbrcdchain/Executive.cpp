@@ -317,13 +317,17 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         }
         else
         {
-            RLP _r(m_t.data());
-            std::vector<bytes> _ops = _r.toVector<bytes>();
-            if (_ops.empty())
-            {
+            std::vector<bytes> _ops;
+            try{
+                RLP _r(m_t.data());
+                _ops = _r.toVector<bytes>();
+                if(_ops.empty())
+                    BOOST_THROW_EXCEPTION(RLPException());
+            }
+            catch (RLPException){
                 LOG(m_execLogger) << "m_t.sender:" << m_t.sender() << " * "<< " to:" << m_t.receiveAddress();
                 m_excepted = TransactionException::BadRLP;
-                std::string ex_info = "badRLP the data is empty...";
+                std::string ex_info = "data is BadRLP ";
                 BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment(ex_info));
             }
             u256 totalCost = m_t.gas() * m_t.gasPrice();
@@ -440,10 +444,6 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         }
         case transationTool::op_type::changeMiner:
         {
-            if(_baseType == transationTool::op_type::transferMutilSigns){
-                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
-                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
-            }
             transationTool::changeMiner_operation _changeMiner_op = transationTool::changeMiner_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::changeMiner_operation>(_changeMiner_op));
             m_s.verifyChangeMiner(_from, m_envInfo, m_batch_params._operation);
@@ -468,10 +468,6 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         }
         case transationTool::op_type::transferAccountControl:
         {
-            if(_baseType == transationTool::op_type::transferMutilSigns){
-                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
-                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
-            }
             transationTool::authority_operation _authority_op = transationTool::authority_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authority_operation>(_authority_op));
             m_brctranscation.verifyAuthorityControl(_from, m_batch_params._operation, m_envInfo);
@@ -484,24 +480,20 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             transationTool::op_type _type = transationTool::op_type::null;
             for(auto &p: _mutilSign_op.m_data_ptrs){
                 _type = p->type();
+                // onely the PermissionsType to do
+                authority::getPermissionsTypeByTransactionType(_type);
                 if(_type != transationTool::op_type::brcTranscation && _mutilSign_op.m_data_ptrs.size() >1)
                     BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Only transfer transactions can be batch operated"));
             }
             is_verfy_cost = false;
             m_batch_params._type = _type;
             m_batch_params._rootAddress = _mutilSign_op.m_rootAddress;
-            // onely the PermissionsType to do
-            authority::getPermissionsTypeByTransactionType(_type);
             m_brctranscation.verifyPermissionTrx(_from, std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
             verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
             break;
         }
         case transationTool::op_type::authorizeUseCookie:
         {
-            if(_baseType == transationTool::op_type::authorizeUseCookie){
-                BOOST_THROW_EXCEPTION(ExecutiveFailed() <<
-                errinfo_comment("Invalid transaction type to Nested transactions type:"+std::to_string(int(m_batch_params._type))));
-            }
             transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authorizeCookies_operation>(_authorize_op));
             m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);

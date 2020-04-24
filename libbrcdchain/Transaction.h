@@ -464,7 +464,7 @@ namespace dev
                 transferMutilSigns_operation(){}
                 transferMutilSigns_operation(op_type _type, Address const& _rootAddr, Address const& _cookiesAddr, std::vector<operation*>& _ptrs):
                     m_type(_type), m_rootAddress(_rootAddr), m_cookiesAddress(_cookiesAddr){
-                    for(auto p:_ptrs)
+                    for(auto &p:_ptrs)
                         m_data_ptrs.emplace_back(std::shared_ptr<operation>(p));
                 }
                 virtual bytes serialize()  const;
