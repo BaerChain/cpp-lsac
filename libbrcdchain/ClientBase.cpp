@@ -281,7 +281,7 @@ Json::Value dev::brc::ClientBase::authorizeCookie(Address _a, uint8_t _type, Blo
 
 Json::Value dev::brc::ClientBase::permissionTransfer(Address _a, BlockNumber _block) const
 {
-    auto ret = blockByNumber(_block).mutableState().getPerminssionsTransfers(_a);
+    auto ret = blockByNumber(_block).mutableState().getPermissionsTransfers(_a);
     Json::Value _arry;
     for(auto const& p : ret){
         //if(p.second >= authority::MaxWeight){
