@@ -590,8 +590,8 @@ struct AccountControl{
             return m_authority[_per];
         return 0;
     }
-    /// return true if the AccountControl is changed
-    bool updateAuthority(authority::PermissionsType _per, uint8_t _weight);
+    /// return the AccountControl is changed and changedValue
+    std::pair<bool, int8_t > updateAuthority(authority::PermissionsType _per, uint8_t _weight);
 
     bytes streamRLP() const{
         if(m_authority.empty() || m_childAddress == Address())

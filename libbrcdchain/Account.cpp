@@ -765,20 +765,20 @@ CancelOrder Account::getCancelOrder(h256 _id, OverlayDB const &_db) const{
     return order;
 }
 
-bool AccountControl::updateAuthority(authority::PermissionsType _per, uint8_t _weight){
+std::pair<bool, int8_t > AccountControl::updateAuthority(authority::PermissionsType _per, uint8_t _weight){
     if (_per == authority::PermissionsType::null && _weight == 0 && !m_authority.empty()){
         //delete child address
         m_authority.clear();
-        return true;
+        return {true, 0};
     }
     if(m_authority.empty() && _per == authority::PermissionsType::null){
-        return false;
+        return {false, 0};
     }
     auto _w = getWeight(_per);
     if(_w == _weight)
-        return false;
+        return {false, 0};
     m_authority[_per] = _weight;
     if(_weight ==0 && m_authority.count(_per))
         m_authority.erase(_per);
-    return true;
+    return {true, _weight - _w};
 }

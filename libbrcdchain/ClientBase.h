@@ -89,6 +89,7 @@ public:
     Json::Value queryBlockRewardMessage(Address _a, BlockNumber _block) const override;
     Json::Value accountAuthorityDetails(Address _a, uint8_t _type, BlockNumber _block) const override;
     Json::Value authorizeCookie(Address _a, uint8_t, BlockNumber _block) const override;
+    Json::Value permissionTransfer(Address _a, BlockNumber _block) const override;
 
 
     Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;

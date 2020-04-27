@@ -279,6 +279,24 @@ Json::Value dev::brc::ClientBase::authorizeCookie(Address _a, uint8_t _type, Blo
     return blockByNumber(_block).mutableState().getCookieDataByKeyMsg(_a, (dev::brc::transationTool::getRootKeyType)_type);
 }
 
+Json::Value dev::brc::ClientBase::permissionTransfer(Address _a, BlockNumber _block) const
+{
+    auto ret = blockByNumber(_block).mutableState().getPerminssionsTransfers(_a);
+    Json::Value _arry;
+    for(auto const& p : ret){
+        //if(p.second >= authority::MaxWeight){
+            Json::Value item;
+            item["permission"] = p.first;
+            item["weight"] = p.second;
+            _arry.append(item);
+        //}
+    }
+//    Json::Value ret_json;
+//    ret_json["transferPermission"] = _arry;
+//    return ret_json;
+    return _arry;
+}
+
 
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const

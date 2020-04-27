@@ -250,14 +250,18 @@ public:
 		this->bindAndAddMethod(jsonrpc::Procedure("brc_getElector", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL), &dev::rpc::BrcFace::brc_getElectorI);
         this->bindAndAddMethod(jsonrpc::Procedure("brc_estimateGasUsed",jsonrpc::PARAMS_BY_POSITION,jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL), &dev::rpc::BrcFace::brc_estimateGasUsedI); 
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getAccountAuthorityDetails", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
                                     jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getAccountAuthorityDetailsI);
 
         this->bindAndAddMethod(jsonrpc::Procedure("brc_getAuthorizeCookie",jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
                                     jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_STRING, NULL),
             &dev::rpc::BrcFace::brc_getAuthorizeCookieI);
+        this->bindAndAddMethod(
+                jsonrpc::Procedure("brc_getPermissionTransfer", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT,
+                                   "param1", jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL),
+                &dev::rpc::BrcFace::brc_getPermissionTransferI);
     }
 
     inline virtual void brc_protocolVersionI(const Json::Value& request, Json::Value& response)
@@ -558,6 +562,10 @@ public:
     {
         response = this->brc_getAuthorizeCookie(request[0u].asString(), request[1u].asString(), request[2u].asString());
     }
+    inline virtual void brc_getPermissionTransferI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->brc_getPermissionTransfer(request[0u].asString(), request[1u].asString());
+    }
 
     virtual std::string brc_protocolVersion() = 0;
     virtual std::string brc_coinbase() = 0;
@@ -635,7 +643,7 @@ public:
     virtual Json::Value brc_getElector(const std::string& param1) = 0;
     virtual Json::Value brc_getAccountAuthorityDetails(std::string const& param1, std::string const& param2, std::string const& param3) = 0;
     virtual Json::Value brc_getAuthorizeCookie(std::string const& param1, std::string const& param2, std::string const& param3) = 0;
-
+    virtual Json::Value brc_getPermissionTransfer(const std::string& param1, const std::string& param2) = 0;
 };
 
 }  // namespace rpc

@@ -932,6 +932,18 @@ Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std:
     
 }
 
+Json::Value Brc::brc_getPermissionTransfer(string const& _address, string const& _blockNumber)
+{
+    try
+    {
+        return client()->permissionTransfer(jsToAddress(_address), jsToBlockNum(_blockNumber));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;

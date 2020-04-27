@@ -3630,7 +3630,6 @@ Json::Value dev::brc::State::getCookieDataByKeyMsg(Address const& _addr, transat
     return _ret;
 }
 
-
 std::vector<Address> dev::brc::State::getAuthorityCookiesAddress(Address const& _addr, transationTool::getRootKeyType const& _type)
 {
     h256 _key = dev::brc::authority::toGetCookieKey(_addr, _type);
@@ -3649,7 +3648,6 @@ std::vector<Address> dev::brc::State::getAuthorityCookiesAddress(Address const& 
     bytes _data = a->storageByteValue(_key, m_db);
     return getAddrByData(_data);
 }
-
 
 std::vector<Address> dev::brc::State::verifyGetAuthorityCookiesAddrs(Address const& _addr, transationTool::getRootKeyType const& _type, bool isRoot)
 {
@@ -3676,7 +3674,6 @@ std::vector<Address> dev::brc::State::verifyGetAuthorityCookiesAddrs(Address con
     bytes _data = a->storageByteValue(_key, m_db);
     return getAddrByData(_data);
 }
-
 
 void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
 {
@@ -3738,8 +3735,12 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         control.m_childAddress = _op->m_childAddress;
         if(!rlp.empty())
             control= AccountControl{rlp};
-        control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight);
-
+        AccountControl old_control = control;
+        auto changed = control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight);
+        if(!changed.first){
+            cerror << " transferAuthorityControl field";
+            BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment("Verify inconsistent execution"));
+        }
         auto control_data= control.streamRLP();
         bool isDel = control_data.empty();
         // rootAddress for childAddress
@@ -3749,6 +3750,15 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         // ControlData
         auto key_data =dev::brc::authority::toGetAccountKey(_op->m_childAddress,transationTool::getRootKeyType::ChildDataKey);
         setStorageBytes(_from, key_data, control_data);
+
+        // permisssion transfer
+        if(!changed.second){
+            //delete childAddress all
+            for(auto const& p: old_control.m_authority)
+                updatePerminssionsTransfer(_from, p.first, 0-p.second);
+        }
+        else
+            updatePerminssionsTransfer(_from, (transationTool::op_type)_op->m_permissions, changed.second);
     }
 }
 
@@ -3770,6 +3780,42 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
         s.appendVector(addrs);
         setStorageBytes(_from, key, s.out());
     }
+}
+
+void dev::brc::State::updatePerminssionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue){
+    std::map<transationTool::op_type, uint32_t > pers = getPerminssionsTransfers(_id);
+    cwarn << pers;
+    cwarn << int(_type) << ","<<(int)_changeValue;
+    if(pers.count(_type)){
+         if((int)pers[_type] + _changeValue >0)
+             pers[_type] += _changeValue;
+         else
+             pers.erase(_type);
+    }
+    else
+        pers[_type] = _changeValue >0 ? _changeValue : pers[_type];
+    RLPStream s(pers.size());
+    for(auto const& p: pers){
+        s.append<u256, u256>(std::make_pair((u256)p.first, (u256)p.second));
+    }
+    auto key = authority::toGetAccountKey(_id, transationTool::getRootKeyType::PerssionsDataKey);
+    setStorageBytes(_id, key, s.out());
+}
+
+std::map<transationTool::op_type , uint32_t> dev::brc::State::getPerminssionsTransfers(Address const& _id){
+    /// data in strorage
+    std::map<transationTool::op_type , uint32_t> permissions;
+    auto bs = getDataByKeyAddress(_id, _id, transationTool::getRootKeyType::PerssionsDataKey);
+    for(auto const& r :RLP(bs)){
+        std::pair<u256 , u256> p = r.toPair<u256 , u256>();
+        permissions[(transationTool::op_type)p.first] = (uint32_t)p.second;
+    }
+    return permissions;
+}
+bool  dev::brc::State::getPerminssionsTransfer(Address const& _id, transationTool::op_type _type){
+    auto pers = getPerminssionsTransfers(_id);
+    auto weight= pers.count(_type) ? pers[_type] : 0;
+    return weight >= authority::MaxWeight;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

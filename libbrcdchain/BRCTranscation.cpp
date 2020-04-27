@@ -652,7 +652,7 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from, std:
         if(!_control.m_authority.empty() && _control.m_childAddress != _op->m_childAddress){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("Invalid storage about:"+toJS(_op->m_childAddress))));
         }
-        if(!_control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight)){
+        if(!_control.updateAuthority((authority::PermissionsType)_op->m_permissions, _op->m_weight).first){
             BOOST_THROW_EXCEPTION(transferAuthotityControlFailed()<<errinfo_comment(std::string("childAdress Conterol_value is not changed")));
         }
 

@@ -131,7 +131,8 @@ namespace dev
                 CookiesRootAddrKey,
                 CookiesChildAddrKey,
                 CookiesRootDataKey,
-                CookiesChildDataKey
+                CookiesChildDataKey,
+                PerssionsDataKey,
             };
 
             enum class authorizeCookieType : uint8_t
@@ -481,6 +482,7 @@ namespace dev
         {
         typedef transationTool::op_type PermissionsType;
         int const ChildAddressNum = 10;
+        uint8_t  const MaxWeight = 100;
         PermissionsType getPermissionsTypeByTransactionType(transationTool::op_type _type);
         inline bool checkPermission(uint64_t _complexPermssion, uint64_t _verifyPermsssion)
         {
@@ -506,6 +508,10 @@ namespace dev
             {
                 _key = "ChildDataKey" + toJS(_addr);
             }
+            else if(_type == transationTool::getRootKeyType::PerssionsDataKey)
+            {
+                _key = "PermissionsKeys" + toJS(_addr);
+            }
             else
             {
                 return h256();
@@ -526,6 +532,12 @@ namespace dev
 
             return dev::sha3(_key);
         }
+
+        static h256 getPermissionsKey(Address const& _addr){
+            auto _key = "PermissionsKeys" + toJS(_addr);
+            return dev::sha3(_key);
+        }
+
         }  // namespace authority
 
 
