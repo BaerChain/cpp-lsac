@@ -533,8 +533,8 @@ public:
     void transferAuthorityUseCookie(Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops); 
     Json::Value getCookieDataByKeyMsg(Address const& _addr, transationTool::getRootKeyType const& _type);
 
-    void updatePerminssionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue);
-    std::map<transationTool::op_type , uint32_t> getPerminssionsTransfers(Address const& _id);
+    void updatePermissionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue);
+    std::map<transationTool::op_type , uint32_t> getPermissionsTransfers(Address const& _id);
     /// return true if the Perminssions transfered can't to  some transaction
     bool getPerminssionsTransfer(Address const& _id, transationTool::op_type _type);
 

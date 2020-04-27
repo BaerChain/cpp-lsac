@@ -3755,10 +3755,10 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
         if(!changed.second){
             //delete childAddress all
             for(auto const& p: old_control.m_authority)
-                updatePerminssionsTransfer(_from, p.first, 0-p.second);
+                updatePermissionsTransfer(_from, p.first, 0-p.second);
         }
         else
-            updatePerminssionsTransfer(_from, (transationTool::op_type)_op->m_permissions, changed.second);
+            updatePermissionsTransfer(_from, (transationTool::op_type)_op->m_permissions, changed.second);
     }
 }
 
@@ -3782,8 +3782,8 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
     }
 }
 
-void dev::brc::State::updatePerminssionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue){
-    std::map<transationTool::op_type, uint32_t > pers = getPerminssionsTransfers(_id);
+void dev::brc::State::updatePermissionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue){
+    std::map<transationTool::op_type, uint32_t > pers = getPermissionsTransfers(_id);
     cwarn << pers;
     cwarn << int(_type) << ","<<(int)_changeValue;
     if(pers.count(_type)){
@@ -3802,7 +3802,7 @@ void dev::brc::State::updatePerminssionsTransfer(Address const& _id, transationT
     setStorageBytes(_id, key, s.out());
 }
 
-std::map<transationTool::op_type , uint32_t> dev::brc::State::getPerminssionsTransfers(Address const& _id){
+std::map<transationTool::op_type , uint32_t> dev::brc::State::getPermissionsTransfers(Address const& _id){
     /// data in strorage
     std::map<transationTool::op_type , uint32_t> permissions;
     auto bs = getDataByKeyAddress(_id, _id, transationTool::getRootKeyType::PerssionsDataKey);
@@ -3813,7 +3813,7 @@ std::map<transationTool::op_type , uint32_t> dev::brc::State::getPerminssionsTra
     return permissions;
 }
 bool  dev::brc::State::getPerminssionsTransfer(Address const& _id, transationTool::op_type _type){
-    auto pers = getPerminssionsTransfers(_id);
+    auto pers = getPermissionsTransfers(_id);
     auto weight= pers.count(_type) ? pers[_type] : 0;
     return weight >= authority::MaxWeight;
 }
