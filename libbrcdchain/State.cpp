@@ -3812,7 +3812,7 @@ std::map<transationTool::op_type , uint32_t> dev::brc::State::getPerminssionsTra
     }
     return permissions;
 }
-bool  dev::brc::State::getPerminssionsTransfer(Address const& _id, transationTool::op_type _type){
+bool  dev::brc::State::getPermissionsTransfer(Address const& _id, transationTool::op_type _type){
     auto pers = getPerminssionsTransfers(_id);
     auto weight= pers.count(_type) ? pers[_type] : 0;
     return weight >= authority::MaxWeight;

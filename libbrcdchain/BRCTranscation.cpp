@@ -600,22 +600,43 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
     _permissionAddrs.insert(_from);
     for (auto const& a : _signAddrs)
     {
-        bytes _signAddrData = m_state.getDataByKeyAddress(a, a, transationTool::getRootKeyType::RootAddrKey);
-        std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
-        if (std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(),
-                _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
+        if (a == _mutilSign_op->m_rootAddress)
         {
-            BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("Verify that the trading subaccount does not belong to the rootAddress subaccount")));
+            if (!_permissionAddrs.count(a))
+            {
+                if (m_state.getPermissionsTransfer(_mutilSign_op->m_rootAddress, _perType))
+                {
+                    _trxWeight += 0;
+                }
+                else
+                {
+                    _trxWeight += 100;
+                }
+            }
+            _permissionAddrs.insert(a);
         }
-        bytes _signAddrControlData = m_state.getDataByKeyAddress(
-            _mutilSign_op->m_rootAddress, a, transationTool::getRootKeyType::ChildDataKey);
-        AccountControl _signAddrControl(_signAddrControlData);
+        else
+        {
+            bytes _signAddrData =
+                m_state.getDataByKeyAddress(a, a, transationTool::getRootKeyType::RootAddrKey);
+            std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
+            if (std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(),
+                    _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
+            {
+                BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(
+                                          std::string("Verify that the trading subaccount does not "
+                                                      "belong to the rootAddress subaccount")));
+            }
+            bytes _signAddrControlData = m_state.getDataByKeyAddress(
+                _mutilSign_op->m_rootAddress, a, transationTool::getRootKeyType::ChildDataKey);
+            AccountControl _signAddrControl(_signAddrControlData);
 
-        if(!_permissionAddrs.count(a))
-        {
-            _trxWeight += _signAddrControl.getWeight(_perType);
+            if (!_permissionAddrs.count(a))
+            {
+                _trxWeight += _signAddrControl.getWeight(_perType);
+            }
+            _permissionAddrs.insert(a);
         }
-        _permissionAddrs.insert(a);
     }
 
     if (_trxWeight < TOTALTRXWEIGHT)
