@@ -23,6 +23,7 @@ enum SHDposPacketType : unsigned
 {
 	SHDposStatuspacket = 0x1,
 	SHDposRequestBlocks = 0x2,
+	SHDposBlockHeaders = 0x3,
 	SHDposPacketCount
 };
 

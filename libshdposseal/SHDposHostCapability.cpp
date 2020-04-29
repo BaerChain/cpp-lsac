@@ -8,61 +8,86 @@ namespace brc
 SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
     BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq,
     u256 _networkId, uint32_t version)
-  : m_host(std::move(_host))
-  ,m_chain(_ch)
-  ,m_db(_db)
-  ,m_tq(_tq)
-  ,m_bq(_bq)
-  ,m_networkId(_networkId)
-  ,m_version(version)
-  ,m_sync(nullptr)
-
+  : m_host(std::move(_host)),
+    m_chain(_ch),
+    m_db(_db),
+    m_tq(_tq),
+    m_bq(_bq),
+    m_networkId(_networkId),
+    m_version(version),
+    m_sync(nullptr)
 {
-    
+    m_sync.reset(new SHDposSync(*this));
 }
 
 void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion)
 {
     CP2P_LOG << "connect new capability";
-    NodePeer  np(m_host, _nodeID);
+    NodePeer np(m_host, _nodeID);
     m_peers.emplace(_nodeID, np);
     auto header = m_chain.info();
-    m_peers[_nodeID].sendNewStatus(header.number(), m_chain.genesisHash(), header.hash(), m_version);
-}   
+    m_peers[_nodeID].sendNewStatus(
+        header.number(), m_chain.genesisHash(), header.hash(), m_version);
+}
 
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
-    
     CP2P_LOG << "get new message from interpretCapabilityPacket " << std::this_thread::get_id();
     auto& peer = m_peers[_peerID];
     try
     {
-        switch (_id){
-            case SHDposStatuspacket:{
-                CP2P_LOG << "SHDposStatuspacket";
-                
-                auto number = _r[0].toInt<u256>();
-                auto genesisHash = _r[1].toHash<h256>();
-                auto hash = _r[2].toHash<h256>();
-                peer.setPeerStatus(number, genesisHash, hash);
+        switch (_id)
+        {
+        case SHDposStatuspacket: {
+            CP2P_LOG << "SHDposStatuspacket";
 
-                //TODO: sync.
-                break;
+            auto number = _r[0].toInt<u256>();
+            auto genesisHash = _r[1].toHash<h256>();
+            auto hash = _r[2].toHash<h256>();
+            auto version = _r[3].toInt<uint32_t>();
+            peer.setPeerStatus(number, genesisHash, hash, version);
+
+            if (genesisHash == m_chain.genesisHash())
+            {
+                m_sync->addNode(_peerID);
             }
-            default:{
-                CP2P_LOG << "cant resolve protocol.";
+            else
+            {
+                m_host->disconnect(_peerID, p2p::UserReason);
             }
+            break;
+        }
+        case SHDposRequestBlocks: {
+            m_sync->getBlocks(_peerID, _r);
+            break;
+        }
+
+        case SHDposBlockHeaders: {
+            break;
+        }
+        default: {
+            CP2P_LOG << "cant resolve protocol.";
+        }
         }
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         std::cerr << e.what() << '\n';
     }
-    
-
-
     return true;
+}
+
+void SHDposHostcapability::onDisconnect(NodeID const& id)
+{
+    m_peers.erase(id);
+    m_host->disconnect(id, p2p::UserReason);
+}
+
+
+NodePeer SHDposHostcapability::getNodePeer(const NodeID& id)
+{
+    return m_peers[id];
 }
 
 

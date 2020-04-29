@@ -9,7 +9,7 @@
 
 #include <libbrcdchain/BlockChain.h>
 #include <libshdposseal/NodePeer.hpp>
-#include "SHDposSync.hpp"
+#include <libshdposseal/SHDposSync.hpp>
 
 
 namespace dev
@@ -40,7 +40,7 @@ public:
     void onStarting() override {}
     void onStopping() override {}
     void onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion) override;
-    void onDisconnect(NodeID const& /*_nodeID*/) override {}
+    void onDisconnect(NodeID const& /*_nodeID*/) override ;
 
     bool interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r) override;
 
@@ -53,6 +53,13 @@ public:
     };
 
 
+    ///add 
+    BlockChain const& chain() const { return m_chain; }
+    OverlayDB const& db() const { return m_db; }
+    BlockQueue& bq() { return m_bq; }
+    BlockQueue const& bq() const { return m_bq; }
+
+    NodePeer getNodePeer(const NodeID &id);
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
     u256 m_networkId;
