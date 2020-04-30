@@ -3806,9 +3806,15 @@ std::map<transationTool::op_type , uint32_t> dev::brc::State::getPermissionsTran
     /// data in strorage
     std::map<transationTool::op_type , uint32_t> permissions;
     auto bs = getDataByKeyAddress(_id, _id, transationTool::getRootKeyType::PerssionsDataKey);
-    for(auto const& r :RLP(bs)){
-        std::pair<u256 , u256> p = r.toPair<u256 , u256>();
-        permissions[(transationTool::op_type)p.first] = (uint32_t)p.second;
+    if(!bs.empty()) {
+        try {
+            for (auto const &r :RLP(bs)) {
+                std::pair<u256, u256> p = r.toPair<u256, u256>();
+                permissions[(transationTool::op_type) p.first] = (uint32_t) p.second;
+            }
+        }
+        catch (...) {
+        }
     }
     return permissions;
 }
