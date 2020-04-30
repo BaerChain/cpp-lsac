@@ -314,6 +314,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                                                (bigint)m_s.BRC(m_t.sender()))
                                                         << errinfo_comment(ex_info));
             }
+            m_batch_params._cookiesAddress = m_t.sender();
+            cerror << "_rootAddress" << m_batch_params._cookiesAddress;
         }
         else
         {
@@ -391,7 +393,9 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
     /// address for rootAddress to cost and excute_address
     if(_baseType == transationTool::null && m_batch_params._type != transationTool::transferMutilSigns){
         m_batch_params._rootAddress = _from;
+        m_batch_params._cookiesAddress = _from;
     }
+
     bool is_verfy_cost = true;
     switch (m_batch_params._type){
         case transationTool::op_type::vote:
@@ -488,6 +492,13 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             is_verfy_cost = false;
             m_batch_params._type = _type;
             m_batch_params._rootAddress = _mutilSign_op.m_rootAddress;
+            if(_mutilSign_op.m_cookiesAddress != m_t.sender() && _mutilSign_op.m_cookiesAddress != Address())
+            {
+                m_brctranscation.verifyUseCookie(_mutilSign_op.m_cookiesAddress, m_t.sender());
+                m_batch_params._cookiesAddress = _mutilSign_op.m_cookiesAddress;
+            }else{
+                m_batch_params._cookiesAddress = m_t.sender();
+            }
             m_brctranscation.verifyPermissionTrx(_from, std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
             verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
             break;
@@ -899,13 +910,13 @@ bool Executive::finalize()
 
     if (m_t)
     {
-        if(m_batch_params.customTransaction()) {
-            cwarn << " cost :" << m_batch_params._rootAddress << " :" << m_totalGas - m_needRefundGas;
-            m_s.subBalance(m_batch_params._rootAddress, m_totalGas - m_needRefundGas);
-        }
-        else
-            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-
+        // if(m_batch_params.customTransaction()) {
+        //     cwarn << " cost :" << m_batch_params._rootAddress << " :" << m_totalGas - m_needRefundGas;
+        //     m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
+        // }
+        // else
+        cerror << " subBalance : " << toJS(m_batch_params._cookiesAddress);
+        m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
 
         // updata about author mapping_address

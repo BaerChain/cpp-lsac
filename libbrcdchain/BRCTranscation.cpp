@@ -743,6 +743,29 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(Address const& _from, std:
     }
 }
 
+
+void dev::brc::BRCTranscation::verifyUseCookie(Address const& _rootAddr, Address const& _childAddr)
+{
+    if(_rootAddr == _childAddr || _rootAddr == Address())
+    {
+        return;
+    }
+    bool isPermission = false;
+    std::vector<Address> _rootAddrs = m_state.verifyGetAuthorityCookiesAddrs(_childAddr, transationTool::getRootKeyType::CookiesRootAddrKey, false);
+    for(auto const& _root : _rootAddrs)
+    {
+        if(_root == _rootAddr)
+        {
+            isPermission = true;
+        }
+    }
+
+    if(isPermission == false)
+    {
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("Account does not have permission to use CookieAddress cookies")));
+    }
+}
+
 bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;
