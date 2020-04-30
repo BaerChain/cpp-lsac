@@ -23,7 +23,7 @@ public:
     
     void addNode(p2p::NodeID id);
     void getBlocks(p2p::NodeID id, const RLP &data);
-    void responseBlocks(p2p::NodeID id, const RLP &data);
+    void BlockHeaders(p2p::NodeID id, const RLP &data);
 private:
     SHDposHostcapability& m_host;
 

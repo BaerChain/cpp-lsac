@@ -58,12 +58,15 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             }
             break;
         }
-        case SHDposRequestBlocks: {
+        case SHDposGetBlocks: {
+            CP2P_LOG << "SHDposGetBlocks";
             m_sync->getBlocks(_peerID, _r);
             break;
         }
 
         case SHDposBlockHeaders: {
+            CP2P_LOG << "SHDposBlockHeaders";
+            m_sync->BlockHeaders(_peerID, _r);
             break;
         }
         default: {
@@ -73,7 +76,7 @@ bool SHDposHostcapability::interpretCapabilityPacket(
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        CP2P_LOG << e.what() << '\n';
     }
     return true;
 }

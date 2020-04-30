@@ -9,7 +9,7 @@
 #include "Common.h"
 #include "libbrcdchain/Nodemonitor.h"
 #include <libbrcdchain/Account.h>
-
+#include "SHDposHostCapability.h"
 namespace dev
 {
 namespace bacd
@@ -60,13 +60,16 @@ private:
     /// @paramer _ph : the last block in chain
 	bool checkPreviousBlock(BlockHeader const& _ph) const;
     void sendDataToNodeMonitor();
-private:
+
+    bool is_sync() const;
+
     ChainParams                     m_params;         
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
     p2p::Host                       &m_p2pHost;
     NodeMonitor                     m_nodemonitor;
     bool                            m_is_firt_run = true;
     bool                            m_isSendNodeStatus = false;
+    std::weak_ptr<SHDposHostcapability>  m_SHDpos_host;
 };
 
 SHDposClient& asDposClient(Interface& _c);

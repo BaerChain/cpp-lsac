@@ -18,14 +18,20 @@ void NodePeer::sendNewStatus(u256 height, h256 genesisHash, h256 latestBlock, ui
 }
 
 
-void NodePeer::setPeerStatus(u256 height, h256 genesisHash, h256 latestBlock, uint32_t version) {}
+void NodePeer::setPeerStatus(u256 height, h256 genesisHash, h256 latestBlock, uint32_t version)
+{
+    m_height = (uint64_t)height;
+    m_genesisHash = genesisHash;
+    m_latestBlock = latestBlock;
+    m_version = version;
+}
 
 
 void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
 {
-    CP2P_LOG << "requestBlocks  " << ids.size();
+    CP2P_LOG << "requestBlocks  by number " << ids.size();
     RLPStream s;
-    m_host->prep(m_id, CapbilityName, s, SHDposRequestBlocks, 2);
+    m_host->prep(m_id, CapbilityName, s, SHDposGetBlocks, 2);
     s.append(1);
     s.appendVector(ids);
     m_host->sealAndSend(m_id, s);
@@ -34,17 +40,37 @@ void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
 
 void NodePeer::requestBlocks(const std::vector<h256>& ids)
 {
-    CP2P_LOG << "requestBlocks  " << ids.size();
+    CP2P_LOG << "requestBlocks  by hash " << ids.size();
     RLPStream s;
-    m_host->prep(m_id, CapbilityName, s, SHDposRequestBlocks, 2);
+    m_host->prep(m_id, CapbilityName, s, SHDposGetBlocks, 2);
     s.append(2);
     s.appendVector(ids);
     m_host->sealAndSend(m_id, s);
 }
 
-void NodePeer::sendBlocks(const std::vector<BlockHeader>& blocks) {
-    
+void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
+{
+  
+    CP2P_LOG << "send blocks   " << blocks.size();
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDposBlockHeaders, 1);
+    s.appendVector(blocks);
+    m_host->sealAndSend(m_id, s);
 }
+
+uint64_t NodePeer::getHeight() const
+{
+    return m_height;
+}
+h256 NodePeer::getLatestBlock() const
+{
+    return m_latestBlock;
+}
+uint32_t NodePeer::getVersion() const
+{
+    return m_version;
+}
+
 
 }  // namespace brc
 }  // namespace dev

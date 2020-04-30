@@ -53,6 +53,8 @@ public:
     };
 
 
+    SHDposSyncState status() const { return SHDposSyncState::None;}
+
     ///add 
     BlockChain const& chain() const { return m_chain; }
     OverlayDB const& db() const { return m_db; }
