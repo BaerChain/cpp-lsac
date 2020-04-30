@@ -361,6 +361,13 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_batch_params._type = _type;
                 }
             }
+            /// verify the permissions transfer
+            if(m_s.getPermissionsTransfer(m_t.from(), m_batch_params._type)){
+                std::string _str= "Invalid permission. the address:" + toJS(m_t.from()) + " permisssions:" + std::to_string(m_batch_params._type) + " is transfered";
+                cwarn << _str;
+                BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(_str));
+            }
+
             verifyTransactionOperation(totalCost,m_t.sender(), _ops, transationTool::op_type::null);
             ///verify the prepayment gas is enough
             if (totalCost < m_t.gasPrice() * m_baseGasRequired + m_addCostValue)

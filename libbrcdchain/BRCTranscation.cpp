@@ -602,16 +602,9 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
     {
         if (a == _mutilSign_op->m_rootAddress)
         {
-            if (!_permissionAddrs.count(a))
+            if (!_permissionAddrs.count(a) && !m_state.getPermissionsTransfer(_mutilSign_op->m_rootAddress, _perType))
             {
-                if (m_state.getPermissionsTransfer(_mutilSign_op->m_rootAddress, _perType))
-                {
-                    _trxWeight += 0;
-                }
-                else
-                {
-                    _trxWeight += 100;
-                }
+                _trxWeight += 100;
             }
             _permissionAddrs.insert(a);
         }
