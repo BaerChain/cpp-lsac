@@ -173,5 +173,14 @@ void SHDposSync::BlockHeaders(p2p::NodeID id, const RLP& data)
     }
 }
 
+
+
+void SHDposSync::NewBlocks(p2p::NodeID id, const RLP & data){
+    
+}
+
+
+
+
 }  // namespace brc
 }  // namespace dev

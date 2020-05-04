@@ -33,7 +33,7 @@ void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCap
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
-    CP2P_LOG << "get new message from interpretCapabilityPacket " << std::this_thread::get_id();
+    CP2P_LOG << "new message from interpretCapabilityPacket " << std::this_thread::get_id();
     auto& peer = m_peers[_peerID];
     try
     {
@@ -69,6 +69,9 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             m_sync->BlockHeaders(_peerID, _r);
             break;
         }
+        case SHDposNewBlocks: {
+            CP2P_LOG << "SHDposNewBlocks";
+        }
         default: {
             CP2P_LOG << "cant resolve protocol.";
         }
@@ -92,6 +95,10 @@ NodePeer SHDposHostcapability::getNodePeer(const NodeID& id)
 {
     return m_peers[id];
 }
+
+
+void SHDposHostcapability::broadcastBlock(const h256& hash) {}
+void SHDposHostcapability::broadcastTransaction(const h256& hash) {}
 
 
 }  // namespace brc

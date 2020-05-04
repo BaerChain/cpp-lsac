@@ -338,7 +338,7 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
     m_SHDpos_host = brcCapability;
     // about SH-dpos
     setOnBlockImport([=](BlockHeader const& _info){
-
+        
     });
 
     dpos()->initConfigAndGenesis(m_params);

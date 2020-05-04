@@ -41,6 +41,8 @@ public:
     void onStopping() override {}
     void onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion) override;
     void onDisconnect(NodeID const& /*_nodeID*/) override ;
+    void broadcastBlock(const h256 &hash);
+    void broadcastTransaction(const h256 &hash);
 
     bool interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r) override;
 
