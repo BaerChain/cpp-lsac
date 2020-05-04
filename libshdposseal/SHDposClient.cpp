@@ -336,10 +336,21 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         _host.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _netWorkId);
     _host.registerCapability(brcCapability);
     m_SHDpos_host = brcCapability;
-    // about SH-dpos
-    setOnBlockImport([=](BlockHeader const& _info){
-        
+    /// broadcastBlock
+    setOnBlockImport([=](BlockHeader const& _info) {
+        auto h = m_SHDpos_host.lock();
+        if(h){
+            h->broadcastBlock(_info.hash());
+        }else{
+            cwarn << "broadcastBlock error.";
+        }
     });
+
+    m_tq.onReady([=]() {
+        cwarn << "TODO , broadcast Transaction..";
+    }); 
+
+
 
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);

@@ -97,8 +97,13 @@ NodePeer SHDposHostcapability::getNodePeer(const NodeID& id)
 }
 
 
-void SHDposHostcapability::broadcastBlock(const h256& hash) {}
-void SHDposHostcapability::broadcastTransaction(const h256& hash) {}
+void SHDposHostcapability::broadcastBlock(const h256& hash) {
+
+}
+
+void SHDposHostcapability::broadcastTransaction(const h256& hash) {
+    
+}
 
 
 }  // namespace brc
