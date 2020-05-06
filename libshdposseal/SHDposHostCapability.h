@@ -48,14 +48,14 @@ public:
 
     inline std::shared_ptr<p2p::CapabilityHostFace> hostFace() const { return m_host; }
 
-    virtual void doBackgroundWork() override{};
+    virtual void doBackgroundWork() override;
     virtual std::chrono::milliseconds backgroundWorkInterval() const override
     {
         return std::chrono::milliseconds{10};
     };
 
 
-    SHDposSyncState status() const { return SHDposSyncState::None;}
+    SHDposSyncState status() const { return m_state;}
 
     ///add 
     BlockChain const& chain() const { return m_chain; }
@@ -80,6 +80,8 @@ private:
     uint32_t m_version;
 
     std::shared_ptr<SHDposSync> m_sync;
+
+    SHDposSyncState m_state = SHDposSyncState::None;
 };
 }  // namespace brc
 }  // namespace dev

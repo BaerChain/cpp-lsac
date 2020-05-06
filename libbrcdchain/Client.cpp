@@ -405,6 +405,7 @@ void Client::syncBlockQueue()
         m_syncAmount = max(c_syncMin, count * 9 / 10);
     else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
+        
     if (ir.liveBlocks.empty()){
         return;
     }
@@ -771,16 +772,6 @@ void Client::tick()
 
     if (chrono::system_clock::now() - m_debugMem > chrono::seconds(10)){
         m_debugMem = chrono::system_clock::now();
-//        m_bc.debugMemery();
-//        m_bq.debugMemery();
-//        m_tq.debugMemery();
-//        auto h = m_host.lock();
-//        if(h){
-//            h->debugMemery();
-//        }
-//        else{
-//            CMEM_LOG << "cant get host.";
-//        }
     }
 
 }

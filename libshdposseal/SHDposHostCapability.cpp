@@ -30,10 +30,11 @@ void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCap
         header.number(), m_chain.genesisHash(), header.hash(), m_version);
 }
 
+
+
 bool SHDposHostcapability::interpretCapabilityPacket(
     NodeID const& _peerID, unsigned _id, RLP const& _r)
 {
-    CP2P_LOG << "new message from interpretCapabilityPacket " << std::this_thread::get_id();
     auto& peer = m_peers[_peerID];
     try
     {
@@ -58,6 +59,10 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             }
             break;
         }
+        case SHDposBlocksHash:{
+            m_sync->configNode(_peerID, _r);
+            break;
+        }
         case SHDposGetBlocks: {
             CP2P_LOG << "SHDposGetBlocks";
             m_sync->getBlocks(_peerID, _r);
@@ -66,11 +71,11 @@ bool SHDposHostcapability::interpretCapabilityPacket(
 
         case SHDposBlockHeaders: {
             CP2P_LOG << "SHDposBlockHeaders";
-            m_sync->BlockHeaders(_peerID, _r);
+            m_sync->blockHeaders(_peerID, _r);
             break;
         }
         case SHDposNewBlocks: {
-            CP2P_LOG << "SHDposNewBlocks";
+            CP2P_LOG << "TODO SHDposNewBlocks";
         }
         default: {
             CP2P_LOG << "cant resolve protocol.";
@@ -103,6 +108,10 @@ void SHDposHostcapability::broadcastBlock(const h256& hash) {
 
 void SHDposHostcapability::broadcastTransaction(const h256& hash) {
     
+}
+
+void SHDposHostcapability::doBackgroundWork(){
+    CP2P_LOG << "TODO doBackgroundWork broadcast.";
 }
 
 

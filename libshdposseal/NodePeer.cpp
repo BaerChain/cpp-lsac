@@ -48,6 +48,17 @@ void NodePeer::requestBlocks(const std::vector<h256>& ids)
     m_host->sealAndSend(m_id, s);
 }
 
+void NodePeer::requestBlocksHash(const std::vector<uint64_t>& ids)
+{
+    CP2P_LOG << "requestBlocks hash  by number " << ids.size();
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDposBlocksHash, 2);
+    s.append(1);
+    s.appendVector(ids);
+    m_host->sealAndSend(m_id, s);
+}
+
+
 void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
 {
   
@@ -57,6 +68,9 @@ void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
     s.appendVector(blocks);
     m_host->sealAndSend(m_id, s);
 }
+
+
+
 
 uint64_t NodePeer::getHeight() const
 {

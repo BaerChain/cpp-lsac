@@ -25,10 +25,15 @@ public:
     uint32_t getVersion() const;
 
     /*
-    @param id  block number or hash.
+    @param ids  block number or hash.
     */
     void requestBlocks(const std::vector<uint64_t> &ids);
     void requestBlocks(const std::vector<h256> &ids);
+
+    /*
+    @param ids blocks number
+    */
+    void requestBlocksHash(const std::vector<uint64_t> &ids);
 
     void sendBlocks(const std::vector<bytes> &blocks);
 private:
