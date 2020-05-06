@@ -506,8 +506,13 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             }else{
                 m_batch_params._cookiesAddress = m_t.sender();
             }
-            m_brctranscation.verifyPermissionTrx(_from, std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
-            verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress, _mutilSign_op.getTransactionDatabytes(), transationTool::op_type::transferMutilSigns);
+            if(m_batch_params._rootAddress != _from && m_batch_params._rootAddress != Address()) {
+                m_brctranscation.verifyPermissionTrx(_from,std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+            }
+            else{
+                m_batch_params._rootAddress = _from;
+            }
+            verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress,_mutilSign_op.getTransactionDatabytes(),transationTool::op_type::transferMutilSigns);
             break;
         }
         case transationTool::op_type::authorizeUseCookie:
@@ -922,7 +927,8 @@ bool Executive::finalize()
         //     m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         // }
         // else
-        cerror << " subBalance : " << toJS(m_batch_params._cookiesAddress);
+        //cerror << " subBalance : " << toJS(m_batch_params._cookiesAddress);
+        cwarn << "cost:" << m_totalGas - m_needRefundGas;
         m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
 

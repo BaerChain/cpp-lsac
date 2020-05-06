@@ -1111,7 +1111,7 @@ string dev::rpc::exceptionToErrorMessage()
     }
     catch (transferAuthorityUseCookieFailed const& e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if(auto *_error = boost::get_error_info<errinfo_comment>(e))
         {
             ret + std::string(*_error);
         }
