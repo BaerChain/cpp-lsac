@@ -61,7 +61,7 @@ public:
 		Address const& _to, 
 		unsigned _transactionIndex,
 		u256 const& _gasUsed,
-		Address const& _root,
+		//Address const& _root,
 		Address const& _contractAddress = Address()
 	):
 		TransactionReceipt(_t),
@@ -72,7 +72,7 @@ public:
 		m_to(_to),
 		m_transactionIndex(_transactionIndex),
 		m_gasUsed(_gasUsed),
-		m_rootAddress(_root),
+		//m_rootAddress(_root),
 		m_contractAddress(_contractAddress)
 	{
 		LogEntries entries = log();

@@ -183,7 +183,7 @@ namespace dev {
             res["blockHash"] = toJS(_t.blockHash());
             res["blockNumber"] = _t.blockNumber();
             res["from"] = toJS(_t.from());
-            res["rootAddress"] = toJS(_t.rootAddress());
+            //res["rootAddress"] = toJS(_t.rootAddress());
             res["to"] = toJS(_t.to());
             res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
 //            if(_face != nullptr)
