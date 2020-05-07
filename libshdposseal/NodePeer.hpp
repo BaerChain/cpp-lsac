@@ -31,9 +31,19 @@ public:
     void requestBlocks(const std::vector<h256> &ids);
 
     /*
+    @param hash   transaction hash.
+    */
+    void sendTransactionHashs(const std::vector<h256> &hashs);
+
+    /*
+    @param 
+    */
+    void sendBlocksHashs(const std::vector<h256> &hashs);
+
+    /*
     @param ids blocks number
     */
-    void requestBlocksHash(const std::vector<uint64_t> &ids);
+    // void requestBlocksHash(const std::vector<uint64_t> &ids);
 
     void sendBlocks(const std::vector<bytes> &blocks);
 private:

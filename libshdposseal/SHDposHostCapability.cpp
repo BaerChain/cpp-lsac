@@ -15,7 +15,8 @@ SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFa
     m_bq(_bq),
     m_networkId(_networkId),
     m_version(version),
-    m_sync(nullptr)
+    m_sync(nullptr),
+    m_state(SHDposSyncState::Sync)
 {
     m_sync.reset(new SHDposSync(*this));
 }
@@ -29,7 +30,6 @@ void SHDposHostcapability::onConnect(NodeID const& _nodeID, u256 const& _peerCap
     m_peers[_nodeID].sendNewStatus(
         header.number(), m_chain.genesisHash(), header.hash(), m_version);
 }
-
 
 
 bool SHDposHostcapability::interpretCapabilityPacket(
@@ -59,23 +59,25 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             }
             break;
         }
-        case SHDposBlocksHash:{
-            m_sync->configNode(_peerID, _r);
-            break;
-        }
-        case SHDposGetBlocks: {
-            CP2P_LOG << "SHDposGetBlocks";
+        case SHDposSyncGetBlocks: {
+            CP2P_LOG << "SHDposSyncGetBlocks";
             m_sync->getBlocks(_peerID, _r);
             break;
         }
 
-        case SHDposBlockHeaders: {
+        case SHDposSyncBlockHeaders: {
             CP2P_LOG << "SHDposBlockHeaders";
             m_sync->blockHeaders(_peerID, _r);
             break;
         }
-        case SHDposNewBlocks: {
+        case SHDposTXHash: {
+            CP2P_LOG << "TODO SHDposGetTX";
+            break;
+        }
+        case SHDposNewBlockHash: {
             CP2P_LOG << "TODO SHDposNewBlocks";
+            m_sync->newBlocks(_peerID, _r);
+            break;
         }
         default: {
             CP2P_LOG << "cant resolve protocol.";
@@ -102,16 +104,42 @@ NodePeer SHDposHostcapability::getNodePeer(const NodeID& id)
 }
 
 
-void SHDposHostcapability::broadcastBlock(const h256& hash) {
-
+void SHDposHostcapability::broadcastBlock(const h256& hash)
+{
+    m_send_blocks.push_back(hash);
 }
 
-void SHDposHostcapability::broadcastTransaction(const h256& hash) {
-    
+void SHDposHostcapability::broadcastTransaction(const h256& hash)
+{
+    m_send_txs.push_back(hash);
 }
 
-void SHDposHostcapability::doBackgroundWork(){
-    CP2P_LOG << "TODO doBackgroundWork broadcast.";
+void SHDposHostcapability::doBackgroundWork()
+{
+    // CP2P_LOG << "TODO doBackgroundWork broadcast.";
+    if (m_state == Sync)
+    {
+        m_sync->restartSync();
+    }
+    else
+    {
+        if (m_send_txs.size() > 0)
+        {
+            for (auto& itr : m_peers)
+            {
+                itr.second.sendTransactionHashs(m_send_txs);
+            }
+        }
+
+        // send
+        if (m_send_blocks.size() > 0)
+        {
+            for (auto& itr : m_peers)
+            {
+                itr.second.sendBlocksHashs(m_send_blocks);
+            }
+        }
+    }
 }
 
 

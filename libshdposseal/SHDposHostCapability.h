@@ -76,6 +76,11 @@ private:
     BlockQueue& m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
                        ///< imported).
 
+
+    ///TODO broadcastTransaction
+    std::vector<h256>   m_send_txs; 
+    std::vector<h256>   m_send_blocks;
+
     std::map<NodeID, NodePeer> m_peers;
     uint32_t m_version;
 
