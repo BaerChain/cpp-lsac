@@ -397,7 +397,8 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         m_batch_params._cookiesAddress = _from;
     }
     /// verify the permissions transfer
-    m_s.getPermissionsTransfer(m_t.from(), m_batch_params._type);
+    if(m_t.from() == m_batch_params._rootAddress)
+        m_s.getPermissionsTransfer(m_t.from(), m_batch_params._type);
 
     bool is_verfy_cost = true;
     switch (m_batch_params._type){
