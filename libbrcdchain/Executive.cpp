@@ -529,7 +529,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
     }
 
     ///verify total cost
-    if (is_verfy_cost && m_s.balance(_from) < _totalCost &&
+    if (is_verfy_cost && m_s.balance(m_batch_params._cookiesAddress) < _totalCost &&
         m_batch_params._type != transationTool::transferAutoEx )
     {
         LOG(m_execLogger)
