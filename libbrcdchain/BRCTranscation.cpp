@@ -753,7 +753,7 @@ void dev::brc::BRCTranscation::verifyUseCookie(Address const& _rootAddr, Address
         }
     }
 
-    if(isPermission == false)
+    if(!isPermission)
     {
         BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("Account does not have permission to use CookieAddress cookies")));
     }

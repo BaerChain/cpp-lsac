@@ -512,7 +512,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             else{
                 m_batch_params._rootAddress = _from;
             }
-            verifyTransactionOperation(_totalCost, _mutilSign_op.m_rootAddress,_mutilSign_op.getTransactionDatabytes(),transationTool::op_type::transferMutilSigns);
+            verifyTransactionOperation(_totalCost, m_batch_params._rootAddress,_mutilSign_op.getTransactionDatabytes(),transationTool::op_type::transferMutilSigns);
             break;
         }
         case transationTool::op_type::authorizeUseCookie:
@@ -638,7 +638,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                     cerror << "deployContract dynamic type field!";
                     BOOST_THROW_EXCEPTION(InvalidDynamic());
                 }
-                return create(m_batch_params._rootAddress, m_t.value(), m_t.gasPrice(),
+                u256 nonce =m_t.nonce();
+                m_newAddress = right160(sha3(rlpList(m_t.from(), nonce)));
+                cwarn << "(addr, nonce):" << m_t.from() << nonce;
+                return executeCreate(m_batch_params._rootAddress, m_t.value(), m_t.gasPrice(),
                               m_t.gas() - (u256)m_baseGasRequired, &_op->m_date, m_batch_params._rootAddress);
             }
             case transationTool::op_type ::executeContract:
@@ -727,6 +730,9 @@ bool Executive::createOpcode(Address const& _sender, u256 const& _endowment, u25
 {
     u256 nonce = m_s.getNonce(_sender);
     m_newAddress = right160(sha3(rlpList(_sender, nonce)));
+    cwarn << "(addr, nonce):" << _sender << nonce;
+    if (_sender != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
+        m_s.incNonce(_sender);
     return executeCreate(_sender, _endowment, _gasPrice, _gas, _init, _origin);
 }
 
@@ -741,10 +747,6 @@ bool Executive::create2Opcode(Address const& _sender, u256 const& _endowment, u2
 bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u256 const& _gasPrice,
                               u256 const& _gas, bytesConstRef _init, Address const& _origin)
 {
-    if (_sender != MaxAddress ||
-        m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
-        m_s.incNonce(_sender);
-
     m_savepoint = m_s.savepoint();
 
     m_isCreation = true;
@@ -927,7 +929,7 @@ bool Executive::finalize()
         //     m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         // }
         // else
-        //cerror << " subBalance : " << toJS(m_batch_params._cookiesAddress);
+        cwarn<< " subBalance : " << toJS(m_batch_params._cookiesAddress);
         cwarn << "cost:" << m_totalGas - m_needRefundGas;
         m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);

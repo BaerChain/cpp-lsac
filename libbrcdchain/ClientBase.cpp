@@ -532,34 +532,38 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     u256 gasUsed = tr.cumulativeGasUsed();
     if (tl.second > 0)
         gasUsed -= bc().transactionReceipt(tl.first, tl.second - 1).cumulativeGasUsed();
-
-    auto getRootAddress = [this](Transaction const& _t, BlockNumber _number) ->std::pair<Address, u256> {
-        Address _root = _t.from();
-        u256 nonce = _t.nonce();
-        try {
-            if(_t.isVoteTranction()){
-                RLP _r(_t.data());
-                std::vector<bytes> _ops = _r.toVector<bytes>();
-                for(auto const& val : _ops){
-                    transationTool::op_type _type = transationTool::operation::get_type(val);
-                    if(_type == transationTool::op_type::transferMutilSigns){
-                        transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
-                        nonce = blockByNumber(_number ? --_number:_number).mutableState().getNonce(_mutilSign_op.m_rootAddress);
-                        _root = _mutilSign_op.m_rootAddress;
-                    }
-                    break;
-                }
-            }
-        }
-        catch (...){}
-
-        return {_root, nonce};
-    };
-
-    BlockNumber number = numberFromHash(tl.first);
-    auto _pair = getRootAddress(t, number);
-    return LocalisedTransactionReceipt(tr, t.sha3(), tl.first, number, t.from(),
-        t.to(), tl.second, gasUsed, _pair.first, toAddress(_pair.first, _pair.second));
+    return LocalisedTransactionReceipt(tr, t.sha3(), tl.first, numberFromHash(tl.first), t.from(),
+                                       t.to(), tl.second, gasUsed, toAddress(t.from(), t.nonce()));
+//    auto getRootAddress = [this](Transaction const& _t, BlockNumber _number) ->std::pair<Address, u256> {
+//        Address _root = _t.from();
+//        u256 nonce = _t.nonce();
+//        try {
+//            if(_t.isVoteTranction()){
+//                RLP _r(_t.data());
+//                std::vector<bytes> _ops = _r.toVector<bytes>();
+//                for(auto const& val : _ops){
+//                    transationTool::op_type _type = transationTool::operation::get_type(val);
+//                    if(_type == transationTool::op_type::transferMutilSigns){
+//                        transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(val);
+//                        if(_mutilSign_op.m_rootAddress != Address()) {
+//                            //nonce = blockByNumber(_number ? --_number : _number).mutableState().getNonce( _mutilSign_op.m_rootAddress);
+//                            _root = _mutilSign_op.m_rootAddress;
+//                        }
+//
+//                    break;
+//                }
+//            }
+//        }
+//        catch (...){}
+//
+//        return {_root, nonce};
+//    };
+//
+//    BlockNumber number = numberFromHash(tl.first);
+//    auto _pair = getRootAddress(t, number);
+//    cwarn << "number:" << number << " _pair:" << _pair;
+//    return LocalisedTransactionReceipt(tr, t.sha3(), tl.first, number, t.from(),
+//        t.to(), tl.second, gasUsed, _pair.first, toAddress(t.from(), _pair.second));
 
 }
 
