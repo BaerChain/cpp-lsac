@@ -397,8 +397,11 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         m_batch_params._cookiesAddress = _from;
     }
     /// verify the permissions transfer
-    if(m_t.from() == m_batch_params._rootAddress)
-        m_s.getPermissionsTransfer(m_t.from(), m_batch_params._type);
+    if(m_t.from() == m_batch_params._rootAddress && m_s.getPermissionsTransfer(m_t.from(), m_batch_params._type)){
+        std::string _str = "Invalid permission. the address permisssions:" + std::to_string(m_batch_params._type) +" is transfered";
+        cwarn << _str;
+        BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(_str));
+    }
 
     bool is_verfy_cost = true;
     switch (m_batch_params._type){

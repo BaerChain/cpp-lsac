@@ -3818,14 +3818,10 @@ std::map<transationTool::op_type , uint32_t> dev::brc::State::getPermissionsTran
     }
     return permissions;
 }
-void  dev::brc::State::getPermissionsTransfer(Address const& _id, transationTool::op_type _type){
+bool  dev::brc::State::getPermissionsTransfer(Address const& _id, transationTool::op_type _type){
     auto pers = getPermissionsTransfers(_id);
     auto weight= pers.count(_type) ? pers[_type] : 0;
-    if(weight >= authority::MaxWeight) {
-        std::string _str = "Invalid permission. the address permisssions:" + std::to_string(_type) +" is transfered";
-        cwarn << _str;
-        BOOST_THROW_EXCEPTION(InvalidFunction() << errinfo_comment(_str));
-    }
+    return weight >= authority::MaxWeight;
 }
 
 std::ostream &dev::brc::operator<<(std::ostream &_out, State const &_s) {

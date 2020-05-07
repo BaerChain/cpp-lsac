@@ -536,7 +536,7 @@ public:
     void updatePermissionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue);
     std::map<transationTool::op_type , uint32_t> getPermissionsTransfers(Address const& _id);
     /// return true if the Perminssions transfered can't to  some transaction
-    void getPermissionsTransfer(Address const& _id, transationTool::op_type _type);
+    bool getPermissionsTransfer(Address const& _id, transationTool::op_type _type);
 
 private:
     std::vector<Address> getAddrByData(bytes const& _data);
