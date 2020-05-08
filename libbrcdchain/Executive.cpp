@@ -297,7 +297,13 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         if (!m_t.isVoteTranction())
         {
             bigint totalCost = gasCost;
-
+            if(m_t.data().empty())
+            {
+                if(m_s.getPermissionsTransfer(m_t.sender(), transationTool::op_type::brcTranscation))
+                {
+                    BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(std::string("The operation authority for address transfer has been transferred")));
+                }
+            }
             if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value() ||
                 m_t.gas() < m_baseGasRequired)
             {
