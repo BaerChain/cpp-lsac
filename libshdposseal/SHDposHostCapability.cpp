@@ -15,8 +15,7 @@ SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFa
     m_bq(_bq),
     m_networkId(_networkId),
     m_version(version),
-    m_sync(nullptr),
-    m_state(SHDposSyncState::Sync)
+    m_sync(nullptr)
 {
     m_sync.reset(new SHDposSync(*this));
 }
@@ -66,6 +65,7 @@ bool SHDposHostcapability::interpretCapabilityPacket(
         }
 
         case SHDposSyncBlockHeaders: {
+            peer.completeAsk();
             CP2P_LOG << "SHDposBlockHeaders";
             m_sync->blockHeaders(_peerID, _r);
             break;
@@ -75,7 +75,7 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             break;
         }
         case SHDposNewBlockHash: {
-            if (SHDposSyncState::Idle == m_state)
+            if (SHDposSyncState::Idle == m_sync->getState())
             {
                 CP2P_LOG << "SHDposNewBlocks";
                 m_sync->newBlocks(_peerID, _r);
@@ -121,7 +121,7 @@ void SHDposHostcapability::broadcastTransaction(const h256& hash)
 void SHDposHostcapability::doBackgroundWork()
 {
     // CP2P_LOG << "TODO doBackgroundWork broadcast.";
-    if (m_state == Sync)
+    if (SHDposSyncState::Idle != m_sync->getState())
     {
         m_sync->restartSync();
     }
@@ -147,6 +147,15 @@ void SHDposHostcapability::doBackgroundWork()
     }
     m_send_txs.clear();
     m_send_blocks.clear();
+}
+
+SHDposSyncState SHDposHostcapability::status() const
+{
+    return m_sync->getState();
+}
+bool SHDposHostcapability::isSyncing() const
+{
+    return SHDposSyncState::Sync == m_sync->getState();
 }
 
 

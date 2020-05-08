@@ -2,6 +2,7 @@
 
 #include <libbrccore/BlockHeader.h>
 #include <libp2p/Common.h>
+#include "Common.h"
 #include <string>
 namespace dev
 {
@@ -9,11 +10,6 @@ namespace brc
 {
 class SHDposHostcapability;
 
-enum class syncState
-{
-    sync = 0x1,
-    wait
-};
 
 
 struct merkleState
@@ -22,13 +18,13 @@ struct merkleState
     std::map<uint64_t, BlockHeader> blocks;
     std::vector<p2p::NodeID> nodes;
 
-    uint64_t m_latestRequest = 0;
+    uint64_t m_latestImportedNumber = 0;
 
 
     bool isNull() const
     {
         return blocks.size() == 0 && merkleHash == h256() && nodes.size() == 0 &&
-               m_latestRequest == 0;
+               m_latestImportedNumber == 0;
     }
 
     void updateMerkleHash()
@@ -81,7 +77,12 @@ public:
 
     void restartSync();
 
+    SHDposSyncState getState()const { return m_state;}
+
+    ///add broadcast block, 
+    void addTempBlocks(const BlockHeader &bh);
 private:
+    void completeSync();
     bool configNode(const p2p::NodeID& id, const RLP& data);
     void continueSync(const p2p::NodeID& id);
 
@@ -96,9 +97,6 @@ private:
     ///
     std::map<p2p::NodeID, std::map<uint64_t, u256>> m_sendBlocks;
 
-    // Block numbers , block hash
-    std::map<uint64_t, h256> m_recevieBlocks;
-
     std::set<p2p::NodeID> peers;
 
     /// config status
@@ -106,13 +104,16 @@ private:
     std::map<p2p::NodeID, h256> m_nodesStatus;
 
     std::map<h256, uint64_t> m_know_blocks_hash;
+
     std::map<uint64_t, std::set<h256>> m_blocks_hash;
     std::set<h256> transactionHash;
 
 
     /// request status.
     std::map<p2p::NodeID, configState> m_unconfig;
-    syncState m_state;
+
+
+    SHDposSyncState m_state = SHDposSyncState::None;
 };
 }  // namespace brc
 }  // namespace dev

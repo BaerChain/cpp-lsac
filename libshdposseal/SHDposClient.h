@@ -49,12 +49,15 @@ public:
     ///@param super_addr : offline super_node addr
 	bool  verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const;
 
+
+    bool isSyncing() const override;
 protected:
     void rejigSealing();
 	void syncTransactionQueue();
 private:
     void init(p2p::Host & _host, int _netWorkId);
     bool isBlockSeal(uint64_t _now);
+
 
     /// check the block is follow SHDpos  in mine creater_time
     /// @paramer _ph : the last block in chain

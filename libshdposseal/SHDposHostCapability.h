@@ -55,8 +55,9 @@ public:
     };
 
 
-    SHDposSyncState status() const { return m_state; }
-    void completeSync() { m_state = SHDposSyncState::Idle; }
+    SHDposSyncState status() const ;
+    bool isSyncing() const ;
+    // void completeSync() { m_state = SHDposSyncState::Idle; }
 
     /// add
     BlockChain const& chain() const { return m_chain; }
@@ -88,7 +89,6 @@ private:
 
     std::shared_ptr<SHDposSync> m_sync;
 
-    SHDposSyncState m_state = SHDposSyncState::None;
 };
 }  // namespace brc
 }  // namespace dev

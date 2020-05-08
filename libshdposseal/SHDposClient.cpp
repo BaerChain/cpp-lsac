@@ -343,7 +343,6 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         {
             h->broadcastBlock(_info.hash());
         }
-       
     });
 
     m_tq.onReady([=]() { cwarn << "TODO , broadcast Transaction.."; });
@@ -395,5 +394,12 @@ bool dev::bacd::SHDposClient::is_sync() const
         SHDposSyncState state = h->status();
         return state != SHDposSyncState::Idle || h->bq().items().first > 10;
     }
+    return false;
+}
+
+bool dev::bacd::SHDposClient::isSyncing() const
+{
+    if (auto h = m_SHDpos_host.lock())
+        return h->isSyncing();
     return false;
 }

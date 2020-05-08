@@ -31,7 +31,7 @@ enum SHDposPacketType : unsigned
 };
 
 
-enum SHDposSyncState
+enum class SHDposSyncState
 {
     None = 0,
     Waiting,
@@ -39,6 +39,11 @@ enum SHDposSyncState
     Idle
 };
 
+
+enum class SHposAsking{
+    Request = 0x1,
+    Nothing
+};
 
 enum CreaterType
 {
