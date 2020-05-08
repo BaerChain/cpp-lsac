@@ -9,11 +9,11 @@ namespace brc
 {
 class SHDposHostcapability;
 
-enum class syncState{
+enum class syncState
+{
     sync = 0x1,
     wait
 };
-
 
 
 struct merkleState
@@ -80,6 +80,7 @@ public:
     void newBlocks(const p2p::NodeID& id, const RLP& data);
 
     void restartSync();
+
 private:
     bool configNode(const p2p::NodeID& id, const RLP& data);
     void continueSync(const p2p::NodeID& id);
@@ -90,6 +91,7 @@ private:
     uint32_t m_lastRequestNumber = 0;
     h256 m_lasttRequestHash;
     uint32_t m_lastImportedNumber = 0;
+    uint64_t m_latestImportedBlockTime = 0;
 
     ///
     std::map<p2p::NodeID, std::map<uint64_t, u256>> m_sendBlocks;
@@ -103,10 +105,9 @@ private:
     std::map<h256, merkleState> m_requestStatus;
     std::map<p2p::NodeID, h256> m_nodesStatus;
 
-    std::map<h256, uint64_t>    m_know_blocks_hash;
-    std::map<uint64_t, std::set<h256>>  m_blocks_hash;
-    std::set<h256>                      transactionHash;
-
+    std::map<h256, uint64_t> m_know_blocks_hash;
+    std::map<uint64_t, std::set<h256>> m_blocks_hash;
+    std::set<h256> transactionHash;
 
 
     /// request status.

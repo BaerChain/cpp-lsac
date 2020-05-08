@@ -75,8 +75,12 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             break;
         }
         case SHDposNewBlockHash: {
-            CP2P_LOG << "TODO SHDposNewBlocks";
-            m_sync->newBlocks(_peerID, _r);
+            if (SHDposSyncState::Idle == m_state)
+            {
+                CP2P_LOG << "SHDposNewBlocks";
+                m_sync->newBlocks(_peerID, _r);
+            }
+
             break;
         }
         default: {
@@ -134,12 +138,15 @@ void SHDposHostcapability::doBackgroundWork()
         // send
         if (m_send_blocks.size() > 0)
         {
+            CP2P_LOG << "send blocks to ";
             for (auto& itr : m_peers)
             {
                 itr.second.sendBlocksHashs(m_send_blocks);
             }
         }
     }
+    m_send_txs.clear();
+    m_send_blocks.clear();
 }
 
 

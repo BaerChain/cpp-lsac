@@ -40,7 +40,7 @@ void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
 
 void NodePeer::requestBlocks(const std::vector<h256>& ids)
 {
-    CP2P_LOG << "requestBlocks  by hash " << ids.size();
+    CP2P_LOG << "requestBlocks  by hash " << ids;
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposSyncGetBlocks, 2);
     s.append(2);
@@ -69,7 +69,7 @@ void NodePeer::sendTransactionHashs(const std::vector<h256>& hashs)
 
 void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 {
-    CP2P_LOG << "send blocks hash " << hashs.size();
+    CP2P_LOG << "send blocks hash " << hashs;
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposNewBlockHash, 1);
     s.appendVector(hashs);

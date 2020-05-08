@@ -24,7 +24,7 @@
 #include <thread>
 
 #include <boost/filesystem/path.hpp>
-
+#include <boost/signals2.hpp>
 
 namespace dev
 {

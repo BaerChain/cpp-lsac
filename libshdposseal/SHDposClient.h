@@ -70,6 +70,7 @@ private:
     bool                            m_is_firt_run = true;
     bool                            m_isSendNodeStatus = false;
     std::weak_ptr<SHDposHostcapability>  m_SHDpos_host;
+    Handler<BlockHeader const&>     m_cb_blocks;
 };
 
 SHDposClient& asDposClient(Interface& _c);

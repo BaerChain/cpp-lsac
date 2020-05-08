@@ -40,9 +40,9 @@ public:
     void onStarting() override {}
     void onStopping() override {}
     void onConnect(NodeID const& _nodeID, u256 const& _peerCapabilityVersion) override;
-    void onDisconnect(NodeID const& /*_nodeID*/) override ;
-    void broadcastBlock(const h256 &hash);
-    void broadcastTransaction(const h256 &hash);
+    void onDisconnect(NodeID const& /*_nodeID*/) override;
+    void broadcastBlock(const h256& hash);
+    void broadcastTransaction(const h256& hash);
 
     bool interpretCapabilityPacket(NodeID const& _peerID, unsigned _id, RLP const& _r) override;
 
@@ -55,15 +55,17 @@ public:
     };
 
 
-    SHDposSyncState status() const { return m_state;}
+    SHDposSyncState status() const { return m_state; }
+    void completeSync() { m_state = SHDposSyncState::Idle; }
 
-    ///add 
+    /// add
     BlockChain const& chain() const { return m_chain; }
     OverlayDB const& db() const { return m_db; }
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
 
-    NodePeer getNodePeer(const NodeID &id);
+    NodePeer getNodePeer(const NodeID& id);
+
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
     u256 m_networkId;
@@ -77,9 +79,9 @@ private:
                        ///< imported).
 
 
-    ///TODO broadcastTransaction
-    std::vector<h256>   m_send_txs; 
-    std::vector<h256>   m_send_blocks;
+    /// TODO broadcastTransaction
+    std::vector<h256> m_send_txs;
+    std::vector<h256> m_send_blocks;
 
     std::map<NodeID, NodePeer> m_peers;
     uint32_t m_version;
