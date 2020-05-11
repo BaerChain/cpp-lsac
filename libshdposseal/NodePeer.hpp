@@ -6,6 +6,18 @@ namespace dev
 {
 namespace brc
 {
+
+
+
+
+struct ProtocolData{
+  
+};
+
+
+
+
+
 class NodePeer
 {
 public:
@@ -45,6 +57,10 @@ public:
 
     void sendBlocks(const std::vector<bytes>& blocks);
 
+    void requestState();
+    void sendState(u256 height, h256 genesisHash, h256 latestBlock, uint32_t version);
+
+
     SHposAsking getAksing() const { return m_ask; }
     void completeAsk() { m_ask = SHposAsking::Nothing; }
 
@@ -64,6 +80,8 @@ private:
     h256 latestBlock;
     SHposAsking m_ask = SHposAsking::Nothing;
 };
+
+
 
 }  // namespace brc
 }  // namespace dev

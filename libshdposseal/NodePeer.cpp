@@ -97,6 +97,22 @@ void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 }
 
 
+void NodePeer::requestState()
+{
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDposGetState, 0);
+    m_host->sealAndSend(m_id, s);
+}
+
+void NodePeer::sendState(u256 height, h256 genesisHash, h256 latestBlock, uint32_t version)
+{
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDposUpdateState, 4)
+        << height << genesisHash << latestBlock << version;
+    m_host->sealAndSend(m_id, s);
+}
+
+
 uint64_t NodePeer::getHeight() const
 {
     return m_height;

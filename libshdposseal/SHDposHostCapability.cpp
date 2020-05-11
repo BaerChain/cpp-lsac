@@ -40,8 +40,6 @@ bool SHDposHostcapability::interpretCapabilityPacket(
         switch (_id)
         {
         case SHDposStatuspacket: {
-            CP2P_LOG << "SHDposStatuspacket";
-
             auto number = _r[0].toInt<u256>();
             auto genesisHash = _r[1].toHash<h256>();
             auto hash = _r[2].toHash<h256>();
@@ -83,6 +81,9 @@ bool SHDposHostcapability::interpretCapabilityPacket(
 
             break;
         }
+        case SHDposUpdateState:{
+            
+        }
         default: {
             CP2P_LOG << "cant resolve protocol.";
         }
@@ -102,7 +103,7 @@ void SHDposHostcapability::onDisconnect(NodeID const& id)
 }
 
 
-NodePeer SHDposHostcapability::getNodePeer(const NodeID& id)
+NodePeer &SHDposHostcapability::getNodePeer(const NodeID& id)
 {
     return m_peers[id];
 }

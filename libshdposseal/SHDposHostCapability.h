@@ -65,7 +65,7 @@ public:
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
 
-    NodePeer getNodePeer(const NodeID& id);
+    NodePeer &getNodePeer(const NodeID& id);
 
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;

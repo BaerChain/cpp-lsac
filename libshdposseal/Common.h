@@ -27,6 +27,8 @@ enum SHDposPacketType : unsigned
     SHDposTXHash,
     SHDposGetTX,
     SHDposNewBlockHash,
+    SHDposGetState,
+    SHDposUpdateState,
     SHDposPacketCount
 };
 
