@@ -68,8 +68,13 @@ bool SHDposHostcapability::interpretCapabilityPacket(
             m_sync->blockHeaders(_peerID, _r);
             break;
         }
-        case SHDposTXHash: {
-            CP2P_LOG << "TODO SHDposGetTX";
+        case SHDposBroadcastTXHash: {
+            CP2P_LOG << "get transaction by hash.";
+            m_sync->getTransaction(_peerID, _r);
+            break;
+        }
+        case SHDposGetTransactions: {
+            CP2P_LOG << "TDO Import transaction.";
             break;
         }
         case SHDposNewBlockHash: {
@@ -81,8 +86,25 @@ bool SHDposHostcapability::interpretCapabilityPacket(
 
             break;
         }
-        case SHDposUpdateState:{
-            
+        case SHDposGetState: {
+            auto header = m_chain.info();
+            m_peers[_peerID].sendState(
+                header.number(), m_chain.genesisHash(), header.hash(), m_version);
+            break;
+        }
+        case SHDposUpdateState: {
+            CP2P_LOG << "update state, continue sync.";
+            auto number = _r[0].toInt<u256>();
+            auto genesisHash = _r[1].toHash<h256>();
+            auto hash = _r[2].toHash<h256>();
+            auto version = _r[3].toInt<uint32_t>();
+            peer.completeAsk();
+            peer.setPeerStatus(number, genesisHash, hash, version);
+            if (SHDposSyncState::Idle != m_sync->getState())
+            {
+                m_sync->restartSync();
+            }
+            break;
         }
         default: {
             CP2P_LOG << "cant resolve protocol.";
@@ -98,12 +120,14 @@ bool SHDposHostcapability::interpretCapabilityPacket(
 
 void SHDposHostcapability::onDisconnect(NodeID const& id)
 {
+    CP2P_LOG << "disconnect " << id ;
+    
     m_peers.erase(id);
     m_host->disconnect(id, p2p::UserReason);
 }
 
 
-NodePeer &SHDposHostcapability::getNodePeer(const NodeID& id)
+NodePeer& SHDposHostcapability::getNodePeer(const NodeID& id)
 {
     return m_peers[id];
 }
@@ -116,7 +140,7 @@ void SHDposHostcapability::broadcastBlock(const h256& hash)
 
 void SHDposHostcapability::broadcastTransaction(const h256& hash)
 {
-    m_send_txs.push_back(hash);
+    m_send_txs.insert(hash);
 }
 
 void SHDposHostcapability::doBackgroundWork()
@@ -130,10 +154,17 @@ void SHDposHostcapability::doBackgroundWork()
     {
         if (m_send_txs.size() > 0)
         {
+            std::vector<h256> stx;
+            for (auto& itr : m_send_txs)
+            {
+                stx.push_back(itr);
+            }
+
             for (auto& itr : m_peers)
             {
-                itr.second.sendTransactionHashs(m_send_txs);
+                itr.second.sendTransactionHashs(stx);
             }
+            m_sync->addKnowBlock(stx);
         }
 
         // send
@@ -144,6 +175,7 @@ void SHDposHostcapability::doBackgroundWork()
             {
                 itr.second.sendBlocksHashs(m_send_blocks);
             }
+            m_sync->addKnowTransaction(m_send_blocks);
         }
     }
     m_send_txs.clear();

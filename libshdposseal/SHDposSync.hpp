@@ -16,12 +16,13 @@ struct merkleState
     h256 merkleHash;
     std::map<uint64_t, BlockHeader> configBlocks;
     std::map<uint64_t, bytes> cacheBlocks;
-    std::vector<p2p::NodeID> nodes;
+    std::set<p2p::NodeID> nodes;
 
     bool haveCommon = false;
     uint64_t latestRequestNumber = 0;
-    uint64_t latestImportedNumber = 0;
     uint64_t latestConfigNumber = 0;
+    h256 latestConfigHash;
+    BlockHeader latestImportBlock; 
 
     void updateMerkleHash()
     {
@@ -67,7 +68,14 @@ public:
 
     void addNode(const p2p::NodeID& id);
 
+    ///other node get block .
     void getBlocks(const p2p::NodeID& id, const RLP& data);
+    ///other node get transaction.
+    void getTransaction(const p2p::NodeID &id, const RLP &data);
+
+    ///get transaction from node.
+    void importedTransaction(const p2p::NodeID &id, const RLP &data);
+
     void blockHeaders(const p2p::NodeID& id, const RLP& data);
     void newBlocks(const p2p::NodeID& id, const RLP& data);
 
@@ -83,10 +91,17 @@ public:
     */
     void restartSync();
 
+    void addKnowBlock(const std::vector<h256>& hash);
+    void addKnowTransaction(const std::vector<h256>& hash);
+
+    void removeNode(const p2p::NodeID &id);
 
 private:
     //
     h256 collectBlock(const p2p::NodeID& id, const RLP& data);
+
+    ///@param expire  expire time.
+    void clearTemp(uint64_t expire = 60 * 1000);
 
 
     void completeSync();
@@ -105,15 +120,14 @@ private:
 
     /// h256 block hash
     /// @param std::pair<bytes, uint64_t>
-    ///         bytes : block data.
     ///         uint64_t: block time.  use for remove
-    std::map < h256, std::pair<bytes, uint64_t> m_know_blocks_hash;
+    std::map<h256, uint64_t> m_know_blocks_hash;
 
     /// h256 transaction hash
     /// @param std::pair<bytes, uint64_t>
     ///         bytes : transaction data.
     ///         uint64_t: block time.  use for remove
-    std::map<h256, std::pair<bytes, uint64_t>> transactionHash;
+    std::map<h256, uint64_t> m_know_transactionHash;
 
     SHDposSyncState m_state = SHDposSyncState::None;
 

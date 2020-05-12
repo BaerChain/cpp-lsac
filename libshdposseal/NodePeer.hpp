@@ -43,7 +43,8 @@ public:
     /*
     @param hash   transaction hash.
     */
-    void sendTransactionHashs(const std::vector<h256>& hashs);
+    void sendTransactionHashs(const std::vector<h256> &hashs);
+    void sendTransactionBody(const std::vector<bytes> &data);
 
     /*
     @param

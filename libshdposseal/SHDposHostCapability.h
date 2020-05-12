@@ -55,8 +55,8 @@ public:
     };
 
 
-    SHDposSyncState status() const ;
-    bool isSyncing() const ;
+    SHDposSyncState status() const;
+    bool isSyncing() const;
     // void completeSync() { m_state = SHDposSyncState::Idle; }
 
     /// add
@@ -64,8 +64,8 @@ public:
     OverlayDB const& db() const { return m_db; }
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
-
-    NodePeer &getNodePeer(const NodeID& id);
+    TransactionQueue const& Tq() const { return m_tq; }
+    NodePeer& getNodePeer(const NodeID& id);
 
 private:
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
@@ -81,14 +81,13 @@ private:
 
 
     /// TODO broadcastTransaction
-    std::vector<h256> m_send_txs;
+    h256Hash m_send_txs;
     std::vector<h256> m_send_blocks;
 
     std::map<NodeID, NodePeer> m_peers;
     uint32_t m_version;
 
     std::shared_ptr<SHDposSync> m_sync;
-
 };
 }  // namespace brc
 }  // namespace dev
