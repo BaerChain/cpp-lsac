@@ -33,6 +33,7 @@ void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
     {
         return;
     }
+    m_ask = SHposAsking::Request;
     CP2P_LOG << "requestBlocks  by number " << ids.size();
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposSyncGetBlocks, 2);
@@ -48,6 +49,7 @@ void NodePeer::requestBlocks(const std::vector<h256>& ids)
     {
         return;
     }
+    m_ask = SHposAsking::Request;
     CP2P_LOG << "requestBlocks  by hash " << ids;
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposSyncGetBlocks, 2);
@@ -59,10 +61,6 @@ void NodePeer::requestBlocks(const std::vector<h256>& ids)
 
 void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
 {
-    if (checkRequest())
-    {
-        return;
-    }
     CP2P_LOG << "send blocks   " << blocks.size();
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposSyncBlockHeaders, 1);
@@ -72,10 +70,6 @@ void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
 
 void NodePeer::sendTransactionHashs(const std::vector<h256>& hashs)
 {
-    if (checkRequest())
-    {
-        return;
-    }
     CP2P_LOG << "send tx hash " << hashs.size();
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposTXHash, 1);
@@ -85,10 +79,6 @@ void NodePeer::sendTransactionHashs(const std::vector<h256>& hashs)
 
 void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 {
-    if (checkRequest())
-    {
-        return;
-    }
     CP2P_LOG << "send blocks hash " << hashs;
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposNewBlockHash, 1);
@@ -99,6 +89,11 @@ void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 
 void NodePeer::requestState()
 {
+    if (checkRequest())
+    {
+        return;
+    }
+    m_ask = SHposAsking::Request;
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposGetState, 0);
     m_host->sealAndSend(m_id, s);

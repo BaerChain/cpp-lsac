@@ -15,10 +15,10 @@ struct merkleState
 {
     h256 merkleHash;
     std::map<uint64_t, BlockHeader> configBlocks;
-    std::map<uint64_t, BlockHeader> cacheBlocks;
+    std::map<uint64_t, bytes> cacheBlocks;
     std::vector<p2p::NodeID> nodes;
 
-    bool haveCommod = false;
+    bool haveCommon = false;
     uint64_t latestRequestNumber = 0;
     uint64_t latestImportedNumber = 0;
     uint64_t latestConfigNumber = 0;
@@ -56,7 +56,7 @@ struct merkleState
 struct configState
 {
     p2p::NodeID id;
-    std::map<h256, std::vector<uint64_t>> request_blocks;
+    std::vector<uint64_t> request_blocks;
 };
 
 
@@ -83,6 +83,7 @@ public:
     */
     void restartSync();
 
+
 private:
     //
     h256 collectBlock(const p2p::NodeID& id, const RLP& data);
@@ -102,10 +103,17 @@ private:
     /// request status.
     std::map<p2p::NodeID, configState> m_unconfig;
 
+    /// h256 block hash
+    /// @param std::pair<bytes, uint64_t>
+    ///         bytes : block data.
+    ///         uint64_t: block time.  use for remove
+    std::map < h256, std::pair<bytes, uint64_t> m_know_blocks_hash;
 
-    std::map<h256, uint64_t> m_know_blocks_hash;
-    std::set<h256> transactionHash;
-
+    /// h256 transaction hash
+    /// @param std::pair<bytes, uint64_t>
+    ///         bytes : transaction data.
+    ///         uint64_t: block time.  use for remove
+    std::map<h256, std::pair<bytes, uint64_t>> transactionHash;
 
     SHDposSyncState m_state = SHDposSyncState::None;
 
