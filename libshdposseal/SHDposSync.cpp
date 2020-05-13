@@ -229,6 +229,7 @@ h256 SHDposSync::collectBlock(const p2p::NodeID& id, const RLP& data)
     {
         if (end_block.number() > requestState.latestConfigNumber)
         {
+           
             std::vector<uint64_t> requestNumber;
             uint64_t re_end = std::min(
                 requestState.latestConfigNumber + MAX_REQUEST_BLOKCS, (uint64_t)end_block.number());
@@ -236,7 +237,7 @@ h256 SHDposSync::collectBlock(const p2p::NodeID& id, const RLP& data)
             {
                 requestNumber.push_back(start);
             }
-
+             CP2P_LOG << "end_block.number() > requestState.latestConfigNumber  " << requestNumber;
             m_host.getNodePeer(id).requestBlocks(requestNumber);
         }
     }
@@ -556,9 +557,13 @@ void SHDposSync::removeNode(const p2p::NodeID& id)
     state.nodes.erase(id);
     if (state.nodes.size() == 0)
     {
+        CP2P_LOG << "remove m_requestStatus " << merkle;
         m_requestStatus.erase(merkle);
     }
     m_nodesStatus.erase(id);
+
+     CP2P_LOG << "remove m_requestStatus " << m_requestStatus.size();
+     CP2P_LOG << "remove m_requestStatus " << m_nodesStatus.size();
 }
 
 }  // namespace brc

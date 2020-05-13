@@ -121,7 +121,7 @@ bool SHDposHostcapability::interpretCapabilityPacket(
 void SHDposHostcapability::onDisconnect(NodeID const& id)
 {
     CP2P_LOG << "disconnect " << id ;
-    
+    m_sync->removeNode(id);
     m_peers.erase(id);
     m_host->disconnect(id, p2p::UserReason);
 }
