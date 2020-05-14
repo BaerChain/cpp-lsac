@@ -22,7 +22,7 @@ struct merkleState
     uint64_t latestRequestNumber = 0;
     uint64_t latestConfigNumber = 0;
     h256 latestConfigHash;
-    BlockHeader latestImportBlock; 
+    BlockHeader latestImportBlock;
 
     void updateMerkleHash()
     {
@@ -61,6 +61,8 @@ struct configState
 };
 
 
+
+
 class SHDposSync
 {
 public:
@@ -68,13 +70,13 @@ public:
 
     void addNode(const p2p::NodeID& id);
 
-    ///other node get block .
+    /// other node get block .
     void getBlocks(const p2p::NodeID& id, const RLP& data);
-    ///other node get transaction.
-    void getTransaction(const p2p::NodeID &id, const RLP &data);
+    /// other node get transaction.
+    void getTransaction(const p2p::NodeID& id, const RLP& data);
 
-    ///get transaction from node.
-    void importedTransaction(const p2p::NodeID &id, const RLP &data);
+    /// get transaction from node.
+    void importedTransaction(const p2p::NodeID& id, const RLP& data);
 
     void blockHeaders(const p2p::NodeID& id, const RLP& data);
     void newBlocks(const p2p::NodeID& id, const RLP& data);
@@ -94,11 +96,19 @@ public:
     void addKnowBlock(const std::vector<h256>& hash);
     void addKnowTransaction(const std::vector<h256>& hash);
 
-    void removeNode(const p2p::NodeID &id);
+    void removeNode(const p2p::NodeID& id);
 
 private:
+    /// sync block
+    void syncBlock(const p2p::NodeID& id, const RLP& data);
+
+    ///
+    void processBlock(const p2p::NodeID& id, const RLP& data);
+
     //
-    h256 collectBlock(const p2p::NodeID& id, const RLP& data);
+    h256 collectBlockSync(const p2p::NodeID& id, const RLP& data);
+
+    bool importedBlock(const bytes& data);
 
     ///@param expire  expire time.
     void clearTemp(uint64_t expire = 60 * 1000);
@@ -118,6 +128,15 @@ private:
     /// request status.
     std::map<p2p::NodeID, configState> m_unconfig;
 
+
+    SHDposSyncState m_state = SHDposSyncState::None;
+
+    /// temp blocks for import on complte sync.
+    std::map<h256, bytes> m_blocks;
+    std::map<uint64_t, h256> m_number_hash;
+    BlockHeader         m_latestImportBlock;
+
+
     /// h256 block hash
     /// @param std::pair<bytes, uint64_t>
     ///         uint64_t: block time.  use for remove
@@ -128,10 +147,6 @@ private:
     ///         bytes : transaction data.
     ///         uint64_t: block time.  use for remove
     std::map<h256, uint64_t> m_know_transactionHash;
-
-    SHDposSyncState m_state = SHDposSyncState::None;
-
-    uint64_t m_lastImportedNumber;
 };
 }  // namespace brc
 }  // namespace dev
