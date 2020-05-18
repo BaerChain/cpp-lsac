@@ -87,7 +87,17 @@ void NodePeer::sendTransactionBody(const std::vector<bytes>& data)
 
 void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 {
+    std::vector<h256> sends;
+    for(auto const& h : hashs){
+        if(knowBlock(h))
+            continue;
+        makeBlockKonw(h);
+        sends.emplace_back(h);
+    }
+    if (sends.empty())
+        return;
     CP2P_LOG << "send blocks hash " << hashs;
+    CP2P_LOG << "send blocks:" << hashs.size();
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposNewBlockHash, 1);
     s.appendVector(hashs);

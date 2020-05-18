@@ -51,7 +51,7 @@ public:
     virtual void doBackgroundWork() override;
     virtual std::chrono::milliseconds backgroundWorkInterval() const override
     {
-        return std::chrono::milliseconds{10};
+        return std::chrono::milliseconds{500};
     };
 
 

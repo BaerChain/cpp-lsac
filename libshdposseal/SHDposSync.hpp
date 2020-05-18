@@ -118,9 +118,9 @@ private:
     bool configNode(const p2p::NodeID& id, const RLP& data);
     void continueSync(const p2p::NodeID& id);
 
+    bool isKnowInChain(h256 const& _hash) const;
+
     SHDposHostcapability& m_host;
-
-
     std::set<p2p::NodeID> peers;
     /// config status
     std::map<h256, merkleState> m_requestStatus;
