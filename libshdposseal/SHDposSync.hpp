@@ -58,6 +58,7 @@ struct configState
 {
     p2p::NodeID id;
     std::vector<uint64_t> request_blocks;
+    uint64_t  height = 0;
 };
 
 
