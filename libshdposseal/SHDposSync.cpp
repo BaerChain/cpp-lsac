@@ -44,7 +44,7 @@ void SHDposSync::addNode(const p2p::NodeID& id)
         }
         configState cs;
         cs.id = id;
-        cs.height = height;
+        cs.height = node_peer.getHeight();
         cs.request_blocks = request_blocks;
         m_unconfig[id] = cs;
 
@@ -75,6 +75,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
                                                 m_host.chain().numberHash(unconfig.request_blocks[0])) ||
                                                 m_latestImportBlock.number() == 0)
     {
+        CP2P_LOG << "m_latestImportBlock.number() | unconfig.height):" << m_latestImportBlock.number()<<" | "<<unconfig.height;
         if(m_latestImportBlock.number()  >= unconfig.height){
             // caculate merkle hash.
             m_unconfig.erase(id);
@@ -255,6 +256,10 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
         try
         {
             BlockHeader bh(itr);
+            // if the block is imported continue
+            if(m_latestImportBlock.number() <=bh.number() && m_host.chain().isKnown(bh.hash())){
+                continue;
+            }
             m_number_hash[bh.number()] = bh.hash();
             m_blocks[bh.hash()] = itr;
             m_host.getNodePeer(id).makeBlockKonw(bh.hash());
@@ -274,7 +279,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
     {
         BlockHeader bh(m_blocks[begin->second]);
         CP2P_LOG << "m_lastImportedNumber: " << m_latestImportBlock.number() << " : " << bh.number();
-        if (m_latestImportBlock.number() + 1 == bh.number())
+        if (m_latestImportBlock.number() + 1 == bh.number() || m_host.chain().isKnown(bh.parentHash()))
         {
             // import block.
             CP2P_LOG << "will import block ";
