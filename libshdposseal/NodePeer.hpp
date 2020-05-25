@@ -41,6 +41,12 @@ public:
     void requestBlocks(const std::vector<h256>& ids);
 
     /*
+     meaasge for nodes connection and check
+    @ param ids
+    */
+    void requestNodeConfig(const std::vector<uint64_t>& ids);
+
+    /*
     @param hash   transaction hash.
     */
     void sendTransactionHashs(const std::vector<h256> &hashs);

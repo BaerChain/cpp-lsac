@@ -36,7 +36,7 @@ void SHDposSync::addNode(const p2p::NodeID& id)
             height -= 12;
 
             /// m_lastImportedNumber, 1/4, 1/2, 3/4, height -12.
-            request_blocks.emplace_back(m_latestImportBlock.number() > 0 ? m_latestImportBlock.number() : 1);
+            request_blocks.emplace_back(m_latestImportBlock.number() <= height ? m_latestImportBlock.number() : 1);
             request_blocks.emplace_back(height / 4);
             request_blocks.emplace_back(height / 2);
             request_blocks.emplace_back(height * 3 / 4);
@@ -68,12 +68,12 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
     {
         BlockHeader b(itr);
         blockinfo[b.number()] = b;
+        CP2P_LOG << " number:" << b.number() << " hash"<< b.hash();
     }
-
+    // import, 1/4, 2/4, 3/4, height
     // config common hash
-    if ((blockinfo[unconfig.request_blocks[0]].hash() ==
-                                                m_host.chain().numberHash(unconfig.request_blocks[0])) ||
-                                                m_latestImportBlock.number() == 0)
+    if ((blockinfo[unconfig.request_blocks[0]].hash() == m_host.chain().numberHash(unconfig.request_blocks[0])) ||
+                                                        m_latestImportBlock.number() == 0)
     {
         CP2P_LOG << "m_latestImportBlock.number() | unconfig.height):" << m_latestImportBlock.number()<<" | "<<unconfig.height;
         if(m_latestImportBlock.number()  >= unconfig.height){
@@ -85,7 +85,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
         // set the sync state
         m_state = SHDposSyncState::Sync;
 
-        if (0 == m_requestStatus.size())
+        //if (0 == m_requestStatus.size())
         {
             merkleState ms;
 
@@ -136,8 +136,6 @@ void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
     {
         return;
     }
-
-
     std::vector<bytes> blocks;
 
     /// get block by number
@@ -256,13 +254,13 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
         try
         {
             BlockHeader bh(itr);
+            m_host.getNodePeer(id).makeBlockKonw(bh.hash());
             // if the block is imported continue
             if(m_latestImportBlock.number() <=bh.number() && m_host.chain().isKnown(bh.hash())){
                 continue;
             }
             m_number_hash[bh.number()] = bh.hash();
             m_blocks[bh.hash()] = itr;
-            m_host.getNodePeer(id).makeBlockKonw(bh.hash());
         }
         catch (const std::exception& e)
         {
@@ -306,6 +304,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
         else if (m_latestImportBlock.number() > bh.number())
         {
             CP2P_LOG << "TDDO..";
+            m_number_hash.clear();
         }
         else
         {

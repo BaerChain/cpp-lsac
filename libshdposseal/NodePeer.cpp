@@ -26,6 +26,20 @@ void NodePeer::setPeerStatus(u256 height, h256 genesisHash, h256 latestBlock, ui
     m_version = version;
 }
 
+void NodePeer::requestNodeConfig(const std::vector<uint64_t>& ids)
+{
+    if (checkRequest())
+    {
+        return;
+    }
+    m_ask = SHposAsking::Request;
+    CP2P_LOG << "requestNodeConfig  by number " << ids.size();
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDpodUpNodeConfig, 2);
+    s.append(1);
+    s.appendVector(ids);
+    m_host->sealAndSend(m_id, s);
+}
 
 void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
 {
