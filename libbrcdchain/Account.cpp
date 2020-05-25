@@ -188,6 +188,7 @@ void Account::try_new_snapshot(u256 _rounds) {
         }
     }
     m_vote_sapshot.m_latest_round = _rounds;
+    changed();
 }
 
 VoteSnapshot Account::try_new_temp_snapshot(u256 _rounds){
