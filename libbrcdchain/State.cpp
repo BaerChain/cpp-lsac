@@ -235,6 +235,10 @@ Account *State::account(Address const &_addr) {
         i.first->second.initGasPrice(_b);
     }
 
+    ///reset the changed state
+    if(m_curr_number >= config::gasPriceHeight()){
+        i.first->second.untouch();
+    }
     return &i.first->second;
 }
 
