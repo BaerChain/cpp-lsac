@@ -89,6 +89,8 @@ namespace dev
 
                 /// the height must bigger newChangeHeight about gasPriceHeight
                 static int64_t gasPriceHeight();
+
+                static u256 initialGasPrice();
         private:
             config(){}
             //~config(){}

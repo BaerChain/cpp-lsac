@@ -1047,6 +1047,15 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
 Json::Value Client::getAveragePrice(BlockNumber _block)  {
     Block _b = blockByNumber(_block);
     // cwarn << "    "<< _b.info().number();
+
+    if(_b.info().number() <= config::gasPriceHeight()){
+        Json::Value _ret;
+        _ret["minimumGasPrice"] = toJS(config::initialGasPrice());
+        _ret["recommendGasPrice"] = toJS(config::initialGasPrice() * 12 / 10);
+        _ret["fastGasPrice"] = toJS(config::initialGasPrice() * 15 / 10);
+        return _ret;
+    }
+
     Transactions _trxs = pending();
     u256 _pendingTrxGasPrice = 0;
     for (auto const& _trx : _trxs)
