@@ -206,7 +206,7 @@ void dev::bacd::SHDposClient::rejigSealing()
         if (m_is_firt_run)
         {
             m_is_firt_run = false;
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));  // sleep : wait to sync
+            std::this_thread::sleep_for(std::chrono::milliseconds(m_params.blockInterval*2));  // sleep : wait to sync
             return;
         }
 
@@ -341,7 +341,8 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         auto h = m_SHDpos_host.lock();
         if (h)
         {
-            h->broadcastBlock(_info.hash());
+            h->OnBlockImport(_info);
+            //TODO update lastImport
         }
     });
 
@@ -350,6 +351,10 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
 
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);
+
+    if(auto h = m_SHDpos_host.lock()){
+        h->setBlockInterval(m_params.blockInterval);
+    }
 }
 
 bool dev::bacd::SHDposClient::isBlockSeal(uint64_t _now)

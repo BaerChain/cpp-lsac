@@ -54,6 +54,15 @@ public:
         return std::chrono::milliseconds{10};
     };
 
+    void setBlockInterval(int64_t _time){
+        if(m_sync)
+            m_sync->setBlockInterval(_time);
+    }
+
+    void OnBlockImport(BlockHeader const& _info){
+        broadcastBlock(_info.hash());
+        m_sync->setLatestImportBlock(_info);
+    }
 
     SHDposSyncState status() const;
     bool isSyncing() const;

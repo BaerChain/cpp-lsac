@@ -29,7 +29,7 @@ void SHDposSync::addNode(const p2p::NodeID& id)
         std::vector<uint64_t> request_blocks;
         if (12 >= height)
         {
-            request_blocks.emplace_back(1);
+            request_blocks.emplace_back(0);
         }
         else
         {
@@ -78,6 +78,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
         if(m_latestImportBlock.number()  >= unconfig.height){
             // caculate merkle hash.
             m_unconfig.erase(id);
+            CP2P_LOG << " config success...";
             return true;
         }
         // set the sync state
@@ -110,7 +111,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
 
             // caculate merkle hash.
             m_unconfig.erase(id);
-
+            CP2P_LOG << " config success..." << " state: SYNC...";
             m_nodesStatus[id] = ms.merkleHash;
             m_requestStatus[ms.merkleHash] = ms;
 
@@ -120,11 +121,11 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
     else
     {
         // find common hash.
+        m_unconfig.erase(id);
     }
 
     return true;
 }
-
 
 void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
 {
@@ -191,11 +192,10 @@ h256 SHDposSync::collectBlockSync(const p2p::NodeID& id, const RLP& data)
     auto& hash = m_nodesStatus[id];
     auto& requestState = m_requestStatus[hash];     // if not has value return null_struct
     requestState.latestImportBlock = m_host.chain().info();
-
+    requestState.latestConfigNumber = std::max(requestState.latestConfigNumber, (uint64_t)requestState.latestImportBlock.number());
     std::vector<bytes> blocks = data[0].toVector<bytes>();
     h256 late_hash = requestState.latestImportBlock.hash();
     CP2P_LOG << "late_hash " << late_hash;
-    bool find_all = false;
     for (size_t i = 0; i < blocks.size(); i++)
     {
         BlockHeader b(blocks[i]);
@@ -212,28 +212,29 @@ h256 SHDposSync::collectBlockSync(const p2p::NodeID& id, const RLP& data)
     }
 
     BlockHeader end_block(blocks.back());
-
     if (end_block.number() != requestState.latestConfigNumber)
     {
         CP2P_LOG << "find receive block end " << end_block.number() << " hash " << end_block.hash()
                  << " config: " << requestState.latestConfigNumber << "  start "
                  << BlockHeader(blocks.front()).number();
         std::vector<uint64_t> requestNumber;
-        uint64_t re_end = std::min(
-            requestState.latestConfigNumber + MAX_REQUEST_BLOKCS, (uint64_t)end_block.number());
+        uint64_t re_end = std::min( requestState.latestConfigNumber + MAX_REQUEST_BLOKCS, (uint64_t)end_block.number());
 
         for (uint64_t start = requestState.latestConfigNumber; start <= re_end; start++)
         {
             requestNumber.push_back(start);
         }
         CP2P_LOG << "requestNumber " << requestNumber;
+        requestState.latestRequestNumber = re_end;
         m_host.getNodePeer(id).requestBlocks(requestNumber);
     }
 
     return hash;
 }
+
 void SHDposSync::blockHeaders(const p2p::NodeID& id, const RLP& data)
 {
+    CP2P_LOG << " state:" << (int) m_state << " uconfig:" << m_unconfig.count(id);
     if (SHDposSyncState::Idle == m_state && !m_unconfig.count(id))
     {
         processBlock(id, data);
@@ -242,7 +243,7 @@ void SHDposSync::blockHeaders(const p2p::NodeID& id, const RLP& data)
     {
         syncBlock(id, data);
     }
-    clearTemp();
+    //clearTemp();
 }
 
 void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
@@ -286,6 +287,8 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                     {
                         CP2P_LOG << "import block error. TODO.";
                         return;
+                    } else{
+                        m_requestStatus[m_nodesStatus[id]].latestImportBlock = m_latestImportBlock;
                     }
                 }
                 else
@@ -293,7 +296,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                     CP2P_LOG << " TODO.......";
                 }
             }
-           
+           clearTemp();
         }
         else if (m_latestImportBlock.number() > bh.number())
         {
@@ -306,12 +309,12 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
             if (parent_bytes.size() == 0)
             {
                 /// go to get parent.
-                m_state =SHDposSyncState ::Sync;
+                //m_state =SHDposSyncState ::Sync;
                 std::vector<h256> hashs;
                 hashs.push_back(bh.parentHash());
                 CP2P_LOG << "request hashs :" << hashs;
                 m_host.getNodePeer(id).requestBlocks(hashs);
-                collectBlockSync(id, data);
+                //collectBlockSync(id, data);
             }
         }
     }
@@ -409,9 +412,8 @@ void SHDposSync::continueSync(const p2p::NodeID& id)
         BlockHeader bh = requestState.latestImportBlock;
         if (bh.timestamp() != -1)
         {
-            CP2P_LOG << "now " << utcTimeMilliSec() << " latest import " << bh.timestamp()
-                     << " diff " << utcTimeMilliSec() - bh.timestamp();
-            if (utcTimeMilliSec() - bh.timestamp() < 20 * 1000)
+            //CP2P_LOG << "now " << utcTimeMilliSec() << " latest import " << bh.timestamp()<< " diff " << utcTimeMilliSec() - bh.timestamp();
+            if (utcTimeMilliSec() - bh.timestamp() < getBlockInterval()*2)
             {
                 completeSync();
                 return;
@@ -435,7 +437,7 @@ void SHDposSync::continueSync(const p2p::NodeID& id)
     auto peer_height = m_host.getNodePeer(id).getHeight();
     if (peer_height <= start_requrest)
     {
-        m_host.getNodePeer(id).requestState();
+        //m_host.getNodePeer(id).requestState();
         return;
     }
     if (peer_height <= end_request)
@@ -445,7 +447,7 @@ void SHDposSync::continueSync(const p2p::NodeID& id)
 
     std::vector<uint64_t> numbers;
 
-    for (auto i = start_requrest; i < end_request; i++)
+    for (auto i = start_requrest; i <= end_request; i++)
     {
         numbers.push_back(i);
     }
@@ -504,9 +506,13 @@ void SHDposSync::completeSync()
 {
     CP2P_LOG << "complete sync";
     m_state = SHDposSyncState::Idle;
-    m_requestStatus.clear();
+    //m_requestStatus.clear();
     m_nodesStatus.clear();
     m_unconfig.clear();
+    for (auto & n : m_requestStatus){
+        n.second.configBlocks.clear();
+        n.second.cacheBlocks.clear();
+    }
 
   
 }
@@ -624,7 +630,7 @@ bool SHDposSync::importedBlock(const bytes& data)
     switch (import_result)
     {
     case ImportResult::Success: {
-        m_latestImportBlock = BlockHeader(data);
+        //m_latestImportBlock = BlockHeader(data);
         return true;
     }
     case ImportResult::UnknownParent: {
@@ -669,9 +675,10 @@ bool SHDposSync::importedBlock(const bytes& data)
     return false;
 }
 
-    bool SHDposSync::isKnowInChain(h256 const& _hash) const {
-        auto header = m_host.chain().block(_hash);
-        return !header.empty();
-    }
+bool SHDposSync::isKnowInChain(h256 const& _hash) const {
+    auto header = m_host.chain().block(_hash);
+    return !header.empty();
+}
+
 }  // namespace brc
 }  // namespace dev

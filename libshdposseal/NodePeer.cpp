@@ -58,7 +58,6 @@ void NodePeer::requestBlocks(const std::vector<h256>& ids)
     m_host->sealAndSend(m_id, s);
 }
 
-
 void NodePeer::sendBlocks(const std::vector<bytes>& blocks)
 {
     CP2P_LOG << "send blocks   " << blocks.size();

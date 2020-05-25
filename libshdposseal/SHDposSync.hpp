@@ -18,10 +18,8 @@ struct merkleState
     std::map<uint64_t, bytes> cacheBlocks;
     std::set<p2p::NodeID> nodes;
 
-    bool haveCommon = false;
     uint64_t latestRequestNumber = 0;
     uint64_t latestConfigNumber = 0;
-    h256 latestConfigHash;
     BlockHeader latestImportBlock;
 
     void updateMerkleHash()
@@ -99,6 +97,10 @@ public:
 
     void removeNode(const p2p::NodeID& id);
 
+    void setBlockInterval(int64_t _time) { m_block_interval = _time; }
+
+    void setLatestImportBlock(BlockHeader const& _h) { m_latestImportBlock = _h;}
+
 private:
     /// sync block
     void syncBlock(const p2p::NodeID& id, const RLP& data);
@@ -120,6 +122,8 @@ private:
     void continueSync(const p2p::NodeID& id);
 
     bool isKnowInChain(h256 const& _hash) const;
+
+    int64_t  getBlockInterval() const { return m_block_interval;}
 
     SHDposHostcapability& m_host;
     std::set<p2p::NodeID> peers;
@@ -148,6 +152,8 @@ private:
     ///         bytes : transaction data.
     ///         uint64_t: block time.  use for remove
     std::map<h256, uint64_t> m_know_transactionHash;
+
+    int64_t  m_block_interval = 0;
 };
 }  // namespace brc
 }  // namespace dev
