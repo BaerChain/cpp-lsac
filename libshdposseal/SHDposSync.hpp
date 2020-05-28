@@ -20,6 +20,7 @@ struct merkleState
 
     uint64_t latestRequestNumber = 0;
     uint64_t latestConfigNumber = 0;
+    uint64_t latestImportNumber = 0;
     BlockHeader latestImportBlock;
 
     void updateMerkleHash()
@@ -134,7 +135,7 @@ private:
     std::map<p2p::NodeID, configState> m_unconfig;
 
 
-    SHDposSyncState m_state = SHDposSyncState::None;
+    SHDposSyncState m_state = SHDposSyncState::Idle;
 
     /// temp blocks for import on complte sync.
     std::map<h256, bytes> m_blocks;
