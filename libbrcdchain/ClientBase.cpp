@@ -288,10 +288,7 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 {
     LocalisedLogEntries ret;
-    cerror << bc().number();
-    cerror << (unsigned)numberFromHash(_f.latest());
-    cerror << (unsigned)numberFromHash(_f.earliest());
-
+   
     unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
     unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
 
