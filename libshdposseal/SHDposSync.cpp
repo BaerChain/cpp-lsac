@@ -21,7 +21,7 @@ void SHDposSync::addNode(const p2p::NodeID& id)
 {
     peers.insert(id);
     auto node_peer = m_host.getNodePeer(id);
-    CP2P_LOG << "id : " << id << " height : " << node_peer.getHeight() << "c";
+    CP2P_LOG << "Add node ......id : " << id << " height : " << node_peer.getHeight() << "c";
     auto height = node_peer.getHeight();
     // config same chain.
     if (0 == m_requestStatus.size())
@@ -51,7 +51,7 @@ void SHDposSync::addNode(const p2p::NodeID& id)
     }
     else
     {
-        CP2P_LOG << "TODO.";
+        ///has old request
     }
 }
 
@@ -83,6 +83,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
         }
         // set the sync state
         m_state = SHDposSyncState::Sync;
+        /// TODO m_requestStatus.size() ==0 or !=0
         {
             merkleState ms;
 
@@ -409,6 +410,7 @@ void SHDposSync::syncBlock(const p2p::NodeID& id, const RLP& data)
             if (!importedBlock(requestState.cacheBlocks[start]))
             {
                 /// TODO
+                cwarn << " imported field number:"<< start;
                 CP2P_LOG << "imported block error. TODO";
                 break;
             }
@@ -569,10 +571,11 @@ void SHDposSync::completeSync()
     m_state = SHDposSyncState::Idle;
     m_nodesStatus.clear();
     m_unconfig.clear();
-    for (auto & n : m_requestStatus){
-        n.second.configBlocks.clear();
-        n.second.cacheBlocks.clear();
-    }
+    m_requestStatus.clear();
+//    for (auto & n : m_requestStatus){
+//        n.second.configBlocks.clear();
+//        n.second.cacheBlocks.clear();
+//    }
 
   
 }

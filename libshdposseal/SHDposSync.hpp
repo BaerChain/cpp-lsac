@@ -31,6 +31,7 @@ struct merkleState
             hash.push_back(itr.second.hash());
         }
 
+
         while (hash.size() != 1)
         {
             std::vector<h256> temp;
