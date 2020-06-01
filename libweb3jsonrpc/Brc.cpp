@@ -369,10 +369,11 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
 {
     try
     {
+        int64_t _chainId = config::chainId();
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-                                            jsToBlockNum(_blockNumber), t.chainId, FudgeFactor::Lenient);
+                                            jsToBlockNum(_blockNumber), _chainId, FudgeFactor::Lenient);
         return toJS(er.output);
     }
     catch (...)
@@ -618,7 +619,8 @@ Json::Value Brc::brc_getTransactionReceipt(string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransactionReceipt(h));
+
+        return toJson(client()->localisedTransactionReceipt(h), client()->localisedTransaction(h));
     }
     catch (...)
     {
