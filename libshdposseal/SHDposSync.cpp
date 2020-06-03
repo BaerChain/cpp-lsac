@@ -20,42 +20,88 @@ SHDposSync::SHDposSync(SHDposHostcapability& host) : m_host(host), m_state(SHDpo
 void SHDposSync::addNode(const p2p::NodeID& id)
 {
     peers.insert(id);
-    auto node_peer = m_host.getNodePeer(id);
-    CP2P_LOG << "Add node ......id : " << id << " height : " << node_peer.getHeight() << "c";
-    auto height = node_peer.getHeight();
     // config same chain.
     if (0 == m_requestStatus.size())
     {
-        std::vector<uint64_t> request_blocks;
-        if (12 >= height)
-        {
-            request_blocks.emplace_back(0);
-        }
-        else
-        {
-            /// m_lastImportedNumber, 1/4, 1/2, 3/4, height -12.
-            request_blocks.emplace_back(m_latestImportBlock.number() <= height ? m_latestImportBlock.number() : 1);
-            height -= 12;
-            request_blocks.emplace_back(height / 4);
-            request_blocks.emplace_back(height / 2);
-            request_blocks.emplace_back(height * 3 / 4);
-            request_blocks.emplace_back(height);
-        }
+        auto node_peer = m_host.getNodePeer(id);
+        CP2P_LOG << "Add node ......id : " << id << " height : " << node_peer.getHeight() << "c";
+        auto request_blocks = getRequestHeights(node_peer.getHeight());
         configState cs;
         cs.id = id;
         cs.height = node_peer.getHeight();
         cs.request_blocks = request_blocks;
         m_unconfig[id] = cs;
 
-        node_peer.requestBlocks(request_blocks);
+        node_peer.requestNodeConfig(request_blocks);
     }
     else
     {
-        ///has old request
+        ///has old requestStatus and will resuest all old_nodeStatus
+        CP2P_LOG << " m_requestStatus.size:"<< m_requestStatus.size() << "nodeId:"<< id;
+        auto & cs = m_unconfig[id];
+        cs.id = id;
+        for(auto & r : m_requestStatus){
+            cs.un_hashs.insert(r.first);
+        }
+        requestOldStatus(id);
     }
 }
 
+std::vector<uint64_t > SHDposSync::getRequestHeights(uint64_t _height){
+    std::vector<uint64_t> request_blocks;
+    uint64_t height = _height;
+    if (12 >= height)
+    {
+        request_blocks.emplace_back(0);
+    }
+    else
+    {
+        /// m_lastImportedNumber, 1/4, 1/2, 3/4, height -12.
+        request_blocks.emplace_back(m_latestImportBlock.number() <= height ? m_latestImportBlock.number() : 1);
+        height -= 12;
+        request_blocks.emplace_back(height / 4);
+        request_blocks.emplace_back(height / 2);
+        request_blocks.emplace_back(height * 3 / 4);
+        request_blocks.emplace_back(height);
+    }
+    return request_blocks;
+}
 
+void SHDposSync::requestOldStatus(const p2p::NodeID& id) {
+    if(!m_unconfig.count(id)) {
+        CP2P_LOG << " not has requestStatus...";
+        return;
+    }
+    auto &cs = m_unconfig[id];
+    if(cs.un_hashs.empty()){
+        CP2P_LOG << "all  requestStatus   is resuested...";
+        m_unconfig.erase(id);
+        return;
+    }
+    auto begin = cs.un_hashs.begin();
+    cs.request_hash = *begin;
+    cs.un_hashs.erase(begin);
+    auto request = m_requestStatus[cs.request_hash];
+    if( request.nodes.count(id)){
+        CP2P_LOG << " this node is already and skip...";
+        requestOldStatus(id);
+        return;
+    }
+
+    CP2P_LOG << "will resuest node:"<< id << " height:"<< request.fristRequestNumber;
+    auto node_peer = m_host.getNodePeer(id);
+    auto request_blocks = getRequestHeights(node_peer.getHeight());
+    cs.request_blocks = request_blocks;
+    node_peer.requestNodeConfig(request_blocks);
+}
+void SHDposSync::updateUnconfig(const p2p::NodeID& id){
+    if(!m_unconfig.count(id)){
+        return;
+    }
+    if(!m_unconfig[id].un_hashs.empty())
+        return;
+    m_unconfig.erase(id);
+}
 bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
 {
     CP2P_LOG << "config node ";
@@ -77,13 +123,15 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
         CP2P_LOG << "m_latestImportBlock.number() | unconfig.height):" << m_latestImportBlock.number()<<" | "<<unconfig.height;
         if(m_latestImportBlock.number()  >= unconfig.height){
             // caculate merkle hash.
-            m_unconfig.erase(id);
+            //m_unconfig.erase(id);
+            updateUnconfig(id);
             CP2P_LOG << " config success...";
             return true;
         }
         // set the sync state
         m_state = SHDposSyncState::Sync;
         /// TODO m_requestStatus.size() ==0 or !=0
+        if(unconfig.request_hash == h256())
         {
             merkleState ms;
 
@@ -109,12 +157,21 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
             ms.updateMerkleHash();
 
             // caculate merkle hash.
+            ms.fristRequestNumber = m_unconfig[id].height;
             m_unconfig.erase(id);
             CP2P_LOG << " config success..." << " state: SYNC...";
             m_nodesStatus[id] = ms.merkleHash;
             m_requestStatus[ms.merkleHash] = ms;
+            ms.nodes.insert(id);
 
             continueSync(id);
+        }
+        else{
+            // has more requestStatus
+            auto _hash = unconfig.request_hash;
+            unconfig.request_hash = h256();
+
+            requestOldStatus(id);
         }
     }
     else
@@ -129,23 +186,19 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
 
     return true;
 }
-
-void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
-{
+std::vector<bytes> SHDposSync::getBlocks( const RLP& data){
+    std::vector<bytes> blocks;
     size_t itemCount = data.itemCount();
-
     if (itemCount != 2)
     {
-        return;
+        return blocks;
     }
-    std::vector<bytes> blocks;
-
     /// get block by number
     if (1 == data[0].toInt())
     {
         std::vector<uint64_t> numbers = data[1].toVector<uint64_t>();
 
-        CP2P_LOG << "get blocks number " << id << " data size " << numbers.size();
+        CP2P_LOG << "get blocks number " << " data size " << numbers.size();
         uint64_t max_number = m_host.chain().info().number();
         for (uint64_t i = 0; i < numbers.size() && i < MAX_REQUEST_BLOKCS; i++)
         {
@@ -164,11 +217,11 @@ void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
             }
         }
     }
-    /// get blocks by hash
+        /// get blocks by hash
     else if (2 == data[0].toInt())
     {
         std::vector<h256> hashs = data[1].toVector<h256>();
-        CP2P_LOG << "get blocks hash " << id << " data size " << hashs;
+        CP2P_LOG << "get blocks hash " << " data size " << hashs;
         for (uint64_t i = 0; i < hashs.size() && i < MAX_REQUEST_BLOKCS; i++)
         {
             try
@@ -185,7 +238,21 @@ void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
             }
         }
     }
+    return blocks;
+}
+void SHDposSync::getBlocks(const p2p::NodeID& id, const RLP& data)
+{
+    auto blocks = getBlocks(data);
+    if(blocks.empty())
+        return;
+    CP2P_LOG << "get blocks :"<< id;
     m_host.getNodePeer(id).sendBlocks(blocks);
+}
+
+void SHDposSync::getConfigBlocks(const p2p::NodeID& id, const RLP& data){
+    auto blocks = getBlocks(data);
+    CP2P_LOG << " getConfigBlocks id:"<< id;
+    m_host.getNodePeer(id).sendConfigBlocks(blocks);
 }
 
 h256 SHDposSync::collectBlockSync(const p2p::NodeID& id, const RLP& data)
@@ -257,7 +324,8 @@ h256 SHDposSync::collectBlockSync(const p2p::NodeID& id, const RLP& data)
 void SHDposSync::blockHeaders(const p2p::NodeID& id, const RLP& data)
 {
     CP2P_LOG << " state:" << (int) m_state << " uconfig:" << m_unconfig.count(id);
-    if (SHDposSyncState::Idle == m_state && !m_unconfig.count(id))
+    //if (SHDposSyncState::Idle == m_state && !m_unconfig.count(id))
+    if (SHDposSyncState::Idle == m_state)
     {
         processBlock(id, data);
         CP2P_LOG << " process end .....";
@@ -390,12 +458,11 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
 void SHDposSync::syncBlock(const p2p::NodeID& id, const RLP& data)
 {
     /// config node state
-    if (m_unconfig.count(id))
-    {
-        configNode(id, data);
-        return;
-    }
-
+//    if (m_unconfig.count(id))
+//    {
+//        configNode(id, data);
+//        return;
+//    }
     auto merkleHash = collectBlockSync(id, data);
 
     auto& requestState = m_requestStatus[merkleHash];

@@ -45,7 +45,7 @@ public:
     @ param ids
     */
     void requestNodeConfig(const std::vector<uint64_t>& ids);
-
+    void sendConfigBlocks(const std::vector<bytes>& blocks);
     /*
     @param hash   transaction hash.
     */

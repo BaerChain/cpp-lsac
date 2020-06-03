@@ -40,6 +40,13 @@ void NodePeer::requestNodeConfig(const std::vector<uint64_t>& ids)
     s.appendVector(ids);
     m_host->sealAndSend(m_id, s);
 }
+void NodePeer::sendConfigBlocks(const std::vector<bytes>& blocks){
+    CP2P_LOG << "send  config blocks   " << blocks.size();
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDpodNodeConfig, 1);
+    s.appendVector(blocks);
+    m_host->sealAndSend(m_id, s);
+}
 
 void NodePeer::requestBlocks(const std::vector<uint64_t>& ids)
 {

@@ -21,6 +21,7 @@ struct merkleState
     uint64_t latestRequestNumber = 0;
     uint64_t latestConfigNumber = 0;
     uint64_t latestImportNumber = 0;
+    uint64_t fristRequestNumber = 0;
     BlockHeader latestImportBlock;
 
     void updateMerkleHash()
@@ -59,6 +60,8 @@ struct configState
     p2p::NodeID id;
     std::vector<uint64_t> request_blocks;
     uint64_t  height = 0;
+    std::set<h256> un_hashs;
+    h256 request_hash = h256();
 };
 
 
@@ -71,8 +74,17 @@ public:
 
     void addNode(const p2p::NodeID& id);
 
+    bool configNode(const p2p::NodeID& id, const RLP& data);
+
+    void requestOldStatus(const p2p::NodeID& id);
+
     /// other node get block .
     void getBlocks(const p2p::NodeID& id, const RLP& data);
+    std::vector<bytes> getBlocks( const RLP& data);
+
+    /// get config blocks
+    void getConfigBlocks(const p2p::NodeID& id, const RLP& data);
+
     /// other node get transaction.
     void getTransaction(const p2p::NodeID& id, const RLP& data);
 
@@ -120,12 +132,15 @@ private:
 
 
     void completeSync();
-    bool configNode(const p2p::NodeID& id, const RLP& data);
     void continueSync(const p2p::NodeID& id);
 
     bool isKnowInChain(h256 const& _hash) const;
 
     int64_t  getBlockInterval() const { return m_block_interval;}
+
+    std::vector<uint64_t > getRequestHeights(uint64_t _height);
+
+    void updateUnconfig(const p2p::NodeID& id);
 
     SHDposHostcapability& m_host;
     std::set<p2p::NodeID> peers;
@@ -134,7 +149,6 @@ private:
     std::map<p2p::NodeID, h256> m_nodesStatus;
     /// request status.
     std::map<p2p::NodeID, configState> m_unconfig;
-
 
     SHDposSyncState m_state = SHDposSyncState::Idle;
 
