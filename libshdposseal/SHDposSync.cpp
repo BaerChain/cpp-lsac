@@ -342,10 +342,12 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
             m_host.getNodePeer(id).makeBlockKonw(bh.hash());
             // if the block is imported continue
             if(m_blocks.count(bh.hash()) || m_latestImportBlock.number() <=bh.number() && m_host.chain().isKnown(bh.hash())){
+                CP2P_LOG << " is konw block:"<< bh.number() << " skip";
                 continue;
             }
             m_number_hash[bh.number()] = bh.hash();
             m_blocks[bh.hash()] = itr;
+            CP2P_LOG << " get block:" << bh.number();
         }
         catch (const std::exception& e)
         {
@@ -375,8 +377,8 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
     {
         BlockHeader bh(m_blocks[begin->second]);
         CP2P_LOG << "m_lastImportedNumber: " << m_latestImportBlock.number() << " : " << bh.number();
-        if (m_latestImportBlock.number() + 1 == bh.number() || m_host.chain().isKnown(bh.parentHash()))
-        //if (m_host.chain().isKnown(bh.parentHash()))
+        //if (m_latestImportBlock.number() + 1 == bh.number() || m_host.chain().isKnown(bh.parentHash()))
+        if (m_host.chain().isKnown(bh.parentHash()))
         {
             // import block.
             CP2P_LOG << "will import block ";
@@ -387,6 +389,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                     CP2P_LOG << "will import block " << itr.second;
                     auto import_result = m_host.bq().import(&m_blocks[itr.second]);
                     switch (import_result)
+
                     {
                         case ImportResult::Success: {
                             //m_latestImportBlock = BlockHeader(data);
@@ -420,10 +423,13 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                             CP2P_LOG << "OverbidGasPrice";
                         }
                         case ImportResult::BadChain: {
+                            CP2P_LOG << "BadChain";
                         }
                         case ImportResult::ZeroSignature: {
+                            CP2P_LOG << "ZeroSignature";
                         }
                         case ImportResult::NonceRepeat: {
+                            CP2P_LOG << "NonceRepeat";
                         }
                         default: {
                             CP2P_LOG << "unkown import block result.";

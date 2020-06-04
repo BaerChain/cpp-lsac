@@ -1300,7 +1300,7 @@ bool BlockChain::update_cache_fork_database(const dev::brc::VerifiedBlockRef &_b
 /// is true the block will best
 bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exchange_plugin &_exdb) {
     Block s(*this, _db, _exdb);
-    if(info().number()==0)
+    if(info().number()==0 || _block.info.number() == 1)
         return true;
     if (_block.info.number() >= config::replaceMinerHeight()) {
         try {
@@ -1321,13 +1321,14 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
         if (_block.info.author() != exe_miners[offset].m_addr) {
             // throw  bytes; must be
-            //cwarn << " the author:" << _block.info.author() << " can't to Seal in this time_point";
+            cwarn << " the author:" << _block.info.author() << " can't to Seal in this time_point number:"
+            <<_block.info.number() << " hash:"<<_block.info.hash() << " time:" << _block.info.timestamp();
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
     } else {
         if (standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {
             // throw
-            cwarn << " the author:" << _block.info.author() << " can't to Seal block in chain";
+            cwarn << " the standby author:" << _block.info.author() << " can't to Seal block in chain";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
         ///verify the standby Legitimacy
@@ -1335,7 +1336,7 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
         if (!verify_creater.verify_standby(state_db, _block.info.timestamp(), _block.info.author(),
                                            m_params.varlitorInterval, _block.info.number() >= config::newChangeHeight())) {
             // throw
-            //cwarn << " the standby author:" << _block.info.author() << " can't to Seal in this time_point";
+            cwarn << " the standby author:" << _block.info.author() << " can't to Seal in this time_point";
             BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
         }
     }
