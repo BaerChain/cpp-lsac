@@ -158,9 +158,11 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
                 return true;
             }
             else{
+                m_state = SHDposSyncState ::Sync;
+                CP2P_LOG << " state: SYNC...";
                 // caculate merkle hash.
                 ms.fristRequestNumber = m_unconfig[id].height;
-                CP2P_LOG << " config new resuestStatus success..." << " state: SYNC...";
+                CP2P_LOG << " config new resuestStatus success..." ;
                 m_nodesStatus[id] = ms.merkleHash;
                 m_requestStatus[ms.merkleHash] = ms;
                 ms.nodes.insert(id);
@@ -466,7 +468,6 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
 
 void SHDposSync::syncBlock(const p2p::NodeID& id, const RLP& data)
 {
-    /// config node state
     auto merkleHash = collectBlockSync(id, data);
 
     auto& requestState = m_requestStatus[merkleHash];
@@ -516,7 +517,7 @@ void SHDposSync::newBlocks(const p2p::NodeID& id, const RLP& data)
 
     for (auto& itr : _hash)
     {
-        if (!m_know_blocks_hash.count(itr))
+        if (!m_know_blocks_hash.count(itr)&& !m_host.chain().isKnown(itr))
         {
             unkownHash.push_back(itr);
         }
@@ -526,6 +527,7 @@ void SHDposSync::newBlocks(const p2p::NodeID& id, const RLP& data)
     if (unkownHash.size() > 0)
     {
         m_host.getNodePeer(id).requestBlocks(unkownHash);
+        addKnowBlock(unkownHash);
     }
 }
 
