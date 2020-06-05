@@ -82,11 +82,11 @@ void SHDposSync::requestOldStatus(const p2p::NodeID& id) {
     cs.request_hash = *begin;
     cs.un_hashs.erase(begin);
     auto request = m_requestStatus[cs.request_hash];
-    if( request.nodes.count(id)){
-        CP2P_LOG << " this node is already and skip...";
-        requestOldStatus(id);
-        return;
-    }
+//    if( request.nodes.count(id)){
+//        CP2P_LOG << " this node is already and skip...";
+//        requestOldStatus(id);
+//        return;
+//    }
 
     CP2P_LOG << "will resuest node:"<< id << " height:"<< request.fristRequestNumber;
     auto node_peer = m_host.getNodePeer(id);
@@ -155,7 +155,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
             if(m_requestStatus.count(ms.merkleHash)){
                 CP2P_LOG << "has same requestState hash:"<<ms.merkleHash;
                 m_requestStatus[ms.merkleHash].nodes.insert(id);
-                return true;
+                //return true;
             }
             else{
                 m_state = SHDposSyncState ::Sync;
@@ -178,7 +178,7 @@ bool SHDposSync::configNode(const p2p::NodeID& id, const RLP& data)
         std::vector<h256> hashs = {h.hash()};
         m_host.getNodePeer(id).requestBlocks(hashs);
     }
-
+    requestOldStatus(id);
     return true;
 }
 std::vector<bytes> SHDposSync::getBlocks( const RLP& data){
@@ -281,7 +281,6 @@ h256 SHDposSync::collectBlockSync(const p2p::NodeID& id, const RLP& data)
             requestState.cacheBlocks[b.number()] = blocks[i];
             requestState.latestConfigNumber = b.number();
             requestState.latestImportNumber = std::min(requestState.latestImportNumber, (uint64_t)b.number()-1);
-            m_host.getNodePeer(id).makeBlockKonw(b.hash());
             continue;
         }
         else{
@@ -341,7 +340,6 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
         try
         {
             BlockHeader bh(itr);
-            m_host.getNodePeer(id).makeBlockKonw(bh.hash());
             // if the block is imported continue
             if(m_blocks.count(bh.hash()) || m_latestImportBlock.number() <=bh.number() && m_host.chain().isKnown(bh.hash())){
                 CP2P_LOG << " is konw block:"<< bh.number() << " skip";
@@ -521,7 +519,6 @@ void SHDposSync::newBlocks(const p2p::NodeID& id, const RLP& data)
         {
             unkownHash.push_back(itr);
         }
-        m_host.getNodePeer(id).makeBlockKonw(itr);
     }
 
     if (unkownHash.size() > 0)
@@ -634,9 +631,6 @@ void SHDposSync::updateNodeState(const p2p::NodeID& id, const RLP& data)
 
     // TODO update peer .
 }
-
-void SHDposSync::addTempBlocks(const BlockHeader& bh) {}
-
 
 void SHDposSync::completeSync()
 {

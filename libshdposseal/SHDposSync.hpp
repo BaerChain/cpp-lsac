@@ -98,9 +98,6 @@ public:
 
     SHDposSyncState getState() const { return m_state; }
 
-    /// add broadcast block,
-    void addTempBlocks(const BlockHeader& bh);
-
     /*
     restart sync, update all node state.
     */

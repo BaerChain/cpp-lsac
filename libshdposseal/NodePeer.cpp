@@ -109,9 +109,6 @@ void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
 {
     std::vector<h256> sends;
     for(auto const& h : hashs){
-        if(knowBlock(h))
-            continue;
-        makeBlockKonw(h);
         sends.emplace_back(h);
     }
     if (sends.empty())

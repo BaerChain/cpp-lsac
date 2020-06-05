@@ -71,9 +71,6 @@ public:
     SHposAsking getAksing() const { return m_ask; }
     void completeAsk() { m_ask = SHposAsking::Nothing; }
 
-    bool knowBlock(h256 const& _hash) const { return m_know_block_hash.count(_hash);}
-    void makeBlockKonw(h256 const& _hash){ m_know_block_hash.insert(_hash);}
-
 private:
     // only for send message. check state.
     // if Request return true, else false
@@ -89,8 +86,6 @@ private:
     // block hash.
     h256 latestBlock;
     SHposAsking m_ask = SHposAsking::Nothing;
-
-    std::set<h256> m_know_block_hash;
 };
 
 
