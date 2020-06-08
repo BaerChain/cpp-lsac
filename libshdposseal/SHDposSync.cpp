@@ -481,7 +481,8 @@ void SHDposSync::syncBlock(const p2p::NodeID& id, const RLP& data)
             {
                 /// TODO
                 cwarn << " imported field number:"<< start;
-                CP2P_LOG << "imported block error. TODO";
+                CP2P_LOG << "imported block error. and will restartSync...";
+                restartSync();
                 break;
             }
             else
@@ -639,12 +640,6 @@ void SHDposSync::completeSync()
     m_nodesStatus.clear();
     m_unconfig.clear();
     m_requestStatus.clear();
-//    for (auto & n : m_requestStatus){
-//        n.second.configBlocks.clear();
-//        n.second.cacheBlocks.clear();
-//    }
-
-  
 }
 
 
