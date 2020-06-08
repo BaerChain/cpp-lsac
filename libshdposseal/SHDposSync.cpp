@@ -434,6 +434,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                         default: {
                             CP2P_LOG << "unkown import block result.";
                             clearTemp();
+                            m_host.bq().clear();
                             return;
                         }
                     }
@@ -798,6 +799,7 @@ bool SHDposSync::importedBlock(const bytes& data)
         CP2P_LOG << "unkown import block result.";
     }
     }
+    m_host.bq().clear();
     return false;
 }
 
