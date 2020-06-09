@@ -1,6 +1,4 @@
-<<<<<<< HEAD
 #include "SHDposHostCapability.h"
-
 
 namespace dev
 {
@@ -174,6 +172,7 @@ void SHDposHostcapability::doBackgroundWork()
 
             for (auto& itr : m_peers)
             {
+                CP2P_LOG << "send tarnsaction to :"<<itr.first;
                 itr.second.sendTransactionHashs(stx);
             }
             m_sync->addKnowTransaction(stx);
