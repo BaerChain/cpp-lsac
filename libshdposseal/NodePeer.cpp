@@ -113,8 +113,8 @@ void NodePeer::sendBlocksHashs(const std::vector<h256>& hashs)
     }
     if (sends.empty())
         return;
-    CP2P_LOG << "send blocks hash " << hashs;
-    CP2P_LOG << "send blocks:" << hashs.size();
+    //CP2P_LOG << "send blocks hash " << hashs;
+    //CP2P_LOG << "send blocks:" << hashs.size();
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposNewBlockHash, 1);
     s.appendVector(hashs);
@@ -161,7 +161,7 @@ bool NodePeer::checkRequest() const
 {
     if (SHposAsking::Request == m_ask)
     {
-        CP2P_LOG << "cant requeset, this peer is request";
+        CP2P_LOG << "can't requeset, this peer is request";
         return true;
     }
     return false;

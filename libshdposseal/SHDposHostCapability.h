@@ -97,6 +97,8 @@ private:
     uint32_t m_version;
 
     std::shared_ptr<SHDposSync> m_sync;
+
+    int64_t  m_back_fork_time = 0;    // ms
 };
 }  // namespace brc
 }  // namespace dev

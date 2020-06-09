@@ -10,6 +10,29 @@ namespace brc
 {
 class SHDposHostcapability;
 
+struct forkBack
+{
+    int64_t end_fork =0;
+    int64_t import_num= 0;
+    int64_t begin_frok =0;
+    std::map<h256, bytes> m_blocks;
+    std::map<uint64_t, h256> m_number_hash;
+
+
+    void upFork(int64_t number){
+        end_fork = std::max(end_fork, number);
+        begin_frok = std::min(begin_frok, number);
+    }
+    void setImport(int64_t number){
+        import_num = number;
+    }
+    void upBlocks(BlockHeader const& h, bytes const& bs){
+        if(m_number_hash.count(h.number()))
+            return;
+        m_number_hash[h.number()] = h.hash();
+        m_blocks[h.hash()] = bs;
+    }
+};
 
 struct merkleState
 {
@@ -112,6 +135,9 @@ public:
 
     void setLatestImportBlock(BlockHeader const& _h) { m_latestImportBlock = _h;}
 
+    /// back the fork block
+    void backForkBlock(const p2p::NodeID& id);
+
 private:
     /// sync block
     void syncBlock(const p2p::NodeID& id, const RLP& data);
@@ -153,6 +179,10 @@ private:
     std::map<h256, bytes> m_blocks;
     std::map<uint64_t, h256> m_number_hash;
     BlockHeader         m_latestImportBlock;
+
+    ///fork back
+    std::map<p2p::NodeID, forkBack> m_fork_back;
+    std::mutex m_fork_mutex;
 
 
     /// h256 block hash
