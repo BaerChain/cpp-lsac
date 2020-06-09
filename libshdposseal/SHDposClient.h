@@ -74,6 +74,7 @@ private:
     bool                            m_isSendNodeStatus = false;
     std::weak_ptr<SHDposHostcapability>  m_SHDpos_host;
     Handler<BlockHeader const&>     m_cb_blocks;
+    Handler<h256 const&> m_cb_trxHash;
 };
 
 SHDposClient& asDposClient(Interface& _c);

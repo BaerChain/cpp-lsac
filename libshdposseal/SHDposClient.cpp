@@ -347,11 +347,11 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         }
     });
 
-    this->setOnTrxHash([&](h256 const& _h){
+    m_cb_trxHash = this->setOnTrxHash([&](h256 const& _h){
         auto h = m_SHDpos_host.lock();
         if (h)
         {
-            CP2P_LOG << "insert block hash";
+            CP2P_LOG << "insert trx hash";
             h->broadcastTransaction(_h);
             //TODO update lastImport
         }
