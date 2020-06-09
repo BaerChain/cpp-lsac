@@ -72,7 +72,7 @@ BlockHeader &BlockHeader::operator=(BlockHeader const &_other) {
         m_hashWithout = std::move(hashWithout);
     }
     m_sign_data = _other.m_sign_data;
-    assert(*this == _other);
+    //assert(*this == _other);
     return *this;
 }
 
