@@ -982,6 +982,7 @@ h256 Client::importTransaction(Transaction const& _t)
 	// Tell network about the new transactions.
 //	if(auto h = m_host.lock())
 //		h->noteNewTransactions();
+    m_onTrxHashImport(_t.sha3());
     return _t.sha3();
 }
 

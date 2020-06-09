@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "SHDposHostCapability.h"
 
 
@@ -212,3 +213,4 @@ bool SHDposHostcapability::isSyncing() const
 
 }  // namespace brc
 }  // namespace dev
+
