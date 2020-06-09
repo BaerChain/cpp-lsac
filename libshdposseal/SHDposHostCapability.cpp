@@ -1,6 +1,5 @@
 #include "SHDposHostCapability.h"
 
-
 namespace dev
 {
 namespace brc
@@ -84,7 +83,6 @@ bool SHDposHostcapability::interpretCapabilityPacket(
         }
         case SHDposGetTransactions: {
             CP2P_LOG << "TDO Import transaction.";
-            m_sync->importedTransaction(_peerID, _r);
             break;
         }
         case SHDposNewBlockHash: {
@@ -164,10 +162,8 @@ void SHDposHostcapability::doBackgroundWork()
     }
     else
     {
-        // CP2P_LOG << "send trx" << m_send_txs.size();
         if (m_send_txs.size() > 0)
         {
-             CP2P_LOG << "send trx" << m_send_txs.size();
             std::vector<h256> stx;
             for (auto& itr : m_send_txs)
             {
@@ -176,6 +172,7 @@ void SHDposHostcapability::doBackgroundWork()
 
             for (auto& itr : m_peers)
             {
+                CP2P_LOG << "send tarnsaction to :"<<itr.first;
                 itr.second.sendTransactionHashs(stx);
             }
             m_sync->addKnowTransaction(stx);
@@ -184,7 +181,7 @@ void SHDposHostcapability::doBackgroundWork()
         // send
         if (m_send_blocks.size() > 0)
         {
-            CP2P_LOG << "send blocks to ";
+            //CP2P_LOG << "send blocks to ";
             for (auto& itr : m_peers)
             {
                 itr.second.sendBlocksHashs(m_send_blocks);
@@ -193,6 +190,12 @@ void SHDposHostcapability::doBackgroundWork()
 
         }
     }
+
+//    m_back_fork_time += backgroundWorkInterval().count();
+//    m_back_fork_time = 0;
+    /// dell the fork block and set the looptimes
+    for(auto const& p: m_peers)
+        m_sync->backForkBlock(p.first);
     m_send_txs.clear();
     m_send_blocks.clear();
 }
@@ -209,3 +212,4 @@ bool SHDposHostcapability::isSyncing() const
 
 }  // namespace brc
 }  // namespace dev
+
