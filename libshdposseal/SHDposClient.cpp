@@ -331,7 +331,7 @@ void dev::bacd::SHDposClient::syncTransactionQueue()
 
 void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
 {
-    cdebug << "capabilityHost :: SHDposHostCapability";
+    CP2P_LOG << "capabilityHost :: SHDposHostCapability";
     auto brcCapability = make_shared<SHDposHostcapability>(
         _host.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _netWorkId);
     _host.registerCapability(brcCapability);
@@ -341,12 +341,31 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         auto h = m_SHDpos_host.lock();
         if (h)
         {
+            CP2P_LOG << "insert block hash";
             h->OnBlockImport(_info);
             //TODO update lastImport
         }
     });
 
-    m_tq.onReady([=]() { cwarn << "TODO , broadcast Transaction.."; });
+    this->setOnTrxHash([&](h256 const& _h){
+        auto h = m_SHDpos_host.lock();
+        if (h)
+        {
+            CP2P_LOG << "insert block hash";
+            h->broadcastTransaction(_h);
+            //TODO update lastImport
+        }
+    });
+    // m_tq.onReady([&](h256Hash const& _trxHash) {  
+    //     CP2P_LOG << "TODO , broadcast Transaction..";     
+    //     auto h = m_SHDpos_host.lock();
+    //     if(h){
+    //         for(auto _h : _trxHash)
+    //         {
+    //             h->broadcastTransaction(_h);
+    //         }
+    //     }
+    // });
 
 
     dpos()->initConfigAndGenesis(m_params);
