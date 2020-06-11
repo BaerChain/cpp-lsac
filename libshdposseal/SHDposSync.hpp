@@ -114,6 +114,9 @@ public:
     /// get transaction from node.
     void importedTransaction(const p2p::NodeID& id, const RLP& data);
 
+    // send transaction to node
+    void sendTransaction(const p2p::NodeID& id, const RLP& data);
+
     void blockHeaders(const p2p::NodeID& id, const RLP& data);
     void newBlocks(const p2p::NodeID& id, const RLP& data);
 

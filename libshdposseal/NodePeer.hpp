@@ -51,7 +51,7 @@ public:
     */
     void sendTransactionHashs(const std::vector<h256> &hashs);
     void sendTransactionBody(const std::vector<bytes> &data);
-
+    void requestTxs(const std::vector<h256> &hashs);
     /*
     @param
     */

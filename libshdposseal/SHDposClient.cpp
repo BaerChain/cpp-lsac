@@ -347,26 +347,14 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
         }
     });
 
-    m_cb_trxHash = this->setOnTrxHash([&](h256 const& _h){
+    m_cb_trxHash = m_tq.setOnTrxHash([=]() {
         auto h = m_SHDpos_host.lock();
         if (h)
         {
             CP2P_LOG << "insert trx hash";
-            h->broadcastTransaction(_h);
-            //TODO update lastImport
+            h->noteNewTransactionsHash();
         }
     });
-    // m_tq.onReady([&](h256Hash const& _trxHash) {  
-    //     CP2P_LOG << "TODO , broadcast Transaction..";     
-    //     auto h = m_SHDpos_host.lock();
-    //     if(h){
-    //         for(auto _h : _trxHash)
-    //         {
-    //             h->broadcastTransaction(_h);
-    //         }
-    //     }
-    // });
-
 
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);

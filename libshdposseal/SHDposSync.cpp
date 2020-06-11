@@ -745,14 +745,31 @@ void SHDposSync::addKnowTransaction(const std::vector<h256>& hash)
 void SHDposSync::getTransaction(const p2p::NodeID& id, const RLP& data)
 {
     std::vector<h256> hashs = data[0].toVector<h256>();
-
+    CP2P_LOG << " getTransaction : " << hashs;
     h256Hash hh;
     for (auto& it : hashs)
     {
+        CP2P_LOG << "trx Hash : " << it;
         hh.insert(it);
     }
 
-    auto transactions = m_host.Tq().topTransactions(0, hh);
+    m_host.getNodePeer(id).requestTxs(hashs);
+}
+
+void SHDposSync::sendTransaction(const p2p::NodeID& id, const RLP& data)
+{
+    std::vector<h256> hashs = data[0].toVector<h256>();
+    CP2P_LOG << " getTransaction : " << hashs;
+    h256Hash hh;
+    for (auto& it : hashs)
+    {
+        CP2P_LOG << "trx Hash : " << it;
+        hh.insert(it);
+    }
+
+    auto transactions = m_host.Tq().getTransactionsByHash(hh);
+
+    CP2P_LOG << " trx size : " <<transactions.size();
 
     std::vector<bytes> send_data;
     for (auto& itr : transactions)
@@ -767,9 +784,12 @@ void SHDposSync::getTransaction(const p2p::NodeID& id, const RLP& data)
 
 void SHDposSync::importedTransaction(const p2p::NodeID& id, const RLP& data)
 {
-    std::vector<bytes> body = data[0].toVector<bytes>();
+    std::vector<bytes> body = data[0].toVector<bytes>();   
+    for(auto const& _t : body)
+    {
+        m_host.Tq().import(Transaction(_t, CheckTransaction::None));
+    }
 }
-
 void SHDposSync::clearTemp(uint64_t expire)
 {
     auto now = utcTimeMilliSec();

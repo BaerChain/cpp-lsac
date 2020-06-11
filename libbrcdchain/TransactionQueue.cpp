@@ -79,6 +79,8 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
 
 Transactions TransactionQueue::topTransactions(unsigned _limit, h256Hash const& _avoid) const
 {
+    CP2P_LOG << "m_current : " << m_current.size();
+
     ReadGuard l(m_lock);
     Transactions ret;
 	if(_limit == 0)
@@ -86,6 +88,20 @@ Transactions TransactionQueue::topTransactions(unsigned _limit, h256Hash const& 
     for (auto t = m_current.begin(); ret.size() < _limit && t != m_current.end(); ++t)
         if (!_avoid.count(t->transaction.sha3()))
             ret.push_back(t->transaction);
+    return ret;
+}
+
+Transactions TransactionQueue::getTransactionsByHash(h256Hash const& _trxHash) const
+{
+    CP2P_LOG << "m_current :" << m_current.size();
+    Transactions ret;
+    for( auto _t = m_current.begin(); _t != m_current.end(); ++_t)
+    {
+        if( _trxHash.count(_t->transaction.sha3()))
+        {
+            ret.push_back(_t->transaction);
+        }
+    }
     return ret;
 }
 
@@ -147,7 +163,9 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
             LOG(m_loggerDetail) << "Dropping out of bounds transaction " << _h;
             remove_WITH_LOCK(m_current.rbegin()->transaction.sha3());
         }
-        m_onReady();
+        // m_onReady();
+        // setOnTrxHash();
+        m_onTrxHashImport();
     }
     catch (Exception const& _e)
     {
@@ -299,7 +317,9 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
     }
 
     if (newCurrent)
-        m_onReady();
+        // m_onReady();
+        // setOnTrxHash();
+        m_onTrxHashImport();
 }
 
 void TransactionQueue::drop(h256 const& _txHash)

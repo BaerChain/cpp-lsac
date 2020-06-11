@@ -213,9 +213,9 @@ public:
     {
         return m_onBlockSealed.add(_handler);
     }
-    Handler<h256 const&> setOnTrxHash(std::function<void(h256 const&)> _handler)
+    template <class T> Handler<> setOnTrxHash(T const& t)
     {
-        return m_onTrxHashImport.add(_handler);
+        return m_onTrxHashImport.add(t);
     }
 
 	Json::Value getAveragePrice(BlockNumber _block) override ;
@@ -368,7 +368,7 @@ protected:
                                                  ///< the DB
     Signal<bytes const&> m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Signal<h256 const&> m_onTrxHashImport;
+    Signal<> m_onTrxHashImport;
 
     Logger m_logger{createLogger(VerbosityInfo, "client")};
     Logger m_loggerDetail{createLogger(VerbosityDebug, "client")};

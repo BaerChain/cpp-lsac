@@ -27,6 +27,7 @@ enum SHDposPacketType : unsigned
     SHDposSyncGetBlocks,
     SHDposSyncBlockHeaders,
     SHDposBroadcastTXHash,
+    SHDposGetTransactionsForRequest,
     SHDposGetTransactions,
     SHDposNewBlockHash,
     SHDposGetState,

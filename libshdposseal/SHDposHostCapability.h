@@ -74,9 +74,15 @@ public:
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
     TransactionQueue const& Tq() const { return m_tq; }
+    TransactionQueue& Tq() { return m_tq; }
     NodePeer& getNodePeer(const NodeID& id);
+    
 
-private:
+    //add trx test
+    void noteNewTransactionsHash() { m_newTransactions = true; }
+private:    
+    std::atomic<bool> m_newTransactions = {false};
+
     std::shared_ptr<p2p::CapabilityHostFace> m_host;
     u256 m_networkId;
 

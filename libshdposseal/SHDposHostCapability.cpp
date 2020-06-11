@@ -1,4 +1,6 @@
 #include "SHDposHostCapability.h"
+#include "libbrcdchain/TransactionQueue.h"
+
 
 namespace dev
 {
@@ -78,11 +80,18 @@ bool SHDposHostcapability::interpretCapabilityPacket(
         }
         case SHDposBroadcastTXHash: {
             CP2P_LOG << "get transaction by hash.";
+            CP2P_LOG << toJS(_r.data()) << _r.itemCount();
             m_sync->getTransaction(_peerID, _r);
             break;
         }
+        case SHDposGetTransactionsForRequest: {
+            CP2P_LOG << "get transaction for request.";
+            m_sync->sendTransaction(_peerID, _r);
+            break;
+        }
         case SHDposGetTransactions: {
-            CP2P_LOG << "TDO Import transaction.";
+            CP2P_LOG << "get transaction.";
+            m_sync->importedTransaction(_peerID, _r);
             break;
         }
         case SHDposNewBlockHash: {
@@ -162,12 +171,14 @@ void SHDposHostcapability::doBackgroundWork()
     }
     else
     {
-        if (m_send_txs.size() > 0)
+        if (m_newTransactions)
         {
+            h256Hash _avoid;
             std::vector<h256> stx;
-            for (auto& itr : m_send_txs)
+            auto transactions = m_tq.topTransactions(0, _avoid);
+            for (auto& itr : transactions)
             {
-                stx.push_back(itr);
+                stx.push_back(itr.sha3());
             }
 
             for (auto& itr : m_peers)
@@ -176,6 +187,7 @@ void SHDposHostcapability::doBackgroundWork()
                 itr.second.sendTransactionHashs(stx);
             }
             m_sync->addKnowTransaction(stx);
+            m_newTransactions = false;
         }
 
         // send
@@ -208,8 +220,6 @@ bool SHDposHostcapability::isSyncing() const
 {
     return SHDposSyncState::Sync == m_sync->getState();
 }
-
-
 }  // namespace brc
 }  // namespace dev
 

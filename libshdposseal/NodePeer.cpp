@@ -94,6 +94,7 @@ void NodePeer::sendTransactionHashs(const std::vector<h256>& hashs)
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposBroadcastTXHash, 1);
     s.appendVector(hashs);
+    CP2P_LOG << toJS(s.out());
     m_host->sealAndSend(m_id, s);
 }
 
@@ -102,6 +103,14 @@ void NodePeer::sendTransactionBody(const std::vector<bytes>& data)
     RLPStream s;
     m_host->prep(m_id, CapbilityName, s, SHDposGetTransactions, 1);
     s.appendVector(data);
+    m_host->sealAndSend(m_id, s);
+}
+
+void NodePeer::requestTxs(const std::vector<h256>& hashs)
+{
+    RLPStream s;
+    m_host->prep(m_id, CapbilityName, s, SHDposGetTransactionsForRequest, 1);
+    s.appendVector(hashs);
     m_host->sealAndSend(m_id, s);
 }
 

@@ -62,6 +62,7 @@ public:
     /// @returns up to _limit transactions ordered by nonce and gas price.
     Transactions topTransactions(unsigned _limit, h256Hash const& _avoid = h256Hash()) const;
 
+    Transactions getTransactionsByHash(h256Hash const& _trxHash) const;
     /// Get a hash set of transactions in the queue
     /// @returns A hash set of all transactions in the queue
     h256Hash knownTransactions() const;
@@ -108,6 +109,11 @@ public:
 
 
     void debugMemery();
+
+    template <class T> Handler<> setOnTrxHash(T const& t)
+    {
+        return m_onTrxHashImport.add(t);
+    }
 private:
 
     /// Verified and imported transaction
@@ -179,7 +185,8 @@ private:
     std::unordered_map<h256, PriorityQueue::iterator> m_currentByHash;			///< Transaction hash to set ref
     std::unordered_map<Address, std::map<u256, PriorityQueue::iterator>> m_currentByAddressAndNonce; ///< Transactions grouped by account and nonce
     std::unordered_map<Address, std::map<u256, VerifiedTransaction>> m_future;	/// Future transactions
-
+        
+    Signal<> m_onTrxHashImport;
     Signal<> m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
     Signal<ImportResult, h256 const&, h512 const&> m_onImport;					///< Called for each import attempt. Arguments are result, transaction id an node id. Be nice and exit fast.
     Signal<h256 const&> m_onReplaced;											///< Called whan transction is dropped during a call to import() to make room for another transaction.
