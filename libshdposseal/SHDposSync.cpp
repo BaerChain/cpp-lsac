@@ -747,14 +747,20 @@ void SHDposSync::getTransaction(const p2p::NodeID& id, const RLP& data)
 {
     std::vector<h256> hashs = data[0].toVector<h256>();
     CP2P_LOG << " getTransaction : " << hashs;
-    h256Hash hh;
+    std::vector<h256> hh;
+    addKnowTransaction(hashs);
     for (auto& it : hashs)
     {
         CP2P_LOG << "trx Hash : " << it;
-        hh.insert(it);
+        if (m_know_transactionHash[it]){
+            continue;
+        }
+        hh.push_back(it);
     }
-
-    m_host.getNodePeer(id).requestTxs(hashs);
+    if (hh.size())
+    {
+        m_host.getNodePeer(id).requestTxs(hh);
+    }
 }
 
 void SHDposSync::sendTransaction(const p2p::NodeID& id, const RLP& data)
@@ -802,7 +808,6 @@ void SHDposSync::importedTransaction(const p2p::NodeID& id, const RLP& data, Blo
             continue;
         }
     }
-    
     for(auto const& _t : body)
     {
         m_host.Tq().import(_t);
