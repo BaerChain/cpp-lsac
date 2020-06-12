@@ -29,7 +29,7 @@ class SHDposHostcapability : public p2p::CapabilityFace
 {
 public:
     SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFace> _host, BlockChain const& _ch,
-        OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId,
+        OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId, ex::exchange_plugin& _exdb,
         uint32_t version = 0);
 
     std::string name() const override { return "Dpos"; }
@@ -71,6 +71,7 @@ public:
     /// add
     BlockChain const& chain() const { return m_chain; }
     OverlayDB const& db() const { return m_db; }
+    ex::exchange_plugin const& exdb() const { return m_exdb; }
     BlockQueue& bq() { return m_bq; }
     BlockQueue const& bq() const { return m_bq; }
     TransactionQueue const& Tq() const { return m_tq; }
@@ -89,6 +90,10 @@ private:
     BlockChain const& m_chain;
     OverlayDB const& m_db;   ///< References to DB, needed for some of the BrcdChain Protocol
                              ///< responses.
+
+    ex::exchange_plugin const& m_exdb;
+
+
     TransactionQueue& m_tq;  ///< Maintains a list of incoming transactions not yet in a block on
                              ///< the blockchain.
     BlockQueue& m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be

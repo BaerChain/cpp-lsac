@@ -7,11 +7,12 @@ namespace dev
 namespace brc
 {
 SHDposHostcapability::SHDposHostcapability(std::shared_ptr<p2p::CapabilityHostFace> _host,
-    BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq,
-    u256 _networkId, uint32_t version)
+    BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, 
+    u256 _networkId, ex::exchange_plugin& _exdb, uint32_t version)
   : m_host(std::move(_host)),
     m_chain(_ch),
     m_db(_db),
+    m_exdb(_exdb),
     m_tq(_tq),
     m_bq(_bq),
     m_networkId(_networkId),
@@ -91,7 +92,7 @@ bool SHDposHostcapability::interpretCapabilityPacket(
         }
         case SHDposGetTransactions: {
             CP2P_LOG << "get transaction.";
-            m_sync->importedTransaction(_peerID, _r);
+            m_sync->importedTransaction(_peerID, _r, chain(), m_db, m_exdb);
             break;
         }
         case SHDposNewBlockHash: {

@@ -316,10 +316,10 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
             m_future.erase(m_future.begin());
     }
 
-    if (newCurrent)
+    if (newCurrent){
         // m_onReady();
-        // setOnTrxHash();
         m_onTrxHashImport();
+    }
 }
 
 void TransactionQueue::drop(h256 const& _txHash)

@@ -333,7 +333,7 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
 {
     CP2P_LOG << "capabilityHost :: SHDposHostCapability";
     auto brcCapability = make_shared<SHDposHostcapability>(
-        _host.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _netWorkId);
+        _host.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _netWorkId, m_StateExDB);
     _host.registerCapability(brcCapability);
     m_SHDpos_host = brcCapability;
     /// broadcastBlock
@@ -354,7 +354,11 @@ void dev::bacd::SHDposClient::init(p2p::Host& _host, int _netWorkId)
             CP2P_LOG << "insert trx hash";
             h->noteNewTransactionsHash();
         }
+        this->onTransactionQueueReady();
     });
+
+    m_tqReplaced = m_tq.onReplaced([=](h256 const&) { m_needStateReset = true; });
+
 
     dpos()->initConfigAndGenesis(m_params);
     dpos()->setDposClient(this);

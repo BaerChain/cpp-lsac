@@ -2,6 +2,7 @@
 
 #include "SHDposHostCapability.h"
 #include "libbrcdchain/TransactionQueue.h"
+#include "libbrcdchain/Executive.h"
 
 static const uint64_t MAX_REQUEST_BLOKCS = 128;
 static const uint64_t MAX_TEMP_SYNC_BLOCKS = 1000;
@@ -782,12 +783,29 @@ void SHDposSync::sendTransaction(const p2p::NodeID& id, const RLP& data)
     m_host.getNodePeer(id).sendTransactionBody(send_data);
 }
 
-void SHDposSync::importedTransaction(const p2p::NodeID& id, const RLP& data)
+void SHDposSync::importedTransaction(const p2p::NodeID& id, const RLP& data, BlockChain const& _blockChain, OverlayDB const& _db, ex::exchange_plugin const& _exdb)
 {
-    std::vector<bytes> body = data[0].toVector<bytes>();   
+    dev::brc::Block _currentBlock = Block(_blockChain, _db, _exdb);
+    _currentBlock.populateFromChain(_blockChain, _blockChain.currentHash());
+    Executive e(_currentBlock, _blockChain);
+    Transactions body;   
+    std::vector<bytes> _data = data[0].toVector<bytes>();
+    for(auto const& it: _data)
+    {
+        try{
+            auto trx = Transaction(it, CheckTransaction::None);
+            e.initialize(trx, transationTool::initializeEnum::rpcinitialize);
+            // _data.push_back(data[i].data());
+            body.push_back(trx);
+        }catch(...)
+        {
+            continue;
+        }
+    }
+    
     for(auto const& _t : body)
     {
-        m_host.Tq().import(Transaction(_t, CheckTransaction::None));
+        m_host.Tq().import(_t);
     }
 }
 void SHDposSync::clearTemp(uint64_t expire)

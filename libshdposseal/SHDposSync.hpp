@@ -112,7 +112,7 @@ public:
     void getTransaction(const p2p::NodeID& id, const RLP& data);
 
     /// get transaction from node.
-    void importedTransaction(const p2p::NodeID& id, const RLP& data);
+    void importedTransaction(const p2p::NodeID& id, const RLP& data, BlockChain const& _blockChain, OverlayDB const& _db, ex::exchange_plugin const& _exdb);
 
     // send transaction to node
     void sendTransaction(const p2p::NodeID& id, const RLP& data);
