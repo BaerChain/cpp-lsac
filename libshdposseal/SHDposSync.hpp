@@ -17,6 +17,7 @@ struct forkBack
     int64_t begin_frok =0;
     std::map<h256, bytes> m_blocks;
     std::map<uint64_t, h256> m_number_hash;
+    bool is_request = false;
 
 
     void upFork(int64_t number){
@@ -27,6 +28,8 @@ struct forkBack
         import_num = number;
     }
     void upBlocks(BlockHeader const& h, bytes const& bs){
+        if(h.number() > end_fork)
+            return;
         if(m_number_hash.count(h.number()))
             return;
         m_number_hash[h.number()] = h.hash();

@@ -207,10 +207,16 @@ void SHDposHostcapability::doBackgroundWork()
 //    m_back_fork_time += backgroundWorkInterval().count();
 //    m_back_fork_time = 0;
     /// dell the fork block and set the looptimes
-    for(auto const& p: m_peers)
-        m_sync->backForkBlock(p.first);
+    try {
+        for(auto const& p: m_peers)
+            m_sync->backForkBlock(p.first);
+    }
+    catch (...){
+        cwarn <<" exception ... for back fork";
+    }
     m_send_txs.clear();
     m_send_blocks.clear();
+
 }
 
 SHDposSyncState SHDposHostcapability::status() const

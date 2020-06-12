@@ -343,7 +343,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
             BlockHeader bh(itr);
             // if the block is imported continue
             if(m_fork_back.count(id)){
-                CP2P_LOG << "fork block:"<<bh.number();
+                CP2P_LOG << "fork block:"<<bh.number()<<"id:" << id;
                 m_fork_back[id].upBlocks(bh, itr);
                 m_number_hash.clear();
                 m_blocks.clear();
@@ -458,9 +458,10 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
         {
             // request block , find parent block.
             CP2P_LOG<< "go to get parent...";
-            auto& fork = m_fork_back[id];
-            fork.upFork(bh.number());
-            requestParent(bh.parentHash());
+            m_fork_back[id].upFork(bh.number());
+            if(m_fork_back[id].m_number_hash.empty())
+                m_fork_back[id].upBlocks(bh, m_blocks[bh.hash()]);
+            //requestParent(bh.parentHash());
         }
     }
     else
@@ -533,6 +534,8 @@ void SHDposSync::backForkBlock(const p2p::NodeID& id){
                         if (!importedBlock(fork.m_blocks[itr.second])) {
                             cwarn << " imported field number:" << itr.first;
                             m_host.bq().clear();
+                            fork.is_request = false;
+                            fork.import_num = itr.first -1;
                             break;
                         } else {
                             fork.import_num = itr.first;
@@ -545,6 +548,8 @@ void SHDposSync::backForkBlock(const p2p::NodeID& id){
 
             }
             else{
+                if(fork.is_request)
+                    return;
                 /// not find parentHash
                 uint64_t const CACH_NUM = 1024;
                 auto requestParent = [&](h256 const& _h){
@@ -584,6 +589,7 @@ void SHDposSync::backForkBlock(const p2p::NodeID& id){
         std::vector<uint64_t > blocks;
         CP2P_LOG << "start:"<<fork.begin_frok <<" import:"<<fork.import_num <<" end:"<< fork.end_fork;
         int64_t start = std::max(fork.import_num, fork.begin_frok);
+        fork.is_request = true;
         for(int64_t i= start+1; i<= fork.end_fork; i++){
             if(blocks.size() >= MAX_REQUEST_BLOKCS*2)
                 break;
