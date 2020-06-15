@@ -763,7 +763,6 @@ void SHDposSync::getTransaction(const p2p::NodeID& id, const RLP& data)
     std::vector<h256> hashs = data[0].toVector<h256>();
     CP2P_LOG << " getTransaction : " << hashs;
     std::vector<h256> hh;
-    addKnowTransaction(hashs);
     for (auto& it : hashs)
     {
         CP2P_LOG << "trx Hash : " << it;
@@ -811,18 +810,20 @@ void SHDposSync::importedTransaction(const p2p::NodeID& id, const RLP& data, Blo
     Executive e(_currentBlock, _blockChain);
     Transactions body;   
     std::vector<bytes> _data = data[0].toVector<bytes>();
+    std::vector<h256> _trxHash;
     for(auto const& it: _data)
     {
         try{
             auto trx = Transaction(it, CheckTransaction::None);
             e.initialize(trx, transationTool::initializeEnum::rpcinitialize);
-            // _data.push_back(data[i].data());
             body.push_back(trx);
+            _trxHash.push_back(trx.sha3());
         }catch(...)
         {
             continue;
         }
     }
+    addKnowTransaction(_trxHash);
     for(auto const& _t : body)
     {
         m_host.Tq().import(_t);
