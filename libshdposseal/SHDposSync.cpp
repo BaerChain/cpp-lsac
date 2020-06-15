@@ -516,11 +516,21 @@ void SHDposSync::syncBlock(const p2p::NodeID& id, const RLP& data)
     continueSync(id);
 }
 
+void SHDposSync::loopNodesForkBlock(){
+    if(m_fork_node == h512()){
+        auto begin = m_fork_back.begin();
+        if(begin== m_fork_back.end())
+            return;
+        m_fork_node = begin->first;
+    }
+    backForkBlock(m_fork_node);
+}
+
 void SHDposSync::backForkBlock(const p2p::NodeID& id){
     if(!m_fork_back.count(id)){
+        m_fork_node = h512();
         return;
     }
-    CP2P_LOG << "into back block...";
     auto& fork = m_fork_back[id];
     if(!fork.m_number_hash.empty()){
         try {
@@ -534,9 +544,9 @@ void SHDposSync::backForkBlock(const p2p::NodeID& id){
                         if (!importedBlock(fork.m_blocks[itr.second])) {
                             cwarn << " imported field number:" << itr.first;
                             m_host.bq().clear();
-                            fork.is_request = false;
-                            fork.import_num = itr.first -1;
-                            break;
+                            m_fork_back.erase(id);
+                            m_fork_node = id;
+                            return;
                         } else {
                             fork.import_num = itr.first;
                         }
@@ -580,6 +590,7 @@ void SHDposSync::backForkBlock(const p2p::NodeID& id){
     if(fork.import_num >= fork.end_fork){
         CP2P_LOG << "remove fork:"<<id;
         m_fork_back.erase(id);
+        m_fork_node = id;
     }
     else{
         /// request not_fork block

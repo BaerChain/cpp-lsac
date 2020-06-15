@@ -143,6 +143,7 @@ public:
 
     /// back the fork block
     void backForkBlock(const p2p::NodeID& id);
+    void loopNodesForkBlock();
 
 private:
     /// sync block
@@ -189,6 +190,7 @@ private:
     ///fork back
     std::map<p2p::NodeID, forkBack> m_fork_back;
     std::mutex m_fork_mutex;
+    p2p::NodeID m_fork_node = h512();
 
 
     /// h256 block hash

@@ -208,8 +208,7 @@ void SHDposHostcapability::doBackgroundWork()
 //    m_back_fork_time = 0;
     /// dell the fork block and set the looptimes
     try {
-        for(auto const& p: m_peers)
-            m_sync->backForkBlock(p.first);
+        m_sync->loopNodesForkBlock();
     }
     catch (...){
         cwarn <<" exception ... for back fork";
