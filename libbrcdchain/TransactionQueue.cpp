@@ -79,8 +79,6 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
 
 Transactions TransactionQueue::topTransactions(unsigned _limit, h256Hash const& _avoid) const
 {
-    CP2P_LOG << "m_current : " << m_current.size();
-
     ReadGuard l(m_lock);
     Transactions ret;
 	if(_limit == 0)

@@ -323,7 +323,6 @@ void SHDposSync::blockHeaders(const p2p::NodeID& id, const RLP& data)
     if (SHDposSyncState::Idle == m_state)
     {
         processBlock(id, data);
-        CP2P_LOG << " process end .....";
     }
     else
     {
@@ -343,7 +342,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
             BlockHeader bh(itr);
             // if the block is imported continue
             if(m_fork_back.count(id)){
-                CP2P_LOG << "fork block:"<<bh.number()<<"id:" << id;
+                CP2P_LOG << "fork block:"<<bh.number()<<" id:" << id;
                 m_fork_back[id].upBlocks(bh, itr);
                 m_number_hash.clear();
                 m_blocks.clear();
@@ -355,7 +354,7 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
                 }
                 m_number_hash[bh.number()] = bh.hash();
                 m_blocks[bh.hash()] = itr;
-                CP2P_LOG << " get block:" << bh.number();
+                //CP2P_LOG << " get block:" << bh.number();
             }
         }
         catch (const std::exception& e)
@@ -383,11 +382,10 @@ void SHDposSync::processBlock(const p2p::NodeID& id, const RLP& data)
     if (begin != m_number_hash.end())
     {
         BlockHeader bh(m_blocks[begin->second]);
-        CP2P_LOG << "m_lastImportedNumber: " << m_latestImportBlock.number() << " : " << bh.number();
+        //CP2P_LOG << "m_lastImportedNumber: " << m_latestImportBlock.number() << " : " << bh.number();
         if (m_host.chain().isKnown(bh.parentHash()))
         {
             // import block.
-            CP2P_LOG << "will import block ";
             for (auto& itr : m_number_hash)
             {
                 if (m_blocks.count(itr.second))
