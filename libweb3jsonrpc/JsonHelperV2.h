@@ -6,7 +6,7 @@
 #include <libbrccore/BlockHeader.h>
 #include <libbrcdchain/LogFilter.h>
 #include <libbrcdchain/Transaction.h>
-//#include <indexDb/database/include/brc/objects.hpp>
+#include <indexDb/database/include/brc/objects.hpp>
 namespace dev
 {
 
@@ -23,9 +23,9 @@ namespace dev
 
     namespace brc
     {
-        namespace ex{
-            struct exchange_order;
-        }
+        // namespace ex{
+        //     struct exchange_order;
+        // }
         class Transaction;
         class LocalisedTransaction;
         class SealEngineFace;

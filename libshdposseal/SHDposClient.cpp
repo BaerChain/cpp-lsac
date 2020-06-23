@@ -32,9 +32,9 @@ SHDposClient* dev::bacd::asDposClient(Interface* _c)
 
 dev::bacd::SHDposClient::SHDposClient(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, boost::filesystem::path const& _dbPath,
-    boost::filesystem::path const& _snapshotPath, WithExisting _forceAction,int64_t _rebuild_num,
+    boost::filesystem::path const& _snapshotPath, WithExisting _forceAction, DBBlockConfig const& db_config,
     TransactionQueue::Limits const& _l)
-  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l, _rebuild_num),
+  : Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _l, db_config),
 	//m_nodemonitor(_host.Networkrlp(), _params.getnodemonitorIp()),
 	m_p2pHost(_host)
 {
@@ -389,5 +389,6 @@ bool dev::bacd::SHDposClient::checkPreviousBlock(BlockHeader const& _ph) const
 
 bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Address &own_addr, uint32_t varlitorInterval_time) const{
     Verify verify_standby;
-    return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr, varlitorInterval_time);
+    return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr,
+                                        varlitorInterval_time, preSeal().info().number() >= config::newChangeHeight());
 }

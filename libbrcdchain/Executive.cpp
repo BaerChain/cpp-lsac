@@ -278,12 +278,22 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 
 
         //check gasPrice the must bigger c_min_price
-		if(m_t.gasPrice() < c_min_price){
-            cdebug << "Sender: " << m_t.sender().hex() << " Invalid gasPrice: Require >"
-				<< c_min_price << " Got " << m_t.gasPrice();
-			m_excepted = TransactionException::InvalidGasPrice;
-			BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(c_min_price))));
-		}
+        if(m_envInfo.number() > config::gasPriceHeight())
+        {
+            if(m_t.gasPrice() < m_s.getAveragegasPrice()){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_s.getAveragegasPrice()))));
+		    }
+        }else{
+            if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
+		    }
+        }
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 		u256 total_brc = 0;
@@ -376,6 +386,8 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 							<< " transcation_num:" << _transcation_op.m_Transcation_numbers
 						    << ex.what();
 						m_excepted = TransactionException::BrcTranscationField;
+                        cerror << "error is " << *boost::get_error_info<errinfo_comment>(ex);
+                        cerror << "number is " << m_envInfo.number();
 						BOOST_THROW_EXCEPTION(BrcTranscationField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
 					}
 					m_batch_params._operation.push_back(std::make_shared<transationTool::transcation_operation>(_transcation_op));
@@ -422,6 +434,12 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_batch_params._operation.push_back(std::make_shared<transationTool::transferAutoEx_operation>(_autoEx_op));
                 }
                 break;
+                case transationTool::modifyMinerGasPrice:
+                {
+                    transationTool::modifyMinerGasPrice_operation _gasprice_op = transationTool::modifyMinerGasPrice_operation(val);
+                    m_batch_params._operation.push_back(std::make_shared<transationTool::modifyMinerGasPrice_operation>(_gasprice_op));
+                }
+                break;
                 default:
 					m_excepted = TransactionException::DefaultError;
 					BOOST_THROW_EXCEPTION(
@@ -463,8 +481,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
 			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
 			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
-
-			}
+                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice)
+                    m_brctranscation.verifyModifyMinerGasPrice(m_t.sender(), m_envInfo.number(), m_batch_params._operation);
+            }
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
                 cdebug << " except:" << ex.what();
@@ -600,6 +619,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::changeMiner:{
                 m_s.changeMiner(m_batch_params._operation);
+                if(m_envInfo.number() > config::gasPriceHeight())
+                {
+                    m_s.changeMinerModifyGasPrice(m_batch_params._operation);
+                }
                 break;
             }
             case transationTool::op_type::receivingincome:{
@@ -611,6 +634,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice());
                 break;
             }
+            case transationTool::op_type::modifyMinerGasPrice:
+            {
+                m_s.modifyGasPrice(m_batch_params._operation);
+            }
+            break;
             default:
                 //TODO: unkown null.
                 assert(1);

@@ -1,7 +1,7 @@
 #pragma once
 #include <libdevcore/Address.h>
 #include <libbrccore/Common.h>
-#include <jsoncpp/json/value.h>
+#include <json/value.h>
 
 namespace dev
 {

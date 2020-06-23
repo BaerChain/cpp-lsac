@@ -77,7 +77,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call(Address const& _from, u256 _value, Address _dest,
-        bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber,
+        bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, u256 chainid = u256(1),
         FudgeFactor _ff = FudgeFactor::Strict) = 0;
     ExecutionResult call(Address const& _from, u256 _value, Address _dest,
         bytes const& _data = bytes(), u256 _gas = 1000000, u256 _gasPrice = DefaultGasPrice,
@@ -110,6 +110,9 @@ public:
     // [STATE-QUERY API]
 
     virtual Json::Value estimateGasUsed(Json::Value const& _json, BlockNumber _blockNum) = 0;
+    virtual Json::Value getGasPrice() = 0;
+    virtual Json::Value getAveragePrice(BlockNumber _block) = 0;
+
 
     int getDefault() const { return m_default; }
     void setDefault(BlockNumber _block) { m_default = _block; }

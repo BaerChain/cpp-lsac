@@ -44,20 +44,23 @@ State::State(State const &_s)
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
           m_accountStartNonce(_s.m_accountStartNonce),
-          m_block_number(_s.m_block_number)
+          m_block_number(_s.m_block_number),
+          m_curr_number (_s.m_curr_number)
           {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
-
     if (db::isDiskDatabase() && _we == WithExisting::Kill) {
         clog(VerbosityDebug, "statedb") << "Killing state database (WithExisting::Kill).";
         cwarn << "will remove " << path << "/" << fs::path("state");
+        cwarn << path / fs::path("state");
         fs::remove_all(path / fs::path("state"));
     }
 
+    
     path /=
             fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
+    cwarn << path;
     if (db::isDiskDatabase()) {
         fs::create_directories(path);
         DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
@@ -139,6 +142,7 @@ State &State::operator=(State const &_s) {
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_block_number = _s.m_block_number;
+    m_curr_number =_s.m_curr_number;
     return *this;
 }
 
@@ -226,7 +230,15 @@ Account *State::account(Address const &_addr) {
         }
     }
 
+    if(m_curr_number >= config::gasPriceHeight() && state.itemCount() > 20){
+        const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
+        i.first->second.initGasPrice(_b);
+    }
 
+    ///reset the changed state
+    if(m_curr_number >= config::gasPriceHeight()){
+        i.first->second.untouch();
+    }
     return &i.first->second;
 }
 
@@ -678,6 +690,7 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
 
     auto miner = a->vote_data();
     auto canMiner = a_can->vote_data();
+
     if (std::find(miner.begin(), miner.end(), _from) == miner.end() &&
             std::find(canMiner.begin(), canMiner.end(), _from) == canMiner.end()){
         cerror << "changeMiner from_address not is miner : "<< _from;
@@ -704,6 +717,20 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
     if(a_new->mappingAddress().first != Address() && a_new->mappingAddress().second != _from){
         cwarn << " the maping after_addr has alreay mapping_addr :"<< a_new->mappingAddress().first;
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the maping after_addr has alreay mapping_addr"));
+    }
+
+    // verify MinerGasPrice data
+    if(_envinfo.number() > config::gasPriceHeight()){
+        auto a_gas = account(GaspriceAddress);
+        if(!a_gas){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("MinerGas SysAddress null"));
+        }
+        if(!a_gas->minerGasPrice().count(pen->m_before)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map not have address:"+dev::toString(pen->m_before)));
+        }
+        if(a_gas->minerGasPrice().count(pen->m_after)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map has contains address:"+dev::toString(pen->m_after)));
+        }
     }
 
 }
@@ -1221,6 +1248,37 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     return _cookieFee;
 }
 
+u256 State::getAveragegasPrice() {
+    auto a = account(GaspriceAddress);
+    if(a){
+        return a->getAverageGasPrice();
+    }
+    return 0;
+}
+
+void State::initMinerGasPrice(BlockHeader const &_header){
+    if(config::gasPriceHeight() == _header.number()){
+        //u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        u256 init_value = 10;
+        auto a_miner = account(SysVarlitorAddress);
+        auto a_can = account(SysCanlitorAddress);
+        if(a_miner && a_can){
+            auto a_gas = account(GaspriceAddress);
+            if(!a_gas){
+                createAccount(GaspriceAddress, Account(0, 0));
+                a_gas = account(GaspriceAddress);
+            }
+            auto vars = a_miner->vote_data();
+            for(auto const& v: vars){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+            auto cans = a_can->vote_data();
+            for(auto const& v: cans){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+        }
+    }
+}
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
     uint32_t _maxSize = (uint32_t) _gsize;
@@ -1903,6 +1961,49 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
     }
 }
 
+void State::modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto const& _it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(_it);
+        Account *_minerGasPrice = account(dev::GaspriceAddress);
+        std::map<Address, u256> _oldGasPriceMap = _minerGasPrice->minerGasPrice();
+        _minerGasPrice->setMinerGasPrice(_op->m_proposer, _op->m_proposedAmount);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldGasPriceMap);
+    }
+}
+
+void State::changeMinerModifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto _it : _ops)
+    {
+        std::shared_ptr<transationTool::changeMiner_operation> _op = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice operation is null"));
+        }
+
+        Account *_minerGasPriceAddr = account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice minerGaspriceAddr is null"));
+        }
+        
+        std::map<Address, u256> _minerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        std::map<Address, u256> _oldminerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(_minerGasPriceMap.count(_op->m_before))
+        {
+            u256 _minerGasPrice = _minerGasPriceMap[_op->m_before];
+            _minerGasPriceMap.erase(_op->m_before);
+            _minerGasPriceMap[_op->m_after] = _minerGasPrice;
+        } 
+        _minerGasPriceAddr->setMinerGasPrices(_minerGasPriceMap);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldminerGasPriceMap);
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
@@ -2140,6 +2241,9 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::NewChangeMiner:
                 account.setChangeMiner(change.mapping);
+                break;
+            case Change::MinerGasPrice:
+                account.setMinerGasPrices(change.minerGasPrice);
                 break;
             default:
                 break;
@@ -2785,6 +2889,12 @@ BlockRecord dev::brc::State::block_record() const {
         return BlockRecord();
     return a->block_record();
 }
+std::pair<Address, Address> dev::brc::State::replaceMiner(Address const& _id) const{
+    auto a = account(_id);
+    if (a)
+        return a->mappingAddress();
+    return std::make_pair(Address(), Address());
+}
 
 void dev::brc::State::try_newrounds_count_vote(const dev::brc::BlockHeader &curr_header,
                                                const dev::brc::BlockHeader &previous_header) {
@@ -3295,6 +3405,9 @@ State &dev::brc::createIntermediateState(
 template<class DB>
 AddressHash
 dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
+    /// _block_number : m_previousBlock.number()
+    /// so the will commitBlockNumber: _block_number+1
+    int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -3303,7 +3416,11 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if (_block_number >= config::newChangeHeight()) {
+                if( commitBlockNumber >= config::gasPriceHeight()){
+                    /// this height is contains newChangeHeight
+                    s.appendList(21);
+                }
+                else if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
                 else{
@@ -3385,6 +3502,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                         s << i.second.getRLPStreamChangeMiner();
                         //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
+                }
+                {
+                    /// fork about GasPrice
+                    if(commitBlockNumber >= config::gasPriceHeight()){
+                        s << i.second.getStreamRLPGasPrice();
+                    }
+
                 }
                 _state.insert(i.first, &s.out());
             }

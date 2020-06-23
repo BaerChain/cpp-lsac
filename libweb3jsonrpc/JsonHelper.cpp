@@ -97,10 +97,6 @@ namespace dev {
                 res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
                 res["from"] = toJS(_t.safeSender());
                 res["gas"] = toJS(_t.gas());
-                if( _face != nullptr)
-                {
-                    res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_blockNumber))));
-                }
                 res["gasPrice"] = toJS(_t.gasPrice());
                 res["nonce"] = toJS(_t.nonce());
                 res["value"] = toJS(_t.value());
@@ -114,6 +110,25 @@ namespace dev {
                 {
                     res["txdata"] = analysisData(_t.data());
 
+                }
+                if( _face != nullptr)
+                {
+                    try
+                    {
+                        RLP _rlp(_t.data());
+                        std::vector<bytes> _ops = _rlp.toVector<bytes>();
+                        dev::brc::transationTool::op_type _type;
+                        for(auto val : _ops)
+                        {
+                            _type =  dev::brc::transationTool::operation::get_type(val);
+                            break;
+                        }
+                        res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_blockNumber))) + dev::brc::transationTool::c_add_value[_type]);
+                    }
+                    catch(const std::exception& e)
+                    {
+                        res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_blockNumber))));
+                    }
                 }
                 res["transactionRlp"] = toJS(_t.rlp());
             }
@@ -176,7 +191,7 @@ namespace dev {
             return res;
         }
 
-        Json::Value toJson(dev::brc::LocalisedTransactionReceipt const &_t) {
+        Json::Value toJson(dev::brc::LocalisedTransactionReceipt const &_t, dev::brc::LocalisedTransaction const& _trx) {
             Json::Value res;
             res["transactionHash"] = toJS(_t.hash());
             res["transactionIndex"] = _t.transactionIndex();
@@ -197,6 +212,25 @@ namespace dev {
                 res["status"] = toString(_t.statusCode());
             else
                 res["stateRoot"] = toJS(_t.stateRoot());
+
+            try
+            {
+                RLP _rlp(_trx.data());
+                std::vector<bytes> _ops = _rlp.toVector<bytes>();
+                dev::brc::transationTool::op_type _type;
+                for(auto val : _ops)
+                {
+                    _type =  dev::brc::transationTool::operation::get_type(val);
+                    break;
+                }
+                res["cumulativeGasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + _t.cumulativeGasUsed());
+                res["gasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + _t.gasUsed());
+            }
+            catch(const std::exception& e)
+            {
+                res["gasUsed"] = toJS(_t.gasUsed());
+                res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
+            }
             return res;
         }
 
@@ -231,10 +265,6 @@ namespace dev {
                 res["input"] = toJS(_t.data());
                 res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
                 res["from"] = toJS(_t.safeSender());
-                if(_face != nullptr)
-                {
-                    res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
-                }
                 res["gas"] = toJS(_t.gas());
                 res["gasPrice"] = toJS(_t.gasPrice());
                 res["nonce"] = toJS(_t.nonce());
@@ -245,6 +275,25 @@ namespace dev {
                 if(_detialStatus == true && _t.isCreation() != true && _t.type() != TransactionBase::MessageCall)
                 {
                     res["txdata"] = analysisData(_t.data());
+                }
+                if(_face != nullptr)
+                {
+                    try
+                    {
+                        RLP _rlp(_t.data());
+                        std::vector<bytes> _ops = _rlp.toVector<bytes>();
+                        dev::brc::transationTool::op_type _type;
+                        for(auto val : _ops)
+                        {
+                            _type =  dev::brc::transationTool::operation::get_type(val);
+                            break;
+                        }
+                        res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))) + dev::brc::transationTool::c_add_value[_type]);
+                    }
+                    catch(const std::exception& e)
+                    {
+                        res["baseGas"] = toJS(_t.baseGasRequired(_face->brcSchedule(u256(_t.blockNumber()))));
+                    }
                 }
             }
             return res;
@@ -455,6 +504,10 @@ namespace dev {
 
                 if (!_json["nonce"].empty())
                     ret.nonce = jsToU256(_json["nonce"].asString());
+
+                if(!_json["chainid"].empty()){
+                    ret.chainId = jsToU256(_json["chainid"].asString());
+                }
             }
             catch (boost::exception const &) {
                 throw jsonrpc::JsonRpcException("Invalid toTransactionSkeleton from json: ");
@@ -503,9 +556,9 @@ namespace dev {
 
             // check only !empty. it should throw exceptions if input params are incorrect
             if (!_json["fromBlock"].empty())
-                filter.withEarliest(_client.hashFromNumber(jsToBlockNumber(_json["fromBlock"].asString())));
+                filter.withEarliest(_client.hashFromNumber(jsToBlockNum(_json["fromBlock"].asString())));
             if (!_json["toBlock"].empty())
-                filter.withLatest(_client.hashFromNumber(jsToBlockNumber(_json["toBlock"].asString())));
+                filter.withLatest(_client.hashFromNumber(jsToBlockNum(_json["toBlock"].asString())));
             if (!_json["address"].empty()) {
                 if (_json["address"].isArray())
                     for (auto i : _json["address"])

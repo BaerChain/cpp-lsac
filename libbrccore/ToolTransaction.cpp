@@ -167,6 +167,15 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
                             tx.ops.push_back(std::shared_ptr<transferAutoEx_operation>(transferAutoEx_op));
                             break;                    
                         }
+                        case modifyMinerGasPrice:{
+                            auto modifyGasPrice_op = new modifyMinerGasPrice_operation(
+                                                                                        (op_type)type,
+                                                                                        Address(op_obj["m_proposer"].get_str()),
+                                                                                        u256(op_obj["m_proposedAmount"].get_str())
+                            );
+                            tx.ops.push_back(std::shared_ptr<modifyMinerGasPrice_operation>(modifyGasPrice_op));
+                            break;
+                        }
                     }
                 }
                 trx_datas.push_back(tx);

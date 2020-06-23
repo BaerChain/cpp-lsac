@@ -71,6 +71,11 @@ namespace {
         std::cout << "compiler_id: " << info->compiler_id << std::endl;
         std::cout << "compiler_version: " << info->compiler_version << std::endl;
         std::cout << "build_type: " << info->build_type << std::endl;
+        auto dbs = dev::db::getDBVersion();
+        std::cout << "Databases_version:"<<std::endl;
+        for(auto const&a : dbs){
+            std::cout <<"\t"<<a.db_name <<" "<< a.db_majorVersion << "."<<a.db_minorVersion<<std::endl;
+        }
     }
 
     bool isTrue(std::string const &_m) {
@@ -243,6 +248,11 @@ int main(int argc, char **argv) {
     string nodemonitorIP;
     bool skip_same_ip = true;
 
+    //minimum gasprice
+    // bool isSetGasPrice = false;
+    u256 gasPrice = 5;
+
+
     po::options_description clientDefaultMode("CLIENT MODE (default)", c_lineWidth);
     auto addClientOption = clientDefaultMode.add_options();
     addClientOption("mainnet", "Use the main network protocol");
@@ -267,7 +277,8 @@ int main(int argc, char **argv) {
     addClientOption("kill,K", "Kill the blockchain first");
     addClientOption("rebuild,R", po::value<int64_t>()->value_name("<number>"),
                     "Rebuild the blockchain from the existing database");
-    addClientOption("rescue", "Attempt to rescue a corrupt database\n");
+    addClientOption("rescue", po::value<int64_t>()->value_name("<number>"),
+                     "Attempt to rescue the database and the blocks rescue Specifies the height(default:0[latest]))\n");
     addClientOption("import-presale", po::value<string>()->value_name("<file>"),
                     "Import a pre-sale key; you'll need to specify the password to this key");
     addClientOption("import-secret,s", po::value<string>()->value_name("<secret>"),
@@ -279,6 +290,12 @@ int main(int argc, char **argv) {
     addClientOption("password", po::value<string>()->value_name("<password>"),
                     "Give a password for a private key\n");
 
+    addClientOption("export-path", po::value<string>()->value_name("<string>"),
+                    "set export DB path\n");
+    addClientOption("export-dbtype",po::value<string>()->value_name("<string>"),
+                    "set export DB type (leveldb or rocksdb)\n");
+    addClientOption("export-height",po::value<int64_t>()->value_name("<string>"),
+                    "set export DB height(example: set 0 is Default current node maximum height)\n");
     po::options_description clientTransacting("CLIENT TRANSACTING", c_lineWidth);
     auto addTransactingOption = clientTransacting.add_options();
     addTransactingOption("ask", po::value<u256>()->value_name("<wei>"),
@@ -360,8 +377,8 @@ int main(int argc, char **argv) {
     auto addImportExportOption = importExportMode.add_options();
     addImportExportOption(
             "import,I", po::value<string>()->value_name("<file>"), "Import blocks from file");
-    addImportExportOption(
-            "export,E", po::value<string>()->value_name("<file>"), "Export blocks to file");
+    // addImportExportOption(
+    //         "export,E", po::value<string>()->value_name("<file>"), "Export blocks to file");
     addImportExportOption("from", po::value<string>()->value_name("<n>"),
                           "Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'");
     addImportExportOption("to", po::value<string>()->value_name("<n>"),
@@ -695,15 +712,34 @@ int main(int argc, char **argv) {
             return -1;
         }
 
-    int64_t _rebuild_num = 0;
+    DBBlockConfig dbconfig;
     if (vm.count("kill"))
         withExisting = WithExisting::Kill;
     if (vm.count("rebuild")) {
         withExisting = WithExisting::Verify;
-        _rebuild_num = vm["rebuild"].as<int64_t>();
+        dbconfig.exit_op = WithExisting::Verify;
+        dbconfig.number = vm["rebuild"].as<int64_t>();
     }
-    if (vm.count("rescue"))
+    if (vm.count("rescue")) {
         withExisting = WithExisting::Rescue;
+        dbconfig.exit_op = WithExisting::Rescue;
+        dbconfig.number = vm["rescue"].as<int64_t>();
+    }
+
+    if(vm.count("export-path") || vm.count("export-dbtype") || vm.count("export-height")){
+        if(vm.count("export-path") && vm.count("export-dbtype") && vm.count("export-height")){
+            withExisting = WithExisting::Export;
+            cerror << "123";
+            dbconfig.dir_export = vm["export-path"].as<string>();
+            dbconfig.db_name = vm["export-dbtype"].as<string>();
+            dbconfig.number = vm["export-height"].as<int64_t>();
+            cerror << "123";
+
+        }else{
+            cerror << "Export-path, export-dbtype, export-height must be present when exporting blocks";
+            exit(-1);
+        }
+    }
 
     if ((vm.count("import-secret"))) {
         Secret s(fromHex(vm["import-secret"].as<string>()));
@@ -764,6 +800,13 @@ int main(int argc, char **argv) {
 
     if (!nodemonitorIP.empty()) {
         chainParams.savenodemonitorIP(nodemonitorIP);
+    }
+
+    if (vm.count("setgasprice"))
+    {
+        gasPrice = vm["setgasprice"].as<u256>();
+        std::cout << " gasprice = " << gasPrice << std::endl;
+        chainParams.setGasPrice(gasPrice);
     }
 
     setupLogging(loggingOptions);
@@ -868,7 +911,7 @@ int main(int argc, char **argv) {
         chainParams.allowFutureBlocks = true;
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("brcd"), db::databasePath(),
                              snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
-                             netPrefs, &nodesState, testingMode, _rebuild_num);
+                             netPrefs, &nodesState, testingMode, dbconfig);
 
     if (!extraData.empty())
         web3.brcdChain()->setExtraData(extraData);

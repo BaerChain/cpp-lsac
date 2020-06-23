@@ -218,6 +218,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_knownBad.insert(bi.hash());
             updateBad_WITH_LOCK(bi.hash());
             // bad parent; this is bad too, note it as such
+            cerror << "bad block...";
             return ImportResult::BadChain;
         }
         else if (!m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash()))
@@ -233,7 +234,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
         else
         {
             // If valid, append to blocks.
-
             DEV_GUARDED(m_verification)
                 m_unverified.enqueue(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
             m_moreToVerify.notify_one();
@@ -241,7 +241,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
             m_difficulty += bi.difficulty();
             m_now_height = bi.number() > m_now_height ? bi.number() : m_now_height;
             noteReady_WITH_LOCK(h);
-
             return ImportResult::Success;
         }
     }

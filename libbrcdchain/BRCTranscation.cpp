@@ -255,7 +255,6 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(try_ret));
         }
     }
-    cnote << "verify receive ok";
 }
 
 
@@ -280,7 +279,6 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from, 
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(std::string("receivingincome type is null")));
         }
     }
-    cnote << "verify receive ok";
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(dev::Address const& _from, const dev::brc::EnvInfo &_envinfo,
@@ -438,8 +436,8 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
                                                     const std::vector<std::shared_ptr<dev::brc::transationTool::operation>> &_op, u256 const& _baseGas, h256 const& _trxid, dev::brc::EnvInfo const& _envinfo)
 {
     int64_t const& _timeStamp = _envinfo.timestamp();
-    if((_envinfo.number() < 4072941 && _envinfo.header().chain_id() == 0x1)
-        || (_envinfo.number() < 99999999 && _envinfo.header().chain_id() == 0xb))
+    if((_envinfo.number() < config::autoExTestNetHeight() && _envinfo.header().chain_id() == 0x1)
+        || (_envinfo.number() < config::autoExHeight() && _envinfo.header().chain_id() == 0xb))
     {
         BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Transfer automatic exchange fee function has not yet reached the opening time")));
     }
@@ -495,6 +493,45 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address &_from,
         if(_cookie < _baseGas)
         {
             BOOST_THROW_EXCEPTION(transferAutoExFailed() << errinfo_comment(std::string("Automatically redeemed cookies are insufficient to pay for the fuel cost of the transaction")));
+        }
+    }
+}
+
+
+void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, int64_t const& _blockNum, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    if(_blockNum <= config::gasPriceHeight())
+    {
+        BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("ModifyMinerGasPrice function has not yet reached the opening time"));
+    }
+    for(auto it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("modifyMinerGasPrice_operation Casting failed"));
+        }
+        if(_from != _op->m_proposer)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));
+        }
+        Account *_minerGasPriceAddr = m_state.account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("minerGasPriceAddr is not exist"));
+        }
+        std::map<Address, u256> _gasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(!_gasPriceMap.count(_op->m_proposer))
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"));
+        }
+
+        u256 _averageGasPrice = _minerGasPriceAddr->getAverageGasPrice();
+        u256 _lowerLimit = _averageGasPrice * 8 / 10;
+        u256 _highLimit =  _averageGasPrice * 12 / 10;
+        if(_op->m_proposedAmount > _highLimit || _op->m_proposedAmount < _lowerLimit)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("Proposed value is outside the allowed range"));
         }
     }
 }

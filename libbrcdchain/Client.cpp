@@ -52,12 +52,12 @@ std::ostream& dev::brc::operator<<(std::ostream& _out, ActivityReport const& _r)
 
 Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l, int64_t _rebuild_num)
+    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l, DBBlockConfig const& db_config)
   : Worker("brc", 0),
     m_bc(_params, _dbPath, _forceAction,
         [](unsigned d, unsigned t) {
             std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-        }, _rebuild_num),
+        }, db_config),
     m_tq(_l),
     m_gp(_gpForAdoption ? _gpForAdoption : make_shared<TrivialGasPricer>()),
     m_preSeal(chainParams().accountStartNonce),
@@ -123,7 +123,7 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     if (_snapshotDownloadPath.empty())
     {
         auto brcCapability = make_shared<BrcdChainCapability>(
-            _extNet.capabilityHost(), bc(), m_stateDB, m_tq, m_bq, _networkId);
+            _extNet.capabilityHost(), bc(), m_stateDB, m_StateExDB, m_tq, m_bq, _networkId);
         _extNet.registerCapability(brcCapability);
         m_host = brcCapability;
     }
@@ -146,6 +146,7 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
 
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
+    cerror << "Client::queueBlock";
     if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000)
         this_thread::sleep_for(std::chrono::milliseconds(500));
     return m_bq.import(&_block, _isSafe);
@@ -998,7 +999,7 @@ h256  Client::importBlock(const dev::bytesConstRef &data) {
     h256 h = BlockHeader::headerHashFromBlock(data);
     cwarn << "hash : " << toHex(header.hash()) << " parent hash: " << toHex(header.parentHash());
     cwarn << "state root : " << toHex(header.stateRoot());
-
+    cerror << "Client::importBlock";
     ImportResult ret = m_bq.import(data);
     switch (ret)
     {
@@ -1019,7 +1020,7 @@ h256  Client::importBlock(const dev::bytesConstRef &data) {
 }
 
 // TODO: remove try/catch, allow exceptions
-ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
+ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, u256 chainid, FudgeFactor _ff)
 {
     ExecutionResult ret;
     try
@@ -1028,7 +1029,8 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
         u256 nonce = max<u256>(temp.transactionsFrom(_from), m_tq.maxNonce(_from));
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
+        Transaction t(_value, gasPrice, gas, _dest, _data, nonce, chainid);
+    
         t.forceSender(_from);
         if (_ff == FudgeFactor::Lenient)
             temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
@@ -1040,4 +1042,46 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
         // TODO: Some sort of notification of failure.
     }
     return ret;
+}
+
+Json::Value Client::getAveragePrice(BlockNumber _block)  {
+    Block _b = blockByNumber(_block);
+    // cwarn << "    "<< _b.info().number();
+
+    if(_b.info().number() <= config::gasPriceHeight()){
+        Json::Value _ret;
+        _ret["minimumGasPrice"] = toJS(config::initialGasPrice());
+        _ret["recommendGasPrice"] = toJS(config::initialGasPrice() * 12 / 10);
+        _ret["fastGasPrice"] = toJS(config::initialGasPrice() * 15 / 10);
+        return _ret;
+    }
+
+    Transactions _trxs = pending();
+    u256 _pendingTrxGasPrice = 0;
+    for (auto const& _trx : _trxs)
+    {
+        _pendingTrxGasPrice += _trx.gasPrice();
+    }
+
+    Block _previousBlock = blockByNumber(_b.info().number() - 1);
+
+    Transactions _previousTrxs = _previousBlock.pending();
+    for(auto const& _trx : _previousTrxs)
+    {
+        _pendingTrxGasPrice += _trx.gasPrice();
+    }
+    
+    u256 _minimumGasPrice = _b.mutableState().getAveragegasPrice();
+
+    _pendingTrxGasPrice += _minimumGasPrice;
+
+    u256 _recommendGasPrice = (_pendingTrxGasPrice / (_trxs.size() + _previousTrxs.size() + 1)) * 12 /10;
+    u256 _fastGasPrice = (_pendingTrxGasPrice / (_trxs.size() + _previousTrxs.size() + 1)) * 15 /10;
+
+    Json::Value _ret;
+    _ret["minimumGasPrice"] = toJS(_minimumGasPrice);
+    _ret["recommendGasPrice"] = toJS(_recommendGasPrice);
+    _ret["fastGasPrice"] = toJS(_fastGasPrice);
+
+    return _ret;
 }

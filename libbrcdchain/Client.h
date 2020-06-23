@@ -62,7 +62,7 @@ public:
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{102400, 102400},
-        int64_t _rebuild_num = 0);
+        DBBlockConfig const& db_config = DBBlockConfig());
     /// Destructor.
     virtual ~Client();
 
@@ -84,7 +84,7 @@ public:
     h256 importBlock(const bytesConstRef &data) override;
 
     /// Makes the given call. Nothing is recorded into the state.
-    ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+    ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, u256 chainid = 1, FudgeFactor _ff = FudgeFactor::Strict) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
@@ -214,7 +214,7 @@ public:
         return m_onBlockSealed.add(_handler);
     }
 
-
+	Json::Value getAveragePrice(BlockNumber _block) override ;
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.

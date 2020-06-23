@@ -79,7 +79,8 @@ namespace dev
                 executeContract = 6,
                 changeMiner = 7,
                 receivingincome = 8,
-                transferAutoEx = 9
+                transferAutoEx = 9,
+                modifyMinerGasPrice = 10
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -308,6 +309,22 @@ namespace dev
 
             };
 
+            struct modifyMinerGasPrice_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_proposer;
+                u256 m_proposedAmount;
+                modifyMinerGasPrice_operation(){}
+                modifyMinerGasPrice_operation(op_type _type, Address const& _proposer, u256 const& _proposedAmount):
+                    m_type(_type),
+                    m_proposer(_proposer),
+                    m_proposedAmount(_proposedAmount){}
+
+                
+                OPERATION_UNSERIALIZE(modifyMinerGasPrice_operation, (m_type)(m_proposer)(m_proposedAmount))
+                OPERATION_SERIALIZE((m_type)(m_proposer)(m_proposedAmount))
+            }; 
+
         }  // namespace transationTool
 
         enum class CodeDeposit
@@ -367,8 +384,8 @@ namespace dev
 
             /// Constructs an unsigned message-call transaction.
             Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
-                        bytes const& _data, u256 const& _nonce = Invalid256)
-                    : TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce)
+                        bytes const& _data, u256 const& _nonce = Invalid256, u256 chainid = u256(1))
+                    : TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce, chainid)
             {}
 
             /// Constructs an unsigned contract-creation transaction.

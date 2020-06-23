@@ -369,10 +369,11 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
 {
     try
     {
+        int64_t _chainId = config::chainId();
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
         ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-                                            jsToBlockNum(_blockNumber), FudgeFactor::Lenient);
+                                            jsToBlockNum(_blockNumber), _chainId, FudgeFactor::Lenient);
         return toJS(er.output);
     }
     catch (...)
@@ -618,7 +619,8 @@ Json::Value Brc::brc_getTransactionReceipt(string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransactionReceipt(h));
+
+        return toJson(client()->localisedTransactionReceipt(h), client()->localisedTransaction(h));
     }
     catch (...)
     {
@@ -901,6 +903,15 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     
 }
 
+Json::Value dev::rpc::Brc::brc_getGasPrice(std::string const& _blockNumber)
+{
+    try{
+        return client()->getAveragePrice(jsToBlockNum(_blockNumber));
+    }catch(...){
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
 string dev::rpc::exceptionToErrorMessage()
 {
     string ret;
@@ -967,6 +978,10 @@ string dev::rpc::exceptionToErrorMessage()
     catch (transferAutoExFailed const& _t)
     {
         ret = "transferAutoEx failed: " + std::string(*boost::get_error_info<errinfo_comment>(_t));
+    }
+    catch (modifyminergaspriceFailed const& _m)
+    {
+        ret = "modifyminerGasprice failed: " + std::string(*boost::get_error_info<errinfo_comment>(_m));
     }
     catch (getVotingCycleFailed const _g)
     {

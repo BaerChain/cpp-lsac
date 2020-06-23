@@ -35,7 +35,7 @@ public:
     /// @param _data RLP encoded transaction data.
     /// @param _nodeId Optional network identified of a node transaction comes from.
     void enqueue(RLP const& _data, h512 const& _nodeId);
-
+    void enqueue(std::vector<bytesConstRef> const& _dataV, h512 const& _nodeId);
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
     /// @param _ik Set to Retry to force re-addinga transaction that was previously dropped.
