@@ -126,8 +126,13 @@ Json::Value BrcV2::brc_pendingTransactions()
         //}
         //}
     }
-
-    return toJsonV2(ours);
+    Json::Value res(Json::arrayValue);
+    for (auto const& e: ours) {
+        auto trlp = toJsonV2(e);
+        trlp["rlp"]=toJS(e.rlp());
+        res.append(trlp);
+    }
+    return res;
 }
 
 string BrcV2::brc_getTransactionCount(string const& _address, string const& _blockNumber)
@@ -478,12 +483,12 @@ Json::Value dev::rpc::BrcV2::brc_estimateGasUsed(const Json::Value &_json)
 Json::Value BrcV2::brc_checkAddress(const std::string &_address) {
     Json::Value ret;
     try {
-        jsToAddressFromNewAddress(_address);
-        return Json::Value(true);
+        auto new_addr= jsToAddressFromNewAddress(_address);
+        return Json::Value(toJS(new_addr));
     }
     catch (...){
     }
-    return Json::Value(false);
+    BOOST_THROW_EXCEPTION(JsonRpcException("invalid address"));
 }
 
 std::string BrcV2::brc_call(Json::Value const &_json, std::string const &_blockNumber) {

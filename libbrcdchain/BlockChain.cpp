@@ -282,8 +282,6 @@ unsigned BlockChain::open(fs::path const &_path, WithExisting _we) {
     }
 
     try {
-        cerror << chainPath;
-        cerror << extrasPath;
         m_blocksDB = db::DBFactory::create(chainPath / fs::path("blocks"));
         m_extrasDB = db::DBFactory::create(extrasPath / fs::path("extras"));
     }
