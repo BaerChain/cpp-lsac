@@ -435,7 +435,7 @@ Json::Value dev::rpc::BrcV2::brc_getObtainVote(const std::string& _address, cons
         auto  ret_data =  client()->obtainVoteMsg(jsToAddressFromNewAddress(_address), jsToBlockNum(_blockNumber));
         if(ret_data.isNull()){
             Json::Value res;
-            res["addrsss"] = _address;
+            res["address"] = _address;
             res["ret"] = "not is the eletor";
             return  res;
         }
