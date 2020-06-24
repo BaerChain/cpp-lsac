@@ -122,7 +122,7 @@ namespace dev {
 
 
                 // TODO: remove once JSONRPC spec is updated to use "author" over "miner".
-                res["miner"] = toJS(_bi.author());
+                res["miner"] = jsToNewAddress(_bi.author());
                 if (_sealer)
                     for (auto const &i : _sealer->jsInfo(_bi))
                         res[i.first] = i.second;
