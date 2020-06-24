@@ -284,7 +284,7 @@ std::pair<bool, std::string> wallet::ToolTransaction::sign_trx_from_json(std::st
             transaction_hash =toHexPrefixed(sign_t.sha3());
         } else {
             cerror << "please input address: " << t.from << " private key.";
-            _pair.second = "not find the addrss:"+ dev::toString(t.from) +" key...";
+            _pair.second = "not find the address:"+ dev::toString(t.from) +" key...";
         }
     }
     return _pair;

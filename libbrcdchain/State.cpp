@@ -2496,7 +2496,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const {
         }
         jv["electors"] = _arry;
     } else {
-        jv["addrsss"] = toJS(_addr);
+        jv["address"] = toJS(_addr);
         auto ret = std::find(_data.begin(), _data.end(), _addr);
         auto a = account(_addr);
         if (ret != _data.end() && a) {
