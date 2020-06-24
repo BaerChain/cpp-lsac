@@ -4,7 +4,9 @@ add_executable(httpWallet
         HttpWallet.cpp
         main.cpp
         )
-target_link_libraries( httpWallet  ${Boost_LIBRARIES} devcrypto devcore brcdchain web3jsonrpc ${OPENSSL_LIBRARIES} Boost::program_options ${JSON_RPC_CPP_CLIENT_LIBRARY})
+
+
+target_link_libraries( httpWallet  PUBLIC ${Boost_LIBRARIES} devcrypto devcore brcdchain web3jsonrpc ${OPENSSL_LIBRARIES} Boost::program_options ${JSON_RPC_CPP_CLIENT_LIBRARY})
 
 target_include_directories(httpWallet
         PUBLIC

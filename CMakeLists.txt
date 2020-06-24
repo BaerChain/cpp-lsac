@@ -62,7 +62,7 @@ find_package(json_rpc_cpp REQUIRED)
 find_package(GMP REQUIRED)
 find_package(libscrypt  REQUIRED)
 find_package(snappy REQUIRED)
-
+find_library(GMP_LIBRARY gmp)
 message(STATUS "GMP_LIBRARY ${GMP_LIBRARY}")
 message(STATUS "GMP_INCLUDE_DIR ${GMP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_INCLUDE_DIR}")
