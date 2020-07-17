@@ -535,6 +535,13 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);
             break;
         }
+        case transationTool::op_type::modifyMinerGasPrice:
+        {
+            transationTool::modifyMinerGasPrice_operation _modifyGasPrice_op = transationTool::modifyMinerGasPrice_operation(_ops[0]);
+            m_batch_params._operation.push_back(std::make_shared<transationTool::modifyMinerGasPrice_operation>(_modifyGasPrice_op));
+            m_brctranscation.verifyModifyMinerGasPrice(_from, m_envInfo.number(), m_batch_params._operation);
+            break;
+        }
         default:
             m_excepted = TransactionException::DefaultError;
             BOOST_THROW_EXCEPTION(DefaultError() << errinfo_comment(m_t.sender().hex()));
