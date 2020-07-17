@@ -1,12 +1,14 @@
-//
-// Created by lzb on 19-8-10.
-//
+
+#include <iostream>
+#include "HttpWallet.h"
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
 #include <json/value.h>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <libweb3jsonrpc/SafeHttpServer.h>
 #include <libbrcdchain/Transaction.h>
 #include <libdevcore/CommonIO.h>
 #include <microhttpd.h>
@@ -22,6 +24,28 @@ namespace bfs = boost::filesystem;
 namespace js = json_spirit;
 namespace dbt = dev::brc::transationTool;
 
+
+bool test_connect_node(std::string const& _url) {
+    if (_url.empty()){
+        cnote<< "Warning the send url is empty!";
+    }
+    try {
+        std::string _str=wallet::ToolTransaction::connectNode( _url);
+        Json::Reader reader;
+        Json::Value value;
+        if (reader.parse(_str, value)) {            // json字符串转为json对象
+            if(value.isMember("result")) {
+                cnote << "connect host:"<< _url<< " is ok!";
+                return true;
+            }
+        }
+    }
+    catch (...){
+    }
+    cnote << "Warning can not connect host:"<< _url;
+    cnote << "can not to use method: sign_transaction_send";
+    return false;
+}
 
 int main(int argc, char *argv[]) {
     try {
@@ -48,30 +72,36 @@ int main(int argc, char *argv[]) {
             ip = args_map["ip"].as<std::string>();
         }
         if (args_map.count("port")) {
-           port = args_map["port"].as<int>();
+            port = args_map["port"].as<int>();
         }
         if (args_map.count("send")) {
             _url = args_map["send"].as<std::string>();
         }else{
             cwarn<< "Warning: not has host to send , Only sign transaction";
         }
-        SafeHttpServer server(ip, port, "", "");
-        wallet::WalletServer w_server(server, _url);
 
-        if (w_server.StartListening()) {
+        SafeHttpServer server(ip, port, "", "");
+        ModularServer<> *rpcWalletServer;
+        using wallServer = ModularServer<wallet::HttpWalletFace>;
+        rpcWalletServer = new wallServer(new wallet::HttpWallet(_url));
+
+        RouteRpc *v1r = new RouteRpc();
+        v1r->setRoutepath("/", rpcWalletServer);
+        server.SetUrlHandler("/", v1r);
+
+        if(server.StartListening()){
             cnote << "Server started successfully ...Listening: "<< ip << ":"<< port;
             if (!_url.empty()){
                 cnote << "try connect host:"<< _url;
-                w_server.test_connect_node();
+                test_connect_node(_url);
             }
-        } else {
+        }else{
             cerror << "Error starting Server" ;
         }
         while (true)
         {
             usleep(1000000);
         }
-
     }
 
     catch (jsonrpc::JsonRpcException &e){
@@ -87,3 +117,4 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 }
+

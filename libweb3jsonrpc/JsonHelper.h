@@ -42,7 +42,7 @@ Json::Value toJson(Transaction const& _t);
 Json::Value toJson(Transaction const& _t, bytes const& _rlp);
 Json::Value toJson(LocalisedTransaction const& _t, bool _detialStatus, SealEngineFace* _face = nullptr);
 Json::Value toJson(TransactionReceipt const& _t);
-Json::Value toJson(LocalisedTransactionReceipt const& _t);
+Json::Value toJson(LocalisedTransactionReceipt const& _t, LocalisedTransaction const& _trx);
 Json::Value toJson(LocalisedLogEntry const& _e);
 Json::Value toJson(LogEntry const& _e);
 Json::Value toJson(std::unordered_map<h256, LocalisedLogEntries> const& _entriesByBlock);

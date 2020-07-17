@@ -36,6 +36,11 @@ set(sources
         WhisperFace.h
         SafeHttpServer.h
         SafeHttpServer.cpp
+        BrcV2.h
+        BrcV2.cpp
+        BrcFace.h
+        JsonHelperV2.h
+        JsonHelperV2.cpp
         )
 
 if(WIN32)

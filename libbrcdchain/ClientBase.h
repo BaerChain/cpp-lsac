@@ -53,6 +53,8 @@ public:
     /// @param _callback Optional callback function for progress reporting
     std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback) override;
     Json::Value estimateGasUsed(const Json::Value& _json, BlockNumber _blockNum) override;
+    Json::Value getGasPrice() override;
+    // Json::Value getAveragePrice(BlockNumber _block) override ;
     using Interface::balanceAt;
     using Interface::ballotAt;
     using Interface::countAt;
@@ -95,6 +97,14 @@ public:
     Json::Value obtainVoteMessage(Address _a, BlockNumber _block) const override;
 	Json::Value votedMessage(Address _a, BlockNumber _block) const override;
 	Json::Value electorMessage(BlockNumber _block) const override;
+
+
+    /// newAddress interface for brcV2
+    accountStu accountMsg(Address const& _addr, BlockNumber _block)const override ;
+    voteStu voteMsg(Address const& _addr, BlockNumber _block) const override;
+    electorStu electorMsg(BlockNumber _block) const override;
+    std::vector<ex::exchange_order> pendingorderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const override;
+    electorStu obtainVoteMsg(Address _addr, BlockNumber _block) const override ;
 
     LocalisedLogEntries logs(unsigned _watchId) const override;
     LocalisedLogEntries logs(LogFilter const& _filter) const override;

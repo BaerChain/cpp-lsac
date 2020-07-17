@@ -10,6 +10,7 @@
 #include <libp2p/Capability.h>
 #include <libp2p/CapabilityHost.h>
 #include <libp2p/Common.h>
+#include <indexDb/database/include/brc/exchangeOrder.hpp>
 #include <memory>
 #include <mutex>
 #include <random>
@@ -38,7 +39,7 @@ public:
 
     virtual void onPeerStatus(BrcdChainPeer const& _peer) = 0;
 
-    virtual void onPeerTransactions(NodeID const& _peerID, RLP const& _r) = 0;
+    virtual void onPeerTransactions(NodeID const& _peerID, RLP const& _r, BlockChain const& _blockChain, OverlayDB const& _db, ex::exchange_plugin const& _exdb) = 0;
 
     virtual void onPeerBlockHeaders(NodeID const& _peerID, RLP const& _headers) = 0;
 
@@ -82,7 +83,7 @@ class BrcdChainCapability : public p2p::CapabilityFace
 public:
     /// Start server, but don't listen.
     BrcdChainCapability(std::shared_ptr<p2p::CapabilityHostFace> _host, BlockChain const& _ch,
-        OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
+        OverlayDB const& _db, ex::exchange_plugin const& _exdb,TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
 
     std::string name() const override { return "brc"; }
     u256 version() const override { return c_protocolVersion; }
@@ -163,6 +164,7 @@ private:
 
     BlockChain const& m_chain;
     OverlayDB const& m_db;                    ///< References to DB, needed for some of the BrcdChain Protocol responses.
+    ex::exchange_plugin const& m_exdb;
     TransactionQueue& m_tq;                    ///< Maintains a list of incoming transactions not yet in a block on the blockchain.
     BlockQueue& m_bq;                        ///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 

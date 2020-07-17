@@ -862,6 +862,11 @@ public:
                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_storageOverlayBytes.empty() &&
                m_storageByteRoot == EmptyTrie && m_cancelOrder.empty();
+                FBalance() == 0 && FBRC() == 0  && CookieIncome() == 0 && m_vote_data.empty() &&
+                m_BlockReward.size() == 0 && ballot() == 0 && m_block_records.is_empty() &&
+                m_couplingSystemFee.isEmpty() && m_vote_sapshot.isEmpty() && m_received_cookies.empty() &&
+                m_exChangeOrder.size() == 0 && m_successExchange.size() == 0 && m_minerGasPrice.size()==0 && m_storageOverlayBytes.empty() &&
+               m_storageByteRoot == EmptyTrie && m_cancelOrder.empty();
     }
 
     /// @returns the balance of this account.
@@ -1174,8 +1179,7 @@ public:
 
     void initCoupingSystemFee(bytes const &_b) { m_couplingSystemFee.unstreamRLP(_b); }
 
-    void
-    tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData> const &p_datas,
+    void tryRecordSnapshot(u256 _rounds, u256 brc, u256 balance, std::vector<PollData> const &p_datas,
                       int64_t _block_num);
 
     u256 getSnapshotRounds() { return m_couplingSystemFee.m_rounds; }
@@ -1213,10 +1217,6 @@ public:
         m_received_cookies.updataNumberofRound(_rounds);
         changed();
     }
-    /// 1 calculate old_rounds and now_rounds is before not has calculated
-    /// 2 update m_received_cookies
-    ///@return <is_update, get_total_cookies>
-
 
     dev::brc::ex::ExOrderMulti const &getExOrder() { return m_exChangeOrder; }
     void clearExOrderMulti() { m_exChangeOrder.clear(); changed();}
@@ -1349,6 +1349,20 @@ public:
         m_sellOrder = std::make_shared<sellOrder>(m_exchangeBplus);
         m_buyOrder = std::make_shared<buyOrder>(m_exchangeBplus);
     }
+    bytes getStreamRLPGasPrice() const{
+        RLPStream s(m_minerGasPrice.size());
+        for(auto const& a: m_minerGasPrice){
+            s.append<Address, u256>(std::make_pair(a.first, a.second));
+        }
+        return s.out();
+    }
+    void initGasPrice(bytes const& b){
+        m_minerGasPrice.clear();
+        for(auto const& v: RLP(b)){
+            auto _p = v.toPair<Address, u256>();
+            m_minerGasPrice[_p.first] = _p.second;
+        }
+    }
 
     void setChangeMiner(std::pair<Address, Address> const& _pair){
         m_mappingAddress = _pair;
@@ -1357,6 +1371,21 @@ public:
     std::pair<Address, Address>const& mappingAddress() const{
         return m_mappingAddress;
     }
+
+    std::map<Address, u256> const& minerGasPrice() const{
+        return m_minerGasPrice;
+    }
+    void setMinerGasPrice(Address const& _id, u256 const& _price) {
+        m_minerGasPrice[_id] = _price;
+        changed();
+    }
+    void setMinerGasPrices(std::map<Address, u256> const& _prices){
+        m_minerGasPrice.clear();
+        m_minerGasPrice = _prices;
+        changed();
+    }
+
+    u256 getAverageGasPrice() const;
 
 private:
     /// Is this account existant? If not, it represents a deleted account.
@@ -1441,6 +1470,9 @@ private:
     std::map<h256, CancelOrder>  m_cancelOrder;
 
     std::pair<Address, Address> m_mappingAddress = {Address(), Address()};
+
+    /// miner and standbyMiner gasPrice;
+    std::map<Address, u256> m_minerGasPrice;
 
 };
 

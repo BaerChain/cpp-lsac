@@ -281,15 +281,23 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
         }
 
 
-        // check gasPrice the must bigger c_min_price
-        if (m_t.gasPrice() < c_min_price)
+
+        //check gasPrice the must bigger c_min_price
+        if(m_envInfo.number() > config::gasPriceHeight())
         {
-            cdebug << "Sender: " << m_t.sender().hex() << " Invalid gasPrice: Require >"
-                   << c_min_price << " Got " << m_t.gasPrice();
-            m_excepted = TransactionException::InvalidGasPrice;
-            BOOST_THROW_EXCEPTION(
-                InvalidGasPrice() << errinfo_comment(std::string(
-                    "the transaction gasPrice is lower must bigger " + toString(c_min_price))));
+            if(m_t.gasPrice() < m_s.getAveragegasPrice()){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_s.getAveragegasPrice() << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_s.getAveragegasPrice()))));
+		    }
+        }else{
+            if(m_t.gasPrice() < m_sealEngine.chainParams().m_minGasPrice){
+                cdebug << "Sender: " << m_t.sender().hex() << "rpcinitialize Invalid gasPrice: Require >"
+				    << m_sealEngine.chainParams().m_minGasPrice << " Got " << m_t.gasPrice();
+			    m_excepted = TransactionException::InvalidGasPrice;
+			    BOOST_THROW_EXCEPTION(InvalidGasPrice()<< errinfo_comment(std::string("the transaction gasPrice is lower must bigger " + toString(m_sealEngine.chainParams().m_minGasPrice))));
+		    }
         }
         // Avoid unaffordable transactions.
         bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
@@ -314,11 +322,10 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                   << " Got" << m_s.BRC(m_t.sender())
                                   << " for sender: " << m_t.sender();
                 m_excepted = TransactionException::NotEnoughCash;
-                std::string ex_info = "not enough BRC or Cookie to execute tarnsaction will cost:" +
-                                      toString(totalCost);
-                BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),
-                                                               (bigint)m_s.BRC(m_t.sender()))
-                                                        << errinfo_comment(ex_info));
+
+				std::string ex_info = "not enough BRC or Cookie to execute transaction will cost:"+ toString(totalCost);
+				BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
+                                                      << errinfo_comment(ex_info));
             }
             m_batch_params._cookiesAddress = m_t.sender();
         
@@ -432,6 +439,44 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
                 _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
                 m_s.balance(m_t.sender()) < _totalCost)
+			if(_totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue )
+			{
+				m_excepted = TransactionException::NotEnoughCash;
+				std::string ex_info = "not enough require cookie to execute transaction will cost:" + toString(_totalCost);
+				BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
+			}
+		    m_totalGas =(u256) _totalCost;
+			//
+
+			try{
+				if(m_batch_params._type == transationTool::op_type::vote)
+					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
+				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
+					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)_totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation,m_envInfo.number());
+				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
+					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation,m_envInfo.number());
+				else if(m_batch_params._type == transationTool::op_type::receivingincome)
+                    m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
+                else if(m_batch_params._type == transationTool::op_type::changeMiner)
+                    m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
+			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
+			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
+                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice)
+                    m_brctranscation.verifyModifyMinerGasPrice(m_t.sender(), m_envInfo.number(), m_batch_params._operation);
+            }
+			catch(VerifyVoteField &ex){
+                cdebug << "verifyVote field ! ";
+                cdebug << " except:" << ex.what();
+				m_excepted = TransactionException::VerifyVoteField;
+				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
+			}
+			catch(VerifyPendingOrderFiled const& _v){
+				BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_v)));
+			}
+			catch(CancelPendingOrderFiled const& _c){
+				BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
+			}
+			catch(receivingincomeFiled const& _r)
             {
                 is_verfy_cost = false;
             }
@@ -620,6 +665,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::changeMiner:{
                 m_s.changeMiner(m_batch_params._operation);
+                if(m_envInfo.number() > config::gasPriceHeight())
+                {
+                    m_s.changeMinerModifyGasPrice(m_batch_params._operation);
+                }
                 break;
             }
             case transationTool::op_type::receivingincome:{
@@ -667,6 +716,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_s.transferAuthorityUseCookie(m_batch_params._rootAddress, m_batch_params._operation);
                 break;
             }
+            case transationTool::op_type::modifyMinerGasPrice:
+            {
+                m_s.modifyGasPrice(m_batch_params._operation);
+            }
+            break;
             default:
                 //TODO: unkown null.
                 assert(1);

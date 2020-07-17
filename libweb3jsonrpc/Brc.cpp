@@ -20,9 +20,7 @@ using namespace dev::rpc;
 #define MAXQUERIES 50
 #define ZERONUM 0
 
-Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts)
-  : m_brc(_brc), m_brcAccounts(_brcAccounts)
-{}
+Brc::Brc(brc::Interface& _brc, brc::AccountHolder& _brcAccounts) : m_brc(_brc), m_brcAccounts(_brcAccounts) {}
 
 string Brc::brc_protocolVersion()
 {
@@ -54,41 +52,38 @@ string Brc::brc_blockNumber()
 Json::Value Brc::brc_getSuccessPendingOrder(string const& _getSize, string const& _blockNum)
 {
     BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
-	try
-	{
-		return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNum(_blockNum));
-	}
-	catch (...)
-	{
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
-}
-
-Json::Value Brc::brc_getPendingOrderPoolForAddr(
-    string const& _address, string const& _getSize, string const& _blockNum)
-{
-	try
-	{
-        return client()->pendingOrderPoolForAddrMessage(
-            jsToAddress(_address), jsToInt(_getSize), jsToBlockNum(_blockNum));
-	}
-	catch (...)
-	{
+    try
+    {
+        return client()->successPendingOrderMessage(jsToInt(_getSize), jsToBlockNum(_blockNum));
+    }
+    catch (...)
+    {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
+    }
 }
 
-Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const& _order_token_type,
-    string const& _getSize, string const& _blockNumber)
+Json::Value Brc::brc_getPendingOrderPoolForAddr(string const& _address, string const& _getSize, string const& _blockNum)
 {
-    if(jsToU256(_getSize) <= 0 || jsToOrderEnum(_order_type) == 0)
+    try
+    {
+        return client()->pendingOrderPoolForAddrMessage(jsToAddress(_address), jsToInt(_getSize), jsToBlockNum(_blockNum));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+
+Json::Value Brc::brc_getPendingOrderPool(
+    string const& _order_type, string const& _order_token_type, string const& _getSize, string const& _blockNumber)
+{
+    if (jsToU256(_getSize) <= 0 || jsToOrderEnum(_order_type) == 0)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown rpc parameter")));
     }
     try
     {
-        return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type),
-            1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
+        return client()->pendingOrderPoolMessage(jsToOrderEnum(_order_type), 1, jsToU256(_getSize), jsToBlockNum(_blockNumber));
     }
     catch (Exception const& ex)
     {
@@ -100,22 +95,24 @@ Json::Value Brc::brc_getPendingOrderPool(string const& _order_type, string const
     }
 }
 
-Json::Value Brc::brc_getSuccessPendingOrderForAddr(string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
+Json::Value Brc::brc_getSuccessPendingOrderForAddr(
+    string const& _address, string const& _minTime, string const& _maxTime, string const& _maxSize, string const& _blockNum)
 {
     BOOST_THROW_EXCEPTION(JsonRpcException(std::string("This feature is not yet open")));
-    if(jsToInt(_maxSize) > MAXQUERIES)
+    if (jsToInt(_maxSize) > MAXQUERIES)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException("The number of query data cannot exceed 50"));
     }
 
-    try {
-        return client()->successPendingOrderForAddrMessage(jsToAddress(_address), jsToint64(_minTime),
-                jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNum(_blockNum));
-    }catch(...)
+    try
+    {
+        return client()->successPendingOrderForAddrMessage(
+            jsToAddress(_address), jsToint64(_minTime), jsToint64(_maxTime), jsToInt(_maxSize), jsToBlockNum(_blockNum));
+    }
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
-
 }
 
 
@@ -134,18 +131,19 @@ Json::Value Brc::brc_getBalance(string const& _address, string const& _blockNumb
 
 Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageNum, string const& _listNum, string const& _blockNumber)
 {
-    try{
-        if(jsToInt(_listNum) > 50)
+    try
+    {
+        if (jsToInt(_listNum) > 50)
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Entry size cannot exceed 50")));
         }
-        if(jsToInt(_pageNum) < 0 || jsToInt(_listNum) < 0)
+        if (jsToInt(_pageNum) < 0 || jsToInt(_listNum) < 0)
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Incoming parameters cannot be negative")));
         }
         return client()->blockRewardMessage(jsToAddress(_address), jsToInt(_pageNum), jsToInt(_listNum), jsToBlockNum(_blockNumber));
     }
-    catch(...)
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
@@ -153,11 +151,11 @@ Json::Value Brc::brc_getBlockReward(string const& _address, string const& _pageN
 
 Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string const& _blockNumber)
 {
-    try {
-
+    try
+    {
         return client()->queryExchangeRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch(...)
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
@@ -165,11 +163,11 @@ Json::Value Brc::brc_getQueryExchangeReward(string const& _address, std::string 
 
 Json::Value Brc::brc_getQueryBlockReward(string const& _address, std::string const& _blockNumber)
 {
-
-    try {
+    try
+    {
         return client()->queryBlockRewardMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
     }
-    catch(...)
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
@@ -187,14 +185,11 @@ string Brc::brc_getBallot(string const& _address, string const& _blockNumber)
     }
 }
 
-string Brc::brc_getStorageAt(
-    string const& _address, string const& _position, string const& _blockNumber)
+string Brc::brc_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
 {
     try
     {
-        return toJS(toCompactBigEndian(client()->stateAt(jsToAddress(_address), jsToU256(_position),
-                                                         jsToBlockNum(_blockNumber)),
-            32));
+        return toJS(toCompactBigEndian(client()->stateAt(jsToAddress(_address), jsToU256(_position), jsToBlockNum(_blockNumber)), 32));
     }
     catch (...)
     {
@@ -206,8 +201,7 @@ string Brc::brc_getStorageRoot(string const& _address, string const& _blockNumbe
 {
     try
     {
-        return toString(
-            client()->stateRootAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
+        return toString(client()->stateRootAt(jsToAddress(_address), jsToBlockNum(_blockNumber)));
     }
     catch (...)
     {
@@ -355,12 +349,16 @@ string Brc::brc_sendRawTransaction(std::string const& _rlp)
     }
 }
 
-std::string Brc::brc_importBlock(const std::string &_rlp) {
+std::string Brc::brc_importBlock(const std::string& _rlp)
+{
 #ifndef NDEBUG
-    try {
+    try
+    {
         auto by = jsToBytes(_rlp, OnFailed::Throw);
         return toJS(client()->importBlock(&by));
-    }catch (const Exception &e){
+    }
+    catch (const Exception& e)
+    {
         testlog << " error:" << e.what();
         throw JsonRpcException(exceptionToErrorMessage());
     }
@@ -373,10 +371,11 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
 {
     try
     {
+        int64_t _chainId = config::chainId();
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
-        ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-                                            jsToBlockNum(_blockNumber), t.chainId, FudgeFactor::Lenient);
+        ExecutionResult er =
+            client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNum(_blockNumber), _chainId, FudgeFactor::Lenient);
         return toJS(er.output);
     }
     catch (...)
@@ -392,9 +391,7 @@ string Brc::brc_estimateGas(Json::Value const& _json)
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
         int64_t gas = static_cast<int64_t>(t.gas);
-        return toJS(client()
-                        ->estimateGas(t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock)
-                        .first);
+        return toJS(client()->estimateGas(t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock).first);
     }
     catch (...)
     {
@@ -411,11 +408,11 @@ Json::Value Brc::brc_getBlockByHash(string const& _blockHash, bool _includeTrans
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
+            return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), false,
+                client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -423,7 +420,7 @@ Json::Value Brc::brc_getBlockByHash(string const& _blockHash, bool _includeTrans
     }
 }
 
-Json::Value Brc::brc_getBlockDetialByHash(const string &_blockHash, bool _includeTransactions)
+Json::Value Brc::brc_getBlockDetialByHash(const string& _blockHash, bool _includeTransactions)
 {
     try
     {
@@ -432,18 +429,17 @@ Json::Value Brc::brc_getBlockDetialByHash(const string &_blockHash, bool _includ
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                          client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                          client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
 }
-
 
 
 Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeTransactions)
@@ -455,11 +451,11 @@ Json::Value Brc::brc_getBlockByNumber(string const& _blockNumber, bool _includeT
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactions(h), false, client()->sealEngine());
+            return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), false,
+                client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -476,11 +472,11 @@ Json::Value Brc::brc_getBlockDetialByNumber(string const& _blockNumber, bool _in
             return Json::Value(Json::nullValue);
 
         if (_includeTransactions)
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                          client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), true, client()->sealEngine());
         else
-            return toJson(client()->blockInfo(h), client()->blockDetails(h),
-                client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+            return toJson(
+                client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
     }
     catch (...)
     {
@@ -526,8 +522,7 @@ Json::Value Brc::brc_getAnalysisData(std::string const& _data)
     return analysisData(r);
 }
 
-Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
-    string const& _blockHash, string const& _transactionIndex)
+Json::Value Brc::brc_getTransactionByBlockHashAndIndex(string const& _blockHash, string const& _transactionIndex)
 {
     try
     {
@@ -535,11 +530,11 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
         unsigned ti = jsToInt(_transactionIndex);
         if (!client()->isKnownTransaction(bh, ti))
         {
-            //return Json::Value(Json::nullValue);
+            // return Json::Value(Json::nullValue);
             BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
         }
 
-        return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
+        return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
     catch (...)
     {
@@ -547,8 +542,7 @@ Json::Value Brc::brc_getTransactionByBlockHashAndIndex(
     }
 }
 
-Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(
-        string const& _blockHash, string const& _transactionIndex)
+Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(string const& _blockHash, string const& _transactionIndex)
 {
     try
     {
@@ -566,9 +560,7 @@ Json::Value Brc::brc_getTransactionDetialByBlockHashAndIndex(
 }
 
 
-
-Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
-    string const& _blockNumber, string const& _transactionIndex)
+Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(string const& _blockNumber, string const& _transactionIndex)
 {
     try
     {
@@ -577,14 +569,14 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown block height")));
         }
-            //return Json::Value(Json::nullValue);
+        // return Json::Value(Json::nullValue);
         h256 bh = client()->hashFromNumber(bn);
         unsigned ti = jsToInt(_transactionIndex);
         if (!client()->isKnownTransaction(bh, ti))
         {
             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Unknown trading index")));
         }
-            //return Json::Value(Json::nullValue);
+        // return Json::Value(Json::nullValue);
 
         return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
@@ -594,8 +586,7 @@ Json::Value Brc::brc_getTransactionByBlockNumberAndIndex(
     }
 }
 
-Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(
-        string const& _blockNumber, string const& _transactionIndex)
+Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(string const& _blockNumber, string const& _transactionIndex)
 {
     try
     {
@@ -605,7 +596,7 @@ Json::Value Brc::brc_getTransactionDetialByBlockNumberAndIndex(
         if (!client()->isKnownTransaction(bh, ti))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransaction(bh, ti), false,client()->sealEngine());
+        return toJson(client()->localisedTransaction(bh, ti), false, client()->sealEngine());
     }
     catch (...)
     {
@@ -622,7 +613,8 @@ Json::Value Brc::brc_getTransactionReceipt(string const& _transactionHash)
         if (!client()->isKnownTransaction(h))
             return Json::Value(Json::nullValue);
 
-        return toJson(client()->localisedTransactionReceipt(h));
+
+        return toJson(client()->localisedTransactionReceipt(h), client()->localisedTransaction(h));
     }
     catch (...)
     {
@@ -630,13 +622,11 @@ Json::Value Brc::brc_getTransactionReceipt(string const& _transactionHash)
     }
 }
 
-Json::Value Brc::brc_getUncleByBlockHashAndIndex(
-    string const& _blockHash, string const& _uncleIndex)
+Json::Value Brc::brc_getUncleByBlockHashAndIndex(string const& _blockHash, string const& _uncleIndex)
 {
     try
     {
-        return toJson(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)),
-            client()->sealEngine());
+        return toJson(client()->uncle(jsToFixed<32>(_blockHash), jsToInt(_uncleIndex)), client()->sealEngine());
     }
     catch (...)
     {
@@ -644,16 +634,14 @@ Json::Value Brc::brc_getUncleByBlockHashAndIndex(
     }
 }
 
-Json::Value Brc::brc_getUncleByBlockNumberAndIndex(
-    string const& _blockNumber, string const& _uncleIndex)
+Json::Value Brc::brc_getUncleByBlockNumberAndIndex(string const& _blockNumber, string const& _uncleIndex)
 {
     try
     {
         BlockNumber h = jsToBlockNum(_blockNumber);
         if (!client()->isKnown(h))
             return Json::Value(Json::nullValue);
-        return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)),
-            client()->sealEngine());
+        return toJson(client()->uncle(jsToBlockNum(_blockNumber), jsToInt(_uncleIndex)), client()->sealEngine());
     }
     catch (...)
     {
@@ -852,57 +840,56 @@ Json::Value Brc::brc_fetchQueuedTransactions(string const& _accountId)
 
 Json::Value dev::rpc::Brc::brc_getObtainVote(const std::string& _address, const std::string& _blockNumber)
 {
-	try
-	{
-		return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
-	}
-	catch(...)
-	{
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
+    try
+    {
+        return client()->obtainVoteMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
 }
 
 
 Json::Value dev::rpc::Brc::brc_getVoted(const std::string& _address, const std::string& _blockNumber)
 {
-	try
-	{
-		return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
-	}
-	catch(...)
-	{
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
+    try
+    {
+        return client()->votedMessage(jsToAddress(_address), jsToBlockNum(_blockNumber));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
 }
 
 
 Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
 {
-	try
-	{
-		return client()->electorMessage(jsToBlockNum(_blockNumber));
-	}
-	catch(...)
-	{
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
+    try
+    {
+        return client()->electorMessage(jsToBlockNum(_blockNumber));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
 }
 
-Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
+Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value& _json)
 {
     try
     {
         return client()->estimateGasUsed(_json, PendingBlock);
     }
-    catch(EstimateGasUsed const& _e)
+    catch (EstimateGasUsed const& _e)
     {
-        BOOST_THROW_EXCEPTION(JsonRpcException(std::string(*boost::get_error_info<errinfo_comment >(_e))));
+        BOOST_THROW_EXCEPTION(JsonRpcException(std::string(*boost::get_error_info<errinfo_comment>(_e))));
     }
-    catch(...)
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
-    
 }
 
 Json::Value dev::rpc::Brc::brc_getAccountAuthorityDetails(std::string const& _addr, std::string const& _type, std::string const& _blockNumber)
@@ -911,11 +898,10 @@ Json::Value dev::rpc::Brc::brc_getAccountAuthorityDetails(std::string const& _ad
     {
         return client()->accountAuthorityDetails(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
     }
-    catch(...)
+    catch (...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
-    
 }
 
 Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std::string const& _type, std::string const& _blockNumber)
@@ -925,11 +911,10 @@ Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std:
         cerror << "123123";
         return client()->authorizeCookie(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
-    
 }
 
 Json::Value Brc::brc_getPermissionTransfer(string const& _address, string const& _blockNumber)
@@ -937,6 +922,17 @@ Json::Value Brc::brc_getPermissionTransfer(string const& _address, string const&
     try
     {
         return client()->permissionTransfer(jsToAddress(_address), jsToBlockNum(_blockNumber));
+    }
+    catch (...)
+    {
+        BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+    }
+}
+Json::Value dev::rpc::Brc::brc_getGasPrice(std::string const& _blockNumber)
+{
+    try
+    {
+        return client()->getAveragePrice(jsToBlockNum(_blockNumber));
     }
     catch (...)
     {
@@ -973,14 +969,15 @@ string dev::rpc::exceptionToErrorMessage()
     catch (InvalidNonce const& ex)
     {
         ret = "Invalid transaction nonce.";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
     }
-	catch(InvalidFunction const& ex){
-		ret = "Invalid function .";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
-	}
+    catch (InvalidFunction const& ex)
+    {
+        ret = "Invalid function .";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
     catch (PendingTransactionAlreadyExists const&)
     {
         ret = "Same transaction already exists in the pending transaction queue.";
@@ -991,9 +988,9 @@ string dev::rpc::exceptionToErrorMessage()
     }
     catch (NotEnoughCash const& ex)
     {
-        ret = "Account balance is too low (balance < value + gas * gas price)." ;
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-		   ret += std::string(*_error);
+        ret = "Account balance is too low (balance < value + gas * gas price).";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
     }
     catch (VerifyPendingOrderFiled const& _v)
     {
@@ -1005,120 +1002,129 @@ string dev::rpc::exceptionToErrorMessage()
     }
     catch (receivingincomeFiled const& _r)
     {
-        ret = "receivingincome failed :" + std::string(*boost::get_error_info<errinfo_comment >(_r));
+        ret = "receivingincome failed :" + std::string(*boost::get_error_info<errinfo_comment>(_r));
     }
     catch (transferAutoExFailed const& _t)
     {
         ret = "transferAutoEx failed: " + std::string(*boost::get_error_info<errinfo_comment>(_t));
     }
+    catch (modifyminergaspriceFailed const& _m)
+    {
+        ret = "modifyminerGasprice failed: " + std::string(*boost::get_error_info<errinfo_comment>(_m));
+    }
     catch (getVotingCycleFailed const _g)
     {
-        ret = std::string(*boost::get_error_info<errinfo_comment >(_g));
+        ret = std::string(*boost::get_error_info<errinfo_comment>(_g));
     }
     catch (NotEnoughBallot const&)
     {
         ret = "Account balance is too low (balance < gas * gas price) or ballots is to low";
     }
-    catch(VerifyVoteField const& ex)
-	{
-		ret = "Account vote verify is error :";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
-	}
-    catch(InvalidGasPrice const& ex)
-	{
-		ret = "Accoun's transaction is error :";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
-	}
-	catch(BrcTranscationField const& ex)
-	{
-		ret = "Account transfer BRC verify is error :";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
-	}
-	catch (InvalidSignature const&ex)
-	{
-		ret = "Invalid transaction signature.";
-		if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
-			ret += std::string(*_error);
-	}
-	// Acount holder exceptions
-	catch (AccountLocked const&)
-	{
-		ret = "Account is locked.";
-	}
-	catch (UnknownAccount const&)
-	{
-		ret = "Unknown account.";
-	}
-	catch (TransactionRefused const&)
-	{
-		ret = "Transaction rejected by user.";
-	}
-	catch (ChangeMinerFailed const &ex){
-        ret = "ChangeMinerFailed : ";
-        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+    catch (VerifyVoteField const& ex)
+    {
+        ret = "Account vote verify is error :";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
             ret += std::string(*_error);
-	}
-    catch (InvalidAutor const&ex)
+    }
+    catch (InvalidGasPrice const& ex)
+    {
+        ret = "Accoun's transaction is error :";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
+    catch (BrcTranscationField const& ex)
+    {
+        ret = "Account transfer BRC verify is error :";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
+    catch (InvalidSignature const& ex)
+    {
+        ret = "Invalid transaction signature.";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
+    // Acount holder exceptions
+    catch (AccountLocked const&)
+    {
+        ret = "Account is locked.";
+    }
+    catch (UnknownAccount const&)
+    {
+        ret = "Unknown account.";
+    }
+    catch (TransactionRefused const&)
+    {
+        ret = "Transaction rejected by user.";
+    }
+    catch (ChangeMinerFailed const& ex)
+    {
+        ret = "ChangeMinerFailed : ";
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
+            ret += std::string(*_error);
+    }
+    catch (InvalidAutor const& ex)
     {
         ret = "";
-        if(auto *_error = boost::get_error_info<errinfo_comment>(ex))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(ex))
             ret += std::string(*_error);
     }
     catch (ExecutiveFailed const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (ExdbChangeFailed const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (transferAuthotityControlFailed const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (InvalidMutilTransactionType const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (VerifyPermissonTrxFailed const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (BadRLP const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret += std::string(*_error);
         }
     }
     catch (transferAuthorityUseCookieFailed const& _e)
     {
-        if(auto *_error = boost::get_error_info<errinfo_comment>(_e))
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
             ret + std::string(*_error);
         }
     }
-	catch (...)
-	{
-		ret = "Invalid RPC parameters.";
-	}
-	return ret;
+    catch (InvalidAddress)
+    {
+        ret = "has invalidAddress in method params";
+    }
+    catch (...)
+    {
+        ret = "Invalid RPC parameters.";
+    }
+    return ret;
 }

@@ -4,32 +4,36 @@
 #ifndef BAERCHAIN_WALLETSERVER_H
 #define BAERCHAIN_WALLETSERVER_H
 
-#include <iostream>
 #include <jsonrpccpp/server.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
-#include <libweb3jsonrpc/SafeHttpServer.h>
 #include <libdevcore/Log.h>
+#include <libweb3jsonrpc/SafeHttpServer.h>
+#include <iostream>
 
 using namespace jsonrpc;
 using namespace std;
 using namespace dev;
 
-namespace wallet{
 
-class WalletServer : public jsonrpc::AbstractServer<WalletServer> {
+
+namespace wallet
+{
+
+class WalletServer : public jsonrpc::AbstractServer<WalletServer>
+{
 public:
-    WalletServer(dev::SafeHttpServer &server, std::string _send_url = "");
-    void testhello(const Json::Value& request, Json::Value & respone);
+    WalletServer(dev::SafeHttpServer& server, std::string _send_url = "");
+    void testhello(const Json::Value& request, Json::Value& respone);
     /// transaction sign and send to chain return send_ret
-    void sign_transaction_send(const Json::Value& request, Json::Value & respone);
+    void sign_transaction_send(const Json::Value& request, Json::Value& respone);
 
     /// transaction sign and return sing_data
-    void sign_transaction(const Json::Value & request, Json::Value & respone);
+    void sign_transaction(const Json::Value& request, Json::Value& respone);
 
     /// new address by
-    void new_address(const  Json::Value & request, Json::Value & respone);
+    void new_address(const Json::Value& request, Json::Value& respone);
 
-    void sign_data(const  Json::Value & request, Json::Value & respone);
+    void sign_data(const Json::Value& request, Json::Value& respone);
 
     bool test_connect_node();
 
@@ -37,8 +41,8 @@ private:
     std::string m_send_url;
 };
 
-}
+
+}  // namespace wallet
 
 
-
-#endif //BAERCHAIN_WALLETSERVER_H
+#endif  // BAERCHAIN_WALLETSERVER_H

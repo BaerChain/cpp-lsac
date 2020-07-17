@@ -28,11 +28,11 @@ SafeHttpServer::SafeHttpServer(std::string const& _address, int _port, std::stri
     m_address(_address)
 {}
 
-jsonrpc::IClientConnectionHandler* SafeHttpServer::GetHandler(const std::string& url)
+RouteRpcInterface* SafeHttpServer::GetHandler(const std::string& url)
 {
-    if (AbstractServerConnector::GetHandler() != NULL)
-        return AbstractServerConnector::GetHandler();
-    map<string, jsonrpc::IClientConnectionHandler*>::iterator it = this->urlhandler.find(url);
+    // if (AbstractServerConnector::GetHandler() != NULL)
+    //     return AbstractServerConnector::GetHandler();
+    map<string, RouteRpcInterface*>::iterator it = this->urlhandler.find(url);
     if (it != this->urlhandler.end())
         return it->second;
     return NULL;
@@ -118,7 +118,7 @@ bool SafeHttpServer::SendOptionsResponse(void* _addInfo)
     return ret == MHD_YES;
 }
 
-void SafeHttpServer::SetUrlHandler(const string& url, jsonrpc::IClientConnectionHandler* handler)
+void SafeHttpServer::SetUrlHandler(const string& url, RouteRpcInterface* handler)
 {
     this->urlhandler[url] = handler;
     this->SetHandler(NULL);
@@ -150,7 +150,7 @@ int SafeHttpServer::callback(void* cls, MHD_Connection* connection, const char* 
         else
         {
             string response;
-            jsonrpc::IClientConnectionHandler* handler =
+            RouteRpcInterface* handler =
                 client_connection->server->GetHandler(string(url));
             if (handler == NULL)
             {
@@ -162,7 +162,7 @@ int SafeHttpServer::callback(void* cls, MHD_Connection* connection, const char* 
             {
                 client_connection->code = MHD_HTTP_OK;
                 try {
-                	handler->HandleRequest(client_connection->request.str(), response);
+                	handler->HandleRequest(std::string(url), client_connection->request.str(), response);
                 }
                 catch(std::exception &e) {
                 	client_connection->server->SendResponse(

@@ -50,5 +50,7 @@ extern Address const BuyExchangeAddress;
 extern Address const SellExchangeAddress;
 extern Address const CancelOrderAddress;
 extern std::vector<Address> const CreaterSysAddresses;
+
+extern Address const GaspriceAddress;
 }
 

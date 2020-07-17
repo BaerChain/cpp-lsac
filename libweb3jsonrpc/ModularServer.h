@@ -5,7 +5,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
+#include <iostream>
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/common/procedure.h>
 #include <jsonrpccpp/server/abstractserverconnector.h>
@@ -86,6 +86,10 @@ public:
         (void)_input;
     }
 
+    virtual bool find_methods(const std::string &method){
+        return false;
+    }
+
     /// server takes ownership of the connector
     unsigned addConnector(jsonrpc::AbstractServerConnector* _connector)
     {
@@ -135,6 +139,8 @@ public:
 
     virtual void HandleMethodCall(jsonrpc::Procedure& _proc, Json::Value const& _input, Json::Value& _output) override
     {
+        //std::cout << "_proc.GetProcedureName() :" << _proc.GetProcedureName() << std::endl;
+        //std::cout << "_input :" << _input.toStyledString() << std::endl;
         auto pointer = m_methods.find(_proc.GetProcedureName());
         if (pointer != m_methods.end())
         {
@@ -170,6 +176,14 @@ public:
         }
         else
             ModularServer<Is...>::HandleNotificationCall(_proc, _input);
+    }
+
+    virtual bool find_methods(const std::string &method) override{
+        auto pointer = m_methods.find(method);
+        if(pointer != m_methods.end()){
+            return true;
+        }
+        return false;
     }
 
 private:

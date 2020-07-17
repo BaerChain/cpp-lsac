@@ -380,7 +380,6 @@ void dev::brc::BRCTranscation::verifyreceivingincomeChanegeMiner(dev::Address co
             BOOST_THROW_EXCEPTION(receivingincomeFiled() << errinfo_comment(try_ret));
         }
     }
-    cnote << "verify receive ok";
 }
 
 
@@ -414,7 +413,6 @@ void dev::brc::BRCTranscation::verifyreceivingincome(dev::Address const& _from,
                                   << errinfo_comment(std::string("receivingincome type is null")));
         }
     }
-    cnote << "verify receive ok";
 }
 
 void dev::brc::BRCTranscation::verifyBlockFeeincome(
@@ -975,8 +973,47 @@ void dev::brc::BRCTranscation::verifyUseCookie(Address const& _rootAddr, Address
     }
 }
 
-bool dev::brc::BRCTranscation::findAddress(
-    std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
+
+
+void dev::brc::BRCTranscation::verifyModifyMinerGasPrice(Address const& _from, int64_t const& _blockNum, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    if(_blockNum <= config::gasPriceHeight())
+    {
+        BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("ModifyMinerGasPrice function has not yet reached the opening time"));
+    }
+    for(auto it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("modifyMinerGasPrice_operation Casting failed"));
+        }
+        if(_from != _op->m_proposer)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The originator of the transaction is not the same as the proposed address"));
+        }
+        Account *_minerGasPriceAddr = m_state.account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("minerGasPriceAddr is not exist"));
+        }
+        std::map<Address, u256> _gasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(!_gasPriceMap.count(_op->m_proposer))
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("The transaction initiator is not the address of the node"));
+        }
+
+        u256 _averageGasPrice = _minerGasPriceAddr->getAverageGasPrice();
+        u256 _lowerLimit = _averageGasPrice * 8 / 10;
+        u256 _highLimit =  _averageGasPrice * 12 / 10;
+        if(_op->m_proposedAmount > _highLimit || _op->m_proposedAmount < _lowerLimit)
+        {
+            BOOST_THROW_EXCEPTION(modifyminergaspriceFailed() << errinfo_comment("Proposed value is outside the allowed range"));
+        }
+    }
+}
+
+bool dev::brc::BRCTranscation::findAddress(std::map<Address, u256> const& _voteData, std::vector<dev::brc::PollData> const& _pollData)
 {
     bool _status = false;
     for (auto _voteDataIt : _voteData)

@@ -13,9 +13,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DBOOST_LOG_DYN_LINK)
-    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
+    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb  -Wreturn-type")
     #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 endif()
+
+
 
 
 if( APPLE )
@@ -60,7 +62,7 @@ find_package(json_rpc_cpp REQUIRED)
 find_package(GMP REQUIRED)
 find_package(libscrypt  REQUIRED)
 find_package(snappy REQUIRED)
-
+find_library(GMP_LIBRARY gmp)
 message(STATUS "GMP_LIBRARY ${GMP_LIBRARY}")
 message(STATUS "GMP_INCLUDE_DIR ${GMP_INCLUDE_DIR}")
 message(STATUS "Found jsoncpp : ${JSONCPP_INCLUDE_DIR}")

@@ -9,6 +9,8 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
+#include <libbrccore/Transactionstructure.h>
+#include <indexDb/database/include/brc/objects.hpp>
 
 namespace dev
 {
@@ -108,6 +110,9 @@ public:
     // [STATE-QUERY API]
 
     virtual Json::Value estimateGasUsed(Json::Value const& _json, BlockNumber _blockNum) = 0;
+    virtual Json::Value getGasPrice() = 0;
+    virtual Json::Value getAveragePrice(BlockNumber _block) = 0;
+
 
     int getDefault() const { return m_default; }
     void setDefault(BlockNumber _block) { m_default = _block; }
@@ -172,6 +177,13 @@ public:
     virtual Json::Value permissionTransfer(Address _a, BlockNumber _block) const = 0;
 
     // [LOGS API]
+
+    /// newAddress interface for brcV2
+    virtual accountStu accountMsg(Address const& _addr, BlockNumber _block)const = 0;
+    virtual voteStu voteMsg(Address const& _addr, BlockNumber _block) const = 0;
+    virtual electorStu electorMsg(BlockNumber _block) const = 0;
+    virtual std::vector<ex::exchange_order> pendingorderPoolMsg(uint8_t _order_type, uint8_t _order_toke_type, u256 _getSize, BlockNumber _block) const = 0;
+    virtual electorStu obtainVoteMsg(Address _a, BlockNumber _block) const = 0;
 
     virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
     virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;

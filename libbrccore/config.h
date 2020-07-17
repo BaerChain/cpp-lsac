@@ -87,10 +87,10 @@ namespace dev
                 static int64_t autoExHeight();
                 static int64_t autoExTestNetHeight();
                 static int64_t changeExchange();
-
-
                 /// the height must bigger newChangeHeight about gasPriceHeight
                 static int64_t gasPriceHeight();
+
+                static u256 initialGasPrice();
         private:
             config(){}
             //~config(){}

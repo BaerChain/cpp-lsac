@@ -22,6 +22,7 @@ namespace dev
     Address const SysVarlitorAddress            { "0x000000000067656e657369735661726c69746f72" };
     Address const SysCanlitorAddress            { "0x0000000067656e6573697343616e646964617465" };
     Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
+    Address const GaspriceAddress               { "0x0000000000676173707269636541646472657373"};
 
     //new orderAddress
     Address const BuyExchangeAddress            { "0x000042757945786368616e676541646472657373"};

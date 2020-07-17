@@ -45,20 +45,23 @@ State::State(State const &_s)
           m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
           m_touched(_s.m_touched),
           m_accountStartNonce(_s.m_accountStartNonce),
-          m_block_number(_s.m_block_number)
+          m_block_number(_s.m_block_number),
+          m_curr_number (_s.m_curr_number)
           {}
 
 OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     fs::path path = _basePath.empty() ? db::databasePath() : _basePath;
-
     if (db::isDiskDatabase() && _we == WithExisting::Kill) {
         clog(VerbosityDebug, "statedb") << "Killing state database (WithExisting::Kill).";
         cwarn << "will remove " << path << "/" << fs::path("state");
+        cwarn << path / fs::path("state");
         fs::remove_all(path / fs::path("state"));
     }
 
+    
     path /=
             fs::path(toHex(_genesisHash.ref().cropped(0, 4))) / fs::path(toString(c_databaseVersion));
+    cwarn << path;
     if (db::isDiskDatabase()) {
         fs::create_directories(path);
         DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
@@ -143,6 +146,7 @@ State &State::operator=(State const &_s) {
     m_touched = _s.m_touched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_block_number = _s.m_block_number;
+    m_curr_number =_s.m_curr_number;
     return *this;
 }
 
@@ -234,6 +238,16 @@ Account *State::account(Address const &_addr) {
             const h256 storageByteRoot = state[20].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
         }
+    }
+
+    if(m_curr_number >= config::gasPriceHeight() && state.itemCount() > 20){
+        const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
+        i.first->second.initGasPrice(_b);
+    }
+
+    ///reset the changed state
+    if(m_curr_number >= config::gasPriceHeight()){
+        i.first->second.untouch();
     }
     return &i.first->second;
 }
@@ -713,6 +727,20 @@ void dev::brc::State::verifyChangeMiner(Address const& _from, EnvInfo const& _en
     if(a_new->mappingAddress().first != Address() && a_new->mappingAddress().second != _from){
         cwarn << " the maping after_addr has alreay mapping_addr :"<< a_new->mappingAddress().first;
         BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the maping after_addr has alreay mapping_addr"));
+    }
+
+    // verify MinerGasPrice data
+    if(_envinfo.number() > config::gasPriceHeight()){
+        auto a_gas = account(GaspriceAddress);
+        if(!a_gas){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("MinerGas SysAddress null"));
+        }
+        if(!a_gas->minerGasPrice().count(pen->m_before)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map not have address:"+dev::toString(pen->m_before)));
+        }
+        if(a_gas->minerGasPrice().count(pen->m_after)){
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed()<< errinfo_comment("the MinerGasPrice map has contains address:"+dev::toString(pen->m_after)));
+        }
     }
 
 }
@@ -1254,6 +1282,37 @@ u256 State::rpcqueryBlcokReward(Address const &_address, unsigned _blockNum){
     return _cookieFee;
 }
 
+u256 State::getAveragegasPrice() {
+    auto a = account(GaspriceAddress);
+    if(a){
+        return a->getAverageGasPrice();
+    }
+    return 0;
+}
+
+void State::initMinerGasPrice(BlockHeader const &_header){
+    if(config::gasPriceHeight() == _header.number()){
+        //u256 init_value = config::chainId() == MAINCHAINID ? 5 : config::chainId() == TESTCHAINID ? 6 : 7;
+        u256 init_value = 10;
+        auto a_miner = account(SysVarlitorAddress);
+        auto a_can = account(SysCanlitorAddress);
+        if(a_miner && a_can){
+            auto a_gas = account(GaspriceAddress);
+            if(!a_gas){
+                createAccount(GaspriceAddress, Account(0, 0));
+                a_gas = account(GaspriceAddress);
+            }
+            auto vars = a_miner->vote_data();
+            for(auto const& v: vars){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+            auto cans = a_can->vote_data();
+            for(auto const& v: cans){
+                a_gas->setMinerGasPrice(v.m_addr, init_value);
+            }
+        }
+    }
+}
 Json::Value State::pendingOrderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _gsize) {
     ExdbState _exdbState(*this);
     uint32_t _maxSize = (uint32_t) _gsize;
@@ -1953,6 +2012,49 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
     }
 }
 
+void State::modifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto const& _it : _ops)
+    {
+        std::shared_ptr<transationTool::modifyMinerGasPrice_operation> _op = std::dynamic_pointer_cast<transationTool::modifyMinerGasPrice_operation>(_it);
+        Account *_minerGasPrice = account(dev::GaspriceAddress);
+        std::map<Address, u256> _oldGasPriceMap = _minerGasPrice->minerGasPrice();
+        _minerGasPrice->setMinerGasPrice(_op->m_proposer, _op->m_proposedAmount);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldGasPriceMap);
+    }
+}
+
+void State::changeMinerModifyGasPrice(std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+{
+    for(auto _it : _ops)
+    {
+        std::shared_ptr<transationTool::changeMiner_operation> _op = std::dynamic_pointer_cast<transationTool::changeMiner_operation>(_it);
+        if(!_op)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice operation is null"));
+        }
+
+        Account *_minerGasPriceAddr = account(dev::GaspriceAddress);
+        if(!_minerGasPriceAddr)
+        {
+            BOOST_THROW_EXCEPTION(ChangeMinerFailed() << errinfo_comment("changeMinerModifyGasPrice minerGaspriceAddr is null"));
+        }
+        
+        std::map<Address, u256> _minerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        std::map<Address, u256> _oldminerGasPriceMap = _minerGasPriceAddr->minerGasPrice();
+        if(_minerGasPriceMap.count(_op->m_before))
+        {
+            u256 _minerGasPrice = _minerGasPriceMap[_op->m_before];
+            _minerGasPriceMap.erase(_op->m_before);
+            _minerGasPriceMap[_op->m_after] = _minerGasPrice;
+        } 
+        _minerGasPriceAddr->setMinerGasPrices(_minerGasPriceMap);
+
+        m_changeLog.emplace_back(Change::MinerGasPrice, dev::GaspriceAddress, _oldminerGasPriceMap);
+    }
+}
+
 void State::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
@@ -2251,6 +2353,8 @@ void State::rollback(size_t _savepoint) {
                 break;
             case Change::CancelOrderEnum:
                 account.setCancelorder(change.cancelOrders);
+            case Change::MinerGasPrice:
+                account.setMinerGasPrices(change.minerGasPrice);
                 break;
             default:
                 break;
@@ -2420,10 +2524,6 @@ Json::Value dev::brc::State::accoutMessage(Address const &_addr) {
             _array.append(_v);
         }
         jv["vote"] = _array;
-
-//        Json::Value record;
-//        record["time"] = toJS(a->last_records(_addr));
-//        jv["last_block_created"] = record;
     }
 
     return jv;
@@ -2512,7 +2612,7 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const {
         }
         jv["electors"] = _arry;
     } else {
-        jv["addrsss"] = toJS(_addr);
+        jv["address"] = toJS(_addr);
         auto ret = std::find(_data.begin(), _data.end(), _addr);
         auto a = account(_addr);
         if (ret != _data.end() && a) {
@@ -2521,6 +2621,79 @@ Json::Value dev::brc::State::electorMessage(Address _addr) const {
             jv["ret"] = "not is the eletor";
     }
     return jv;
+}
+
+accountStu dev::brc::State::accountMsg(Address const& _addr)
+{
+    if(auto a = account(_addr))
+    {
+        std::map<Address, u256> _vote;
+        uint32_t num = 0;
+        for (auto val : a->vote_data()) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+            _vote[val.m_addr] = val.m_poll;
+        }
+        accountStu _accountStu(_addr, a->balance(), a->FBalance(), a->BRC(), a->FBRC(), a->voteAll(), 
+            a->ballot(), a->poll(), a->nonce(), a->CookieIncome(), _vote);
+        return _accountStu;
+    }
+    return accountStu();
+}
+
+voteStu dev::brc::State::voteMsg(Address const& _addr) const
+{
+    if (auto a = account(_addr)) {
+        u256 _num = 0;
+        uint32_t num = 0;
+        std::map<Address, u256> _vote;
+        for (auto val : a->vote_data()) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+
+            _vote[val.m_addr] = val.m_poll;
+            _num += val.m_poll;
+        }
+        voteStu _voteStu(_vote, _num);
+        return _voteStu;
+    }
+    return voteStu();
+}
+
+electorStu dev::brc::State::electorMsg(Address const& _addr) const
+{
+    const std::vector<PollData> _data = vote_data(SysElectorAddress);
+    if (_addr == ZeroAddress) {
+        int num = 0;
+        std::map<Address, u256> _elector;
+        for (auto val : _data) {
+            if (num++ > config::max_message_num())   // limit message num
+                break;
+            _elector[val.m_addr] = val.m_poll;
+        }
+        electorStu _electorStu(_elector, true);
+        return _electorStu;
+    } else {
+        std::map<Address, u256> _elector;
+        auto ret = std::find(_data.begin(), _data.end(), _addr);
+        auto a = account(_addr);
+        if (ret != _data.end() && a) {
+            _elector[_addr] = a->poll();
+            electorStu _electorStu(_elector, false);
+            return _electorStu;
+        }
+    }
+    return electorStu();
+}
+
+std::vector<exchange_order> dev::brc::State::pendingorderPoolMsgV2(uint8_t _order_type, uint8_t _order_token_type, u256 getSize)
+{
+     ExdbState _exdbState(*this);
+    uint32_t _maxSize = (uint32_t) getSize;
+    _maxSize = _maxSize >= LIMITE_NUMBER ? LIMITE_NUMBER : _maxSize;
+    std::vector<exchange_order> _v = _exdbState.get_order_by_type(
+            (order_type) _order_type, (order_token_type) _order_token_type, (uint32_t) _maxSize);
+    return _v;
 }
 
 Account dev::brc::State::systemPendingorder(int64_t _time) {
@@ -3921,6 +4094,9 @@ State &dev::brc::createIntermediateState(
 template<class DB>
 AddressHash
 dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, int64_t _block_number /*= 0*/) {
+    /// _block_number : m_previousBlock.number()
+    /// so the will commitBlockNumber: _block_number+1
+    int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
     /// the _block is the curre_block to storage next_block
     int64_t fork_blockNumber = _block_number +1;
@@ -3934,6 +4110,13 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 RLPStream s;
                 if(fork_blockNumber >= config::changeExchange()) {
                     s.appendList(21);
+                }
+                if( commitBlockNumber >= config::gasPriceHeight()){
+                    /// this height is contains newChangeHeight
+                    s.appendList(21);
+                }
+                else if (_block_number >= config::newChangeHeight()) {
+                    s.appendList(20);
                 }
                 else if(_block_number >= config::newChangeHeight()){
                     s.appendList(20);
@@ -4054,8 +4237,12 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                             s << storageByteDB.root();
                         }
                     }
-
                 }
+                    /// fork about GasPrice
+                    if(commitBlockNumber >= config::gasPriceHeight()){
+                        s << i.second.getStreamRLPGasPrice();
+                    }
+
                 _state.insert(i.first, &s.out());
                 //cwarn << "insert:" << dev::toJS(i.first) << " data:"<< s.out();
             }

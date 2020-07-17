@@ -90,6 +90,7 @@ public:
     size_t   standbyNum =30;             // standby miner num
     size_t   minimum_cycle =3;           // the min cycle of super miner offline
 
+    u256 m_minGasPrice = 5;
 
     /// Precompiled contracts as specified in the chain params.
     std::unordered_map<Address, PrecompiledContract> precompiled;

@@ -298,6 +298,14 @@ Json::Value dev::brc::ClientBase::permissionTransfer(Address _a, BlockNumber _bl
 }
 
 
+Json::Value dev::brc::ClientBase::getGasPrice()
+{
+    u256 _gasPrice = sealEngine()->chainParams().m_minGasPrice;
+    Json::Value val;
+    val["minGasPrice"] = toJS(_gasPrice);
+    return val;
+}
+
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 {
@@ -317,6 +325,7 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 {
     LocalisedLogEntries ret;
+   
     unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
     unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
 
@@ -722,4 +731,25 @@ Block ClientBase::blockByNumber(BlockNumber _h) const
 int ClientBase::chainId() const
 {
     return bc().chainParams().chainID;
+}
+
+
+accountStu ClientBase::accountMsg(Address const &_addr, BlockNumber _block) const {
+    return blockByNumber(_block).mutableState().accountMsg(_addr);
+}
+
+voteStu ClientBase::voteMsg(Address const& _addr, BlockNumber _block) const{
+    return blockByNumber(_block).mutableState().voteMsg(_addr);
+}
+
+electorStu ClientBase::obtainVoteMsg(Address _addr, BlockNumber _block) const {
+    return blockByNumber(_block).mutableState().electorMsg(_addr);
+}
+
+electorStu ClientBase::electorMsg(BlockNumber _block) const{
+    return blockByNumber(_block).mutableState().electorMsg(ZeroAddress);
+}
+
+std::vector<ex::exchange_order> ClientBase::pendingorderPoolMsg(uint8_t _order_type, uint8_t _order_token_type, u256 _getSize, BlockNumber _block) const{
+    return blockByNumber(_block).mutableState().pendingorderPoolMsgV2(_order_type, _order_token_type, _getSize);
 }

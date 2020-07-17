@@ -143,11 +143,12 @@ void sendRawTransation(std::string const &_rlpStr, std::string const &_ip_port) 
     _httpClient.SetTimeout(1500);
     _httpClient.SendRPCMessage(send_msg, _result);
 
-    cwarn << _result;
+    cwarn <<"\n"<< _result;
 
 }
 
 bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip = "") {
+    std::pair<bool , std::string> _pair={false, ""};
     try {
         std::string hash;
         auto _pair = wallet::ToolTransaction::sign_trx_from_json(contentsString(path.string()), hash);
@@ -159,16 +160,19 @@ bool sign_trx_from_json(const bfs1::path &path, bool _is_send, std::string _ip =
             std::cout << ret << std::endl;
         }
         return true;
-    }
-    catch (const std::exception &e) {
-        std::cout << "exception : " << e.what() << std::endl;
-        std::cout << "Error the data_json Field type error !"<<std::endl;
-    }
-    catch (const boost::exception &e) {
-        std::cout << "xxxxxxx " << std::endl;
-    }
 
-    return false;
+    }
+    catch (...){
+        std::cout << "Error can not to send:"<<_ip<<std::endl;
+        exit(1);
+    }
+    if(!_pair.first){
+        std::cout <<"send field:\n"<< _pair.second <<std::endl;
+        exit(1);
+    } else{
+        std::cout << "send ok " << "rlp :"<< _pair.second<<std::endl;
+    }
+    return true;
 }
 
 
@@ -210,6 +214,7 @@ void generate_key(const std::string &seed){
     std::cout << "private-key: " << dev::crypto::to_base58((char*)sec.data(), 32) << std::endl;
     std::cout << "address    : " << key_pair.address() << std::endl;
     std::cout << "public-key : " << toString(key_pair.pub())<<std::endl;
+    std::cout << "new-address: " << jsToNewAddress(key_pair.address()) << std::endl;
 
 }
 
@@ -220,6 +225,7 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(pair.address()) << std::endl;
     }
     else{
         auto pair = dev::KeyPair(dev::Secret(dev::crypto::from_base58(key)));
@@ -227,6 +233,28 @@ void format_private(const std::string &key){
         std::cout << "pri-base58 : " << dev::crypto::to_base58((char*)pair.secret().data(), 32) << std::endl;
         std::cout << "pri-big int : " << toHex(pair.secret().ref()) << std::endl;
         std::cout << "public address : " << toHex(pair.pub()) << std::endl;
+        std::cout << "new-address : " << jsToNewAddress(pair.address()) << std::endl;
+    }
+}
+
+void getNewAddressFromOld(std::string const& _oldAddr){
+    try{
+        auto _addr = jsToAddress(_oldAddr);
+        std::cout<<"newAddress: "<< jsToNewAddress(_addr) <<"\n\n";
+    }
+    catch (...){
+        std::cout << "Error! the address:"<< _oldAddr << "  is error" <<"\n\n";
+    }
+}
+
+void checkNewAddress(std::string const& _newAddress){
+    try {
+        auto old= jsToAddressFromNewAddress(_newAddress);
+        std::cout << "old address:" << old << std::endl;
+    }
+    catch (...)
+    {
+        cwarn << "error new address";
     }
 }
 
@@ -244,6 +272,8 @@ int main(int argc, char *argv[]) {
                 ("sha3", bpo::value<std::string>(), "caculate string sha3.")
                 ("pri-tf", bpo::value<std::string>(), "private-key format.")
                 ("sign-json", bpo::value<bfs1::path>(), "read from data from file to sign.")
+                ("newaddress", bpo::value<std::string>(), "to newAddress by old Address.")
+                ("checknewaddress", bpo::value<std::string>(), "to ckeck newAddress .")
                 ;
         // addNetworkingOption("listen-ip", po::value<string>()->value_name("<ip>(:<port>)"),
         //"Listen on the given IP for incoming connections (default: 0.0.0.0)");
@@ -286,6 +316,7 @@ int main(int argc, char *argv[]) {
             cwarn << ret;
             return  0;
         }
+
         if(args_map.count("pri-tf")){
             format_private(args_map["pri-tf"].as<std::string>());
             return  0;
@@ -300,6 +331,15 @@ int main(int argc, char *argv[]) {
                 std::cout << "ERROR:" << _pair.second << std::endl;
             }
         }
+        if(args_map.count("newaddress")){
+            auto oldAddr = args_map["newaddress"].as<std::string>();
+            getNewAddressFromOld(oldAddr);
+        }
+        if(args_map.count("checknewaddress")){
+            auto newAddr = args_map["checknewaddress"].as<std::string>();
+            checkNewAddress(newAddr);
+        }
+
 
     }catch (const std::exception &e){
         cwarn << e.what();
