@@ -439,44 +439,6 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
                 _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
                 m_s.balance(m_t.sender()) < _totalCost)
-			if(_totalCost < m_t.gasPrice()* m_baseGasRequired + m_addCostValue )
-			{
-				m_excepted = TransactionException::NotEnoughCash;
-				std::string ex_info = "not enough require cookie to execute transaction will cost:" + toString(_totalCost);
-				BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
-			}
-		    m_totalGas =(u256) _totalCost;
-			//
-
-			try{
-				if(m_batch_params._type == transationTool::op_type::vote)
-					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
-				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
-					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)_totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation,m_envInfo.number());
-				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
-					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation,m_envInfo.number());
-				else if(m_batch_params._type == transationTool::op_type::receivingincome)
-                    m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
-                else if(m_batch_params._type == transationTool::op_type::changeMiner)
-                    m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
-			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
-			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
-                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice)
-                    m_brctranscation.verifyModifyMinerGasPrice(m_t.sender(), m_envInfo.number(), m_batch_params._operation);
-            }
-			catch(VerifyVoteField &ex){
-                cdebug << "verifyVote field ! ";
-                cdebug << " except:" << ex.what();
-				m_excepted = TransactionException::VerifyVoteField;
-				BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment(*boost::get_error_info<errinfo_comment>(ex)));
-			}
-			catch(VerifyPendingOrderFiled const& _v){
-				BOOST_THROW_EXCEPTION(VerifyPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_v)));
-			}
-			catch(CancelPendingOrderFiled const& _c){
-				BOOST_THROW_EXCEPTION(CancelPendingOrderFiled() << errinfo_comment(*boost::get_error_info<errinfo_comment>(_c)));
-			}
-			catch(receivingincomeFiled const& _r)
             {
                 is_verfy_cost = false;
             }
