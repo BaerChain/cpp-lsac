@@ -240,7 +240,7 @@ Account *State::account(Address const &_addr) {
     }
 
     /// the m_block_number is the m_previousBlock number
-    if((m_block_number+1) >= config::changeExchange()){
+    if((m_curr_number) >= config::changeExchange()){
         if(state.itemCount() > 21) {
             const h256 storageByteRoot = state[21].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);

@@ -357,15 +357,15 @@ struct contract_operation : public operation
 {
     uint8_t m_type;
     Address m_to;
-    bytes m_date;
+    bytes m_data;
     contract_operation() {}
     contract_operation(uint8_t _type, Address const& _to, bytes const& _d)
       : m_type(_type), m_to(_to)
     {
-        m_date = _d;
+        m_data = _d;
     }
-    OPERATION_UNSERIALIZE(contract_operation, (m_type)(m_to)(m_date))
-    OPERATION_SERIALIZE((m_type)(m_to)(m_date))
+    OPERATION_UNSERIALIZE(contract_operation, (m_type)(m_to)(m_data))
+    OPERATION_SERIALIZE((m_type)(m_to)(m_data))
     virtual op_type type() { return (op_type)m_type; }
 };
 
