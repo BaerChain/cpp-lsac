@@ -312,23 +312,24 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                     BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(std::string("The operation authority for address transfer has been transferred")));
                 }
             }
-            if (m_s.balance(m_t.sender()) < totalCost || m_s.BRC(m_t.sender()) < m_t.value() ||
-                m_t.gas() < m_baseGasRequired)
-            {
-                LOG(m_execLogger) << "Not enough brc: Require > "
-                                  << "totalCost "
-                                  << " = " << totalCost << "  m_t.gas() = " << m_t.gas()
-                                  << " * m_t.gasPrice()" << m_t.gasPrice() << " + " << m_t.value()
-                                  << " Got" << m_s.BRC(m_t.sender())
-                                  << " for sender: " << m_t.sender();
-                m_excepted = TransactionException::NotEnoughCash;
 
-				std::string ex_info = "not enough BRC or Cookie to execute transaction will cost:"+ toString(totalCost);
-				BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
-                                                      << errinfo_comment(ex_info));
+            if (m_s.balance(m_t.sender()) < totalCost){
+                std::string ex_info = "not enough Cookie to execute transaction, Account Cookie : " + toString(m_s.balance(m_t.sender())) + 
+                    " Cookies required for the transaction : " + toString(totalCost);
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
+            }   
+
+            if (m_s.BRC(m_t.sender()) < m_t.value()){
+                std::string ex_info = "not enough BRC to execute transaction, Account BRC : " + toString(m_s.BRC(m_t.sender())) + 
+                    " transfer amount : " + toString(m_t.value());
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));
+            }
+
+            if (m_t.gas() < m_baseGasRequired){
+                std::string ex_info = "not enough gas to execute transaction, Account gas : " + toString(m_t.gas()) + 
+                    " gas required for the transaction : " + toString(m_baseGasRequired);
             }
             m_batch_params._cookiesAddress = m_t.sender();
-        
         }
         else
         {
