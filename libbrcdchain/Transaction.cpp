@@ -207,6 +207,14 @@ transationTool::operation* transationTool::getOperationByRLP(bytes const& _bs)
         BOOST_THROW_EXCEPTION(InvalidMutilTransactionType() <<errinfo_comment("Invalid transaction type:"+std::to_string(type)+" in mutilTrasnction"));
     return nullptr;
 }
+Address authority::toAddress(SignatureStruct const& sign, h256 const& _message){
+    if (!sign.isValid())
+        BOOST_THROW_EXCEPTION(TransactionIsUnsigned());
+    auto p = recover(sign, _message );
+    if (!p)
+        BOOST_THROW_EXCEPTION(InvalidSignature());
+    return right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
+}
 
 authority::PermissionsType authority::getPermissionsTypeByTransactionType(transationTool::op_type _type){
     // verify the op_type is allowed

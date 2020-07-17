@@ -100,7 +100,8 @@ namespace dev
                     {receivingincome, 0},
                     {transferAutoEx, 20000},
                     {transferAccountControl, 0},
-                    {transferMutilSigns, 30000}
+                    {transferMutilSigns, 30000},
+                    {authorizeUseCookie, 0}
             };
 
             enum class dividendcycle : uint8_t
@@ -532,7 +533,7 @@ namespace dev
 
             return dev::sha3(_key);
         }
-
+        Address toAddress(SignatureStruct const& sign, h256 const& _message);
         static h256 getPermissionsKey(Address const& _addr){
             auto _key = "PermissionsKeys" + toJS(_addr);
             return dev::sha3(_key);

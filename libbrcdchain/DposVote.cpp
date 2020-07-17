@@ -24,7 +24,7 @@ void dev::brc::DposVote::verifyVote(Address const& _from, EnvInfo const& _envinf
         std::pair <uint32_t, Votingstage> _pair = returnVotingstage(_envinfo);
         if(_pair.second != Votingstage::VOTE)
         {
-            if (dType == dev::brc::EDelegate || dev::brc::EUnDelegate)
+            if (dType == dev::brc::EDelegate || dType == dev::brc::EUnDelegate)
                 BOOST_THROW_EXCEPTION(VerifyVoteField() << errinfo_comment("The time point that is not currently in the voting phase"));
         }
 

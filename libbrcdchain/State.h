@@ -392,7 +392,7 @@ public:
 				cerror << "execute_t transafer_brc dynamic type field!";
 				BOOST_THROW_EXCEPTION(InvalidDynamic());
 			}
-			cwarn << _addr <<" to "<< _p->m_to << " n:" << _p->m_Transcation_numbers;
+		
 			transferBRC(_addr, _p->m_to, _p->m_Transcation_numbers);
 		}
 	}

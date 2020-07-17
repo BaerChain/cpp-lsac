@@ -321,7 +321,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
                                                         << errinfo_comment(ex_info));
             }
             m_batch_params._cookiesAddress = m_t.sender();
-            cerror << "_rootAddress" << m_batch_params._cookiesAddress;
+        
         }
         else
         {
@@ -736,7 +736,7 @@ bool Executive::createOpcode(Address const& _sender, u256 const& _endowment, u25
 {
     u256 nonce = m_s.getNonce(_sender);
     m_newAddress = right160(sha3(rlpList(_sender, nonce)));
-    cwarn << "(addr, nonce):" << _sender << nonce;
+    
     if (_sender != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock)  // EIP86
         m_s.incNonce(_sender);
     return executeCreate(_sender, _endowment, _gasPrice, _gas, _init, _origin);
@@ -787,8 +787,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     if (!_init.empty()) {
         m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin,
                                    _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth, true, false);
-        cwarn << "create: m_newAddress:" <<dev::toJS(m_newAddress) << " sender:" << _sender << " _origin:" <<_origin
-            << "_init_data:"<<_init;
+       
     }
 
     return !m_ext;
@@ -930,13 +929,8 @@ bool Executive::finalize()
 
     if (m_t)
     {
-        // if(m_batch_params.customTransaction()) {
-        //     cwarn << " cost :" << m_batch_params._rootAddress << " :" << m_totalGas - m_needRefundGas;
-        //     m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
-        // }
-        // else
-        cwarn<< " subBalance : " << toJS(m_batch_params._cookiesAddress);
-        cwarn << "cost:" << m_totalGas - m_needRefundGas;
+ 
+       
         m_s.subBalance(m_batch_params._cookiesAddress, m_totalGas - m_needRefundGas);
         m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
 

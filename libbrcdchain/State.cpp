@@ -3622,7 +3622,7 @@ Json::Value dev::brc::State::getCookieDataByKeyMsg(Address const& _addr, transat
         Json::Value _rootJson;
         for(auto const& _root : _rootAddrs)
         {
-            cerror << toJS(_root);
+           
             _rootJson.append(toJS(_root));
         }
         _ret["CookieRoot"] = _rootJson;
@@ -3691,7 +3691,7 @@ void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vect
 
             h256 _rootKey = dev::brc::authority::toGetCookieKey(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
             std::vector<Address> _rootAddrs = getAuthorityCookiesAddress(_op->m_childAddress, transationTool::getRootKeyType::CookiesRootAddrKey);
-            cerror << " _rootAddrs : " << _rootAddrs.size();
+        
             _rootAddrs.push_back(_addr);
             RLPStream rootRlp(1);
             rootRlp.appendVector(_rootAddrs);
@@ -3728,7 +3728,7 @@ void dev::brc::State::transferAuthorityControl(Address const& _from, std::vector
     for(auto const& val : _ops) {
         std::shared_ptr<transationTool::authority_operation> _op = std::dynamic_pointer_cast<transationTool::authority_operation>(val);
         // TODO excute
-        cwarn <<"excute"<< _op->m_childAddress << " weight:"<<(int)_op->m_weight << " permiss:"<<(int)_op->m_permissions;
+       
 
         auto rlp = getDataByKeyAddress(_from, _op->m_childAddress, transationTool::getRootKeyType::ChildDataKey);
         AccountControl control;
@@ -3784,8 +3784,7 @@ void dev::brc::State::updateAddressSet(Address const& _from, Address const& _cha
 
 void dev::brc::State::updatePermissionsTransfer(Address const& _id, transationTool::op_type _type, int8_t _changeValue){
     std::map<transationTool::op_type, uint32_t > pers = getPermissionsTransfers(_id);
-    cwarn << pers;
-    cwarn << int(_type) << ","<<(int)_changeValue;
+
     if(pers.count(_type)){
          if((int)pers[_type] + _changeValue >0)
              pers[_type] += _changeValue;
