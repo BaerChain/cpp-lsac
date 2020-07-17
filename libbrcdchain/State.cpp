@@ -240,6 +240,7 @@ Account *State::account(Address const &_addr) {
         }
     }
 
+    // fork gasPrice
     if(m_curr_number >= config::gasPriceHeight() && state.itemCount() > 20){
         const bytes _b = state[20].convert<bytes>(RLP::LaissezFaire);
         i.first->second.initGasPrice(_b);
@@ -4109,7 +4110,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
             else {
                 RLPStream s;
                 if(fork_blockNumber >= config::changeExchange()) {
-                    s.appendList(21);
+                    s.appendList(22);
                 }
                 if( commitBlockNumber >= config::gasPriceHeight()){
                     /// this height is contains newChangeHeight
@@ -4201,7 +4202,12 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                         //cwarn << " insert rlp:" << dev::toString(i.second.getRLPStreamChangeMiner());
                     }
                 }
-                
+
+                /// fork about GasPrice
+                if(commitBlockNumber >= config::gasPriceHeight()){
+                    s << i.second.getStreamRLPGasPrice();
+                }
+
                 //Add a new state field
                 {
                     if(fork_blockNumber >= config::changeExchange()){
@@ -4238,10 +4244,6 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                         }
                     }
                 }
-                    /// fork about GasPrice
-                    if(commitBlockNumber >= config::gasPriceHeight()){
-                        s << i.second.getStreamRLPGasPrice();
-                    }
 
                 _state.insert(i.first, &s.out());
                 //cwarn << "insert:" << dev::toJS(i.first) << " data:"<< s.out();

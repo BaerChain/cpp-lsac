@@ -696,95 +696,65 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
     Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
 {
     std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op =
-        std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
+            std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
     std::set<Address> _permissionAddrs;
-    if (_mutilSign_op->m_data_ptrs.empty())
+    if(_mutilSign_op->m_data_ptrs.empty())
     {
-        BOOST_THROW_EXCEPTION(
-            VerifyPermissonTrxFailed() << errinfo_comment(
-                std::string("The specific content of the weighted transaction does not exist")));
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("The specific content of the weighted transaction does not exist")));
+
     }
 
     auto _firstTrx = _mutilSign_op->m_data_ptrs.begin();
     dev::brc::transationTool::op_type _trxType = (*_firstTrx)->type();
 
-    std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
-    cwarn << _signAddrs;
     uint64_t _trxWeight = 0;
-    bytes _data =
-        m_state.getDataByKeyAddress(_from, _from, transationTool::getRootKeyType::RootAddrKey);
+    bytes _data = m_state.getDataByKeyAddress(_from, _from, transationTool::getRootKeyType::RootAddrKey);
     std::vector<Address> _rootVector = m_state.getAddrByData(_data);
 
     if (std::find(_rootVector.begin(), _rootVector.end(), _mutilSign_op->m_rootAddress) ==
         _rootVector.end())
     {
-        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string(
-                                  "Transaction initiator is not a subaccount of rootAddress")));
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("Transaction initiator is not a subaccount of rootAddress")));
     }
 
     bytes _accountControlData = m_state.getDataByKeyAddress(
-        _mutilSign_op->m_rootAddress, _from, transationTool::getRootKeyType::ChildDataKey);
+            _mutilSign_op->m_rootAddress, _from, transationTool::getRootKeyType::ChildDataKey);
     AccountControl _fromControl(_accountControlData);
-    authority::PermissionsType _perType =
-        dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
-	
+    authority::PermissionsType _perType = dev::brc::authority::getPermissionsTypeByTransactionType(_trxType);
 
-		
-    if (!_permissionAddrs.count(_from))
-    {
-        _trxWeight += _fromControl.getWeight(_perType);
-    }
-	if (_trxWeight >= authority::MaxWeight)
+    _trxWeight += _fromControl.getWeight(_perType);
+    if(_trxWeight >= authority::MaxWeight)
         return;
-		
     _permissionAddrs.insert(_from);
-    for (auto const& a : _signAddrs)
-    {
-		
-		if (_permissionAddrs.count(a))
+
+    //std::vector<Address> _signAddrs = _mutilSign_op->getSignAddress();
+    auto data_hash = dev::sha3(_mutilSign_op->datasBytes());
+    for (auto const& sign : _mutilSign_op->m_signs){
+        auto a = authority::toAddress(sign, data_hash);
+        if (_permissionAddrs.count(a))
             continue;
-			
-        if (a == _mutilSign_op->m_rootAddress)
-        {
-            if (!_permissionAddrs.count(a) &&
-                !m_state.getPermissionsTransfer(_mutilSign_op->m_rootAddress, _perType))
-            {
-                _trxWeight += 100;
-            }
-            _permissionAddrs.insert(a);
+        if (a == _mutilSign_op->m_rootAddress && !m_state.getPermissionsTransfer(_mutilSign_op->m_rootAddress, _perType)){
+            _trxWeight += 100;
+            break;
         }
-        else
-        {
-            bytes _signAddrData =
-                m_state.getDataByKeyAddress(a, a, transationTool::getRootKeyType::RootAddrKey);
+        else{
+            bytes _signAddrData = m_state.getDataByKeyAddress(a, a, transationTool::getRootKeyType::RootAddrKey);
             std::vector<Address> _signAddrRootVector = m_state.getAddrByData(_signAddrData);
-            if (std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(),
-                    _mutilSign_op->m_rootAddress) == _signAddrRootVector.end())
-            {
-                BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(
-                                          std::string("Verify that the trading subaccount does not "
-                                                      "belong to the rootAddress subaccount")));
+            if (std::find(_signAddrRootVector.begin(), _signAddrRootVector.end(), _mutilSign_op->m_rootAddress) == _signAddrRootVector.end()){
+                continue;
             }
-            bytes _signAddrControlData = m_state.getDataByKeyAddress(
-                _mutilSign_op->m_rootAddress, a, transationTool::getRootKeyType::ChildDataKey);
+            bytes _signAddrControlData = m_state.getDataByKeyAddress( _mutilSign_op->m_rootAddress, a, transationTool::getRootKeyType::ChildDataKey);
             AccountControl _signAddrControl(_signAddrControlData);
-			
-			  if (_trxWeight >= authority::MaxWeight)
+            _trxWeight += _signAddrControl.getWeight(_perType);
+            if(_trxWeight >= authority::MaxWeight)
                 break;
-				
-            if (!_permissionAddrs.count(a))
-            {
-                _trxWeight += _signAddrControl.getWeight(_perType);
-            }
             _permissionAddrs.insert(a);
         }
     }
 
     if (_trxWeight < authority::MaxWeight)
     {
-        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string(
-                                  "The weight of the transaction:" + std::to_string(_perType) +
-                                  " is less than 100")));
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("The weight of the transaction:"+std::to_string(_perType)+" is less than 100")));
     }
 }
 
