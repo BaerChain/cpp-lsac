@@ -3698,6 +3698,7 @@ std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr
 
 bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::transationTool::getRootKeyType const& _type)
 {
+    cwarn << "_strorageAddr:" <<_strorageAddr << " keyAddr:" <<_keyAddr;
     Account *a = account(_strorageAddr);
     if(!a) {
         createAccount(_strorageAddr, {0});
@@ -4101,8 +4102,6 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
     /// so the will commitBlockNumber: _block_number+1
     int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
-    /// the _block is the curre_block to storage next_block
-    int64_t fork_blockNumber = _block_number +1;
     //cwarn << "commit ....... start";
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
@@ -4111,20 +4110,17 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if(fork_blockNumber >= config::changeExchange()) {
+                if(commitBlockNumber >= config::changeExchange()) {
                     s.appendList(22);
                 }
-                if( commitBlockNumber >= config::gasPriceHeight()){
+                else if( commitBlockNumber >= config::gasPriceHeight()){
                     /// this height is contains newChangeHeight
                     s.appendList(21);
                 }
                 else if (_block_number >= config::newChangeHeight()) {
                     s.appendList(20);
                 }
-                else if(_block_number >= config::newChangeHeight()){
-                    s.appendList(20);
-
-                } else{
+                else{
                     s.appendList(19);
                 }
 
@@ -4212,7 +4208,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
 
                 //Add a new state field
                 {
-                    if(fork_blockNumber >= config::changeExchange()){
+                    if(commitBlockNumber >= config::changeExchange()){
                         if(i.second.storageByteOverlay().empty() && i.second.getExchangeDelete().empty() && i.second.cancelOrders().empty())
                         {
                             assert(i.second.baseByteRoot());

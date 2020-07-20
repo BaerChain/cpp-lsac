@@ -667,7 +667,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 m_newAddress = right160(sha3(rlpList(m_t.from(), nonce)));
                 cwarn << "(addr, nonce):" << m_t.from() << nonce;
                 return executeCreate(m_batch_params._rootAddress, m_t.value(), m_t.gasPrice(),
-                              m_t.gas() - (u256)m_baseGasRequired, &_op->m_date, m_batch_params._rootAddress);
+                              m_t.gas() - (u256)m_baseGasRequired, &_op->m_data, m_batch_params._rootAddress);
             }
             case transationTool::op_type ::executeContract:
             {
@@ -678,7 +678,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                     BOOST_THROW_EXCEPTION(InvalidDynamic());
                 }
                 CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
-                                       m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_date), {}};
+                                       m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_data), {}};
                 return callContract(params, _gasPrice, m_batch_params._rootAddress);
             }
             case transationTool::op_type::authorizeUseCookie:

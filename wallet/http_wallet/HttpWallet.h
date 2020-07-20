@@ -15,6 +15,8 @@ public:
 
     virtual Json::Value new_address(std::string const& _param);
 
+    virtual Json::Value sign_data(Json::Value const& _param);
+
     inline virtual RPCModules implementedModules() const { return RPCModules{RPCModule{"wallet", "1.0"}}; }
 
 private:

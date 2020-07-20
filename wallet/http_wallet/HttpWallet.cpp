@@ -142,4 +142,22 @@ Json::Value HttpWallet::new_address(std::string const& _param)
     return respone;
 }
 
+
+Json::Value HttpWallet::sign_data(Json::Value const& _param){
+    Json::Value respone;
+    cnote << "sign_data method";
+    try
+    {
+        std::pair<bool, std::string> _pair = ToolTransaction::sing_data_from_json(_param.toStyledString());
+        cnote << "sign:" << _pair.second;
+        respone["sign"] = _pair.second;
+    }
+    catch (...)
+    {
+        cnote << "error : jsonrpccpp params error!";
+        respone["error"] = "jsonrpccpp params error!";
+    }
+    return respone;
+}
+
 }  // namespace wallet

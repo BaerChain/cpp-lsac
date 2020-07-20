@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
             }
         }else{
             cerror << "Error starting Server" ;
+            exit(1);
         }
         while (true)
         {

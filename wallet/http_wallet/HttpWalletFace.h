@@ -19,6 +19,8 @@ public:
             Procedure("sign_transaction_send", PARAMS_BY_NAME, JSON_STRING, "param", JSON_OBJECT, NULL), &HttpWalletFace::sign_transaction_sendI);
 
         this->bindAndAddMethod(Procedure("new_address", PARAMS_BY_POSITION, JSON_OBJECT, "param1", JSON_STRING, NULL), &HttpWalletFace::new_addressI);
+
+        this->bindAndAddMethod(Procedure("sign_data", PARAMS_BY_POSITION, JSON_OBJECT, "param1", JSON_OBJECT, NULL), &HttpWalletFace::sign_dataI);
     }
 
     inline virtual void sign_transactionI(const Json::Value& request, Json::Value& response)
@@ -39,11 +41,20 @@ public:
         response = this->new_address(request[0u].asString());
     };
 
+    inline virtual void sign_dataI(const Json::Value& request, Json::Value& response)
+    {
+        (void)request;
+        response = this->sign_data(request[0u]);
+    };
+
 
     virtual Json::Value sign_transaction(Json::Value const& _param) = 0;
 
     virtual Json::Value sign_transaction_send(Json::Value const& _param) = 0;
 
     virtual Json::Value new_address(std::string const& _param) = 0;
+
+    virtual Json::Value sign_data(Json::Value const& _param) = 0;
+
 };
 }  // namespace wallet

@@ -2,8 +2,6 @@ add_executable(httpWallet
         HttpWalletFace.h
         HttpWallet.h
         HttpWallet.cpp
-        WalletServer.h
-        WalletServer.cpp
         main.cpp
         )
 
