@@ -240,7 +240,7 @@ Account *State::account(Address const &_addr) {
     }
 
     /// the m_block_number is the m_previousBlock number
-    if((m_curr_number) >= config::changeExchange()){
+    if((m_curr_number) >= config::strorageHeight()){
         if(state.itemCount() > 21) {
             const h256 storageByteRoot = state[21].toHash<h256>();
             i.first->second.setStorageBytesRoot(storageByteRoot);
@@ -4110,7 +4110,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 _state.remove(i.first);
             else {
                 RLPStream s;
-                if(commitBlockNumber >= config::changeExchange()) {
+                if(commitBlockNumber >= config::strorageHeight()) {
                     s.appendList(22);
                 }
                 else if( commitBlockNumber >= config::gasPriceHeight()){
@@ -4206,24 +4206,24 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     s << i.second.getStreamRLPGasPrice();
                 }
                 {
-//                    if(commitBlockNumber >= config::strorageHeight()){
-//                        if(i.second.storageByteOverlay().empty())
-//                        {
-//                            assert(i.second.baseByteRoot());
-//                            s << i.second.baseByteRoot();
-//                        }else {
-//                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
-//                            for (auto const &val : i.second.storageByteOverlay()) {
-//                                if (!val.second.empty()) {
-//                                    storageByteDB.insert(val.first, val.second);
-//                                } else {
-//                                    storageByteDB.remove(val.first);
-//                                }
-//                            }
-//                            assert(storageByteDB.root());
-//                            s << storageByteDB.root();
-//                        }
-//                    }
+                    if(commitBlockNumber >= config::strorageHeight()){
+                        if(i.second.storageByteOverlay().empty())
+                        {
+                            assert(i.second.baseByteRoot());
+                            s << i.second.baseByteRoot();
+                        }else {
+                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+                            for (auto const &val : i.second.storageByteOverlay()) {
+                                if (!val.second.empty()) {
+                                    storageByteDB.insert(val.first, val.second);
+                                } else {
+                                    storageByteDB.remove(val.first);
+                                }
+                            }
+                            assert(storageByteDB.root());
+                            s << storageByteDB.root();
+                        }
+                    }
 
                 }
                 //Add a new state field

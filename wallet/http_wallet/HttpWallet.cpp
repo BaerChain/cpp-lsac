@@ -1,6 +1,5 @@
 
 #include "HttpWallet.h"
-#include "WalletServer.h"
 #include "libbrccore/CommonJS.h"
 #include "libwallet/ToolTransaction.h"
 

@@ -13,7 +13,6 @@
 #include <libdevcore/CommonIO.h>
 #include <microhttpd.h>
 #include "libwallet/ToolTransaction.h"
-#include "WalletServer.h"
 
 
 using namespace dev;
