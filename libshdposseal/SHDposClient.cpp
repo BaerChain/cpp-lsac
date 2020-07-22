@@ -258,7 +258,7 @@ void dev::bacd::SHDposClient::rejigSealing()
                 }
 
             }
-            cdebug << "will seal new block:"<<m_sealingInfo.number() << " author:"<<m_sealingInfo.author();
+            //cdebug << "will seal new block:"<<m_sealingInfo.number() << " author:"<<m_sealingInfo.author();
             //出块
             if(wouldSeal())
             {
@@ -271,9 +271,9 @@ void dev::bacd::SHDposClient::rejigSealing()
                     else
                         LOG(m_logger) << "Submitting block failed...";
                 });
-                ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
+                //ctrace << "Generating seal on " << m_sealingInfo.hash((IncludeSeal)(WithoutSeal | WithoutSign)) << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal(m_sealingInfo);
-                ctrace << "Generat sealed block:"<<m_sealingInfo.number();
+                //ctrace << "Generat sealed block:"<<m_sealingInfo.number();
             }
         }
         else

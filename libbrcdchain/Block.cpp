@@ -882,14 +882,14 @@ void Block::cleanup() {
     m_state.db().commit();  // TODO: State API for this?
     m_state.exdb().commit(info().number() + 1, m_currentBlock.hash(), m_currentBlock.stateRoot());
 
-    LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
-                  << " = " << toHex(asBytes(db().lookup(rootHash())));
+    //LOG(m_logger) << "Committed: stateRoot " << m_currentBlock.stateRoot() << " = " << rootHash()
+      //            << " = " << toHex(asBytes(db().lookup(rootHash())));
 
     m_previousBlock = m_currentBlock;
     sealEngine()->populateFromParent(m_currentBlock, m_previousBlock);
 
-    LOG(m_logger) << "finalising enactment. current -> previous, hash is "
-                  << m_previousBlock.hash();
+    //LOG(m_logger) << "finalising enactment. current -> previous, hash is "
+      //            << m_previousBlock.hash();
 
     resetCurrent();
 }
@@ -913,6 +913,9 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
 
     if(params.chainID == 1){
         m_state.changeMinerAddVote(curr_info);
+    }
+    if(config::changeExchange() >= curr_info.number()){
+        m_state.transferOldExData(curr_info);
     }
 
     /// init the minerGasPrice

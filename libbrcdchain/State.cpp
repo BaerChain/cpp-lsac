@@ -552,7 +552,7 @@ void State::subFBRC(Address const &_addr, u256 const &_value) {
     Account *a = account(_addr);
     if (!a || a->FBRC() < _value) {
         // TODO: I expect this never happens.
-        cwarn << "_addr: " << _addr << " value " << _value << "  : " << a->FBRC();
+        cwarn << "_addr: " << toJS(_addr) << " value " << _value << "  : " << a->FBRC();
         BOOST_THROW_EXCEPTION(NotEnoughCash());
     }
 
@@ -1062,7 +1062,7 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
 
     u256 _fromFee = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
     u256 _toFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
-
+    cwarn << " from:"<<toJS(_from) << "    \n to:"<< toJS(_to);
     if (_pendingOrderType == order_type::buy &&
         _pendingOrderTokenType == order_token_type::FUEL &&
         (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
@@ -3698,7 +3698,7 @@ std::vector<Address> dev::brc::State::getAddressesByRootKey(Address const& _addr
 
 bytes dev::brc::State::getDataByKeyAddress(Address const& _strorageAddr, Address const& _keyAddr, dev::brc::transationTool::getRootKeyType const& _type)
 {
-    cwarn << "_strorageAddr:" <<_strorageAddr << " keyAddr:" <<_keyAddr;
+    //cwarn << "_strorageAddr:" <<_strorageAddr << " keyAddr:" <<_keyAddr;
     Account *a = account(_strorageAddr);
     if(!a) {
         createAccount(_strorageAddr, {0});
@@ -4205,7 +4205,27 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                 if(commitBlockNumber >= config::gasPriceHeight()){
                     s << i.second.getStreamRLPGasPrice();
                 }
+                {
+//                    if(commitBlockNumber >= config::strorageHeight()){
+//                        if(i.second.storageByteOverlay().empty())
+//                        {
+//                            assert(i.second.baseByteRoot());
+//                            s << i.second.baseByteRoot();
+//                        }else {
+//                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+//                            for (auto const &val : i.second.storageByteOverlay()) {
+//                                if (!val.second.empty()) {
+//                                    storageByteDB.insert(val.first, val.second);
+//                                } else {
+//                                    storageByteDB.remove(val.first);
+//                                }
+//                            }
+//                            assert(storageByteDB.root());
+//                            s << storageByteDB.root();
+//                        }
+//                    }
 
+                }
                 //Add a new state field
                 {
                     if(commitBlockNumber >= config::changeExchange()){

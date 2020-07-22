@@ -140,7 +140,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
         }
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
-        LOG(m_loggerDetail) << "Queued vaguely legit-looking transaction " << _h;
+        //LOG(m_loggerDetail) << "Queued vaguely legit-looking transaction " << _h;
         
         while (m_current.size() > m_limit)
         {

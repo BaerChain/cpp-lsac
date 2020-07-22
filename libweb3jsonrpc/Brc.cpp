@@ -908,7 +908,6 @@ Json::Value dev::rpc::Brc::brc_getAuthorizeCookie(std::string const& _addr, std:
 {
     try
     {
-        cerror << "123123";
         return client()->authorizeCookie(jsToAddress(_addr), jsToRootKeyEnum(_type), jsToBlockNum(_blockNumber));
     }
     catch (const std::exception& e)
@@ -1112,6 +1111,13 @@ string dev::rpc::exceptionToErrorMessage()
         }
     }
     catch (transferAuthorityUseCookieFailed const& _e)
+    {
+        if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
+        {
+            ret + std::string(*_error);
+        }
+    }
+    catch (InvalidForkHeight const& _e)
     {
         if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {

@@ -890,7 +890,6 @@ BlockChain::import(VerifiedBlockRef const &_block, OverlayDB const &_db, ex::exc
 //    }
     int64_t _time = utcTimeMilliSec();
     auto ret = execute_block(_block, _db, _exdb, _mustBeNew);
-    LOG(m_logger) << "write complete end";
     return  ret;
 }
 
@@ -920,7 +919,6 @@ ImportRoute BlockChain::execute_block(const dev::brc::VerifiedBlockRef &_block, 
     
     // Verify parent-critical parts
     verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
-    LOG(m_loggerDetail) << "Attempting import of " << _block.info.hash() << " ...";
 
     performanceLogger.onStageFinished("preliminaryChecks");
 
@@ -1811,7 +1809,7 @@ void BlockChain::rescue(OverlayDB const &_db){
     cwarn << "  lowest is " << l << endl;
     for (; l > 0; --l) {
         h256 h = numberHash(l);
-        cwarn << "Checking validity of " << l << " (" << h << ")..." << flush;
+        //cwarn << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
             cwarn << "block..." << flush;
             BlockHeader bi(block(h));

@@ -98,6 +98,7 @@ DEV_SIMPLE_EXCEPTION(UnknownTransactionValidationError);
 DEV_SIMPLE_EXCEPTION(UnknownError);
 DEV_SIMPLE_EXCEPTION(InvalidMinner);
 DEV_SIMPLE_EXCEPTION(InvalidMutilTransactionType);
+DEV_SIMPLE_EXCEPTION(InvalidForkHeight);
 //DEV_SIMPLE_EXCEPTION(InvalidFunction);
 
 DEV_SIMPLE_EXCEPTION(InvalidDatabaseKind);

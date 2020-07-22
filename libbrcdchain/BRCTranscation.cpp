@@ -673,6 +673,7 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address& _from,
         }
         catch (const std::exception& e)
         {
+            cwarn << "error!   "<< e.what();
             BOOST_THROW_EXCEPTION(transferAutoExFailed()
                                   << errinfo_comment(std::string("allprice buy Cookie error!")));
         }

@@ -439,7 +439,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
                 ex::order_buy_type::all_price &&
                 _pengdingorder_op.m_Pendingorder_type == ex::order_type::buy &&
                 _pengdingorder_op.m_Pendingorder_Token_type == ex::order_token_type::FUEL &&
-                m_s.balance(m_t.sender()) < _totalCost)
+                m_s.balance(_from) < _totalCost)
             {
                 is_verfy_cost = false;
             }
@@ -447,6 +447,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             m_brctranscation.verifyPendingOrders(_from, (u256)_totalCost, m_s.exdb(),
                                                  m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
                                                  m_batch_params._operation, m_envInfo.number());
+            cwarn << " verify pending :" << _from <<" ROOT:"<< m_batch_params._rootAddress << " | "<< m_batch_params._cookiesAddress;
             break;
         }
         case transationTool::op_type::cancelPendingOrder:
@@ -493,6 +494,9 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         }
         case transationTool::op_type::transferAccountControl:
         {
+            if(m_envInfo.number() < config::strorageHeight()){
+                BOOST_THROW_EXCEPTION(InvalidForkHeight() << errinfo_comment("block height not reach fork height"));
+            }
             transationTool::authority_operation _authority_op = transationTool::authority_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authority_operation>(_authority_op));
             m_brctranscation.verifyAuthorityControl(_from, m_batch_params._operation, m_envInfo);
@@ -500,6 +504,9 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         }
         case transationTool::op_type::transferMutilSigns:
         {
+            if(m_envInfo.number() < config::strorageHeight()){
+                BOOST_THROW_EXCEPTION(InvalidForkHeight() << errinfo_comment("block height not reach fork height"));
+            }
             transationTool::transferMutilSigns_operation _mutilSign_op = transationTool::transferMutilSigns_operation(_ops[0]);
             /// mutilSign transaction batch
             transationTool::op_type _type = transationTool::op_type::null;
@@ -531,6 +538,9 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         }
         case transationTool::op_type::authorizeUseCookie:
         {
+            if(m_envInfo.number() < config::strorageHeight()){
+                BOOST_THROW_EXCEPTION(InvalidForkHeight() << errinfo_comment("block height not reach fork height"));
+            }
             transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authorizeCookies_operation>(_authorize_op));
             m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);
@@ -625,6 +635,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::pendingOrder:{
+                cwarn << " verify pending <<"<< "ROOT:"<< m_batch_params._rootAddress << " | "<< m_batch_params._cookiesAddress;
                 m_s.pendingOrders(m_batch_params._rootAddress, m_envInfo.timestamp(), m_envInfo.number(), m_t.sha3(), m_batch_params._operation);
 
                 break;

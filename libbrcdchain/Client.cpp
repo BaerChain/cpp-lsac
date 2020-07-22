@@ -471,8 +471,8 @@ void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 {
     // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-    for (auto const& h: _blocks)
-        LOG(m_loggerDetail) << "Live block: " << h;
+//    for (auto const& h: _blocks)
+//        LOG(m_loggerDetail) << "Live block: " << h;
 
     if (auto h = m_host.lock()){
         //cwarn << " tell will send new block...";
@@ -666,7 +666,7 @@ void Client::rejigSealing()
                     else
                         LOG(m_logger) << "Submitting block failed...";
                 });
-                ctrace << "Generating seal on " << m_sealingInfo.hash(WithoutSeal) << " #" << m_sealingInfo.number();
+                //ctrace << "Generating seal on " << m_sealingInfo.hash(WithoutSeal) << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal(m_sealingInfo);
             }
         }
@@ -680,8 +680,8 @@ void Client::rejigSealing()
 void Client::noteChanged(h256Hash const& _filters)
 {
     Guard l(x_filtersWatches);
-    if (_filters.size())
-        LOG(m_loggerWatch) << "noteChanged: " << filtersToString(_filters);
+//    if (_filters.size())
+//        LOG(m_loggerWatch) << "noteChanged: " << filtersToString(_filters);
     // accrue all changes left in each filter into the watches.
     for (auto& w: m_watches)
         if (_filters.count(w.second.id))

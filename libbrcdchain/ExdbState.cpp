@@ -163,19 +163,18 @@ namespace dev {
             while (spend > 0 && begin != end) {
                 ctrace << "spend  " << spend << " begin : " << begin->format_string();
                 result_order ret;
+                auto update = *begin;
                 if (begin->token_amount <= spend) {
                     spend -= begin->token_amount;
-                    ret.set_data(od, begin, begin->token_amount, begin->price);
+                    ret.set_data(od, begin, begin->token_amount, update.price);
                     rm = true;
 
                 } else {
-                    auto update = *begin;
                     update.token_amount -= spend;
-
                     //update data.
                     add_exchangeOrder(update);
 
-                    ret.set_data(od, begin, spend, begin->price);
+                    ret.set_data(od, begin, spend, update.price);
                     spend = 0;
                 }
                 ret.old_price = price;

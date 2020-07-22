@@ -153,8 +153,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     // Check if we already know this block.
     h256 h = BlockHeader::headerHashFromBlock(_block);
 
-    LOG(m_loggerDetail) << "Queuing block " << h << " for import...";
-
     UpgradableGuard l(m_lock);
 
     if (contains(m_readySet, h) || contains(m_drainingSet, h) || contains(m_unknownSet, h) ||
@@ -179,7 +177,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
     }
 
 
-    LOG(m_loggerDetail) << "Block " << h << " is " << bi.number() << " parent is " << bi.parentHash();
+    //LOG(m_loggerDetail) << "Block " << h << " is " << bi.number() << " parent is " << bi.parentHash();
 
     // Check block doesn't already exist first!
     if (m_bc->isKnown(h))
