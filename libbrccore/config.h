@@ -9,6 +9,7 @@
 #define BUYCOOKIE 99000000
 #define MAINCHAINID 11
 #define TESTCHAINID  1
+#define TESTCHAINID2  1
 
 
 
