@@ -3879,7 +3879,7 @@ void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vect
             auto _childIt = std::find(_childAddrs.begin(), _childAddrs.end(), _op->m_childAddress);
             if(_childIt == _childAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed());
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(string("Error deleting authorization to use cookie account, master account does not authorize the account")));
             }
             _childAddrs.erase(_childIt);
             RLPStream _childRlp(1);
@@ -3891,7 +3891,7 @@ void dev::brc::State::transferAuthorityUseCookie(Address const& _addr, std::vect
             auto _rootIt = std::find(_rootAddrs.begin(), _rootAddrs.end(), _addr);
             if(_rootIt == _rootAddrs.end())
             {
-                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed());
+                BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(string("Error deleting authorization to use cookie account, the account is not authorized by the master account")));
             }
             _rootAddrs.erase(_rootIt);
             RLPStream rootRlp(1);
@@ -4206,24 +4206,24 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     s << i.second.getStreamRLPGasPrice();
                 }
                 {
-                    if(commitBlockNumber >= config::strorageHeight()){
-                        if(i.second.storageByteOverlay().empty())
-                        {
-                            assert(i.second.baseByteRoot());
-                            s << i.second.baseByteRoot();
-                        }else {
-                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
-                            for (auto const &val : i.second.storageByteOverlay()) {
-                                if (!val.second.empty()) {
-                                    storageByteDB.insert(val.first, val.second);
-                                } else {
-                                    storageByteDB.remove(val.first);
-                                }
-                            }
-                            assert(storageByteDB.root());
-                            s << storageByteDB.root();
-                        }
-                    }
+//                    if(commitBlockNumber >= config::strorageHeight()){
+//                        if(i.second.storageByteOverlay().empty())
+//                        {
+//                            assert(i.second.baseByteRoot());
+//                            s << i.second.baseByteRoot();
+//                        }else {
+//                            SecureTrieDB<h256, DB> storageByteDB(_state.db(), i.second.baseByteRoot());
+//                            for (auto const &val : i.second.storageByteOverlay()) {
+//                                if (!val.second.empty()) {
+//                                    storageByteDB.insert(val.first, val.second);
+//                                } else {
+//                                    storageByteDB.remove(val.first);
+//                                }
+//                            }
+//                            assert(storageByteDB.root());
+//                            s << storageByteDB.root();
+//                        }
+//                    }
 
                 }
                 //Add a new state field

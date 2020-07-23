@@ -1114,14 +1114,14 @@ string dev::rpc::exceptionToErrorMessage()
     {
         if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
-            ret + std::string(*_error);
+            ret += std::string(*_error);
         }
     }
     catch (InvalidForkHeight const& _e)
     {
         if (auto* _error = boost::get_error_info<errinfo_comment>(_e))
         {
-            ret + std::string(*_error);
+            ret += std::string(*_error);
         }
     }
     catch (InvalidAddress)

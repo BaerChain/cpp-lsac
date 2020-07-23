@@ -566,7 +566,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
         LOG(m_execLogger)
             << "Not enough cash: Require > " << _totalCost << " = " << m_t.gas() << " * "
             << m_t.gasPrice() << " + " << m_t.value() << " Got"
-            << m_s.balance(m_t.sender()) << " for sender: " << m_t.sender();
+            << m_s.balance(m_batch_params._cookiesAddress) << " for sender: " << m_batch_params._cookiesAddress;
         m_excepted = TransactionException::NotEnoughCash;
         std::string ex_info ="not enough Cookie to execute tarnsaction will cost:" + toString(_totalCost);
         BOOST_THROW_EXCEPTION(ExecutiveFailed()<< errinfo_comment(ex_info));
