@@ -14,10 +14,12 @@
 #include <boost/timer.hpp>
 #include <libbrccore/changeVote.h>
 
+
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
 using namespace dev::brc::ex;
+
 
 namespace fs = boost::filesystem;
 
@@ -3294,6 +3296,121 @@ void dev::brc::State::changeMinerMigrationData(const dev::Address &before_addr, 
         if (!temp_a)
             continue;
         temp_a->changeMinerUpdateData(before_addr, new_addr);
+    }
+}
+
+
+void dev::brc::State::testDividend(std::set<Address> const& _voteAddrs, int64_t _blockNum) {
+    std::map<Address, u256> _masterNodedividend = config::getMasterNodeInfo();
+    std::map<u256, std::vector<PollData>> _roundOfMinerVotes = get_miner_snapshot();
+    std::vector<PollData> _minerVote = _roundOfMinerVotes[FIRSTROUND];
+    std::map<Address, u256> _masterNodeVotes;
+    u256 _allMinerVotes = 0;
+    for (auto const& _vote : _minerVote) {
+        _masterNodeVotes[_vote.m_addr] = _vote.m_poll;
+        _allMinerVotes += _vote.m_poll;
+    }
+
+    testCalculateMasterNodeDividend(_masterNodeVotes, _masterNodedividend, _allMinerVotes);
+    testVotingAccountDividend(_voteAddrs, _masterNodedividend, _masterNodeVotes, _blockNum);
+}
+
+void dev::brc::State::testCalculateMasterNodeDividend(std::map<Address, u256> const& _masterNodeVotes, std::map<Address, u256> const& _masterNodeDividend, u256 const& _totalVotes) {
+    for(auto const&  _node : _masterNodeDividend) {
+        if (_masterNodeVotes.count(_node.first)){
+            addBalance(_node.first, _node.second - (_node.second / 2 / _masterNodeVotes.at(_node.first) * _masterNodeVotes.at(_node.first)));
+        }
+    }
+}
+
+
+void dev::brc::State::testVotingAccountDividend(std::set<Address> const& _voteAddrs, std::map<Address, u256> const& _masterNodeDividends, std::map<Address, u256> const& _masterNodeVotes, int64_t const& _blockNum) {
+    for ( auto const& _voteAddr : _voteAddrs) {
+        try_new_vote_snapshot(_voteAddr, _blockNum);
+        Account *_voteAcc = account(_voteAddr);
+        VoteSnapshot _voteData  = _voteAcc->vote_snashot();
+        std::map<Address, u256> _voteInfos = _voteData.m_voteDataHistory[u256(FIRSTROUND)];
+        u256 _totalDividendAmount = 0;
+        for ( auto const& _voteInfo : _voteInfos) {
+            if (_masterNodeDividends.count( _voteInfo.first) && _masterNodeVotes.count(_voteInfo.first)){
+                u256 _masterNodeDividend =  _masterNodeDividends.at(_voteInfo.first);
+                u256 _masterNodeVote = _masterNodeVotes.at(_voteInfo.first);
+                u256 _dividendAmount = _masterNodeDividend / 2 / _masterNodeVote * _voteInfo.second;
+                _totalDividendAmount += _dividendAmount;
+            }
+        }
+        if (_totalDividendAmount > 0) {
+            addBalance(_voteAddr, _totalDividendAmount);
+        }
+    }
+}
+
+
+
+void dev::brc::State::dividend(std::set<Address> const& _dividendAddrs, int64_t _blockNum){
+    auto u256Safe = [](std::string const &s) -> u256 {
+        bigint ret(s);
+        if (ret >= bigint(1) << 256)
+            BOOST_THROW_EXCEPTION(
+                    ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
+        return (u256) ret;
+    };
+
+    std::map<Address, std::pair<u256,u256>> _superNode; // Address : superNode Address, pair.first : Total votes, pair.second : Total dividend
+    u256 _allMinerVotes; 
+    u256 _totalDividendAmount = u256Safe(DIVIDENDNUM);
+
+    std::map<u256, std::vector<PollData>> _roundOfMinerVotes = get_miner_snapshot();
+    std::vector<PollData> _minerVotes = _roundOfMinerVotes[FIRSTROUND];
+    for (auto const& _superNodePollData : _minerVotes){
+        _superNode[_superNodePollData.m_addr] = std::make_pair(_superNodePollData.m_poll, u256(0));
+        _allMinerVotes += _superNodePollData.m_poll;
+    }
+    calculateMasterNodeDividend(_superNode, _totalDividendAmount, _allMinerVotes);
+
+    votingAccountDividend(_dividendAddrs, _superNode, _blockNum);
+}
+
+void dev::brc::State::calculateMasterNodeDividend(std::map<Address, std::pair<u256, u256>>& _masterNode, u256 const& _totalDividendAmount, u256 const& _allMinerVotes) {
+    for(auto &_node : _masterNode) {
+        u256 _nodeDividend = _totalDividendAmount / _allMinerVotes * _node.second.first;
+        _node.second.second = _nodeDividend;
+        addBalance(_node.first, (_nodeDividend - (_nodeDividend / 2 / _node.second.first * _node.second.first)));
+    }
+
+
+    u256 _dividendRemainder = _totalDividendAmount % _allMinerVotes;
+    std::pair<Address, u256> _biggestVote;
+
+    for(auto const& _node : _masterNode) {
+        if (_biggestVote.second < _node.second.first) {
+            _biggestVote.first = _node.first;
+            _biggestVote.second = _node.second.first;
+        }
+        addBalance(_node.first, _dividendRemainder / 51);
+    }
+
+    addBalance(_biggestVote.first, _dividendRemainder % 51);
+}
+
+void dev::brc::State::votingAccountDividend(std::set<Address> const& _voteAddrs, std::map<Address, std::pair<u256, u256>> _masterNodeDividendInfo, int64_t _blockNum) {
+    for ( auto const& _voteAddr : _voteAddrs) {
+        try_new_vote_snapshot(_voteAddr, _blockNum);
+        Account *_voteAcc = account(_voteAddr);
+        VoteSnapshot _voteData  = _voteAcc->vote_snashot();
+        std::map<Address, u256> _voteInfos = _voteData.m_voteDataHistory[u256(1)];
+        u256 _totalDividendAmount = 0;
+        for ( auto const& _voteInfo : _voteInfos) {
+            if (_masterNodeDividendInfo.count( _voteInfo.first)){
+                std::pair<u256, u256> _votesAndDividend =  _masterNodeDividendInfo[_voteInfo.first];
+                u256 _dividendAmount = _votesAndDividend.second / 2 / _votesAndDividend.first * _voteInfo.second;
+                //addBalance(_voteAddr, _dividendAmount);
+                _totalDividendAmount += _dividendAmount;
+            }
+        }
+        if (_totalDividendAmount > 0) {
+            addBalance(_voteAddr, _totalDividendAmount);
+        }
     }
 }
 

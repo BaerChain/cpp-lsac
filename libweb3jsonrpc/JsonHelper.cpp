@@ -316,8 +316,7 @@ namespace dev {
                         res["transcation_type"] = toJS(_transation_op.m_Transcation_type);
                         res["transcation_numbers"] = toJS(_transation_op.m_Transcation_numbers);
                         _JsArray.append(res);
-                    }
-                    if(_type == dev::brc::transationTool::vote) {
+                    }else if(_type == dev::brc::transationTool::vote) {
                         Json::Value res;
                         dev::brc::transationTool::vote_operation _vote_op = dev::brc::transationTool::vote_operation(val);
                         res["type"] = toJS(_type);
@@ -327,8 +326,7 @@ namespace dev {
                         res["vote_type"] = toJS(_vote_op.m_vote_type);
                         res["vote_numbers"] = toJS(_vote_op.m_vote_numbers);
                         _JsArray.append(res);
-                    }
-                    if(_type == dev::brc::transationTool::pendingOrder) {
+                    }else if(_type == dev::brc::transationTool::pendingOrder) {
                         Json::Value res;
                         dev::brc::transationTool::pendingorder_opearaion _pendering_op = dev::brc::transationTool::pendingorder_opearaion(val);
                         uint8_t m_Pendingorder_type = (uint8_t)_pendering_op.m_Pendingorder_type;
@@ -343,24 +341,21 @@ namespace dev {
                         res["num"] = toJS(_pendering_op.m_Pendingorder_num);
                         res["price"] = toJS(_pendering_op.m_Pendingorder_price);
                         _JsArray.append(res);
-                    }
-                    if(_type == dev::brc::transationTool::cancelPendingOrder) {
+                    }else if(_type == dev::brc::transationTool::cancelPendingOrder) {
                         Json::Value res;
                         dev::brc::transationTool::cancelPendingorder_operation _cancel_op = dev::brc::transationTool::cancelPendingorder_operation(val);
                         res["type"] = toJS(_type);
                         res["cancelType"] = toJS(_cancel_op.m_cancelType);
                         res["hash"] = toJS(_cancel_op.m_hash);
                         _JsArray.append(res);
-                    }
-                    if(_type == dev::brc::transationTool::receivingincome) {
+                    }else if(_type == dev::brc::transationTool::receivingincome) {
                         Json::Value res;
                         dev::brc::transationTool::receivingincome_operation _op = dev::brc::transationTool::receivingincome_operation(val);
                         res["type"] = toJS(_type);
                         res["receivingType"] = toJS(_op.m_receivingType);
                         res["from"] = toJS(_op.m_from);
                         _JsArray.append(res);
-                    }
-                    if(_type == dev::brc::transationTool::transferAutoEx) {
+                    }else if(_type == dev::brc::transationTool::transferAutoEx) {
                         Json::Value res;
                         dev::brc::transationTool::transferAutoEx_operation _op = dev::brc::transationTool::transferAutoEx_operation(val);
                         res["type"] = toJS(_type);
@@ -371,6 +366,14 @@ namespace dev {
                         res["to"] = toJS(_op.m_to);
                         _JsArray.append(res);
                     }
+                    // else if(_type == dev::brc::transationTool::dividend) {
+                    //     Json::Value res;
+                    //     dev::brc::transationTool::dividend_operation _op = dev::brc::transationTool::dividend_operation(val);
+                    //     res["type"] = toJS(_type);
+                    //     res["dividendAccount"] = toJS(_op.m_to);
+                    //     res["dividendAmount"] = toJS(_op.m_dividendNum);
+                    //     _JsArray.append(res);
+                    // }
                 }
                 return _JsArray;
             }             

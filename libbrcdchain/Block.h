@@ -306,6 +306,10 @@ public:
     /// into new block todo something
     void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params);
 
+    // test dividend interface
+    void testDividend(BlockHeader const& _currInfo);
+    // Transaction testDividendTrxRecord(BlockHeader const& _currInfo, ChainParams const& _params);
+    // void testDividendTrxReceipt(BlockHeader const& _currInfo);
 private:
     SealEngineFace* sealEngine() const;
 

@@ -72,8 +72,10 @@ private:
     /// @paramer _ph : the last block in chain
 	bool checkPreviousBlock(BlockHeader const& _ph) const;
     void sendDataToNodeMonitor();
+    //Determine whether to force a block
+    bool isForceBlock();
 private:
-    ChainParams                     m_params;          //配置
+    ChainParams                     m_params;         
     Logger                          m_logger{createLogger(VerbosityInfo, "DposClinet")};
 
 	int64_t                         m_startSeal_time =0;

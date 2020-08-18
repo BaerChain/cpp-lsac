@@ -85,7 +85,6 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
     try{
         bool t = true;
         //compare_exchange_strong(T& expected, T val, ...)
-
 		if(m_syncBlockQueue.compare_exchange_strong(t, false))
 		{
 			syncBlockQueue();
@@ -108,8 +107,9 @@ void dev::bacd::SHDposClient::doWork(bool _doWait)
         DEV_READ_GUARDED(x_working)
             isSealed = m_working.isSealed();
 
-        if(!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
+        if(!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false)){
             syncTransactionQueue();
+		}
 
         tick();
         rejigSealing();
@@ -197,6 +197,7 @@ void dev::bacd::SHDposClient::rejigSealing()
 {
     if(!m_wouldSeal)
         return;
+
 	if((wouldSeal() || remoteActive()) && !isMajorSyncing())
 	{
         if (!verifyVarlitorPrivatrKey()){
@@ -205,10 +206,16 @@ void dev::bacd::SHDposClient::rejigSealing()
         }
 
         //verify block_rounds/seal_block/minner ....
-        if(!isBlockSeal(utcTimeMilliSec()))
-        {
-            return;
-        }
+
+		if(!isForceBlock()) {
+			return;
+		}
+		
+		if (!m_forceAuthorCount) {
+			if(!isBlockSeal(utcTimeMilliSec())){
+         		return;
+        	}
+		}
 
         if (m_is_firt_run){
             m_is_firt_run  = false;
@@ -240,7 +247,11 @@ void dev::bacd::SHDposClient::rejigSealing()
 				}
 
 				// TODO is that needed? we have "Generating seal on" below
-				m_working.commitToSeal(bc(), m_extraData);
+				auto _extraData = m_extraData;
+				if (m_forceAuthorCount) {
+					_extraData.push_back('f');
+				}
+				m_working.commitToSeal(bc(), _extraData);
 			}
 			DEV_READ_GUARDED(x_working)
 			{
@@ -299,6 +310,7 @@ void dev::bacd::SHDposClient::syncTransactionQueue(){
 		int _exc_time = (m_params.blockInterval ? m_params.blockInterval * 2 / 5 : 400) - m_working.exc_transaction_time();
 		if(_exc_time <= 20)
 			return;
+		
 		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp, _exc_time);
 
 	}
@@ -391,4 +403,41 @@ bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Addr
     Verify verify_standby;
     return  verify_standby.verify_standby(preSeal().mutableState(), block_time, own_addr,
                                         varlitorInterval_time, preSeal().info().number() >= config::newChangeHeight());
+}
+
+
+bool dev::bacd::SHDposClient::isForceBlock()  {
+	if(m_working.info().number() == config::dividendHeight()) {
+		if(m_forceAuthorCount && m_forceBlockBeginTime) {
+			int64_t _now = utcTimeMilliSec() / 1000;
+			if (_now - m_forceBlockBeginTime > 60) {
+				m_errorForceCount++;
+				m_forceBlockBeginTime = _now;
+			}
+		}else{
+			m_forceAuthorCount = FORCEBLOCKCOUNT;
+			m_forceBlockBeginTime = utcTimeMilliSec() / 1000;
+		}
+
+		if(m_working.author() != dpos()->getCurrCreaters().at(m_errorForceCount)) {
+			return false;
+		}else{
+			return true;
+		}
+	}else{
+		if(m_forceAuthorCount && m_working.author() != dpos()->getCurrCreaters().at(m_errorForceCount) && m_forceBlockBeginTime) {
+			int64_t _now = utcTimeMilliSec() / 1000;
+			if ( _now - m_forceBlockBeginTime >= 60 && m_errorForceCount < MAXFORCEBLOCKAUTHOR) {
+				m_errorForceCount++;
+				m_forceBlockBeginTime = _now;
+			}else {
+				if (m_errorForceCount == MAXFORCEBLOCKAUTHOR - 1) {
+					m_errorForceCount = 0;
+					m_forceBlockBeginTime = _now;
+				}
+				return false;
+			}
+		}
+	}
+	return true;
 }
