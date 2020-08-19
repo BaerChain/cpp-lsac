@@ -308,8 +308,7 @@ public:
 
     // test dividend interface
     void testDividend(BlockHeader const& _currInfo);
-    // Transaction testDividendTrxRecord(BlockHeader const& _currInfo, ChainParams const& _params);
-    // void testDividendTrxReceipt(BlockHeader const& _currInfo);
+    void cancelSysOrder(BlockHeader const& _currInfo);
 private:
     SealEngineFace* sealEngine() const;
 

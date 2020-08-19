@@ -143,6 +143,14 @@ int64_t config::dividendHeight()
     }
 }
 
+int64_t config::cancelAutoPendingOrderHeight() {
+    if (config::config::getInstance().m_chainId == MAINCHAINID) {
+        return 99999999UL;
+    } else {
+        return 15;
+    }
+}
+
 std::set<Address> config::getGenesisAddr(){
     std::string _genesis = genesis::genesis_info(ChainNetWork ::MainNetwork);
     std::set<Address> _ordinaryAddr;

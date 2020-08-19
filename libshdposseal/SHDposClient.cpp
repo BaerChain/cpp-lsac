@@ -418,7 +418,6 @@ bool dev::bacd::SHDposClient::isForceBlock()  {
 			m_forceAuthorCount = FORCEBLOCKCOUNT;
 			m_forceBlockBeginTime = utcTimeMilliSec() / 1000;
 		}
-
 		if(m_working.author() != dpos()->getCurrCreaters().at(m_errorForceCount)) {
 			return false;
 		}else{

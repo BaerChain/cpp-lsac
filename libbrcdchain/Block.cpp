@@ -919,7 +919,8 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     /// init the minerGasPrice
     /// the interface has dealed chainId
     m_state.initMinerGasPrice(curr_info);
-    testDividend(curr_info);
+    // testDividend(curr_info);
+    cancelSysOrder(curr_info);
 }
 
 void Block::testDividend(BlockHeader const& _currInfo){
@@ -930,4 +931,11 @@ void Block::testDividend(BlockHeader const& _currInfo){
     std::set<Address> _genesisAddr = config::config::getGenesisAddr();
     m_state.testDividend(_genesisAddr, _currInfo.number());
     // m_state.dividend(_genesisAddr, _currInfo.number());
+}
+
+void Block::cancelSysOrder(BlockHeader const& _currInfo) {
+    if (_currInfo.number() != config::cancelAutoPendingOrderHeight()) { 
+        return;
+    }
+    m_state.cancelSysOrder();
 }

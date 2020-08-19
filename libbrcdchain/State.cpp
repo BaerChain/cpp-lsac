@@ -845,7 +845,7 @@ Account *dev::brc::State::getSysAccount() {
 
 //void dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
 std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64_t _nowTime, h256 _pendingOrderHash,
-                                    std::vector<std::shared_ptr<transationTool::operation>> const &_ops) {
+                                    std::vector<std::shared_ptr<transationTool::operation>> const &_ops, int64_t const& _blockNum) {
     std::vector<ex_order> _v;
     std::vector<result_order> _result_v;
     std::set<order_type> _set;
@@ -933,7 +933,7 @@ std::pair<u256 ,u256> dev::brc::State::pendingOrders(Address const &_addr, int64
         addFBRC(_addr, (u256) total_free_brc);
     }
 
-    if (_set.size() > 0) {
+    if (_set.size() > 0 && _blockNum < config::cancelAutoPendingOrderHeight()) {
         systemAutoPendingOrder(_set, _nowTime);
     }
 
@@ -1943,7 +1943,7 @@ State::anytime_receivingPdFeeIncome(const dev::Address &_addr, int64_t _blockNum
     return std::make_pair(total_income_brcs, total_income_cookies);
 }
 
-void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas)
+void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation>> const& _ops, h256 const& _trxid, int64_t _timeStamp, u256 const& _baseGas, int64_t const& _blockNum)
 {
     for(auto const& val : _ops)
     {
@@ -1951,7 +1951,7 @@ void State::transferAutoEx(std::vector<std::shared_ptr<transationTool::operation
         std::shared_ptr<transationTool::pendingorder_opearaion> const& _pdop = std::make_shared<transationTool::pendingorder_opearaion>((transationTool::op_type)3, _op->m_from, ex::order_type::buy, ex::order_token_type::FUEL, ex::order_buy_type::all_price, u256(0), _op->m_autoExNum);
         std::vector<std::shared_ptr<transationTool::operation>> _pdops;
         _pdops.push_back(_pdop);
-        std::pair<u256, u256> _exNumPair = pendingOrders(_op->m_from, _timeStamp, _trxid, _pdops);  // first: exCookieNum  second:exBRCNum
+        std::pair<u256, u256> _exNumPair = pendingOrders(_op->m_from, _timeStamp, _trxid, _pdops, _blockNum);  // first: exCookieNum  second:exBRCNum
         if(_op->m_autoExType == transationTool::transferAutoExType::Balancededuction)
         {
             transferBRC(_op->m_from, _op->m_to, _op->m_transferNum);
@@ -3410,6 +3410,19 @@ void dev::brc::State::votingAccountDividend(std::set<Address> const& _voteAddrs,
         }
         if (_totalDividendAmount > 0) {
             addBalance(_voteAddr, _totalDividendAmount);
+        }
+    }
+}
+
+
+void dev::brc::State::cancelSysOrder() {
+    ExdbState _exdbstate(*this);
+    std::vector<exchange_order> _exchangeOrder = _exdbstate.get_order_by_type(order_type::buy, order_token_type::FUEL, LIMITE_NUMBER);
+    for (auto _order : _exchangeOrder) {
+        if (_order.sender == systemAddress) {
+            ex::order val = _exdbstate.cancel_order_by_trxid(_order.trxid);
+            subFBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
+            addBRC(val.sender, val.price_token.second * val.price_token.first / PRICEPRECISION);
         }
     }
 }

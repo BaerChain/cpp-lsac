@@ -96,7 +96,7 @@ namespace dev
                 static u256 initialGasPrice();
 
                 static int64_t dividendHeight();
-
+                static int64_t cancelAutoPendingOrderHeight();
                 static std::set<Address> getGenesisAddr();
 
                 static std::map<Address, u256> getMasterNodeInfo();
