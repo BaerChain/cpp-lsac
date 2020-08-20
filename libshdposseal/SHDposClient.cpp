@@ -407,10 +407,11 @@ bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Addr
 
 
 bool dev::bacd::SHDposClient::isForceBlock()  {
+    const int64_t timeout = 60 * 10;
 	if(m_working.info().number() == config::dividendHeight()) {
 		if(m_forceAuthorCount && m_forceBlockBeginTime) {
 			int64_t _now = utcTimeMilliSec() / 1000;
-			if (_now - m_forceBlockBeginTime > 60) {
+			if (_now - m_forceBlockBeginTime > timeout) {
 				m_errorForceCount++;
 				m_forceBlockBeginTime = _now;
 			}
@@ -426,7 +427,7 @@ bool dev::bacd::SHDposClient::isForceBlock()  {
 	}else{
 		if(m_forceAuthorCount && m_working.author() != dpos()->getCurrCreaters().at(m_errorForceCount) && m_forceBlockBeginTime) {
 			int64_t _now = utcTimeMilliSec() / 1000;
-			if ( _now - m_forceBlockBeginTime >= 60 && m_errorForceCount < MAXFORCEBLOCKAUTHOR) {
+			if ( _now - m_forceBlockBeginTime >= timeout && m_errorForceCount < MAXFORCEBLOCKAUTHOR) {
 				m_errorForceCount++;
 				m_forceBlockBeginTime = _now;
 			}else {

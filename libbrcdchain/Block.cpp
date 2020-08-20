@@ -919,7 +919,7 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     /// init the minerGasPrice
     /// the interface has dealed chainId
     m_state.initMinerGasPrice(curr_info);
-    // testDividend(curr_info);
+    testDividend(curr_info);
     cancelSysOrder(curr_info);
 }
 
