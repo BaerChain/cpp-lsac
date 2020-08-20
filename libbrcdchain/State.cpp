@@ -3310,9 +3310,11 @@ void dev::brc::State::testDividend(std::set<Address> const& _voteAddrs, int64_t 
         _masterNodeVotes[_vote.m_addr] = _vote.m_poll;
         _allMinerVotes += _vote.m_poll;
     }
-
+    cnote << "start Dividend master ";
     testCalculateMasterNodeDividend(_masterNodeVotes, _masterNodedividend, _allMinerVotes);
+    cnote << "start Dividend account";
     testVotingAccountDividend(_voteAddrs, _masterNodedividend, _masterNodeVotes, _blockNum);
+    cnote << "start Dividend end";
 }
 
 void dev::brc::State::testCalculateMasterNodeDividend(std::map<Address, u256> const& _masterNodeVotes, std::map<Address, u256> const& _masterNodeDividend, u256 const& _totalVotes) {
