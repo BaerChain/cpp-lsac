@@ -407,7 +407,7 @@ bool dev::bacd::SHDposClient::verify_standby(int64_t block_time, const dev::Addr
 
 
 bool dev::bacd::SHDposClient::isForceBlock()  {
-    const int64_t timeout = 60 * 10;
+    const int64_t timeout = 60 * 10 * 6;
 	if(m_working.info().number() == config::dividendHeight()) {
 		if(m_forceAuthorCount && m_forceBlockBeginTime) {
 			int64_t _now = utcTimeMilliSec() / 1000;
