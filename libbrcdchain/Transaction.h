@@ -473,7 +473,7 @@ struct transferMutilSigns_operation : public operation
     std::vector<SignatureStruct> m_signs;
     transferMutilSigns_operation() {}
     transferMutilSigns_operation(op_type _type, Address const& _rootAddr,
-        Address const& _cookiesAddr, std::vector<operation*>& _ptrs)
+        Address const& _cookiesAddr, std::vector<std::shared_ptr<operation>>& _ptrs)
       : m_type(_type), m_rootAddress(_rootAddr), m_cookiesAddress(_cookiesAddr)
     {
         for (auto& p : _ptrs)

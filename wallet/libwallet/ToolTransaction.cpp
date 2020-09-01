@@ -320,83 +320,119 @@ SignatureStruct wallet::ToolTransaction::getSignByBytes(bytes const& _bs, Secret
     return SignatureStruct{h256(),h256(),0};
 }
 
-operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
+std::shared_ptr<operation> wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj){
     auto type = op_obj["type"].get_int();
     switch (type) {
         case vote: {
-            auto new_op = new vote_operation((op_type) type,
+            auto new_op = make_shared<vote_operation>((op_type) type,
                                              Address(op_obj["m_from"].get_str()),
                                              Address(op_obj["m_to"].get_str()),
                                              (uint8_t) op_obj["m_vote_type"].get_int(),
-                                             u256(op_obj["m_vote_numbers"].get_str())
-            );
+                                             u256(op_obj["m_vote_numbers"].get_str()));
+            // auto new_op = new vote_operation((op_type) type,
+            //                                  Address(op_obj["m_from"].get_str()),
+            //                                  Address(op_obj["m_to"].get_str()),
+            //                                  (uint8_t) op_obj["m_vote_type"].get_int(),
+            //                                  u256(op_obj["m_vote_numbers"].get_str())
+            // );
             return new_op;
         }
         case brcTranscation: {
-            auto transcation_op = new transcation_operation((op_type) type,
+            auto transcation_op = make_shared<transcation_operation>((op_type) type,
                                                             Address(op_obj["m_from"].get_str()),
                                                             Address(op_obj["m_to"].get_str()),
                                                             (uint8_t) op_obj["m_transcation_type"].get_int(),
-                                                            u256(op_obj["m_transcation_numbers"].get_str())
-            );
+                                                            u256(op_obj["m_transcation_numbers"].get_str()));
+            // auto transcation_op = new transcation_operation((op_type) type,
+            //                                                 Address(op_obj["m_from"].get_str()),
+            //                                                 Address(op_obj["m_to"].get_str()),
+            //                                                 (uint8_t) op_obj["m_transcation_type"].get_int(),
+            //                                                 u256(op_obj["m_transcation_numbers"].get_str())
+            // );
             return transcation_op;
         }
         case pendingOrder: {
-            auto pendingorder_op = new pendingorder_opearaion((op_type) type,
+            auto pendingorder_op = make_shared<pendingorder_opearaion>((op_type) type,
                                                               Address(op_obj["m_from"].get_str()),
                                                               (ex::order_type) op_obj["m_type"].get_int(),
                                                               (ex::order_token_type) op_obj["m_token_type"].get_int(),
                                                               (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
                                                               u256(op_obj["m_num"].get_str()),
-                                                              u256(op_obj["m_price"].get_str())
-            );
+                                                              u256(op_obj["m_price"].get_str()));
+            // auto pendingorder_op = new pendingorder_opearaion((op_type) type,
+            //                                                   Address(op_obj["m_from"].get_str()),
+            //                                                   (ex::order_type) op_obj["m_type"].get_int(),
+            //                                                   (ex::order_token_type) op_obj["m_token_type"].get_int(),
+            //                                                   (ex::order_buy_type) op_obj["m_buy_type"].get_int(),
+            //                                                   u256(op_obj["m_num"].get_str()),
+            //                                                   u256(op_obj["m_price"].get_str())
+            // );
             return pendingorder_op;
         }
         case cancelPendingOrder: {
-            auto cancel_op = new cancelPendingorder_operation((op_type) type, 3, h256(op_obj["m_hash"].get_str()));
+            auto cancel_op = make_shared<cancelPendingorder_operation>((op_type) type, 3, h256(op_obj["m_hash"].get_str()));
+            // auto cancel_op = new cancelPendingorder_operation((op_type) type, 3, h256(op_obj["m_hash"].get_str()));
             return cancel_op;
         }
         case deployContract: {
-            return new contract_operation((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
+            return make_shared<contract_operation>((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
+            // return new contract_operation((op_type)type, Address(), fromHex(op_obj["contract"].get_str()));
         }
         case executeContract: {
-            return new contract_operation((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
+            return make_shared<contract_operation>((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
+            // return new contract_operation((op_type)type, Address(op_obj["m_to"].get_str()), fromHex(op_obj["contract"].get_str()));
         }
         case changeMiner: {
-            auto changeMiner_op = new changeMiner_operation( (op_type)type,
+            auto changeMiner_op = make_shared<changeMiner_operation>((op_type)type,
                                                              Address(op_obj["m_before"].get_str()),
-                                                             Address(op_obj["m_after"].get_str())
-            );
+                                                             Address(op_obj["m_after"].get_str()));
+            // auto changeMiner_op = new changeMiner_operation( (op_type)type,
+            //                                                  Address(op_obj["m_before"].get_str()),
+            //                                                  Address(op_obj["m_after"].get_str())
+            // );
             return changeMiner_op;
         }
         case receivingincome: {
-            auto receivingincome_op = new receivingincome_operation((op_type)type,
+            auto receivingincome_op = make_shared<receivingincome_operation>((op_type)type,
                                                             (uint8_t)op_obj["m_receivingType"].get_int(),
                                                             Address(op_obj["m_from"].get_str()));
+            // auto receivingincome_op = new receivingincome_operation((op_type)type,
+            //                                                 (uint8_t)op_obj["m_receivingType"].get_int(),
+            //                                                 Address(op_obj["m_from"].get_str()));
             return receivingincome_op;
         }
         case transferAutoEx: {
-            auto transferAutoEx_op = new transferAutoEx_operation(
-                    (op_type)type,
+            auto transferAutoEx_op = make_shared<transferAutoEx_operation>((op_type)type,
                     transferAutoExType(op_obj["m_autoExType"].get_int()),
                     u256(op_obj["m_autoExNum"].get_str()),
                     u256(op_obj["m_transferNum"].get_str()),
                     Address(op_obj["m_from"].get_str()),
                     Address(op_obj["m_to"].get_str()));
+            // auto transferAutoEx_op = new transferAutoEx_operation(
+            //         (op_type)type,
+            //         transferAutoExType(op_obj["m_autoExType"].get_int()),
+            //         u256(op_obj["m_autoExNum"].get_str()),
+            //         u256(op_obj["m_transferNum"].get_str()),
+            //         Address(op_obj["m_from"].get_str()),
+            //         Address(op_obj["m_to"].get_str()));
             return transferAutoEx_op;
         }
         case transferAccountControl:{
-            auto authority_op = new authority_operation(
-                    (op_type)type,
+            auto authority_op = make_shared<authority_operation>((op_type)type,
                     Address(op_obj["childAddress"].get_str()),
                     uint8_t (op_obj["weight"].get_int()),
-                    uint8_t (op_obj["permissions"].get_int())
-                    );
+                    uint8_t (op_obj["permissions"].get_int()));
+            // auto authority_op = new authority_operation(
+            //         (op_type)type,
+            //         Address(op_obj["childAddress"].get_str()),
+            //         uint8_t (op_obj["weight"].get_int()),
+            //         uint8_t (op_obj["permissions"].get_int())
+            //         );
             return authority_op;
         }
         case transferMutilSigns: {
             auto txData = op_obj["transactionData"].get_array();
-            std::vector<operation*> ptrs;
+            std::vector<std::shared_ptr<operation>> ptrs;
             for(auto &d : txData){
                 /// check data_type
                 auto  data_type = d.get_obj()["type"].get_int();
@@ -407,8 +443,10 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
                     BOOST_THROW_EXCEPTION(InvalidTransaciontType()<<errinfo_comment("transaction type:11 can't contains empty"));
                 ptrs.emplace_back(std::move(op_ptr));
             }
-            auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),
+            auto tran_sings = make_shared<transferMutilSigns_operation>((op_type)type,Address(op_obj["rootAddress"].get_str()),
                                                         Address(op_obj["cookiesAddress"].get_str()),ptrs);
+            // auto tran_sings = new transferMutilSigns_operation((op_type)type,Address(op_obj["rootAddress"].get_str()),
+            //                                             Address(op_obj["cookiesAddress"].get_str()),ptrs);
             ///load child signs
             try{
                 auto signs = op_obj["signs"].get_array();
@@ -433,10 +471,13 @@ operation* wallet::ToolTransaction::get_oparation_from_data(js::mObject& op_obj)
             return tran_sings;
         }
         case authorizeUseCookie:{
-            auto authorize_op = new authorizeCookies_operation((op_type) type,
+            auto authorize_op = make_shared<authorizeCookies_operation>((op_type) type,
                                                               authorizeCookieType(op_obj["m_authorizeType"].get_int()),
-                                                              Address(op_obj["m_childAddr"].get_str())
-            );
+                                                              Address(op_obj["m_childAddr"].get_str()));
+            // auto authorize_op = new authorizeCookies_operation((op_type) type,
+            //                                                   authorizeCookieType(op_obj["m_authorizeType"].get_int()),
+            //                                                   Address(op_obj["m_childAddr"].get_str())
+            // );
             return authorize_op;
         }
         default:
