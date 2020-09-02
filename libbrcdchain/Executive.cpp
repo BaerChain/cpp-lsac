@@ -328,6 +328,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
             if (m_t.gas() < m_baseGasRequired){
                 std::string ex_info = "not enough gas to execute transaction, Account gas : " + toString(m_t.gas()) + 
                     " gas required for the transaction : " + toString(m_baseGasRequired);
+                BOOST_THROW_EXCEPTION(ExecutiveFailed() << errinfo_comment(ex_info));     
             }
             m_batch_params._cookiesAddress = m_t.sender();
         }
@@ -614,9 +615,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     if (!m_t.isVoteTranction())
     {
         /// try to exctue contract
-        if(callContract(_p, _gasPrice, _origin))
-            return true;
+        auto ok =  callContract(_p, _gasPrice, _origin);
         m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+        return ok;
+       
     }
     else
     {
@@ -722,7 +724,6 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
                 m_s.addBalance(_p.codeAddress, 0);
 
             return true;  // true actually means "all finished - nothing more to be done regarding
-            // go().
         }
         else
         {
