@@ -65,6 +65,12 @@ private:
     DebugOptions m_options;
 };
 
+// int  0, precompil,  1 vm , 2
+enum class CallCType {
+    PRECOMPIE = 0,
+    VM = 1,
+    SYSTEM = 2
+};
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
  *
@@ -171,7 +177,8 @@ public:
     bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
     /// excuteContract to excute about Precompiled or other contract
     /// @returns false iff go() be called (and thus a VM execution in required)
-    bool callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin);
+
+    CallCType callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin);
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState(SubState& _parentContext);
 

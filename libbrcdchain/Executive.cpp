@@ -612,8 +612,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     }
 
     auto ok = callContract(_p, _gasPrice, _origin);
-    if (ok) {
-        return ok;
+    if (ok == CallCType::PRECOMPIE) {
+        return true;
     }
 
     // Transfer brcer.
@@ -692,7 +692,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 }
                 CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
                                        m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_data), {}};
-                return callContract(params, _gasPrice, m_batch_params._rootAddress);
+                return callContract(params, _gasPrice, m_batch_params._rootAddress) != CallCType::SYSTEM;
             }
             case transationTool::op_type::authorizeUseCookie:
             {
@@ -710,10 +710,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         }
         return true;
     }
-    return ok;
+    return ok != CallCType::SYSTEM;
 }
 
-bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
+// int  0, precompil,  1 vm , 2
+CallCType Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
     m_savepoint = m_s.savepoint();
     //cwarn << "Contrat myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin;
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
@@ -725,7 +726,7 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
             if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
                 m_s.addBalance(_p.codeAddress, 0);
 
-            return true;  // true actually means "all finished - nothing more to be done regarding
+            return CallCType::PRECOMPIE;  // true actually means "all finished - nothing more to be done regarding
         }
         else
         {
@@ -739,7 +740,7 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
             {
                 m_gas = 0;
                 m_excepted = TransactionException::OutOfGas;
-                return true;  // true means no need to run go().
+                return CallCType::PRECOMPIE;  // true means no need to run go().
             }
         }
     }
@@ -757,7 +758,7 @@ bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address c
                                        m_depth, false, _p.staticCall);
         }
     }
-    return !m_ext;
+    return m_ext == nullptr ? CallCType::SYSTEM : CallCType::VM;
 }
 
 bool Executive::create(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
