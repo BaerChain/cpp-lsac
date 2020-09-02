@@ -499,7 +499,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             }
             transationTool::authority_operation _authority_op = transationTool::authority_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authority_operation>(_authority_op));
-            m_brctranscation.verifyAuthorityControl(_from, m_batch_params._operation, m_envInfo);
+            m_brctranscation.verifyAuthorityControl(_from, m_batch_params._operation, m_envInfo.number());
             break;
         }
         case transationTool::op_type::transferMutilSigns:
@@ -522,13 +522,13 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             m_batch_params._rootAddress = _mutilSign_op.m_rootAddress;
             if(_mutilSign_op.m_cookiesAddress != m_t.sender() && _mutilSign_op.m_cookiesAddress != Address())
             {
-                m_brctranscation.verifyUseCookie(_mutilSign_op.m_cookiesAddress, m_t.sender());
+                m_brctranscation.verifyUseCookie(_mutilSign_op.m_cookiesAddress, m_t.sender(), m_envInfo.number());
                 m_batch_params._cookiesAddress = _mutilSign_op.m_cookiesAddress;
             }else{
                 m_batch_params._cookiesAddress = m_t.sender();
             }
             if(m_batch_params._rootAddress != _from && m_batch_params._rootAddress != Address()) {
-                m_brctranscation.verifyPermissionTrx(_from,std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op));
+                m_brctranscation.verifyPermissionTrx(_from,std::make_shared<transationTool::transferMutilSigns_operation>(_mutilSign_op), m_envInfo.number());
             }
             else{
                 m_batch_params._rootAddress = _from;
@@ -543,7 +543,7 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             }
             transationTool::authorizeCookies_operation _authorize_op = transationTool::authorizeCookies_operation(_ops[0]);
             m_batch_params._operation.push_back(std::make_shared<transationTool::authorizeCookies_operation>(_authorize_op));
-            m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation);
+            m_brctranscation.verifyAuthorityCookies(_from, m_batch_params._operation, m_envInfo.number());
             break;
         }
         case transationTool::op_type::modifyMinerGasPrice:

@@ -104,6 +104,8 @@ namespace dev
                 static std::set<Address> getGenesisAddr();
 
                 static std::map<Address, u256> getMasterNodeInfo();
+
+                static int64_t transferAuthorityHeight();
         private:
             config(){}
             //~config(){}

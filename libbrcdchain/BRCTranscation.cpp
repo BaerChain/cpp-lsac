@@ -694,8 +694,11 @@ void dev::brc::BRCTranscation::verifyTransferAutoEx(const dev::Address& _from,
 }
 
 void dev::brc::BRCTranscation::verifyPermissionTrx(
-    Address const& _from, std::shared_ptr<transationTool::operation> const& _op)
+    Address const& _from, std::shared_ptr<transationTool::operation> const& _op, int64_t const& _blockNum)
 {
+    if (_blockNum < config::transferAuthorityHeight()) {
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("The features has not been turned on")));
+    }
     std::shared_ptr<transationTool::transferMutilSigns_operation> _mutilSign_op =
             std::dynamic_pointer_cast<transationTool::transferMutilSigns_operation>(_op);
     std::set<Address> _permissionAddrs;
@@ -760,8 +763,11 @@ void dev::brc::BRCTranscation::verifyPermissionTrx(
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from,
-    std::vector<std::shared_ptr<transationTool::operation>> const& _ops, EnvInfo const& _envinfo)
+    std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t const& _blockNum)
 {
+    if (_blockNum < config::transferAuthorityHeight()) {
+        BOOST_THROW_EXCEPTION(transferAuthotityControlFailed() << errinfo_comment(std::string("The features has not been turned on")));
+    }
     for (auto const& _it : _ops)
     {
         std::shared_ptr<transationTool::authority_operation> _op =
@@ -846,8 +852,11 @@ void dev::brc::BRCTranscation::verifyAuthorityControl(Address const& _from,
 }
 
 void dev::brc::BRCTranscation::verifyAuthorityCookies(
-    Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops)
+    Address const& _from, std::vector<std::shared_ptr<transationTool::operation>> const& _ops, int64_t const& _blockNum)
 {
+    if (_blockNum < config::transferAuthorityHeight()) {
+        BOOST_THROW_EXCEPTION(transferAuthorityUseCookieFailed() << errinfo_comment(std::string("The features has not been turned on")));
+    }
     for (auto const& val : _ops)
     {
         std::shared_ptr<transationTool::authorizeCookies_operation> _op =
@@ -919,8 +928,11 @@ void dev::brc::BRCTranscation::verifyAuthorityCookies(
 }
 
 
-void dev::brc::BRCTranscation::verifyUseCookie(Address const& _rootAddr, Address const& _childAddr)
+void dev::brc::BRCTranscation::verifyUseCookie(Address const& _rootAddr, Address const& _childAddr, int64_t const& _blockNum)
 {
+    if (_blockNum < config::transferAuthorityHeight()) {
+        BOOST_THROW_EXCEPTION(VerifyPermissonTrxFailed() << errinfo_comment(std::string("The features has not been turned on")));
+    }
     if (_rootAddr == _childAddr || _rootAddr == Address())
     {
         return;

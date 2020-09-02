@@ -184,6 +184,18 @@ int64_t config::cancelAutoPendingOrderHeight() {
     }
 }
 
+int64_t config::transferAuthorityHeight() {
+    if (config::config::getInstance().m_chainId == MAINCHAINID){
+        return INT64_MAX;
+    }else if (config::config::getInstance().m_chainId == TESTCHAINID) {
+        return INT64_MAX;
+    }else if (config::config::getInstance().m_chainId == TESTCHAINID2) {
+        return 7;
+    }else {
+        return 7;
+    }
+}
+
 std::set<Address> config::getGenesisAddr(){
     std::string _genesis = genesis::genesis_info(ChainNetWork ::MainNetwork);
     std::set<Address> _ordinaryAddr;
