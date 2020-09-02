@@ -90,7 +90,10 @@ namespace dev{
             void setValue(ex::order const& _order) {
                 m_from = _order.sender;
                 m_pendingordertokenNum = _order.price_token.second;
-                m_pendingorderPrice = _order.price_token.frist;
+                m_pendingorderPrice = _order.price_token.first;
+                m_pendingorderType = _order.type;
+                m_pendingorderTokenType = _order.token_type;
+                m_pendingorderBuyType = _order.buy_type;
             }
 
             void encode(RLPStream &_rlp) const
