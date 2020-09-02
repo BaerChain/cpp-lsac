@@ -87,6 +87,12 @@ namespace dev{
             ex::order_token_type m_pendingorderTokenType = ex::order_token_type::BRC;
             ex::order_buy_type m_pendingorderBuyType = ex::order_buy_type::all_price;
 
+            void setValue(ex::order const& _order) {
+                m_from = _order.sender;
+                m_pendingordertokenNum = _order.price_token.second;
+                m_pendingorderPrice = _order.price_token.frist;
+            }
+
             void encode(RLPStream &_rlp) const
             {   
                 _rlp.appendList(9);

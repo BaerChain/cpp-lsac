@@ -1509,6 +1509,7 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
             if(_blockHeight < config::changeExchange()) {
                 ExdbState _exdbState(*this);
                 val = _exdbState.cancel_order_by_trxid(_val);
+                _deleteVal.setValue(val);
             }
             else{
                 //TODO new ex
