@@ -1066,7 +1066,6 @@ void State::pendingOrderTransfer(Address const &_from, Address const &_to, u256 
 
     u256 _fromFee = 0;//(_toPendingOrderNum * _toPendingOrderPrice / PRICEPRECISION) / MATCHINGFEERATIO;
     u256 _toFee = 0;//_toPendingOrderNum / MATCHINGFEERATIO;
-    cwarn << " from:"<<toJS(_from) << "    \n to:"<< toJS(_to);
     if (_pendingOrderType == order_type::buy &&
         _pendingOrderTokenType == order_token_type::FUEL &&
         (_pendingOrderBuyTypes == order_buy_type::only_price || _pendingOrderBuyTypes == order_buy_type::all_price)) {
@@ -1151,7 +1150,6 @@ Json::Value State::queryExchangeReward(Address const &_address, unsigned _blockN
             auto miner_mapping = minerMapping(_address);
             if (miner_mapping.first != Address() && miner_mapping.first == _address &&
                 miner_mapping.second != _address) {
-                cwarn << "the minner address is changed by other:" << miner_mapping.second;
                 break;
             }
             _pair = anytime_receivingPdFeeIncome(_address, (int64_t) _blockNum, false);
