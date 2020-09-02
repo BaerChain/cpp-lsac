@@ -150,7 +150,7 @@ int64_t config::changeExchange(){
     else if(config::getInstance().m_chainId == TESTCHAINID2){
         return INT64_MAX;
      }
-    return 7;
+    return INT64_MAX;
 }
 
 int64_t config::strorageHeight(){
@@ -162,7 +162,7 @@ int64_t config::strorageHeight(){
      else if(config::getInstance().m_chainId == TESTCHAINID2){
         return 6;
      }
-    return 6;
+    return INT64_MAX;
 }
 
 
