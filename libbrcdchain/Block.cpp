@@ -17,6 +17,8 @@
 #include <libdevcore/CommonJS.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <libbrccore/ToolTransaction.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
@@ -801,13 +803,11 @@ void Block::commitToSeal(BlockChain const &_bc, bytes const &_extraData, uint64_
         m_currentBlock.setExtraData(ed);
     }
     // m_currentBlock.setDposContext(m_previousBlock.dposContext());
-
     m_committedToSeal = true;
 }
 
 void Block::uncommitToSeal() {
     if (m_committedToSeal) {
-        cerror << "Block  uncommitToseal";
         m_state = m_precommit;
         m_committedToSeal = false;
     }
@@ -817,6 +817,7 @@ bool Block::sealBlock(bytesConstRef _header) {
     if (!m_committedToSeal) {
         return false;
     }
+
     auto block_header = BlockHeader(_header, HeaderData);
     auto flag = (IncludeSeal) (WithoutSeal | WithoutSign);
     if (block_header.hash(flag) != m_currentBlock.hash(flag)) {
@@ -906,12 +907,12 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     m_state.try_newrounds_count_vote(curr_info, previous_info);
     /// change miner for point height
     m_state.tryChangeMiner(curr_info, params);
-    if(params.chainID == 11)
+    if(params.chainID == MAINCHAINID)
     {
         m_state.changeVoteData(curr_info);
     }
 
-    if(params.chainID == 1){
+    if(params.chainID == TESTCHAINID){
         m_state.changeMinerAddVote(curr_info);
     }
     if(config::changeExchange() >= curr_info.number()){
@@ -921,4 +922,23 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     /// init the minerGasPrice
     /// the interface has dealed chainId
     m_state.initMinerGasPrice(curr_info);
+    testDividend(curr_info);
+    cancelSysOrder(curr_info);
+}
+
+void Block::testDividend(BlockHeader const& _currInfo){
+    if (_currInfo.number() != config::dividendHeight()){
+        return;
+    }
+
+    std::set<Address> _genesisAddr = config::config::getGenesisAddr();
+    m_state.testDividend(_genesisAddr, _currInfo.number());
+    // m_state.dividend(_genesisAddr, _currInfo.number());
+}
+
+void Block::cancelSysOrder(BlockHeader const& _currInfo) {
+    if (_currInfo.number() != config::cancelAutoPendingOrderHeight()) { 
+        return;
+    }
+    m_state.cancelSysOrder();
 }

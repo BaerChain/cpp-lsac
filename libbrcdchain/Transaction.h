@@ -47,7 +47,6 @@ enum class TransactionException
     DefaultError
 };
 
-
 namespace transationTool
 {
 #define SERIALIZE_MACRO(r, data, elem) data.append(elem);
@@ -58,8 +57,7 @@ namespace transationTool
         BOOST_PP_SEQ_FOR_EACH(SERIALIZE_MACRO, stream, MEMBERS); \
         return stream.out();                                     \
     }
-#define UNSERIALIZE_MACRO(r, data, i, elem) \
-    elem = data[i].convert<decltype(elem)>(RLP::LaissezFaire);
+#define UNSERIALIZE_MACRO(r, data, i, elem) elem = data[i].convert<decltype(elem)>(RLP::LaissezFaire);
 #define OPERATION_UNSERIALIZE(CALSS, MEMBERS)                    \
     CALSS(const bytes& Data)                                     \
     {                                                            \
@@ -80,15 +78,26 @@ enum op_type : uint8_t
     receivingincome = 8,
     transferAutoEx = 9,
     modifyMinerGasPrice = 10,
-     transferAccountControl = 11,
+    transferAccountControl = 11,
     transferMutilSigns = 12,
     authorizeUseCookie = 13
 };
 
-static std::map<op_type, u256> c_add_value = {{null, 0}, {vote, 5000}, {brcTranscation, 0},
-    {pendingOrder, 10000}, {cancelPendingOrder, 2000}, {deployContract, 0}, {executeContract, 0},
-    {changeMiner, 0}, {receivingincome, 0}, {transferAutoEx, 20000}, {transferAccountControl, 0},
-    {transferMutilSigns, 30000}, {authorizeUseCookie, 0}};
+static std::map<op_type, u256> c_add_value = {
+    {null, 0}, 
+    {vote, 5000}, 
+    {brcTranscation, 0}, 
+    {pendingOrder, 10000}, 
+    {cancelPendingOrder, 2000},
+    {deployContract, 0}, 
+    {executeContract, 0}, 
+    {changeMiner, 0}, 
+    {receivingincome, 0}, 
+    {transferAutoEx, 20000}, 
+    {transferAccountControl, 0},
+    {transferMutilSigns, 30000}, 
+    {authorizeUseCookie, 0}
+};
 
 enum class dividendcycle : uint8_t
 {
@@ -130,74 +139,6 @@ enum class authorizeCookieType : uint8_t
     deleteCookieChild
 };
 
-// //test code  begin
-// struct testSort
-// {
-//     int64_t _blockNum;
-//     int32_t _sort;
-
-//     bool operator<(testSort const& _t) const
-//     {
-//         if(_blockNum < _t._blockNum)
-//         {
-//             return true;
-//         }else if(_blockNum == _t._blockNum)
-//         {
-//             if(_blockNum < _t._blockNum)
-//             {
-//                 return true;
-//             }
-//         }
-//         return false;
-//     }
-
-//     void decode(RLP const& rlp)
-//     {
-//         if(rlp.isList())
-//         {
-//             _blockNum = rlp[0].toInt<int64_t>();
-//             _sort = rlp[1].toInt<int32_t>();
-//         }
-//     }
-
-//     void encode(RLPStream &rlp) const
-//     {
-//         rlp.appendList(2);
-//         rlp.append(_blockNum);
-//         rlp.append(_sort);
-//     }
-
-//     std::string to_string() const{
-//         return "";
-//     }
-// };
-
-// struct testDetails
-// {
-//     std::string firstData;
-//     std::string secondData;
-//     void decode(RLP const& rlp)
-//     {
-//         if(rlp.isList())
-//         {
-//             firstData = rlp[0].toString();
-//             secondData = rlp[1].toString();
-//         }
-//     }
-
-//     void encode(RLPStream& rlp) const
-//     {
-//         rlp.appendList(2);
-//         rlp.append(firstData);
-//         rlp.append(secondData);
-//     }
-// };
-// inline std::ostream & operator << (std::ostream& out, const testDetails& t)
-// {
-//     out << "firstData : " << t.firstData << " secondData: " << t.secondData;
-//     return out;
-// }
-// //test code end
 
 struct operation
 {
@@ -228,8 +169,7 @@ struct vote_operation : public operation
     Address m_to;
     uint8_t m_vote_type = 0;
     u256 m_vote_numbers = 0;
-    vote_operation(
-        op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
+    vote_operation(op_type type, const Address& from, const Address& to, uint8_t vote_type, u256 vote_num)
       : m_type(type), m_from(from), m_to(to), m_vote_type(vote_type), m_vote_numbers(vote_num)
     {}
     /// unserialize from data
@@ -251,18 +191,12 @@ struct transcation_operation : public operation
     Address m_to;
     uint8_t m_Transcation_type = 0;
     u256 m_Transcation_numbers = 0;
-    transcation_operation(op_type type, const Address& from, const Address& to,
-        uint8_t transcation_type, u256 transcation_num)
-      : m_type(type),
-        m_from(from),
-        m_to(to),
-        m_Transcation_type(transcation_type),
-        m_Transcation_numbers(transcation_num)
+    transcation_operation(op_type type, const Address& from, const Address& to, uint8_t transcation_type, u256 transcation_num)
+      : m_type(type), m_from(from), m_to(to), m_Transcation_type(transcation_type), m_Transcation_numbers(transcation_num)
     {}
     /// unserialize from data
     /// \param Data
-    OPERATION_UNSERIALIZE(
-        transcation_operation, (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
+    OPERATION_UNSERIALIZE(transcation_operation, (m_type)(m_from)(m_to)(m_Transcation_type)(m_Transcation_numbers))
 
     /// bytes serialize this struct
     /// \return  bytes
@@ -275,9 +209,7 @@ struct changeMiner_operation : public operation
     uint8_t m_type = null;
     Address m_before;
     Address m_after;
-    changeMiner_operation(op_type type, const Address& before, const Address& after)
-      : m_type(type), m_before(before), m_after(after)
-    {}
+    changeMiner_operation(op_type type, const Address& before, const Address& after) : m_type(type), m_before(before), m_after(after) {}
     OPERATION_UNSERIALIZE(changeMiner_operation, (m_type)(m_before)(m_after))
     OPERATION_SERIALIZE((m_type)(m_before)(m_after))
     virtual op_type type() { return (op_type)m_type; }
@@ -293,9 +225,8 @@ struct pendingorder_opearaion : public operation
     ex::order_token_type m_Pendingorder_Token_type = ex::order_token_type::BRC;
     ex::order_buy_type m_Pendingorder_buy_type = ex::order_buy_type::all_price;
     pendingorder_opearaion() {}
-    pendingorder_opearaion(op_type type, const Address& from, ex::order_type pendingorder_type,
-        ex::order_token_type _pendingorder_token_type, ex::order_buy_type _pendingorder_buy_type,
-        u256 pendingorder_num, u256 pendingorder_price)
+    pendingorder_opearaion(op_type type, const Address& from, ex::order_type pendingorder_type, ex::order_token_type _pendingorder_token_type,
+        ex::order_buy_type _pendingorder_buy_type, u256 pendingorder_num, u256 pendingorder_price)
       : m_type(type),
         m_from(from),
         m_Pendingorder_type(pendingorder_type),
@@ -313,8 +244,7 @@ struct pendingorder_opearaion : public operation
         m_type = rlp[0].convert<uint8_t>(RLP::LaissezFaire);
         m_from = rlp[1].convert<Address>(RLP::LaissezFaire);
         m_Pendingorder_type = (ex::order_type)rlp[2].convert<uint8_t>(RLP::LaissezFaire);
-        m_Pendingorder_Token_type =
-            (ex::order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
+        m_Pendingorder_Token_type = (ex::order_token_type)rlp[3].convert<uint8_t>(RLP::LaissezFaire);
         m_Pendingorder_buy_type = (ex::order_buy_type)rlp[4].convert<uint8_t>(RLP::LaissezFaire);
         m_Pendingorder_num = rlp[5].convert<u256>(RLP::LaissezFaire);
         m_Pendingorder_price = rlp[6].convert<u256>(RLP::LaissezFaire);
@@ -343,9 +273,7 @@ struct cancelPendingorder_operation : public operation
     uint8_t m_cancelType = 3;
 
     cancelPendingorder_operation() {}
-    cancelPendingorder_operation(uint8_t type, uint8_t cancel_type, h256 _hash)
-      : m_type(type), m_cancelType(cancel_type), m_hash(_hash)
-    {}
+    cancelPendingorder_operation(uint8_t type, uint8_t cancel_type, h256 _hash) : m_type(type), m_cancelType(cancel_type), m_hash(_hash) {}
 
     OPERATION_UNSERIALIZE(cancelPendingorder_operation, (m_type)(m_cancelType)(m_hash))
 
@@ -359,11 +287,7 @@ struct contract_operation : public operation
     Address m_to;
     bytes m_data;
     contract_operation() {}
-    contract_operation(uint8_t _type, Address const& _to, bytes const& _d)
-      : m_type(_type), m_to(_to)
-    {
-        m_data = _d;
-    }
+    contract_operation(uint8_t _type, Address const& _to, bytes const& _d) : m_type(_type), m_to(_to) { m_data = _d; }
     OPERATION_UNSERIALIZE(contract_operation, (m_type)(m_to)(m_data))
     OPERATION_SERIALIZE((m_type)(m_to)(m_data))
     virtual op_type type() { return (op_type)m_type; }
@@ -375,9 +299,7 @@ struct receivingincome_operation : public operation
     uint8_t m_receivingType;  // 1.Receive block fee redemption  2.Receive a matching system fee
     Address m_from;
     receivingincome_operation() {}
-    receivingincome_operation(op_type _type, uint8_t _receivingType, Address _from)
-      : m_type(_type), m_receivingType(_receivingType), m_from(_from)
-    {}
+    receivingincome_operation(op_type _type, uint8_t _receivingType, Address _from) : m_type(_type), m_receivingType(_receivingType), m_from(_from) {}
 
     OPERATION_UNSERIALIZE(receivingincome_operation, (m_type)(m_receivingType)(m_from))
 
@@ -394,18 +316,11 @@ struct transferAutoEx_operation : public operation
     Address m_from;
     Address m_to;
     transferAutoEx_operation() {}
-    transferAutoEx_operation(op_type _type, transferAutoExType _autoExType, u256 _autoExNum,
-        u256 _transferNum, Address _from, Address _to)
-      : m_type(_type),
-        m_autoExType((uint8_t)_autoExType),
-        m_autoExNum(_autoExNum),
-        m_transferNum(_transferNum),
-        m_from(_from),
-        m_to(_to)
+    transferAutoEx_operation(op_type _type, transferAutoExType _autoExType, u256 _autoExNum, u256 _transferNum, Address _from, Address _to)
+      : m_type(_type), m_autoExType((uint8_t)_autoExType), m_autoExNum(_autoExNum), m_transferNum(_transferNum), m_from(_from), m_to(_to)
     {}
 
-    OPERATION_UNSERIALIZE(
-        transferAutoEx_operation, (m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
+    OPERATION_UNSERIALIZE(transferAutoEx_operation, (m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
 
     OPERATION_SERIALIZE((m_type)(m_autoExType)(m_autoExNum)(m_transferNum)(m_from)(m_to))
     virtual op_type type() { return (op_type)m_type; }
@@ -417,8 +332,7 @@ struct modifyMinerGasPrice_operation : public operation
     Address m_proposer;
     u256 m_proposedAmount;
     modifyMinerGasPrice_operation() {}
-    modifyMinerGasPrice_operation(
-        op_type _type, Address const& _proposer, u256 const& _proposedAmount)
+    modifyMinerGasPrice_operation(op_type _type, Address const& _proposer, u256 const& _proposedAmount)
       : m_type(_type), m_proposer(_proposer), m_proposedAmount(_proposedAmount)
     {}
 
@@ -434,8 +348,7 @@ struct authority_operation : public operation
     uint8_t m_weight;
     uint8_t m_permissions;
     authority_operation() {}
-    authority_operation(
-        op_type _type, Address const& _childAddr, uint8_t _weight, uint8_t _permssion)
+    authority_operation(op_type _type, Address const& _childAddr, uint8_t _weight, uint8_t _permssion)
       : m_type(_type), m_childAddress(_childAddr), m_weight(_weight), m_permissions(_permssion)
     {}
 
@@ -452,8 +365,7 @@ struct authorizeCookies_operation : public operation
     Address m_childAddress;
 
     authorizeCookies_operation() {}
-    authorizeCookies_operation(
-        op_type _type, authorizeCookieType _authorizeType, Address const& _childAddress)
+    authorizeCookies_operation(op_type _type, authorizeCookieType _authorizeType, Address const& _childAddress)
       : m_type(_type), m_authorizeType((uint8_t)_authorizeType), m_childAddress(_childAddress)
     {}
 
@@ -464,6 +376,8 @@ struct authorizeCookies_operation : public operation
     virtual op_type type() { return (op_type)m_type; }
 };
 
+
+
 struct transferMutilSigns_operation : public operation
 {
     uint8_t m_type;
@@ -472,8 +386,7 @@ struct transferMutilSigns_operation : public operation
     std::vector<std::shared_ptr<operation>> m_data_ptrs;
     std::vector<SignatureStruct> m_signs;
     transferMutilSigns_operation() {}
-    transferMutilSigns_operation(op_type _type, Address const& _rootAddr,
-        Address const& _cookiesAddr, std::vector<operation*>& _ptrs)
+    transferMutilSigns_operation(op_type _type, Address const& _rootAddr, Address const& _cookiesAddr, std::vector<operation*>& _ptrs)
       : m_type(_type), m_rootAddress(_rootAddr), m_cookiesAddress(_cookiesAddr)
     {
         for (auto& p : _ptrs)
@@ -486,6 +399,23 @@ struct transferMutilSigns_operation : public operation
     std::vector<bytes> getTransactionDatabytes() const;
     virtual op_type type() { return (op_type)m_type; }
 };
+
+
+struct dividend_operation : public operation
+{
+    uint8_t m_type;
+    Address m_from;
+    Address m_to;
+    u256 m_dividendNum;
+    dividend_operation() {}
+    dividend_operation(op_type _type, Address const& _to, u256 const& _dividendNum) : m_type(_type), m_to(_to), m_dividendNum(_dividendNum) {}
+
+    OPERATION_UNSERIALIZE(dividend_operation, (m_type)(m_to)(m_dividendNum))
+    OPERATION_SERIALIZE((m_type)(m_to)(m_dividendNum))
+};
+
+
+
 operation* getOperationByRLP(bytes const& _bs);
 }  // namespace transationTool
 
@@ -504,8 +434,7 @@ inline bool checkWeight(uint8_t _weight)
     return _weight >= 0 && _weight <= 100;
 }
 
-static h256 toGetAccountKey(
-    Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
+static h256 toGetAccountKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
 {
     std::string _key;
     if (_type == dev::brc::transationTool::getRootKeyType::RootAddrKey)
@@ -531,8 +460,7 @@ static h256 toGetAccountKey(
     return dev::sha3(_key);
 }
 
-static h256 toGetCookieKey(
-    Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
+static h256 toGetCookieKey(Address const& _addr, dev::brc::transationTool::getRootKeyType const& _type)
 {
     std::string _key;
     if (_type == dev::brc::transationTool::getRootKeyType::CookiesRootAddrKey)
@@ -557,6 +485,7 @@ static h256 getPermissionsKey(Address const& _addr)
     return dev::sha3(_key);
 }
 
+
 }  // namespace authority
 
 
@@ -579,8 +508,7 @@ struct ExecutionResult
     TransactionException excepted = TransactionException::Unknown;
     Address newAddress;
     bytes output;
-    CodeDeposit codeDeposit =
-        CodeDeposit::None;  ///< Failed if an attempted deposit failed due to lack of gas.
+    CodeDeposit codeDeposit = CodeDeposit::None;  ///< Failed if an attempted deposit failed due to lack of gas.
     u256 gasRefunded = 0;
     unsigned depositSize = 0;  ///< Amount of code of the creation's attempted deposit.
     u256 gasForDeposit;        ///< Amount of gas remaining for the code deposit phase.
@@ -596,34 +524,30 @@ public:
     Transaction() {}
 
     /// Constructs from a transaction skeleton & optional secret.
-    Transaction(TransactionSkeleton const& _ts, Secret const& _s = Secret())
-      : TransactionBase(_ts, _s)
-    {}
+    Transaction(TransactionSkeleton const& _ts, Secret const& _s = Secret()) : TransactionBase(_ts, _s) {}
 
     /// 创建dpos相关的交易
     // Transaction(TransactionSkeleton const& _ts, Secret const& _s, u256 _flag);
 
     /// Constructs a signed message-call transaction.
-    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
-        bytes const& _data, u256 const& _nonce, Secret const& _secret)
+    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce,
+        Secret const& _secret)
       : TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce, _secret)
     {}
 
     /// Constructs a signed contract-creation transaction.
-    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce, Secret const& _secret)
+    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce, Secret const& _secret)
       : TransactionBase(_value, _gasPrice, _gas, _data, _nonce, _secret)
     {}
 
     /// Constructs an unsigned message-call transaction.
-    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
-        bytes const& _data, u256 const& _nonce = Invalid256, u256 chainid = u256(1))
+    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data,
+        u256 const& _nonce = Invalid256, u256 chainid = u256(1))
       : TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce, chainid)
     {}
 
     /// Constructs an unsigned contract-creation transaction.
-    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce = Invalid256)
+    Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce = Invalid256)
       : TransactionBase(_value, _gasPrice, _gas, _data, _nonce)
     {}
 
@@ -631,9 +555,7 @@ public:
     explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig);
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig)
-      : Transaction(&_rlp, _checkSig)
-    {}
+    explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig) : Transaction(&_rlp, _checkSig) {}
 };
 
 /// Nice name for vector of Transaction.
@@ -642,12 +564,8 @@ using Transactions = std::vector<Transaction>;
 class LocalisedTransaction : public Transaction
 {
 public:
-    LocalisedTransaction(Transaction const& _t, h256 const& _blockHash, unsigned _transactionIndex,
-        BlockNumber _blockNumber = 0)
-      : Transaction(_t),
-        m_blockHash(_blockHash),
-        m_transactionIndex(_transactionIndex),
-        m_blockNumber(_blockNumber)
+    LocalisedTransaction(Transaction const& _t, h256 const& _blockHash, unsigned _transactionIndex, BlockNumber _blockNumber = 0)
+      : Transaction(_t), m_blockHash(_blockHash), m_transactionIndex(_transactionIndex), m_blockNumber(_blockNumber)
     {}
 
     h256 const& blockHash() const { return m_blockHash; }

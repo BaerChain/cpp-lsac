@@ -374,6 +374,14 @@ namespace dev {
                         res["proposedAmount"] = toJS(_op.m_proposedAmount);
                         _JsArray.append(res);
                     }
+                    // else if(_type == dev::brc::transationTool::dividend) {
+                    //     Json::Value res;
+                    //     dev::brc::transationTool::dividend_operation _op = dev::brc::transationTool::dividend_operation(val);
+                    //     res["type"] = toJS(_type);
+                    //     res["dividendAccount"] = toJS(_op.m_to);
+                    //     res["dividendAmount"] = toJS(_op.m_dividendNum);
+                    //     _JsArray.append(res);
+                    // }
                 }
                 return _JsArray;
             }             

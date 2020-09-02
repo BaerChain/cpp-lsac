@@ -687,6 +687,10 @@ BlockChain::sync(BlockQueue &_bq, OverlayDB const &_stateDB, ex::exchange_plugin
                 std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions),
                           std::back_inserter(goodTransactions));
                 ++count;
+                if (block.verified.info.number() <= config::dividendHeight() + FORCEBLOCKCOUNT && block.verified.info.extraData().back() == 'f') {
+                    cnote << "import f block number : " << block.verified.info.number(); 
+                    _bq.addForceBlockCount(block.verified.info.number());
+                }
             }
             catch (dev::brc::AlreadyHaveBlock const &) {
                 cwarn << "ODD: Import queue contains already imported block";
@@ -1314,11 +1318,13 @@ bool BlockChain::verifyReplaceMiner(VerifiedBlockRef const &_block, OverlayDB co
     auto standby_miners = state_db.vote_data(SysCanlitorAddress);
     ///verify the miner Legitimacy
     if (exe_miners.end() != std::find(exe_miners.begin(), exe_miners.end(), _block.info.author())) {
-        int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
-        if (_block.info.author() != exe_miners[offset].m_addr) {
+        if (!(_block.info.extraData().back() == 'f' && _block.info.number() >= config::dividendHeight() && _block.info.number() <= config::dividendHeight() + FORCEBLOCKCOUNT)) {
+            int offset = (_block.info.timestamp() / m_params.varlitorInterval) % exe_miners.size();
+            if (_block.info.author() != exe_miners[offset].m_addr) {
             // throw  bytes; must be
             //cwarn << " the author:" << _block.info.author() << " can't to Seal in this time_point";
-            BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+                BOOST_THROW_EXCEPTION(InvalidMinner() << errinfo_wrongAddress(dev::toString(_block.info.author())));
+            }
         }
     } else {
         if (standby_miners.end() == std::find(standby_miners.begin(), standby_miners.end(), _block.info.author())) {

@@ -2,6 +2,7 @@
 #define BEARCHAIN_CONFIG_H
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Address.h>
 
 #define PRICEPRECISION 100000000
 #define MATCHINGFEERATIO 2000
@@ -12,6 +13,10 @@
 #define TESTCHAINID2  2
 
 
+#define FIRSTROUND 1
+#define DIVIDENDNUM std::string("10000000000000000")
+#define FORCEBLOCKCOUNT 3
+#define MAXFORCEBLOCKAUTHOR 7
 
 namespace dev
 {
@@ -25,12 +30,12 @@ namespace dev
             ERRORSTAGE = 2
         };
 
-        enum class ChainNetWork{
-            ///< Normal Olympic chain.
-            // Olympic = 0,
-            /// main_network chain for open.
-            MainNetwork = 1,
-        };
+        // enum class ChainNetWork{
+        //     ///< Normal Olympic chain.
+        //     // Olympic = 0,
+        //     /// main_network chain for open.
+        //     MainNetwork = 1,
+        // };
 
         struct ChangeMiner{
             std::string before_addr;
@@ -72,7 +77,7 @@ namespace dev
                 ///@return the max num of rpc_interdace message
                 static  uint32_t max_message_num();
 
-                static std::string const& genesis_info(ChainNetWork chain_type);
+                // static std::string const& genesis_info(ChainNetWork chain_type);
 
                 static u256 getvoteRound(u256 _numberofrounds);
 
@@ -93,6 +98,12 @@ namespace dev
                 static int64_t gasPriceHeight();
 
                 static u256 initialGasPrice();
+
+                static int64_t dividendHeight();
+                static int64_t cancelAutoPendingOrderHeight();
+                static std::set<Address> getGenesisAddr();
+
+                static std::map<Address, u256> getMasterNodeInfo();
         private:
             config(){}
             //~config(){}

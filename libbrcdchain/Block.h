@@ -307,6 +307,9 @@ public:
 
     void intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& previous_info, ChainParams const& params);
 
+    // test dividend interface
+    void testDividend(BlockHeader const& _currInfo);
+    void cancelSysOrder(BlockHeader const& _currInfo);
 private:
     SealEngineFace* sealEngine() const;
 
