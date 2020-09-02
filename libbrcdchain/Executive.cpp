@@ -448,7 +448,6 @@ void Executive::verifyTransactionOperation(u256 _totalCost, Address const& _from
             m_brctranscation.verifyPendingOrders(_from, (u256)_totalCost, m_s.exdb(),
                                                  m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(),
                                                  m_batch_params._operation, m_envInfo.number());
-            cwarn << " verify pending :" << _from <<" ROOT:"<< m_batch_params._rootAddress << " | "<< m_batch_params._cookiesAddress;
             break;
         }
         case transationTool::op_type::cancelPendingOrder:
@@ -692,7 +691,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 }
                 CallParameters params{ m_batch_params._rootAddress, _op->m_to, _op->m_to, m_t.value(), m_t.value(),
                                        m_t.gas() - (u256)m_baseGasRequired, bytesConstRef(&_op->m_data), {}};
-                return callContract(params, _gasPrice, m_batch_params._rootAddress) != CallCType::SYSTEM;
+                return callContract(params, _gasPrice, m_batch_params._rootAddress) == CallCType::SYSTEM;
             }
             case transationTool::op_type::authorizeUseCookie:
             {
@@ -710,7 +709,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         }
         return true;
     }
-    return ok != CallCType::SYSTEM;
+    return ok == CallCType::SYSTEM;
 }
 
 // int  0, precompil,  1 vm , 2
@@ -751,8 +750,6 @@ CallCType Executive::callContract(CallParameters const& _p, u256 _gasPrice, Addr
         {
             bytes const& c = m_s.code(_p.codeAddress);
             h256 codeHash = m_s.codeHash(_p.codeAddress);
-            cwarn << "will excute myAddrss :" << _p.receiveAddress << " caller:" << _p.senderAddress << " _origin:"<< _origin
-            << " data:" << _p.data << " codeHash:" << codeHash;
             m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                                        _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                                        m_depth, false, _p.staticCall);
@@ -940,10 +937,11 @@ bool Executive::go(OnOpFunc const& _onOp)
             // has drawbacks. Essentially, the amount of ram has to be increased here.
         }
 
-        if (m_res && m_output)
-            // Copy full output:
+        if (m_res && m_output){
             m_res->output = m_output.toVector();
-        cwarn <<"*******"<<success <<"****" << toHex(m_output);
+        }
+            // Copy full output:
+         
 #if BRC_TIMED_EXECUTIONS
         cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 #endif
