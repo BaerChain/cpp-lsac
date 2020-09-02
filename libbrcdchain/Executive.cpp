@@ -611,14 +611,16 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     }
 
+    auto ok = callContract(_p, _gasPrice, _origin);
+    if (ok) {
+        return ok;
+    }
+
     // Transfer brcer.
     if (!m_t.isVoteTranction())
     {
         /// try to exctue contract
-        auto ok =  callContract(_p, _gasPrice, _origin);
         m_s.transferBRC(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        return ok;
-       
     }
     else
     {
@@ -708,7 +710,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
         }
         return true;
     }
-    return !m_ext;
+    return ok;
 }
 
 bool Executive::callContract(CallParameters const& _p, u256 _gasPrice, Address const& _origin){
