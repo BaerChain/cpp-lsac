@@ -119,7 +119,7 @@ int64_t config::gasPriceHeight(){
     else if(config::getInstance().m_chainId == TESTCHAINID){
        return 19650000;
     }
-    return 5;
+    return 3;
 }
 
 
