@@ -142,24 +142,22 @@ int64_t config::autoExHeight()
 
 
 int64_t config::changeExchange(){
-    //if(config::getInstance().m_chainId == MAINCHAINID){
-    //     return 10681000;
-    // }
-    if(config::getInstance().m_chainId == TESTCHAINID){
-        return 24000000;
+    if(config::getInstance().m_chainId == MAINCHAINID){
+        return INT64_MAX;
+    }else if(config::getInstance().m_chainId == TESTCHAINID){
+        return INT64_MAX;
      }
     else if(config::getInstance().m_chainId == TESTCHAINID2){
-        return 6;
+        return INT64_MAX;
      }
-    return 1000000;
+    return 7;
 }
 
 int64_t config::strorageHeight(){
-    //if(config::getInstance().m_chainId == MAINCHAINID){
-    //     return 10681000;
-    // }
-    if(config::getInstance().m_chainId == TESTCHAINID){
-        return 24000000;
+    if(config::getInstance().m_chainId == MAINCHAINID){
+        return INT64_MAX;
+    }else if(config::getInstance().m_chainId == TESTCHAINID){
+        return INT64_MAX;
      }
      else if(config::getInstance().m_chainId == TESTCHAINID2){
         return 6;
@@ -180,7 +178,7 @@ int64_t config::cancelAutoPendingOrderHeight() {
     if (config::config::getInstance().m_chainId == MAINCHAINID) {
         return 29875700;
     } else {
-        return 15;
+        return INT64_MAX;
     }
 }
 
