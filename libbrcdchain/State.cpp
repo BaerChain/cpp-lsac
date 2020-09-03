@@ -1183,7 +1183,6 @@ Json::Value State::queryBlcokReward(Address const &_address, unsigned _blockNum)
             auto miner_mapping = minerMapping(_address);
             if (miner_mapping.first != Address() && miner_mapping.first == _address &&
                 miner_mapping.second != _address) {
-                cwarn << "the minner address is changed by other:" << miner_mapping.second;
                 break;
             }
             _cookieFee = rpcqueryBlcokReward(_address, _blockNum);
@@ -1514,7 +1513,6 @@ void dev::brc::State::cancelPendingOrders(std::vector<std::shared_ptr<transation
                 newExdbState _newExdbState(*this);
                 auto canOrder = getCancelOrder(_val);
                 if(canOrder.m_id != _val) {
-                    cwarn <<"can not find order_id";
                     BOOST_THROW_EXCEPTION(CancelPendingOrderFiled());
                 }
                 //uint8_t const& _orderType, int64_t const& _time, u256 const& _price,const h256 &id
