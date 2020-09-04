@@ -4233,6 +4233,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
     /// so the will commitBlockNumber: _block_number+1
     int64_t commitBlockNumber = _block_number+1;
     AddressHash ret;
+    // cwarn << "commit block number " << commitBlockNumber;
     for (auto const &i : _cache)
         if (i.second.isDirty()) {
 
@@ -4393,7 +4394,7 @@ dev::brc::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state, in
                     }
                 }
                 _state.insert(i.first, &s.out());
-                // cwarn << "insert:" << dev::toJS(i.first) << " data:"<< s.out();
+                // cwarn << "insert:" << toHex(i.first) << " data:"<< s.out();
             }
             ret.insert(i.first);
         }
