@@ -10,7 +10,7 @@ using namespace dev::brc;
 
 std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
-    const uint32_t one_year = 31536000;
+    const uint32_t one_year = 31536000 * 5;
     const uint32_t one_month = 60 * 60 * 24 * 30;
     if (_blockNum == 0)
         return  std::pair<uint32_t, Votingstage>(1, Votingstage::VOTE);
