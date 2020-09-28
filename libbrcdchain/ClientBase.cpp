@@ -223,7 +223,7 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     if (_to)
         t = Transaction(_value, gasPrice, _gas, _to, _data, _nonce);
     else
-        t = Transaction(_value, gasPrice, _gas, _data, _nonce);
+        t = Transaction(_value, gasPrice, _gas, _data, _nonce); 
 
     u256 _baseGas = t.baseGasRequired(BRCSchedule());
     if(t.isVoteTranction())
@@ -260,6 +260,16 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     _ret["estimateGasUsed"] = toJS(_baseGas);
     return _ret;
 }
+
+
+// Json::Value dev::brc::ClientBase::newEstimateGasUsed(Json::Value const& _json, int64_t _blockNum){
+//     Address from = _json["from"].asString();
+//     Address to = _json["to"];
+//     u256 value = _json["value"];
+//     bytes data = _json["data"];
+
+// }
+
 
 Json::Value dev::brc::ClientBase::getGasPrice()
 {

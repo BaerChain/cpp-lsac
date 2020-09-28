@@ -1098,3 +1098,56 @@ Json::Value Client::getAveragePrice(BlockNumber _block)  {
 
     return _ret;
 }
+
+Json::Value Client::newEstimateGasUsed(Json::Value const& _json, BlockNumber _blockNum) {
+    Json::Value ret;
+    try{
+        Address from = Address(_json["from"].asString());
+        Address to = Address(_json["to"].asString());
+        u256 value = jsToU256( _json["value"].asString());
+        bytes data = jsToBytes(_json["data"].asString(), OnFailed::Throw);
+        u256 gas = 50000000;
+        Json::Value jsonGasPrice = getAveragePrice(_blockNum);
+        u256 gasPrice = jsToU256(jsonGasPrice["fastGasPrice"].asString());
+        Block bk = blockByNumber(_blockNum);
+        
+        Transaction t;
+        u256 nonce = bk.transactionsFrom(from);
+        if (to){
+            t = Transaction(value, gasPrice, gas, to, data, nonce, u256(config::chainId()));
+        }
+        else{
+            t = Transaction(value, gasPrice, gas, data, nonce, config::chainId());
+        }
+        t.forceSender(from);
+        EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, gas);
+    
+        State tempState(bk.state());
+        tempState.addBalance(from, (u256)(t.gas() * t.gasPrice() + t.value()));
+    
+        auto er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).second;
+        if (to == VoteAddress && !data.empty()) {
+            try
+            {
+                RLP _rlp(data);
+                std::vector<bytes> _ops = _rlp.toVector<bytes>();
+                dev::brc::transationTool::op_type _type;
+                for(auto val : _ops)
+                {
+                    _type =  dev::brc::transationTool::operation::get_type(val);
+                    break;
+                }
+                ret["estimateGasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + er.cumulativeGasUsed());
+            }
+            catch(const std::exception& e)
+            {
+                ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed());
+            }
+        }else {
+            ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed()); 
+        }
+    }catch(...){
+        ret["estimateGasUsed"] = string("Estimated gas transaction execution failed");
+    }
+    return ret;
+}

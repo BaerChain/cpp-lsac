@@ -889,8 +889,8 @@ Json::Value dev::rpc::Brc::brc_getElector(const std::string& _blockNumber)
 Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
 {
     try
-    {
-        return client()->estimateGasUsed(_json, PendingBlock);
+    {   return client()->newEstimateGasUsed(_json, PendingBlock);
+        // return client()->estimateGasUsed(_json, PendingBlock);
     }
     catch(EstimateGasUsed const& _e)
     {
