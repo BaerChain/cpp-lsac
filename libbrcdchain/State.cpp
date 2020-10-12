@@ -2270,7 +2270,6 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);
-
     bool removeEmptyAccounts = false;
     switch (_p) {
         case Permanence::Reverted:
@@ -2310,12 +2309,12 @@ bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc co
     size_t const savept = savepoint();
     try {
         _e.initialize(_t);
-
         if (!_e.execute())
             _e.go(_onOp);
         return _e.finalize();
     }
-    catch (Exception const &) {
+    catch (Exception const &e) {
+        cerror << e.what();
         cdebug << "rollback tx id " << toHex(_t.sha3()) << " rlp : " << toHex(_t.rlp());
         rollback(savept);
         throw;
