@@ -393,6 +393,19 @@ void Client::syncBlockQueue()
         auto last_tx = bc().transactions(last_hash);
 
         auto late = utcTimeMilliSec() - last.timestamp();
+
+        if (m_forceAuthorCount && m_bq.getForceBlockCount().size()){
+            if ( m_bq.getForceBlockCount().size() >= m_forceAuthorCount) {
+                m_forceAuthorCount = 0;
+                m_forceBlockBeginTime = 0;
+                m_errorForceCount = 0;
+                m_bq.resetForceBlockCount();
+            }else{
+               // m_forceAuthorCount = m_forceAuthorCount - m_bq.getForceBlockCount().size();
+			    m_forceBlockBeginTime = utcTimeMilliSec() / 1000;
+            }
+        }
+
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 

@@ -26,6 +26,7 @@
 #include <libbrchashseal/Brchash.h>
 #include <libdevcrypto/LibSnark.h>
 #include <libbrccore/config.h>
+#include <libbrccore/Genesis.h>
 
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/Brc.h>
@@ -776,7 +777,7 @@ int main(int argc, char **argv) {
 
     if (!chainConfigIsSet) {
         // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(config::genesis_info(ChainNetWork::MainNetwork),
+        chainParams = ChainParams(genesis::genesis_info(ChainNetWork::MainNetwork),
                                   {}); //genesisStateRoot(brc::Network::MainNetwork));
     }
 

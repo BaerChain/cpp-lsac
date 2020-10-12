@@ -283,6 +283,10 @@ public:
 	bool inSended(h256 _hash) const { return m_verifeid_sended.find(_hash) != m_verifeid_sended.end(); }
 
 	void debugMemery();
+
+    std::set<int64_t> getForceBlockCount() const { return m_importForceBlockNum; }
+    void resetForceBlockCount() { m_importForceBlockNum.clear(); }
+    void addForceBlockCount(int64_t const& _blockNum) { m_importForceBlockNum.insert(_blockNum); }
 private:
 
 
@@ -344,6 +348,8 @@ private:
 	std::vector<VerifiedSendData> m_verified_send;                         // will to send other peer
 	std::function<void()> m_verified_send_f;
 	std::set<h256>     m_verifeid_sended;
+
+    std::set<int64_t> m_importForceBlockNum;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);

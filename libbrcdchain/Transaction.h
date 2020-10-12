@@ -80,7 +80,7 @@ namespace dev
                 changeMiner = 7,
                 receivingincome = 8,
                 transferAutoEx = 9,
-                modifyMinerGasPrice = 10
+                modifyMinerGasPrice = 10,
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -324,6 +324,22 @@ namespace dev
                 OPERATION_UNSERIALIZE(modifyMinerGasPrice_operation, (m_type)(m_proposer)(m_proposedAmount))
                 OPERATION_SERIALIZE((m_type)(m_proposer)(m_proposedAmount))
             }; 
+
+            struct dividend_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_from;
+                Address m_to;
+                u256 m_dividendNum;
+                dividend_operation(){}
+                dividend_operation(op_type _type, Address const& _to, u256 const& _dividendNum):
+                    m_type(_type),
+                    m_to(_to),
+                    m_dividendNum(_dividendNum){}
+
+                OPERATION_UNSERIALIZE(dividend_operation, (m_type)(m_to)(m_dividendNum))
+                OPERATION_SERIALIZE((m_type)(m_to)(m_dividendNum))
+            };
 
         }  // namespace transationTool
 

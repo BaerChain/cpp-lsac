@@ -58,9 +58,11 @@ namespace dev {
 
             static std::pair<bool, u256> get_address_nonce(const Address &add, const std::string &ip);
 
+            static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
+
         private:
             static Json::Value string_to_json(const std::string &source);
-            static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
+            // static bytes packed_operation_data(const std::vector<std::shared_ptr<operation>> &op);
 
             //static Logger logInfo {createLogger(VerbosityInfo, "signTransaction")};
         };
