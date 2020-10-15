@@ -45,6 +45,13 @@ private:
 static constexpr int64_t c_infiniteBlockNumer = std::numeric_limits<int64_t>::max();
 static constexpr int64_t c_initBlockNumer = 0;
 
+
+struct AdditionalEIPs
+{
+    bool eip1380 = false;
+    bool eip2046 = false;
+};
+
 struct ChainOperationParams
 {
     ChainOperationParams();
@@ -75,6 +82,7 @@ public:
     u256 constantinopleForkBlock = c_initBlockNumer;
     u256 daoHardforkBlock = c_initBlockNumer;
     u256 experimentalForkBlock = c_initBlockNumer;
+    u256 istanbulForkBlock = c_initBlockNumer;
     int chainID = 0;    // Distinguishes different chains (mainnet, Ropsten, etc).
     int networkID = 0;  // Distinguishes different sub protocols.
 

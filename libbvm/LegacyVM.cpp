@@ -1,10 +1,14 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2014-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
+
 #include "LegacyVM.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-uint64_t LegacyVM::memNeed(u256 _offset, u256 _size)
+uint64_t LegacyVM::memNeed(u256 const& _offset, u256 const& _size)
 {
     return toInt63(_size ? u512(_offset) + _size : u512(0));
 }
@@ -54,10 +58,10 @@ uint64_t LegacyVM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte 
 //
 // for tracing, checking, metering, measuring ...
 //
-void LegacyVM::onOperation()
+void LegacyVM::onOperation(Instruction _instr)
 {
     if (m_onOp)
-        (m_onOp)(++m_nSteps, m_PC, m_OP,
+        (m_onOp)(++m_nSteps, m_PC, _instr,
             m_newMemSize > m_mem.size() ? (m_newMemSize - m_mem.size()) / 32 : uint64_t(0),
             m_runGas, m_io_gas, this, m_ext);
 }
@@ -80,10 +84,13 @@ void LegacyVM::adjustStack(unsigned _removed, unsigned _added)
 
 void LegacyVM::updateSSGas()
 {
+    if (m_schedule->sstoreThrowsIfGasBelowCallStipend() && m_io_gas <= m_schedule->callStipend)
+        throwOutOfGas();
+
     u256 const currentValue = m_ext->store(m_SP[0]);
     u256 const newValue = m_SP[1];
 
-    if (m_schedule->eip1283Mode)
+    if (m_schedule->sstoreNetGasMetering())
         updateSSGasEIP1283(currentValue, newValue);
     else
         updateSSGasPreEIP1283(currentValue, newValue);
@@ -133,17 +140,17 @@ void LegacyVM::updateSSGasEIP1283(u256 const& _currentValue, u256 const& _newVal
             if (originalValue == _newValue)
             {
                 if (originalValue == 0)
-                    m_ext->sub.refunds +=
-                        m_schedule->sstoreRefundGas + m_schedule->sstoreRefundNonzeroGas;
+                    m_ext->sub.refunds += m_schedule->sstoreSetGas - m_schedule->sstoreUnchangedGas;
                 else
-                    m_ext->sub.refunds += m_schedule->sstoreRefundNonzeroGas;
+                    m_ext->sub.refunds +=
+                        m_schedule->sstoreResetGas - m_schedule->sstoreUnchangedGas;
             }
         }
     }
 }
 
 
-uint64_t LegacyVM::gasForMem(u512 _size)
+uint64_t LegacyVM::gasForMem(u512 const& _size)
 {
     u512 s = _size / 32;
     return toInt63((u512)m_schedule->memoryGas * s + s * s / m_schedule->quadCoeffDiv);
@@ -242,7 +249,7 @@ void LegacyVM::interpretCases()
         {
             ON_OP();
             if (!m_schedule->haveCreate2)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
@@ -267,9 +274,9 @@ void LegacyVM::interpretCases()
         {
             ON_OP();
             if (m_OP == Instruction::DELEGATECALL && !m_schedule->haveDelegateCall)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             if (m_OP == Instruction::STATICCALL && !m_schedule->haveStaticCall)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             if (m_OP == Instruction::CALL && m_ext->staticCall && m_SP[2] != 0)
                 throwDisallowedStateChange();
             m_bounce = &LegacyVM::caseCall;
@@ -294,7 +301,7 @@ void LegacyVM::interpretCases()
         {
             // Pre-byzantium
             if (!m_schedule->haveRevert)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             m_copyMemSize = 0;
@@ -308,22 +315,31 @@ void LegacyVM::interpretCases()
         }
         BREAK;
 
-        CASE(SUICIDE)
+        CASE(SELFDESTRUCT)
         {
             ON_OP();
             if (m_ext->staticCall)
                 throwDisallowedStateChange();
 
-            m_runGas = toInt63(m_schedule->suicideGas);
-            Address dest = asAddress(m_SP[0]);
-
-            // After EIP158 zero-value suicides do not have to pay account creation gas.
-            if (m_ext->balance(m_ext->myAddress) > 0 || m_schedule->zeroValueTransferChargesNewAccountGas())
-                if (m_schedule->suicideChargesNewAccountGas() && !m_ext->exists(dest))
-                    m_runGas += m_schedule->callNewAccountGas;
-
+            // Self-destructs only have gas cost starting with EIP 150
+            m_runGas = toInt63(m_schedule->selfdestructGas);
             updateIOGas();
-            m_ext->suicide(dest);
+
+            Address const dest = asAddress(m_SP[0]);
+            // Starting with EIP150, self-destructs need to pay both gas cost and account creation
+            // gas cost. Starting with EIP158, 0-value self-destructs don't need to pay this account
+            // creation cost.
+            if (m_schedule->eip150Mode &&
+                (!m_schedule->eip158Mode || m_ext->balance(m_ext->myAddress) > 0))
+            {
+                if (!m_ext->exists(dest))
+                {
+                    m_runGas = m_schedule->callNewAccountGas;
+                    updateIOGas();
+                }
+            }
+
+            m_ext->selfdestruct(dest);
             m_bounce = 0;
         }
         BREAK
@@ -634,7 +650,7 @@ void LegacyVM::interpretCases()
         {
             // Pre-constantinople
             if (!m_schedule->haveBitwiseShifting)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -650,7 +666,7 @@ void LegacyVM::interpretCases()
         {
             // Pre-constantinople
             if (!m_schedule->haveBitwiseShifting)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -666,7 +682,7 @@ void LegacyVM::interpretCases()
         {
             // Pre-constantinople
             if (!m_schedule->haveBitwiseShifting)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -827,7 +843,7 @@ void LegacyVM::interpretCases()
         CASE(GETLOCAL)
         CASE(PUTLOCAL)
         {
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
         }
         CONTINUE
 #endif
@@ -1178,7 +1194,7 @@ void LegacyVM::interpretCases()
         CASE(XSWIZZLE)
         CASE(XSHUFFLE)
         {
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
         }
         CONTINUE
 #endif
@@ -1262,7 +1278,7 @@ void LegacyVM::interpretCases()
         CASE(RETURNDATASIZE)
         {
             if (!m_schedule->haveReturnData)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -1305,7 +1321,7 @@ void LegacyVM::interpretCases()
         {
             ON_OP();
             if (!m_schedule->haveReturnData)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             bigint const endOfAccess = bigint(m_SP[1]) + bigint(m_SP[2]);
             if (m_returnData.size() < endOfAccess)
                 throwBufferOverrun(endOfAccess);
@@ -1322,7 +1338,7 @@ void LegacyVM::interpretCases()
         {
             ON_OP();
             if (!m_schedule->haveExtcodehash)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             m_runGas = toInt63(m_schedule->extcodehashGas);
             updateIOGas();
@@ -1420,6 +1436,32 @@ void LegacyVM::interpretCases()
         }
         NEXT
 
+        CASE(CHAINID)
+        {
+            ON_OP();
+
+            if (!m_schedule->haveChainID)
+                BOOST_THROW_EXCEPTION(BadInstruction());;
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->envInfo().chainID();
+        }
+        NEXT
+
+        CASE(SELFBALANCE)
+        {
+            ON_OP();
+
+            if (!m_schedule->haveSelfbalance)
+                BOOST_THROW_EXCEPTION(BadInstruction());;
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->balance(m_ext->myAddress);
+        }
+        NEXT
+
         CASE(POP)
         {
             ON_OP();
@@ -1431,8 +1473,9 @@ void LegacyVM::interpretCases()
 
         CASE(PUSHC)
         {
-#if BRC_USE_CONSTANT_POOL
-            ON_OP();
+#if EVM_USE_CONSTANT_POOL
+            auto const originalOp = static_cast<byte>(Instruction::PUSH1) + m_code[m_PC + 3] + 1;
+            onOperation(static_cast<Instruction>(originalOp));
             updateIOGas();
 
             // get val at two-byte offset into const pool and advance pc by one-byte remainder
@@ -1445,7 +1488,7 @@ void LegacyVM::interpretCases()
             m_SPP[0] = m_pool[off];
             TRACE_VAL(2, "Retrieved pooled const", m_SPP[0]);
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
@@ -1526,21 +1569,21 @@ void LegacyVM::interpretCases()
 
         CASE(JUMPC)
         {
-#if BRC_REPLACE_CONST_JUMP
-            ON_OP();
+#if EVM_REPLACE_CONST_JUMP
+            onOperation(Instruction::JUMP);
             updateIOGas();
 
             m_PC = uint64_t(m_SP[0]);
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
 
         CASE(JUMPCI)
         {
-#if BRC_REPLACE_CONST_JUMP
-            ON_OP();
+#if EVM_REPLACE_CONST_JUMP
+            onOperation(Instruction::JUMPI);
             updateIOGas();
 
             if (m_SP[1])
@@ -1548,7 +1591,7 @@ void LegacyVM::interpretCases()
             else
                 ++m_PC;
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
@@ -1670,7 +1713,8 @@ void LegacyVM::interpretCases()
         CASE(INVALID)
         DEFAULT
         {
-            throwBadInstruction();
+            cout << "DEFAULT" << endl;
+            BOOST_THROW_EXCEPTION(BadInstruction());;
         }
     }
     WHILE_CASES

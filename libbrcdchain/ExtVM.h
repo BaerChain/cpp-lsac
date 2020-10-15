@@ -27,9 +27,10 @@ public:
         bytesConstRef _code, h256 const& _codeHash, unsigned _depth, bool _isCreate,
         bool _staticCall)
       : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(),
-            _codeHash, _depth, _isCreate, _staticCall),
+            _codeHash, 0, _depth, _isCreate, _staticCall),
         m_s(_s),
-        m_sealEngine(_sealEngine)
+        m_sealEngine(_sealEngine),
+        m_brcSchedule(m_sealEngine.brcSchedule(envInfo().number()))
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
@@ -77,8 +78,9 @@ public:
     }
 
     /// Suicide the associated contract to the given address.
-    void suicide(Address _a) final;
-
+    // void suicide(Address _a) final;
+    void selfdestruct(Address _a) final;
+    
     /// Return the BRC gas-price schedule for this execution context.
     BRCSchedule const& brcSchedule() const final
     {
@@ -93,6 +95,7 @@ public:
 private:
     State& m_s;  ///< A reference to the base state.
     SealEngineFace const& m_sealEngine;
+    BRCSchedule const& m_brcSchedule;
 };
 
 }

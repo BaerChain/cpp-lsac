@@ -5,7 +5,7 @@ target_include_directories(brcdchain
 		PUBLIC
 		"${UTILS_INCLUDE_DIR}"
 		${CMAKE_SOURCE_DIR}
-		${CMAKE_SOURCE_DIR}/evmc/include
+		${CMAKE_SOURCE_DIR}/bvmc/include
 		PRIVATE
 		"${CMAKE_SOURCE_DIR}/indexDb/database/include"
 		)

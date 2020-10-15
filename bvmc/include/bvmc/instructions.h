@@ -1,3 +1,16 @@
+/* BVMC: Ethereum Client-VM Connector API.
+ * Copyright 2018-2019 The BVMC Authors.
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+/**
+ * EVM Instruction Tables
+ *
+ * A collection of metrics for EVM1 instruction set.
+ *
+ * @defgroup instructions EVM Instructions
+ * @{
+ */
 #pragma once
 
 #include <bvmc/bvmc.h>
@@ -8,7 +21,7 @@ extern "C" {
 #endif
 
 /**
- * The list of BVM 1 opcodes from every BVM revision.
+ * The list of EVM 1 opcodes from every EVM revision.
  */
 enum bvmc_opcode
 {
@@ -65,6 +78,8 @@ enum bvmc_opcode
     OP_NUMBER = 0x43,
     OP_DIFFICULTY = 0x44,
     OP_GASLIMIT = 0x45,
+    OP_CHAINID = 0x46,
+    OP_SELFBALANCE = 0x47,
 
     OP_POP = 0x50,
     OP_MLOAD = 0x51,
@@ -164,40 +179,43 @@ enum bvmc_opcode
 };
 
 /**
- * Metrics for an BVM 1 instruction.
+ * Metrics for an EVM 1 instruction.
  *
- * Small integer types are used here to make the tables of metrics cache friendly.
+ * Small integer types are used here to make the tables of metrics smaller.
  */
 struct bvmc_instruction_metrics
 {
-    /** The instruction gas cost. Value -1 indicates an undefined instruction. */
+    /** The instruction gas cost. */
     int16_t gas_cost;
 
-    /** The number of items the instruction pops from the BVM stack before execution. */
-    int8_t num_stack_arguments;
+    /** The minimum number of the EVM stack items required for the instruction. */
+    int8_t stack_height_required;
 
-    /** The number of items the instruction pushes to the BVM stack after execution. */
-    int8_t num_stack_returned_items;
+    /**
+     * The EVM stack height change caused by the instruction execution,
+     * i.e. stack height _after_ execution - stack height _before_ execution.
+     */
+    int8_t stack_height_change;
 };
 
 /**
- * Get the table of the BVM 1 instructions metrics.
+ * Get the table of the EVM 1 instructions metrics.
  *
- * @param revision  The BVM revision.
+ * @param revision  The EVM revision.
  * @return          The pointer to the array of 256 instruction metrics. Null pointer in case
- *                  an invalid BVM revision provided.
+ *                  an invalid EVM revision provided.
  */
 BVMC_EXPORT const struct bvmc_instruction_metrics* bvmc_get_instruction_metrics_table(
     enum bvmc_revision revision);
 
 /**
- * Get the table of the BVM 1 instruction names.
+ * Get the table of the EVM 1 instruction names.
  *
  * The entries for undefined instructions contain null pointers.
  *
- * @param revision  The BVM revision.
+ * @param revision  The EVM revision.
  * @return          The pointer to the array of 256 instruction names. Null pointer in case
- *                  an invalid BVM revision provided.
+ *                  an invalid EVM revision provided.
  */
 BVMC_EXPORT const char* const* bvmc_get_instruction_names_table(enum bvmc_revision revision);
 

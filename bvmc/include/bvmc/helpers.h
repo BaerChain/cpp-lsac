@@ -1,38 +1,56 @@
+/* BVMC: Ethereum Client-VM Connector API.
+ * Copyright 2018-2019 The BVMC Authors.
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+/**
+ * BVMC Helpers
+ *
+ * A collection of C helper functions for invoking a VM instance methods.
+ * These are convenient for languages where invoking function pointers
+ * is "ugly" or impossible (such as Go).
+ *
+ * It also contains helpers (overloaded operators) for using BVMC types effectively in C++.
+ *
+ * @defgroup helpers BVMC Helpers
+ * @{
+ */
 #pragma once
 
 #include <bvmc/bvmc.h>
+#include <stdlib.h>
+#include <string.h>
 
 /**
- * Returns true if the VM instance has a compatible ABI version.
+ * Returns true if the VM has a compatible ABI version.
  */
-static inline int bvmc_is_abi_compatible(struct bvmc_instance* instance)
+static inline bool bvmc_is_abi_compatible(struct bvmc_vm* vm)
 {
-    return instance->abi_version == BVMC_ABI_VERSION;
+    return vm->abi_version == BVMC_ABI_VERSION;
 }
 
 /**
- * Returns the name of the VM instance.
+ * Returns the name of the VM.
  */
-static inline const char* bvmc_vm_name(struct bvmc_instance* instance)
+static inline const char* bvmc_vm_name(struct bvmc_vm* vm)
 {
-    return instance->name;
+    return vm->name;
 }
 
 /**
- * Returns the version of the VM instance.
+ * Returns the version of the VM.
  */
-static inline const char* bvmc_vm_version(struct bvmc_instance* instance)
+static inline const char* bvmc_vm_version(struct bvmc_vm* vm)
 {
-    return instance->version;
+    return vm->version;
 }
 
 /**
- * Checks if the VM instance has the given capability.
+ * Checks if the VM has the given capability.
  *
  * @see bvmc_get_capabilities_fn
  */
-static inline bool bvmc_vm_has_capability(struct bvmc_instance* vm,
-                                          enum bvmc_capabilities capability)
+static inline bool bvmc_vm_has_capability(struct bvmc_vm* vm, enum bvmc_capabilities capability)
 {
     return (vm->get_capabilities(vm) & (bvmc_capabilities_flagset)capability) != 0;
 }
@@ -42,36 +60,23 @@ static inline bool bvmc_vm_has_capability(struct bvmc_instance* vm,
  *
  * @see bvmc_destroy_fn
  */
-static inline void bvmc_destroy(struct bvmc_instance* instance)
+static inline void bvmc_destroy(struct bvmc_vm* vm)
 {
-    instance->destroy(instance);
+    vm->destroy(vm);
 }
 
 /**
- * Sets the option for the VM instance, if the feature is supported by the VM.
+ * Sets the option for the VM, if the feature is supported by the VM.
  *
  * @see bvmc_set_option_fn
  */
-static inline enum bvmc_set_option_result bvmc_set_option(struct bvmc_instance* instance,
+static inline enum bvmc_set_option_result bvmc_set_option(struct bvmc_vm* vm,
                                                           char const* name,
                                                           char const* value)
 {
-    if (instance->set_option)
-        return instance->set_option(instance, name, value);
+    if (vm->set_option)
+        return vm->set_option(vm, name, value);
     return BVMC_SET_OPTION_INVALID_NAME;
-}
-
-/**
- * Sets the tracer callback for the VM instance, if the feature is supported by the VM.
- *
- * @see bvmc_set_tracer_fn
- */
-static inline void bvmc_set_tracer(struct bvmc_instance* instance,
-                                   bvmc_trace_callback callback,
-                                   struct bvmc_tracer_context* context)
-{
-    if (instance->set_tracer)
-        instance->set_tracer(instance, callback, context);
 }
 
 /**
@@ -79,24 +84,80 @@ static inline void bvmc_set_tracer(struct bvmc_instance* instance,
  *
  * @see bvmc_execute_fn.
  */
-static inline struct bvmc_result bvmc_execute(struct bvmc_instance* instance,
-                                              struct bvmc_context* context,
+static inline struct bvmc_result bvmc_execute(struct bvmc_vm* vm,
+                                              const struct bvmc_host_interface* host,
+                                              struct bvmc_host_context* context,
                                               enum bvmc_revision rev,
                                               const struct bvmc_message* msg,
                                               uint8_t const* code,
                                               size_t code_size)
 {
-    return instance->execute(instance, context, rev, msg, code, code_size);
+    return vm->execute(vm, host, context, rev, msg, code, code_size);
+}
+
+/// The bvmc_result release function using free() for releasing the memory.
+///
+/// This function is used in the bvmc_make_result(),
+/// but may be also used in other case if convenient.
+///
+/// @param result The result object.
+static void bvmc_free_result_memory(const struct bvmc_result* result)
+{
+    free((uint8_t*)result->output_data);
+}
+
+/// Creates the result from the provided arguments.
+///
+/// The provided output is copied to memory allocated with malloc()
+/// and the bvmc_result::release function is set to one invoking free().
+///
+/// In case of memory allocation failure, the result has all fields zeroed
+/// and only bvmc_result::status_code is set to ::BVMC_OUT_OF_MEMORY internal error.
+///
+/// @param status_code  The status code.
+/// @param gas_left     The amount of gas left.
+/// @param output_data  The pointer to the output.
+/// @param output_size  The output size.
+static inline struct bvmc_result bvmc_make_result(enum bvmc_status_code status_code,
+                                                  int64_t gas_left,
+                                                  const uint8_t* output_data,
+                                                  size_t output_size)
+{
+    struct bvmc_result result;
+    memset(&result, 0, sizeof(result));
+
+    if (output_size != 0)
+    {
+        uint8_t* buffer = (uint8_t*)malloc(output_size);
+
+        if (!buffer)
+        {
+            result.status_code = BVMC_OUT_OF_MEMORY;
+            return result;
+        }
+
+        memcpy(buffer, output_data, output_size);
+        result.output_data = buffer;
+        result.output_size = output_size;
+        result.release = bvmc_free_result_memory;
+    }
+
+    result.status_code = status_code;
+    result.gas_left = gas_left;
+    return result;
 }
 
 /**
  * Releases the resources allocated to the execution result.
  *
- * @see bvmc_release_result_fn
+ * @param result  The result object to be released. MUST NOT be NULL.
+ *
+ * @see bvmc_result::release() bvmc_release_result_fn
  */
 static inline void bvmc_release_result(struct bvmc_result* result)
 {
-    result->release(result);
+    if (result->release)
+        result->release(result);
 }
 
 

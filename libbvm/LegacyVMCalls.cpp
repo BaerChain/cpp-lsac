@@ -1,3 +1,6 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2016-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
 #include "LegacyVM.h"
 
 using namespace std;
@@ -187,16 +190,20 @@ bool LegacyVM::caseCallSetup(CallParameters *callParams, bytesRef& o_output)
     assert(callParams->valueTransfer == 0);
     assert(callParams->apparentValue == 0);
 
-    m_runGas = toInt63(m_schedule->callGas);
-
     callParams->staticCall = (m_OP == Instruction::STATICCALL || m_ext->staticCall);
+    auto const destinationAddr = asAddress(m_SP[1]);
+    if (callParams->staticCall && isPrecompiledContract(destinationAddr))
+        m_runGas += toInt63(m_schedule->precompileStaticCallGas);
+    else
+        m_runGas += toInt63(
+            (destinationAddr == m_ext->myAddress) ? m_schedule->callSelfGas : m_schedule->callGas);
 
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
-    Address destinationAddr = asAddress(m_SP[1]);
-    if (m_OP == Instruction::CALL && !m_ext->exists(destinationAddr))
-        if (m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas())
-            m_runGas += toInt63(m_schedule->callNewAccountGas);
+    if (m_OP == Instruction::CALL &&
+        (m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas()) &&
+        !m_ext->exists(destinationAddr))
+        m_runGas += toInt63(m_schedule->callNewAccountGas);
 
     if (haveValueArg && m_SP[2] > 0)
         m_runGas += toInt63(m_schedule->callValueTransferGas);

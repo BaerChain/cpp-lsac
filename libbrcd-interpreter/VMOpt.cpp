@@ -1,25 +1,31 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2016-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
 #include "VM.h"
 
 namespace dev
 {
 namespace brc
 {
-std::array<bvmc_instruction_metrics, 256> VM::c_metrics{{}};
-void VM::initMetrics()
+std::array<std::array<bvmc_instruction_metrics, 256>, BVMC_MAX_REVISION + 1> VM::s_metrics;
+
+bool VM::initMetrics()
 {
-    static bool done = []() noexcept
+    for (auto revision = 0; revision <= BVMC_MAX_REVISION; ++revision)
     {
-        // Copy the metrics of the top BVM revision.
-        std::memcpy(&c_metrics[0], bvmc_get_instruction_metrics_table(BVMC_LATEST_REVISION),
-            c_metrics.size() * sizeof(c_metrics[0]));
+        auto& metrics = s_metrics[revision];
+
+        // Copy the metrics of the given EVM revision.
+        auto const metricsTable =
+            bvmc_get_instruction_metrics_table(static_cast<bvmc_revision>(revision));
+        std::memcpy(&metrics[0], metricsTable, metrics.size() * sizeof(metrics[0]));
 
         // Inject interpreter optimization opcodes.
-        c_metrics[uint8_t(Instruction::PUSHC)] = c_metrics[uint8_t(Instruction::PUSH1)];
-        c_metrics[uint8_t(Instruction::JUMPC)] = c_metrics[uint8_t(Instruction::JUMP)];
-        c_metrics[uint8_t(Instruction::JUMPCI)] = c_metrics[uint8_t(Instruction::JUMPI)];
-        return true;
-    }();
-    (void)done;
+        metrics[uint8_t(Instruction::PUSHC)] = metrics[uint8_t(Instruction::PUSH1)];
+        metrics[uint8_t(Instruction::JUMPC)] = metrics[uint8_t(Instruction::JUMP)];
+        metrics[uint8_t(Instruction::JUMPCI)] = s_metrics[revision][uint8_t(Instruction::JUMPI)];
+    };
+    return true;
 }
 
 void VM::copyCode(int _extraBytes)
@@ -55,7 +61,7 @@ void VM::optimize()
         )
         {
             TRACE_OP(1, pc, op);
-            m_code[pc] = (byte)Instruction::INVALID;
+            m_code[pc] = (byte)Instruction::UNDEFINED;
         }
 
         if (op == Instruction::JUMPDEST)
@@ -71,12 +77,12 @@ void VM::optimize()
         }
     }
     
-#ifdef BVM_DO_FIRST_PASS_OPTIMIZATION
+#ifdef EVM_DO_FIRST_PASS_OPTIMIZATION
     
     TRACE_STR(1, "Do first pass optimizations")
     for (size_t pc = 0; pc < nBytes; ++pc)
     {
-        u256 val = 0;
+        intx::uint256 val = 0;
         Instruction op = Instruction(m_code[pc]);
 
         if ((byte)Instruction::PUSH1 <= (byte)op && (byte)op <= (byte)Instruction::PUSH32)
@@ -89,7 +95,7 @@ void VM::optimize()
                 val = (val << 8) | m_code[i];
             }
 
-        #if BVM_USE_CONSTANT_POOL
+        #if EVM_USE_CONSTANT_POOL
 
             // add value to constant pool and replace PUSHn with PUSHC
             // place offset in code as 2 bytes MSB-first
@@ -111,7 +117,7 @@ void VM::optimize()
 
         #endif
 
-        #if BVM_REPLACE_CONST_JUMP
+        #if EVM_REPLACE_CONST_JUMP    
             // replace JUMP or JUMPI to constant location with JUMPC or JUMPCI
             // verifyJumpDest is M = log(number of jump destinations)
             // outer loop is N = number of bytes in code array
@@ -153,18 +159,10 @@ void VM::optimize()
 //
 void VM::initEntry()
 {
-    m_bounce = &VM::interpretCases;     
-    initMetrics();
+    m_bounce = &VM::interpretCases;
     optimize();
 }
 
-
-// Implementation of EXP.
-//
-// This implements exponentiation by squaring algorithm.
-// Is faster than boost::multiprecision::powm() because it avoids explicit
-// mod operation.
-// Do not inline it.
 u256 VM::exp256(u256 _base, u256 _exponent)
 {
     using boost::multiprecision::limb_type;
@@ -178,5 +176,6 @@ u256 VM::exp256(u256 _base, u256 _exponent)
     }
     return result;
 }
+
 }
 }

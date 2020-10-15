@@ -1,3 +1,6 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2014-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
 #pragma once
 
 #include "ExtVMFace.h"
@@ -10,14 +13,15 @@ namespace brc
 {
 
 struct VMException: Exception {};
-#define BRC_SIMPLE_EXCEPTION_VM(X) struct X: VMException { const char* what() const noexcept override { return #X; } }
-BRC_SIMPLE_EXCEPTION_VM(BadInstruction);
-BRC_SIMPLE_EXCEPTION_VM(BadJumpDestination);
-BRC_SIMPLE_EXCEPTION_VM(OutOfGas);
-BRC_SIMPLE_EXCEPTION_VM(OutOfStack);
-BRC_SIMPLE_EXCEPTION_VM(StackUnderflow);
-BRC_SIMPLE_EXCEPTION_VM(DisallowedStateChange);
-BRC_SIMPLE_EXCEPTION_VM(BufferOverrun);
+#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: VMException { const char* what() const noexcept override { return #X; } }
+ETH_SIMPLE_EXCEPTION_VM(InvalidInstruction);
+ETH_SIMPLE_EXCEPTION_VM(BadInstruction);
+ETH_SIMPLE_EXCEPTION_VM(BadJumpDestination);
+ETH_SIMPLE_EXCEPTION_VM(OutOfGas);
+ETH_SIMPLE_EXCEPTION_VM(OutOfStack);
+ETH_SIMPLE_EXCEPTION_VM(StackUnderflow);
+ETH_SIMPLE_EXCEPTION_VM(DisallowedStateChange);
+ETH_SIMPLE_EXCEPTION_VM(BufferOverrun);
 
 /// Reports VM internal error. This is not based on VMException because it must be handled
 /// differently than defined consensus exceptions.
@@ -43,7 +47,7 @@ private:
 };
 
 
-/// BRC Virtual Machine interface
+/// EVM Virtual Machine interface
 class VMFace
 {
 public:
@@ -70,5 +74,11 @@ inline u256 fromAddress(Address _a)
 	return (u160)_a;
 }
 
+// Checks whether address is in the address range for precompiles according to EIP-1352
+inline bool isPrecompiledContract(Address const& _addr) noexcept
+{
+    static Address const c_maxPrecompiledAddress{0xffff};
+    return _addr <= c_maxPrecompiledAddress;
+}
 }
 }

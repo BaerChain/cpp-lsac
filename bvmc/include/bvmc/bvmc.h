@@ -1,4 +1,3 @@
-
 #ifndef BVMC_H
 #define BVMC_H
 
@@ -27,7 +26,15 @@ extern "C" {
 
 enum
 {
-    BVMC_ABI_VERSION = 6
+    /**
+     * The BVMC ABI version number of the interface declared in this file.
+     *
+     * The BVMC ABI version always equals the major version number of the BVMC project.
+     * The Host SHOULD check if the ABI versions match when dynamically loading VMs.
+     *
+     * @see @ref versioning
+     */
+    BVMC_ABI_VERSION = 7
 };
 
 
@@ -47,7 +54,6 @@ typedef struct bvmc_bytes32
  */
 typedef struct bvmc_bytes32 bvmc_uint256be;
 
-/** Big-endian 160-bit hash suitable for keeping an eum address. */
 typedef struct bvmc_address
 {
     /** The 20 bytes of the hash. */
@@ -72,7 +78,7 @@ enum bvmc_flags
 };
 
 /**
- * The message describing an BVM call,
+ * The message describing an EVM call,
  * including a zero-depth calls from a transaction origin.
  */
 struct bvmc_message
@@ -112,9 +118,6 @@ struct bvmc_message
      */
     size_t input_size;
 
-    /**
-     * The amount of  transferred with the message.
-     */
     bvmc_uint256be value;
 
     /**
@@ -136,20 +139,28 @@ struct bvmc_tx_context
     int64_t block_timestamp;         /**< The block timestamp. */
     int64_t block_gas_limit;         /**< The block gas limit. */
     bvmc_uint256be block_difficulty; /**< The block difficulty. */
+    bvmc_uint256be chain_id;         /**< The blockchain's ChainID. */
 };
 
-struct bvmc_context;
+/**
+ * @struct bvmc_host_context
+ * The opaque data type representing the Host execution context.
+ * @see bvmc_execute_fn().
+ */
+struct bvmc_host_context {
+    const struct bvmc_host_interface* host;
+};
 
 /**
  * Get transaction context callback function.
  *
- *  This callback function is used by an BVM to retrieve the transaction and
+ *  This callback function is used by an EVM to retrieve the transaction and
  *  block context.
  *
  *  @param      context  The pointer to the Host execution context.
  *  @return              The transaction context.
  */
-typedef struct bvmc_tx_context (*bvmc_get_tx_context_fn)(struct bvmc_context* context);
+typedef struct bvmc_tx_context (*bvmc_get_tx_context_fn)(struct bvmc_host_context* context);
 
 /**
  * Get block hash callback function.
@@ -163,7 +174,7 @@ typedef struct bvmc_tx_context (*bvmc_get_tx_context_fn)(struct bvmc_context* co
  * @return         The block hash or null bytes
  *                 if the information about the block is not available.
  */
-typedef bvmc_bytes32 (*bvmc_get_block_hash_fn)(struct bvmc_context* context, int64_t number);
+typedef bvmc_bytes32 (*bvmc_get_block_hash_fn)(struct bvmc_host_context* context, int64_t number);
 
 /**
  * The execution status code.
@@ -174,16 +185,12 @@ typedef bvmc_bytes32 (*bvmc_get_block_hash_fn)(struct bvmc_context* context, int
  * ::BVMC_FAILURE code of value 1.
  *
  * Status codes with negative values represent VM internal errors
- * not provided by BVM specifications. These errors MUST not be passed back
+ * not provided by EVM specifications. These errors MUST not be passed back
  * to the caller. They MAY be handled by the Client in predefined manner
  * (see e.g. ::BVMC_REJECTED), otherwise internal errors are not recoverable.
  * The generic representant of errors is ::BVMC_INTERNAL_ERROR but
- * an BVM implementation MAY return negative status codes that are not defined
+ * an EVM implementation MAY return negative status codes that are not defined
  * in the BVMC documentation.
- *
- * @note
- * In case new status codes are needed, please create an issue or pull request
- * in the BVMC repository (ereum/bvmc).
  */
 enum bvmc_status_code
 {
@@ -207,7 +214,7 @@ enum bvmc_status_code
     /**
      * The designated INVALID instruction has been hit during execution.
      *
-     * The EIP-141 (ereum/EIPs/blob/master/EIPS/eip-141.md)
+     * The EIP-141 
      * defines the instruction 0xfe as INVALID instruction to indicate execution
      * abortion coming from high-level languages. This status code is reported
      * in case this INVALID instruction has been encountered.
@@ -218,12 +225,12 @@ enum bvmc_status_code
     BVMC_UNDEFINED_INSTRUCTION = 5,
 
     /**
-     * The execution has attempted to put more items on the BVM stack
+     * The execution has attempted to put more items on the EVM stack
      * than the specified limit.
      */
     BVMC_STACK_OVERFLOW = 6,
 
-    /** Execution of an opcode has required more items on the BVM stack. */
+    /** Execution of an opcode has required more items on the EVM stack. */
     BVMC_STACK_UNDERFLOW = 7,
 
     /** Execution has violated the jump destination restrictions. */
@@ -250,7 +257,7 @@ enum bvmc_status_code
     BVMC_PRECOMPILE_FAILURE = 12,
 
     /**
-     * Contract validation has failed (e.g. due to BVM 1.5 jump validity,
+     * Contract validation has failed (e.g. due to EVM 1.5 jump validity,
      * Casper's purity checker or ewasm contract rules).
      */
     BVMC_CONTRACT_VALIDATION_FAILURE = 13,
@@ -272,21 +279,24 @@ enum bvmc_status_code
      */
     BVMC_WASM_TRAP = 16,
 
-    /** BVM implementation generic internal error. */
+    /** EVM implementation generic internal error. */
     BVMC_INTERNAL_ERROR = -1,
 
     /**
      * The execution of the given code and/or message has been rejected
-     * by the BVM implementation.
+     * by the EVM implementation.
      *
-     * This error SHOULD be used to signal that the BVM is not able to or
+     * This error SHOULD be used to signal that the EVM is not able to or
      * willing to execute the given code type or message.
-     * If an BVM returns the ::BVMC_REJECTED status code,
-     * the Client MAY try to execute it in other BVM implementation.
-     * For example, the Client tries running a code in the BVM 1.5. If the
-     * code is not supported there, the execution falls back to the BVM 1.0.
+     * If an EVM returns the ::BVMC_REJECTED status code,
+     * the Client MAY try to execute it in other EVM implementation.
+     * For example, the Client tries running a code in the EVM 1.5. If the
+     * code is not supported there, the execution falls back to the EVM 1.0.
      */
-    BVMC_REJECTED = -2
+    BVMC_REJECTED = -2,
+
+    /** The VM failed to allocate the amount of memory needed for execution. */
+    BVMC_OUT_OF_MEMORY = -3
 };
 
 /* Forward declaration. */
@@ -310,7 +320,7 @@ struct bvmc_result;
  */
 typedef void (*bvmc_release_result_fn)(const struct bvmc_result* result);
 
-/** The BVM code execution result. */
+/** The EVM code execution result. */
 struct bvmc_result
 {
     /** The execution status code. */
@@ -330,7 +340,7 @@ struct bvmc_result
      *  The output contains data coming from RETURN opcode (iff bvmc_result::code
      *  field is ::BVMC_SUCCESS) or from REVERT opcode.
      *
-     *  The memory containing the output data is owned by BVM and has to be
+     *  The memory containing the output data is owned by EVM and has to be
      *  freed with bvmc_result::release().
      *
      *  This MAY be NULL.
@@ -345,40 +355,41 @@ struct bvmc_result
     size_t output_size;
 
     /**
-     * The pointer to a function releasing all resources associated with
-     *  the result object.
+     * The method releasing all resources associated with the result object.
      *
-     *  This function pointer is optional (MAY be NULL) and MAY be set by
-     *  the BVM implementation. If set it MUST be used by the user to
-     *  release memory and other resources associated with the result object.
-     *  After the result resources are released the result object
-     *  MUST NOT be used any more.
+     * This method (function pointer) is optional (MAY be NULL) and MAY be set
+     * by the VM implementation. If set it MUST be called by the user once to
+     * release memory and other resources associated with the result object.
+     * Once the resources are released the result object MUST NOT be used again.
      *
-     *  The suggested code pattern for releasing BVM results:
-     *  @code
-     *  struct bvmc_result result = ...;
-     *  if (result.release)
-     *      result.release(&result);
-     *  @endcode
+     * The suggested code pattern for releasing execution results:
+     * @code
+     * struct bvmc_result result = ...;
+     * if (result.release)
+     *     result.release(&result);
+     * @endcode
      *
-     *  @note
-     *  It works similarly to C++ virtual destructor. Attaching the release
-     *  function to the result itself allows BVM composition.
+     * @note
+     * It works similarly to C++ virtual destructor. Attaching the release
+     * function to the result itself allows VM composition.
      */
     bvmc_release_result_fn release;
 
     /**
-     * The address of the contract created by CREATE opcode.
+     * The address of the contract created by create instructions.
      *
-     *  This field has valid value only if the result describes successful
-     *  CREATE (bvmc_result::status_code is ::BVMC_SUCCESS).
+     * This field has valid value only if:
+     * - it is a result of the Host method bvmc_host_interface::call
+     * - and the result describes successful contract creation
+     *   (bvmc_result::status_code is ::BVMC_SUCCESS).
+     * In all other cases the address MUST be null bytes.
      */
     bvmc_address create_address;
 
     /**
      * Reserved data that MAY be used by a bvmc_result object creator.
      *
-     *  This reserved 4 bytes tog with 20 bytes from create_address form
+     *  This reserved 4 bytes together with 20 bytes from create_address form
      *  24 bytes of memory called "optional data" within bvmc_result struct
      *  to be optionally used by the bvmc_result object creator.
      *
@@ -399,7 +410,8 @@ struct bvmc_result
  * @param address  The address of the account the query is about.
  * @return         true if exists, false otherwise.
  */
-typedef bool (*bvmc_account_exists_fn)(struct bvmc_context* context, const bvmc_address* address);
+typedef bool (*bvmc_account_exists_fn)(struct bvmc_host_context* context,
+                                       const bvmc_address* address);
 
 /**
  * Get storage callback function.
@@ -412,7 +424,7 @@ typedef bool (*bvmc_account_exists_fn)(struct bvmc_context* context, const bvmc_
  * @return         The storage value at the given storage key or null bytes
  *                 if the account does not exist.
  */
-typedef bvmc_bytes32 (*bvmc_get_storage_fn)(struct bvmc_context* context,
+typedef bvmc_bytes32 (*bvmc_get_storage_fn)(struct bvmc_host_context* context,
                                             const bvmc_address* address,
                                             const bvmc_bytes32* key);
 
@@ -471,7 +483,7 @@ enum bvmc_storage_status
  * @param value    The value to be stored.
  * @return         The effect on the storage item.
  */
-typedef enum bvmc_storage_status (*bvmc_set_storage_fn)(struct bvmc_context* context,
+typedef enum bvmc_storage_status (*bvmc_set_storage_fn)(struct bvmc_host_context* context,
                                                         const bvmc_address* address,
                                                         const bvmc_bytes32* key,
                                                         const bvmc_bytes32* value);
@@ -485,7 +497,7 @@ typedef enum bvmc_storage_status (*bvmc_set_storage_fn)(struct bvmc_context* con
  * @param address  The address of the account.
  * @return         The balance of the given account or 0 if the account does not exist.
  */
-typedef bvmc_uint256be (*bvmc_get_balance_fn)(struct bvmc_context* context,
+typedef bvmc_uint256be (*bvmc_get_balance_fn)(struct bvmc_host_context* context,
                                               const bvmc_address* address);
 
 /**
@@ -498,10 +510,11 @@ typedef bvmc_uint256be (*bvmc_get_balance_fn)(struct bvmc_context* context,
  * @param address  The address of the account.
  * @return         The size of the code in the account or 0 if the account does not exist.
  */
-typedef size_t (*bvmc_get_code_size_fn)(struct bvmc_context* context, const bvmc_address* address);
+typedef size_t (*bvmc_get_code_size_fn)(struct bvmc_host_context* context,
+                                        const bvmc_address* address);
 
 /**
- * Get code size callback function.
+ * Get code hash callback function.
  *
  * This callback function is used by a VM to get the keccak256 hash of the code stored
  * in the account at the given address. For existing accounts not having a code, this
@@ -511,64 +524,50 @@ typedef size_t (*bvmc_get_code_size_fn)(struct bvmc_context* context, const bvmc
  * @param address  The address of the account.
  * @return         The hash of the code in the account or null bytes if the account does not exist.
  */
-typedef bvmc_bytes32 (*bvmc_get_code_hash_fn)(struct bvmc_context* context,
+typedef bvmc_bytes32 (*bvmc_get_code_hash_fn)(struct bvmc_host_context* context,
                                               const bvmc_address* address);
 
 /**
  * Copy code callback function.
  *
- *  This callback function is used by an BVM to request a copy of the code
- *  of the given account to the memory buffer provided by the BVM.
- *  The Client MUST copy the requested code, starting with the given offset,
- *  to the provided memory buffer up to the size of the buffer or the size of
- *  the code, whichever is smaller.
+ * This callback function is used by an EVM to request a copy of the code
+ * of the given account to the memory buffer provided by the EVM.
+ * The Client MUST copy the requested code, starting with the given offset,
+ * to the provided memory buffer up to the size of the buffer or the size of
+ * the code, whichever is smaller.
  *
- *  @param context      The pointer to the Client execution context.
- *                           @see ::bvmc_context.
- *  @param address      The address of the account.
- *  @param code_offset  The offset of the code to copy.
- *  @param buffer_data  The pointer to the memory buffer allocated by the BVM
- *                      to store a copy of the requested code.
- *  @param buffer_size  The size of the memory buffer.
- *  @return             The number of bytes copied to the buffer by the Client.
+ * @param context      The pointer to the Host execution context. See ::bvmc_host_context.
+ * @param address      The address of the account.
+ * @param code_offset  The offset of the code to copy.
+ * @param buffer_data  The pointer to the memory buffer allocated by the EVM
+ *                     to store a copy of the requested code.
+ * @param buffer_size  The size of the memory buffer.
+ * @return             The number of bytes copied to the buffer by the Client.
  */
-typedef size_t (*bvmc_copy_code_fn)(struct bvmc_context* context,
+typedef size_t (*bvmc_copy_code_fn)(struct bvmc_host_context* context,
                                     const bvmc_address* address,
                                     size_t code_offset,
                                     uint8_t* buffer_data,
                                     size_t buffer_size);
 
-/**
- * Selfdestruct callback function.
- *
- *  This callback function is used by an BVM to SELFDESTRUCT given contract.
- *  The execution of the contract will not be stopped, that is up to the BVM.
- *
- *  @param context      The pointer to the Host execution context.
- *                      @see ::bvmc_context.
- *  @param address      The address of the contract to be selfdestructed.
- *  @param beneficiary  The address where the remaining  is going to be
- *                      transferred.
- */
-typedef void (*bvmc_selfdestruct_fn)(struct bvmc_context* context,
+typedef void (*bvmc_selfdestruct_fn)(struct bvmc_host_context* context,
                                      const bvmc_address* address,
                                      const bvmc_address* beneficiary);
 
 /**
  * Log callback function.
  *
- *  This callback function is used by an BVM to inform about a LOG that happened
- *  during an BVM bytecode execution.
- *  @param context       The pointer to the Host execution context.
- *                       @see ::bvmc_context.
- *  @param address       The address of the contract that generated the log.
- *  @param data          The pointer to unindexed data attached to the log.
- *  @param data_size     The length of the data.
- *  @param topics        The pointer to the array of topics attached to the log.
- *  @param topics_count  The number of the topics. Valid values are between
- *                       0 and 4 inclusively.
+ * This callback function is used by an EVM to inform about a LOG that happened
+ * during an EVM bytecode execution.
+ *
+ * @param context       The pointer to the Host execution context. See ::bvmc_host_context.
+ * @param address       The address of the contract that generated the log.
+ * @param data          The pointer to unindexed data attached to the log.
+ * @param data_size     The length of the data.
+ * @param topics        The pointer to the array of topics attached to the log.
+ * @param topics_count  The number of the topics. Valid values are between 0 and 4 inclusively.
  */
-typedef void (*bvmc_emit_log_fn)(struct bvmc_context* context,
+typedef void (*bvmc_emit_log_fn)(struct bvmc_host_context* context,
                                  const bvmc_address* address,
                                  const uint8_t* data,
                                  size_t data_size,
@@ -576,13 +575,13 @@ typedef void (*bvmc_emit_log_fn)(struct bvmc_context* context,
                                  size_t topics_count);
 
 /**
- * Pointer to the callback function supporting BVM calls.
+ * Pointer to the callback function supporting EVM calls.
  *
- * @param  context The pointer to the Host execution context.
- * @param  msg     The call parameters.
+ * @param context  The pointer to the Host execution context.
+ * @param msg      The call parameters.
  * @return         The result of the call.
  */
-typedef struct bvmc_result (*bvmc_call_fn)(struct bvmc_context* context,
+typedef struct bvmc_result (*bvmc_call_fn)(struct bvmc_host_context* context,
                                            const struct bvmc_message* msg);
 
 /**
@@ -633,32 +632,15 @@ struct bvmc_host_interface
 };
 
 
-/**
- * Execution context managed by the Host.
- *
- *  The Host MUST pass the pointer to the execution context to
- *  ::bvmc_execute_fn. The BVM MUST pass the same pointer back to the Host in
- *  every callback function.
- *  The context MUST contain at least the function table defining the context
- *  callback interface.
- *  Optionally, The Host MAY include in the context additional data.
- */
-struct bvmc_context
-{
-    /** The Host interface. */
-    const struct bvmc_host_interface* host;
-};
-
-
 /* Forward declaration. */
-struct bvmc_instance;
+struct bvmc_vm;
 
 /**
- * Destroys the BVM instance.
+ * Destroys the VM instance.
  *
- *  @param bvm  The BVM instance to be destroyed.
+ * @param vm  The VM instance to be destroyed.
  */
-typedef void (*bvmc_destroy_fn)(struct bvmc_instance* bvm);
+typedef void (*bvmc_destroy_fn)(struct bvmc_vm* vm);
 
 /**
  * Possible outcomes of bvmc_set_option.
@@ -671,112 +653,68 @@ enum bvmc_set_option_result
 };
 
 /**
- * Configures the BVM instance.
+ * Configures the VM instance.
  *
- *  Allows modifying options of the BVM instance.
- *  Options:
- *  - code cache behavior: on, off, read-only, ...
- *  - optimizations,
+ * Allows modifying options of the VM instance.
+ * Options:
+ * - code cache behavior: on, off, read-only, ...
+ * - optimizations,
  *
- *  @param bvm    The BVM instance to be configured.
- *  @param name   The option name. NULL-terminated string. Cannot be NULL.
- *  @param value  The new option value. NULL-terminated string. Cannot be NULL.
- *  @return       The outcome of the operation.
+ * @param vm     The VM instance to be configured.
+ * @param name   The option name. NULL-terminated string. Cannot be NULL.
+ * @param value  The new option value. NULL-terminated string. Cannot be NULL.
+ * @return       The outcome of the operation.
  */
-typedef enum bvmc_set_option_result (*bvmc_set_option_fn)(struct bvmc_instance* bvm,
+typedef enum bvmc_set_option_result (*bvmc_set_option_fn)(struct bvmc_vm* vm,
                                                           char const* name,
                                                           char const* value);
 
 
-/**
- * BVM revision.
- *
- * The revision of the BVM specification based on the eum
- * upgrade / hard fork codenames.
- */
 enum bvmc_revision
 {
-    /**
-     * The Frontier revision.
-     *
-     * The one eum launched with.
-     */
+
     BVMC_FRONTIER = 0,
 
-    /**
-     * The Homestead revision.
-     *
-     */
     BVMC_HOMESTEAD = 1,
 
-    /**
-     * The Tangerine Whistle revision.
-     *
-     */
     BVMC_TANGERINE_WHISTLE = 2,
 
-    /**
-     * The Spurious Dragon revision.
-     *
-     */
     BVMC_SPURIOUS_DRAGON = 3,
 
-    /**
-     * The Byzantium revision.
-     *
-     */
     BVMC_BYZANTIUM = 4,
 
-    /**
-     * The Constantinople revision.
-     *
-     */
     BVMC_CONSTANTINOPLE = 5,
 
-    /**
-     * Reserved for the post-Constantinople upgrade. The name is likely to
-     * be changed, but the assigned number should stay.
-     *
-     * The spec draft: ereum/EIPs/pull/1716.
-     */
-    BVMC_CONSTANTINOPLE2 = 6,
+    BVMC_PETERSBURG = 6,
 
-    /**
-     * The Istanbul revision.
-     *
-     * The spec draft: ereum.org/EIPS/eip-1679.
-     */
     BVMC_ISTANBUL = 7,
+    BVMC_BERLIN = 8,
 
-    /** The maximum BVM revision supported. */
-    BVMC_MAX_REVISION = BVMC_ISTANBUL,
-
-
-    /**
-     * The latests BVM revision supported.
-     *
-     * @deprecated Replaced with ::BVMC_MAX_REVISION.
-     */
-    BVMC_LATEST_REVISION BVMC_DEPRECATED = BVMC_MAX_REVISION
+    BVMC_MAX_REVISION = BVMC_BERLIN
 };
 
 
 /**
- * Executes the given BVM bytecode using the input in the message
+ * Executes the given code using the input from the message.
  *
- * This function MAY be invoked multiple times for a single BVM instance.
+ * This function MAY be invoked multiple times for a single VM instance.
  *
- * @param instance   The BVM instance.
- * @param context    The pointer to the Client execution context to be passed
- *                   to the callback functions. @see ::bvmc_context.
- * @param rev        Requested BVM specification revision.
- * @param msg        Call parameters. @see ::bvmc_message.
- * @param code       Reference to the bytecode to be executed.
- * @param code_size  The length of the bytecode.
- * @return           All execution results.
+ * @param vm         The VM instance. This argument MUST NOT be NULL.
+ * @param host       The Host interface. This argument MUST NOT be NULL unless
+ *                   the @p vm has the ::BVMC_CAPABILITY_PRECOMPILES capability.
+ * @param context    The opaque pointer to the Host execution context.
+ *                   This argument MAY be NULL. The VM MUST pass the same
+ *                   pointer to the methods of the @p host interface.
+ *                   The VM MUST NOT dereference the pointer.
+ * @param rev        The requested EVM specification revision.
+ * @param msg        The call parameters. See ::bvmc_message. This argument MUST NOT be NULL.
+ * @param code       The reference to the code to be executed. This argument MAY be NULL.
+ * @param code_size  The length of the code. If @p code is NULL this argument MUST be 0.
+ * @return           The execution result.
  */
-typedef struct bvmc_result (*bvmc_execute_fn)(struct bvmc_instance* instance,
-                                              struct bvmc_context* context,
+typedef struct bvmc_result (*bvmc_execute_fn)(struct bvmc_vm* vm,
+                                              const struct bvmc_host_interface* host,
+                                              struct bvmc_host_context* context,
                                               enum bvmc_revision rev,
                                               const struct bvmc_message* msg,
                                               uint8_t const* code,
@@ -787,8 +725,27 @@ typedef struct bvmc_result (*bvmc_execute_fn)(struct bvmc_instance* instance,
  */
 enum bvmc_capabilities
 {
-    BVMC_CAPABILITY_BVM1 = (1u << 0), /**< The VM is capable of executing BVM1 bytecode. */
-    BVMC_CAPABILITY_EWASM = (1u << 1) /**< The VM is capable of execution ewasm bytecode. */
+    /**
+     * The VM is capable of executing EVM1 bytecode.
+     */
+    BVMC_CAPABILITY_EVM1 = (1u << 0),
+
+    /**
+     * The VM is capable of executing ewasm bytecode.
+     */
+    BVMC_CAPABILITY_EWASM = (1u << 1),
+
+    /**
+     * The VM is capable of executing the precompiled contracts
+     * defined for the range of destination addresses.
+     *
+     * The EIP-1352 (https://eips.ethereum.org/EIPS/eip-1352) specifies
+     * the range 0x000...0000 - 0x000...ffff of addresses
+     * reserved for precompiled and system contracts.
+     *
+     * This capability is **experimental** and MAY be removed without notice.
+     */
+    BVMC_CAPABILITY_PRECOMPILES = (1u << 2)
 };
 
 /**
@@ -802,135 +759,70 @@ typedef uint32_t bvmc_capabilities_flagset;
  * Return the supported capabilities of the VM instance.
  *
  * This function MAY be invoked multiple times for a single VM instance,
- * and its value MAY be influenced by calls to bvmc_instance::set_option.
+ * and its value MAY be influenced by calls to bvmc_vm::set_option.
  *
- * @param instance  The BVM instance.
- * @return          The supported capabilities of the VM. @see bvmc_capabilities.
+ * @param vm  The VM instance.
+ * @return    The supported capabilities of the VM. @see bvmc_capabilities.
  */
-typedef bvmc_capabilities_flagset (*bvmc_get_capabilities_fn)(struct bvmc_instance* instance);
-
-/** The opaque type representing a Client-side tracer object. */
-struct bvmc_tracer_context;
-
-/**
- * The callback to trace instructions execution in an BVM.
- *
- * This function informs the Client what instruction has been executed in the BVM implementation
- * and what are the results of executing this particular instruction.
- * The message level information (like call depth, destination address, etc.) are not provided here.
- * This piece of information can be acquired by inspecting messages being sent to the BVM in
- * ::bvmc_execute_fn and the results of the messages execution.
- *
- * @param context                The pointer to the Client-side tracing context. This allows to
- *                               implement the tracer in OOP manner.
- * @param code_offset            The current instruction position in the code.
- * @param status_code            The status code of the instruction execution.
- * @param gas_left               The amount of the gas left after the instruction execution.
- * @param stack_num_items        The current BVM stack height after the instruction execution.
- * @param pushed_stack_item      The top BVM stack item pushed as the result of the instruction
- *                               execution. This value is null when the instruction does not push
- *                               anything to the stack.
- * @param memory_size            The size of the BVM memory after the instruction execution.
- * @param changed_memory_offset  The offset in number of bytes of the beginning of the memory area
- *                               modified as the result of the instruction execution.
- *                               The Client MAY use this information tog with
- *                               @p changed_memory_size and @p changed_memory to incrementally
- *                               update the copy of the full VM's memory.
- * @param changed_memory_size    The size of the memory area modified as the result of
- *                               the instruction execution.
- * @param changed_memory         The pointer to the memory area modified as the result of
- *                               the instruction execution.
- *                               The Client MAY access the pointed memory area
- *                               (limited by the @p changed_memory_size) only during the current
- *                               execution of the bvmc_trace_callback().
- *                               The pointer MUST NOT be stored by the Client.
- *                               The Client MUST NOT assume that
- *                               `changed_memory - changed_memory_offset` is a valid base pointer
- *                               of the VM memory.
- */
-typedef void (*bvmc_trace_callback)(struct bvmc_tracer_context* context,
-                                    size_t code_offset,
-                                    enum bvmc_status_code status_code,
-                                    int64_t gas_left,
-                                    size_t stack_num_items,
-                                    const bvmc_uint256be* pushed_stack_item,
-                                    size_t memory_size,
-                                    size_t changed_memory_offset,
-                                    size_t changed_memory_size,
-                                    const uint8_t* changed_memory);
-
-/**
- * Sets the BVM instruction tracer.
- *
- * When the tracer is set in the BVM instance, the BVM SHOULD call back the tracer with information
- * about instructions execution in the BVM.
- * @see ::bvmc_trace_callback.
- *
- * This will overwrite the previous settings (the callback and the context).
- *
- * @param instance    The BVM instance.
- * @param callback    The tracer callback function. This argument MAY be NULL to disable previously
- *                    set tracer.
- * @param context     The Client-side tracer context. This argument MAY be NULL in case the tracer
- *                    does not require any context. This argument MUST be NULL if the callback
- *                    argument is NULL.
- */
-typedef void (*bvmc_set_tracer_fn)(struct bvmc_instance* instance,
-                                   bvmc_trace_callback callback,
-                                   struct bvmc_tracer_context* context);
+typedef bvmc_capabilities_flagset (*bvmc_get_capabilities_fn)(struct bvmc_vm* vm);
 
 
 /**
- * The BVM instance.
+ * The VM instance.
  *
- *  Defines the base struct of the BVM implementation.
+ * Defines the base struct of the VM implementation.
  */
-struct bvmc_instance
+struct bvmc_vm
 {
     /**
-     *  BVMC ABI version implemented by the BVM instance.
+     * BVMC ABI version implemented by the VM instance.
      *
-     *  Used to detect ABI incompatibilities. The BVMC ABI version
-     *  represented by this file is in ::BVMC_ABI_VERSION.
+     * Can be used to detect ABI incompatibilities.
+     * The BVMC ABI version represented by this file is in ::BVMC_ABI_VERSION.
      */
     const int abi_version;
 
     /**
      * The name of the BVMC VM implementation.
      *
-     *  It MUST be a NULL-terminated not empty string.
+     * It MUST be a NULL-terminated not empty string.
+     * The content MUST be UTF-8 encoded (this implies ASCII encoding is also allowed).
      */
     const char* name;
 
     /**
      * The version of the BVMC VM implementation, e.g. "1.2.3b4".
      *
-     *  It MUST be a NULL-terminated not empty string.
+     * It MUST be a NULL-terminated not empty string.
+     * The content MUST be UTF-8 encoded (this implies ASCII encoding is also allowed).
      */
     const char* version;
 
-    /** Pointer to function destroying the BVM instance. */
+    /**
+     * Pointer to function destroying the VM instance.
+     *
+     * This is a mandatory method and MUST NOT be set to NULL.
+     */
     bvmc_destroy_fn destroy;
 
-    /** Pointer to function executing a code by the BVM instance. */
+    /**
+     * Pointer to function executing a code by the VM instance.
+     *
+     * This is a mandatory method and MUST NOT be set to NULL.
+     */
     bvmc_execute_fn execute;
 
     /**
-     * Pointer to function returning capabilities supported by the VM instance.
+     * A method returning capabilities supported by the VM instance.
      *
-     * The value returned might change when different options are requested via set_option.
+     * The value returned MAY change when different options are set via the set_option() method.
      *
-     * A Client SHOULD only rely on the value returned here if it has queried it after
-     * it has called set_option.
+     * A Client SHOULD only rely on the value returned if it has queried it after
+     * it has called the set_option().
+     *
+     * This is a mandatory method and MUST NOT be set to NULL.
      */
     bvmc_get_capabilities_fn get_capabilities;
-
-    /**
-     * Optional pointer to function setting the BVM instruction tracer.
-     *
-     * If the BVM does not support this feature the pointer can be NULL.
-     */
-    bvmc_set_tracer_fn set_tracer;
 
     /**
      * Optional pointer to function modifying VM's options.
@@ -944,9 +836,9 @@ struct bvmc_instance
 
 #if BVMC_DOCUMENTATION
 /**
- * Example of a function creating an instance of an example BVM implementation.
+ * Example of a function creating an instance of an example EVM implementation.
  *
- * Each BVM implementation MUST provide a function returning an BVM instance.
+ * Each EVM implementation MUST provide a function returning an EVM instance.
  * The function SHOULD be named `bvmc_create_<vm-name>(void)`. If the VM name contains hyphens
  * replaces them with underscores in the function names.
  *
@@ -956,9 +848,9 @@ struct bvmc_instance
  * For example, the shared library with the "beta-interpreter" implementation may be named
  * `libbeta-interpreter.so`.
  *
- * @return  BVM instance or NULL indicating instance creation failure.
+ * @return  The VM instance or NULL indicating instance creation failure.
  */
-struct bvmc_instance* bvmc_create_example_vm(void);
+struct bvmc_vm* bvmc_create_example_vm(void);
 #endif
 
 #if __cplusplus

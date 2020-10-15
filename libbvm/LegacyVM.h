@@ -1,3 +1,7 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2014-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
+
 #pragma once
 
 #include "Instruction.h"
@@ -99,7 +103,7 @@ private:
     void caseCall();
 
     void copyDataToMemory(bytesConstRef _data, u256*_sp);
-    uint64_t memNeed(u256 _offset, u256 _size);
+    uint64_t memNeed(u256 const& _offset, u256 const& _size);
 
     void throwOutOfGas();
     void throwBadInstruction();
@@ -113,9 +117,10 @@ private:
     std::vector<uint64_t> m_jumpDests;
     int64_t verifyJumpDest(u256 const& _dest, bool _throw = true);
 
-    void onOperation();
+    void onOperation() { onOperation(m_OP); }
+    void onOperation(Instruction _instr);
     void adjustStack(unsigned _removed, unsigned _added);
-    uint64_t gasForMem(u512 _size);
+    uint64_t gasForMem(u512 const& _size);
     void updateSSGas();
     void updateSSGasPreEIP1283(u256 const& _currentValue, u256 const& _newValue);
     void updateSSGasEIP1283(u256 const& _currentValue, u256 const& _newValue);

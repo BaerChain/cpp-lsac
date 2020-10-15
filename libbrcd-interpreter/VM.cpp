@@ -5,15 +5,15 @@
 
 namespace
 {
-void destroy(bvmc_instance* _instance)
+void destroy(bvmc_vm* _instance)
 {
     (void)_instance;
 }
 
-bvmc_capabilities_flagset getCapabilities(bvmc_instance* _instance) noexcept
+bvmc_capabilities_flagset getCapabilities(bvmc_vm* _instance) noexcept
 {
     (void)_instance;
-    return BVMC_CAPABILITY_BVM1;
+    return BVMC_CAPABILITY_EVM1;
 }
 
 void delete_output(const bvmc_result* result)
@@ -21,8 +21,9 @@ void delete_output(const bvmc_result* result)
     delete[] result->output_data;
 }
 
-bvmc_result execute(bvmc_instance* _instance, bvmc_context* _context, bvmc_revision _rev,
-    const bvmc_message* _msg, uint8_t const* _code, size_t _codeSize) noexcept
+bvmc_result execute(bvmc_vm* _instance, const bvmc_host_interface* _host,
+    bvmc_host_context* _context, bvmc_revision _rev, const bvmc_message* _msg, uint8_t const* _code,
+    size_t _codeSize) noexcept
 {
     (void)_instance;
     std::unique_ptr<dev::brc::VM> vm{new dev::brc::VM};
@@ -32,7 +33,7 @@ bvmc_result execute(bvmc_instance* _instance, bvmc_context* _context, bvmc_revis
 
     try
     {
-        output = vm->exec(_context, _rev, _msg, _code, _codeSize);
+        output = vm->exec(_host, _context, _rev, _msg, _code, _codeSize);
         result.status_code = BVMC_SUCCESS;
         result.gas_left = vm->m_io_gas;
     }
@@ -41,6 +42,10 @@ bvmc_result execute(bvmc_instance* _instance, bvmc_context* _context, bvmc_revis
         result.status_code = BVMC_REVERT;
         result.gas_left = vm->m_io_gas;
         output = ex.output();  // This moves the output from the exception!
+    }
+    catch (dev::brc::InvalidInstruction const&)
+    {
+        result.status_code = BVMC_INVALID_INSTRUCTION;
     }
     catch (dev::brc::BadInstruction const&)
     {
@@ -93,20 +98,17 @@ bvmc_result execute(bvmc_instance* _instance, bvmc_context* _context, bvmc_revis
 }
 }  // namespace
 
-extern "C" bvmc_instance* bvmc_create_interpreter() noexcept
+extern "C" bvmc_vm* bvmc_create_interpreter() noexcept
 {
     // TODO: Allow creating multiple instances with different configurations.
-    static bvmc_instance s_instance{
-        BVMC_ABI_VERSION,
-        "interpreter",
-        brcd_get_buildinfo()->project_version,
-        ::destroy,
-        ::execute,
-        getCapabilities,
-        nullptr,  // set_tracer
+    static bvmc_vm s_vm{
+        BVMC_ABI_VERSION, "interpreter", brcd_get_buildinfo()->project_version, ::destroy, ::execute, getCapabilities,
         nullptr,  // set_option
     };
-    return &s_instance;
+    static bool metricsInited = dev::brc::VM::initMetrics();
+    (void)metricsInited;
+
+    return &s_vm;
 }
 
 
@@ -114,10 +116,11 @@ namespace dev
 {
 namespace brc
 {
-uint64_t VM::memNeed(u256 _offset, u256 _size)
+uint64_t VM::memNeed(u256 const& _offset, u256 const& _size)
 {
-    return toInt63(_size ? u512(_offset) + _size : u512(0));
+    return toInt63(_size ? bigint(_offset) + _size : bigint(0));
 }
+
 
 template <class S>
 S divWorkaround(S const& _a, S const& _b)
@@ -166,24 +169,23 @@ uint64_t VM::decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff)
 //
 // set current SP to SP', adjust SP' per _removed and _added items
 //
-void VM::adjustStack(int _removed, int _added)
+void VM::adjustStack(int _required, int _change)
 {
     m_SP = m_SPP;
 
     // adjust stack and check bounds
-    m_SPP += _removed;
-    if (m_stackEnd < m_SPP)
-        throwBadStack(_removed, _added);
-    m_SPP -= _added;
+    if (m_stackEnd < m_SP + _required)
+        throwBadStack(_required, _change);
+    m_SPP -= _change;
     if (m_SPP < m_stack)
-        throwBadStack(_removed, _added);
+        throwBadStack(_required, _change);
 }
 
-uint64_t VM::gasForMem(u512 _size)
+uint64_t VM::gasForMem(bigint const& _size)
 {
     constexpr int64_t memoryGas = VMSchedule::memoryGas;
     constexpr int64_t quadCoeffDiv = VMSchedule::quadCoeffDiv;
-    u512 s = _size / 32;
+    bigint s = _size / 32;
     return toInt63(memoryGas * s + s * s / quadCoeffDiv);
 }
 
@@ -216,15 +218,15 @@ void VM::logGasMem()
     unsigned n = (unsigned) m_OP - (unsigned) Instruction::LOG0;
     constexpr int64_t logDataGas = VMSchedule::logDataGas;
     m_runGas = toInt63(
-        VMSchedule::logGas + VMSchedule::logTopicGas * n + logDataGas * u512(m_SP[1]));
+        VMSchedule::logGas + VMSchedule::logTopicGas * n + logDataGas * bigint(m_SP[1]));
     updateMem(memNeed(m_SP[0], m_SP[1]));
 }
 
 void VM::fetchInstruction()
 {
     m_OP = Instruction(m_code[m_PC]);
-    auto const metric = c_metrics[static_cast<size_t>(m_OP)];
-    adjustStack(metric.num_stack_arguments, metric.num_stack_returned_items);
+    auto const metric = (*m_metrics)[static_cast<size_t>(m_OP)];
+    adjustStack(metric.stack_height_required, metric.stack_height_change);
 
     // FEES...
     m_runGas = metric.gas_cost;
@@ -235,7 +237,7 @@ void VM::fetchInstruction()
 bvmc_tx_context const& VM::getTxContext()
 {
     if (!m_tx_context)
-        m_tx_context.emplace(m_context->host->get_tx_context(m_context));
+        m_tx_context.emplace(m_host->get_tx_context(m_context));
     return m_tx_context.value();
 }
 
@@ -244,11 +246,13 @@ bvmc_tx_context const& VM::getTxContext()
 //
 // interpreter entry point
 
-owning_bytes_ref VM::exec(bvmc_context* _context, bvmc_revision _rev, const bvmc_message* _msg,
-    uint8_t const* _code, size_t _codeSize)
+owning_bytes_ref VM::exec(const bvmc_host_interface* _host, bvmc_host_context* _context,
+    bvmc_revision _rev, const bvmc_message* _msg, uint8_t const* _code, size_t _codeSize)
 {
+    m_host = _host;
     m_context = _context;
     m_rev = _rev;
+    m_metrics = &s_metrics[m_rev];
     m_message = _msg;
     m_io_gas = uint64_t(_msg->gas);
     m_PC = 0;
@@ -279,8 +283,10 @@ void VM::interpretCases()
         CASE(CREATE2)
         {
             ON_OP();
-            if (m_rev < BVMC_CONSTANTINOPLE)
-                throwBadInstruction();
+            if (m_rev < BVMC_CONSTANTINOPLE){
+                std::cout << m_rev << "  Create2" << std::endl;
+                BOOST_THROW_EXCEPTION(BadInstruction());;
+            }
             if (m_message->flags & BVMC_STATIC)
                 throwDisallowedStateChange();
 
@@ -305,9 +311,9 @@ void VM::interpretCases()
         {
             ON_OP();
             if (m_OP == Instruction::DELEGATECALL && m_rev < BVMC_HOMESTEAD)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             if (m_OP == Instruction::STATICCALL && m_rev < BVMC_BYZANTIUM)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             if (m_OP == Instruction::CALL && m_message->flags & BVMC_STATIC && m_SP[2] != 0)
                 throwDisallowedStateChange();
             m_bounce = &VM::caseCall;
@@ -332,7 +338,7 @@ void VM::interpretCases()
         {
             // Pre-byzantium
             if (m_rev < BVMC_BYZANTIUM)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             m_copyMemSize = 0;
@@ -346,28 +352,33 @@ void VM::interpretCases()
         }
         BREAK;
 
-        CASE(SUICIDE)
+        CASE(SELFDESTRUCT)
         {
             ON_OP();
             if (m_message->flags & BVMC_STATIC)
                 throwDisallowedStateChange();
 
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 5000 : 0;
-            bvmc_address destination = toBvmC(asAddress(m_SP[0]));
+            updateIOGas();
 
-            // After EIP158 zero-value suicides do not have to pay account creation gas.
-            u256 const balance =
-                fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
-            if (balance > 0 || m_rev < BVMC_SPURIOUS_DRAGON)
+            auto const destination = toBvmC(asAddress(m_SP[0]));
+
+            // Starting with EIP150 (Tangerine Whistle), self-destructs need to pay account creation
+            // gas. Starting with EIP158 (Spurious Dragon),
+            // 0-value selfdestructs don't have to pay this charge.
+            if (m_rev >= BVMC_TANGERINE_WHISTLE)
             {
-                int destinationExists =
-                    m_context->host->account_exists(m_context, &destination);
-                if (m_rev >= BVMC_TANGERINE_WHISTLE && !destinationExists)
-                    m_runGas += VMSchedule::callNewAccount;
+                if (m_rev == BVMC_TANGERINE_WHISTLE ||
+                    fromBvmC(m_host->get_balance(m_context, &m_message->destination)) > 0)
+                {
+                    if (!m_host->account_exists(m_context, &destination))
+                    {
+                        m_runGas = VMSchedule::callNewAccount;
+                        updateIOGas();
+                    }
+                }
             }
 
-            updateIOGas();
-            m_context->host->selfdestruct(m_context, &m_message->destination, &destination);
+            m_host->selfdestruct(m_context, &m_message->destination, &destination);
             m_bounce = nullptr;
         }
         BREAK
@@ -402,6 +413,7 @@ void VM::interpretCases()
             updateIOGas();
 
             *(h256*)&m_mem[(unsigned)m_SP[0]] = (h256)m_SP[1];
+
         }
         NEXT
 
@@ -420,12 +432,13 @@ void VM::interpretCases()
             ON_OP();
             constexpr int64_t sha3Gas = VMSchedule::sha3Gas;
             constexpr int64_t sha3WordGas = VMSchedule::sha3WordGas;
-            m_runGas = toInt63(sha3Gas + (u512(m_SP[1]) + 31) / 32 * sha3WordGas);
+            m_runGas = toInt63(sha3Gas + (bigint(m_SP[1]) + 31) / 32 * sha3WordGas);
             updateMem(memNeed(m_SP[0], m_SP[1]));
             updateIOGas();
 
             uint64_t inOff = (uint64_t)m_SP[0];
             uint64_t inSize = (uint64_t)m_SP[1];
+
             m_SPP[0] = (u256)sha3(bytesConstRef(m_mem.data() + inOff, inSize));
         }
         NEXT
@@ -442,8 +455,7 @@ void VM::interpretCases()
             uint8_t const* data = m_mem.data() + size_t(m_SP[0]);
             size_t dataSize = size_t(m_SP[1]);
 
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, nullptr, 0);
+            m_host->emit_log(m_context, &m_message->destination, data, dataSize, nullptr, 0);
         }
         NEXT
 
@@ -462,8 +474,7 @@ void VM::interpretCases()
             bvmc_uint256be topics[] = {toBvmC(m_SP[2])};
             size_t numTopics = sizeof(topics) / sizeof(topics[0]);
 
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_host->emit_log(m_context, &m_message->destination, data, dataSize, topics, numTopics);
         }
         NEXT
 
@@ -482,8 +493,7 @@ void VM::interpretCases()
             bvmc_uint256be topics[] = {toBvmC(m_SP[2]), toBvmC(m_SP[3])};
             size_t numTopics = sizeof(topics) / sizeof(topics[0]);
 
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_host->emit_log(m_context, &m_message->destination, data, dataSize, topics, numTopics);
         }
         NEXT
 
@@ -500,10 +510,10 @@ void VM::interpretCases()
             size_t dataSize = size_t(m_SP[1]);
 
             bvmc_uint256be topics[] = {toBvmC(m_SP[2]), toBvmC(m_SP[3]), toBvmC(m_SP[4])};
+
             size_t numTopics = sizeof(topics) / sizeof(topics[0]);
 
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_host->emit_log(m_context, &m_message->destination, data, dataSize, topics, numTopics);
         }
         NEXT
 
@@ -523,8 +533,7 @@ void VM::interpretCases()
                 toBvmC(m_SP[2]), toBvmC(m_SP[3]), toBvmC(m_SP[4]), toBvmC(m_SP[5])};
             size_t numTopics = sizeof(topics) / sizeof(topics[0]);
 
-            m_context->host->emit_log(
-                m_context, &m_message->destination, data, dataSize, topics, numTopics);
+            m_host->emit_log(m_context, &m_message->destination, data, dataSize, topics, numTopics);
         }
         NEXT
 
@@ -579,7 +588,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_SP[1] ? divWorkaround(m_SP[0], m_SP[1]) : 0;
+            m_SPP[0] = m_SP[1] ? m_SP[0] / m_SP[1] : 0;
         }
         NEXT
 
@@ -587,7 +596,7 @@ void VM::interpretCases()
         {
             ON_OP();
             updateIOGas();
-
+            
             m_SPP[0] = m_SP[1] ? s2u(divWorkaround(u2s(m_SP[0]), u2s(m_SP[1]))) : 0;
             --m_SP;
         }
@@ -598,7 +607,7 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_SP[1] ? modWorkaround(m_SP[0], m_SP[1]) : 0;
+            m_SPP[0] = m_SP[1] ? m_SP[0] % m_SP[1] : 0;
         }
         NEXT
 
@@ -606,7 +615,7 @@ void VM::interpretCases()
         {
             ON_OP();
             updateIOGas();
-
+            
             m_SPP[0] = m_SP[1] ? s2u(modWorkaround(u2s(m_SP[0]), u2s(m_SP[1]))) : 0;
         }
         NEXT
@@ -643,7 +652,9 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = u2s(m_SP[0]) < u2s(m_SP[1]) ? 1 : 0;
+            bool const lhsNeg = static_cast<bool>(m_SP[0] >> 255);
+            bool const rhsNeg = static_cast<bool>(m_SP[1] >> 255);
+            m_SPP[0] = (lhsNeg != rhsNeg) ? lhsNeg : m_SP[0] < m_SP[1];
         }
         NEXT
 
@@ -652,7 +663,9 @@ void VM::interpretCases()
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = u2s(m_SP[0]) > u2s(m_SP[1]) ? 1 : 0;
+            bool const lhsNeg = static_cast<bool>(m_SP[0] >> 255);
+            bool const rhsNeg = static_cast<bool>(m_SP[1] >> 255);
+            m_SPP[0] = (lhsNeg != rhsNeg) ? rhsNeg : m_SP[0] > m_SP[1];
         }
         NEXT
 
@@ -714,7 +727,7 @@ void VM::interpretCases()
         {
             // Pre-constantinople
             if (m_rev < BVMC_CONSTANTINOPLE)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -730,7 +743,7 @@ void VM::interpretCases()
         {
             // Pre-constantinople
             if (m_rev < BVMC_CONSTANTINOPLE)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -746,7 +759,7 @@ void VM::interpretCases()
         {
             // Pre-constantinople
             if (m_rev < BVMC_CONSTANTINOPLE)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -820,7 +833,7 @@ void VM::interpretCases()
         CASE(GETLOCAL)
         CASE(PUTLOCAL)
         {
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
         }
         CONTINUE
 
@@ -858,7 +871,7 @@ void VM::interpretCases()
         CASE(XSWIZZLE)
         CASE(XSHUFFLE)
         {
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
         }
         CONTINUE
 
@@ -882,12 +895,11 @@ void VM::interpretCases()
 
         CASE(BALANCE)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 400 : 20;
             ON_OP();
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-            m_SPP[0] = fromBvmC(m_context->host->get_balance(m_context, &address));
+            auto const address = toBvmC(asAddress(m_SP[0]));
+            m_SPP[0] = fromBvmC(m_host->get_balance(m_context, &address));
         }
         NEXT
 
@@ -919,12 +931,13 @@ void VM::interpretCases()
             size_t const dataSize = m_message->input_size;
             uint8_t const* const data = m_message->input_data;
 
-            if (u512(m_SP[0]) + 31 < dataSize)
+            if (bigint(m_SP[0]) + 31 < dataSize)
                 m_SP[0] = (u256)*(h256 const*)(data + (size_t)m_SP[0]);
             else if (m_SP[0] >= dataSize)
-                m_SP[0] = u256(0);
+                m_SP[0] = 0;
             else
-            {     h256 r;
+            {
+                h256 r;
                 for (uint64_t i = (uint64_t)m_SP[0], e = (uint64_t)m_SP[0] + (uint64_t)32, j = 0; i < e; ++i, ++j)
                     r[j] = i < dataSize ? data[i] : 0;
                 m_SP[0] = (u256)r;
@@ -945,7 +958,7 @@ void VM::interpretCases()
         CASE(RETURNDATASIZE)
         {
             if (m_rev < BVMC_BYZANTIUM)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             ON_OP();
             updateIOGas();
@@ -965,13 +978,12 @@ void VM::interpretCases()
 
         CASE(EXTCODESIZE)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 700 : 20;
             ON_OP();
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
+            auto const address = toBvmC(asAddress(m_SP[0]));
 
-            m_SPP[0] = m_context->host->get_code_size(m_context, &address);
+            m_SPP[0] = m_host->get_code_size(m_context, &address);
         }
         NEXT
 
@@ -991,7 +1003,7 @@ void VM::interpretCases()
         {
             ON_OP();
             if (m_rev < BVMC_BYZANTIUM)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
             bigint const endOfAccess = bigint(m_SP[1]) + bigint(m_SP[2]);
             if (m_returnData.size() < endOfAccess)
                 throwBufferOverrun(endOfAccess);
@@ -1008,12 +1020,12 @@ void VM::interpretCases()
         {
             ON_OP();
             if (m_rev < BVMC_CONSTANTINOPLE)
-                throwBadInstruction();
+                BOOST_THROW_EXCEPTION(BadInstruction());;
 
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
-            m_SPP[0] = fromBvmC(m_context->host->get_code_hash(m_context, &address));
+            auto const address = toBvmC(asAddress(m_SP[0]));
+            m_SPP[0] = fromBvmC(m_host->get_code_hash(m_context, &address));
         }
         NEXT
 
@@ -1031,13 +1043,12 @@ void VM::interpretCases()
         CASE(EXTCODECOPY)
         {
             ON_OP();
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 700 : 20;
             uint64_t copyMemSize = toInt63(m_SP[3]);
             m_copyMemSize = copyMemSize;
             updateMem(memNeed(m_SP[1], m_SP[3]));
             updateIOGas();
 
-            bvmc_address address = toBvmC(asAddress(m_SP[0]));
+            auto const address = toBvmC(asAddress(m_SP[0]));
 
             size_t memoryOffset = static_cast<size_t>(m_SP[1]);
             constexpr size_t codeOffsetMax = std::numeric_limits<size_t>::max();
@@ -1045,8 +1056,8 @@ void VM::interpretCases()
                 m_SP[2] > codeOffsetMax ? codeOffsetMax : static_cast<size_t>(m_SP[2]);
             size_t size = static_cast<size_t>(copyMemSize);
 
-            size_t numCopied = m_context->host->copy_code(
-                m_context, &address, codeOffset, &m_mem[memoryOffset], size);
+            size_t numCopied =
+                m_host->copy_code(m_context, &address, codeOffset, &m_mem[memoryOffset], size);
 
             std::fill_n(&m_mem[memoryOffset + numCopied], size - numCopied, 0);
         }
@@ -1073,7 +1084,7 @@ void VM::interpretCases()
 
             if (number < blockNumber && number >= std::max(int64_t(256), blockNumber) - 256)
             {
-                m_SPP[0] = fromBvmC(m_context->host->get_block_hash(m_context, int64_t(number)));
+                m_SPP[0] = fromBvmC(m_host->get_block_hash(m_context, int64_t(number)));
             }
             else
                 m_SPP[0] = 0;
@@ -1125,6 +1136,32 @@ void VM::interpretCases()
         }
         NEXT
 
+
+        CASE(CHAINID)
+        {
+            ON_OP();
+
+            if (m_rev < BVMC_ISTANBUL)
+                BOOST_THROW_EXCEPTION(BadInstruction());;
+
+            updateIOGas();
+
+            m_SPP[0] = fromBvmC(getTxContext().chain_id);
+        }
+        NEXT
+
+        CASE(SELFBALANCE)
+        {
+            ON_OP();
+
+            if (m_rev < BVMC_ISTANBUL)
+                BOOST_THROW_EXCEPTION(BadInstruction());;
+
+            updateIOGas();
+            m_SPP[0] = fromBvmC(m_host->get_balance(m_context, &m_message->destination));
+        }
+        NEXT
+
         CASE(POP)
         {
             ON_OP();
@@ -1136,7 +1173,7 @@ void VM::interpretCases()
 
         CASE(PUSHC)
         {
-#if BVM_USE_CONSTANT_POOL
+#if EVM_USE_CONSTANT_POOL
             ON_OP();
             updateIOGas();
 
@@ -1150,7 +1187,7 @@ void VM::interpretCases()
             m_SPP[0] = m_pool[off];
             TRACE_VAL(2, "Retrieved pooled const", m_SPP[0]);
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
@@ -1231,20 +1268,20 @@ void VM::interpretCases()
 
         CASE(JUMPC)
         {
-#if BVM_REPLACE_CONST_JUMP
+#if EVM_REPLACE_CONST_JUMP
             ON_OP();
             updateIOGas();
 
             m_PC = uint64_t(m_SP[0]);
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
 
         CASE(JUMPCI)
         {
-#if BVM_REPLACE_CONST_JUMP
+#if EVM_REPLACE_CONST_JUMP
             ON_OP();
             updateIOGas();
 
@@ -1253,7 +1290,7 @@ void VM::interpretCases()
             else
                 ++m_PC;
 #else
-            throwBadInstruction();
+            BOOST_THROW_EXCEPTION(BadInstruction());;
 #endif
         }
         CONTINUE
@@ -1316,11 +1353,10 @@ void VM::interpretCases()
 
         CASE(SLOAD)
         {
-            m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 200 : 50;
             ON_OP();
             updateIOGas();
 
-            bvmc_uint256be key = toBvmC(m_SP[0]);
+            auto const key = toBvmC(m_SP[0]);
             m_SPP[0] =
                 fromBvmC(m_context->host->get_storage(m_context, &m_message->destination, &key));
         }
@@ -1332,22 +1368,29 @@ void VM::interpretCases()
             if (m_message->flags & BVMC_STATIC)
                 throwDisallowedStateChange();
 
-            bvmc_uint256be const key = toBvmC(m_SP[0]);
-            bvmc_uint256be const value = toBvmC(m_SP[1]);
-            auto const status =
-                m_context->host->set_storage(m_context, &m_message->destination, &key, &value);
+            if (m_rev >= BVMC_ISTANBUL && m_io_gas <= VMSchedule::callStipend)
+                throwOutOfGas();
 
-            if (status == BVMC_STORAGE_ADDED)
-                m_runGas = VMSchedule::sstoreSetGas;
-            else if (status == BVMC_STORAGE_MODIFIED || status == BVMC_STORAGE_DELETED)
-                m_runGas = VMSchedule::sstoreResetGas;
-            else if (status == BVMC_STORAGE_UNCHANGED && m_rev < BVMC_CONSTANTINOPLE)
-                m_runGas = VMSchedule::sstoreResetGas;
-            else
+            auto const key = toBvmC(m_SP[0]);
+            auto const value = toBvmC(m_SP[1]);
+            auto const status =
+                m_host->set_storage(m_context, &m_message->destination, &key, &value);
+
+            switch(status)
             {
-                assert(status == BVMC_STORAGE_UNCHANGED || status == BVMC_STORAGE_MODIFIED_AGAIN);
-                assert(m_rev >= BVMC_CONSTANTINOPLE);
-                m_runGas = VMSchedule::sstoreUnchangedGas;
+            case BVMC_STORAGE_ADDED:
+                m_runGas = VMSchedule::sstoreSetGas;
+                break;
+            case BVMC_STORAGE_MODIFIED:
+            case BVMC_STORAGE_DELETED:
+                m_runGas = VMSchedule::sstoreResetGas;
+                break;
+            case BVMC_STORAGE_UNCHANGED:
+            case BVMC_STORAGE_MODIFIED_AGAIN:
+                m_runGas = (m_rev == BVMC_CONSTANTINOPLE || m_rev >= BVMC_ISTANBUL) ?
+                               (*m_metrics)[OP_SLOAD].gas_cost :
+                               VMSchedule::sstoreResetGas;
+                break;
             }
 
             updateIOGas();
@@ -1392,7 +1435,10 @@ void VM::interpretCases()
         CASE(INVALID)
         DEFAULT
         {
-            throwBadInstruction();
+            if (m_OP == Instruction::INVALID)
+                throwInvalidInstruction();
+            else
+                BOOST_THROW_EXCEPTION(BadInstruction());;
         }
     }
     WHILE_CASES

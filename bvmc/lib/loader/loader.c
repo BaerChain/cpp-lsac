@@ -1,63 +1,130 @@
+/* BVMC: Ethereum Client-VM Connector API.
+ * Copyright 2018-2019 The BVMC Authors.
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 #include <bvmc/loader.h>
 
 #include <bvmc/bvmc.h>
 #include <bvmc/helpers.h>
 
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
-#if _WIN32
+#if defined(BVMC_LOADER_MOCK)
+#include "../../test/unittests/loader_mock.h"
+#elif _WIN32
 #include <Windows.h>
 #define DLL_HANDLE HMODULE
 #define DLL_OPEN(filename) LoadLibrary(filename)
 #define DLL_CLOSE(handle) FreeLibrary(handle)
 #define DLL_GET_CREATE_FN(handle, name) (bvmc_create_fn)(uintptr_t) GetProcAddress(handle, name)
-#define HAVE_STRCPY_S 1
+#define DLL_GET_ERROR_MSG() NULL
 #else
 #include <dlfcn.h>
 #define DLL_HANDLE void*
 #define DLL_OPEN(filename) dlopen(filename, RTLD_LAZY)
 #define DLL_CLOSE(handle) dlclose(handle)
 #define DLL_GET_CREATE_FN(handle, name) (bvmc_create_fn)(uintptr_t) dlsym(handle, name)
-#define HAVE_STRCPY_S 0
+#define DLL_GET_ERROR_MSG() dlerror()
 #endif
+
+#ifdef __has_attribute
+#if __has_attribute(format)
+#define ATTR_FORMAT(archetype, string_index, first_to_check) \
+    __attribute__((format(archetype, string_index, first_to_check)))
+#endif
+#endif
+
+#ifndef ATTR_FORMAT
+#define ATTR_FORMAT(...)
+#endif
+
+/*
+ * Limited variant of strcpy_s().
+ */
+#if !defined(BVMC_LOADER_MOCK)
+static
+#endif
+    int
+    strcpy_sx(char* dest, size_t destsz, const char* src)
+{
+    size_t len = strlen(src);
+    if (len >= destsz)
+    {
+        // The input src will not fit into the dest buffer.
+        // Set the first byte of the dest to null to make it effectively empty string
+        // and return error.
+        dest[0] = 0;
+        return 1;
+    }
+    memcpy(dest, src, len);
+    dest[len] = 0;
+    return 0;
+}
 
 #define PATH_MAX_LENGTH 4096
 
-#if !HAVE_STRCPY_S
-static void strcpy_s(char* dest, size_t destsz, const char* src)
+static const char* last_error_msg = NULL;
+
+#define LAST_ERROR_MSG_BUFFER_SIZE 511
+
+// Buffer for formatted error messages.
+// It has one null byte extra to avoid buffer read overflow during concurrent access.
+static char last_error_msg_buffer[LAST_ERROR_MSG_BUFFER_SIZE + 1];
+
+ATTR_FORMAT(printf, 2, 3)
+static enum bvmc_loader_error_code set_error(enum bvmc_loader_error_code error_code,
+                                             const char* format,
+                                             ...)
 {
-    size_t len = strlen(src);
-    if (len > destsz - 1)
-        len = destsz - 1;
-    memcpy(dest, src, len);
-    dest[len] = 0;
+    va_list args;
+    va_start(args, format);
+    if (vsnprintf(last_error_msg_buffer, LAST_ERROR_MSG_BUFFER_SIZE, format, args) <
+        LAST_ERROR_MSG_BUFFER_SIZE)
+        last_error_msg = last_error_msg_buffer;
+    va_end(args);
+    return error_code;
 }
-#endif
 
 
 bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* error_code)
 {
+    last_error_msg = NULL;  // Reset last error.
     enum bvmc_loader_error_code ec = BVMC_LOADER_SUCCESS;
     bvmc_create_fn create_fn = NULL;
 
     if (!filename)
     {
-        ec = BVMC_LOADER_INVALID_ARGUMENT;
+        ec = set_error(BVMC_LOADER_INVALID_ARGUMENT, "invalid argument: file name cannot be null");
         goto exit;
     }
 
     const size_t length = strlen(filename);
-    if (length == 0 || length > PATH_MAX_LENGTH)
+    if (length == 0)
     {
-        ec = BVMC_LOADER_INVALID_ARGUMENT;
+        ec = set_error(BVMC_LOADER_INVALID_ARGUMENT, "invalid argument: file name cannot be empty");
+        goto exit;
+    }
+    else if (length > PATH_MAX_LENGTH)
+    {
+        ec = set_error(BVMC_LOADER_INVALID_ARGUMENT,
+                       "invalid argument: file name is too long (%d, maximum allowed length is %d)",
+                       (int)length, PATH_MAX_LENGTH);
         goto exit;
     }
 
     DLL_HANDLE handle = DLL_OPEN(filename);
     if (!handle)
     {
-        ec = BVMC_LOADER_CANNOT_OPEN;
+        // Get error message if available.
+        last_error_msg = DLL_GET_ERROR_MSG();
+        if (last_error_msg)
+            ec = BVMC_LOADER_CANNOT_OPEN;
+        else
+            ec = set_error(BVMC_LOADER_CANNOT_OPEN, "cannot open %s", filename);
         goto exit;
     }
 
@@ -65,7 +132,7 @@ bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* erro
     const char prefix[] = "bvmc_create_";
     const size_t prefix_length = strlen(prefix);
     char prefixed_name[sizeof(prefix) + PATH_MAX_LENGTH];
-    strcpy_s(prefixed_name, sizeof(prefixed_name), prefix);
+    strcpy_sx(prefixed_name, sizeof(prefixed_name), prefix);
 
     // Find filename in the path.
     const char* sep_pos = strrchr(filename, '/');
@@ -83,10 +150,10 @@ bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* erro
         name_pos += lib_prefix_length;
 
     char* base_name = prefixed_name + prefix_length;
-    strcpy_s(base_name, PATH_MAX_LENGTH, name_pos);
+    strcpy_sx(base_name, PATH_MAX_LENGTH, name_pos);
 
-    // Trim the file extension.
-    char* ext_pos = strrchr(prefixed_name, '.');
+    // Trim all file extensions.
+    char* ext_pos = strchr(prefixed_name, '.');
     if (ext_pos)
         *ext_pos = 0;
 
@@ -96,15 +163,7 @@ bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* erro
         *dash_pos++ = '_';
 
     // Search for the built function name.
-    while ((create_fn = DLL_GET_CREATE_FN(handle, prefixed_name)) == NULL)
-    {
-        // Shorten the base name by skipping the `word_` segment.
-        const char* shorter_name_pos = strchr(base_name, '_');
-        if (!shorter_name_pos)
-            break;
-
-        memmove(base_name, shorter_name_pos + 1, strlen(shorter_name_pos) + 1);
-    }
+    create_fn = DLL_GET_CREATE_FN(handle, prefixed_name);
 
     if (!create_fn)
         create_fn = DLL_GET_CREATE_FN(handle, "bvmc_create");
@@ -112,7 +171,8 @@ bvmc_create_fn bvmc_load(const char* filename, enum bvmc_loader_error_code* erro
     if (!create_fn)
     {
         DLL_CLOSE(handle);
-        ec = BVMC_LOADER_SYMBOL_NOT_FOUND;
+        ec = set_error(BVMC_LOADER_SYMBOL_NOT_FOUND, "BVMC create function not found in %s",
+                       filename);
     }
 
 exit:
@@ -121,26 +181,139 @@ exit:
     return create_fn;
 }
 
-struct bvmc_instance* bvmc_load_and_create(const char* filename,
-                                           enum bvmc_loader_error_code* error_code)
+const char* bvmc_last_error_msg()
 {
+    const char* m = last_error_msg;
+    last_error_msg = NULL;
+    return m;
+}
+
+struct bvmc_vm* bvmc_load_and_create(const char* filename, enum bvmc_loader_error_code* error_code)
+{
+    // First load the DLL. This also resets the last_error_msg;
     bvmc_create_fn create_fn = bvmc_load(filename, error_code);
 
     if (!create_fn)
         return NULL;
 
-    struct bvmc_instance* instance = create_fn();
-    if (!instance)
+    enum bvmc_loader_error_code ec = BVMC_LOADER_SUCCESS;
+
+    struct bvmc_vm* vm = create_fn();
+    if (!vm)
     {
-        *error_code = BVMC_LOADER_INSTANCE_CREATION_FAILURE;
-        return NULL;
+        ec = set_error(BVMC_LOADER_VM_CREATION_FAILURE, "creating BVMC VM of %s has failed",
+                       filename);
+        goto exit;
     }
 
-    if (!bvmc_is_abi_compatible(instance))
+    if (!bvmc_is_abi_compatible(vm))
     {
-        *error_code = BVMC_LOADER_ABI_VERSION_MISMATCH;
-        return NULL;
+        ec = set_error(BVMC_LOADER_ABI_VERSION_MISMATCH,
+                       "BVMC ABI version %d of %s mismatches the expected version %d",
+                       vm->abi_version, filename, BVMC_ABI_VERSION);
+        bvmc_destroy(vm);
+        vm = NULL;
+        goto exit;
     }
 
-    return instance;
+exit:
+    if (error_code)
+        *error_code = ec;
+
+    return vm;
+}
+
+/// Gets the token delimited by @p delim character of the string pointed by the @p str_ptr.
+/// If the delimiter is not found, the whole string is returned.
+/// The @p str_ptr is also slided after the delimiter or to the string end
+/// if the delimiter is not found (in this case the @p str_ptr points to an empty string).
+static char* get_token(char** str_ptr, char delim)
+{
+    char* str = *str_ptr;
+    char* delim_pos = strchr(str, delim);
+    if (delim_pos)
+    {
+        // If the delimiter is found, null it to get null-terminated prefix
+        // and slide the str_ptr after the delimiter.
+        *delim_pos = '\0';
+        *str_ptr = delim_pos + 1;
+    }
+    else
+    {
+        // Otherwise, slide the str_ptr to the end and return the whole string as the prefix.
+        *str_ptr += strlen(str);
+    }
+    return str;
+}
+
+struct bvmc_vm* bvmc_load_and_configure(const char* config, enum bvmc_loader_error_code* error_code)
+{
+    enum bvmc_loader_error_code ec = BVMC_LOADER_SUCCESS;
+    struct bvmc_vm* vm = NULL;
+
+    char config_copy_buffer[PATH_MAX_LENGTH];
+    if (strcpy_sx(config_copy_buffer, sizeof(config_copy_buffer), config) != 0)
+    {
+        ec = set_error(BVMC_LOADER_INVALID_ARGUMENT,
+                       "invalid argument: configuration is too long (maximum allowed length is %d)",
+                       (int)sizeof(config_copy_buffer));
+        goto exit;
+    }
+
+    char* options = config_copy_buffer;
+    const char* path = get_token(&options, ',');
+
+    vm = bvmc_load_and_create(path, error_code);
+    if (!vm)
+        return NULL;
+
+    if (vm->set_option == NULL && strlen(options) != 0)
+    {
+        ec = set_error(BVMC_LOADER_INVALID_OPTION_NAME, "%s (%s) does not support any options",
+                       vm->name, path);
+        goto exit;
+    }
+
+
+    while (strlen(options) != 0)
+    {
+        char* option = get_token(&options, ',');
+
+        // Slit option into name and value by taking the name token.
+        // The option variable will have the value, can be empty.
+        const char* name = get_token(&option, '=');
+
+        enum bvmc_set_option_result r = vm->set_option(vm, name, option);
+        switch (r)
+        {
+        case BVMC_SET_OPTION_SUCCESS:
+            break;
+        case BVMC_SET_OPTION_INVALID_NAME:
+            ec = set_error(BVMC_LOADER_INVALID_OPTION_NAME, "%s (%s): unknown option '%s'",
+                           vm->name, path, name);
+            goto exit;
+        case BVMC_SET_OPTION_INVALID_VALUE:
+            ec = set_error(BVMC_LOADER_INVALID_OPTION_VALUE,
+                           "%s (%s): unsupported value '%s' for option '%s'", vm->name, path,
+                           option, name);
+            goto exit;
+
+        default:
+            ec = set_error(BVMC_LOADER_INVALID_OPTION_VALUE,
+                           "%s (%s): unknown error when setting value '%s' for option '%s'",
+                           vm->name, path, option, name);
+            goto exit;
+        }
+    }
+
+exit:
+    if (error_code)
+        *error_code = ec;
+
+    if (ec == BVMC_LOADER_SUCCESS)
+        return vm;
+
+    if (vm)
+        bvmc_destroy(vm);
+    return NULL;
 }

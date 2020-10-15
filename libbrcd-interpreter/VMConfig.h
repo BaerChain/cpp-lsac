@@ -1,60 +1,63 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2016-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
 #pragma once
 
 namespace dev
 {
-namespace brc
+namespace eth
 {
 ///////////////////////////////////////////////////////////////////////////////
 //
 // interpreter configuration macros for development, optimizations and tracing
 //
-// BVM_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
+// EVM_OPTIMIZE           - all optimizations off when false (TO DO - MAKE DYNAMIC)
 //
-// BVM_SWITCH_DISPATCH    - dispatch via loop and switch
-// BVM_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
+// EVM_SWITCH_DISPATCH    - dispatch via loop and switch
+// EVM_JUMP_DISPATCH      - dispatch via a jump table - available only on GCC
 //
-// BVM_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
+// EVM_USE_CONSTANT_POOL  - constants unpacked and ready to assign to stack
 //
-// BVM_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
+// EVM_REPLACE_CONST_JUMP - pre-verified jumps to save runtime lookup
 //
-// BVM_TRACE              - provides various levels of tracing
+// EVM_TRACE              - provides various levels of tracing
 
-#ifndef BVM_JUMP_DISPATCH
+#ifndef EVM_JUMP_DISPATCH
 #ifdef __GNUC__
-#define BVM_JUMP_DISPATCH true
+#define EVM_JUMP_DISPATCH true
 #else
-#define BVM_JUMP_DISPATCH false
+#define EVM_JUMP_DISPATCH false
 #endif
 #endif
-#if BVM_JUMP_DISPATCH
+#if EVM_JUMP_DISPATCH
 #ifndef __GNUC__
 #error "address of label extension available only on Gnu"
 #endif
 #else
-#define BVM_SWITCH_DISPATCH true
+#define EVM_SWITCH_DISPATCH true
 #endif
 
-#ifndef BVM_OPTIMIZE
-#define BVM_OPTIMIZE false
+#ifndef EVM_OPTIMIZE
+#define EVM_OPTIMIZE false
 #endif
-#if BVM_OPTIMIZE
-#define BVM_REPLACE_CONST_JUMP true
-#define BVM_USE_CONSTANT_POOL true
-#define BVM_DO_FIRST_PASS_OPTIMIZATION (BVM_REPLACE_CONST_JUMP || BVM_USE_CONSTANT_POOL)
+#if EVM_OPTIMIZE
+#define EVM_REPLACE_CONST_JUMP true
+#define EVM_USE_CONSTANT_POOL true
+#define EVM_DO_FIRST_PASS_OPTIMIZATION (EVM_REPLACE_CONST_JUMP || EVM_USE_CONSTANT_POOL)
 #endif
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// set BVM_TRACE to 3, 2, 1, or 0 for lots to no tracing to cerr
+// set EVM_TRACE to 3, 2, 1, or 0 for lots to no tracing to cerr
 //
-#ifndef BVM_TRACE
-#define BVM_TRACE 0
+#ifndef EVM_TRACE
+#define EVM_TRACE 0
 #endif
-#if BVM_TRACE > 0
+#if EVM_TRACE > 0
 
 #undef ON_OP
-#if BVM_TRACE > 2
+#if EVM_TRACE > 2
 #define ON_OP() \
     (cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo(m_OP).name << endl)
 #else
@@ -62,22 +65,22 @@ namespace brc
 #endif
 
 #define TRACE_STR(level, str) \
-    if ((level) <= BVM_TRACE) \
+    if ((level) <= EVM_TRACE) \
         cerr << "$$$ " << (str) << endl;
 
 #define TRACE_VAL(level, name, val) \
-    if ((level) <= BVM_TRACE)       \
+    if ((level) <= EVM_TRACE)       \
         cerr << "=== " << (name) << " " << hex << (val) << endl;
 #define TRACE_OP(level, pc, op) \
-    if ((level) <= BVM_TRACE)   \
+    if ((level) <= EVM_TRACE)   \
         cerr << "*** " << (pc) << " " << instructionInfo(op).name << endl;
 
 #define TRACE_PRE_OPT(level, pc, op) \
-    if ((level) <= BVM_TRACE)        \
+    if ((level) <= EVM_TRACE)        \
         cerr << "<<< " << (pc) << " " << instructionInfo(op).name << endl;
 
 #define TRACE_POST_OPT(level, pc, op) \
-    if ((level) <= BVM_TRACE)         \
+    if ((level) <= EVM_TRACE)         \
         cerr << ">>> " << (pc) << " " << instructionInfo(op).name << endl;
 #else
 #define TRACE_STR(level, str)
@@ -90,11 +93,11 @@ namespace brc
 
 // Executive swallows exceptions in some circumstances
 #if 0
-#define THROW_EXCEPTION(X) ((cerr << "!!! BVM EXCEPTION " << (X).what() << endl), abort())
+#define THROW_EXCEPTION(X) ((cerr << "!!! EVM EXCEPTION " << (X).what() << endl), abort())
 #else
-#if BVM_TRACE > 0
+#if EVM_TRACE > 0
 #define THROW_EXCEPTION(X) \
-    ((cerr << "!!! BVM EXCEPTION " << (X).what() << endl), BOOST_THROW_EXCEPTION(X))
+    ((cerr << "!!! EVM EXCEPTION " << (X).what() << endl), BOOST_THROW_EXCEPTION(X))
 #else
 #define THROW_EXCEPTION(X) BOOST_THROW_EXCEPTION(X)
 #endif
@@ -105,7 +108,7 @@ namespace brc
 //
 // build a simple loop-and-switch interpreter
 //
-#if BVM_SWITCH_DISPATCH
+#if EVM_SWITCH_DISPATCH
 
 #define INIT_CASES
 #define DO_CASES            \
@@ -131,7 +134,7 @@ namespace brc
 // build an indirect-threaded interpreter using a jump table of
 // label addresses (a gcc extension)
 //
-#elif BVM_JUMP_DISPATCH
+#elif EVM_JUMP_DISPATCH
 
 #define INIT_CASES                              \
                                                 \
@@ -206,8 +209,8 @@ namespace brc
         &&NUMBER,                               \
         &&DIFFICULTY,                           \
         &&GASLIMIT,                             \
-        &&INVALID,                              \
-        &&INVALID,                              \
+        &&CHAINID,                              \
+        &&SELFBALANCE,                          \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
@@ -391,7 +394,7 @@ namespace brc
         &&INVALID,                              \
         &&REVERT,                               \
         &&INVALID,                              \
-        &&SUICIDE,                              \
+        &&SELFDESTRUCT,                         \
     };
 
 #define DO_CASES        \

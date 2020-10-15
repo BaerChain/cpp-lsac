@@ -151,15 +151,11 @@ CreateResult ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, I
     return {transactionExceptionToBvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress()};
 }
 
-void ExtVM::suicide(Address _a)
+void ExtVM::selfdestruct(Address _a)
 {
-//    m_s.addBalance(_a, m_s.balance(myAddress));
-//    m_s.setBalance(myAddress, 0);
-
-    m_s.addBRC(_a, m_s.BRC(myAddress));
-    m_s.setBRC(myAddress, 0);
-
-    ExtVMFace::suicide(_a);
+    m_s.addBalance(_a, m_s.balance(myAddress));
+    m_s.setBalance(myAddress, 0);
+    ExtVMFace::selfdestruct(_a);
 }
 
 h256 ExtVM::blockHash(u256 _number)

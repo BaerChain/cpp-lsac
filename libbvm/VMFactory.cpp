@@ -1,3 +1,7 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2014-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
+
 #include "VMFactory.h"
 #include "BVMC.h"
 #include "LegacyVM.h"
@@ -60,8 +64,8 @@ void setVMKind(const std::string& _name)
     g_bvmcDll.reset();
 
     bvmc_loader_error_code ec;
-    bvmc_instance *instance = bvmc_load_and_create(_name.c_str(), &ec);
-    assert(ec == BVMC_LOADER_SUCCESS || instance == nullptr);
+    bvmc_vm* vm = bvmc_load_and_create(_name.c_str(), &ec);
+    assert(ec == BVMC_LOADER_SUCCESS || vm == nullptr);
 
     switch (ec)
     {
@@ -82,7 +86,7 @@ void setVMKind(const std::string& _name)
                 "loading " + _name + " failed"));
     }
 
-    g_bvmcDll.reset(new BVMC{instance});
+    g_bvmcDll.reset(new BVMC{vm});
 
     cnote << "Loaded BVMC module: " << g_bvmcDll->name() << " " << g_bvmcDll->version() << " ("
           << _name << ")";
@@ -102,7 +106,7 @@ std::vector<std::pair<std::string, std::string>> s_bvmcOptions;
 /// `--bvmc name=value` or `--bvmc=name=value`. The boost pass the strings
 /// of `name=value` here. This function splits the name and value or reports
 /// the syntax error if the `=` character is missing.
-void parseBvmcOptions(const std::vector<std::string>& _opts)
+void parseEvmcOptions(const std::vector<std::string>& _opts)
 {
     for (auto& s : _opts)
     {
@@ -150,7 +154,7 @@ po::options_description vmProgramOptions(unsigned _lineLength)
         po::value<std::vector<std::string>>()
             ->multitoken()
             ->value_name("<option>=<value>")
-            ->notifier(parseBvmcOptions),
+            ->notifier(parseEvmcOptions),
         "BVMC option\n");
 
     return opts;

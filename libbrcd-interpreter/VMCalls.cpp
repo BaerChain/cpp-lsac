@@ -27,6 +27,11 @@ void VM::throwOutOfGas()
     BOOST_THROW_EXCEPTION(OutOfGas());
 }
 
+void VM::throwInvalidInstruction()
+{
+    BOOST_THROW_EXCEPTION(InvalidInstruction());
+}
+
 void VM::throwBadInstruction()
 {
     BOOST_THROW_EXCEPTION(BadInstruction());
@@ -45,13 +50,13 @@ void VM::throwDisallowedStateChange()
 // throwBadStack is called from fetchInstruction() -> adjustStack()
 // its the only exception that can happen before ON_OP() log is done for an opcode case in VM.cpp
 // so the call to m_onFail is needed here
-void VM::throwBadStack(int _removed, int _added)
+void VM::throwBadStack(int _required, int _change)
 {
     bigint size = m_stackEnd - m_SPP;
-    if (size < _removed)
-        BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_removed, size));
+    if (size < _required)
+        BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_required, size));
     else
-        BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_added - _removed), size));
+        BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)_change, size));
 }
 
 void VM::throwRevertInstruction(owning_bytes_ref&& _output)
@@ -63,7 +68,8 @@ void VM::throwRevertInstruction(owning_bytes_ref&& _output)
 
 void VM::throwBufferOverrun(bigint const& _endOfAccess)
 {
-    BOOST_THROW_EXCEPTION(BufferOverrun() << RequirementError(_endOfAccess, bigint(m_returnData.size())));
+    BOOST_THROW_EXCEPTION(
+        BufferOverrun() << RequirementError(_endOfAccess, bigint(m_returnData.size())));
 }
 
 int64_t VM::verifyJumpDest(u256 const& _dest, bool _throw)
@@ -111,7 +117,7 @@ void VM::caseCreate()
     // Clear the return data buffer. This will not free the memory.
     m_returnData.clear();
 
-    u256 const balance = fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
+    auto const balance = fromBvmC(m_host->get_balance(m_context, &m_message->destination));
     if (balance >= endowment && m_message->depth < 1024)
     {
         bvmc_message msg = {};
@@ -131,7 +137,7 @@ void VM::caseCreate()
         msg.kind = m_OP == Instruction::CREATE ? BVMC_CREATE : BVMC_CREATE2;  // FIXME: In BVMC move the kind to the top.
         msg.value = toBvmC(endowment);
 
-        bvmc_result result = m_context->host->call(m_context, &msg);
+        bvmc_result result = m_host->call(m_context, &msg);
 
         if (result.status_code == BVMC_SUCCESS)
             m_SPP[0] = fromAddress(fromBvmC(result.create_address));
@@ -161,7 +167,7 @@ void VM::caseCall()
     bytesRef output;
     if (caseCallSetup(msg, output))
     {
-        bvmc_result result = m_context->host->call(m_context, &msg);
+        bvmc_result result = m_host->call(m_context, &msg);
 
         m_returnData.assign(result.output_data, result.output_data + result.output_size);
         bytesConstRef{&m_returnData}.copyTo(output);
@@ -182,7 +188,11 @@ void VM::caseCall()
 
 bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
 {
-    m_runGas = m_rev >= BVMC_TANGERINE_WHISTLE ? 700 : 40;
+    auto const destination = toBvmC(asAddress(m_SP[1]));
+
+    // Check for call-to-self (eip1380) and adjust gas accordingly
+    if (m_rev >= BVMC_BERLIN && m_message->destination == destination)
+        m_runGas = VMSchedule::callSelfGas;
 
     switch (m_OP)
     {
@@ -204,13 +214,10 @@ bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
 
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
-    bvmc_address destination = toBvmC(asAddress(m_SP[1]));
-    int destinationExists = m_context->host->account_exists(m_context, &destination);
-
-    if (m_OP == Instruction::CALL && !destinationExists)
+    if (m_OP == Instruction::CALL && (m_SP[2] > 0 || m_rev < BVMC_SPURIOUS_DRAGON) &&
+        !m_host->account_exists(m_context, &destination))
     {
-        if (m_SP[2] > 0 || m_rev < BVMC_SPURIOUS_DRAGON)
-            m_runGas += VMSchedule::callNewAccount;
+        m_runGas += VMSchedule::callNewAccount;
     }
 
     if (haveValueArg && m_SP[2] > 0)
@@ -241,6 +248,7 @@ bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
     m_runGas = o_msg.gas;
     updateIOGas();
 
+    o_msg.depth = m_message->depth + 1;
     o_msg.destination = destination;
     o_msg.sender = m_message->destination;
     o_msg.input_data = m_mem.data() + size_t(inputOffset);
@@ -255,8 +263,8 @@ bool VM::caseCallSetup(bvmc_message& o_msg, bytesRef& o_output)
             o_msg.value = toBvmC(m_SP[2]);
             o_msg.gas += VMSchedule::callStipend;
             {
-                u256 const balance =
-                    fromBvmC(m_context->host->get_balance(m_context, &m_message->destination));
+                auto const balance =
+                    fromBvmC(m_host->get_balance(m_context, &m_message->destination));
                 balanceOk = balance >= value;
             }
         }

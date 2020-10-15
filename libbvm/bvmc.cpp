@@ -1,3 +1,6 @@
+// Aleth: Ethereum C++ client, tools and libraries.
+// Copyright 2014-2019 Aleth Authors.
+// Licensed under the GNU General Public License, Version 3.
 #include "BVMC.h"
 
 #include <libdevcore/Log.h>
@@ -7,15 +10,37 @@ namespace dev
 {
 namespace brc
 {
-BRC::BRC(bvmc_instance* _instance) noexcept : m_instance(_instance)
+namespace
 {
-    assert(m_instance != nullptr);
-    assert(bvmc_is_abi_compatible(m_instance));
+bvmc_revision toRevision(BRCSchedule const& _schedule) noexcept
+{
+    if (_schedule.haveChainID)
+        return BVMC_ISTANBUL;
+    if (_schedule.haveCreate2 && !_schedule.eip1283Mode)
+        return BVMC_PETERSBURG;
+    if (_schedule.haveCreate2 && _schedule.eip1283Mode)
+        return BVMC_CONSTANTINOPLE;
+    if (_schedule.haveRevert)
+        return BVMC_BYZANTIUM;
+    if (_schedule.eip158Mode)
+        return BVMC_SPURIOUS_DRAGON;
+    if (_schedule.eip150Mode)
+        return BVMC_TANGERINE_WHISTLE;
+    if (_schedule.haveDelegateCall)
+        return BVMC_HOMESTEAD;
+    return BVMC_FRONTIER;
+}
+}  // namespace
+
+BVMC::BVMC(bvmc_vm* _vm) noexcept : bvmc::VM(_vm)
+{
+    assert(_vm != nullptr);
+    assert(is_abi_compatible());
 
     // Set the options.
     for (auto& pair : bvmcOptions())
     {
-        auto result = bvmc_set_option(m_instance, pair.first.c_str(), pair.second.c_str());
+        auto result = set_option(pair.first.c_str(), pair.second.c_str());
         switch (result)
         {
         case BVMC_SET_OPTION_SUCCESS:
@@ -30,20 +55,6 @@ BRC::BRC(bvmc_instance* _instance) noexcept : m_instance(_instance)
             cwarn << "Unknown error when setting BVMC option '" << pair.first << "'";
         }
     }
-}
-
-/// Handy wrapper for bvmc_execute().
-BRC::Result BRC::execute(ExtVMFace& _ext, int64_t gas)
-{
-    auto mode = toRevision(_ext.brcSchedule());
-    bvmc_call_kind kind = _ext.isCreate ? BVMC_CREATE : BVMC_CALL;
-    uint32_t flags = _ext.staticCall ? BVMC_STATIC : 0;
-    assert(flags != BVMC_STATIC || kind == BVMC_CALL);  // STATIC implies a CALL.
-    bvmc_message msg = {kind, flags, static_cast<int32_t>(_ext.depth), gas, toBvmC(_ext.myAddress),
-        toBvmC(_ext.caller), _ext.data.data(), _ext.data.size(), toBvmC(_ext.value),
-        toBvmC(0x0_cppui256)};
-    return BRC::Result{
-        bvmc_execute(m_instance, &_ext, mode, &msg, _ext.code.data(), _ext.code.size())};
 }
 
 owning_bytes_ref BVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp)
@@ -61,19 +72,28 @@ owning_bytes_ref BVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
     assert(_ext.depth <= static_cast<size_t>(std::numeric_limits<int32_t>::max()));
 
     auto gas = static_cast<int64_t>(io_gas);
-    BRC::Result r = execute(_ext, gas);
 
-    switch (r.status())
+    auto mode = toRevision(_ext.brcSchedule());
+    bvmc_call_kind kind = _ext.isCreate ? BVMC_CREATE : BVMC_CALL;
+    uint32_t flags = _ext.staticCall ? BVMC_STATIC : 0;
+    assert(flags != BVMC_STATIC || kind == BVMC_CALL);  // STATIC implies a CALL.
+    bvmc_message msg = {kind, flags, static_cast<int32_t>(_ext.depth), gas, toBvmC(_ext.myAddress),
+        toBvmC(_ext.caller), _ext.data.data(), _ext.data.size(), toBvmC(_ext.value),
+        toBvmC(0x0_cppui256)};
+    EvmCHost host{_ext};
+    auto r = execute(host, mode, msg, _ext.code.data(), _ext.code.size());
+    // FIXME: Copy the output for now, but copyless version possible.
+    auto output = owning_bytes_ref{{&r.output_data[0], &r.output_data[r.output_size]}, 0, r.output_size};
+
+    switch (r.status_code)
     {
     case BVMC_SUCCESS:
-        io_gas = r.gasLeft();
-        // FIXME: Copy the output for now, but copyless version possible.
-        return {r.output().toVector(), 0, r.output().size()};
+        io_gas = r.gas_left;
+        return output;
 
     case BVMC_REVERT:
-        io_gas = r.gasLeft();
-        // FIXME: Copy the output for now, but copyless version possible.
-        throw RevertInstruction{{r.output().toVector(), 0, r.output().size()}};
+        io_gas = r.gas_left;
+        throw RevertInstruction{std::move(output)};
 
     case BVMC_OUT_OF_GAS:
     case BVMC_FAILURE:
@@ -104,28 +124,13 @@ owning_bytes_ref BVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
 
     case BVMC_INTERNAL_ERROR:
     default:
-        if (r.status() <= BVMC_INTERNAL_ERROR)
-            BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_bvmcStatusCode(r.status()));
+        if (r.status_code <= BVMC_INTERNAL_ERROR)
+            BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_bvmcStatusCode(r.status_code));
         else
             // These cases aren't really internal errors, just more specific
             // error codes returned by the VM. Map all of them to OOG.
             BOOST_THROW_EXCEPTION(OutOfGas());
     }
-}
-
-bvmc_revision BRC::toRevision(BRCSchedule const& _schedule)
-{
-    if (_schedule.haveCreate2)
-        return BVMC_CONSTANTINOPLE;
-    if (_schedule.haveRevert)
-        return BVMC_BYZANTIUM;
-    if (_schedule.eip158Mode)
-        return BVMC_SPURIOUS_DRAGON;
-    if (_schedule.eip150Mode)
-        return BVMC_TANGERINE_WHISTLE;
-    if (_schedule.haveDelegateCall)
-        return BVMC_HOMESTEAD;
-    return BVMC_FRONTIER;
 }
 }  // namespace brc
 }  // namespace dev

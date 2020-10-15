@@ -48,6 +48,8 @@ BRCSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blo
         return EIP150Schedule;
     else if (_blockNumber >= homesteadForkBlock)
         return HomesteadSchedule;
+    else if (_blockNumber >= istanbulForkBlock)
+        return IstanbulSchedule;
     else
         return FrontierSchedule;
 }

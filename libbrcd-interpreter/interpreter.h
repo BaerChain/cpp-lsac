@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-BVMC_EXPORT struct bvmc_instance* bvmc_create_interpreter() BVMC_NOEXCEPT;
+BVMC_EXPORT struct bvmc_vm* bvmc_create_interpreter() BVMC_NOEXCEPT;
 
 #if __cplusplus
 }

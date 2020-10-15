@@ -26,10 +26,8 @@ struct VMSchedule
     static constexpr int64_t stepGas6 = 20;
     static constexpr int64_t sha3Gas = 30;
     static constexpr int64_t sha3WordGas = 6;
-    static constexpr int64_t sloadGas = 50;
     static constexpr int64_t sstoreSetGas = 20000;
     static constexpr int64_t sstoreResetGas = 5000;
-    static constexpr int64_t sstoreUnchangedGas = 200;
     static constexpr int64_t jumpdestGas = 1;
     static constexpr int64_t logGas = 375;
     static constexpr int64_t logDataGas = 8;
@@ -41,25 +39,28 @@ struct VMSchedule
     static constexpr int64_t valueTransferGas = 9000;
     static constexpr int64_t callStipend = 2300;
     static constexpr int64_t callNewAccount = 25000;
+    static constexpr int64_t callSelfGas = 40;
 };
 
 class VM
 {
 public:
+    static bool initMetrics();
+
     VM() = default;
 
-    owning_bytes_ref exec(bvmc_context* _context, bvmc_revision _rev, const bvmc_message* _msg,
-        uint8_t const* _code, size_t _codeSize);
+    owning_bytes_ref exec(const bvmc_host_interface* _host, bvmc_host_context* _context,
+        bvmc_revision _rev, const bvmc_message* _msg, uint8_t const* _code, size_t _codeSize);
 
     uint64_t m_io_gas = 0;
 private:
-    bvmc_context* m_context = nullptr;
+    const bvmc_host_interface* m_host = nullptr;
+    bvmc_host_context* m_context = nullptr;
     bvmc_revision m_rev = BVMC_FRONTIER;
+    std::array<bvmc_instruction_metrics, 256>* m_metrics = nullptr;
     bvmc_message const* m_message = nullptr;
     boost::optional<bvmc_tx_context> m_tx_context;
-
-    static std::array<bvmc_instruction_metrics, 256> c_metrics;
-    static void initMetrics();
+    static std::array<std::array<bvmc_instruction_metrics, 256>, BVMC_MAX_REVISION + 1> s_metrics;
     static u256 exp256(u256 _base, u256 _exponent);
     void copyCode(int);
     typedef void (VM::*MemFnPtr)();
@@ -112,11 +113,12 @@ private:
     void caseCall();
 
     void copyDataToMemory(bytesConstRef _data, u256*_sp);
-    uint64_t memNeed(u256 _offset, u256 _size);
+    uint64_t memNeed(u256 const& _offset, u256 const& _size);
 
     const bvmc_tx_context& getTxContext();
 
     void throwOutOfGas();
+    void throwInvalidInstruction();
     void throwBadInstruction();
     void throwBadJumpDestination();
     void throwBadStack(int _removed, int _added);
@@ -130,7 +132,7 @@ private:
 
     void onOperation() {}
     void adjustStack(int _removed, int _added);
-    uint64_t gasForMem(u512 _size);
+    uint64_t gasForMem(bigint const& _size);
     void updateIOGas();
     void updateGas();
     void updateMem(uint64_t _newMem);
