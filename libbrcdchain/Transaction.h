@@ -80,7 +80,7 @@ namespace dev
                 changeMiner = 7,
                 receivingincome = 8,
                 transferAutoEx = 9,
-                modifyMinerGasPrice = 10
+                modifyMinerGasPrice = 10,
             };
 
             static std::map<op_type, u256> c_add_value = {
@@ -325,6 +325,22 @@ namespace dev
                 OPERATION_SERIALIZE((m_type)(m_proposer)(m_proposedAmount))
             }; 
 
+            struct dividend_operation : public operation
+            {
+                uint8_t m_type;
+                Address m_from;
+                Address m_to;
+                u256 m_dividendNum;
+                dividend_operation(){}
+                dividend_operation(op_type _type, Address const& _to, u256 const& _dividendNum):
+                    m_type(_type),
+                    m_to(_to),
+                    m_dividendNum(_dividendNum){}
+
+                OPERATION_UNSERIALIZE(dividend_operation, (m_type)(m_to)(m_dividendNum))
+                OPERATION_SERIALIZE((m_type)(m_to)(m_dividendNum))
+            };
+
         }  // namespace transationTool
 
         enum class CodeDeposit
@@ -390,8 +406,8 @@ namespace dev
 
             /// Constructs an unsigned contract-creation transaction.
             Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-                        u256 const& _nonce = Invalid256)
-                    : TransactionBase(_value, _gasPrice, _gas, _data, _nonce)
+                        u256 const& _nonce = Invalid256, int const& _chainId = 1)
+                    : TransactionBase(_value, _gasPrice, _gas, _data, _nonce, _chainId)
             {}
 
             /// Constructs a transaction from the given RLP.

@@ -215,6 +215,7 @@ public:
     }
 
 	Json::Value getAveragePrice(BlockNumber _block) override ;
+    Json::Value newEstimateGasUsed(const Json::Value& _json, BlockNumber _blockNum) override;
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
@@ -366,6 +367,11 @@ protected:
 
     Logger m_logger{createLogger(VerbosityInfo, "client")};
     Logger m_loggerDetail{createLogger(VerbosityDebug, "client")};
+
+
+    std::atomic<uint32_t> m_forceAuthorCount = {0};
+    std::atomic<int64_t> m_forceBlockBeginTime = {0};
+    std::atomic<uint32_t> m_errorForceCount = {0};
 };
 
 }
