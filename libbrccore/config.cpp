@@ -10,12 +10,19 @@ using namespace dev::brc;
 
 std::pair<uint32_t, Votingstage> config::getVotingCycle(int64_t _blockNum)
 {
-    uint32_t one_year = 0 if (config::config::getInstance().m_chainId == MAINCHAINID)
+    uint32_t one_year = 0;
+    if (config::config::getInstance().m_chainId == MAINCHAINID)
     {
         one_year = 31536000 * 5;
     }
-    else if (config::config::getInstance().m_chainId == TESTCHAINID) { one_year = 31536000; }
-    else { one_year = 31536000; }
+    else if (config::config::getInstance().m_chainId == TESTCHAINID)
+    {
+        one_year = 31536000;
+    }
+    else
+    {
+        one_year = 31536000;
+    }
 
     const uint32_t one_month = 60 * 60 * 24 * 30;
     if (_blockNum == 0)
