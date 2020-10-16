@@ -52,7 +52,9 @@ void VM::optimize()
     {
         Instruction op = Instruction(m_code[pc]);
         TRACE_OP(2, pc, op);
-                
+        
+        std::cout << unsigned(op) << std::endl;
+
         // make synthetic ops in user code trigger invalid instruction if run
         if (
             op == Instruction::PUSHC ||
@@ -176,6 +178,6 @@ u256 VM::exp256(u256 _base, u256 _exponent)
     }
     return result;
 }
-
+    
 }
 }

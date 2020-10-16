@@ -137,7 +137,7 @@ static const BRCSchedule ConstantinopleSchedule = []
 
 static const BRCSchedule ConstantinopleFixSchedule = [] {
     BRCSchedule schedule = ConstantinopleSchedule;
-    schedule.eip1283Mode = false;
+    // schedule.eip1283Mode = false;
     return schedule;
 }();
 

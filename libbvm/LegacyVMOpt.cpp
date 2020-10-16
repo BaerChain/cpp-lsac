@@ -49,7 +49,6 @@ void LegacyVM::optimize()
 	{
 		Instruction op = Instruction(m_code[pc]);
 		TRACE_OP(2, pc, op);
-				
 		// make synthetic ops in user code trigger invalid instruction if run
 		if (
 			op == Instruction::PUSHC ||

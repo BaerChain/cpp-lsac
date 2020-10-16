@@ -93,6 +93,7 @@ owning_bytes_ref BVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
 
     case BVMC_REVERT:
         io_gas = r.gas_left;
+        std::cout << output.data() << std::endl;
         throw RevertInstruction{std::move(output)};
 
     case BVMC_OUT_OF_GAS:
