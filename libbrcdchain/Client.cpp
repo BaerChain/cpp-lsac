@@ -1147,7 +1147,8 @@ Json::Value Client::newEstimateGasUsed(Json::Value const& _json, BlockNumber _bl
             ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed()); 
         }
     }catch(...){
-        ret["estimateGasUsed"] = string("Estimated gas transaction execution failed");
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment(std::string("Estimated gas transaction execution failed")));
+        // ret["estimateGasUsed"] = string("Estimated gas transaction execution failed");
     }
     return ret;
 }
