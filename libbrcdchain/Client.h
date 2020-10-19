@@ -215,7 +215,7 @@ public:
     }
 
 	Json::Value getAveragePrice(BlockNumber _block) override ;
-    Json::Value newEstimateGasUsed(const Json::Value& _json, BlockNumber _blockNum) override;
+    Json::Value newEstimateGasUsed(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNum) override;
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
