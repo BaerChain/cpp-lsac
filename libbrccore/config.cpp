@@ -194,8 +194,9 @@ int64_t config::dividendHeight()
     if (config::config::getInstance().m_chainId == MAINCHAINID)
     {
         return 29875800;
-    }
-    else
+    }else if (config::config::getInstance().m_chainId == TESTCHAINID) {
+		return INT64_MAX;
+	}else
     {
         return 10;
     }
@@ -206,8 +207,9 @@ int64_t config::cancelAutoPendingOrderHeight()
     if (config::config::getInstance().m_chainId == MAINCHAINID)
     {
         return 29875700;
-    }
-    else
+    }else if (config::config::getInstance().m_chainId == TESTCHAINID) {
+		return INT64_MAX;
+	}else
     {
         return 15;
     }

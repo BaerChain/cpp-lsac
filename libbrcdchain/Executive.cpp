@@ -466,22 +466,29 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 		    m_totalGas =(u256) totalCost;
 			//
 			try{
-				if(m_batch_params._type == transationTool::op_type::vote)
+				if(m_batch_params._type == transationTool::op_type::vote) {
 					m_vote.verifyVote(m_t.sender(), m_envInfo, m_batch_params._operation);
-				else if(m_batch_params._type == transationTool::op_type::pendingOrder)
-					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(WithoutSignature), m_batch_params._operation);
-                    // m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
-				else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder)
+                }else if(m_batch_params._type == transationTool::op_type::pendingOrder){
+                    if(m_envInfo.number() < config::newBifurcationBvmHeight()) {
+                        m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(), m_batch_params._operation);
+                    }else{
+    					m_brctranscation.verifyPendingOrders(m_t.sender(), (u256)totalCost, m_s.exdb(), m_envInfo.timestamp(), m_baseGasRequired * m_t.gasPrice(), m_t.sha3(WithoutSignature), m_batch_params._operation);
+                    }
+                }else if(m_batch_params._type == transationTool::op_type::cancelPendingOrder){
 					m_brctranscation.verifyCancelPendingOrders(m_s.exdb(), m_t.sender(), m_batch_params._operation);
-				else if(m_batch_params._type == transationTool::op_type::receivingincome)
+                }else if(m_batch_params._type == transationTool::op_type::receivingincome){
                     m_brctranscation.verifyreceivingincomeChanegeMiner(m_t.sender(), m_batch_params._operation,transationTool::dividendcycle::blocknum, m_envInfo, m_vote);
-                else if(m_batch_params._type == transationTool::op_type::changeMiner)
+                }else if(m_batch_params._type == transationTool::op_type::changeMiner){
                     m_s.verifyChangeMiner(m_t.sender(), m_envInfo, m_batch_params._operation);
-			    else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
-			        // m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
-			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(WithoutSignature), m_envInfo);
-                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice)
+                }else if(m_batch_params._type == transationTool::op_type::transferAutoEx)
+                    if(m_envInfo.number() < config::newBifurcationBvmHeight()) {
+    			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(), m_envInfo);
+                    }else{
+    			        m_brctranscation.verifyTransferAutoEx(m_t.sender(), m_batch_params._operation, (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_t.sha3(WithoutSignature), m_envInfo);
+                    }
+                else if(m_batch_params._type == transationTool::op_type::modifyMinerGasPrice){
                     m_brctranscation.verifyModifyMinerGasPrice(m_t.sender(), m_envInfo.number(), m_batch_params._operation);
+                }
             }
 			catch(VerifyVoteField &ex){
                 cdebug << "verifyVote field ! ";
@@ -607,8 +614,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 break;
             }
             case transationTool::op_type::pendingOrder:{
-                m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(WithoutSignature), m_batch_params._operation, m_envInfo.number());
-                // m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(), m_batch_params._operation, m_envInfo.number());
+                if(m_envInfo.number() < config::newBifurcationBvmHeight()) {
+                    m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(), m_batch_params._operation, m_envInfo.number());
+                }else{
+                    m_s.pendingOrders(m_t.sender(), m_envInfo.timestamp(), m_t.sha3(WithoutSignature), m_batch_params._operation, m_envInfo.number());
+                }
                 break;
             }
             case transationTool::op_type::cancelPendingOrder:{
@@ -629,8 +639,11 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             }
             case transationTool::op_type::transferAutoEx:
             {
-                // m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_envInfo.number());
-                m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(WithoutSignature), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_envInfo.number());
+                if(m_envInfo.number() < config::newBifurcationBvmHeight()) {
+                    m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_envInfo.number());
+                }else{
+                    m_s.transferAutoEx(m_batch_params._operation, m_t.sha3(WithoutSignature), m_envInfo.timestamp(), (m_baseGasRequired + transationTool::c_add_value[transationTool::op_type::transferAutoEx]) * m_t.gasPrice(), m_envInfo.number());
+                }
                 break;
             }
             case transationTool::op_type::modifyMinerGasPrice:
