@@ -91,6 +91,8 @@ namespace dev
                 static int64_t gasPriceHeight();
 
                 static u256 initialGasPrice();
+
+                static int64_t newBifurcationBvmHeight();
         private:
             config(){}
             //~config(){}

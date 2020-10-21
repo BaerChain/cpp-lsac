@@ -1,6 +1,8 @@
 #include "ChainOperationParams.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonData.h>
+#include <libbrccore/config.h>
+
 using namespace std;
 using namespace dev;
 using namespace brc;
@@ -34,7 +36,9 @@ ChainOperationParams::ChainOperationParams():
 
 BRCSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blockNumber) const
 {
-    if (_blockNumber >= experimentalForkBlock)
+    if (_blockNumber >= config::newBifurcationBvmHeight())
+        return newBifurcationBvmSchedule;
+    else if (_blockNumber >= experimentalForkBlock)
         return ExperimentalSchedule;
     else if (_blockNumber >= constantinopleForkBlock)
         return ConstantinopleSchedule;
@@ -48,8 +52,6 @@ BRCSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blo
         return EIP150Schedule;
     else if (_blockNumber >= homesteadForkBlock)
         return HomesteadSchedule;
-    else if (_blockNumber >= istanbulForkBlock)
-        return IstanbulSchedule;
     else
         return FrontierSchedule;
 }

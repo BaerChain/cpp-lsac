@@ -137,7 +137,7 @@ static const BRCSchedule ConstantinopleSchedule = []
 
 static const BRCSchedule ConstantinopleFixSchedule = [] {
     BRCSchedule schedule = ConstantinopleSchedule;
-    // schedule.eip1283Mode = false;
+    schedule.eip1283Mode = false;
     return schedule;
 }();
 
@@ -162,6 +162,12 @@ static const BRCSchedule BerlinSchedule = [] {
 }();
 
 static const BRCSchedule ExperimentalSchedule = [] {
+    BRCSchedule schedule = ConstantinopleSchedule;
+    schedule.blockhashGas = 800;
+    return schedule;
+}();
+
+static const BRCSchedule newBifurcationBvmSchedule = [] {
     BRCSchedule schedule = BerlinSchedule;
     schedule.accountVersion = 1;
     schedule.blockhashGas = 800;
