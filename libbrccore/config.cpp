@@ -181,10 +181,10 @@ int64_t config::autoExTestNetHeight()
 
 int64_t config::newBifurcationBvmHeight() {
 	if(config::config::getInstance().m_chainId == MAINCHAINID){
-        return 14524000UL;
+        return 99999999UL;
     }
     else if(config::config::getInstance().m_chainId == TESTCHAINID){
-       return 14524000;
+       return 99999999UL;
     }
 	return 10;
 }
