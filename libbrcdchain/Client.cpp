@@ -393,6 +393,19 @@ void Client::syncBlockQueue()
         auto last_tx = bc().transactions(last_hash);
 
         auto late = utcTimeMilliSec() - last.timestamp();
+
+        if (m_forceAuthorCount && m_bq.getForceBlockCount().size()){
+            if ( m_bq.getForceBlockCount().size() >= m_forceAuthorCount) {
+                m_forceAuthorCount = 0;
+                m_forceBlockBeginTime = 0;
+                m_errorForceCount = 0;
+                m_bq.resetForceBlockCount();
+            }else{
+               // m_forceAuthorCount = m_forceAuthorCount - m_bq.getForceBlockCount().size();
+			    m_forceBlockBeginTime = utcTimeMilliSec() / 1000;
+            }
+        }
+
 //		if(bc().number() % 10 == 0 || bc().transactions().size() != 0)
 		{
 
@@ -1084,4 +1097,50 @@ Json::Value Client::getAveragePrice(BlockNumber _block)  {
     _ret["fastGasPrice"] = toJS(_fastGasPrice);
 
     return _ret;
+}
+
+Json::Value Client::newEstimateGasUsed(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNum) {
+    Json::Value ret;
+    try{
+        Block bk = blockByNumber(_blockNum);
+        
+        Transaction t;
+        u256 nonce = bk.transactionsFrom(_from);
+        if (_dest){
+            t = Transaction(_value, _gasPrice, _maxGas, _dest, _data, nonce, u256(config::chainId()));
+        }
+        else{
+            t = Transaction(_value, _gasPrice, _maxGas, _data, nonce, config::chainId());
+        }
+        t.forceSender(_from);
+        EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, _maxGas);
+    
+        State tempState(bk.state());
+        tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+    
+        auto er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).second;
+        if (_dest == VoteAddress && !_data.empty()) {
+            try
+            {
+                RLP _rlp(_data);
+                std::vector<bytes> _ops = _rlp.toVector<bytes>();
+                dev::brc::transationTool::op_type _type;
+                for(auto val : _ops)
+                {
+                    _type =  dev::brc::transationTool::operation::get_type(val);
+                    break;
+                }
+                ret["estimateGasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + er.cumulativeGasUsed());
+            }
+            catch(const std::exception& e)
+            {
+                ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed());
+            }
+        }else {
+            ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed()); 
+        }
+    }catch(...){
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment(std::string("Estimated gas transaction execution failed")));
+    }
+    return ret;
 }

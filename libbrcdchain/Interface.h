@@ -112,7 +112,7 @@ public:
     virtual Json::Value estimateGasUsed(Json::Value const& _json, BlockNumber _blockNum) = 0;
     virtual Json::Value getGasPrice() = 0;
     virtual Json::Value getAveragePrice(BlockNumber _block) = 0;
-
+    virtual Json::Value newEstimateGasUsed(Address const& _from, u256 _value, Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNum) = 0;
 
     int getDefault() const { return m_default; }
     void setDefault(BlockNumber _block) { m_default = _block; }

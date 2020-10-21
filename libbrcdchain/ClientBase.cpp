@@ -32,9 +32,9 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             u256 n = bk.transactionsFrom(_from);
             Transaction t;
             if (_dest)
-                t = Transaction(_value, gasPrice, mid, _dest, _data, n);
+                t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
             else
-                t = Transaction(_value, gasPrice, mid, _data, n);
+                t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
             t.forceSender(_from);
             EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
             State tempState(bk.state());
@@ -62,8 +62,9 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
     }
     catch (...)
     {
+        throw;
         // TODO: Some sort of notification of failure.
-        return make_pair(u256(), ExecutionResult());
+        // return make_pair(u256(), ExecutionResult());
     }
 }
 
@@ -223,7 +224,7 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     if (_to)
         t = Transaction(_value, gasPrice, _gas, _to, _data, _nonce);
     else
-        t = Transaction(_value, gasPrice, _gas, _data, _nonce);
+        t = Transaction(_value, gasPrice, _gas, _data, _nonce); 
 
     u256 _baseGas = t.baseGasRequired(BRCSchedule());
     if(t.isVoteTranction())
@@ -260,6 +261,16 @@ Json::Value dev::brc::ClientBase::estimateGasUsed(const Json::Value& _json, Bloc
     _ret["estimateGasUsed"] = toJS(_baseGas);
     return _ret;
 }
+
+
+// Json::Value dev::brc::ClientBase::newEstimateGasUsed(Json::Value const& _json, int64_t _blockNum){
+//     Address from = _json["from"].asString();
+//     Address to = _json["to"];
+//     u256 value = _json["value"];
+//     bytes data = _json["data"];
+
+// }
+
 
 Json::Value dev::brc::ClientBase::getGasPrice()
 {
