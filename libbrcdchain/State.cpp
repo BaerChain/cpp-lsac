@@ -2256,7 +2256,7 @@ void State::rollback(size_t _savepoint) {
 
 std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_envInfo,
                                                               SealEngineFace const &_sealEngine, Transaction const &_t,
-                                                              Permanence _p, OnOpFunc const &_onOp) {
+                                                              Permanence _p, OnOpFunc const &_onOp, transationTool::initializeEnum _enum) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     Executive e(*this, _envInfo, _sealEngine);
@@ -2269,7 +2269,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const &_en
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    bool const statusCode = executeTransaction(e, _t, onOp);
+    bool const statusCode = executeTransaction(e, _t, onOp, _enum);
     bool removeEmptyAccounts = false;
     switch (_p) {
         case Permanence::Reverted:
@@ -2305,11 +2305,11 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
-bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
+bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc const &_onOp, transationTool::initializeEnum _enum) {
     size_t const savept = savepoint();
     try {
-        _e.initialize(_t);
-        if (!_e.execute())
+        _e.initialize(_t, _enum);
+        if (!_e.execute(_enum))
             _e.go(_onOp);
         return _e.finalize();
     }

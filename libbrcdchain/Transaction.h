@@ -112,7 +112,8 @@ namespace dev
             enum  initializeEnum : uint8_t
             {
                 rpcinitialize = 0,
-                executeinitialize = 1
+                executeinitialize = 1,
+                estimateGas = 2
             };
 
             struct operation

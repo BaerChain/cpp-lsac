@@ -319,7 +319,7 @@ public:
     /// This will change the state accordingly.
     std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo,
         SealEngineFace const& _sealEngine, Transaction const& _t,
-        Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
+        Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(), transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
 
     /// Execute @a _txCount transactions of a given block.
     /// This will change the state accordingly.
@@ -668,7 +668,7 @@ private:
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
-    bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp);
+    bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
 
     /// Our overlay for the state tree.
     OverlayDB m_db;
