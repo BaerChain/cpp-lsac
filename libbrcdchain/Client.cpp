@@ -1118,7 +1118,7 @@ Json::Value Client::newEstimateGasUsed(Address const& _from, u256 _value, Addres
         State tempState(bk.state());
         tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
     
-        auto er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).second;
+        auto er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted, OnOpFunc(), transationTool::initializeEnum::estimateGas).second;
         if (_dest == VoteAddress && !_data.empty()) {
             try
             {

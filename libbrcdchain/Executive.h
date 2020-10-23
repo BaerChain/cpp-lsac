@@ -136,7 +136,7 @@ public:
     bool finalize();
     /// Begins execution of a transaction. You must call finalize() following this.
     /// @returns true if the transaction is done, false if go() must be called.
-    bool execute();
+    bool execute(transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
     /// @returns the transaction from initialize().
     /// @warning Only valid after initialize().
     Transaction const& t() const { return m_t; }
@@ -162,8 +162,8 @@ public:
     /// Set up the executive for evaluating a bare CALL (message call) operation.
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool call(Address const& _receiveAddress, Address const& _txSender, u256 const& _txValue,
-        u256 const& _gasPrice, bytesConstRef _txData, u256 const& _gas);
-    bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
+        u256 const& _gasPrice, bytesConstRef _txData, u256 const& _gas, transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
+    bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin, transationTool::initializeEnum _enum = transationTool::initializeEnum::executeinitialize);
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState(SubState& _parentContext);
 
