@@ -41,6 +41,7 @@ struct BRCSchedule
     unsigned sstoreResetGas = 5000;
     unsigned sstoreUnchangedGas = 200;
     unsigned sstoreRefundGas = 15000;
+    unsigned sstoreRefundNonzeroGas = 4800;
     unsigned jumpdestGas = 1;
     unsigned logGas = 375;
     unsigned logDataGas = 8;
@@ -52,7 +53,7 @@ struct BRCSchedule
     unsigned callStipend = 2300;
     unsigned callValueTransferGas = 9000;
     unsigned callNewAccountGas = 25000;
-    unsigned selfdestructRefundGas = 24000;
+    unsigned suicideRefundGas = 24000;
     unsigned memoryGas = 3;
     unsigned quadCoeffDiv = 512;
     unsigned createDataGas = 200;
@@ -66,6 +67,7 @@ struct BRCSchedule
     unsigned extcodecopyGas = 20;
     unsigned extcodehashGas = 400;
     unsigned balanceGas = 20;
+    unsigned suicideGas = 0;
     unsigned selfdestructGas = 0;
     unsigned blockhashGas = 20;
     unsigned maxCodeSize = unsigned(-1);

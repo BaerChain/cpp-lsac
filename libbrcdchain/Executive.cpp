@@ -864,7 +864,7 @@ bool Executive::finalize()
     if (m_ext)
     {
         // Accumulate refunds for suicides.
-        m_ext->sub.refunds += m_ext->brcSchedule().suicideRefundGas * m_ext->sub.suicides.size();
+        m_ext->sub.refunds += m_ext->brcSchedule().suicideRefundGas * m_ext->sub.selfdestructs.size();
 
         // Refunds must be applied before the miner gets the fees.
         assert(m_ext->sub.refunds >= 0);
@@ -892,7 +892,7 @@ bool Executive::finalize()
     }
     // Suicides...
     if (m_ext)
-        for (auto a : m_ext->sub.suicides)
+        for (auto a : m_ext->sub.selfdestructs)
             m_s.kill(a);
 
     // Logs..
