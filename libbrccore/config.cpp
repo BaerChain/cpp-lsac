@@ -184,7 +184,7 @@ int64_t config::newBifurcationBvmHeight() {
         return 99999999UL;
     }
     else if(config::config::getInstance().m_chainId == TESTCHAINID){
-       return 99999999UL;
+       return 32089000UL;
     }
 	return 10;
 }
