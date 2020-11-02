@@ -28,72 +28,45 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         ExecutionResult lastGood;
         bool good = false;
 
+        while (upperBound != lowerBound)
+        {
+          
+            int64_t mid = (lowerBound + upperBound) / 2;
+            u256 n = bk.transactionsFrom(_from);
+            Transaction t;
+            if (_dest)
+                t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
+            else
+                t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
+            t.forceSender(_from);
+            EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
+            State tempState(bk.state());
+            tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice()));
 
-        u256 n = bk.transactionsFrom(_from);
-        Transaction t;
-        if (_dest)
-            t = Transaction(_value, gasPrice, c_maxGasEstimate, _dest, _data, n, u256(config::chainId()));
-        else
-            t = Transaction(_value, gasPrice, c_maxGasEstimate, _data, n, config::chainId());
-        State tempState(bk.state());
-        tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice()));
-        t.forceSender(_from);
-        EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, c_maxGasEstimate);
-
-        u256 execBegin = tempState.balance(_from);
-        er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
-    
-        if (er.excepted == TransactionException::OutOfGas ||
+            u256 execBegin = tempState.balance(_from);
+            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
+            if (er.excepted == TransactionException::OutOfGas ||
                 er.excepted == TransactionException::OutOfGasBase ||
                 er.excepted == TransactionException::OutOfGasIntrinsic ||
                 er.codeDeposit == CodeDeposit::Failed ||
-                er.excepted == TransactionException::BadJumpDestination)
-            throw;
-        else
-        {
-            lastGood = er;
-            // upperBound = upperBound == mid ? lowerBound : mid;
-            good = true;
+                er.excepted == TransactionException::RevertInstruction ||
+                er.excepted == TransactionException::BadJumpDestination){
+                lowerBound = lowerBound == mid ? upperBound : mid;
+                break;
+            }
+            else
+            {
+                lastGood = er;
+                upperBound = upperBound == mid ? lowerBound : mid;
+                good = true;
+            }
+
+            if (_callback)
+                _callback(GasEstimationProgress{lowerBound, upperBound});
         }
-
-        u256 execEnd = tempState.balance(_from);
-        return make_pair( (execBegin - execEnd) / t.gasPrice() , good ? lastGood : er);
-
-        // while (upperBound != lowerBound)
-        // {
-        //     int64_t mid = (lowerBound + upperBound) / 2;
-        //     u256 n = bk.transactionsFrom(_from);
-        //     Transaction t;
-        //     if (_dest)
-        //         t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
-        //     else
-        //         t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
-        //     t.forceSender(_from);
-        //     EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
-        //     State tempState(bk.state());
-        //     tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
-
-        //     u256 execBegin = tempState.balance(_from);
-        //     er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
-        //     if (er.excepted == TransactionException::OutOfGas ||
-        //         er.excepted == TransactionException::OutOfGasBase ||
-        //         er.excepted == TransactionException::OutOfGasIntrinsic ||
-        //         er.codeDeposit == CodeDeposit::Failed ||
-        //         er.excepted == TransactionException::BadJumpDestination)
-        //         lowerBound = lowerBound == mid ? upperBound : mid;
-        //     else
-        //     {
-        //         lastGood = er;
-        //         upperBound = upperBound == mid ? lowerBound : mid;
-        //         good = true;
-        //     }
-
-        //     if (_callback)
-        //         _callback(GasEstimationProgress{lowerBound, upperBound});
-        // }
-        // if (_callback)
-        //     _callback(GasEstimationProgress{lowerBound, upperBound});
-        // return make_pair(upperBound, good ? lastGood : er);
+        if (_callback)
+            _callback(GasEstimationProgress{lowerBound, upperBound});
+        return make_pair(upperBound, good ? lastGood : er);
     }
     catch (...)
     {
