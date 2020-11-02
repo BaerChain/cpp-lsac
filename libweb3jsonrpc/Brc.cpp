@@ -903,6 +903,8 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
             return client()->newEstimateGasUsed(from, value, to, data, gas, gasPrice, PendingBlock);
         }else{
             Json::Value ret;
+            auto rr = client()->estimateGas(from, value, to, data, gas, gasPrice, PendingBlock);
+            if (rr.)
             ret["estimateGasUsed"] = toJS(client()->estimateGas(from, value, to, data, gas, gasPrice, PendingBlock).first);
             return ret;
         }

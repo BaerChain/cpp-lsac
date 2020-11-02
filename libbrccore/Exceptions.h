@@ -29,6 +29,7 @@ using BadFieldError = boost::tuple<errinfo_field, errinfo_data>;
 
 DEV_SIMPLE_EXCEPTION(OutOfGasBase);
 DEV_SIMPLE_EXCEPTION(OutOfGasIntrinsic);
+DEV_SIMPLE_EXCEPTION(ExeContractException);
 DEV_SIMPLE_EXCEPTION(NotEnoughAvailableSpace);
 DEV_SIMPLE_EXCEPTION(NotEnoughCash);
 DEV_SIMPLE_EXCEPTION(NotEnoughBallot);

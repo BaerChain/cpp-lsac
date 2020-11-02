@@ -66,6 +66,12 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         }
         if (_callback)
             _callback(GasEstimationProgress{lowerBound, upperBound});
+
+        if(upperBound == c_maxGasEstimate){
+            //execute error.
+            // return make_pair(0, er);
+            BOOST_THROW_EXCEPTION(ExeContractException());
+        }
         return make_pair(upperBound, good ? lastGood : er);
     }
     catch (...)
