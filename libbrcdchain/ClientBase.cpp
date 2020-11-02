@@ -9,7 +9,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::brc;
 
-static const int64_t c_maxGasEstimate = 50000000;
+static const int64_t c_maxGasEstimate = 500000000;
 
 std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u256 _value,
     Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber,
@@ -17,6 +17,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
 {
     try
     {
+        
         int64_t upperBound = _maxGas;
         if (upperBound == Invalid256 || upperBound > c_maxGasEstimate)
             upperBound = c_maxGasEstimate;
@@ -26,39 +27,73 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         ExecutionResult er;
         ExecutionResult lastGood;
         bool good = false;
-        while (upperBound != lowerBound)
-        {
-            int64_t mid = (lowerBound + upperBound) / 2;
-            u256 n = bk.transactionsFrom(_from);
-            Transaction t;
-            if (_dest)
-                t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
-            else
-                t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
-            t.forceSender(_from);
-            EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
-            State tempState(bk.state());
-            tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
-            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
-            if (er.excepted == TransactionException::OutOfGas ||
+
+
+        u256 n = bk.transactionsFrom(_from);
+        Transaction t;
+        if (_dest)
+            t = Transaction(_value, gasPrice, c_maxGasEstimate, _dest, _data, n, u256(config::chainId()));
+        else
+            t = Transaction(_value, gasPrice, c_maxGasEstimate, _data, n, config::chainId());
+        State tempState(bk.state());
+        tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice()));
+        t.forceSender(_from);
+        EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, c_maxGasEstimate);
+
+        u256 execBegin = tempState.balance(_from);
+        er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
+    
+        if (er.excepted == TransactionException::OutOfGas ||
                 er.excepted == TransactionException::OutOfGasBase ||
                 er.excepted == TransactionException::OutOfGasIntrinsic ||
                 er.codeDeposit == CodeDeposit::Failed ||
                 er.excepted == TransactionException::BadJumpDestination)
-                lowerBound = lowerBound == mid ? upperBound : mid;
-            else
-            {
-                lastGood = er;
-                upperBound = upperBound == mid ? lowerBound : mid;
-                good = true;
-            }
-
-            if (_callback)
-                _callback(GasEstimationProgress{lowerBound, upperBound});
+            throw;
+        else
+        {
+            lastGood = er;
+            // upperBound = upperBound == mid ? lowerBound : mid;
+            good = true;
         }
-        if (_callback)
-            _callback(GasEstimationProgress{lowerBound, upperBound});
-        return make_pair(upperBound, good ? lastGood : er);
+
+        u256 execEnd = tempState.balance(_from);
+        return make_pair( (execBegin - execEnd) / t.gasPrice() , good ? lastGood : er);
+
+        // while (upperBound != lowerBound)
+        // {
+        //     int64_t mid = (lowerBound + upperBound) / 2;
+        //     u256 n = bk.transactionsFrom(_from);
+        //     Transaction t;
+        //     if (_dest)
+        //         t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
+        //     else
+        //         t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
+        //     t.forceSender(_from);
+        //     EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
+        //     State tempState(bk.state());
+        //     tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+
+        //     u256 execBegin = tempState.balance(_from);
+        //     er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
+        //     if (er.excepted == TransactionException::OutOfGas ||
+        //         er.excepted == TransactionException::OutOfGasBase ||
+        //         er.excepted == TransactionException::OutOfGasIntrinsic ||
+        //         er.codeDeposit == CodeDeposit::Failed ||
+        //         er.excepted == TransactionException::BadJumpDestination)
+        //         lowerBound = lowerBound == mid ? upperBound : mid;
+        //     else
+        //     {
+        //         lastGood = er;
+        //         upperBound = upperBound == mid ? lowerBound : mid;
+        //         good = true;
+        //     }
+
+        //     if (_callback)
+        //         _callback(GasEstimationProgress{lowerBound, upperBound});
+        // }
+        // if (_callback)
+        //     _callback(GasEstimationProgress{lowerBound, upperBound});
+        // return make_pair(upperBound, good ? lastGood : er);
     }
     catch (...)
     {
