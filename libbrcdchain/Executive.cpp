@@ -194,8 +194,11 @@ Executive::Executive(
 
 u256 Executive::gasUsed() const
 {
-    // return m_totalGas - m_needRefundGas;
-	return m_t.gas() - m_gas;
+    if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
+         return m_totalGas - m_needRefundGas;
+     }
+ 	return m_t.gas() - m_gas;
+
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
