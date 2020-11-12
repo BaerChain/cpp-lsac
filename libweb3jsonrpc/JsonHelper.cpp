@@ -565,10 +565,23 @@ namespace dev {
                 return filter;
 
             // check only !empty. it should throw exceptions if input params are incorrect
+            auto start = jsToBlockNum(_json["fromBlock"].asString());
+            auto end = jsToBlockNum(_json["toBlock"].asString());
+
+            if(start > end) {
+                auto temp = end;
+                end = start;
+                start = temp;
+            }
+
+            if (end - start >= 100){
+                end = start + 100;
+            }
+
             if (!_json["fromBlock"].empty())
-                filter.withEarliest(_client.hashFromNumber(jsToBlockNum(_json["fromBlock"].asString())));
+                filter.withEarliest(_client.hashFromNumber(start));
             if (!_json["toBlock"].empty())
-                filter.withLatest(_client.hashFromNumber(jsToBlockNum(_json["toBlock"].asString())));
+                filter.withLatest(_client.hashFromNumber(end));
             if (!_json["address"].empty()) {
                 if (_json["address"].isArray())
                     for (auto i : _json["address"])
