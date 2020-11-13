@@ -358,10 +358,11 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 
     // Handle blocks from main chain
     set<unsigned> matchingBlocks;
-    if (!_f.isRangeFilter())
-        for (auto const& i : _f.bloomPossibilities())
+    if (!_f.isRangeFilter()){
+          for (auto const& i : _f.bloomPossibilities())
             for (auto u : bc().withBlockBloom(i, end, begin))
                 matchingBlocks.insert(u);
+    }
     else
         // if it is a range filter, we want to get all logs from all blocks in given range
         for (unsigned i = end; i <= begin; i++)
@@ -371,7 +372,18 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
         prependLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
 
     reverse(ret.begin(), ret.end());
-    return ret;
+
+    LocalisedLogEntries rets;
+    for(auto itr : ret){
+        if(itr.blockNumber > begin){
+            break;
+        }
+        if(itr.blockNumber < end){
+            continue;
+        }
+        rets.push_back(itr);
+    }
+    return rets;
 }
 
 void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHash,
