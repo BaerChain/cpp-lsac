@@ -2317,7 +2317,7 @@ bool State::executeTransaction(Executive &_e, Transaction const &_t, OnOpFunc co
         cerror << e.what();
         cdebug << "rollback tx id " << toHex(_t.sha3()) << " rlp : " << toHex(_t.rlp());
         rollback(savept);
-        throw;
+        throw e;
     }
 }
 

@@ -368,6 +368,7 @@ namespace dev
             u256 gasRefunded = 0;
             unsigned depositSize = 0;  ///< Amount of code of the creation's attempted deposit.
             u256 gasForDeposit;        ///< Amount of gas remaining for the code deposit phase.
+            std::string errlog;
         };
 
         std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);

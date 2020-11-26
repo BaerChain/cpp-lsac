@@ -190,6 +190,11 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
+    void setBvmErrLog(std::string const& _log) { 
+        if (m_res != nullptr) {
+            m_res->errlog = _log;
+        }
+    }
 private:
 	const u256 c_min_price = 5;
     enum Method

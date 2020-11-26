@@ -3,6 +3,10 @@
 #include <string>
 #include <libbrccore/Exceptions.h>
 #include <libdevcrypto/base58.h>
+#include <libdevcore/RLP.h>
+#include <libdevcore/Log.h>
+
+
 namespace dev
 {
     using h192 = FixedHash<24>;
@@ -155,6 +159,48 @@ int64_t jsToint64(std::string const& _js)
     int64_t num;
     str >> num;
     return num;
+}
+
+std::string bvmErrLogToStr(bytes _data) {
+     int funcSize = 4;
+        int offsetSize = 32;
+        int lenSize = 32;
+        int lenPoint = 0;
+
+        if(_data.size() <= funcSize + offsetSize + lenSize) {
+            return std::string();
+        }
+
+        bytes::const_iterator firstbegin = _data.begin() + funcSize + offsetSize;
+        bytes::const_iterator firstend = _data.end();
+        bytes frist(firstbegin, firstend);
+
+        bytes::const_iterator secondBegin = frist.begin();
+        bytes::const_iterator secondEnd = frist.begin() + lenSize;
+        bytes second(secondBegin, secondEnd);
+        for (; lenPoint < second.size(); lenPoint++) {
+            if (second[lenPoint] != 0){
+                break;
+            }
+        }
+
+        if (lenPoint <= 0){
+            return std::string();
+        }
+
+        bytes::const_iterator lenBegin = second.begin() + lenPoint;
+        bytes::const_iterator lenEnd = second.end();
+        bytes lenData(lenBegin, lenEnd);
+
+        bytes::const_iterator logBegin = _data.begin() + funcSize + offsetSize + lenSize;
+        bytes::const_iterator logEnd = _data.begin() + funcSize + offsetSize + lenSize + jsToInt(toJS(lenData));
+        bytes logData(logBegin, logEnd);
+
+        RLPStream rlp(1);
+        rlp.append(logData);
+
+        RLP rlp1(rlp.out());
+        return rlp1[0].convert<std::string>(RLP::LaissezFaire);
 }
 
 }  // namespace brc

@@ -814,6 +814,7 @@ bool Executive::go(OnOpFunc const& _onOp)
             revert();
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
+            setBvmErrLog(bvmErrLogToStr(_e.output().toBytes()));
         }
         catch (VMException const& _e)
         {

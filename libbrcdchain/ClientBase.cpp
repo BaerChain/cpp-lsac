@@ -15,6 +15,7 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
     Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber,
     GasEstimationCallback const& _callback)
 {
+    std::string errlog = std::string();
     try
     {
         
@@ -68,9 +69,13 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             _callback(GasEstimationProgress{lowerBound, upperBound});
         return make_pair(upperBound, good ? lastGood : er);
     }
+    catch (Exception const& _e) {
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment(std::string(*boost::get_error_info<errinfo_comment >(_e))));
+    }
     catch (...)
     {
-        throw;
+        cerror << errlog;
+        BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment(errlog));
         // TODO: Some sort of notification of failure.
         // return make_pair(u256(), ExecutionResult());
     }
