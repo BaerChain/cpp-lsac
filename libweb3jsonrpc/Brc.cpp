@@ -372,7 +372,9 @@ string Brc::brc_call(Json::Value const& _json, string const& _blockNumber)
         int64_t _chainId = config::chainId();
         TransactionSkeleton t = toTransactionSkeleton(_json);
         setTransactionDefaults(t);
-        ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+        u256 gas = u256("100000000");
+        u256 gasPrice = u256("100");
+        ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, gas, gasPrice,
                                             jsToBlockNum(_blockNumber), _chainId, FudgeFactor::Lenient);
         return toJS(er.output);
     }
