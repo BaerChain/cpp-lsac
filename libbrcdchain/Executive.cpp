@@ -194,8 +194,11 @@ Executive::Executive(
 
 u256 Executive::gasUsed() const
 {
-    return m_totalGas - m_needRefundGas;
-	// return m_t.gas() - m_gas;
+	if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+        return  (m_totalGas - m_needRefundGas) / m_t.gasPrice() - m_gas; 
+    }else {
+        return m_t.gas() - m_gas;
+    }
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -525,14 +528,19 @@ bool Executive::execute(transationTool::initializeEnum _enum)
 {
 	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue ;
     assert(m_t.gas() >= (u256)m_baseGasRequired);
-    if (m_t.isCreation())
-        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
-    else
-    {
-        return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired,_enum);
+    if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+        if (m_t.isCreation()) {
+            return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired - m_addCostValue / m_t.gasPrice(), &m_t.data(), m_t.sender());
+        } else {
+            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired - m_addCostValue / m_t.gasPrice(), _enum);
+        }
 
+    } else {
+        if (m_t.isCreation()) {
+            return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+        } else {
+            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired,_enum);
+        }
     }
 }
 
@@ -562,6 +570,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
         bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
+        cerror << " contract g :" << g << " contract p.gas : " << _p.gas; 
         if (_p.gas < g)
         {
             m_excepted = TransactionException::OutOfGasBase;
@@ -591,6 +600,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     else
     {
         m_gas = _p.gas;
+        cerror << " m_gas : " << m_gas;
         if (m_s.addressHasCode(_p.codeAddress))
         {
             bytes const& c = m_s.code(_p.codeAddress);
@@ -803,8 +813,9 @@ bool Executive::go(OnOpFunc const& _onOp)
                 m_s.setCode(m_ext->myAddress, out.toVector());
             }
             else{
+                cerror << "m_gas :" << m_gas;
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-
+                cerror << "m_gas :" << m_gas;
             }
             success = true;
         }
@@ -870,8 +881,51 @@ bool Executive::finalize()
         // Refunds must be applied before the miner gets the fees.
         assert(m_ext->sub.refunds >= 0);
         int64_t maxRefund = (static_cast<int64_t>(m_t.gas()) - static_cast<int64_t>(m_gas)) / 2;
+        cerror << "maxRefund : "<< maxRefund;
+        cerror << "m_ext->sub.refunds : "<< m_ext->sub.refunds;
+
         m_gas += min(maxRefund, m_ext->sub.refunds);
+        cerror << "m_gas : " << m_gas;
     }
+
+    if (m_envInfo.number() >= config::modifyReciptGasHeight()) {
+        if(m_t) {
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+
+            // updata about author mapping_address
+            // TODO fork code
+            if (m_envInfo.number() >= config::newChangeHeight()) {
+                auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+                Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
+                m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+            }
+            else{
+                m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+            }
+        }
+    }else{
+        if (m_t)
+        {
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+            m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+
+            // updata about author mapping_address
+            // TODO fork code
+            if (m_envInfo.number() >= config::newChangeHeight()) {
+                auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+                Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
+                m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
+            }
+            else{
+                m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
+            }
+        } 
+    }
+
 
     if (m_t)
     {
