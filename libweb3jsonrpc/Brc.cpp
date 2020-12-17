@@ -897,8 +897,9 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
 
         int64_t gas = 500000000;
         Json::Value jsonGasPrice = client()->getAveragePrice(PendingBlock);
-        u256 gasPrice = jsToU256(jsonGasPrice["fastGasPrice"].asString());
-
+        // u256 gasPrice = jsToU256(jsonGasPrice["fastGasPrice"].asString());
+        u256 gasPrice = u256(100);
+        cerror << "gasPrice : " << gasPrice;
         if(to == VoteAddress) {
             return client()->newEstimateGasUsed(from, value, to, data, gas, gasPrice, PendingBlock);
         }else{

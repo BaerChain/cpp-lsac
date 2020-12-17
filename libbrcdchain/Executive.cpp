@@ -195,7 +195,8 @@ Executive::Executive(
 u256 Executive::gasUsed() const
 {
 	if (m_envInfo.number() > config::modifyReciptGasHeight()) {
-        return  (m_totalGas - m_needRefundGas) / m_t.gasPrice() - m_gas; 
+        u256 bvmCookieUse = m_needRefundGas - m_gas * m_t.gasPrice();
+        return (m_totalGas - m_needRefundGas + bvmCookieUse) / m_t.gasPrice(); 
     }else {
         return m_t.gas() - m_gas;
     }
@@ -315,6 +316,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				std::string ex_info = "not enough BRC or Cookie to execute transaction will cost:"+ toString(totalCost);
 				BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
                                                       << errinfo_comment(ex_info));
+            }
+            if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+                m_totalGas = (u256)totalCost;
             }
         }
         else
@@ -530,9 +534,9 @@ bool Executive::execute(transationTool::initializeEnum _enum)
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_envInfo.number() > config::modifyReciptGasHeight()) {
         if (m_t.isCreation()) {
-            return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired - m_addCostValue / m_t.gasPrice(), &m_t.data(), m_t.sender());
+            return create(m_t.sender(), m_t.value(), m_t.gasPrice(),  m_needRefundGas / m_t.gasPrice(), &m_t.data(), m_t.sender());
         } else {
-            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired - m_addCostValue / m_t.gasPrice(), _enum);
+            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_needRefundGas / m_t.gasPrice(), _enum);
         }
 
     } else {
@@ -570,7 +574,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
         bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
-        cerror << " contract g :" << g << " contract p.gas : " << _p.gas; 
         if (_p.gas < g)
         {
             m_excepted = TransactionException::OutOfGasBase;
@@ -600,7 +603,6 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
     else
     {
         m_gas = _p.gas;
-        cerror << " m_gas : " << m_gas;
         if (m_s.addressHasCode(_p.codeAddress))
         {
             bytes const& c = m_s.code(_p.codeAddress);
@@ -813,9 +815,7 @@ bool Executive::go(OnOpFunc const& _onOp)
                 m_s.setCode(m_ext->myAddress, out.toVector());
             }
             else{
-                cerror << "m_gas :" << m_gas;
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-                cerror << "m_gas :" << m_gas;
             }
             success = true;
         }
@@ -881,16 +881,15 @@ bool Executive::finalize()
         // Refunds must be applied before the miner gets the fees.
         assert(m_ext->sub.refunds >= 0);
         int64_t maxRefund = (static_cast<int64_t>(m_t.gas()) - static_cast<int64_t>(m_gas)) / 2;
-        cerror << "maxRefund : "<< maxRefund;
-        cerror << "m_ext->sub.refunds : "<< m_ext->sub.refunds;
 
         m_gas += min(maxRefund, m_ext->sub.refunds);
-        cerror << "m_gas : " << m_gas;
     }
 
     if (m_envInfo.number() >= config::modifyReciptGasHeight()) {
         if(m_t) {
-            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+            u256 bvmCookieUse = m_needRefundGas - m_gas * m_t.gasPrice();
+            cerror << " cookie :"  << m_s.balance(m_t.sender()) << "  cookieuse : " << m_totalGas - m_needRefundGas + bvmCookieUse;
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas + bvmCookieUse);
 
             // updata about author mapping_address
             // TODO fork code
@@ -898,11 +897,11 @@ bool Executive::finalize()
                 auto miner_mapping = m_s.minerMapping(m_envInfo.author());
                 Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
                 m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
-                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas + bvmCookieUse);
             }
             else{
                 m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas - m_gas * m_t.gasPrice());
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas + bvmCookieUse);
             }
         }
     }else{
@@ -956,6 +955,7 @@ bool Executive::finalize()
 
     if (m_res)  // Collect results
     {
+        cerror << gasUsed();
         m_res->gasUsed = gasUsed();
         m_res->excepted = m_excepted;  // TODO: m_except is used only in ExtVM::call
         m_res->newAddress = m_newAddress;

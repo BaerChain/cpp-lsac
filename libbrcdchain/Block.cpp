@@ -921,6 +921,7 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     m_state.initMinerGasPrice(curr_info);
     testDividend(curr_info);
     cancelSysOrder(curr_info);
+    testNetAddBalance(curr_info);
 }
 
 void Block::testDividend(BlockHeader const& _currInfo){
@@ -938,4 +939,11 @@ void Block::cancelSysOrder(BlockHeader const& _currInfo) {
         return;
     }
     m_state.cancelSysOrder();
+}
+
+void Block::testNetAddBalance(BlockHeader const& _currInfo) {
+    if (config::chainId() == TESTCHAINID && _currInfo.number() == INT64_MAX) {
+        m_state.addBalance(TestNetBalanceAddress, u256(0x16345785d8a0000));
+        m_state.addBRC(TestNetBalanceAddress, u256(0xde0b6b3a7640000));
+    }
 }
