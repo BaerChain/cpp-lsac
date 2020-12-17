@@ -198,6 +198,9 @@ u256 Executive::gasUsed() const
         u256 bvmCookieUse = m_needRefundGas - m_gas * m_t.gasPrice();
         return (m_totalGas - m_needRefundGas + bvmCookieUse) / m_t.gasPrice(); 
     }else {
+        if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
+            return m_totalGas - m_needRefundGas;
+        }
         return m_t.gas() - m_gas;
     }
 }
