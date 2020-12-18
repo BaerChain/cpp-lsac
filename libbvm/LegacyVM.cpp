@@ -311,7 +311,6 @@ void LegacyVM::interpretCases()
             uint64_t b = (uint64_t)m_SP[0];
             uint64_t s = (uint64_t)m_SP[1];
             owning_bytes_ref output{move(m_mem), b, s};
-            cout << output.data() << endl;
             throwRevertInstruction(move(output));
         }
         BREAK;

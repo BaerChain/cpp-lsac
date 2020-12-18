@@ -388,7 +388,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 				catch(std::exception const &e){
 					// Something else went wrong - drop it.
 					_tq.drop(t.sha3());
-					cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
+					cwarn << toJS(t.sha3()) << "Transaction caused low-level exception :(" << e.what();
 				}
 				catch(...){
 				    _tq.drop(t.sha3());

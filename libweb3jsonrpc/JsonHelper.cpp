@@ -212,25 +212,8 @@ namespace dev {
                 res["status"] = toString(_t.statusCode());
             else
                 res["stateRoot"] = toJS(_t.stateRoot());
-
-            try
-            {
-                RLP _rlp(_trx.data());
-                std::vector<bytes> _ops = _rlp.toVector<bytes>();
-                dev::brc::transationTool::op_type _type;
-                for(auto val : _ops)
-                {
-                    _type =  dev::brc::transationTool::operation::get_type(val);
-                    break;
-                }
-                res["cumulativeGasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + _t.cumulativeGasUsed());
-                res["gasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + _t.gasUsed());
-            }
-            catch(const std::exception& e)
-            {
-                res["gasUsed"] = toJS(_t.gasUsed());
-                res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
-            }
+            res["gasUsed"] = toJS(_t.gasUsed());
+            res["cumulativeGasUsed"] = toJS(_t.cumulativeGasUsed());
             return res;
         }
 

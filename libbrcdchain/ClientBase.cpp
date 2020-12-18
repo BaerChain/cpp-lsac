@@ -40,11 +40,12 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
             State tempState(bk.state());
             tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice()));
-            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
+            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted, OnOpFunc(), transationTool::initializeEnum::estimateGas).first;
             if (er.excepted == TransactionException::OutOfGas ||
                 er.excepted == TransactionException::OutOfGasBase ||
                 er.excepted == TransactionException::OutOfGasIntrinsic ||
                 er.codeDeposit == CodeDeposit::Failed ||
+                er.excepted == TransactionException::RevertInstruction||
                 er.excepted == TransactionException::BadJumpDestination)
                 lowerBound = lowerBound == mid ? upperBound : mid;
             else
@@ -63,8 +64,9 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
     }
     catch (...)
     {
+        throw;
         // TODO: Some sort of notification of failure.
-        return make_pair(u256(), ExecutionResult());
+        // return make_pair(u256(), ExecutionResult());
     }
 }
 

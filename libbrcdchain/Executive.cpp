@@ -195,8 +195,7 @@ Executive::Executive(
 u256 Executive::gasUsed() const
 {
 	if (m_envInfo.number() > config::modifyReciptGasHeight()) {
-        u256 bvmCookieUse = m_needRefundGas - m_gas * m_t.gasPrice();
-        return (m_totalGas - m_needRefundGas + bvmCookieUse) / m_t.gasPrice(); 
+        return m_totalGas / m_t.gasPrice() - m_gas;
     }else {
         if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
             return m_totalGas - m_needRefundGas;
@@ -533,7 +532,7 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 
 bool Executive::execute(transationTool::initializeEnum _enum)
 {
-	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue ;
+	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue;
     assert(m_t.gas() >= (u256)m_baseGasRequired);
     if (m_envInfo.number() > config::modifyReciptGasHeight()) {
         if (m_t.isCreation()) {
@@ -890,9 +889,7 @@ bool Executive::finalize()
 
     if (m_envInfo.number() >= config::modifyReciptGasHeight()) {
         if(m_t) {
-            u256 bvmCookieUse = m_needRefundGas - m_gas * m_t.gasPrice();
-            cerror << " cookie :"  << m_s.balance(m_t.sender()) << "  cookieuse : " << m_totalGas - m_needRefundGas + bvmCookieUse;
-            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas + bvmCookieUse);
+            m_s.subBalance(m_t.sender(), m_totalGas - m_gas * m_t.gasPrice());
 
             // updata about author mapping_address
             // TODO fork code
@@ -900,11 +897,11 @@ bool Executive::finalize()
                 auto miner_mapping = m_s.minerMapping(m_envInfo.author());
                 Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
                 m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
-                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas + bvmCookieUse);
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_gas * m_t.gasPrice());
             }
             else{
                 m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas + bvmCookieUse);
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_gas * m_t.gasPrice());
             }
         }
     }else{
@@ -928,25 +925,6 @@ bool Executive::finalize()
         } 
     }
 
-
-    if (m_t)
-    {
-        m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-        m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
-
-        // updata about author mapping_address
-        // TODO fork code
-        if (m_envInfo.number() >= config::newChangeHeight()) {
-            auto miner_mapping = m_s.minerMapping(m_envInfo.author());
-            Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
-            m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
-            m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
-        }
-        else{
-            m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-            m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
-        }
-    }
     // Suicides...
     if (m_ext)
         for (auto a : m_ext->sub.selfdestructs)
@@ -958,7 +936,6 @@ bool Executive::finalize()
 
     if (m_res)  // Collect results
     {
-        cerror << gasUsed();
         m_res->gasUsed = gasUsed();
         m_res->excepted = m_excepted;  // TODO: m_except is used only in ExtVM::call
         m_res->newAddress = m_newAddress;
