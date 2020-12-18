@@ -561,7 +561,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     }
     m_savepoint = m_s.savepoint();
-
+    cwarn << "call " << toHex(_p.codeAddress);
+    cwarn <<" size: " <<  m_sealEngine.chainParams().precompiled.size();
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
         cwarn << "execut costOfPrecompiled ";
