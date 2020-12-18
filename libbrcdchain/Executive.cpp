@@ -564,6 +564,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 
     if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
     {
+        cwarn << "execut costOfPrecompiled ";
         bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
         if (_p.gas < g)
         {
@@ -579,10 +580,12 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
             m_gas = (u256)(_p.gas - g);
             bytes output;
             bool success;
+            cwarn << "execut executePrecompiled ";
             tie(success, output) =
                 m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{std::move(output), 0, outputSize};
+            cwarn << "success:" << success << " " << toHex(m_output);
             if (!success)
             {
                 m_gas = 0;
