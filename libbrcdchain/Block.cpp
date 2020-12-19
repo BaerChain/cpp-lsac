@@ -916,6 +916,25 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
         m_state.changeMinerAddVote(curr_info);
     }
 
+    if(params.chainID == MAINCHAINID && curr_info.number() >= config::getPrecompiled()){
+        auto chainParams =  m_sealEngine->chainParams();
+        if(!chainParams.precompiled.count(Address(1))){
+            chainParams.precompiled.insert(make_pair(Address(1), PrecompiledContract(3000, 0, PrecompiledRegistrar::executor("ecrecover"), config::getPrecompiled())));
+           
+        }
+        if(!chainParams.precompiled.count(Address(2))){
+            chainParams.precompiled.insert(make_pair(Address(2), PrecompiledContract(60, 12, PrecompiledRegistrar::executor("sha256"), config::getPrecompiled())));
+        }
+        if(!chainParams.precompiled.count(Address(3))){
+            chainParams.precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"), config::getPrecompiled())));
+           
+        }
+        if(!chainParams.precompiled.count(Address(3))){
+            chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(15, 3, PrecompiledRegistrar::executor("identity"), config::getPrecompiled())));
+        }
+        m_state.updatePrecontract();
+    }
+
     /// init the minerGasPrice
     /// the interface has dealed chainId
     m_state.initMinerGasPrice(curr_info);

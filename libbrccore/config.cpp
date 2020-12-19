@@ -215,6 +215,15 @@ int64_t config::cancelAutoPendingOrderHeight()
     }
 }
 
+int64_t config::getPrecompiled()
+{
+    if (config::config::getInstance().m_chainId == MAINCHAINID)
+    {
+        return 2;
+    }
+    return 1;
+}
+
 std::set<Address> config::getGenesisAddr()
 {
     std::string _genesis = genesis::genesis_info(ChainNetWork ::MainNetwork);
