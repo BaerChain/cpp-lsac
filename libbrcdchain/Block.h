@@ -309,6 +309,7 @@ public:
     // test dividend interface
     void testDividend(BlockHeader const& _currInfo);
     void cancelSysOrder(BlockHeader const& _currInfo);
+    void addPrecompiledCode(BlockHeader const& _currInfo);
 private:
     SealEngineFace* sealEngine() const;
 

@@ -926,11 +926,22 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
             chainParams.precompiled.insert(make_pair(Address(2), PrecompiledContract(60, 12, PrecompiledRegistrar::executor("sha256"), config::getPrecompiled())));
         }
         if(!chainParams.precompiled.count(Address(3))){
-            chainParams.precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"), config::getPrecompiled())));
-           
+            chainParams.precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"), config::getPrecompiled())));  
         }
-        if(!chainParams.precompiled.count(Address(3))){
+        if(!chainParams.precompiled.count(Address(4))){
             chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(15, 3, PrecompiledRegistrar::executor("identity"), config::getPrecompiled())));
+        }
+        if(!chainParams.precompiled.count(Address(5))){
+            chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(0, 0, PrecompiledRegistrar::executor("modexp"), config::getPrecompiled())));
+        }
+        if(!chainParams.precompiled.count(Address(6))){
+            chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(500, 0, PrecompiledRegistrar::executor("alt_bn128_G1_add"), config::getPrecompiled())));
+        }
+        if(!chainParams.precompiled.count(Address(7))){
+            chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(40000, 0, PrecompiledRegistrar::executor("alt_bn128_G1_mul"), config::getPrecompiled())));
+        }
+        if(!chainParams.precompiled.count(Address(8))){
+            chainParams.precompiled.insert(make_pair(Address(4), PrecompiledContract(0, 0, PrecompiledRegistrar::executor("alt_bn128_pairing_product"), config::getPrecompiled())));
         }
         m_state.updatePrecontract();
     }
