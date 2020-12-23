@@ -4083,36 +4083,10 @@ void dev::brc::State::cancelSysOrder()
 
 void dev::brc::State::updatePrecontract()
 {
-    {
-        auto ad = account(Address(1));
-        if (!ad)
-        {
-            createAccount(Address(2), Account(0, 1));
-        }
-    }
-
-
-    {
-        auto ad = account(Address(2));
-        if (!ad)
-        {
-            createAccount(Address(2), Account(0, 1));
-        }
-    }
-
-    {
-        auto ad = account(Address(3));
-        if (!ad)
-        {
-            createAccount(Address(3), Account(0, 1));
-        }
-    }
-
-    {
-        auto ad = account(Address(4));
-        if (!ad)
-        {
-            createAccount(Address(4), Account(0, 1));
+    for (unsigned i = 1; i <=8; i++ ) {
+        auto ad = account(Address(i));
+        if (!ad) {
+            createAccount(Address(i), Account(0 ,1));
         }
     }
 }

@@ -219,7 +219,9 @@ int64_t config::getPrecompiled()
 {
     if (config::config::getInstance().m_chainId == MAINCHAINID)
     {
-        return 2;
+        return INT64_MAX;
+    }else if (config::getInstance().m_chainId == TESTCHAINID) {
+        return 34389526;
     }
     return 1;
 }
