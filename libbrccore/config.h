@@ -103,6 +103,7 @@ namespace dev
 
                 static std::map<Address, u256> getMasterNodeInfo();
                 static int64_t newBifurcationBvmHeight();
+                static int64_t modifyReciptGasHeight();
         private:
             config(){}
             //~config(){}

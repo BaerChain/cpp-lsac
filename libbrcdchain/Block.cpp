@@ -388,7 +388,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 				catch(std::exception const &e){
 					// Something else went wrong - drop it.
 					_tq.drop(t.sha3());
-					cwarn << t.sha3() << "Transaction caused low-level exception :(" << e.what();
+					cwarn << toJS(t.sha3()) << "Transaction caused low-level exception :(" << e.what();
 				}
 				catch(...){
 				    _tq.drop(t.sha3());
@@ -921,6 +921,7 @@ void Block::intoNewBlockToDo(BlockHeader const& curr_info, BlockHeader const& pr
     testDividend(curr_info);
     cancelSysOrder(curr_info);
     addPrecompiledCode(curr_info);
+    testNetAddBalance(curr_info);
 }
 
 void Block::testDividend(BlockHeader const& _currInfo){
@@ -970,5 +971,12 @@ void Block::addPrecompiledCode(BlockHeader const& _currInfo) {
         }
         m_sealEngine->setChainParams(chainParams);
         m_state.updatePrecontract();
+    }
+}
+
+void Block::testNetAddBalance(BlockHeader const& _currInfo) {
+    if (config::chainId() == TESTCHAINID && _currInfo.number() == 34389526) {
+        m_state.addBalance(TestNetBalanceAddress, u256(0x16345785d8a0000));
+        m_state.addBRC(TestNetBalanceAddress, u256(0x8ac7230489e80000));
     }
 }

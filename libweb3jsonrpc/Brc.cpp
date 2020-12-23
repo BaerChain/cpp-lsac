@@ -898,7 +898,6 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
         int64_t gas = 500000000;
         Json::Value jsonGasPrice = client()->getAveragePrice(PendingBlock);
         u256 gasPrice = jsToU256(jsonGasPrice["fastGasPrice"].asString());
-
         if(to == VoteAddress) {
             return client()->newEstimateGasUsed(from, value, to, data, gas, gasPrice, PendingBlock);
         }else{
@@ -914,7 +913,6 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
     catch(...)
     {
         BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Estimated gas transaction execution failed")));
-        // BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
     }
     
 }

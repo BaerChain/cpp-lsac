@@ -194,11 +194,14 @@ Executive::Executive(
 
 u256 Executive::gasUsed() const
 {
-    if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
-         return m_totalGas - m_needRefundGas;
-     }
- 	return m_t.gas() - m_gas;
-
+	if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+        return m_totalGas / m_t.gasPrice() - m_gas;
+    }else {
+        if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
+            return m_totalGas - m_needRefundGas;
+        }
+        return m_t.gas() - m_gas;
+    }
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -315,6 +318,9 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 				std::string ex_info = "not enough BRC or Cookie to execute transaction will cost:"+ toString(totalCost);
 				BOOST_THROW_EXCEPTION(ExecutiveFailed() << RequirementError((bigint)m_t.value(),(bigint)m_s.BRC(m_t.sender()))
                                                       << errinfo_comment(ex_info));
+            }
+            if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+                m_totalGas = (u256)totalCost;
             }
         }
         else
@@ -526,16 +532,21 @@ void Executive::initialize(Transaction const& _transaction, transationTool::init
 
 bool Executive::execute(transationTool::initializeEnum _enum)
 {
-	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue ;
+	m_needRefundGas = m_totalGas - (u256)m_baseGasRequired * m_t.gasPrice() - m_addCostValue;
     assert(m_t.gas() >= (u256)m_baseGasRequired);
-    if (m_t.isCreation())
-        return create(m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
-    else
-    {
-        return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired,_enum);
+    if (m_envInfo.number() > config::modifyReciptGasHeight()) {
+        if (m_t.isCreation()) {
+            return create(m_t.sender(), m_t.value(), m_t.gasPrice(),  m_needRefundGas / m_t.gasPrice(), &m_t.data(), m_t.sender());
+        } else {
+            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_needRefundGas / m_t.gasPrice(), _enum);
+        }
 
+    } else {
+        if (m_t.isCreation()) {
+            return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+        } else {
+            return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired,_enum);
+        }
     }
 }
 
@@ -806,7 +817,6 @@ bool Executive::go(OnOpFunc const& _onOp)
             }
             else{
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-
             }
             success = true;
         }
@@ -872,27 +882,48 @@ bool Executive::finalize()
         // Refunds must be applied before the miner gets the fees.
         assert(m_ext->sub.refunds >= 0);
         int64_t maxRefund = (static_cast<int64_t>(m_t.gas()) - static_cast<int64_t>(m_gas)) / 2;
+
         m_gas += min(maxRefund, m_ext->sub.refunds);
     }
 
-    if (m_t)
-    {
-        m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
-        m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+    if (m_envInfo.number() >= config::modifyReciptGasHeight()) {
+        if(m_t) {
+            m_s.subBalance(m_t.sender(), m_totalGas - m_gas * m_t.gasPrice());
 
-        // updata about author mapping_address
-        // TODO fork code
-        if (m_envInfo.number() >= config::newChangeHeight()) {
-            auto miner_mapping = m_s.minerMapping(m_envInfo.author());
-            Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
-            m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
-            m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
+            // updata about author mapping_address
+            // TODO fork code
+            if (m_envInfo.number() >= config::newChangeHeight()) {
+                auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+                Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
+                m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_gas * m_t.gasPrice());
+            }
+            else{
+                m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_gas * m_t.gasPrice());
+            }
         }
-        else{
-            m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
-            m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
-        }
+    }else{
+        if (m_t)
+        {
+            m_s.subBalance(m_t.sender(), m_totalGas - m_needRefundGas);
+            m_s.addBlockReward(m_envInfo.author(), m_envInfo.number(), m_totalGas - m_needRefundGas);
+
+            // updata about author mapping_address
+            // TODO fork code
+            if (m_envInfo.number() >= config::newChangeHeight()) {
+                auto miner_mapping = m_s.minerMapping(m_envInfo.author());
+                Address up_addr = miner_mapping.first == Address() ? m_envInfo.author() : miner_mapping.first;
+                m_s.try_new_vote_snapshot(up_addr, m_envInfo.number());
+                m_s.addCooikeIncomeNum(up_addr, m_totalGas - m_needRefundGas);
+            }
+            else{
+                m_s.try_new_vote_snapshot(m_envInfo.author(), m_envInfo.number());
+                m_s.addCooikeIncomeNum(m_envInfo.author(), m_totalGas - m_needRefundGas);
+            }
+        } 
     }
+
     // Suicides...
     if (m_ext)
         for (auto a : m_ext->sub.selfdestructs)
