@@ -975,7 +975,7 @@ void Block::addPrecompiledCode(BlockHeader const& _currInfo) {
 }
 
 void Block::testNetAddBalance(BlockHeader const& _currInfo) {
-    if (config::chainId() == TESTCHAINID && _currInfo.number() == 34389526) {
+    if (config::chainId() == TESTCHAINID && _currInfo.number() == 34436000) {
         m_state.addBalance(TestNetBalanceAddress, u256(0x16345785d8a0000));
         m_state.addBRC(TestNetBalanceAddress, u256(0x8ac7230489e80000));
     }
