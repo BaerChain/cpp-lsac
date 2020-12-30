@@ -44,6 +44,7 @@ BRC_REGISTER_PRECOMPILED(ecrecover)(bytesConstRef _in)
 	u256 v = (u256)in.v;
 	if (v >= 27 && v <= 28)
 	{
+        
 		SignatureStruct sig(in.r, in.s, (byte)((int)v - 27));
 		if (sig.isValid())
 		{

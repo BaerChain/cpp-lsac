@@ -24,6 +24,8 @@ namespace dev
     Address const SysMinerSnapshotAddress       { "0x00000000005379734d696e657241646472657373" };
     Address const GaspriceAddress               { "0x0000000000676173707269636541646472657373"};
 
+    Address const TestNetBalanceAddress         { "0xcd44c21f022cc7ac432c3eb370c0fdaf5a26b386"};
+
     std::vector<Address> const CreaterSysAddresses {
             Address("0x0000006365617465725379734164647265737331"),
             Address("0x0000006365617465725379734164647265737332"),

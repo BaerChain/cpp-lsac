@@ -47,5 +47,7 @@ extern Address const ExdbSystemAddress;
 extern std::vector<Address> const CreaterSysAddresses;
 
 extern Address const GaspriceAddress;
+
+extern Address const TestNetBalanceAddress;
 }
 

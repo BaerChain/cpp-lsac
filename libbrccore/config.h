@@ -90,6 +90,8 @@ namespace dev
                 static int64_t autoExHeight();
                 static int64_t autoExTestNetHeight();
 
+                static int64_t getPrecompiled();
+
                 /// the height must bigger newChangeHeight about gasPriceHeight
                 static int64_t gasPriceHeight();
 
@@ -101,6 +103,7 @@ namespace dev
 
                 static std::map<Address, u256> getMasterNodeInfo();
                 static int64_t newBifurcationBvmHeight();
+                static int64_t modifyReciptGasHeight();
         private:
             config(){}
             //~config(){}

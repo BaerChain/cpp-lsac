@@ -649,6 +649,7 @@ public:
     void testVotingAccountDividend(std::set<Address> const& _voteAddrs, std::map<Address, u256> const& _masterNodeDividends, std::map<Address, u256> const& _masterNodeVotes, int64_t const& _blockNum);
 
     void cancelSysOrder();
+    void updatePrecontract();
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();

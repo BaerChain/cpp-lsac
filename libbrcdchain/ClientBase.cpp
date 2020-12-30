@@ -17,7 +17,6 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
 {
     try
     {
-        
         int64_t upperBound = _maxGas;
         if (upperBound == Invalid256 || upperBound > c_maxGasEstimate)
             upperBound = c_maxGasEstimate;
@@ -27,33 +26,28 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         ExecutionResult er;
         ExecutionResult lastGood;
         bool good = false;
-
         while (upperBound != lowerBound)
         {
-          
             int64_t mid = (lowerBound + upperBound) / 2;
             u256 n = bk.transactionsFrom(_from);
             Transaction t;
+            cerror << "mid : " << mid;
             if (_dest)
-                t = Transaction(_value, gasPrice, mid, _dest, _data, n, u256(config::chainId()));
+                t = Transaction(_value, gasPrice, mid, _dest, _data, n, config::chainId());
             else
                 t = Transaction(_value, gasPrice, mid, _data, n, config::chainId());
             t.forceSender(_from);
             EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, mid);
             State tempState(bk.state());
             tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice()));
-
-            u256 execBegin = tempState.balance(_from);
-            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted).first;
+            er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted, OnOpFunc(), transationTool::initializeEnum::estimateGas).first;
             if (er.excepted == TransactionException::OutOfGas ||
                 er.excepted == TransactionException::OutOfGasBase ||
                 er.excepted == TransactionException::OutOfGasIntrinsic ||
                 er.codeDeposit == CodeDeposit::Failed ||
-                er.excepted == TransactionException::RevertInstruction ||
-                er.excepted == TransactionException::BadJumpDestination){
+                er.excepted == TransactionException::RevertInstruction||
+                er.excepted == TransactionException::BadJumpDestination)
                 lowerBound = lowerBound == mid ? upperBound : mid;
-                break;
-            }
             else
             {
                 lastGood = er;
@@ -66,12 +60,6 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
         }
         if (_callback)
             _callback(GasEstimationProgress{lowerBound, upperBound});
-
-        if(upperBound == c_maxGasEstimate){
-            //execute error.
-            // return make_pair(0, er);
-            BOOST_THROW_EXCEPTION(ExeContractException());
-        }
         return make_pair(upperBound, good ? lastGood : er);
     }
     catch (...)

@@ -309,7 +309,10 @@ public:
     // test dividend interface
     void testDividend(BlockHeader const& _currInfo);
     void cancelSysOrder(BlockHeader const& _currInfo);
+    void addPrecompiledCode(BlockHeader const& _currInfo);
 private:
+    void testNetAddBalance(BlockHeader const& _currInfo);
+
     SealEngineFace* sealEngine() const;
 
     /// Undo the changes to the state for committing to mine.

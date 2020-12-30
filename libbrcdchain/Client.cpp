@@ -1115,31 +1115,11 @@ Json::Value Client::newEstimateGasUsed(Address const& _from, u256 _value, Addres
         }
         t.forceSender(_from);
         EnvInfo const env(bk.info(), bc().lastBlockHashes(), 0, _maxGas);
-    
         State tempState(bk.state());
         tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
     
         auto er = tempState.execute(env, *bc().sealEngine(), t, Permanence::Reverted, OnOpFunc(), transationTool::initializeEnum::estimateGas).second;
-        if (_dest == VoteAddress && !_data.empty()) {
-            try
-            {
-                RLP _rlp(_data);
-                std::vector<bytes> _ops = _rlp.toVector<bytes>();
-                dev::brc::transationTool::op_type _type;
-                for(auto val : _ops)
-                {
-                    _type =  dev::brc::transationTool::operation::get_type(val);
-                    break;
-                }
-                ret["estimateGasUsed"] = toJS(dev::brc::transationTool::c_add_value[_type] + er.cumulativeGasUsed());
-            }
-            catch(const std::exception& e)
-            {
-                ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed());
-            }
-        }else {
-            ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed()); 
-        }
+        ret["estimateGasUsed"] = toJS(er.cumulativeGasUsed());
     }catch(...){
         BOOST_THROW_EXCEPTION(EstimateGasUsed() << errinfo_comment(std::string("Estimated gas transaction execution failed")));
     }

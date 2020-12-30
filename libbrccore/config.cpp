@@ -215,6 +215,27 @@ int64_t config::cancelAutoPendingOrderHeight()
     }
 }
 
+int64_t config::getPrecompiled()
+{
+    if (config::config::getInstance().m_chainId == MAINCHAINID)
+    {
+        return INT64_MAX;
+    }else if (config::getInstance().m_chainId == TESTCHAINID) {
+        return 34436000;
+    }
+    return 1;
+}
+
+int64_t config::modifyReciptGasHeight() {
+    if (config::getInstance().m_chainId == MAINCHAINID) {
+        return INT64_MAX;
+    }else if (config::getInstance().m_chainId == TESTCHAINID) {
+        return 34436000;
+    }
+    
+    return 1;
+}
+
 std::set<Address> config::getGenesisAddr()
 {
     std::string _genesis = genesis::genesis_info(ChainNetWork ::MainNetwork);
