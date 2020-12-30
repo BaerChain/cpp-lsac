@@ -32,7 +32,7 @@ struct ChainParams: public ChainOperationParams
     ChainParams(std::string const& _json, bytes const& _genesisRLP, AccountMap const& _state): ChainParams(_json) { populateFromGenesis(_genesisRLP, _state); }
 
     SealEngineFace* createSealEngine();
-
+    void loadProcompiled();
     /// Genesis params.
     h256 parentHash = h256();
     Address author = Address();

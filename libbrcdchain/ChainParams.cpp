@@ -371,3 +371,15 @@ bytes ChainParams::genesisBlock() const
     block.appendRaw(RLPEmptyList);
     return block.out();
 }
+
+
+ void ChainParams::loadProcompiled(){
+    precompiled.insert(make_pair(Address(1), PrecompiledContract(3000, 0, PrecompiledRegistrar::executor("ecrecover"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(2), PrecompiledContract(60, 12, PrecompiledRegistrar::executor("sha256"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"), config::getPrecompiled())));  
+    precompiled.insert(make_pair(Address(4), PrecompiledContract(15, 3, PrecompiledRegistrar::executor("identity"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(5), PrecompiledContract(0, 0, PrecompiledRegistrar::executor("modexp"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(6), PrecompiledContract(500, 0, PrecompiledRegistrar::executor("alt_bn128_G1_add"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(7), PrecompiledContract(40000, 0, PrecompiledRegistrar::executor("alt_bn128_G1_mul"), config::getPrecompiled())));
+    precompiled.insert(make_pair(Address(8), PrecompiledContract(0, 0, PrecompiledRegistrar::executor("alt_bn128_pairing_product"), config::getPrecompiled())));
+ }

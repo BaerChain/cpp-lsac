@@ -779,6 +779,7 @@ int main(int argc, char **argv) {
         // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
         chainParams = ChainParams(genesis::genesis_info(ChainNetWork::MainNetwork),
                                   {}); //genesisStateRoot(brc::Network::MainNetwork));
+        chainParams.loadProcompiled();
     }
 
 
