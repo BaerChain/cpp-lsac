@@ -30,7 +30,6 @@ namespace
 
 BRC_REGISTER_PRECOMPILED(ecrecover)(bytesConstRef _in)
 {
-    cwarn << "execut ecrecover ";
 	struct
 	{
 		h256 hash;
@@ -43,7 +42,6 @@ BRC_REGISTER_PRECOMPILED(ecrecover)(bytesConstRef _in)
 
 	h256 ret;
 	u256 v = (u256)in.v;
-      cwarn << "execut ecrecover " << toHex(in.hash) << " v:"<< toHex(in.v) << " r:" << toHex(in.r) << " s:" << toHex(in.s);
 	if (v >= 27 && v <= 28)
 	{
         
@@ -56,7 +54,6 @@ BRC_REGISTER_PRECOMPILED(ecrecover)(bytesConstRef _in)
 				{
 					ret = dev::sha3(rec);
 					memset(ret.data(), 0, 12);
-                    cwarn << "execut ecrecover " << toHex(ret.asBytes());
 					return {true, ret.asBytes()};
 				}
 			}

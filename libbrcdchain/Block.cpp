@@ -374,25 +374,25 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const &_bc, TransactionQu
 					}
 				}
 				catch(pendingorderAllPriceFiled const &e){
-					cwarn << " pendingOrder field ...";
+					LOG(m_logger) << " pendingOrder field ...";
 					h256 _hash = t.sha3();
 					_tq.drop(_hash);
 					//_tq.eraseDropedTx(_hash);
 				}
 				catch(Exception const &_e){
 					// Something else went wrong - drop it.
-					cwarn << t.sha3() << " Dropping invalid transaction: "
+					LOG(m_logger) << t.sha3() << " Dropping invalid transaction: "
 						<< diagnostic_information(_e);
 					_tq.drop(t.sha3());
 				}
 				catch(std::exception const &e){
 					// Something else went wrong - drop it.
 					_tq.drop(t.sha3());
-					cwarn << toJS(t.sha3()) << "Transaction caused low-level exception :(" << e.what();
+					LOG(m_logger) << toJS(t.sha3()) << "Transaction caused low-level exception :(" << e.what();
 				}
 				catch(...){
 				    _tq.drop(t.sha3());
-					cwarn << "unkown exception ...";
+					LOG(m_logger) << "unkown exception ...";
 				}
 			}
 			_num = goodTxs;
