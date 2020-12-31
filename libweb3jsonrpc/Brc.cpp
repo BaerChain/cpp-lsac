@@ -904,8 +904,15 @@ Json::Value dev::rpc::Brc::brc_estimateGasUsed(const Json::Value &_json)
             return client()->newEstimateGasUsed(from, value, to, data, gas, gasPrice, PendingBlock);
         }else{
             Json::Value ret;
-            ret["estimateGasUsed"] = toJS(client()->estimateGas(from, value, to, data, gas, gasPrice, PendingBlock).first);
-            return ret;
+
+        
+        auto evmgas = client()->estimateGas(from, value, to, data, gas, gasPrice, PendingBlock);
+        if(evmgas.second.excepted != TransactionException::None){
+             BOOST_THROW_EXCEPTION(JsonRpcException(std::string("Estimated gas transaction execution failed")));
+        }
+        ret["estimateGasUsed"] = toJS(evmgas.first);
+
+        return ret;
         }
     }
     catch(EstimateGasUsed const& _e)
