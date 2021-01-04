@@ -37,7 +37,9 @@ string Brc::brc_coinbase()
 
 string Brc::brc_gasPrice()
 {
-    return toJS(client()->GasAveragePrice());
+    Json::Value Prices = client()->getAveragePrice(jsToBlockNum("latest"));
+    return Prices["recommendGasPrice"].asString();
+    // return toJS(client()->GasAveragePrice());
 }
 
 Json::Value Brc::brc_accounts()
