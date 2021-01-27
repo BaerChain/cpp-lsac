@@ -158,7 +158,18 @@ PopulationStatistics Block::populateFromChain(
 
     auto b = _bc.block(_h);
     BlockHeader bi(b);  // No need to check - it's already in the DB.
-    if (bi.number()) {
+
+    if (_bc.isKnown(_h) && bi.number())
+    {
+        LOG(m_logger) << "set root hash." << bi.number() << " info:";
+        BlockHeader bip(_bc.block(bi.parentHash()));
+        sync(_bc, bi.parentHash(), bip);
+        m_currentBlock = bi;
+        m_state.setRoot(bi.stateRoot());
+    }
+    else if (bi.number())
+    {
+        LOG(m_logger) << "set root hash from transactions.";
         // Non-genesis:
 
         // 1. Start at parent's end state (state root).
