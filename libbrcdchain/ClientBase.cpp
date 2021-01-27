@@ -31,7 +31,6 @@ std::pair<u256, ExecutionResult> ClientBase::estimateGas(Address const& _from, u
             int64_t mid = (lowerBound + upperBound) / 2;
             u256 n = bk.transactionsFrom(_from);
             Transaction t;
-            cerror << "mid : " << mid;
             if (_dest)
                 t = Transaction(_value, gasPrice, mid, _dest, _data, n, config::chainId());
             else
