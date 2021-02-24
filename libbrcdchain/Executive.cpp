@@ -197,7 +197,7 @@ u256 Executive::gasUsed() const
 	if (m_envInfo.number() > config::modifyReciptGasHeight()) {
         return m_totalGas / m_t.gasPrice() - m_gas;
     }else {
-        if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= config::newBifurcationBvmHeight()){
+        if(m_envInfo.header().chain_id() == TESTCHAINID && m_envInfo.number() >= 32345055){
             return m_totalGas - m_needRefundGas;
         }
         return m_t.gas() - m_gas;
