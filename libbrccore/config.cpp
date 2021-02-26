@@ -221,7 +221,7 @@ int64_t config::getPrecompiled()
     {
         return INT64_MAX;
     }else if (config::getInstance().m_chainId == TESTCHAINID) {
-        return 34436000;
+        return 34570000;
     }
     return 1;
 }
@@ -230,7 +230,7 @@ int64_t config::modifyReciptGasHeight() {
     if (config::getInstance().m_chainId == MAINCHAINID) {
         return INT64_MAX;
     }else if (config::getInstance().m_chainId == TESTCHAINID) {
-        return 34436000;
+        return 34570000;
     }
     
     return 1;
